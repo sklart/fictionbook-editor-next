@@ -12,6 +12,7 @@
 #include <new>
 #include "scripts/ScriptExecutionContext.h"
 #include "scripts/ScriptJson.h"
+#include "scripts/ScriptModalState.h"
 #include "scripts/ScriptSettingsStore.h"
 #include "../common/RuntimeLocalizationCommon.h"
 namespace FbeScripts { void RecordApiFailure(LPCWSTR method, HRESULT error) noexcept; }
@@ -253,6 +254,9 @@ HRESULT ExternalHelper::GetIDsOfNames(REFIID riid, LPOLESTR* names, UINT nameCou
 }
 HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags, DISPPARAMS* parameters, VARIANT* resultValue, EXCEPINFO* exceptionInfo, UINT* argumentError)
 {
+	// A new modal dialog disables the owner and also blocks COM reentry into
+	// document commands, including the immutable legacy dispatch methods.
+	if (FbeScripts::extendedModalActive) return E_UNEXPECTED;
 	if (riid != IID_NULL)
 		return DISP_E_UNKNOWNINTERFACE;
 	if (argumentError)

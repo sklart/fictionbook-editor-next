@@ -93,6 +93,29 @@ static void TestFormatting() {
   Check(FbeClipboard::HtmlPasteSanitizer::PlainTextToHtml(L"one & two \u00a0", L"_", true) == L"one &amp; two _", "inline plain text");
 }
 
+static void TestEncodedFragments() {
+  auto decode=[](const std::string& bytes,bool valid,const wchar_t* expected=L"") {
+    HGLOBAL memory=::GlobalAlloc(GMEM_MOVEABLE,bytes.size()+1);Check(memory!=nullptr,"allocate CF_HTML fixture");
+    void* target=::GlobalLock(memory);Check(target!=nullptr,"lock CF_HTML fixture");
+    memcpy(target,bytes.c_str(),bytes.size()+1);::GlobalUnlock(memory);
+    CString result;const bool read=FbeClipboard::HtmlPasteSanitizer::ReadClipboardFragment(memory,result,true);
+    ::GlobalFree(memory);Check(read==valid,"strict CF_HTML validity");if(valid)Check(result==expected,"UTF8 fragment bytes");
+  };
+  auto format=[](const std::string& fragment,bool context) {
+    CStringA header;
+    if(context)header.Format("Version:1.0\r\nStartHTML:%010u\r\nEndHTML:%010u\r\nStartFragment:%010u\r\nEndFragment:%010u\r\n",0U,0U,0U,0U);
+    else header.Format("Version:1.0\r\nStartHTML:-1\r\nEndHTML:-1\r\nStartFragment:%010u\r\nEndFragment:%010u\r\n",0U,0U);
+    const unsigned start=header.GetLength(),end=start+static_cast<unsigned>(fragment.size());
+    if(context)header.Format("Version:1.0\r\nStartHTML:%010u\r\nEndHTML:%010u\r\nStartFragment:%010u\r\nEndFragment:%010u\r\n",start,end,start,end);
+    else header.Format("Version:1.0\r\nStartHTML:-1\r\nEndHTML:-1\r\nStartFragment:%010u\r\nEndFragment:%010u\r\n",start,end);
+    return std::string(header.GetString())+fragment;
+  };
+  decode(format(u8"<p>Привет 😀</p>",true),true,L"<p>Привет 😀</p>");
+  decode(format(u8"<p>Привет 😀</p>",false),true,L"<p>Привет 😀</p>");
+  decode(format("",true),true);
+  decode(format("\xc0\xaf",true),false);
+  decode("Version:1.0\r\nStartHTML:1\r\nEndHTML:10\r\nStartFragment:0\r\nEndFragment:5\r\n",false);
+}
 static void TestClipboard() {
   HWND owner = ::CreateWindowExW(0, L"STATIC", L"paste test", 0, 0, 0, 0, 0,
                                 NULL, NULL, ::GetModuleHandleW(NULL), NULL);
@@ -148,7 +171,12 @@ int wmain(int argc, wchar_t** argv) {
     ::OleUninitialize();
     return marked ? 0 : 1;
   }
-  TestFormatting(); TestClipboard();
+  TestFormatting(); TestEncodedFragments();
+  if (argc == 2 && wcscmp(argv[1], L"--isolated-clipboard") == 0) {
+    wchar_t runner[32]={};::GetEnvironmentVariableW(L"RUNNER_ENVIRONMENT",runner,_countof(runner));
+    Check(wcscmp(runner,L"github-hosted")==0,"real clipboard requires a disposable GitHub-hosted runner");
+    TestClipboard();
+  }
   ::OleUninitialize();
   return 0;
 }

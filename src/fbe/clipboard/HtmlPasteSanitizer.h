@@ -25,7 +25,7 @@ public:
   static bool ReadClipboardFragment(HWND owner, CString& html);
   // Shared CF_HTML decoder; strict mode is used by the scripting API without
   // changing the established paste fallback policy.
-  static bool DecodeClipboardFragment(HGLOBAL data, CString& html, bool strict = false);
+  static bool ReadClipboardFragment(HGLOBAL data, CString& html, bool strict);
   static HtmlPasteOutcome Sanitize(const CString& input,
                                    const CString& nbspReplacement,
                                    CString& output);

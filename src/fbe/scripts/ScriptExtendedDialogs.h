@@ -3,6 +3,7 @@
 #include "../UiMetrics.h"
 #include "../RuntimeLocalization.h"
 #include "ScriptJson.h"
+#include "ScriptModalState.h"
 #include "../../common/RuntimeLocalizationCommon.h"
 #include <set>
 
@@ -81,14 +82,18 @@ inline bool Parse(BSTR source, bool multiple, Options& options)
     for (const auto& id : options.selected) if (!ids.count(id)) return false;
     return true;
 }
-inline thread_local bool modalActive = false;
 struct ModalScope {
     HWND focus = ::GetFocus();
-    ModalScope() { if (modalActive) CheckError(E_UNEXPECTED); modalActive = true; }
-    ~ModalScope() { modalActive = false; if (::IsWindow(focus) && ::IsWindowEnabled(focus)) ::SetFocus(focus); }
+    ModalScope() { if (extendedModalActive) CheckError(E_UNEXPECTED); extendedModalActive = true; }
+    ~ModalScope() { extendedModalActive = false; if (::IsWindow(focus) && ::IsWindowEnabled(focus)) ::SetFocus(focus); }
 };
 class ListDialog : public CDialogImpl<ListDialog> {
     const Options& options; bool multiple; CListViewCtrl list; CFont font;
+    void Captions() {
+        SetWindowText(options.title);SetDlgItemText(IDC_ARCHIVE_ENTRY_MESSAGE,options.prompt);
+        SetDlgItemText(IDOK,FbeLoadRuntimeStringByKey(L"fbe.common.ok",L"OK"));
+        SetDlgItemText(IDCANCEL,FbeLoadRuntimeStringByKey(L"fbe.common.cancel",L"Cancel"));
+    }
     int Scale(int n) const { return UiMetrics::ScaleForDpi(n, UiMetrics::DpiForWindow(m_hWnd)); }
     void Fonts() {
         CFont replacement; replacement.Attach(UiMetrics::CreateDialogFontForDpi(UiMetrics::DpiForWindow(m_hWnd)));
@@ -123,6 +128,7 @@ public:
     ListDialog(const Options& value, bool multi) : options(value), multiple(multi) {}
     BEGIN_MSG_MAP(ListDialog)
         MESSAGE_HANDLER(WM_INITDIALOG, Init)
+        MESSAGE_HANDLER(WM_SHOWWINDOW, Shown)
         MESSAGE_HANDLER(WM_SIZE, Size)
         MESSAGE_HANDLER(WM_GETMINMAXINFO, Limits)
         MESSAGE_HANDLER(WM_DPICHANGED, Dpi)
@@ -131,9 +137,7 @@ public:
         COMMAND_ID_HANDLER(IDCANCEL, Cancel)
     END_MSG_MAP()
     LRESULT Init(UINT,WPARAM,LPARAM,BOOL&) {
-        SetWindowText(options.title); SetDlgItemText(IDC_ARCHIVE_ENTRY_MESSAGE,options.prompt);
-        SetDlgItemText(IDOK,FbeLoadRuntimeStringByKey(L"fbe.common.ok",L"OK"));
-        SetDlgItemText(IDCANCEL,FbeLoadRuntimeStringByKey(L"fbe.common.cancel",L"Cancel"));
+        Captions();
         list.Attach(GetDlgItem(IDC_ARCHIVE_ENTRY_LIST));
         list.ModifyStyle(LVS_SINGLESEL|LVS_TYPEMASK,(multiple?0:LVS_SINGLESEL)|LVS_REPORT|LVS_NOCOLUMNHEADER);
         list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT|LVS_EX_LABELTIP|LVS_EX_DOUBLEBUFFER);
@@ -150,6 +154,7 @@ public:
         list.SetFocus(); return FALSE;
     }
     LRESULT Size(UINT,WPARAM,LPARAM,BOOL&) { Layout(); return 0; }
+    LRESULT Shown(UINT,WPARAM visible,LPARAM,BOOL&) { if(visible)Captions();return 0; }
     LRESULT Dpi(UINT,WPARAM,LPARAM value,BOOL&) {
         const RECT& r=*reinterpret_cast<RECT*>(value); SetWindowPos(nullptr,r.left,r.top,r.right-r.left,r.bottom-r.top,SWP_NOZORDER);
         font.DeleteObject(); Fonts(); Clamp(); Layout(); return 0;

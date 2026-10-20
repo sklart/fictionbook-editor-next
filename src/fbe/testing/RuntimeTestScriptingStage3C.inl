@@ -6,10 +6,22 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
         const bool dirty=DocChanged();
         FbeScriptDiagnostics::ScopedDialogSuppression suppress;
         m_doc->RunScript(script);
+        CComPtr<IDispatch> external;CheckError(m_doc->m_body.Document()->parentWindow->get_external(&external));
+        const wchar_t* names[]={L"ShowMessage",L"SelectFromList",L"SelectMultipleFromList",L"ChooseColor",L"GetClipboardText",L"SetClipboardText",L"GetClipboardHtml",L"SetClipboardHtml",L"PushStatusBarText",L"PopStatusBarText",L"ClearStatusBarText"};
+        for(DISPID i=0;i<11;++i){LPOLESTR name=const_cast<LPOLESTR>(names[i]);DISPID id=DISPID_UNKNOWN;CheckError(external->GetIDsOfNames(IID_NULL,&name,1,LOCALE_USER_DEFAULT,&id));if(id!=153+i){details="DISPID changed";CheckError(E_FAIL);}}
+        CComPtr<IOleUndoManager> undoManager;IServiceProviderPtr services(m_doc->m_body.Document());
+        CheckError(services->QueryService(SID_SOleUndoManager,IID_IOleUndoManager,reinterpret_cast<void**>(&undoManager)));
+        auto history=[&](bool redo){
+            CComPtr<IEnumOleUndoUnits> units;CheckError(redo?undoManager->EnumRedoable(&units):undoManager->EnumUndoable(&units));
+            std::vector<CComPtr<IOleUndoUnit>> result;
+            for(;;){CComPtr<IOleUndoUnit> unit;const HRESULT hr=units->Next(1,&unit,nullptr);if(hr==S_FALSE)break;CheckError(hr);result.push_back(unit);}return result;
+        };
         auto invoke=[&](LPCWSTR name,CComVariant* args=nullptr,int count=0) {
+            const auto undo=history(false),redo=history(true);
             CComVariant result; CheckError(m_doc->InvokeFunc(name,args,count,result,true));
             if(result.vt==VT_BSTR) details=CW2A(result.bstrVal,CP_UTF8);
             if(result.vt!=VT_BSTR||wcscmp(result.bstrVal,L"PASS")) CheckError(E_FAIL);
+            if(wcscmp(name,L"stage3cNested")&&(undo!=history(false)||redo!=history(true))){details="API changed Undo/Redo history";CheckError(E_FAIL);}
         };
         invoke(L"stage3cResult");
         const auto revision=m_doc->m_body.GetVersionNumber();
@@ -52,6 +64,7 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
             struct ResetClipboardStorage { ~ResetClipboardStorage(){FbeScripts::Clipboard::testStorage=nullptr;} } resetStorage;
             FbeScripts::Clipboard::testStorage=&storage;
             invoke(L"stage3cClipboard");
+            for(const auto view:{DESC,SOURCE}){ShowView(view);invoke(L"stage3cClipboard");}ShowView(BODY);
             FORMATETC marker={static_cast<CLIPFORMAT>(::RegisterClipboardFormatW(L"FBE Next Internal HTML v2")),nullptr,DVASPECT_CONTENT,-1,TYMED_HGLOBAL};
             if(storage.object->QueryGetData(&marker)!=DV_E_FORMATETC) {details="external HTML marked as internal";CheckError(E_FAIL);}
             storage.failure=CLIPBRD_E_CANT_OPEN;invoke(L"stage3cBusy");storage.failure=S_OK;
@@ -87,10 +100,12 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
                     const int id=index==0?IDNO:(index==1||index==5||index==7)?IDCANCEL:IDOK;
                     if(driver.dialog&&!::IsWindowEnabled(driver.owner)) {
                         driver.button=::GetDlgItem(driver.dialog,id); driver.owned=driver.button!=nullptr;
+                        if(index>=2&&index<=5){wchar_t caption[256]={};::GetWindowTextW(driver.dialog,caption,_countof(caption));driver.owned=driver.owned&&title==caption;}
                     }
                     if(!driver.button) ::Sleep(5);
                 }
-                if(driver.button) ::PostMessageW(driver.dialog,WM_COMMAND,MAKEWPARAM(::GetDlgCtrlID(driver.button),BN_CLICKED),reinterpret_cast<LPARAM>(driver.button));
+                if(driver.button&&(index==2||index==5)) ::PostMessageW(driver.dialog,WM_KEYDOWN,index==2?VK_RETURN:VK_ESCAPE,0);
+                else if(driver.button) ::PostMessageW(driver.dialog,WM_COMMAND,MAKEWPARAM(::GetDlgCtrlID(driver.button),BN_CLICKED),reinterpret_cast<LPARAM>(driver.button));
                 else if(driver.dialog) ::PostMessageW(driver.dialog,WM_CLOSE,0,0);
             });
             CComVariant args[2]; args[0]=index; args[1]=title;

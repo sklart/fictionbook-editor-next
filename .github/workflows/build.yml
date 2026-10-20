@@ -176,6 +176,16 @@ jobs:
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-script-toolbar-tooltips-runtime.ps1 -FbeExe out/Release/FBE.exe
           ./tools/tests/test-script-hotkey-management-runtime.ps1 -FbeExe out/Release/FBE.exe
+      - name: Run scripting API 1.4 dialogs, clipboard and status regression
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          foreach ($mode in 'portable','installed') {
+            foreach ($part in 'dialogs','clipboard','status') {
+              ./tools/tests/test-fbe-scripting-stage3c.ps1 -FbeExe out/Release/FBE.exe -Mode $mode -Part $part
+            }
+          }
+          ./tools/tests/test-status-bar-state.ps1
       - name: Run navigation scripts runtime regression
         shell: pwsh
         run: |

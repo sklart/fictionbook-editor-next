@@ -180,6 +180,17 @@ bool Decimal(const char* bytes, size_t length, const char* key, size_t& value, s
   }
   return false;
 }
+bool MissingHtmlContext(const char* bytes, size_t length, const char* key) {
+  const size_t keyLength = strlen(key);
+  for (size_t i = 0; i + keyLength < length; ++i) {
+    if (_strnicmp(bytes + i, key, keyLength) != 0) continue;
+    size_t p = i + keyLength;
+    while (p < length && bytes[p] == ' ') ++p;
+    if (p + 2 >= length || bytes[p] != '-' || bytes[p+1] != '1') return false;
+    return bytes[p+2] == '\r' || bytes[p+2] == '\n';
+  }
+  return false;
+}
 
 bool AppendCodepoint(unsigned codepoint, CString& out) {
   if (!codepoint || codepoint > 0x10ffff ||
@@ -760,9 +771,9 @@ bool HtmlPasteSanitizer::ReadClipboardFragment(HWND owner, CString& html) {
   ClipboardScope clipboard(owner);
   if (!clipboard.Open()) return false;
   HGLOBAL data = static_cast<HGLOBAL>(::GetClipboardData(format));
-  return DecodeClipboardFragment(data, html);
+  return ReadClipboardFragment(data, html, false);
 }
-bool HtmlPasteSanitizer::DecodeClipboardFragment(HGLOBAL data, CString& html, bool strict) {
+bool HtmlPasteSanitizer::ReadClipboardFragment(HGLOBAL data, CString& html, bool strict) {
   html.Empty();
   const SIZE_T size = data ? ::GlobalSize(data) : 0;
   if (!size || size > kMaxFragmentBytes) return false;
@@ -774,8 +785,12 @@ bool HtmlPasteSanitizer::DecodeClipboardFragment(HGLOBAL data, CString& html, bo
                        (strict ? start <= end : start < end) && end <= size;
   if (strict && offsets) {
     size_t htmlStart = 0, htmlEnd = 0;
-    offsets = Decimal(bytes, start, "StartHTML:", htmlStart, size) && Decimal(bytes, start, "EndHTML:", htmlEnd, size) &&
+    size_t checkedStart = 0, checkedEnd = 0;
+    const bool fragmentHeader = Decimal(bytes, start, "StartFragment:", checkedStart, size) &&
+      Decimal(bytes, start, "EndFragment:", checkedEnd, size) && checkedStart == start && checkedEnd == end;
+    const bool context = Decimal(bytes, start, "StartHTML:", htmlStart, size) && Decimal(bytes, start, "EndHTML:", htmlEnd, size) &&
       htmlStart <= start && end <= htmlEnd && htmlEnd <= size && htmlStart > 0;
+    offsets = fragmentHeader && (context || (MissingHtmlContext(bytes, start, "StartHTML:") && MissingHtmlContext(bytes, start, "EndHTML:")));
   }
   if (offsets) {
     const int count = ::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,

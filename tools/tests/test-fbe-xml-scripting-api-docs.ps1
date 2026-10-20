@@ -11,7 +11,7 @@ foreach($method in 'GetSourceText','ValidateSourceText','GetLastSourceDiagnostic
     if($idl -notmatch ("\b" + [regex]::Escape($method) + "\b")) { throw "IDL no longer exposes $method." }
 }
 $source = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\ExternalHelper.cpp')
-foreach($method in 'GetBinaryInfo','GenerateUniqueBinaryId','AddBinaryFromFile','ReplaceBinaryFromFile','RemoveBinary','SaveAllBinaries') {
+foreach($method in 'GetBinaryInfo','GenerateUniqueBinaryId','AddBinaryFromFile','ReplaceBinaryFromFile','RemoveBinary','SaveAllBinaries','ShowMessage','SelectFromList','SelectMultipleFromList','ChooseColor','GetClipboardText','SetClipboardText','GetClipboardHtml','SetClipboardHtml','PushStatusBarText','PopStatusBarText','ClearStatusBarText') {
     if($source -notmatch [regex]::Escape('L"' + $method + '"')) { throw "Documented binary method is not registered: $method." }
     $anchor = 'api-' + $method.ToLowerInvariant()
     if($docs -notmatch [regex]::Escape('<a id="' + $anchor + '"></a>') -or $docs -notmatch [regex]::Escape('](#' + $anchor + ')')) { throw "Binary method is missing its anchor or TOC entry: $method." }

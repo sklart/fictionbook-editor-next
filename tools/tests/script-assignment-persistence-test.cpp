@@ -1,6 +1,7 @@
 #include "script-assignment-test-pch.h"
 #include "../../src/common/DeploymentContext.h"
 #include "../../src/fbe/scripts/ScriptRegistry.h"
+#include "../../src/fbe/scripts/ScriptToolbarPersistence.h"
 #include "../../src/fbe/toolbars/PortableToolbarStore.h"
 #include "../../src/fbe/toolbars/ToolbarsV2Codec.h"
 #include "../../src/fbe/toolbars/ScriptToolbarItemText.h"
@@ -80,17 +81,17 @@ static void TestMetadata()
 	auto scripts = Resolve(registry, Script(L"saved.js"));
 	PortableToolbarLayout layout; layout.scriptsToolbarPresent = true;
 	PortableToolbarItem item = {}; item.scriptUid = scripts[0].uid; layout.scripts.push_back(item);
-	Require(PortableToolbarStore::Save(layout), "describe save");
-	PortableToolbarLayout saved; Require(PortableToolbarStore::Load(saved), "describe reload");
+	Require(FbeScripts::ScriptToolbarPersistence::Save(layout), "describe save");
+	PortableToolbarLayout saved; Require(FbeScripts::ScriptToolbarPersistence::Load(saved), "describe reload");
 	const auto& described = saved.scripts[0];
 	Require(described.scriptName == scripts[0].name && described.relativePath == scripts[0].relativePath, "assignment metadata missing");
 	DeleteFileW(Settings() + L"ScriptRegistry.xml");
-	Require(PortableToolbarStore::Load(saved) && saved.scripts[0].relativePath == L"saved.js", "missing registry lost metadata");
+	Require(FbeScripts::ScriptToolbarPersistence::Load(saved) && saved.scripts[0].relativePath == L"saved.js", "missing registry lost metadata");
 	Require(ScriptToolbarItemText::UnavailableLabel(saved.scripts[0], L"Недоступный скрипт").Find(L"saved.js") >= 0, "unavailable label missing path");
 	Require(ScriptToolbarItemText::UnavailableDetails(saved.scripts[0], L"Недоступный скрипт").Find(scripts[0].uid) >= 0, "unavailable tooltip missing UID");
 	ScriptRegistry recovered; auto returned = Resolve(recovered, Script(L"saved.js"));
 	Require(returned[0].uid == scripts[0].uid, "assignment did not recover deleted registry");
-	Require(PortableToolbarStore::Save(saved), "unavailable save");
+	Require(FbeScripts::ScriptToolbarPersistence::Save(saved), "unavailable save");
 	// Старая v2 без метаданных читается; неизвестный UID остаётся видимым.
 	PortableToolbarLayout legacy;
 	Require(ToolbarsV2Codec::Parse(L"<Toolbars version=\"2\"><Toolbar id=\"scripts-main\" kind=\"scripts\"><Script uid=\"legacy-unknown\" /></Toolbar></Toolbars>", legacy), "legacy v2");
@@ -101,7 +102,7 @@ static void TestMetadata()
 	Require(escaped.scripts[0].scriptName == item.scriptName && escaped.scripts[0].relativePath == item.relativePath, "metadata XML escaping");
 	Write(Settings() + L"ScriptRegistry.xml", L"<Scripts version=\"1\"><Script uid=\"legacy-name\" path=\"legacy.js\" fingerprint=\"\" /></Scripts>");
 	layout.scripts[0].scriptUid = L"legacy-name";
-	Require(PortableToolbarStore::Save(layout) && PortableToolbarStore::Load(saved) && saved.scripts[0].scriptName == item.scriptName, "legacy registry erased saved name");
+	Require(FbeScripts::ScriptToolbarPersistence::Save(layout) && FbeScripts::ScriptToolbarPersistence::Load(saved) && saved.scripts[0].scriptName == item.scriptName, "legacy registry erased saved name");
 }
 static PROCESS_INFORMATION Worker(const CString& token)
 {

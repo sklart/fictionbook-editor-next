@@ -1,6 +1,6 @@
 # API пользовательских скриптов FictionBook Editor Next
 
-> **Актуальный публичный контракт: API 1.3.0, 88 методов** (`window.external`). Справочник составлен по исходному `IExternalHelper` (DISPID 1–35), таблице расширения DISPID 100–152 и документации `master` по состоянию на 20 октября 2026 года. Этап 3Б по issue #45 включён; этапы 3В–3Г пока не реализованы.
+> **Актуальный публичный контракт: API 1.4.0, 99 методов** (`window.external`). Справочник составлен по исходному `IExternalHelper` (DISPID 1–35), таблице расширения DISPID 100–163 и документации `master` по состоянию на 20 октября 2026 года. Этапы 3Б и 3В по issue #45 включены; этап 3Г пока не реализован.
 
 Скрипты выполняются внутри FBE Next под **Microsoft JScript/MSHTML**. `document` здесь — DOM активного представления, а **полный FB2/FBD XML** доступен отдельно через Source API. Расширение API не равно версии самого редактора: используйте `GetScriptingApiVersion()` / `HasScriptingMethod()`.
 
@@ -34,7 +34,7 @@ try {
 
 При использовании новых методов проверяйте их наличие, а вызовы, способные выдавать COM-ошибки, оборачивайте в `try/catch`. В старом MSHTML **глобальный объект `JSON` может отсутствовать**: строки JSON, возвращаемые API, обрабатывайте совместимым JSON-парсером; не применяйте `eval` к XML книги или произвольным внешним данным.
 
-## Оглавление: все 88 методов
+## Оглавление: все 99 методов
 
 Переходы привязаны к явным якорям `api-<имя>`; изменение формулировок заголовков не должно ломать ссылки.
 
@@ -99,6 +99,17 @@ try {
 - [`SelectSaveFile`](#api-selectsavefile)
 - [`SelectFolder`](#api-selectfolder)
 - [`InputBoxEx`](#api-inputboxex)
+- [`ShowMessage`](#api-showmessage)
+- [`SelectFromList`](#api-selectfromlist)
+- [`SelectMultipleFromList`](#api-selectmultiplefromlist)
+- [`ChooseColor`](#api-choosecolor)
+
+### Буфер обмена
+
+- [`GetClipboardText`](#api-getclipboardtext)
+- [`SetClipboardText`](#api-setclipboardtext)
+- [`GetClipboardHtml`](#api-getclipboardhtml)
+- [`SetClipboardHtml`](#api-setclipboardhtml)
 
 ### Описание книги и жанры
 
@@ -110,6 +121,9 @@ try {
 ### Строка состояния, прогресс и отмена
 
 - [`SetStatusBarText`](#api-setstatusbartext)
+- [`PushStatusBarText`](#api-pushstatusbartext)
+- [`PopStatusBarText`](#api-popstatusbartext)
+- [`ClearStatusBarText`](#api-clearstatusbartext)
 - [`BeginProgress`](#api-beginprogress)
 - [`SetProgress`](#api-setprogress)
 - [`IsProgressCancelled`](#api-isprogresscancelled)
@@ -187,6 +201,7 @@ try {
 | **1.1.0**, **119–142** | Выделение и закладки, пакетный Undo, прогресс, текстовые файлы и работа с путями. |
 | **1.2.0**, **143–146** | Проверка текущего документа, логирование, последняя ошибка API. |
 | **1.3.0**, **147–152** | Сведения о вложениях, свободный ID, добавление/замена/удаление с Undo и безопасный экспорт. |
+| **1.4.0**, **153–163** | Расширенные диалоги, текстовый/HTML-буфер обмена и стек строки состояния текущего скрипта. |
 
 > `GetProgramVersion()` сообщает версию приложения; `GetScriptingApiVersion()` — **версию API**. Проверка только номера приложения недостаточна.
 
@@ -203,7 +218,7 @@ try {
 
 Определяет версию расширенного интерфейса независимо от номера релиза редактора.
 
-**Результат:** Строка, в актуальной реализации — `"1.3.0"`.
+**Результат:** Строка, в актуальной реализации — `"1.4.0"`.
 
 **Особенности:** В старых версиях метода может не быть: для совместимости проверяйте вызов через `try/catch`.
 
@@ -217,7 +232,7 @@ function Run() {
 }
 ```
 
-**Ожидаемый результат:** Окно **«API скриптов: 1.3.0»** в актуальной реализации. Это не номер версии редактора.
+**Ожидаемый результат:** Окно **«API скриптов: 1.4.0»** в актуальной реализации. Это не номер версии редактора.
 
 <a id="api-hasscriptingmethod"></a>
 
@@ -240,7 +255,7 @@ function Run() {
 }
 ```
 
-**Ожидаемый результат:** **«Выделение: true; буфер обмена: false»** для API 1.3.0. Методы не вызываются, проверяется лишь их наличие.
+**Ожидаемый результат:** **«Выделение: true; буфер обмена: true»** для API 1.4.0. Методы не вызываются, проверяется лишь их наличие.
 
 <a id="api-getscriptingcapabilities"></a>
 
@@ -250,7 +265,7 @@ function Run() {
 
 **Результат:** JSON-строка с `schemaVersion`, `apiVersion` и `capabilities`.
 
-**Особенности:** В версии 1.3.0 доступны ключи: `scriptContext`, `environment`, `scriptSettings`, `fileDialogs`, `inputBoxEx`, `selection`, `documentUpdate`, `progress`, `textFiles`, `paths`, `documentValidation`, `logging`, `scriptingErrors`, `binaryReadExport`, `binaryObjects`. Неизвестный ключ не считайте подтверждением возможности.
+**Особенности:** В версии 1.4.0 доступны ключи: `scriptContext`, `environment`, `scriptSettings`, `fileDialogs`, `inputBoxEx`, `selection`, `documentUpdate`, `progress`, `textFiles`, `paths`, `documentValidation`, `logging`, `scriptingErrors`, `binaryReadExport`, `binaryObjects`, `extendedDialogs`, `clipboardText`, `clipboardHtml`, `statusStack`. Неизвестный ключ не считайте подтверждением возможности.
 
 **Пример → результат**
 
@@ -262,7 +277,7 @@ function Run() {
 }
 ```
 
-**Ожидаемый результат:** JSON с `"apiVersion":"1.3.0"` и `"capabilities"`, включая `"selection":true`, `"progress":true` и `"scriptingErrors":true`. Содержимое может расширяться в новых версиях.
+**Ожидаемый результат:** JSON с `"apiVersion":"1.4.0"` и `"capabilities"`, включая `"selection":true`, `"progress":true`, `"scriptingErrors":true` и четыре возможности этапа 3В. Содержимое может расширяться в новых версиях.
 
 <a id="api-getcurrentscriptpath"></a>
 
@@ -2315,7 +2330,7 @@ function Run() {
 
 **Результат:** JSON-строка `{"schemaVersion":1,"hasError":false}` либо описание `method`, `hresult`, `code`, `message`.
 
-**Особенности:** Отслеживает ошибки HRESULT методов DISPID 100–152 и технический отказ `ValidateCurrentDocument`. Старые методы DISPID 1–35 и обычный возврат `false` автоматически сюда не записываются. Успешные вызовы не стирают ошибку.
+**Особенности:** Отслеживает ошибки HRESULT методов DISPID 100–163 и технический отказ `ValidateCurrentDocument`. Старые методы DISPID 1–35 и обычный возврат `false` автоматически сюда не записываются. Успешные вызовы не стирают ошибку.
 
 **Пример → результат**
 
@@ -2409,7 +2424,7 @@ function Run() {
 
 `LogMessage` принимает уровни `debug`, `info`, `warning`, `error`. Лимиты — **32 события за 1000 мс** на UI-поток и **256 событий** на контекст. При выключенной трассировке или превышении лимита возвращает `false`. Для приватности произвольный текст записи не сохраняется как есть: журнал хранит структурированные сведения, а не содержимое книги, путь скрипта или персональные данные.
 
-`GetLastScriptingError` отслеживает ошибки HRESULT **новых** методов (DISPID 100–152) в текущем контексте, но не обобщает возвраты `false` или ошибки старого интерфейса. Пример состояния:
+`GetLastScriptingError` отслеживает ошибки HRESULT **новых** методов (DISPID 100–163) в текущем контексте, но не обобщает возвраты `false` или ошибки старого интерфейса. Пример состояния:
 
 ```json
 {"schemaVersion":1,"hasError":true,"method":"WriteTextFileEx","hresult":"0x80070005","code":"access-denied","message":"Отказано в доступе"}
@@ -2435,19 +2450,170 @@ function Run() {
 
 ### Совместимость с исходным COM-контрактом
 
-Исходный `IExternalHelper` сохраняет IID, типы, порядок vtable и DISPID **1–35**; методы API 1.0.0/1.1.0/1.2.0/1.3.0 доступны через аддитивный `IDispatch` с DISPID **100–152**. Старый typelib не объявляет новые функции, поэтому для вызовов из скриптов следует обращаться через динамический `window.external`, а не ожидать их наличия в прежнем статически типизированном интерфейсе. Вызовы с неверным числом или типами параметров отвергаются через COM-ошибки (`DISP_E_BADPARAMCOUNT`, `DISP_E_TYPEMISMATCH`), вне контекста — где применимо — `E_UNEXPECTED`.
+Исходный `IExternalHelper` сохраняет IID, типы, порядок vtable и DISPID **1–35**; методы API 1.0.0/1.1.0/1.2.0/1.3.0/1.4.0 доступны через аддитивный `IDispatch` с DISPID **100–163**. Старый typelib не объявляет новые функции, поэтому для вызовов из скриптов следует обращаться через динамический `window.external`, а не ожидать их наличия в прежнем статически типизированном интерфейсе. Вызовы с неверным числом или типами параметров отвергаются через COM-ошибки (`DISP_E_BADPARAMCOUNT`, `DISP_E_TYPEMISMATCH`), вне контекста — где применимо — `E_UNEXPECTED`.
 
 Сверяемые реализации: [`src/contracts/fbe.idl`](../src/contracts/fbe.idl), [`src/fbe/ExternalHelper.cpp`](../src/fbe/ExternalHelper.cpp), [`src/fbe/scripts/ScriptingApi.inl`](../src/fbe/scripts/ScriptingApi.inl), [`src/fbe/scripts/ScriptingStage2.inl`](../src/fbe/scripts/ScriptingStage2.inl) и [`src/fbe/scripts/ScriptingDiagnostics.inl`](../src/fbe/scripts/ScriptingDiagnostics.inl), [`src/fbe/scripts/ScriptingBinary.inl`](../src/fbe/scripts/ScriptingBinary.inl), [`src/fbe/scripts/ScriptBinaryDocument.h`](../src/fbe/scripts/ScriptBinaryDocument.h) и [`src/fbe/scripts/ScriptBinaryEdit.h`](../src/fbe/scripts/ScriptBinaryEdit.h).
 
+## Диалоги, буфер обмена и статусный стек API 1.4.0
+
+Реализация: [`ScriptExtendedDialogs.h`](../src/fbe/scripts/ScriptExtendedDialogs.h), [`ScriptClipboard.h`](../src/fbe/scripts/ScriptClipboard.h), [`ScriptStatus.h`](../src/fbe/scripts/ScriptStatus.h), [`ScriptingStage3C.inl`](../src/fbe/scripts/ScriptingStage3C.inl). Существующие пути вставки HTML и сохранения книги эти методы не заменяют.
+
+Все методы этого раздела доступны начиная с **API 1.4.0** в Design, Description и Source. Они не вставляют данные в книгу и не создают операций Undo. Параметры — позиционные строки `BSTR`; неверные типы/число аргументов дают COM-ошибку. Строки должны содержать корректный UTF-16 без встроенных NUL.
+
+Диалоги принадлежат главному окну, возвращают фокус после закрытия и блокируют повторный вход через COM до закрытия. Ошибки параметров возвращаются как JSON `{"status":"error","code":"invalid-options","hresult":"0x80070057","message":"..."}` без открытия пустого окна; отказ создания диалога — `dialog-failed`, недоступный владелец — `owner-unavailable`. Отмена является обычным результатом.
+
+<a id="api-showmessage"></a>
+### `ShowMessage(message, title, buttons, icon)`
+
+**DISPID:** 153. Четыре строки → JSON-строка. Сообщение и заголовок — до 32767 UTF-16 единиц каждый.
+
+`buttons`: `ok`, `okcancel`, `yesno`, `yesnocancel`. `icon`: `none`, `info`, `warning`, `error`, `question`. Используется штатная инфраструктура сообщений и темы FBE.
+
+```javascript
+var result = window.external.ShowMessage("Продолжить?", "Проверка", "yesnocancel", "question");
+// «Нет»: {"status":"ok","button":"no"}
+// Отмена: {"status":"cancelled","button":"cancel"}
+```
+
+Подтверждение возвращает `button: "ok"` или `"yes"`; «Нет» не считается отменой. Старые `MsgBox`, `AskYesNo` и `GetModalResult` сохраняют свой контракт.
+
+<a id="api-selectfromlist"></a>
+### `SelectFromList(optionsJson)`
+
+**DISPID:** 154. Строка JSON → JSON-строка. Выбор одной строки стандартного Win32-списка с Enter/Esc, клавиатурной навигацией, изменением размера и прокруткой длинных подписей.
+
+```javascript
+var result = window.external.SelectFromList(
+    '{"title":"Жанр","prompt":"Выберите жанр","items":[' +
+    '{"id":"sf","label":"Фантастика"},{"id":"prose","label":"Проза"}],' +
+    '"selectedId":"sf"}');
+// Например: {"status":"ok","selectedId":"prose"}
+```
+
+`items` обязателен и не пуст. Каждый элемент содержит только `id` и `label`; `id` непустой, уникальный, до 256 UTF-16 единиц. Подпись, заголовок и приглашение — до 4096 единиц; JSON — до 1 МиБ единиц, список — до 2048 элементов. `title`, `prompt`, `selectedId` необязательны. Неизвестный предварительный ID, дубликаты ключей/ID, некорректный Unicode и неизвестные поля дают `invalid-options`. Без предварительного выбора выделяется первый элемент. Возвращается стабильный ID, а не текст или индекс. Отмена: `{"status":"cancelled"}`.
+
+<a id="api-selectmultiplefromlist"></a>
+### `SelectMultipleFromList(optionsJson)`
+
+**DISPID:** 155. Строка JSON → JSON-строка. Пределы и структура элементов совпадают с `SelectFromList`; вместо `selectedId` используется необязательный массив `selectedIds`. Допустим пустой список.
+
+```javascript
+var result = window.external.SelectMultipleFromList(
+    '{"title":"Жанры","items":[{"id":"sf","label":"Фантастика"},' +
+    '{"id":"prose","label":"Проза"}],"selectedIds":["prose","sf"]}');
+// {"status":"ok","selectedIds":["sf","prose"]}
+```
+
+Стандартный список поддерживает Ctrl/Shift и навигацию клавиатурой. ID возвращаются в порядке исходного списка. Подтверждение пустого выбора: `{"status":"ok","selectedIds":[]}`; отмена: `{"status":"cancelled"}`. Отсутствующие и повторяющиеся предварительные ID недопустимы.
+
+<a id="api-choosecolor"></a>
+### `ChooseColor(initialColor)`
+
+**DISPID:** 156. Строка `#RRGGBB` → JSON-строка. Регистр входных шестнадцатеричных цифр произвольный; результат нормализован к верхнему регистру.
+
+```javascript
+var result = window.external.ChooseColor("#3366cc");
+// Подтверждение: {"status":"ok","color":"#3366CC"}
+// Отмена: {"status":"cancelled"}
+```
+
+Используется системный диалог, совместимый с Windows 7. Его оформление остаётся системным; этот метод сам не меняет цвет текста или оформление книги. Неверная строка цвета даёт `invalid-options`.
+
+<a id="api-getclipboardtext"></a>
+### `GetClipboardText()`
+
+**DISPID:** 157. Без параметров → строка `BSTR` из `CF_UNICODETEXT`.
+
+```javascript
+var text = window.external.GetClipboardText();
+// Например: "Первая строка\r\nВторая строка 😀"
+```
+
+Отсутствие текстового формата возвращает `""`. Занятый буфер, повреждённая/незавершённая строка, неверный Unicode и превышение размера дают COM-ошибку. Метод не меняет буфер. Отмены диалога нет.
+
+<a id="api-setclipboardtext"></a>
+### `SetClipboardText(text)`
+
+**DISPID:** 158. Строка → `true` после успешной публикации `CF_UNICODETEXT`.
+
+```javascript
+window.external.SetClipboardText("Привет, мир!\r\n😀"); // true
+window.external.SetClipboardText(""); // true, корректный пустой текст
+```
+
+Предел — 1 МиБ UTF-16 единиц; память включает завершающий NUL. Проверка и подготовка завершаются до замены буфера, поэтому неверный текст сохраняет прежнее содержимое. Ошибка доступа/публикации даёт COM-ошибку. Форматы предыдущего содержимого заменяются, вставка в книгу не производится.
+
+<a id="api-getclipboardhtml"></a>
+### `GetClipboardHtml()`
+
+**DISPID:** 159. Без параметров → очищенный HTML-фрагмент `BSTR`.
+
+```javascript
+var html = window.external.GetClipboardHtml();
+// Например: "<p><strong>Цитата 😀</strong></p>"
+```
+
+Используется общий `ReadClipboardFragment`/`HtmlPasteSanitizer`: проверяются байтовые диапазоны CF_HTML, UTF-8, размер до 2 МиБ и поддерживаемая разметка. Отсутствие HTML возвращает `""`; повреждение, занятость и неподдерживаемый небезопасный фрагмент дают COM-ошибку. `Legacy` не означает безопасность. Чтение не создаёт DOM, не выполняет скрипты и не загружает внешние ресурсы.
+
+<a id="api-setclipboardhtml"></a>
+### `SetClipboardHtml(html, plainText)`
+
+**DISPID:** 160. Две строки → `true`. Публикует нормализованный `HTML Format` и явно переданный `CF_UNICODETEXT` одним OLE `IDataObject`.
+
+```javascript
+window.external.SetClipboardHtml("<p><b>Цитата 😀</b></p>", "Цитата 😀"); // true
+```
+
+Оба аргумента обязательны; текст ограничен 1 МиБ UTF-16 единиц, итоговый CF_HTML вместе с заголовком — 2 МиБ. Смещения вычисляются по UTF-8 байтам. Пустой HTML допустим. Активное содержимое удаляется штатным санитайзером, если возможно безопасное нормализованное представление; опасные URL, неподдерживаемые сложные/внутренние фрагменты и `Legacy` отвергаются. Ошибки проверки и подготовки не меняют прежний буфер. Отказ публикации даёт COM-ошибку. Маркер внутренней копии FBE не выставляется; обычный Ctrl+V и его Undo остаются штатными. Данные буфера не записываются в журнал или файлы диагностики.
+
+<a id="api-pushstatusbartext"></a>
+### `PushStatusBarText(text)`
+
+**DISPID:** 161. Строка → непрозрачный строковый токен текущего контекста скрипта.
+
+```javascript
+var token = window.external.PushStatusBarText("Обработка книги...");
+try {
+    // Работа скрипта.
+} finally {
+    window.external.PopStatusBarText(token);
+}
+```
+
+Сообщение — до 4096 UTF-16 единиц, в том числе пустое; глубина — до 64 сообщений одного контекста и до 256 во всех активных контекстах потока. Вне контекста — `E_UNEXPECTED`, превышение лимита — COM-ошибка. Соседние поля статусной строки не меняются. Приоритет: инкрементальный поиск → верхнее скриптовое сообщение → актуальное штатное временное сообщение → контекст документа. Очередь общих UI-сообщений вручную не прокачивается.
+
+<a id="api-popstatusbartext"></a>
+### `PopStatusBarText(token)`
+
+**DISPID:** 162. Токен-строка → `true`. Снимает только верхнее сообщение текущего контекста (LIFO).
+
+```javascript
+var first = window.external.PushStatusBarText("Первое");
+var second = window.external.PushStatusBarText("Второе");
+window.external.PopStatusBarText(second); // true; снова «Первое»
+window.external.PopStatusBarText(first);  // true; актуальное состояние редактора
+```
+
+Чужой, повторный, очищенный или не верхний токен даёт COM-ошибку без изменения стека. Завершение скрипта, включая исключение JScript/COM, автоматически снимает оставшиеся сообщения. Вложенный скрипт владеет собственным стеком и не может снять сообщения родителя. Закрытие/замена документа обнуляет относящиеся к окну сообщения.
+
+<a id="api-clearstatusbartext"></a>
+### `ClearStatusBarText()`
+
+**DISPID:** 163. Без параметров → `true`. Очищает только сообщения текущего скриптового контекста.
+
+```javascript
+window.external.PushStatusBarText("Временное сообщение");
+window.external.ClearStatusBarText(); // true
+```
+
+Сообщения родительского скрипта и системное состояние не удаляются; пустой стек допустим. Вне контекста — COM-ошибка. После очистки отображается актуальное состояние, а не сохранённая копия старой надписи. Прежний `SetStatusBarText` сохраняет своё действие; его временное сообщение становится видимым после снятия скриптового перекрытия.
+
 ## Запланировано, но не доступно для вызова
 
-Перечисленное ниже **не входит** в 88 методов и пока не должно попадать в основной указатель. Актуальный статус ведётся в [issue #45](https://github.com/sklart/fictionbook-editor-next/issues/45).
+Перечисленное ниже **не входит** в 99 методов и пока не должно попадать в основной указатель. Актуальный статус ведётся в [issue #45](https://github.com/sklart/fictionbook-editor-next/issues/45), который остаётся открытым для этапа 3Г.
 
 | Направление | Планируемые методы |
 |---|---|
-| Расширенные диалоги | `ShowMessage`, `SelectFromList`, `SelectMultipleFromList`, `ChooseColor` |
-| Буфер обмена | `GetClipboardText`, `SetClipboardText`, `GetClipboardHtml`, `SetClipboardHtml` |
-| Стек строки состояния | `PushStatusBarText`, `PopStatusBarText`, `ClearStatusBarText` |
 | Сохранение книги | `SaveCurrentDocument`, `SaveCurrentDocumentAs`, `SaveDocumentCopy`, `SaveSerializedDocumentCopy` |
 | Отложено | `ProcessPendingUiEvents`, автоматический откат произвольных DOM-изменений |
 
@@ -2455,7 +2621,7 @@ function Run() {
 
 ## Тестовые контуры в репозитории
 
-Для диагностики реализации используются адресные тесты `tools/tests/test-fbe-scripting-stage1.ps1`, `test-fbe-scripting-stage2.ps1`, `test-fbe-scripting-stage3a.ps1`, `test-fbe-scripting-stage3b.ps1` и `test-fbe-typelib-runtime.ps1`. Группы этапов 2–3Б проверяют реальный JScript, Source/Body/Description, Undo, параметры вызова, диалоги и ошибки в пределах предусмотренных сценариев. Это не свидетельство полного тестирования всех пользовательских скриптов.
+Для диагностики реализации используются адресные тесты `tools/tests/test-fbe-scripting-stage1.ps1`, `test-fbe-scripting-stage2.ps1`, `test-fbe-scripting-stage3a.ps1`, `test-fbe-scripting-stage3b.ps1`, `test-fbe-scripting-stage3c.ps1` и `test-fbe-typelib-runtime.ps1`. Группы этапов 2–3Б проверяют реальный JScript, Source/Body/Description, Undo, параметры вызова, диалоги и ошибки в пределах предусмотренных сценариев. Это не свидетельство полного тестирования всех пользовательских скриптов.
 
 Проверку нужно проводить отдельно для portable и installed. Запуск на Windows 7 SP1 нельзя считать подтверждённым только по анализу импортов: для этого необходим отдельный реальный прогон на Windows 7.
 
@@ -2785,4 +2951,4 @@ function Run() {
 | Г. Название FB2 | **Да**, одно Undo | Нет | `<book-title>Готово</book-title>` |
 | Д. Цитата | Нет | Да, только новый TXT | Текст выделения и метаданные |
 
-**Что проверять при адаптации:** наличие `HasScriptingMethod`, контекст запуска, режим редактора, отмену диалога, права на каталог, результат `false` и исключения COM. Методы группы Undo не обеспечивают автоматический транзакционный откат уже внесённых изменений; методы этапа 3Б в этих скриптах не используются, а этапы 3В–3Г пока не реализованы.
+**Что проверять при адаптации:** наличие `HasScriptingMethod`, контекст запуска, режим редактора, отмену диалога, права на каталог, результат `false` и исключения COM. Методы группы Undo не обеспечивают автоматический транзакционный откат уже внесённых изменений; методы этапа 3Б в этих скриптах не используются, а этап 3Г пока не реализован.

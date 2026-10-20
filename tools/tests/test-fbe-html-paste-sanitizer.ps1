@@ -13,7 +13,9 @@ try {
     $exe = Join-Path $temp 'html-paste-sanitizer-test.exe'
     & $compiler /nologo /DUNICODE /D_UNICODE /source-charset:utf-8 /EHsc /std:c++17 /I (Join-Path $root 'src\fbe') /I (Join-Path $root 'third_party\wtl') "/Fo$temp\\" $source $sanitizer /Fe$exe
     if($LASTEXITCODE -ne 0) { throw 'HTML paste sanitizer test compilation failed.' }
-    & $exe
+    # Native clipboard mutation is reserved for disposable CI workers. Local
+    # runs exercise the same CF_HTML parser on owned HGLOBAL fixtures.
+    if ($env:GITHUB_ACTIONS -eq 'true' -and $env:RUNNER_ENVIRONMENT -eq 'github-hosted') { & $exe --isolated-clipboard } else { & $exe }
     if($LASTEXITCODE -ne 0) { throw 'HTML paste sanitizer behavior test failed.' }
     Write-Host 'HTML paste sanitizer behavior passed.'
 }

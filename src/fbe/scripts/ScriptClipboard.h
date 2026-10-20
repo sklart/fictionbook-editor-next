@@ -108,10 +108,12 @@ inline CComPtr<IDataObject> Prepare(const CString& text,const CString* html=null
 inline CString Decode(HGLOBAL memory,bool html) {
     if(!memory)CheckError(E_UNEXPECTED);
     const SIZE_T size=::GlobalSize(memory);
-    if(!size||size>MaximumBytes+(html?0:sizeof(wchar_t)))CheckError(E_INVALIDARG);
+    // GlobalSize may include allocator padding beyond the terminating wchar.
+    // The decoded string still passes the exact character limit in Text().
+    if(!size||size>MaximumBytes+(html?0:64*1024))CheckError(E_INVALIDARG);
     if(html) {
         CString fragment;
-        if(!FbeClipboard::HtmlPasteSanitizer::DecodeClipboardFragment(memory,fragment,true))CheckError(E_INVALIDARG);
+        if(!FbeClipboard::HtmlPasteSanitizer::ReadClipboardFragment(memory,fragment,true))CheckError(E_INVALIDARG);
         CComVariant value(fragment);return Clean(Text(value));
     }
     if(size%sizeof(wchar_t))CheckError(E_INVALIDARG);

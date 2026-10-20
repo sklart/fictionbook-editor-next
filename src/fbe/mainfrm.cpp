@@ -1653,6 +1653,7 @@ LRESULT CMainFrame::OnXmlScriptApi(UINT, WPARAM, LPARAM data, BOOL&)
 {
 	XmlScriptApiRequest* request = reinterpret_cast<XmlScriptApiRequest*>(data);
 	if(request == NULL) return 0;
+	if (FbeScripts::extendedModalActive) { request->error = E_UNEXPECTED; return 1; }
 	if (request->operation == XmlScriptApiOperation::ValidateCurrentDocument) {
 		const XmlScriptDiagnostic diagnostic = m_xml_script_backend.ValidateCurrentDocument();
 		request->error = diagnostic.error;
@@ -1664,7 +1665,6 @@ LRESULT CMainFrame::OnXmlScriptApi(UINT, WPARAM, LPARAM data, BOOL&)
 	}
 	if(request->operation == XmlScriptApiOperation::ScriptingDocumentOperation)
 	{
-        if (FbeScripts::ExtendedDialogs::modalActive) { request->error = E_UNEXPECTED; return 1; }
         if (request->scriptingMethod >= 153 && request->scriptingMethod <= 163) {
             try {
                 if(request->scriptingMethod>=161)

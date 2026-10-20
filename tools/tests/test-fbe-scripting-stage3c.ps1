@@ -17,15 +17,18 @@ function j3c(s){return eval("("+s+")");}
 function a3c(ok,label){if(!ok)throw new Error(label);}
 function bad3c(f){var bad=false;try{f();}catch(e){bad=true;}a3c(bad,"missing COM rejection");}
 function Run(){try{
- var names=["ShowMessage","SelectFromList","SelectMultipleFromList","ChooseColor"];
+ var names=["ShowMessage","SelectFromList","SelectMultipleFromList","ChooseColor","GetClipboardText","SetClipboardText","GetClipboardHtml","SetClipboardHtml","PushStatusBarText","PopStatusBarText","ClearStatusBarText"];
  for(var i=0;i<names.length;i++)a3c(ext.HasScriptingMethod(names[i]),names[i]);
+ var caps=j3c(ext.GetScriptingCapabilities());a3c(ext.GetScriptingApiVersion()==="1.4.0"&&caps.apiVersion==="1.4.0"&&caps.capabilities.extendedDialogs&&caps.capabilities.clipboardText&&caps.capabilities.clipboardHtml&&caps.capabilities.statusStack,"version/capabilities");
  a3c(j3c(ext.SelectFromList("{}")).status==="error","missing items");
  a3c(j3c(ext.SelectFromList('{"items":[{"id":"a","label":"a"},{"id":"a","label":"b"}]}')).status==="error","duplicate ID");
  a3c(j3c(ext.SelectFromList('{"items":[{"id":"a","label":"a"}],"selectedId":"absent"}')).status==="error","absent ID");
  a3c(j3c(ext.SelectFromList('{"items":[{"id":"a","label":"\\ud800"}]}')).status==="error","invalid Unicode");
  a3c(j3c(ext.ChooseColor("#12345Z")).status==="error","bad color");
  a3c(j3c(ext.ShowMessage("x","x","bad","info")).status==="error","bad buttons");
- bad3c(function(){ext.ShowMessage("x");});bad3c(function(){ext.SelectFromList(1);});result3c="PASS";
+ bad3c(function(){ext.ShowMessage("x");});bad3c(function(){ext.SelectFromList(1);});
+ var paragraphs=document.getElementById("fbw_body").getElementsByTagName("P");
+ var range=document.body.createTextRange();range.moveToElementText(paragraphs[0]);range.collapse(true);range.moveEnd("character",8);range.select();result3c="PASS";
 }catch(e){result3c=String(e.message||e);}}
 function stage3cResult(){return result3c;}
 function stage3cPushA(){window.tokenA=ext.PushStatusBarText("outer");return "PASS";}
@@ -45,6 +48,8 @@ function stage3cClipboard(){var step="text";try{
  a3c(ext.SetClipboardText(text)&&ext.GetClipboardText()===text,"Unicode text");
  a3c(ext.GetClipboardHtml()==="","absent HTML");
  a3c(ext.SetClipboardText("")&&ext.GetClipboardText()==="","empty text");
+ var maximum="x";for(var n=0;n<20;n++)maximum+=maximum;
+ a3c(ext.SetClipboardText(maximum)&&ext.GetClipboardText()===maximum,"maximum text and HGLOBAL padding");
  step="html";ext.SetClipboardHtml("<p><b>Кириллица 😀</b></p>","Кириллица 😀");
  a3c(ext.GetClipboardHtml()==="<p><strong>Кириллица 😀</strong></p>"&&ext.GetClipboardText()==="Кириллица 😀","HTML/UTF8 roundtrip");
  step="invalid-input";var kept=ext.GetClipboardHtml();
@@ -62,6 +67,7 @@ function stage3cBusy(){try{bad3c(function(){ext.GetClipboardText();});bad3c(func
 function stage3cBadHtml(){try{bad3c(function(){ext.GetClipboardHtml();});return "PASS";}catch(e){return String(e.message||e);}}
 function stage3cBadText(){try{bad3c(function(){ext.GetClipboardText();});return "PASS";}catch(e){return String(e.message||e);}}
 function stage3cDialog(title,index){try{
+ var selection=ext.GetSelectionText()+"|"+ext.GetSelectionHtml();a3c(ext.GetSelectionText().length>0,"nonempty selection fixture");
  var r,opts='{"title":"'+title+'","prompt":"Выберите элемент","items":[{"id":"a","label":"Кириллица '+new Array(100).join('длинная подпись ')+'"},{"id":"b","label":"Вторая строка"}]';
  if(index===0||index===1){r=j3c(ext.ShowMessage("Сообщение",title,"yesnocancel","question"));a3c(index===0?r.status==="ok"&&r.button==="no":r.status==="cancelled"&&r.button==="cancel","message result");}
  if(index===2){r=j3c(ext.SelectFromList(opts+',"selectedId":"b"}'));a3c(r.status==="ok"&&r.selectedId==="b","single ID");}
@@ -69,7 +75,7 @@ function stage3cDialog(title,index){try{
  if(index===4){r=j3c(ext.SelectMultipleFromList(opts+'}'));a3c(r.status==="ok"&&r.selectedIds.length===0,"accepted empty set");}
  if(index===5){r=j3c(ext.SelectFromList(opts+'}'));a3c(r.status==="cancelled","list cancelled");}
  if(index===6||index===7){r=j3c(ext.ChooseColor("#12aBeF"));a3c(index===6?r.status==="ok"&&r.color==="#12ABEF":r.status==="cancelled","color result");}
- return "PASS";
+ a3c(selection===ext.GetSelectionText()+"|"+ext.GetSelectionHtml(),"dialog preserved selection");return "PASS";
 }catch(e){return String(e.message||e);}}
 '@
     foreach($name in @('CHILD','ERROR','COMERROR')) {$script=$script.Replace(('@@'+$name+'@@'),((Join-Path $root ($name.ToLowerInvariant()+'.js'))|ConvertTo-Json -Compress))}
