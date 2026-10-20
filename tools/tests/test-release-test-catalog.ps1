@@ -20,6 +20,24 @@ foreach ($selection in @(
     if ($selection.Catalog.tests.id -notcontains $selection.ExpectedId) { throw "Catalog selection omitted $($selection.ExpectedId)." }
 }
 $fullProfile = (& $catalogTool -AsJson -Contour FULL | ConvertFrom-Json)
+$fastProfile = (& $catalogTool -AsJson -Contour FAST | ConvertFrom-Json)
+foreach ($id in @('release.plugin-settings-runtime', 'release.plugin-options-tabs-runtime')) {
+    $entry = @($fullProfile.tests | Where-Object id -eq $id)
+    if ($entry.Count -ne 1 -or -not $entry[0].required -or $entry[0].contours -notcontains 'FULL' -or $fastProfile.tests.id -contains $id) {
+        throw "Plug-in window/settings runtime must be required in FULL: $id"
+    }
+}
+$pluginTabs = $fullProfile.tests | Where-Object id -eq 'release.plugin-options-tabs-runtime'
+if ($pluginTabs.invocations.Count -ne 2 -or
+    @($pluginTabs.invocations | Where-Object command -match '-Mode portable').Count -ne 1 -or
+    @($pluginTabs.invocations | Where-Object command -match '-Mode installed').Count -ne 1) {
+    throw 'FULL must execute plug-in tabs in both Portable and Installed modes exactly once.'
+}
+$pluginSettings = $fullProfile.tests | Where-Object id -eq 'release.plugin-settings-runtime'
+$registryIsolation = $fullProfile.tests | Where-Object id -eq 'release.portable-registry-isolation'
+if ($pluginSettings.invocations.Count -ne 1 -or $registryIsolation.invocations.command -notmatch '-SkipPluginSettingsRuntime') {
+    throw 'FULL must run the complete plug-in settings regression exactly once.'
+}
 if ($fullProfile.tests.id -notcontains 'release.source-safety' -or
     $fullProfile.tests.id -notcontains 'release.fbe-table-production-roundtrip' -or
     $fullProfile.tests.id -notcontains 'release.fbd-production-roundtrip') {

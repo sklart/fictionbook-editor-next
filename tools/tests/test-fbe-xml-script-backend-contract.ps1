@@ -10,6 +10,7 @@ $frame = Get-Content -Raw (Join-Path $root 'src\fbe\mainfrm.cpp')
 $runtime = Get-Content -Raw (Join-Path $root 'src\fbe\testing\RuntimeTestEditorAndExport.inl')
 $idl = Get-Content -Raw (Join-Path $root 'src\contracts\fbe.idl')
 $external = Get-Content -Raw (Join-Path $root 'src\fbe\ExternalHelper.cpp')
+$scriptJson = Get-Content -Raw (Join-Path $root 'src\fbe\scripts\ScriptJson.h')
 function Require([string]$text, [string]$token, [string]$message) { if($text -notmatch $token) { throw $message } }
 Require $header 'class XmlScriptBackend' 'Internal XML backend is missing.'
 Require $backend 'SourceDocumentTransfer::ReadSourceText' 'Active Source must be read from Scintilla.'
@@ -48,14 +49,16 @@ Require $idl '\[id\(32\).*GetSourceText' 'GetSourceText must use DISPID 32.'
 Require $idl '\[id\(33\).*ValidateSourceText' 'ValidateSourceText must use DISPID 33.'
 Require $idl '\[id\(34\).*GetLastSourceDiagnostic' 'GetLastSourceDiagnostic must use DISPID 34.'
 Require $idl '\[id\(35\).*ApplySourceText' 'ApplySourceText must use DISPID 35.'
-Require $external 'JsonEscape' 'Source diagnostic JSON must escape parser text.'
+Require $external '#include "scripts/ScriptJson.h"' 'COM adapter must include the shared JSON escaping implementation.'
+Require $external 'using FbeScripts::JsonEscape' 'COM adapter must use the shared JSON escaping implementation.'
+Require $external 'JsonEscape\(diagnostic\.message\)' 'Source diagnostic JSON must escape parser text.'
 foreach($escapeCase in @(
     @{ Text = 'case L''\\'': escaped += L"\\\\"'; Name = 'backslash' },
     @{ Text = 'case L''\"'': escaped += L"\\\""'; Name = 'quote' },
     @{ Text = 'case L''\r'': escaped += L"\\r"'; Name = 'CR' },
     @{ Text = 'case L''\n'': escaped += L"\\n"'; Name = 'LF' },
     @{ Text = 'case L''\t'': escaped += L"\\t"'; Name = 'tab' }
-)) { if(-not $external.Contains($escapeCase.Text)) { throw "Source diagnostic JSON must deterministically escape $($escapeCase.Name)." } }
+)) { if(-not $scriptJson.Contains($escapeCase.Text)) { throw "Shared scripting JSON must deterministically escape $($escapeCase.Name)." } }
 Require $external 'WM_XML_SCRIPT_API' 'COM adapter must delegate XML work to the editor backend.'
 Require $runtime 'xml-script-com-runtime' 'A real JScript window.external runtime scenario is required.'
 Require $runtime 'GetLastSourceDiagnostic' 'Runtime scenario must parse the public diagnostic.'

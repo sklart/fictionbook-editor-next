@@ -459,7 +459,10 @@ if ($FullValidation) {
     & (Join-Path $repoRoot "tools\tests\test-fbe-idle-interaction-performance-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-image-import-fbe-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-export-html-images-e2e.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
-    & (Join-Path $repoRoot "tools\tests\test-portable-registry-isolation.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
+    & (Join-Path $repoRoot "tools\tests\test-plugin-settings-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+    & (Join-Path $repoRoot "tools\tests\test-plugin-options-tabs-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Mode portable
+    & (Join-Path $repoRoot "tools\tests\test-plugin-options-tabs-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Mode installed
+    & (Join-Path $repoRoot "tools\tests\test-portable-registry-isolation.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe") -SkipPluginSettingsRuntime
     & (Join-Path $repoRoot "tools\tests\test-librusec-genres-portable.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
 }
 

@@ -5,7 +5,7 @@ the registry profile, register the embedded typelib or bundled plugins, or touch
 file-association state.
 #>
 [CmdletBinding()]
-param([string]$FbeExecutable)
+param([string]$FbeExecutable, [switch]$SkipPluginSettingsRuntime)
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -73,7 +73,9 @@ foreach ($key in $keys) {
 
 # Load all four production DLLs and exercise their actual settings dialogs,
 # restart, relocation and the Installed/Portable persistence boundaries.
-& (Join-Path $PSScriptRoot 'test-plugin-settings-runtime.ps1') -FbeExe $FbeExecutable
+if (-not $SkipPluginSettingsRuntime) {
+    & (Join-Path $PSScriptRoot 'test-plugin-settings-runtime.ps1') -FbeExe $FbeExecutable
+}
 Write-Host 'Portable CLI, GUI and bundled plug-in registry isolation behavior passed.'
 
 $passed = $true
