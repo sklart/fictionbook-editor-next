@@ -42,6 +42,12 @@ function Get-FileState([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '<absent>' }
     return ((Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash + ':' + (Get-Item -LiteralPath $Path).Length)
 }
+function Assert-DisplayVersion([string]$Key, [string]$Directory) {
+    $binaryVersion = (Get-Item -LiteralPath (Join-Path $Directory 'FBE.exe')).VersionInfo
+    $expected = '{0}.{1}.{2}' -f $binaryVersion.ProductMajorPart, $binaryVersion.ProductMinorPart, $binaryVersion.ProductBuildPart
+    $actual = (Get-ItemProperty -LiteralPath $Key).DisplayVersion
+    Assert ($actual -ceq $expected) "DisplayVersion '$actual' must match installed FBE.exe version '$expected'."
+}
 
 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 Assert ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) 'Run the lifecycle E2E from an elevated PowerShell session.'
@@ -53,8 +59,10 @@ try {
     Invoke-Setup @('/S', '/CURRENTUSER')
     Assert (Test-Path (Join-Path $currentDir 'FBE.exe')) 'Current User installation missing FBE.exe.'
     Assert ((Get-ItemProperty -LiteralPath $currentKey).InstallScope -eq 'current') 'Current User installation did not write HKCU scope.'
+    Assert-DisplayVersion $currentKey $currentDir
     Assert (-not (Test-Path -LiteralPath $machineKey)) 'Current User installation wrote HKLM.'
     Invoke-Setup @('/S', '/CURRENTUSER') # same-scope upgrade
+    Assert-DisplayVersion $currentKey $currentDir
 
     # The other installed scope must fail before it creates any HKLM state.
     Invoke-Setup @('/S', '/ALLUSERS') @(183)
@@ -68,8 +76,10 @@ try {
     Invoke-Setup @('/S', '/ALLUSERS')
     Assert (Test-Path (Join-Path $machineDir 'FBE.exe')) 'All Users installation missing FBE.exe.'
     Assert ((Get-ItemProperty -LiteralPath $machineKey).InstallScope -eq 'allusers') 'All Users installation did not write HKLM scope.'
+    Assert-DisplayVersion $machineKey $machineDir
     Assert (-not (Test-Path -LiteralPath $currentKey)) 'All Users installation wrote HKCU.'
     Invoke-Setup @('/S', '/ALLUSERS')
+    Assert-DisplayVersion $machineKey $machineDir
     Invoke-Setup @('/S', '/CURRENTUSER') @(183)
     Assert (-not (Test-Path -LiteralPath $currentDir)) 'Reverse cross-scope conflict created LocalAppData installation.'
     Assert (-not (Test-Path -LiteralPath $currentKey)) 'Reverse cross-scope conflict created HKCU uninstall state.'
