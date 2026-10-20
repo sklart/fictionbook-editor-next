@@ -75,7 +75,12 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
             {
                 CComPtr<IDataObject> object;CheckError(::OleGetClipboard(&object));
                 FORMATETC marker={static_cast<CLIPFORMAT>(::RegisterClipboardFormatW(L"FBE Next Internal HTML v2")),nullptr,DVASPECT_CONTENT,-1,TYMED_HGLOBAL};
-                if(object->QueryGetData(&marker)!=DV_E_FORMATETC){details="OLE internal marker present";CheckError(E_FAIL);}
+                FbeScripts::Clipboard::Medium markerData;
+                const HRESULT markerResult=object->GetData(&marker,&markerData.value);
+                // The system OLE wrapper may use another failure HRESULT for
+                // unsupported formats. Verify absence, not one error code.
+                const BOOL markerAvailable=::IsClipboardFormatAvailable(marker.cfFormat);
+                if(SUCCEEDED(markerResult)||markerAvailable){details.Format("OLE internal marker: available=%d GetData=0x%08lX",markerAvailable,static_cast<unsigned long>(markerResult));CheckError(E_FAIL);}
                 FORMATETC format={FbeScripts::Clipboard::HtmlFormat(),nullptr,DVASPECT_CONTENT,-1,TYMED_HGLOBAL};
                 FbeScripts::Clipboard::Medium medium;CheckError(object->GetData(&format,&medium.value));
                 FbeScripts::Clipboard::Locked locked(medium.value.hGlobal);
