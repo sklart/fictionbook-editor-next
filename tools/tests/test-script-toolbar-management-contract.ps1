@@ -3,7 +3,7 @@ $ErrorActionPreference='Stop'
 function Text($p) { Get-Content -Raw -LiteralPath (Join-Path $RepoRoot $p) }
 function Must($t,$p,$n) { if($t -notmatch $p){throw "Missing management contract: $n"} }
 $frame=Text 'src\fbe\mainfrm.cpp'; $dialog=Text 'src\fbe\ScriptToolbarManagerDlg.cpp'; $manager=Text 'src\fbe\toolbars\ScriptToolbarManager.cpp'; $collection=Text 'src\fbe\toolbars\ScriptToolbarCollection.cpp'; $resource=Text 'src\fbe\resource.h'; $rc=Text 'src\fbe\FBE.rc'; $menuLocalization=Text 'localization\app-ui\fbe-idr-mainframe-menu.json'; $localization=Text 'localization\app-ui\fbe-small-dialogs.json'
-Must $frame 'PortableToolbarStore::Load\(persistedToolbars\)' 'installed and portable definitions load through settings directory'
+Must $frame 'FbeScripts::ScriptToolbarPersistence::Load\(persistedToolbars\)' 'installed and portable definitions load through settings directory'
 Must $frame 'if\(runtime\.window == NULL\) continue;' 'empty custom toolbar reaches layout adapter'
 Must $frame 'ToolbarLayoutAdapter::Apply\(runtime\.window, items, catalog\)' 'UID layout is applied to every runtime control'
 Must $frame 'DestroyScriptToolbarRuntimeControls' 'runtime controls have an explicit lifecycle owner'

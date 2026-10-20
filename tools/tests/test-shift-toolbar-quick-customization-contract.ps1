@@ -34,7 +34,7 @@ foreach ($required in @(
     'if(source < insertionPoint) --insertionPoint;',
     'UpdateCommandToolbarItems(items)',
     'UpdateScriptToolbarItems(runtime->definition.id, items)',
-    'PortableToolbarStore::Save(layout)',
+    'FbeScripts::ScriptToolbarPersistence::Save(layout)',
     'ToolbarLayoutAdapter::Apply(toolbar, previous, catalog)',
     'return ::DefSubclassProc(window, message, wParam, lParam);'
 )) {

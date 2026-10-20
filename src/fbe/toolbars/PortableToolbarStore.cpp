@@ -1,32 +1,11 @@
 #include "stdafx.h"
 #include "PortableToolbarStore.h"
 #include "ToolbarsV2Codec.h"
-#include "../scripts/ScriptRegistry.h"
-#include "ScriptToolbarItemText.h"
 #include <rpc.h>
 #include "..\\..\\common\\DeploymentContext.h"
 
 namespace
 {
-void DescribeItems(std::vector<PortableToolbarItem>& items, const FbeScripts::ScriptRegistry& registry)
-{
-	for(auto& item : items)
-	{
-		if(item.separator || item.scriptUid.IsEmpty()) continue;
-		const FbeScripts::ScriptIdentity* identity = registry.FindByUid(item.scriptUid);
-		if(identity == NULL) continue; // Сохраняем последний известный снимок.
-		item.relativePath = identity->relativePath;
-		if(!identity->name.IsEmpty()) item.scriptName = identity->name;
-		if(item.scriptName.IsEmpty()) item.scriptName = ScriptToolbarItemText::Name(item);
-	}
-}
-
-void DescribeLayout(PortableToolbarLayout& layout, const FbeScripts::ScriptRegistry& registry)
-{
-	DescribeItems(layout.commands, registry); DescribeItems(layout.scripts, registry);
-	for(auto& toolbar : layout.scriptToolbars) DescribeItems(toolbar.items, registry);
-}
-
 CString PortableToolbarsPath() { return CString(DeploymentContext::SettingsDirectory().c_str()) + L"Toolbars.xml"; }
 CString XmlEscape(const CString& value) { CString escaped(value); escaped.Replace(L"&", L"&amp;"); escaped.Replace(L"\"", L"&quot;"); escaped.Replace(L"<", L"&lt;"); escaped.Replace(L">", L"&gt;"); return escaped; }
 CString XmlUnescape(const CString& value) { CString unescaped(value); unescaped.Replace(L"&quot;", L"\""); unescaped.Replace(L"&lt;", L"<"); unescaped.Replace(L"&gt;", L">"); unescaped.Replace(L"&amp;", L"&"); return unescaped; }
@@ -61,7 +40,6 @@ bool PortableToolbarStore::Load(PortableToolbarLayout& layout)
 	std::vector<wchar_t> text(length / sizeof(wchar_t) + 1, 0); DWORD read = 0; const BOOL ok = ::ReadFile(file, &text[0], length, &read, NULL); ::CloseHandle(file); if(!ok || read != length) return false;
 	CString content(&text[0]); if(content.Find(L"<Toolbars version=\"2\">") >= 0) {
 		if(!ToolbarsV2Codec::Parse(content, layout)) return false;
-		FbeScripts::ScriptRegistry registry; if(registry.Load()) DescribeLayout(layout, registry);
 		return true;
 	} if(content.Find(L"<Toolbars version=\"1\">") < 0 || content.Find(L"</Toolbars>") < 0) return false;
 	PortableToolbarLayout parsed; int cursor = 0; CString active; bool closedRoot = false;
@@ -77,12 +55,7 @@ bool PortableToolbarStore::Load(PortableToolbarLayout& layout)
 }
 bool PortableToolbarStore::Save(const PortableToolbarLayout& layout)
 {
-	FbeScripts::ScriptRegistry registry;
-	if(!registry.Load()) return false;
-	PortableToolbarLayout described(layout);
-	DescribeLayout(described, registry);
-	// Снимок назначения хранится в той же атомарной записи, что и UID.
-	return WriteText(ToolbarsV2Codec::Serialize(described));
+	return WriteText(ToolbarsV2Codec::Serialize(layout));
 }
 bool PortableToolbarStore::CaptureSnapshot(Snapshot& snapshot)
 {

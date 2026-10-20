@@ -168,7 +168,7 @@ foreach ($required in @(
     'message == WM_LBUTTONDBLCLK',
     'if(window == frame->m_CmdToolbar) frame->ShowCommandToolbarCustomizeDialog()',
     'else if(window == frame->m_ScriptsToolbar || frame->FindScriptToolbarRuntime(window) != NULL) frame->ShowScriptsToolbarCustomizeDialog(window)',
-    'PortableToolbarStore::Save(layout)',
+    'FbeScripts::ScriptToolbarPersistence::Save(layout)',
     'ToolbarLayoutAdapter::Capture(m_CmdToolbar, target.items)',
     'UpdateCommandToolbarItems(items)'
 )) {

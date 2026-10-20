@@ -1710,10 +1710,10 @@ void CMainFrame::RunPortableStateTestScenario()
 	}
 	if (scriptToolbarLifecycle)
 	{
-		// The lifecycle probe exercises toolbar ownership, not the bundled script
-		// catalogue.  A fresh empty test folder makes its repeated reloads bounded
-		// and deterministic on both portable and isolated installed workers.
+		// Use one local fixture so metadata persistence is checked without loading
+		// the bundled catalogue during each lifecycle/reload probe.
 		::CreateDirectory(scriptsDirectory, NULL);
+		WritePortableStateTestText(scriptsDirectory + L"\\Metadata.js", "function Run() {}\r\n");
 		_Settings.SetScriptsFolder(scriptsDirectory, true);
 		if(!InitializeScripts()) { WritePortableStateTestText(reportPath, "phase=script-toolbar-lifecycle\nreason=initial-reload\nresult=fail\n"); PostMessage(WM_CLOSE); return; }
 		const UINT initBefore = m_scripts.InitializeCount(); const UINT discoveryBefore = m_scripts.DiscoveryCount();
@@ -1812,8 +1812,18 @@ void CMainFrame::RunPortableStateTestScenario()
 					}
 				}
 			}
-		const bool passed = defaultNames && created && renamedAndReordered && hidden && shown && deleted && incremental && untouchedStable && reloads && loaded && missingPreserved && orderPreserved && missingMetadata && missingLabel;
-		CStringA metadataReport; metadataReport.Format("missing-metadata=%d\nmissing-label=%d\n", missingMetadata, missingLabel);
+		bool knownMetadata = false;
+		for(const auto& toolbar : persisted.scriptToolbars)
+			if(toolbar.id == L"runtime-toolbar-5" && !toolbar.items.empty())
+				for(int index = 0; index < m_scripts.Menu().Count(); ++index) {
+					const auto& script = m_scripts.Menu().Item(index);
+					const auto& item = toolbar.items.front();
+					if(script.uid == knownUid && !knownUid.IsEmpty())
+						knownMetadata = item.scriptUid == script.uid && item.relativePath == script.relativePath &&
+							!item.scriptName.IsEmpty() && (script.name.IsEmpty() || item.scriptName == script.name);
+				}
+		const bool passed = defaultNames && created && renamedAndReordered && hidden && shown && deleted && incremental && untouchedStable && reloads && loaded && missingPreserved && orderPreserved && missingMetadata && missingLabel && knownMetadata;
+		CStringA metadataReport; metadataReport.Format("missing-metadata=%d\nmissing-label=%d\nknown-metadata=%d\n", missingMetadata, missingLabel, knownMetadata);
 		CStringA report; report.Format("phase=script-toolbar-lifecycle\nmode=%s\ndefault-names=%d\ncreated=%d\nrenamed-reordered=%d\nhidden=%d\nshown=%d\ndeleted=%d\nincremental=%d\nuntouched-stable=%d\nreloads=%d\nmissing-uid=%d\npersistence=%d\nresult=%s\n", DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable ? "portable" : "installed", defaultNames, created, renamedAndReordered, hidden, shown, deleted, incremental, untouchedStable, reloads, missingPreserved, loaded && orderPreserved, passed ? "pass" : "fail");
 		report += metadataReport;
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;

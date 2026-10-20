@@ -67,6 +67,7 @@
 #include "..\\common\\RuntimeLocalizationCommon.h"
 #include "..\\common\\fb2\\Fb2BinaryInspector.h"
 #include "toolbars\\PortableToolbarStore.h"
+#include "scripts/ScriptToolbarPersistence.h"
 #include "toolbars\\ToolbarLayoutAdapter.h"
 #include "toolbars\\ToolbarFactory.h"
 #include "toolbars\\TableToolbarCommands.h"
@@ -2584,7 +2585,7 @@ void CMainFrame::ShowCommandToolbarCustomizeDialog()
 bool CMainFrame::UpdateCommandToolbarItems(const std::vector<PortableToolbarItem>& items)
 {
 	PortableToolbarLayout layout;
-	if(!PortableToolbarStore::Load(layout))
+	if(!FbeScripts::ScriptToolbarPersistence::Load(layout))
 	{
 		layout.commandToolbarPresent = true; layout.scriptsToolbarPresent = true;
 		if(!ToolbarLayoutAdapter::Capture(m_ScriptsToolbar, layout.scripts)) return false;
@@ -2593,7 +2594,7 @@ bool CMainFrame::UpdateCommandToolbarItems(const std::vector<PortableToolbarItem
 	}
 	layout.commandToolbarPresent = true;
 	layout.commands = items;
-	if(!PortableToolbarStore::Save(layout)) return false;
+	if(!FbeScripts::ScriptToolbarPersistence::Save(layout)) return false;
 	if(DeploymentContext::RegistryPersistenceAllowed())
 		m_CmdToolbar.SaveState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"CommandToolbar");
 	return true;
@@ -2662,11 +2663,11 @@ bool CMainFrame::ApplyScriptToolbarDefinitions(const std::vector<ScriptToolbarDe
 		StartupTrace::Error(L"toolbar", L"TB240", L"script toolbar layout snapshot capture failed");
 		return false;
 	}
-	PortableToolbarLayout before; const bool hadPersistentState = PortableToolbarStore::Load(before);
+	PortableToolbarLayout before; const bool hadPersistentState = FbeScripts::ScriptToolbarPersistence::Load(before);
 	const bool hadPersistedMainDefinition = hadPersistentState && before.scriptsToolbarPresent;
 	PortableToolbarLayout layout = before;
 	layout.scriptToolbars = current; layout.scriptsToolbarPresent = true;
-	if(!PortableToolbarStore::Save(layout)) {
+	if(!FbeScripts::ScriptToolbarPersistence::Save(layout)) {
 		StartupTrace::Error(L"toolbar", L"TB241", L"script toolbar layout save failed");
 		return false;
 	}
@@ -2754,7 +2755,7 @@ bool CMainFrame::ApplyScriptToolbarRuntimeDelta(const std::vector<ScriptToolbarD
 bool CMainFrame::UpdateScriptToolbarItems(const CString& id, const std::vector<PortableToolbarItem>& items)
 {
 	PortableToolbarLayout layout;
-	if(!PortableToolbarStore::Load(layout)) {
+	if(!FbeScripts::ScriptToolbarPersistence::Load(layout)) {
 		layout.commandToolbarPresent = true; layout.scriptsToolbarPresent = true;
 		if(!ToolbarLayoutAdapter::Capture(m_CmdToolbar, layout.commands)) return false;
 		for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) layout.scriptToolbars.push_back(m_scriptToolbars.Items()[index].definition);
@@ -2765,7 +2766,7 @@ bool CMainFrame::UpdateScriptToolbarItems(const CString& id, const std::vector<P
 	bool found = false;
 	for(size_t index = 0; index < layout.scriptToolbars.size(); ++index) if(layout.scriptToolbars[index].id == id) { layout.scriptToolbars[index].items = persisted; if(id == L"scripts-main") layout.scripts = persisted; found = true; break; }
 	if(!found) return false;
-	if(!PortableToolbarStore::Save(layout)) return false;
+	if(!FbeScripts::ScriptToolbarPersistence::Save(layout)) return false;
 	if(ScriptToolbarRuntime* runtime = m_scriptToolbars.Find(id)) runtime->definition.items = persisted;
 	return true;
 }
@@ -3059,7 +3060,7 @@ LRESULT CALLBACK CMainFrame::ToolbarCustomizeSubclassProc(HWND window, UINT mess
 void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 {
 	PortableToolbarLayout layout;
-	if(!PortableToolbarStore::Load(layout)) return;
+	if(!FbeScripts::ScriptToolbarPersistence::Load(layout)) return;
 	const bool toolbarPresent = scriptsToolbar ? layout.scriptsToolbarPresent : layout.commandToolbarPresent;
 	if(!toolbarPresent) return;
 	std::vector<PortableToolbarItem> saved = scriptsToolbar ? layout.scripts : layout.commands;
@@ -3162,7 +3163,7 @@ void CMainFrame::SavePortableToolbarLayout()
 	// Preserve v2 definitions that do not currently have a legacy WTL control.
 	// This also keeps missing-script/orphaned UID entries round-trippable.
 	PortableToolbarLayout persisted;
-	if(PortableToolbarStore::Load(persisted)) layout.scriptToolbars = persisted.scriptToolbars;
+	if(FbeScripts::ScriptToolbarPersistence::Load(persisted)) layout.scriptToolbars = persisted.scriptToolbars;
 	layout.commandToolbarPresent = true; layout.scriptsToolbarPresent = true;
 	if(!ToolbarLayoutAdapter::Capture(m_CmdToolbar, layout.commands)) {
 		StartupTrace::Error(L"toolbar", L"TB235", L"command toolbar capture failed; portable layout was not saved");
@@ -3212,7 +3213,7 @@ void CMainFrame::SavePortableToolbarLayout()
 	for(auto& definition : layout.scriptToolbars)
 		for(auto& item : definition.items) m_scripts.DescribeAssignment(item);
 	layout.lastScript = m_scripts.LastScriptUid();
-	PortableToolbarStore::Save(layout);
+	FbeScripts::ScriptToolbarPersistence::Save(layout);
 }
 
 namespace
@@ -3430,7 +3431,7 @@ bool CMainFrame::InitializeScripts()
 	PortableToolbarLayout persistedToolbars;
 	bool hasPersistedMainDefinition = false;
 	std::vector<ScriptToolbarDefinition> definitions;
-	if(PortableToolbarStore::Load(persistedToolbars))
+	if(FbeScripts::ScriptToolbarPersistence::Load(persistedToolbars))
 		for(size_t index = 0; index < persistedToolbars.scriptToolbars.size(); ++index)
 		{
 			definitions.push_back(persistedToolbars.scriptToolbars[index]);
