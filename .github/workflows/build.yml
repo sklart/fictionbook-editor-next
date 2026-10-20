@@ -31,6 +31,9 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/build/generate-regex-help-html.ps1 -Check
+      - name: Check disposable Clipboard batch logon before compiling
+        shell: pwsh
+        run: ./tools/tests/test-fbe-scripting-clipboard-ole-ci.ps1 -ProbeOnly
       - name: Check embedded Script Cards and search index
         shell: pwsh
         run: |
