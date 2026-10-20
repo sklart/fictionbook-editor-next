@@ -116,8 +116,25 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(sum(n < 100 for n in methods.values()), 35)
 
     def test_stale_version_or_count_fails(self):
-        self.assertEqual(self.check_doc(self.doc.replace('88 методов', '82 метода'))['status'], 'FAIL')
-        self.assertEqual(self.check_doc(self.doc.replace('API 1.3.0,', 'API 1.2.0,'))['status'], 'FAIL')
+        cases = (
+            (r'Актуальный публичный контракт: API \d+\.\d+\.\d+, (\d+) метод',
+             lambda value: str(int(value) + 1), 'Banner method count'),
+            (r'^## Оглавление: все (\d+) метод',
+             lambda value: str(int(value) + 1), 'TOC method count'),
+            (r'Актуальный публичный контракт: API (\d+\.\d+\.\d+),',
+             lambda value: '.'.join(value.split('.')[:2] + [str(int(value.split('.')[2]) + 1)]),
+             'versions differ'),
+        )
+        for pattern, corrupt, expected in cases:
+            with self.subTest(field=expected):
+                match = re.search(pattern, self.doc, re.M)
+                self.assertIsNotNone(match, 'Negative fixture must match the current reference')
+                start, end = match.span(1)
+                doc = self.doc[:start] + corrupt(match[1]) + self.doc[end:]
+                self.assertNotEqual(doc, self.doc, 'Negative fixture must actually change')
+                result = self.check_doc(doc)
+                self.assertEqual(result['status'], 'FAIL')
+                self.assertTrue(any(expected in error for error in result['metadata_errors']), result)
 
     def test_missing_binary_navigation_and_capability_fails(self):
         doc = self.doc.replace('<a id="api-removebinary"></a>', '')

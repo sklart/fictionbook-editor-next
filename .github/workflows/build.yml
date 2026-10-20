@@ -186,6 +186,11 @@ jobs:
             }
           }
           ./tools/tests/test-status-bar-state.ps1
+      - name: Run real OLE Clipboard in a disposable user logon
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/tests/test-fbe-scripting-clipboard-ole-ci.ps1 -FbeExe out/Release/FBE.exe
       - name: Run navigation scripts runtime regression
         shell: pwsh
         run: |

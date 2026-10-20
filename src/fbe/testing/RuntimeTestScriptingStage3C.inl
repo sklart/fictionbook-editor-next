@@ -1,4 +1,4 @@
-if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripting-stage3c-clipboard")||IsFbeTestScenario(L"scripting-stage3c-status")) {
+if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripting-stage3c-clipboard")||IsFbeTestScenario(L"scripting-stage3c-clipboard-ole")||IsFbeTestScenario(L"scripting-stage3c-status")) {
     bool passed=false; CStringA details="start";
     try {
         wchar_t root[32768]={}; ::GetEnvironmentVariableW(L"FBE_NEXT_SCRIPT_API_ROOT",root,_countof(root));
@@ -59,6 +59,58 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
             m_status_state.ClearTransientIfExpired(::GetTickCount()+6000);RefreshStatusMainPane();expect(L"context-current");
             for(int i=1;i<parts;++i)if(pane(i)!=neighbors[static_cast<size_t>(i-1)]){details="neighboring status pane changed";CheckError(E_FAIL);}
             details="LIFO, nested cleanup, JScript/COM exceptions, live system status and neighboring panes PASS";
+        } else if(IsFbeTestScenario(L"scripting-stage3c-clipboard-ole")) {
+            // Defense in depth: never publish into a developer/interactive clipboard.
+            wchar_t github[16]={},runner[32]={},account[256]={},station[256]={};DWORD bytes=0;
+            ::GetEnvironmentVariableW(L"GITHUB_ACTIONS",github,_countof(github));
+            ::GetEnvironmentVariableW(L"RUNNER_ENVIRONMENT",runner,_countof(runner));
+            ::GetEnvironmentVariableW(L"FBE_NEXT_CLIPBOARD_CI_ACCOUNT",account,_countof(account));
+            if(wcscmp(github,L"true")||wcscmp(runner,L"github-hosted")||!account[0]||
+                !::GetUserObjectInformationW(::GetProcessWindowStation(),UOI_NAME,station,sizeof(station),&bytes)||
+                !_wcsicmp(station,L"WinSta0")||FbeScripts::Clipboard::testStorage) {
+                details="real clipboard requires private CI logon/window station";CheckError(E_ACCESSDENIED);
+            }
+            struct ClearOleClipboard {~ClearOleClipboard(){::OleSetClipboard(nullptr);}} cleanup;
+            invoke(L"stage3cOleClipboard");
+            {
+                CComPtr<IDataObject> object;CheckError(::OleGetClipboard(&object));
+                FORMATETC marker={static_cast<CLIPFORMAT>(::RegisterClipboardFormatW(L"FBE Next Internal HTML v2")),nullptr,DVASPECT_CONTENT,-1,TYMED_HGLOBAL};
+                if(object->QueryGetData(&marker)!=DV_E_FORMATETC){details="OLE internal marker present";CheckError(E_FAIL);}
+                FORMATETC format={FbeScripts::Clipboard::HtmlFormat(),nullptr,DVASPECT_CONTENT,-1,TYMED_HGLOBAL};
+                FbeScripts::Clipboard::Medium medium;CheckError(object->GetData(&format,&medium.value));
+                FbeScripts::Clipboard::Locked locked(medium.value.hGlobal);
+                const size_t size=::GlobalSize(medium.value.hGlobal);
+                const char* data=static_cast<const char*>(locked.data);
+                if(!size||size>FbeScripts::Clipboard::MaximumBytes||!memchr(data,0,size))CheckError(E_FAIL);
+                const CStringA raw(data);
+                auto offset=[&](LPCSTR key) {
+                    const int found=raw.Find(key);if(found<0)CheckError(E_FAIL);
+                    const int start=found+static_cast<int>(strlen(key));
+                    if(start+12>raw.GetLength()||raw.Mid(start+10,2)!="\r\n")CheckError(E_FAIL);
+                    size_t result=0;
+                    for(int i=0;i<10;++i){const char digit=raw[start+i];if(digit<'0'||digit>'9')CheckError(E_FAIL);result=result*10+static_cast<size_t>(digit-'0');}
+                    return result;
+                };
+                const size_t start=offset("StartHTML:"),end=offset("EndHTML:"),first=offset("StartFragment:"),last=offset("EndFragment:");
+                const CStringA expected(CW2A(L"<p><strong>Кириллица 😀</strong></p>",CP_UTF8));
+                if(!(start<first&&first<last&&last<end&&end==static_cast<size_t>(raw.GetLength()))||
+                    last-first!=static_cast<size_t>(expected.GetLength())||memcmp(data+first,expected.GetString(),last-first)||
+                    raw.Mid(static_cast<int>(start),static_cast<int>(first-start))!="<html><body><!--StartFragment-->"||
+                    raw.Mid(static_cast<int>(last))!="<!--EndFragment--></body></html>") {
+                    details="CF_HTML UTF-8 byte offsets";CheckError(E_FAIL);
+                }
+            } // ReleaseStgMedium, GlobalUnlock and IDataObject::Release before clearing OLE.
+            CString paste;
+            if(!FbeClipboard::HtmlPasteSanitizer::ReadClipboardFragment(m_hWnd,paste)||
+                paste!=L"<p><strong>Кириллица 😀</strong></p>"){details="normal Paste decoder rejected OLE HTML";CheckError(E_FAIL);}
+            CheckError(::OleSetClipboard(nullptr));
+            {
+                FbeScripts::Clipboard::Open opened(m_hWnd);
+                if(::IsClipboardFormatAvailable(CF_UNICODETEXT)||::IsClipboardFormatAvailable(FbeScripts::Clipboard::HtmlFormat())) {
+                    details="OLE formats retained after cleanup";CheckError(E_FAIL);
+                }
+            }
+            details="real OLE/JScript Unicode and sanitized HTML roundtrip, UTF-8 offsets, Paste decoder and resource cleanup PASS";
         } else if(IsFbeTestScenario(L"scripting-stage3c-clipboard")) {
             FbeScripts::Clipboard::TestStorage storage;
             struct ResetClipboardStorage { ~ResetClipboardStorage(){FbeScripts::Clipboard::testStorage=nullptr;} } resetStorage;

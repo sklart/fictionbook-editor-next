@@ -1,8 +1,12 @@
 [CmdletBinding()]
 param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [ValidateSet('portable','installed')][string]$Mode='portable',
-    [ValidateSet('dialogs','clipboard','status')][string]$Part='dialogs')
+    [ValidateSet('dialogs','clipboard','clipboard-ole','status')][string]$Part='dialogs')
 $ErrorActionPreference='Stop'
+if ($Part -eq 'clipboard-ole' -and ($env:GITHUB_ACTIONS -ne 'true' -or
+    $env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $env:FBE_NEXT_CLIPBOARD_CI_ACCOUNT -ne [Security.Principal.WindowsIdentity]::GetCurrent().User.Value)) {
+    throw 'Real OLE Clipboard test requires the disposable CI account launcher'
+}
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $iso=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'api3c'
 $passed=$false
@@ -64,6 +68,14 @@ function stage3cClipboard(){var step="text";try{
  return "PASS";
 }catch(e){return step+": "+String(e.message||e);}}
 function stage3cBusy(){try{bad3c(function(){ext.GetClipboardText();});bad3c(function(){ext.GetClipboardHtml();});return "PASS";}catch(e){return String(e.message||e);}}
+function stage3cOleClipboard(){try{
+ var text="FBE45_PRIVATE_CLIPBOARD_CANARY Буфер 😀\r\nСледующая строка";
+ a3c(ext.SetClipboardText(text)&&ext.GetClipboardText()===text,"OLE Unicode text roundtrip");
+ a3c(ext.SetClipboardHtml("<p onclick='bad()'><b>Кириллица 😀</b><script>bad()</script></p>",text),"OLE HTML set");
+ a3c(ext.GetClipboardText()===text,"OLE exact plain text");
+ a3c(ext.GetClipboardHtml()==="<p><strong>Кириллица 😀</strong></p>","OLE sanitized HTML");
+ return "PASS";
+}catch(e){return "OLE roundtrip assertion failed";}}
 function stage3cBadHtml(){try{bad3c(function(){ext.GetClipboardHtml();});return "PASS";}catch(e){return String(e.message||e);}}
 function stage3cBadText(){try{bad3c(function(){ext.GetClipboardText();});return "PASS";}catch(e){return String(e.message||e);}}
 function stage3cDialog(title,index){try{
@@ -91,7 +103,7 @@ function stage3cDialog(title,index){try{
     $code=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario "stage3c-$Part" -Report $report -TimeoutSeconds 45
     $text=if(Test-Path $report){Get-Content $report -Raw}else{'missing report'}
     if($code -ne 0 -or $text -notmatch 'result=PASS'){throw "Stage3C $Part failed: $text"}
-    if($Part -eq 'clipboard') {
+    if($Part -in @('clipboard','clipboard-ole')) {
         foreach($log in @(Get-ChildItem -LiteralPath $iso.DataPath -Recurse -File -Filter '*.log')) {
             if((Get-Content -LiteralPath $log.FullName -Raw) -match 'FBE45_PRIVATE_CLIPBOARD_CANARY'){throw 'Clipboard payload leaked into diagnostics'}
         }
