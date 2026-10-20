@@ -20,7 +20,8 @@ try {
     }
     $fixture = Join-Path $isolation.Root 'issue43.fb2'
     [IO.File]::WriteAllText($fixture, '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><book-title>Issue 43</book-title><lang>ru</lang></title-info></description><body><section><p>Test</p></section></body></FictionBook>', [Text.UTF8Encoding]::new($false))
-    $settingsTemplate = [IO.File]::ReadAllText((Join-Path $isolation.Runtime 'Data\Settings\Settings.xml'))
+    $seed = New-IsolatedFbeSettingsSeed $isolation
+    $settingsTemplate = [IO.File]::ReadAllText($seed).Replace('</Settings>', '<IntefaceLangID>0</IntefaceLangID></Settings>')
     $languagePattern = [regex]::new('<IntefaceLangID>[0-9]+</IntefaceLangID>')
     if(-not $languagePattern.IsMatch($settingsTemplate)) { throw 'The isolated settings template lacks the interface language.' }
     $settingsDirectory = Join-Path $isolation.DataPath 'Settings'
@@ -35,6 +36,7 @@ try {
             $settings = $languagePattern.Replace($settingsTemplate, '<IntefaceLangID>' + $languageIds[$locale] + '</IntefaceLangID>', 1)
             [IO.File]::WriteAllText((Join-Path $settingsDirectory 'Settings.xml'), $settings, [Text.UTF8Encoding]::new($false))
             $report = Join-Path $isolation.Root "issue43-$locale.txt"
+            Set-IsolatedRuntimeStage $isolation "issue43-menu-quality/$locale"
             $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('-b', $report, '--portable', $fixture) -PassThru
             $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds $TimeoutSeconds
             $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw -Encoding UTF8 } else { '<missing>' }
