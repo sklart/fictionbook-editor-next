@@ -1600,10 +1600,16 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool visualMapping = tree.ScriptTreeImage(root) >= 0 && tree.ScriptTreeImage(folderA) >= 0 && tree.ScriptTreeImage(child) >= 0 && tree.ScriptTreeImage(folderB) >= 0 && tree.ScriptTreeImage(deep) >= 0 && tree.ScriptImageList() != tree.StructuralImageList();
 		int scriptImageSize = 0, scriptItemHeight = 0, scriptIndent = 0; bool legacyExpanders = false;
 		const UINT scriptDpi = UiMetrics::DpiForWindow(tree.m_hWnd);
-		const int expectedImageSize = UiMetrics::ScaleForDpi(20, scriptDpi);
+		const int scriptIconSize = _Settings.GetScriptIconSize();
+		const auto expectedScriptRow = [&](UINT dpi) {
+			const int height = UiMetrics::ScaleForDpi(scriptIconSize + 4, dpi);
+			// Win32 rounds odd row heights down unless TVS_NONEVENHEIGHT is set.
+			return (tree.GetStyle() & TVS_NONEVENHEIGHT) != 0 ? height : height & ~1;
+		};
+		const int expectedImageSize = UiMetrics::ScaleForDpi(scriptIconSize, scriptDpi);
 		const bool scriptMetrics = tree.GetScriptTreeMetrics(scriptImageSize, scriptItemHeight, scriptIndent, legacyExpanders) &&
-			scriptImageSize == expectedImageSize && scriptItemHeight == UiMetrics::ScaleForDpi(24, scriptDpi) &&
-			scriptIndent == UiMetrics::ScaleForDpi(20, scriptDpi) && legacyExpanders;
+			scriptImageSize == expectedImageSize && scriptItemHeight == expectedScriptRow(scriptDpi) &&
+			scriptIndent == UiMetrics::ScaleForDpi((std::max)(20, scriptIconSize), scriptDpi) && legacyExpanders;
 		const HWND bottomToolbar = m_document_tree.m_tree.BottomToolbarWindow();
 		const UINT bottomCommands[] = { ID_DT_RIGHT_ONE, ID_DT_RIGHT_SMART, ID_DT_LEFT, ID_DT_MERGE, ID_DT_DELETE };
 		bool bottomCommandsPreserved = ::SendMessage(bottomToolbar, TB_BUTTONCOUNT, 0, 0) == _countof(bottomCommands) &&
@@ -1631,7 +1637,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			narrowMaxRight = 0; wrapFlagsObserved = 0;
 			m_document_tree.m_tree.UpdateDpiMetrics(dpi);
 			int image = 0, row = 0, indent = 0; bool expanders = false;
-		const int expected = UiMetrics::ScaleForDpi(20, dpi);
+		const int expected = UiMetrics::ScaleForDpi(scriptIconSize, dpi);
 		const int toolbarIconSize = ToolbarFactory::CommandToolbarImageSize(dpi);
 			int toolbarImageWidth = 0, toolbarImageHeight = 0;
 			const HWND toolbar = m_document_tree.m_tree.BottomToolbarWindow();
@@ -1639,7 +1645,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			const LRESULT buttonSize = ::SendMessage(toolbar, TB_GETBUTTONSIZE, 0, 0);
 			RECT search = {}; ::GetWindowRect(m_document_tree.m_tree.ScriptSearchWindow(), &search);
 			dpiMatrix = dpiMatrix && tree.GetScriptTreeMetrics(image, row, indent, expanders) &&
-				image == expected && row == UiMetrics::ScaleForDpi(24, dpi) && indent == expected &&
+				image == expected && row == expectedScriptRow(dpi) && indent == UiMetrics::ScaleForDpi((std::max)(20, scriptIconSize), dpi) &&
 				::ImageList_GetIconSize(toolbarImages, &toolbarImageWidth, &toolbarImageHeight) &&
 				toolbarImageWidth == toolbarIconSize && toolbarImageHeight == toolbarIconSize &&
 				LOWORD(buttonSize) >= toolbarIconSize + UiMetrics::ScaleForDpi(7, dpi) &&
