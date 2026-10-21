@@ -2,6 +2,7 @@
 	if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS)))
 		return 0;
 #include "RuntimeTestFileClose.inl"
+#include "RuntimeTestNewDocument.inl"
 #include "RuntimeTestUiDefects.inl"
 	if (IsFbeTestScenario(L"script-card-block-runtime"))
 	{

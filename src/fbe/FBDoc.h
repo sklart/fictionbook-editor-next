@@ -51,7 +51,7 @@ public:
   long		GetSavedPos(bstr_t& dom, bool deleteMarker = true);
 
   // loading and savingaa
-  void	  CreateBlank(HWND hWndParent);
+  bool	  CreateBlank(HWND hWndParent);
   bool	  Load(HWND hWndParent,const CString& filename);
   bool    Load(HWND hWndParent, const CString& storagePath, const CString& logicalName,
                const std::vector<unsigned char>& rawBytes);

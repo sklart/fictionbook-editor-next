@@ -6,6 +6,7 @@
 #include "..\\apputils.h"
 #include "..\\FBDoc.h"
 #include "..\\mainfrm.h"
+#include "../testing/NewDocumentRuntimeProbe.h"
 
 namespace
 {
@@ -43,7 +44,23 @@ DocumentLifecycleResult DocumentLifecycleController::NewDocument()
 {
 	PendingDocument pending(m_frame, m_document);
 	FB::Doc* document = &pending.Document();
-	document->CreateBlank(m_view);
+	if (!document->CreateBlank(m_view)) {
+		pending.Rollback();
+		return Failed(m_session.Location(), m_session.IsArchive());
+	}
+	NewDocumentRuntimeProbe::Observe(false);
+	// Keep the old document intact until the replacement is fully prepared.
+	{
+		// Script-backed tree cleanup invokes functions through m_active_doc.
+		// It must operate on the discarded book, never on the new template.
+		struct ActiveCleanupDocument {
+			FB::Doc* replacement;
+			ActiveCleanupDocument(FB::Doc* old, FB::Doc* next) : replacement(next) { FB::Doc::m_active_doc=old; }
+			~ActiveCleanupDocument() { FB::Doc::m_active_doc=replacement; }
+		} cleanup(m_document, document);
+		m_frame.DetachDocumentForClose();
+		NewDocumentRuntimeProbe::Observe(true);
+	}
 	FB::Doc* previous = m_document;
 	m_document = pending.Commit();
 	delete previous;

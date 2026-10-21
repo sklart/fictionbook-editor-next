@@ -277,6 +277,7 @@ public:
 	}
 
 protected:
+	friend struct NewDocumentRuntimeProbe;
 	SHD::IWebBrowser2Ptr m_browser;
 	MSHTML::IHTMLDocument2Ptr m_doc2;
 	MSHTML::IHTMLDocument3Ptr m_doc3;

@@ -1043,12 +1043,17 @@ bool Doc::Load(HWND hWndParent, const CString& storagePath, const CString& logic
     catch (_com_error& e) { U::ReportError(e); return false; }
 }
 
-void  Doc::CreateBlank(HWND hWndParent) {
+bool  Doc::CreateBlank(HWND hWndParent) {
   try {
 	TraceDocumentEvent(L"D120", L"blank book creation", L"blank.fb2");
     // load document into DOM
-	  if (!LoadFromHTML(hWndParent, L"blank.fb2"))
-	  StartupTrace::Error(L"document", L"D201", L"blank book was not loaded");
+	  if (!LoadFromHTML(hWndParent, L"blank.fb2") || !m_editor.HasDoc() ||
+	      !m_editor.Document()->body ||
+	      !MSHTML::IHTMLDocument3Ptr(m_editor.Document())->getElementById(L"fbw_body")) {
+	      StartupTrace::Error(L"document", L"D201", L"blank book was not loaded");
+	      return false;
+	  }
+    return true;
     //LoadFromDOM(hWndParent,U::CreateDocument(true));
   }
   catch (_com_error& e) {
@@ -1056,6 +1061,7 @@ void  Doc::CreateBlank(HWND hWndParent) {
     StartupTrace::ComException(L"document", L"D202", e.Error(), &exceptionInfo, e.ErrorInfo(), L"blank book creation failed");
     U::ReportError(e);
   }
+  return false;
 }
 
 // indent something

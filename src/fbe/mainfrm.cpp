@@ -27,6 +27,7 @@
 #include "settings\\ui\\SettingsDlg.h"
 #include "Settings.h"
 #include "testing/FileCloseSaveDialogProbe.h"
+#include "testing/NewDocumentRuntimeProbe.h"
 #include "settings/hotkeys/HotkeyStore.h"
 #include "settings/SettingsPaths.h"
 #include "XmlSourceThemes.h"
@@ -5410,6 +5411,12 @@ LRESULT CMainFrame::OnFileNew(WORD, WORD, HWND, BOOL&)
   DocumentLifecycleController lifecycle(*this, m_doc, m_document_session, m_view);
   if (lifecycle.NewDocument().Succeeded())
   {
+	m_source.SendMessage(SCI_SETREADONLY, FALSE);
+	m_source.SendMessage(SCI_CLEARALL);
+	m_source.SendMessage(SCI_EMPTYUNDOBUFFER);
+	m_source.SendMessage(SCI_SETSAVEPOINT);
+	ClearSourceValidationAnnotations();
+	m_bad_xml = false; m_bad_filename.Empty();
 	AttachDocument(m_doc);
 	ResetStatusForDocument();
   }
@@ -6911,7 +6918,7 @@ void CMainFrame::ApplyEditorViewCommandUi(EditorView prev, EditorView vt)
 	UISetCheck(ID_VIEW_TREE, vt == BODY && _Settings.ViewDocumentTree());
 	UISetCheck(ID_VIEW_BODY, vt == BODY); UISetCheck(ID_VIEW_DESC, vt == DESC); UISetCheck(ID_VIEW_SOURCE, vt == SOURCE);
 	UIEnable(ID_VIEW_SHOW_TEXT_CARET, vt != SOURCE);
-	if (vt == BODY) { m_sel_changed = true; if (m_Speller) m_Speller->SetDocumentLanguage(); }
+	if (vt == BODY) { m_sel_changed = true; if (m_Speller && _Settings.GetUseSpellChecker()) m_Speller->SetDocumentLanguage(); }
 	InvalidateUi(UiDirtyView | UiDirtySelection | UiDirtyToolbar | UiDirtyStatus);
 	if (vt == DESC) {
 		m_contextAttributeBars.ClearLinkState(); m_contextAttributeBars.ClearTableState();
