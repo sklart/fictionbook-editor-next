@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [ValidateSet('portable','installed')][string]$Mode='portable',
     [ValidateSet('fb2','fbd')][string]$DocumentType='fb2',
@@ -61,7 +61,32 @@ function copies3d(){try{
 }catch(e){return String(e.message||e);}}
 function blocked3d(){try{var token=ext.BeginDocumentUpdate("blocked save",'{}');try{fails3d(function(){ext.SerializeCurrentDocument();});}finally{ext.EndDocumentUpdate(token);}return "PASS";}catch(e){return String(e.message||e);}}
 function blockedUndo3d(){try{ext.BeginUndoUnit(document,"blocked save");try{fails3d(function(){ext.SerializeCurrentDocument();});}finally{ext.EndUndoUnit(document);}return "PASS";}catch(e){return String(e.message||e);}}
-function description3d(){try{var before=document.body.outerHTML;check3d(ext.GetCurrentViewMode()==="description","Description view");check3d(ext.SerializeCurrentDocument().indexOf("API3D")>=0||rar,"Description serialization");check3d(before===document.body.outerHTML&&ext.GetCurrentViewMode()==="description","Description changed");return "PASS";}catch(e){return String(e.message||e);}}
+function selectState3d(){var controls=document.getElementsByTagName("SELECT"),state="";for(var i=0;i<controls.length;i++)state+=controls[i].id+":"+controls[i].selectedIndex+":"+controls[i].value+";";return state;}
+function prepareDescription3d(){try{
+ if(!rar){document.getElementById("tiLang").value="ru";document.getElementById("stiLang").value="ru";
+ document.getElementById("tiKwd").value="Current keywords";
+ var custom=document.getElementById("ci").getElementsByTagName("DIV")[0];custom.all.type.value="test";custom.all.val.value="Current textarea";
+ var input=document.getElementById("tiKwd");input.focus();var range=input.createTextRange();range.moveStart("character",2);range.moveEnd("character",-2);range.select();}
+ return "PASS";}catch(e){return String(e.message||e);}}
+function descriptionXml3d(xml){if(rar)return;var parsed=new ActiveXObject("Msxml2.DOMDocument.6.0");check3d(parsed.loadXML(xml),"Description XML");
+ check3d(parsed.selectSingleNode("//*[local-name()='title-info']/*[local-name()='lang']").text==="ru","current tiLang lost");
+ check3d(parsed.selectSingleNode("//*[local-name()='src-title-info']/*[local-name()='lang']").text==="ru","current stiLang lost");
+ check3d(parsed.selectSingleNode("//*[local-name()='keywords']").text==="Current keywords","current INPUT lost");
+ check3d(parsed.selectSingleNode("//*[local-name()='custom-info']").text==="Current textarea","current TEXTAREA lost");
+ check3d(parsed.selectSingleNode("//*[local-name()='genre']").text==="prose","genre lost");
+ check3d(parsed.selectSingleNode("//*[local-name()='coverpage']/*[local-name()='image']").attributes.getNamedItem("l:href").text==="#cover","cover lost");}
+function description3d(){try{
+ check3d(ext.GetCurrentViewMode()==="description","Description view");
+ // Check once before observing SELECT properties: observing MSHTML controls
+ // can materialize attributes and must not hide a stale-markup defect.
+ var before=document.body.outerHTML,active=document.activeElement,selection=document.selection.createRange().text;
+ descriptionXml3d(ext.SerializeCurrentDocument());
+ check3d(before===document.body.outerHTML,"unobserved Description changed");
+ var selects=selectState3d();before=document.body.outerHTML;
+ descriptionXml3d(ext.SerializeCurrentDocument());
+ check3d(ext.SaveDocumentCopy(root+"\\description."+suffix,false),"Description copy");
+ check3d(selects===selectState3d()&&before===document.body.outerHTML&&active===document.activeElement&&selection===document.selection.createRange().text&&ext.GetCurrentViewMode()==="description","Description changed");return "PASS";
+}catch(e){return String(e.message||e);}}
 function source3d(){try{
  var xml=ext.SerializeCurrentDocument();check3d(xml.indexOf("SourceCurrent")>=0&&xml.indexOf("API3D")<0,"stale Body export");
  check3d(ext.SaveDocumentCopy(root+"\\source."+suffix,false),"Source copy");
@@ -89,7 +114,7 @@ function large3d(){try{fails3d(function(){ext.SerializeCurrentDocument();});chec
     $fixture=Join-Path $iso.Root "api3d.$DocumentType";$report=Join-Path $iso.Root 'api3d.txt'
     $png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII='
     $body=if($DocumentType -eq 'fb2'){'<body><section><p>ordinary paragraph Кириллица 😀 <a l:href="#n" type="note">1</a></p><p id="probe">editable paragraph</p><p><image l:href="#cover"/></p><table><tr><td colspan="2">Cell A</td></tr><tr><td>Cell B</td><td>Cell C</td></tr><tr><td rowspan="2">Cell D</td><td>Cell E</td></tr><tr><td>Cell F</td></tr></table></section></body><body name="notes"><section id="n"><p>note paragraph</p></section></body>'}else{''}
-    ('<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>API3D</book-title><coverpage><image l:href="#cover"/></coverpage><lang>en</lang></title-info><document-info><id>api3d</id><version>1</version></document-info></description>'+$body+'<binary id="cover" content-type="image/png">'+$png+'</binary></FictionBook>') | Set-Content $fixture -Encoding utf8
+    ('<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>API3D</book-title><coverpage><image l:href="#cover"/></coverpage><lang>en</lang></title-info><src-title-info><genre>prose</genre><author><first-name>S</first-name><last-name>T</last-name></author><book-title>Original source title</book-title><lang>en</lang></src-title-info><document-info><id>api3d</id><version>1</version></document-info></description>'+$body+'<binary id="cover" content-type="image/png">'+$png+'</binary></FictionBook>') | Set-Content $fixture -Encoding utf8
     $inputPath=$fixture
     if($InputEncoding -eq 'utf-16') {
         $fixtureText=(Get-Content $fixture -Raw).Replace('encoding="utf-8"','encoding="utf-16"')
@@ -135,12 +160,19 @@ function large3d(){try{fails3d(function(){ext.SerializeCurrentDocument();});chec
             if($converted.SelectNodes('//*[local-name()="body"]').Count -ne 2 -or $converted.DocumentElement.InnerText -notmatch 'Cell C'){throw 'Format export dropped content'}
         }
     }
+    if($Container -ne 'rar') {
+        [xml]$description=Get-Content (Join-Path $root "description.$DocumentType") -Raw
+        foreach($tag in 'title-info','src-title-info') {
+            if($description.SelectSingleNode("//*[local-name()='$tag']/*[local-name()='lang']").InnerText -cne 'ru'){throw "Description copy lost $tag language"}
+        }
+        if($description.SelectSingleNode('//*[local-name()="custom-info"]').InnerText -cne 'Current textarea'){throw 'Description copy lost TEXTAREA'}
+    }
     if($source.DocumentElement.InnerText -notmatch 'SourceCurrent'){throw 'Source copy mismatch'}
     if($DocumentType -eq 'fb2') {
         $settings=[Xml.XmlReaderSettings]::new();$settings.ValidationType=[Xml.ValidationType]::Schema
         $settings.Schemas.XmlResolver=[Xml.XmlUrlResolver]::new()
         $null=$settings.Schemas.Add('http://www.gribuser.ru/xml/fictionbook/2.0',(Join-Path $iso.Root 'FictionBook.xsd'));$settings.Schemas.Compile()
-        foreach($name in 'copy.fb2','export.fb2','source.fb2','saveas.fb2','large.fb2') {
+        foreach($name in 'copy.fb2','export.fb2','source.fb2','description.fb2','saveas.fb2','large.fb2') {
             $candidate=Join-Path $root $name
             if(Test-Path $candidate) {$reader=[Xml.XmlReader]::Create($candidate,$settings);try{while($reader.Read()){}}finally{$reader.Close()}}
         }

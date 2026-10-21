@@ -78,10 +78,13 @@ if (IsFbeTestScenario(L"scripting-stage3d")) {
             if (m_doc->IsSerializationUnsafe() || version != m_doc->m_body.GetVersionNumber() || html != CString(static_cast<LPCWSTR>(m_doc->m_body.Document()->body->outerHTML))) CheckError(E_FAIL);
         }
         ShowView(DESC);
+        invoke(L"prepareDescription3d");
+        const bool descriptionDirty = DocChanged();const HWND descriptionFocus = ::GetFocus();
         const auto descriptionUndo = history(false), descriptionRedo = history(true);
         const auto descriptionVersion = m_doc->m_body.GetVersionNumber();
         invoke(L"description3d");
-        if (descriptionUndo != history(false) || descriptionRedo != history(true) || descriptionVersion != m_doc->m_body.GetVersionNumber()) CheckError(E_FAIL);
+        if (descriptionUndo != history(false) || descriptionRedo != history(true) || descriptionVersion != m_doc->m_body.GetVersionNumber() ||
+            descriptionDirty != DocChanged() || descriptionFocus != ::GetFocus()) CheckError(E_FAIL);
         ShowView(SOURCE);
         const std::string source = FbeScripts::SourceBytes(m_source);
         std::string changed = source;
