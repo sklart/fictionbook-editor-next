@@ -4469,6 +4469,9 @@ bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
 	}
 	HIMAGELIST oldImages = m_commandToolbarImages.Detach();
 	HIMAGELIST newImages = replacement.Detach();
+	// TB_SETBITMAPSIZE may reset the toolbar's current image storage. Set
+	// metrics before attaching the prepared list, or the new glyphs disappear.
+	ToolbarFactory::ApplyCommandToolbarMetrics(m_CmdToolbar, IDR_MAINFRAME, dpi);
 	HIMAGELIST replaced = m_CmdToolbar.SetImageList(newImages);
 	if(replaced != oldImages) { m_CmdToolbar.SetImageList(oldImages); ::ImageList_Destroy(newImages); m_commandToolbarImages.Attach(oldImages); return false; }
 	m_commandToolbarImages.Attach(newImages);
@@ -4481,7 +4484,7 @@ bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
 		TBBUTTONINFO info = {}; info.cbSize = sizeof(info); info.dwMask = TBIF_IMAGE; info.iImage = imageIndices[index];
 		m_CmdToolbar.SetButtonInfo(kTableToolbarCommands[index].commandId, &info);
 	}
-	ToolbarFactory::ApplyCommandToolbarMetrics(m_CmdToolbar, IDR_MAINFRAME, dpi);
+	::SetPropW(m_CmdToolbar,L"FBE.Toolbar.DarkImages",reinterpret_cast<HANDLE>(ThemeManager::IsDark() && !ThemeManager::IsHighContrast()?2:1));
 	return true;
 }
 
@@ -8107,6 +8110,9 @@ void CMainFrame::RefreshStatusMainPane()
 
 LRESULT CMainFrame::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 {
+	const HANDLE imagePalette=reinterpret_cast<HANDLE>(ThemeManager::IsDark() && !ThemeManager::IsHighContrast()?2:1);
+	if(m_CmdToolbar.IsWindow() && ::GetPropW(m_CmdToolbar,L"FBE.Toolbar.DarkImages")!=imagePalette)
+		RebuildCommandToolbarImages(UiMetrics::DpiForWindow(m_CmdToolbar));
 	m_contextAttributeBars.ApplyTheme();
 	ApplyMainRebarTheme(m_rebar);
 	ApplyMainMenuRebarBandTheme(m_rebar, m_MenuBar);

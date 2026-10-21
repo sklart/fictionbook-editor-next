@@ -3,7 +3,33 @@
 #include "..\\resource.h"
 #include "..\\StartupTrace.h"
 #include "..\\UiMetrics.h"
+#include "../ThemeManager.h"
 namespace {
+void AdaptMonochromeGlyph(HBITMAP bitmap, bool formattingGlyph)
+{
+	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast()) return;
+	DIBSECTION data = {};
+	if(::GetObject(bitmap,sizeof(data),&data)!=sizeof(data) || !data.dsBm.bmBits || data.dsBm.bmBitsPixel!=32) return;
+	auto* pixels = static_cast<DWORD*>(data.dsBm.bmBits);
+	const int count = data.dsBm.bmWidth * abs(data.dsBmih.biHeight);
+	int visible=0,dark=0;
+	for(int i=0;i<count;++i) {
+		const DWORD p=pixels[i];const unsigned a=p>>24;
+		if(!a) continue;
+		const unsigned r=((p>>16)&255)*255/a,g=((p>>8)&255)*255/a,b=(p&255)*255/a;
+		if(!formattingGlyph && (std::max)({r,g,b})-(std::min)({r,g,b})>12) return; // Keep coloured artwork unchanged.
+		++visible;if((std::max)({r,g,b})<96) ++dark;
+	}
+	// Flat, predominantly black glyphs need foreground adaptation. Shaded
+	// grayscale artwork keeps its original highlights and appearance.
+	if(!visible || (!formattingGlyph && dark*4<visible*3)) return;
+	const COLORREF foreground=ThemeManager::TextColor();
+	for(int i=0;i<count;++i) {
+		const DWORD alpha=pixels[i]>>24;
+		pixels[i]=(alpha<<24)|((GetRValue(foreground)*alpha/255)<<16)|
+			((GetGValue(foreground)*alpha/255)<<8)|(GetBValue(foreground)*alpha/255);
+	}
+}
 struct ToolbarResourceData { WORD version; WORD width; WORD height; WORD itemCount; WORD* Items() { return reinterpret_cast<WORD*>(this + 1); } };
 BOOL CALLBACK SetDialogFontForToolbarChild(HWND window, LPARAM) { ::SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFontForWindow(window)), TRUE); return TRUE; }
 
@@ -224,9 +250,15 @@ bool ToolbarFactory::CreateCommandToolbarImages(CImageList& ownedImages, UINT to
 	HBITMAP source = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
 	if(source == NULL) { ownedImages.Destroy(); return false; }
 	bool added = true;
+	int commandSlot = 0;
 	for(int index = 0; index < standardImageCount; ++index)
 	{
+		while(toolbarData->Items()[commandSlot] == 0) ++commandSlot;
+		const WORD command = toolbarData->Items()[commandSlot++];
 		HBITMAP alpha = CreateAlphaBitmapCell(source, sourceSize, index);
+		if(toolbarResourceId == IDR_MAINFRAME) AdaptMonochromeGlyph(alpha,
+			command == ID_EDIT_BOLD || command == ID_EDIT_ITALIC || command == ID_EDIT_STRIK ||
+			command == ID_EDIT_SUP || command == ID_EDIT_SUB || command == ID_EDIT_CODE);
 		HBITMAP scaled = lastScriptHighResolution || documentTreeHighResolution
 			? ScaleHighResolutionAlphaBitmap(alpha, sourceSize, imageSize)
 			: sourceSize == 24 && baseImageSize == 24
