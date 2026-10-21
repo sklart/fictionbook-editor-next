@@ -28,6 +28,7 @@
 #include "Settings.h"
 #include "testing/FileCloseSaveDialogProbe.h"
 #include "testing/NewDocumentRuntimeProbe.h"
+#include "testing/DocumentCleanupRuntimeProbe.h"
 #include "settings/hotkeys/HotkeyStore.h"
 #include "settings/SettingsPaths.h"
 #include "XmlSourceThemes.h"

@@ -6,6 +6,7 @@
 #include "ElementDescriptor.h"
 #include "FBDoc.h"
 #include "Settings.h"
+#include "testing/DocumentCleanupRuntimeProbe.h"
 
 extern CSettings _Settings;
 
@@ -179,12 +180,14 @@ void CElementDescriptor::ProcessScript()
 
 void CElementDescriptor::CleanUp()
 {
-	if(!m_script)
+	if(!m_script || !FB::Doc::m_active_doc)
 		return;
 
 	CComVariant vtResult;
 	CComVariant params(m_class_name);	
-	FB::Doc::m_active_doc->InvokeFunc(L"apiCleanUp", &params, 1, vtResult);
+	DocumentCleanupRuntimeProbe::Script(m_class_name, false, S_OK);
+	const HRESULT hr = FB::Doc::m_active_doc->InvokeFunc(L"apiCleanUp", &params, 1, vtResult);
+	DocumentCleanupRuntimeProbe::Script(m_class_name, true, hr);
 }
 
 bool CElementDescriptor::GetPic(HANDLE& handle, int& type)

@@ -194,6 +194,8 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-fbe-file-close-runtime.ps1 -FbeExe out/Release/FBE.exe
+          ./tools/tests/test-fbe-new-document-safety-runtime.ps1 -FbeExe out/Release/FBE.exe
+          ./tools/tests/test-fbe-new-document-safety-runtime.ps1 -FbeExe out/Release/FBE.exe -CleanupContext
           ./tools/tests/test-fbe-file-close-runtime.ps1 -FbeExe out/Release/FBE.exe -Mode installed -Kind fbd -Theme dark
           foreach ($container in 'zip','rar') {
             ./tools/tests/test-fbe-file-close-runtime.ps1 -FbeExe out/Release/FBE.exe -Container $container

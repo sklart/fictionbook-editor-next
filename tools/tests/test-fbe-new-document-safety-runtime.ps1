@@ -1,13 +1,19 @@
 [CmdletBinding()]
-param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'))
+param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),[switch]$CleanupContext)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $iso=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'new-document-safety'
 $passed=$false
-$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TRACE','FBE_NEXT_FAULT_INJECT','FBE_NEXT_TEST_NEW_EPUB','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_TEST_IMPORT_EPUB_PATH')
+$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TRACE','FBE_NEXT_FAULT_INJECT','FBE_NEXT_TEST_NEW_EPUB','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_TEST_IMPORT_EPUB_PATH','FBE_NEXT_TEST_CLEANUP_CONTEXT','FBE_NEXT_TEST_CLEANUP_SCRIPT')
 $old=@{};foreach($name in $names){$old[$name]=[Environment]::GetEnvironmentVariable($name)}
 try {
     $seed=New-IsolatedFbeSettingsSeed $iso
+    $env:FBE_NEXT_TEST_CLEANUP_CONTEXT=$null;$env:FBE_NEXT_TEST_CLEANUP_SCRIPT=$null
+    if($CleanupContext) {
+        $env:FBE_NEXT_TEST_CLEANUP_CONTEXT='1'
+        $env:FBE_NEXT_TEST_CLEANUP_SCRIPT=Join-Path $iso.Root 'cleanup-probe.js'
+        [IO.File]::WriteAllText($env:FBE_NEXT_TEST_CLEANUP_SCRIPT,'function GetClassName(){return "cleanup_context_probe";} function GetTitle(){return "Cleanup probe";}',[Text.UTF8Encoding]::new($false))
+    }
     $fixture=Join-Path $PSScriptRoot '../../out/tests/export-epub-cyrillic/fb2-metadata-cyrillic-smoke.epub'
     if(!(Test-Path -LiteralPath $fixture)) {
         & (Join-Path $PSScriptRoot 'test-export-epub-cyrillic.ps1') -OutputPath $fixture

@@ -43,6 +43,7 @@ public:
 
 private:
 	DocumentLifecycleResult Load(const DocumentOpenSource& source, bool reload);
+	void DetachPreviousDocument(bool observeNewDocument = false);
 
 	CMainFrame& m_frame;
 	FB::Doc*& m_document;

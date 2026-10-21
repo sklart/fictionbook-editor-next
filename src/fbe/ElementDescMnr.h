@@ -4,6 +4,7 @@
 
 class CElementDescMnr
 {
+    friend struct DocumentCleanupRuntimeProbe;
 private:
 	CSimpleArray<CElementDescriptor*> m_stEDs;
 	CSimpleArray<CElementDescriptor*> m_EDs;
@@ -26,7 +27,7 @@ public:
 	int GetEDsCount();
 	CElementDescriptor* GetStED(int index);
 	CElementDescriptor* GetED(int index);
-	void CleanUpAll();
+	void CleanUpAll(bool continueOnError = false);
 	bool IsInitedStEDs();
 	void CleanTree();
 };

@@ -7,6 +7,7 @@
 #include "..\\FBDoc.h"
 #include "..\\mainfrm.h"
 #include "../testing/NewDocumentRuntimeProbe.h"
+#include "../testing/DocumentCleanupRuntimeProbe.h"
 
 namespace
 {
@@ -50,17 +51,7 @@ DocumentLifecycleResult DocumentLifecycleController::NewDocument()
 	}
 	NewDocumentRuntimeProbe::Observe(false);
 	// Keep the old document intact until the replacement is fully prepared.
-	{
-		// Script-backed tree cleanup invokes functions through m_active_doc.
-		// It must operate on the discarded book, never on the new template.
-		struct ActiveCleanupDocument {
-			FB::Doc* replacement;
-			ActiveCleanupDocument(FB::Doc* old, FB::Doc* next) : replacement(next) { FB::Doc::m_active_doc=old; }
-			~ActiveCleanupDocument() { FB::Doc::m_active_doc=replacement; }
-		} cleanup(m_document, document);
-		m_frame.DetachDocumentForClose();
-		NewDocumentRuntimeProbe::Observe(true);
-	}
+	DetachPreviousDocument(true);
 	FB::Doc* previous = m_document;
 	m_document = pending.Commit();
 	delete previous;
@@ -95,7 +86,7 @@ DocumentLifecycleResult DocumentLifecycleController::Import(const MSXML2::IXMLDO
 	document.m_namevalid = false;
 	document.ResetSavePoint();
 	// Release editor-owned references only after the replacement is ready.
-	m_frame.DetachDocumentForClose();
+	DetachPreviousDocument();
 	FB::Doc* previous = m_document;
 	m_document = pending.Commit();
 	delete previous;
@@ -113,7 +104,7 @@ DocumentLifecycleResult DocumentLifecycleController::CloseDocument()
 		pending.Rollback();
 		return Failed(m_session.Location(), m_session.IsArchive());
 	}
-	m_frame.DetachDocumentForClose();
+	DetachPreviousDocument();
 	FB::Doc* previous = m_document;
 	m_document = pending.Commit();
 	delete previous;
@@ -146,7 +137,7 @@ DocumentLifecycleResult DocumentLifecycleController::Load(const DocumentOpenSour
 
 	// Reopening a saved import must release speller/display interfaces while
 	// the previous MSHTML host is still alive, just as Import and Close do.
-	m_frame.DetachDocumentForClose();
+	DetachPreviousDocument();
 	FB::Doc* previous = m_document;
 	m_document = pending.Commit();
 	delete previous;
@@ -154,6 +145,21 @@ DocumentLifecycleResult DocumentLifecycleController::Load(const DocumentOpenSour
 	else if (reload) m_session.ReloadedNormal(path, m_document->GetDocumentFileType());
 	else m_session.OpenNormal(path, m_document->GetDocumentFileType());
 	return Completed(source.location, source.IsArchive());
+}
+
+void DocumentLifecycleController::DetachPreviousDocument(bool observeNewDocument)
+{
+	// PendingDocument has already prepared and activated the replacement.
+	// Script cleanup belongs to the open book, never to the private closed host.
+	struct ActiveDocumentScope {
+		FB::Doc* saved = FB::Doc::m_active_doc;
+		explicit ActiveDocumentScope(FB::Doc* previous) { FB::Doc::m_active_doc = previous; }
+		~ActiveDocumentScope() { FB::Doc::m_active_doc = saved; }
+	} active(m_session.HasDocument() ? m_document : nullptr);
+	DocumentCleanupRuntimeProbe::Detach(m_document, active.saved, false);
+	m_frame.DetachDocumentForClose();
+	DocumentCleanupRuntimeProbe::Detach(m_document, active.saved, true);
+	if (observeNewDocument) NewDocumentRuntimeProbe::Observe(true);
 }
 
 // PendingDocument remains the single transactional boundary.  Presentation is

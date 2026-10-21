@@ -6,6 +6,7 @@
 #include "apputils.h"
 #include "Settings.h"
 #include "mainfrm.h"
+#include "StartupTrace.h"
 
 extern CSettings _Settings;
 
@@ -356,11 +357,20 @@ int CElementDescMnr::GetStEDsCount()
 	return m_stEDs.GetSize();
 }
 
-void CElementDescMnr::CleanUpAll()
+void CElementDescMnr::CleanUpAll(bool continueOnError)
 {
 	for(int i = 0; i < m_EDs.GetSize(); i++)
 	{
-		m_EDs[i]->CleanUp();
+		if (!continueOnError) { m_EDs[i]->CleanUp(); continue; }
+		// A failing extension must not interrupt release of editor-owned COM
+		// references or prevent the remaining descriptors from being cleaned.
+		try { m_EDs[i]->CleanUp(); }
+		catch (const _com_error& error) {
+			StartupTrace::HResult(L"document", L"D210", error.Error(), L"tree apiCleanUp failed; continuing detach");
+		}
+		catch (...) {
+			StartupTrace::Error(L"document", L"D211", L"tree apiCleanUp exception; continuing detach");
+		}
 	}
 }
 

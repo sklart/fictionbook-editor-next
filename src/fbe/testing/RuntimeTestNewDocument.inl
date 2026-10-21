@@ -3,16 +3,25 @@ if(IsFbeTestScenario(L"new-document-safety-runtime")) {
     auto require=[&](bool ok,const char* label){details=label;if(!ok)CheckError(E_FAIL);};
     auto phase=[&](const char* label){CStringA row=CStringA("phase=")+label+"\r\n";DWORD n=0;output.Write(row,row.GetLength(),&n);output.Flush();};
     struct ObserverGuard {~ObserverGuard(){NewDocumentRuntimeProbe::Observer()={};::SetEnvironmentVariableW(L"FBE_NEXT_FAULT_INJECT",nullptr);}} observerGuard;
+    extern CElementDescMnr _EDMnr;
+    struct CleanupGuard {
+        std::vector<std::unique_ptr<CElementDescriptor>> descriptors;
+        ~CleanupGuard() {
+            DocumentCleanupRuntimeProbe::OnDetach()={};DocumentCleanupRuntimeProbe::OnScript()={};
+            for(const auto& descriptor:descriptors) DocumentCleanupRuntimeProbe::Remove(_EDMnr,descriptor.get());
+        }
+    } cleanupGuard;
     try {
         const CString first=m_doc->m_filename;
         auto clean=[&](){m_doc->MarkSavePoint();m_source.SendMessage(SCI_SETSAVEPOINT);};
         auto xml=[&](){return CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));};
+#include "RuntimeTestDocumentCleanupContext.inl"
         unsigned prepared=0,detached=0,heldSpellerReferences=0;bool order=true;
         NewDocumentRuntimeProbe::Observer()=[&](bool released){
             if(!released){++prepared;heldSpellerReferences=(std::max)(heldSpellerReferences,NewDocumentRuntimeProbe::References(m_Speller));}
             else {
                 ++detached;
-                order=order&&FB::Doc::m_active_doc==m_doc&&m_doc->m_body.IsWindow()&&!NewDocumentRuntimeProbe::References(m_Speller)&&
+                order=order&&FB::Doc::m_active_doc==(m_document_session.HasDocument()?m_doc:nullptr)&&m_doc->m_body.IsWindow()&&!NewDocumentRuntimeProbe::References(m_Speller)&&
                     !m_editor_selection_state.BodyRange()&&!m_editor_selection_state.DescriptionRange()&&
                     !m_selection_context.container&&!m_selection_context.structuralContainer&&!m_selection_context.image&&
                     !m_selection_context.section&&!m_selection_context.table&&!m_selection_context.tableCell&&!m_selection_context.anchor&&
@@ -100,6 +109,30 @@ if(IsFbeTestScenario(L"new-document-safety-runtime")) {
         ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO",L"new-document-safety-runtime");::SetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_EPUB_PATH",nullptr);
         require(m_document_session.HasDocument()&&!m_doc->m_namevalid&&DocChanged(),"import prepared");clean();newCommand();
         require(order&&prepared==detached,"all New replacements detached exactly once");
+        if(cleanupContext) {
+            phase("cleanup exceptions, reload and RAII unwind");
+            clean();cleanupThrowScript=true;newCommand();cleanupThrowScript=false;
+            phase("script exception completed without a modal message");
+            clean();cleanupThrowNative=true;newCommand();cleanupThrowNative=false;
+            phase("native cleanup exception contained");
+            clean();DocumentLifecycleController reload(*this,m_doc,m_document_session,m_view);
+            require(reload.ReloadNormal(first).Succeeded(),"reload cleanup context");AttachDocument(m_doc);
+            clean();SendMessage(WM_COMMAND,ID_FILE_CLOSE);
+            require(LoadFile(first)==OK,"closed host to Open context");
+            clean();SendMessage(WM_COMMAND,ID_FILE_CLOSE);
+            ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO",L"import-epub");::SetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_EPUB_PATH",epub);
+            answerNew(IDNO,importCommand,false);
+            ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO",L"new-document-safety-runtime");::SetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_EPUB_PATH",nullptr);
+            require(m_document_session.HasDocument()&&!m_doc->m_namevalid,"closed host to EPUB import context");
+            clean();FB::Doc* before=m_doc;const CString beforeXml=xml();const auto beforeRefs=NewDocumentRuntimeProbe::References(m_Speller);
+            cleanupUnwind=true;bool caught=false;
+            try { DocumentLifecycleController lifecycle(*this,m_doc,m_document_session,m_view);lifecycle.NewDocument(); }
+            catch(const _com_error&) {caught=true;}
+            cleanupUnwind=false;
+            require(caught&&m_doc==before&&FB::Doc::m_active_doc==before&&xml()==beforeXml&&NewDocumentRuntimeProbe::References(m_Speller)==beforeRefs,"RAII restores old active document on unwind");
+            require(cleanupCorrect&&cleanupBooks>0&&cleanupClosed>=3&&cleanupScriptFailures==2&&cleanupNativeFailures==1,"all cleanup contexts, closed hosts and exceptions checked");
+            CStringA contextEvidence;contextEvidence.Format("cleanup_books=%u;closed_hosts=%u;script_failures=%u;native_failures=%u\r\n",cleanupBooks,cleanupClosed,cleanupScriptFailures,cleanupNativeFailures);DWORD bytes=0;output.Write(contextEvidence,contextEvidence.GetLength(),&bytes);
+        }
         CStringA evidence;evidence.Format("prepared=%u;detached=%u;old_spell_refs=%u\r\n",prepared,detached,heldSpellerReferences);DWORD n=0;output.Write(evidence,evidence.GetLength(),&n);
         passed=true;details="new document preparation, detach, rollback and state PASS";
     }catch(const _com_error& error){CStringA code;code.Format(" hr=0x%08lX",static_cast<unsigned long>(error.Error()));details+=code;}
