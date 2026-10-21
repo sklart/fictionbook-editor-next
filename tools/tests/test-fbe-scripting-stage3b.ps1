@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [ValidateSet('portable','installed')][string]$Mode='portable',
@@ -59,7 +59,7 @@ function probeExportBinary(){aB(jB(e.SaveAllBinaries(@@EXPORT@@,"replace")).save
 function probeBrokenBinary(){rejectB(function(){e.GetBinaryInfo("png");});return "PASS";}
 function probePartialBinary(){var r=jB(e.SaveAllBinaries(@@EXPORT@@,"replace"));aB(r.errors===1&&r.saved===@@COUNT@@-1&&r.status==="error","corrupt partial export");return "PASS";}
 function readBinary(){try{
- aB(e.GetScriptingApiVersion()==="1.4.0"&&jB(e.GetScriptingCapabilities()).capabilities.binaryObjects,"binary API version/capability");
+ aB(e.GetScriptingApiVersion()==="1.5.0"&&jB(e.GetScriptingCapabilities()).capabilities.binaryObjects,"binary API version/capability");
  var selected=e.GetSelectionText(), html=e.GetSelectionHtml(), bookmark=e.CreateSelectionBookmark();
  aB(e.HasScriptingMethod("GetBinaryInfo")&&e.HasScriptingMethod("GenerateUniqueBinaryId")&&e.HasScriptingMethod("SaveAllBinaries"),"methods");
  aB(e.HasScriptingMethod("AddBinaryFromFile")&&e.HasScriptingMethod("ReplaceBinaryFromFile")&&e.HasScriptingMethod("RemoveBinary"),"mutation methods");

@@ -1,6 +1,6 @@
 # API пользовательских скриптов FictionBook Editor Next
 
-> **Актуальный публичный контракт: API 1.4.0, 99 методов** (`window.external`). Справочник составлен по исходному `IExternalHelper` (DISPID 1–35), таблице расширения DISPID 100–163 и документации `master` по состоянию на 20 октября 2026 года. Этапы 3Б и 3В по issue #45 включены; этап 3Г пока не реализован.
+> **Актуальный публичный контракт: API 1.5.0, 104 метода** (`window.external`). Справочник составлен по исходному `IExternalHelper` (DISPID 1–35), таблице расширения DISPID 100–168 и документации `master` по состоянию на 21 октября 2026 года. Этапы 3Б, 3В и 3Г по issue #45 включены.
 
 Скрипты выполняются внутри FBE Next под **Microsoft JScript/MSHTML**. `document` здесь — DOM активного представления, а **полный FB2/FBD XML** доступен отдельно через Source API. Расширение API не равно версии самого редактора: используйте `GetScriptingApiVersion()` / `HasScriptingMethod()`.
 
@@ -34,7 +34,7 @@ try {
 
 При использовании новых методов проверяйте их наличие, а вызовы, способные выдавать COM-ошибки, оборачивайте в `try/catch`. В старом MSHTML **глобальный объект `JSON` может отсутствовать**: строки JSON, возвращаемые API, обрабатывайте совместимым JSON-парсером; не применяйте `eval` к XML книги или произвольным внешним данным.
 
-## Оглавление: все 99 методов
+## Оглавление: все 104 метода
 
 Переходы привязаны к явным якорям `api-<имя>`; изменение формулировок заголовков не должно ломать ссылки.
 
@@ -79,6 +79,14 @@ try {
 - [`GetLastSourceDiagnostic`](#api-getlastsourcediagnostic)
 - [`ApplySourceText`](#api-applysourcetext)
 - [`ValidateCurrentDocument`](#api-validatecurrentdocument)
+
+### Сохранение и сериализация
+
+- [`SaveCurrentDocument`](#api-savecurrentdocument)
+- [`SaveCurrentDocumentAs`](#api-savecurrentdocumentas)
+- [`SaveDocumentCopy`](#api-savedocumentcopy)
+- [`SerializeCurrentDocument`](#api-serializecurrentdocument)
+- [`SaveSerializedDocumentCopy`](#api-saveserializeddocumentcopy)
 
 ### Выделение и закладки
 
@@ -202,11 +210,12 @@ try {
 | **1.2.0**, **143–146** | Проверка текущего документа, логирование, последняя ошибка API. |
 | **1.3.0**, **147–152** | Сведения о вложениях, свободный ID, добавление/замена/удаление с Undo и безопасный экспорт. |
 | **1.4.0**, **153–163** | Расширенные диалоги, текстовый/HTML-буфер обмена и стек строки состояния текущего скрипта. |
+| **1.5.0**, **164–168** | Сохранение текущей книги, Save As, независимые копии и сериализация без изменения документа. |
 
 > `GetProgramVersion()` сообщает версию приложения; `GetScriptingApiVersion()` — **версию API**. Проверка только номера приложения недостаточна.
 
 
-> **Как запускать примеры:** каждый блок «Пример → результат» — самостоятельный JS-скрипт с `function Run()`; сохраните его в отдельный `.js` и запустите внутри FBE Next. Не вставляйте сразу 88 функций `Run()` в один файл. Примеры, изменяющие книгу или создающие файлы, снабжены предупреждениями. Указанные пути, размеры и значения — образцы: реальные зависят от книги и окружения.
+> **Как запускать примеры:** каждый блок «Пример → результат» — самостоятельный JS-скрипт с `function Run()`; сохраните его в отдельный `.js` и запустите внутри FBE Next. Не вставляйте сразу все функции `Run()` в один файл. Примеры, изменяющие книгу или создающие файлы, снабжены предупреждениями. Указанные пути, размеры и значения — образцы: реальные зависят от книги и окружения.
 
 ## Справочник методов
 
@@ -218,7 +227,7 @@ try {
 
 Определяет версию расширенного интерфейса независимо от номера релиза редактора.
 
-**Результат:** Строка, в актуальной реализации — `"1.4.0"`.
+**Результат:** Строка, в актуальной реализации — `"1.5.0"`.
 
 **Особенности:** В старых версиях метода может не быть: для совместимости проверяйте вызов через `try/catch`.
 
@@ -232,7 +241,7 @@ function Run() {
 }
 ```
 
-**Ожидаемый результат:** Окно **«API скриптов: 1.4.0»** в актуальной реализации. Это не номер версии редактора.
+**Ожидаемый результат:** Окно **«API скриптов: 1.5.0»** в актуальной реализации. Это не номер версии редактора.
 
 <a id="api-hasscriptingmethod"></a>
 
@@ -255,7 +264,7 @@ function Run() {
 }
 ```
 
-**Ожидаемый результат:** **«Выделение: true; буфер обмена: true»** для API 1.4.0. Методы не вызываются, проверяется лишь их наличие.
+**Ожидаемый результат:** **«Выделение: true; буфер обмена: true»** для API 1.5.0. Методы не вызываются, проверяется лишь их наличие.
 
 <a id="api-getscriptingcapabilities"></a>
 
@@ -265,7 +274,7 @@ function Run() {
 
 **Результат:** JSON-строка с `schemaVersion`, `apiVersion` и `capabilities`.
 
-**Особенности:** В версии 1.4.0 доступны ключи: `scriptContext`, `environment`, `scriptSettings`, `fileDialogs`, `inputBoxEx`, `selection`, `documentUpdate`, `progress`, `textFiles`, `paths`, `documentValidation`, `logging`, `scriptingErrors`, `binaryReadExport`, `binaryObjects`, `extendedDialogs`, `clipboardText`, `clipboardHtml`, `statusStack`. Неизвестный ключ не считайте подтверждением возможности.
+**Особенности:** В версии 1.5.0 доступны ключи: `scriptContext`, `environment`, `scriptSettings`, `fileDialogs`, `inputBoxEx`, `selection`, `documentUpdate`, `progress`, `textFiles`, `paths`, `documentValidation`, `logging`, `scriptingErrors`, `binaryReadExport`, `binaryObjects`, `extendedDialogs`, `clipboardText`, `clipboardHtml`, `statusStack`, `documentSave`, `documentCopies`, `documentSerialization`. Неизвестный ключ не считайте подтверждением возможности.
 
 **Пример → результат**
 
@@ -277,7 +286,7 @@ function Run() {
 }
 ```
 
-**Ожидаемый результат:** JSON с `"apiVersion":"1.4.0"` и `"capabilities"`, включая `"selection":true`, `"progress":true`, `"scriptingErrors":true` и четыре возможности этапа 3В. Содержимое может расширяться в новых версиях.
+**Ожидаемый результат:** JSON с `"apiVersion":"1.5.0"` и `"capabilities"`, включая `"selection":true`, `"progress":true`, `"scriptingErrors":true` и возможности этапов 3В–3Г. Содержимое может расширяться в новых версиях.
 
 <a id="api-getcurrentscriptpath"></a>
 
@@ -2450,7 +2459,7 @@ function Run() {
 
 ### Совместимость с исходным COM-контрактом
 
-Исходный `IExternalHelper` сохраняет IID, типы, порядок vtable и DISPID **1–35**; методы API 1.0.0/1.1.0/1.2.0/1.3.0/1.4.0 доступны через аддитивный `IDispatch` с DISPID **100–163**. Старый typelib не объявляет новые функции, поэтому для вызовов из скриптов следует обращаться через динамический `window.external`, а не ожидать их наличия в прежнем статически типизированном интерфейсе. Вызовы с неверным числом или типами параметров отвергаются через COM-ошибки (`DISP_E_BADPARAMCOUNT`, `DISP_E_TYPEMISMATCH`), вне контекста — где применимо — `E_UNEXPECTED`.
+Исходный `IExternalHelper` сохраняет IID, типы, порядок vtable и DISPID **1–35**; методы API 1.0.0/1.1.0/1.2.0/1.3.0/1.4.0/1.5.0 доступны через аддитивный `IDispatch` с DISPID **100–168**. Старый typelib не объявляет новые функции, поэтому для вызовов из скриптов следует обращаться через динамический `window.external`, а не ожидать их наличия в прежнем статически типизированном интерфейсе. Вызовы с неверным числом или типами параметров отвергаются через COM-ошибки (`DISP_E_BADPARAMCOUNT`, `DISP_E_TYPEMISMATCH`), вне контекста — где применимо — `E_UNEXPECTED`.
 
 Сверяемые реализации: [`src/contracts/fbe.idl`](../src/contracts/fbe.idl), [`src/fbe/ExternalHelper.cpp`](../src/fbe/ExternalHelper.cpp), [`src/fbe/scripts/ScriptingApi.inl`](../src/fbe/scripts/ScriptingApi.inl), [`src/fbe/scripts/ScriptingStage2.inl`](../src/fbe/scripts/ScriptingStage2.inl) и [`src/fbe/scripts/ScriptingDiagnostics.inl`](../src/fbe/scripts/ScriptingDiagnostics.inl), [`src/fbe/scripts/ScriptingBinary.inl`](../src/fbe/scripts/ScriptingBinary.inl), [`src/fbe/scripts/ScriptBinaryDocument.h`](../src/fbe/scripts/ScriptBinaryDocument.h) и [`src/fbe/scripts/ScriptBinaryEdit.h`](../src/fbe/scripts/ScriptBinaryEdit.h).
 
@@ -2608,20 +2617,151 @@ window.external.ClearStatusBarText(); // true
 
 Сообщения родительского скрипта и системное состояние не удаляются; пустой стек допустим. Вне контекста — COM-ошибка. После очистки отображается актуальное состояние, а не сохранённая копия старой надписи. Прежний `SetStatusBarText` сохраняет своё действие; его временное сообщение становится видимым после снятия скриптового перекрытия.
 
+## Сохранение и сериализация API 1.5.0
+
+Все пять методов требуют контекст выполняющегося скрипта и открытый документ.
+Пакеты `BeginDocumentUpdate`, открытые Undo-группы и повторный вход в сохранение
+запрещены. Методы не открывают диалогов: выбор имени выполняется отдельным
+`SelectSaveFile()`. Ошибка передаётся COM HRESULT и остаётся доступной через
+`GetLastScriptingError()`; успешный вызов не очищает предыдущую ошибку.
+
+| Операция | Текущий путь и savepoint | Undo/Redo | Изменённый Source |
+|---|---|---|---|
+| Save / Save As | Обновляются после успешной записи | Сохраняются | Отказ до записи; сначала примените Source штатным переключением |
+| Copy / файловый экспорт | Сохраняются без изменений | Сохраняются | Читается актуальный Scintilla, без применения к Body |
+| Сериализация в строку | Сохраняются без изменений | Сохраняются | Читается актуальный Scintilla |
+
+Снимок использует штатный сериализатор FBE и MSXML6/SAX, включая проверку таблиц,
+FBD и бинарных данных. Невалидный Source отклоняется; старый Body вместо него
+не подставляется. Снимок не нормализует живой DOM, не меняет выделение, вид,
+кодировку и контрольные точки восстановления. Копия не обновляет MRU и рабочий
+каталог. Запись готовится во временном файле целевого каталога, проверяется по
+объёму и сбрасывается на диск перед созданием или заменой назначения.
+
+`overwrite=false` запрещает замену, в том числе при конкурентном создании файла.
+При ошибке замены завершённый временный результат может сохраняться для
+восстановления: Win32 `ReplaceFileW` не гарантирует полный откат всех отказных
+состояний. Не считайте исключение подтверждением, что файл гарантированно не
+затронут, если система сообщила частичный результат замены.
+
+Пути должны быть абсолютными, без встроенного NUL или альтернативного потока,
+с расширением `.fb2`/`.fbd`. На этом этапе действует ограничение обычных Win32
+путей `MAX_PATH`. ZIP/RAR не являются допустимым назначением копии.
+Совпадение с исходным файлом/контейнером проверяется также по идентичности файла
+Windows, включая hard link и пути через junction. Независимая копия исходного
+файла запрещена даже с `overwrite=true`.
+
+<a id="api-savecurrentdocument"></a>
+### `SaveCurrentDocument()`
+
+**DISPID:** 164. Без параметров → `true` после успешного сохранения.
+
+Сохраняет уже именованную книгу через `DocumentSaveController`. Для новой книги
+нужен Save As (`save-as-required`). Проверяет доступность и fingerprint файла;
+внешние изменения дают ошибку `document-modified-externally`. Для ZIP используется
+штатное обновление выбранной записи, сохраняются остальные записи, путь,
+occurrence и новый fingerprint. Обратная запись RAR не поддерживается
+(`save-not-supported`); используйте Save As в обычный файл.
+
+```javascript
+function Run() {
+    try { window.external.SaveCurrentDocument(); }
+    catch (e) { window.external.MsgBox(window.external.GetLastScriptingError()); }
+}
+```
+
+<a id="api-savecurrentdocumentas"></a>
+### `SaveCurrentDocumentAs(path, overwrite)`
+
+**DISPID:** 165. `path` — `BSTR`, `overwrite` — обязательный `VT_BOOL`; результат `true`.
+
+После записи обычного FB2/FBD новый файл становится текущим: обновляются путь,
+тип, session, fingerprint, savepoint, MRU, заголовок и статус. Save As из ZIP/RAR
+сохраняет исходный архив. Формат определяется расширением и проверяется до записи
+без удаления элементов. Для совпадающего с текущим файла действуют проверки Save;
+при `overwrite=false` существующее назначение отклоняется.
+
+```javascript
+function Run() {
+    window.external.SaveCurrentDocumentAs("D:\\Books\\Новое имя.fb2", false);
+}
+```
+
+<a id="api-savedocumentcopy"></a>
+### `SaveDocumentCopy(path, overwrite)`
+
+**DISPID:** 166. `path` — `BSTR`, `overwrite` — обязательный `VT_BOOL`; результат `true`.
+
+Сохраняет актуальную независимую копию в текущем типе FB2/FBD и кодировке.
+Расширение должно совпадать с типом; скрытого преобразования нет. Исходная книга,
+её имя, dirty-state, Undo/Redo и восстановление не меняются. Значение `true`
+не означает, что открытая книга стала сохранённой.
+
+```javascript
+function Run() {
+    window.external.SaveDocumentCopy("D:\\Books\\Копия.fb2", false);
+}
+```
+
+<a id="api-serializecurrentdocument"></a>
+### `SerializeCurrentDocument()`
+
+**DISPID:** 167. Без параметров → полный XML `BSTR`, с декларацией, description,
+всеми body, пространствами имён, ссылками и binary.
+
+Лимит результата — **8 МиБ UTF-16**, то есть 4 194 304 кодовых единицы.
+Превышение даёт COM-ошибку `message-too-long`, XML не обрезается.
+**Для крупных книг используйте файловый `SaveSerializedDocumentCopy()`**: его
+результат не передаёт XML в JScript и не ограничен строковым лимитом. Внутренняя
+память Win32 всё равно ограничена; ошибки выделения памяти отклоняют операцию.
+Файловый буфер ограничен 512 МиБ; это отдельный предел защиты памяти процесса.
+
+```javascript
+function Run() {
+    var xml = window.external.SerializeCurrentDocument();
+    window.external.MsgBox("Символов XML: " + xml.length);
+}
+```
+
+<a id="api-saveserializeddocumentcopy"></a>
+### `SaveSerializedDocumentCopy(path, optionsJson)`
+
+**DISPID:** 168. Оба параметра — `BSTR`; результат `true`.
+
+| Ключ JSON | Допустимые значения | По умолчанию |
+|---|---|---|
+| `format` | `current`, `fb2`, `fbd` | `current` |
+| `encoding` | `current`, `utf-8` | `current` |
+| `overwrite` | JSON boolean | `false` |
+
+Пустой объект допустим. Неизвестные/повторяющиеся ключи, другие значения и неверные
+типы отклоняются. Формат должен соответствовать расширению. Используются
+существующие структурные правила FBD: совместимый экспорт FB2→FBD сохраняет body,
+а не удаляет их; описание FBD без обязательного для FB2 body нельзя экспортировать
+в FB2 посредством выдуманного содержимого. Кодировка исходной книги не меняется.
+
+```javascript
+function Run() {
+    window.external.SaveSerializedDocumentCopy(
+        "D:\\Books\\Экспорт.fb2",
+        '{"format":"fb2","encoding":"utf-8","overwrite":false}'
+    );
+}
+```
+
 ## Запланировано, но не доступно для вызова
 
-Перечисленное ниже **не входит** в 99 методов и пока не должно попадать в основной указатель. Актуальный статус ведётся в [issue #45](https://github.com/sklart/fictionbook-editor-next/issues/45), который остаётся открытым для этапа 3Г.
+Перечисленное ниже **не входит** в 104 метода и пока не должно попадать в основной указатель. [Issue #45](https://github.com/sklart/fictionbook-editor-next/issues/45) остаётся открытым до финальной приёмки всех обязательных пунктов.
 
 | Направление | Планируемые методы |
 |---|---|
-| Сохранение книги | `SaveCurrentDocument`, `SaveCurrentDocumentAs`, `SaveDocumentCopy`, `SaveSerializedDocumentCopy` |
 | Отложено | `ProcessPendingUiEvents`, автоматический откат произвольных DOM-изменений |
 
 Другие задачи (например, интерфейс параметров карточек скриптов, issue #48) не следует трактовать как методы API `window.external`.
 
 ## Тестовые контуры в репозитории
 
-Для диагностики реализации используются адресные тесты `tools/tests/test-fbe-scripting-stage1.ps1`, `test-fbe-scripting-stage2.ps1`, `test-fbe-scripting-stage3a.ps1`, `test-fbe-scripting-stage3b.ps1`, `test-fbe-scripting-stage3c.ps1` и `test-fbe-typelib-runtime.ps1`. Группы этапов 2–3Б проверяют реальный JScript, Source/Body/Description, Undo, параметры вызова, диалоги и ошибки в пределах предусмотренных сценариев. Это не свидетельство полного тестирования всех пользовательских скриптов.
+Для диагностики реализации используются адресные тесты `tools/tests/test-fbe-scripting-stage1.ps1`, `test-fbe-scripting-stage2.ps1`, `test-fbe-scripting-stage3a.ps1`, `test-fbe-scripting-stage3b.ps1`, `test-fbe-scripting-stage3c.ps1`, `test-fbe-scripting-stage3d.ps1` и `test-fbe-typelib-runtime.ps1`. Группы этапов 2–3Б проверяют реальный JScript, Source/Body/Description, Undo, параметры вызова, диалоги и ошибки в пределах предусмотренных сценариев. Это не свидетельство полного тестирования всех пользовательских скриптов.
 
 Проверку нужно проводить отдельно для portable и installed. Запуск на Windows 7 SP1 нельзя считать подтверждённым только по анализу импортов: для этого необходим отдельный реальный прогон на Windows 7.
 
@@ -2951,4 +3091,4 @@ function Run() {
 | Г. Название FB2 | **Да**, одно Undo | Нет | `<book-title>Готово</book-title>` |
 | Д. Цитата | Нет | Да, только новый TXT | Текст выделения и метаданные |
 
-**Что проверять при адаптации:** наличие `HasScriptingMethod`, контекст запуска, режим редактора, отмену диалога, права на каталог, результат `false` и исключения COM. Методы группы Undo не обеспечивают автоматический транзакционный откат уже внесённых изменений; методы этапа 3Б в этих скриптах не используются, а этап 3Г пока не реализован.
+**Что проверять при адаптации:** наличие `HasScriptingMethod`, контекст запуска, режим редактора, отмену диалога, права на каталог, результат `false` и исключения COM. Методы группы Undo не обеспечивают автоматический транзакционный откат уже внесённых изменений; методы этапа 3Б в этих скриптах не используются, методы сохранения этапа 3Г вызываются отдельно.

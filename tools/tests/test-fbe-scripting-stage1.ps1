@@ -22,7 +22,7 @@ function Run() {
   stage1Assert(/^1\./.test(e.GetScriptingApiVersion()),"version");
   stage1Assert(!e.HasScriptingMethod("GetCurrentScriptPath\u0000other"),"embedded nul method");
   stage1Assert(e.HasScriptingMethod("BeginUndoUnit") && e.HasScriptingMethod("ApplySourceText"),"legacy lookup");
-  stage1Assert(!e.HasScriptingMethod("Nonexistent45") && !e.HasScriptingMethod("SaveDocumentCopy"),"unknown/deferred lookup");
+  stage1Assert(!e.HasScriptingMethod("Nonexistent45") && !e.HasScriptingMethod("ProcessPendingUiEvents"),"unknown/deferred lookup");
   stage1Assert(e.GetScriptingCapabilities().indexOf('"scriptContext":true')>=0,"capabilities");
   stage1Assert(self.toLowerCase()==@@OUTER@@.toLowerCase(),"outer path");
   stage1Assert(e.GetCurrentScriptName()=="outer.js","name");

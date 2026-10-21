@@ -189,6 +189,19 @@ jobs:
             }
           }
           ./tools/tests/test-status-bar-state.ps1
+      - name: Run scripting API 1.5 save and snapshot regression
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          foreach ($mode in 'portable','installed') {
+            foreach ($kind in 'fb2','fbd') {
+              ./tools/tests/test-fbe-scripting-stage3d.ps1 -FbeExe out/Release/FBE.exe -Mode $mode -DocumentType $kind
+            }
+          }
+          foreach ($container in 'zip','rar') {
+            ./tools/tests/test-fbe-scripting-stage3d.ps1 -FbeExe out/Release/FBE.exe -Container $container
+          }
+          ./tools/tests/test-fbe-scripting-stage3d.ps1 -FbeExe out/Release/FBE.exe -InputEncoding utf-16
       - name: Run real OLE Clipboard in a disposable user logon
         shell: pwsh
         run: |

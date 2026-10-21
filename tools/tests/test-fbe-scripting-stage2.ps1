@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [ValidateSet('portable','installed')][string]$Mode='portable', [int]$TimeoutSeconds=90)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
@@ -19,8 +19,8 @@ function select2(){var r=document.body.createTextRange();r.moveToElementText(par
 function Run(){try{
  var e=window.external,root=@@ROOT@@;
  var methods="CreateSelectionBookmark RestoreSelectionBookmark ReleaseSelectionBookmark GetSelectionText GetSelectionHtml GetSelectionInfo BeginDocumentUpdate EndDocumentUpdate BeginProgress SetProgress IsProgressCancelled EndProgress ReadTextFile WriteTextFile WriteTextFileEx FileExists DirectoryExists CreateDirectory CombinePath GetFileName GetDirectoryName GetExtension GetTempDirectory GetTempFileName".split(" ");
- assert2(e.GetScriptingApiVersion()==="1.4.0","version");for(var i=0;i<methods.length;i++)assert2(e.HasScriptingMethod(methods[i]),methods[i]);
- assert2(!e.HasScriptingMethod("ProcessPendingUiEvents")&&!e.HasScriptingMethod("SaveDocumentCopy"),"deferred methods");
+ assert2(e.GetScriptingApiVersion()==="1.5.0","version");for(var i=0;i<methods.length;i++)assert2(e.HasScriptingMethod(methods[i]),methods[i]);
+ assert2(!e.HasScriptingMethod("ProcessPendingUiEvents")&&e.HasScriptingMethod("SaveDocumentCopy"),"deferred/implemented methods");
  var path=e.CombinePath(root,"каталог\\данные.txt");assert2(e.CreateDirectory(e.GetDirectoryName(path)),"mkdir");
  assert2(e.DirectoryExists(e.GetDirectoryName(path))&&!e.FileExists(e.GetDirectoryName(path)),"directory kind");
  var text="Привет 😀\r\nsecond\u0000end";
@@ -100,7 +100,7 @@ function stage2ProgressEnd(){try{var e=window.external;assert2(e.EndProgress(sta
     $script | Set-Content (Join-Path $scripts 'stage2.js') -Encoding utf8
     'function Run(){var e=window.external;var rejected=false;try{e.EndDocumentUpdate(window.stage2OuterToken);}catch(error){rejected=true;}if(!rejected)throw new Error("foreign token accepted");e.BeginDocumentUpdate("unfinished",''{"suspendRedraw":true}'');e.BeginDocumentUpdate("unfinished nested",''{"suspendRedraw":true}'');paragraph2().innerText="child mutation";e.BeginProgress("Unfinished child progress",2);window.stage2ChildPrepared=true;throw new Error("intentional");}' | Set-Content (Join-Path $scripts 'child.js') -Encoding utf8
     'function Run(){var e=window.external;e.BeginDocumentUpdate("unfinished Source",''{"suspendRedraw":true}'');e.BeginDocumentUpdate("unfinished Source nested",''{"suspendRedraw":true}'');window.stage2SourcePrepared=true;throw new Error("intentional Source failure");}' | Set-Content (Join-Path $scripts 'source-child.js') -Encoding utf8
-    'function Run(){var e=window.external;if(e.GetCurrentScriptName()!=="entry.js"||e.GetScriptingApiVersion()!=="1.4.0"||!e.GetUUID())throw new Error("entry context");window.stage2EntryRuns=(window.stage2EntryRuns||0)+1;}function stage2EntryCount(){return String(window.stage2EntryRuns||0);}' | Set-Content (Join-Path $scripts 'entry.js') -Encoding utf8
+    'function Run(){var e=window.external;if(e.GetCurrentScriptName()!=="entry.js"||e.GetScriptingApiVersion()!=="1.5.0"||!e.GetUUID())throw new Error("entry context");window.stage2EntryRuns=(window.stage2EntryRuns||0)+1;}function stage2EntryCount(){return String(window.stage2EntryRuns||0);}' | Set-Content (Join-Path $scripts 'entry.js') -Encoding utf8
     [IO.File]::WriteAllText((Join-Path $scripts 'readonly.txt'),'original',[Text.UTF8Encoding]::new($false)); (Get-Item (Join-Path $scripts 'readonly.txt')).IsReadOnly=$true
     [IO.File]::WriteAllBytes((Join-Path $scripts 'invalid.txt'),[byte[]]@(0xff,0xff))
     [IO.File]::WriteAllBytes((Join-Path $scripts 'invalid16.txt'),[byte[]]@(0xff,0xfe,0x00,0xd8))

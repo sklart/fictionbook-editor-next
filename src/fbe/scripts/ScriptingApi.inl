@@ -48,14 +48,14 @@ HRESULT ExternalHelper::InvokeScriptingExtension(DISPID dispid, WORD flags, DISP
     const FbeScripts::ScriptExecutionContext* context = FbeScripts::CurrentExecutionContext();
     CString text;
     switch (dispid) {
-    case 100: value = L"1.4.0"; break;
+    case 100: value = L"1.5.0"; break;
     case 101: {
         DISPID id = DISPID_UNKNOWN; LPOLESTR name = argument.bstrVal;
         const bool exists = name && name[0] && name[0] != L'_' && wcslen(name) == ::SysStringLen(argument.bstrVal) &&
             SUCCEEDED(GetIDsOfNames(IID_NULL, &name, 1, LOCALE_USER_DEFAULT, &id));
         value = exists; break;
     }
-    case 102: value = L"{\"schemaVersion\":1,\"apiVersion\":\"1.4.0\",\"capabilities\":{\"scriptContext\":true,\"environment\":true,\"scriptSettings\":true,\"fileDialogs\":true,\"inputBoxEx\":true,\"selection\":true,\"documentUpdate\":true,\"progress\":true,\"textFiles\":true,\"paths\":true,\"documentValidation\":true,\"logging\":true,\"scriptingErrors\":true,\"binaryReadExport\":true,\"binaryObjects\":true,\"extendedDialogs\":true,\"clipboardText\":true,\"clipboardHtml\":true,\"statusStack\":true}}"; break;
+    case 102: value = L"{\"schemaVersion\":1,\"apiVersion\":\"1.5.0\",\"capabilities\":{\"scriptContext\":true,\"environment\":true,\"scriptSettings\":true,\"fileDialogs\":true,\"inputBoxEx\":true,\"selection\":true,\"documentUpdate\":true,\"progress\":true,\"textFiles\":true,\"paths\":true,\"documentValidation\":true,\"logging\":true,\"scriptingErrors\":true,\"binaryReadExport\":true,\"binaryObjects\":true,\"extendedDialogs\":true,\"clipboardText\":true,\"clipboardHtml\":true,\"statusStack\":true,\"documentSave\":true,\"documentCopies\":true,\"documentSerialization\":true}}"; break;
     case 103: value = context ? context->path : CString(); break;
     case 104:
         if (context) { const int slash = context->path.ReverseFind(L'\\'); if (slash >= 0) text = context->path.Left(slash + 1); }

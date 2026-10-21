@@ -23,7 +23,7 @@ function bad3c(f){var bad=false;try{f();}catch(e){bad=true;}a3c(bad,"missing COM
 function Run(){try{
  var names=["ShowMessage","SelectFromList","SelectMultipleFromList","ChooseColor","GetClipboardText","SetClipboardText","GetClipboardHtml","SetClipboardHtml","PushStatusBarText","PopStatusBarText","ClearStatusBarText"];
  for(var i=0;i<names.length;i++)a3c(ext.HasScriptingMethod(names[i]),names[i]);
- var caps=j3c(ext.GetScriptingCapabilities());a3c(ext.GetScriptingApiVersion()==="1.4.0"&&caps.apiVersion==="1.4.0"&&caps.capabilities.extendedDialogs&&caps.capabilities.clipboardText&&caps.capabilities.clipboardHtml&&caps.capabilities.statusStack,"version/capabilities");
+ var caps=j3c(ext.GetScriptingCapabilities());a3c(ext.GetScriptingApiVersion()==="1.5.0"&&caps.apiVersion==="1.5.0"&&caps.capabilities.extendedDialogs&&caps.capabilities.clipboardText&&caps.capabilities.clipboardHtml&&caps.capabilities.statusStack,"version/capabilities");
  a3c(j3c(ext.SelectFromList("{}")).status==="error","missing items");
  a3c(j3c(ext.SelectFromList('{"items":[{"id":"a","label":"a"},{"id":"a","label":"b"}]}')).status==="error","duplicate ID");
  a3c(j3c(ext.SelectFromList('{"items":[{"id":"a","label":"a"}],"selectedId":"absent"}')).status==="error","absent ID");

@@ -62,5 +62,13 @@ int wmain()
     Write(file, L"old1177-no-backup"); Write(temp, L"new1177-no-backup"); keep = false;
     try { FbeBackupFileCommit::CommitSavedFile(temp.c_str(), file.c_str(), false, FailUnableToMoveReplacement2, &keep); Require(false); } catch (const _com_error&) { }
     Require(keep && !Exists(file) && !Exists(file + L".bak") && Read(temp) == L"new1177-no-backup" && Read(g_replacedFile) == L"old1177-no-backup");
+    Remove(file);
+    Write(temp, L"create-only");keep = false;
+    FbeBackupFileCommit::CommitSavedFile(temp.c_str(), file.c_str(), false, ::ReplaceFileW, &keep, false);
+    Require(!keep && Read(file) == L"create-only");
+    Write(temp, L"competing-result");keep = false;
+    try { FbeBackupFileCommit::CommitSavedFile(temp.c_str(), file.c_str(), false, ::ReplaceFileW, &keep, false); Require(false); }
+    catch (const _com_error&) { }
+    Require(keep && Read(file) == L"create-only" && Read(temp) == L"competing-result");
     Remove(file); return 0;
 }

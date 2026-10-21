@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [ValidateSet('portable','installed')][string]$Mode='portable',
@@ -27,12 +27,12 @@ function error3(){return json3(window.external.GetLastScriptingError());}
 function Run(){try{
  var e=window.external;
  if(@@MISSING@@){for(var failureIndex=0;failureIndex<3;failureIndex++){var failed=json3(e.ValidateCurrentDocument("{}"));assert3(failed.status==="error"&&failed.valid===null&&failed.errors[0].code==="validation-unavailable","technical validation failure "+failureIndex);assert3(error3().method==="ValidateCurrentDocument","technical error context");}result3="PASS";return;}
- assert3(e.GetScriptingApiVersion()==="1.4.0","version");
+ assert3(e.GetScriptingApiVersion()==="1.5.0","version");
  var methods=["ValidateCurrentDocument","LogMessage","GetLastScriptingError","ClearLastScriptingError"];
  for(var i=0;i<methods.length;i++)assert3(e.HasScriptingMethod(methods[i]),methods[i]);
  var capabilities=json3(e.GetScriptingCapabilities()).capabilities;
  assert3(capabilities.documentValidation&&capabilities.logging&&capabilities.scriptingErrors,"capabilities");
- assert3(!e.HasScriptingMethod("SaveDocumentCopy")&&e.HasScriptingMethod("GetBinaryInfo"),"later stages unavailable");
+ assert3(e.HasScriptingMethod("SaveDocumentCopy")&&e.HasScriptingMethod("GetBinaryInfo"),"later stages available");
  assert3(!error3().hasError,"fresh context");
  rejects3(function(){e.ValidateCurrentDocument();}); assert3(error3().code==="bad-parameter-count","argument count");
  rejects3(function(){e.ValidateCurrentDocument(0);}); assert3(error3().code==="type-mismatch","argument type");

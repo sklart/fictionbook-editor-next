@@ -50,7 +50,16 @@ DocumentSaveResult DocumentSaveController::SaveCurrentSnapshot(DocumentSession& 
 		if (!UpdateDocumentLocationFingerprint(saved)) _com_issue_error(HRESULT_FROM_WIN32(::GetLastError()));
 		session.SavedArchive(saved);
 	} else {
-		WriteSnapshot(bytes, location.storagePath, true, _Settings.GetCreateBackupFile());
+		// Deny concurrent writers while checking and committing the normal file.
+		// Sharing DELETE permits the atomic replacement of this directory entry.
+		HANDLE source = ::CreateFileW(location.storagePath, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_DELETE,
+			NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (source == INVALID_HANDLE_VALUE) _com_issue_error(HRESULT_FROM_WIN32(::GetLastError()));
+		try {
+			if (IsDocumentLocationModified(location)) _com_issue_error(HRESULT_FROM_WIN32(ERROR_FILE_INVALID));
+			WriteSnapshot(bytes, location.storagePath, true, _Settings.GetCreateBackupFile());
+		} catch (...) {::CloseHandle(source);throw;}
+		::CloseHandle(source);
 		if (!UpdateDocumentLocationFingerprint(saved)) _com_issue_error(HRESULT_FROM_WIN32(::GetLastError()));
 		session.OpenNormal(saved.storagePath, saved.documentType);
 	}

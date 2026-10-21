@@ -3,6 +3,7 @@
 #include "ScriptDocumentResources.h"
 #include "ScriptExtendedDialogs.h"
 #include "../document/DocumentSaveController.h"
+#include "../../common/fb2/Fb2BinaryInspector.h"
 
 namespace FbeScripts { namespace DocumentSave {
 struct Options { CString format = L"current", encoding = L"current"; bool overwrite = false; };
@@ -38,8 +39,12 @@ inline Options Parse(BSTR source)
 inline CString Path(BSTR raw)
 {
     CString value(raw, ::SysStringLen(raw));
+    const bool driveAbsolute = value.GetLength() >= 3 &&
+        ((value[0] >= L'A' && value[0] <= L'Z') || (value[0] >= L'a' && value[0] <= L'z')) &&
+        value[1] == L':' && (value[2] == L'\\' || value[2] == L'/');
+    const bool uncAbsolute = value.Left(2) == L"\\\\" && value.Mid(2, 2) != L"?\\" && value.Mid(2, 2) != L".\\";
     if (!ExtendedDialogs::ValidText(value, MAX_PATH - 16) || value.IsEmpty() || ::PathIsRelativeW(value) ||
-        value.Find(L':', 2) >= 0) CheckError(E_INVALIDARG);
+        (!driveAbsolute && !uncAbsolute) || value.Find(L':', 2) >= 0) CheckError(E_INVALIDARG);
     wchar_t full[MAX_PATH] = {};
     const DWORD length = ::GetFullPathNameW(value, _countof(full), full, NULL);
     if (!length) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
@@ -75,6 +80,23 @@ inline std::vector<unsigned char> Bytes(MSXML2::IXMLDOMDocument2Ptr snapshot)
     ULONG read = 0;CheckError(stream->Read(bytes.data(), static_cast<ULONG>(bytes.size()), &read));
     if (read != bytes.size()) CheckError(HRESULT_FROM_WIN32(ERROR_READ_FAULT));
     return bytes;
+}
+inline void ValidateBinaries(MSXML2::IXMLDOMDocument2Ptr snapshot)
+{
+    snapshot->setProperty(L"SelectionNamespaces", _variant_t(L"xmlns:fb='http://www.gribuser.ru/xml/fictionbook/2.0' xmlns:l='http://www.w3.org/1999/xlink'"));
+    std::set<std::wstring> ids;
+    const auto binaries = snapshot->selectNodes(L"/fb:FictionBook/fb:binary");
+    for (long i = 0; i < binaries->length; ++i) {
+        const auto node = binaries->item[i];const auto id = node->attributes->getNamedItem(L"id");
+        if (!id || !ids.emplace(static_cast<LPCWSTR>(id->text)).second) CheckError(E_INVALIDARG);
+        std::vector<std::uint8_t> bytes;
+        if (!FbeFb2Binary::DecodeBase64(static_cast<LPCWSTR>(node->text), bytes) || bytes.empty()) CheckError(E_INVALIDARG);
+    }
+    const auto images = snapshot->selectNodes(L"//fb:image/@l:href");
+    for (long i = 0; i < images->length; ++i) {
+        const CString href = static_cast<LPCWSTR>(images->item[i]->text);
+        if (href.IsEmpty() || href[0] != L'#' || !ids.count(std::wstring(href.Mid(1)))) CheckError(E_INVALIDARG);
+    }
 }
 inline void CheckContext(FB::Doc* doc)
 {

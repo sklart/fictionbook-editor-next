@@ -57,6 +57,7 @@
                 bool valid = false;int line = 0, column = 0;
                 CheckError(m_doc->ValidateForScripting(xml, valid, line, column, message, target));
                 if (!valid) CheckError(E_INVALIDARG);
+                FbeScripts::DocumentSave::ValidateBinaries(snapshot);
                 if (method == 167) {
                     if (xml.length() > 4U * 1024 * 1024) CheckError(HRESULT_FROM_WIN32(ERROR_BUFFER_OVERFLOW));
                     request->returnValue = static_cast<LPCWSTR>(xml);
