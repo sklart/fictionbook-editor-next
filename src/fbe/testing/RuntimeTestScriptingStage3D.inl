@@ -52,6 +52,19 @@ if (IsFbeTestScenario(L"scripting-stage3d")) {
         m_source.SendMessage(SCI_SETTEXT, 0, reinterpret_cast<LPARAM>("<invalid>"));
         invoke(L"invalidSource3d");
         if (FbeScripts::SourceBytes(m_source) != "<invalid>") CheckError(E_FAIL);
+        m_source.SendMessage(SCI_SETTEXT, 0, reinterpret_cast<LPARAM>(source.c_str()));
+        m_source.SendMessage(SCI_SETSAVEPOINT);ShowView(BODY);
+        const auto beforeSaveUndo = history(false), beforeSaveRedo = history(true);
+        invoke(L"saves3d");
+        if (DocChanged() || m_doc->m_filename.Find(L"saveas.") < 0 ||
+            m_document_session.Location().storagePath != m_doc->m_filename ||
+            beforeSaveUndo != history(false) || beforeSaveRedo != history(true)) {details = "Save state/history";CheckError(E_FAIL);}
+        const CString savedPath = m_doc->m_filename;
+        HANDLE locked = ::CreateFileW(savedPath, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (locked == INVALID_HANDLE_VALUE) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
+        try {invoke(L"saveFailure3d");} catch (...) {::CloseHandle(locked);throw;}
+        ::CloseHandle(locked);
+        if (m_doc->m_filename != savedPath || beforeSaveUndo != history(false) || beforeSaveRedo != history(true)) CheckError(E_FAIL);
         passed = true;details = "read-only snapshots, copies, current Source and invalid Source PASS";
     } catch (const _com_error& error) {CStringA code;code.Format(" hr=0x%08lX", static_cast<unsigned long>(error.Error()));details += code;}
     catch (...) {details = "native exception";}

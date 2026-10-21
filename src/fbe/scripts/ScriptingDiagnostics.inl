@@ -18,6 +18,10 @@ inline LPCWSTR ApiErrorCode(HRESULT error)
     if (error == DISP_E_MEMBERNOTFOUND) return L"method-not-supported";
     if (error == E_UNEXPECTED) return L"context-unavailable";
     if (error == E_OUTOFMEMORY) return L"out-of-memory";
+    if (error == HRESULT_FROM_WIN32(ERROR_INVALID_NAME)) return L"save-as-required";
+    if (error == HRESULT_FROM_WIN32(ERROR_INVALID_STATE)) return L"source-changes-must-be-applied";
+    if (error == HRESULT_FROM_WIN32(ERROR_FILE_INVALID)) return L"document-modified-externally";
+    if (error == HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED)) return L"save-not-supported";
     if (error == HRESULT_FROM_WIN32(ERROR_BUFFER_OVERFLOW)) return L"message-too-long";
     if (error == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND)) return L"file-not-found";
     if (error == HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND)) return L"path-not-found";

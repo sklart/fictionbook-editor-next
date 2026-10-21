@@ -33,12 +33,22 @@ function copies3d(){try{
 function blocked3d(){try{var token=ext.BeginDocumentUpdate("blocked save",'{}');try{fails3d(function(){ext.SerializeCurrentDocument();});}finally{ext.EndDocumentUpdate(token);}return "PASS";}catch(e){return String(e.message||e);}}
 function source3d(){try{
  var xml=ext.SerializeCurrentDocument();check3d(xml.indexOf("SourceCurrent")>=0&&xml.indexOf("API3D")<0,"stale Body export");
- check3d(ext.SaveDocumentCopy(root+"\\source."+suffix,false),"Source copy");return "PASS";
+ check3d(ext.SaveDocumentCopy(root+"\\source."+suffix,false),"Source copy");
+ fails3d(function(){ext.SaveCurrentDocument();});fails3d(function(){ext.SaveCurrentDocumentAs(root+"\\source-save."+suffix,false);});
+ check3d(!ext.FileExists(root+"\\source-save."+suffix),"Source Save As created file");return "PASS";
 }catch(e){return String(e.message||e);}}
 function invalidSource3d(){try{
  fails3d(function(){ext.SerializeCurrentDocument();});fails3d(function(){ext.SaveDocumentCopy(root+"\\invalid."+suffix,false);});
  check3d(!ext.FileExists(root+"\\invalid."+suffix),"invalid Source created a file");return "PASS";
 }catch(e){return String(e.message||e);}}
+function saves3d(){try{
+ check3d(ext.SaveCurrentDocument(),"current save");
+ check3d(ext.SaveCurrentDocumentAs(root+"\\saveas."+suffix,false),"save as");
+ fails3d(function(){ext.SaveCurrentDocumentAs(root+"\\saveas."+suffix,false);});
+ fails3d(function(){ext.SaveDocumentCopy(root+"\\saveas."+suffix,true);});
+ check3d(ext.SaveCurrentDocument(),"save after save as");return "PASS";
+}catch(e){return String(e.message||e);}}
+function saveFailure3d(){try{fails3d(function(){ext.SaveCurrentDocument();});return "PASS";}catch(e){return String(e.message||e);}}
 '@
     $script=$script.Replace('@@ROOT@@',($root|ConvertTo-Json -Compress)).Replace('@@TYPE@@',($DocumentType|ConvertTo-Json -Compress))
     $script | Set-Content (Join-Path $root 'stage3d.js') -Encoding utf8

@@ -41,7 +41,9 @@ inline CString Path(BSTR raw)
     if (!ExtendedDialogs::ValidText(value, MAX_PATH - 16) || value.IsEmpty() || ::PathIsRelativeW(value) ||
         value.Find(L':', 2) >= 0) CheckError(E_INVALIDARG);
     wchar_t full[MAX_PATH] = {};
-    if (!::GetFullPathNameW(value, _countof(full), full, NULL)) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
+    const DWORD length = ::GetFullPathNameW(value, _countof(full), full, NULL);
+    if (!length) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
+    if (length >= _countof(full)) CheckError(HRESULT_FROM_WIN32(ERROR_FILENAME_EXCED_RANGE));
     value = full;
     const CString extension = ::PathFindExtensionW(value);
     if (extension.CompareNoCase(L".fb2") && extension.CompareNoCase(L".fbd")) CheckError(E_INVALIDARG);
