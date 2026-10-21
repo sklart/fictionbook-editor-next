@@ -109,4 +109,3 @@ function sourceInvalid(){try{var message=executeDoc("source-export");assertDoc(m
     foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$old[$name])}
     Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed
 }
-

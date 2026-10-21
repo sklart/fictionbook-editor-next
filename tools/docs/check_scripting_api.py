@@ -113,6 +113,8 @@ def main() -> int:
         expected_methods(read('src/contracts/fbe.idl'), read('src/fbe/ExternalHelper.cpp')))
     if result['example_errors']:
         result['status'] = 'FAIL'
+    result['scope'] = ('Static names, counts, version, capabilities, navigation and example '
+                       'structure/call arity; no runtime, ABI or example execution.')
     data = json.dumps(result, ensure_ascii=False, indent=2) + '\n'
     print(data, end='')
     if args.json:
