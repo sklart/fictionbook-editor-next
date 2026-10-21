@@ -97,6 +97,35 @@ if (IsFbeTestScenario(L"scripting-stage3d")) {
         invoke(L"source3d");
         if (!IsSourceActive() || FbeScripts::SourceBytes(m_source) != changed || m_source.SendMessage(SCI_GETANCHOR) != 13 ||
             m_source.SendMessage(SCI_GETCURRENTPOS) != 23 || !m_source.SendMessage(SCI_GETMODIFY)) {details = "Source changed during export";CheckError(E_FAIL);}
+        std::string declared = changed;
+        const size_t declarationEncoding = declared.find("encoding=\"");
+        if (declarationEncoding == std::string::npos) CheckError(E_FAIL);
+        const size_t encodingStart = declarationEncoding + strlen("encoding=\"");
+        const size_t encodingEnd = declared.find('"', encodingStart);
+        if (encodingEnd == std::string::npos) CheckError(E_FAIL);
+        declared.replace(encodingStart, encodingEnd-encodingStart, "utf-16");
+        m_source.SendMessage(SCI_SETTEXT, 0, reinterpret_cast<LPARAM>(declared.c_str()));
+        // Keep a real redo action across export, then exercise it afterwards.
+        m_source.SendMessage(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("\n"));m_source.SendMessage(SCI_UNDO);
+        m_source.SendMessage(SCI_SETSEL, 13, 23);
+        const UINT sourceMessages[] = {SCI_GETMODIFY,SCI_CANUNDO,SCI_CANREDO,SCI_GETUNDOACTIONS,SCI_GETUNDOCURRENT,SCI_GETUNDOSAVEPOINT};
+        auto sourceState = [&]() {std::vector<LRESULT> result;for (UINT msg : sourceMessages) result.push_back(m_source.SendMessage(msg));return result;};
+        const auto sourceBefore = sourceState();const auto sourceUndo = history(false), sourceRedo = history(true);
+        const auto sourceVersion = m_doc->m_body.GetVersionNumber();const bool sourceDirty = DocChanged();
+        invoke(L"encoding3d");
+        if (FbeScripts::SourceBytes(m_source) != declared || sourceBefore != sourceState() ||
+            sourceUndo != history(false) || sourceRedo != history(true) || sourceDirty != DocChanged() ||
+            sourceVersion != m_doc->m_body.GetVersionNumber() || encoding != m_doc->m_encoding ||
+            m_source.SendMessage(SCI_GETANCHOR) != 13 || m_source.SendMessage(SCI_GETCURRENTPOS) != 23) CheckError(E_FAIL);
+        m_source.SendMessage(SCI_REDO);if (FbeScripts::SourceBytes(m_source) != declared + "\n") CheckError(E_FAIL);
+        m_source.SendMessage(SCI_UNDO);if (FbeScripts::SourceBytes(m_source) != declared) CheckError(E_FAIL);
+        for (const char* invalidEncoding : {"fbe-unsupported-encoding", "utf 16"}) {
+            std::string invalidDeclaration = declared;
+            invalidDeclaration.replace(encodingStart, strlen("utf-16"), invalidEncoding);
+            m_source.SendMessage(SCI_SETTEXT, 0, reinterpret_cast<LPARAM>(invalidDeclaration.c_str()));
+            invoke(L"invalidSource3d");
+            if (FbeScripts::SourceBytes(m_source) != invalidDeclaration || encoding != m_doc->m_encoding) CheckError(E_FAIL);
+        }
         m_source.SendMessage(SCI_SETTEXT, 0, reinterpret_cast<LPARAM>("<invalid>"));
         invoke(L"invalidSource3d");
         if (FbeScripts::SourceBytes(m_source) != "<invalid>") CheckError(E_FAIL);
@@ -171,9 +200,21 @@ if (IsFbeTestScenario(L"scripting-stage3d")) {
             std::sort(result.begin(), result.end());return result;
         };
         const auto expectedPayloads = payloads(stored);const auto expectedReferences = references(stored);
+        // All original-state assertions are complete. Opening another fixture
+        // must not wait on a save prompt for the outgoing synthetic document.
+        m_doc->MarkSavePoint();m_source.SendMessage(SCI_SETSAVEPOINT);
         if (LoadFile(copyPath) != OK) CheckError(E_FAIL);
         CString snapshotError;auto reopened = m_doc->CreateScriptingSnapshot(m_doc->m_encoding, snapshotError);
         if (!reopened || payloads(reopened) != expectedPayloads || references(reopened) != expectedReferences) CheckError(E_FAIL);
+        for (const wchar_t* name : {L"source-utf16", L"source-utf8"}) {
+            const CString encodedPath = CString(root.data()) + L"\\" + name +
+                (m_doc->GetDocumentFileType() == FictionBookFileType::Fbd ? L".fbd" : L".fb2");
+            m_doc->MarkSavePoint();m_source.SendMessage(SCI_SETSAVEPOINT);
+            if (LoadFile(encodedPath) != OK) CheckError(E_FAIL);
+            auto encoded = m_doc->CreateScriptingSnapshot(m_doc->m_encoding, snapshotError);
+            if (!encoded || CString(static_cast<LPCWSTR>(encoded->xml)).Find(L"SourceCurrent") < 0 ||
+                m_doc->m_encoding.CompareNoCase(!wcscmp(name, L"source-utf16") ? L"utf-16" : L"utf-8")) CheckError(E_FAIL);
+        }
         passed = true;details = "read-only snapshots, copies, current Source and invalid Source PASS";
     } catch (const _com_error& error) {CStringA code;code.Format(" hr=0x%08lX", static_cast<unsigned long>(error.Error()));details += code;}
     catch (...) {details = "native exception";}

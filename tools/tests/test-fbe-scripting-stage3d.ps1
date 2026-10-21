@@ -93,8 +93,14 @@ function source3d(){try{
  fails3d(function(){ext.SaveCurrentDocument();});fails3d(function(){ext.SaveCurrentDocumentAs(root+"\\source-save."+suffix,false);});
  check3d(!ext.FileExists(root+"\\source-save."+suffix),"Source Save As created file");return "PASS";
 }catch(e){return String(e.message||e);}}
+function encoding3d(){try{
+ var xml=ext.SerializeCurrentDocument();check3d(/encoding="utf-16"/i.test(xml),"Serialize ignored Source encoding");
+ check3d(ext.SaveSerializedDocumentCopy(root+"\\source-utf16."+suffix,'{"encoding":"current"}'),"Source UTF-16 export");
+ check3d(ext.SaveSerializedDocumentCopy(root+"\\source-utf8."+suffix,'{"encoding":"utf-8"}'),"Source explicit UTF-8 export");return "PASS";
+}catch(e){return String(e.message||e);}}
 function invalidSource3d(){try{
  fails3d(function(){ext.SerializeCurrentDocument();});fails3d(function(){ext.SaveDocumentCopy(root+"\\invalid."+suffix,false);});
+ fails3d(function(){ext.SaveSerializedDocumentCopy(root+"\\invalid."+suffix,'{"encoding":"current"}');});
  check3d(!ext.FileExists(root+"\\invalid."+suffix),"invalid Source created a file");return "PASS";
 }catch(e){return String(e.message||e);}}
 function saves3d(){try{
@@ -143,6 +149,18 @@ function large3d(){try{fails3d(function(){ext.SerializeCurrentDocument();});chec
     if(@(Get-ChildItem -LiteralPath $root -Filter 'fbs*.tmp').Count){throw 'Unused snapshot temporary file remains'}
     [xml]$copy=Get-Content (Join-Path $root "copy.$DocumentType") -Raw
     [xml]$source=Get-Content (Join-Path $root "source.$DocumentType") -Raw
+    foreach($encoding in 'utf16','utf8') {
+        $encodedPath=Join-Path $root "source-$encoding.$DocumentType"
+        $bytes=[IO.File]::ReadAllBytes($encodedPath)
+        if($encoding -eq 'utf16') {
+            if($bytes.Length -lt 2 -or $bytes[0] -ne 255 -or $bytes[1] -ne 254){throw 'UTF-16 bytes/BOM mismatch'}
+            $decoded=[Text.UnicodeEncoding]::new($false,$true,$true).GetString($bytes)
+            $expected='utf-16'
+        } else {$decoded=[Text.UTF8Encoding]::new($false,$true).GetString($bytes);$expected='utf-8'}
+        if($decoded -notmatch ('encoding="'+$expected+'"') -or $decoded -notmatch 'SourceCurrent'){throw 'Source byte encoding/declaration mismatch'}
+        $reloaded=[Xml.XmlDocument]::new();$reloaded.Load($encodedPath)
+        if($reloaded.DocumentElement.InnerText -notmatch 'SourceCurrent'){throw 'Encoded Source reopen failed'}
+    }
     if($Container -eq 'normal') {
         if($copy.FirstChild.Value -notmatch ('encoding="'+$InputEncoding+'"')) {throw 'Current encoding changed in copy'}
         [xml]$export=Get-Content (Join-Path $root "export.$DocumentType") -Raw
@@ -172,7 +190,7 @@ function large3d(){try{fails3d(function(){ext.SerializeCurrentDocument();});chec
         $settings=[Xml.XmlReaderSettings]::new();$settings.ValidationType=[Xml.ValidationType]::Schema
         $settings.Schemas.XmlResolver=[Xml.XmlUrlResolver]::new()
         $null=$settings.Schemas.Add('http://www.gribuser.ru/xml/fictionbook/2.0',(Join-Path $iso.Root 'FictionBook.xsd'));$settings.Schemas.Compile()
-        foreach($name in 'copy.fb2','export.fb2','source.fb2','description.fb2','saveas.fb2','large.fb2') {
+        foreach($name in 'copy.fb2','export.fb2','source.fb2','source-utf16.fb2','source-utf8.fb2','description.fb2','saveas.fb2','large.fb2') {
             $candidate=Join-Path $root $name
             if(Test-Path $candidate) {$reader=[Xml.XmlReader]::Create($candidate,$settings);try{while($reader.Read()){}}finally{$reader.Close()}}
         }

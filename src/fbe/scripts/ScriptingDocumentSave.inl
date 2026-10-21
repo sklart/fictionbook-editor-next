@@ -42,6 +42,10 @@
                     if (std::find(source.utf8.begin(), source.utf8.end()-1, '\0') != source.utf8.end()-1) CheckError(E_INVALIDARG);
                     if (!source.utf8.empty() && !::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, source.utf8.data(),
                         static_cast<int>(source.utf8.size()-1), NULL, 0)) CheckError(E_INVALIDARG);
+                    if (options.encoding == L"current") {
+                        const CString declared = SourceDocumentTransfer::ExtractXmlDeclarationEncoding(source.text);
+                        if (!declared.IsEmpty()) encoding = declared;
+                    }
                     snapshot = U::CreateDocument(false);
                     snapshot->setProperty(L"ProhibitDTD", _variant_t(true));
                     snapshot->resolveExternals = VARIANT_FALSE;
@@ -53,6 +57,15 @@
                 if (first && first->nodeType == MSXML2::NODE_PROCESSING_INSTRUCTION && !wcscmp(first->nodeName, L"xml")) snapshot->removeChild(first);
                 const auto declaration = snapshot->createProcessingInstruction(L"xml", _bstr_t(L"version=\"1.0\" encoding=\"" + encoding + L"\""));
                 snapshot->insertBefore(declaration, _variant_t(static_cast<IDispatch*>(snapshot->firstChild.GetInterfacePtr())));
+                if (IsSourceActive()) {
+                    if (!SourceDocumentTransfer::IsSupportedXmlEncoding(encoding)) CheckError(E_INVALIDARG);
+                    // loadXML accepts Unicode text independently of its declared
+                    // byte encoding. Ask the same MSXML writer used for copies
+                    // to validate that encoding, also for the BSTR-only API.
+                    auto probe = U::CreateDocument(false);
+                    if (probe->loadXML(_bstr_t(L"<?xml version=\"1.0\" encoding=\"" + encoding + L"\"?><probe/>")) != VARIANT_TRUE) CheckError(E_INVALIDARG);
+                    FbeScripts::DocumentSave::Bytes(probe);
+                }
                 const _bstr_t xml = snapshot->xml;
                 bool valid = false;int line = 0, column = 0;
                 CheckError(m_doc->ValidateForScripting(xml, valid, line, column, message, target));

@@ -62,6 +62,7 @@ public:
 	static SourceDocumentApplyResult ApplySourceDocument(FB::Doc& document,
 		const SourceDocumentText& source, bool sourceChanged,
 		MSXML2::IXMLDOMDocumentPtr& cachedXml, const CString& interfaceLanguage);
+	static bool IsSupportedXmlEncoding(const CString& encoding);
 	static CString ExtractXmlDeclarationEncoding(const CString& xmlText);
 	static int SkipXmlMarkupForward(const CString& sourceXml, int position);
 	static int SkipXmlMarkupBackward(const CString& sourceXml, int position);

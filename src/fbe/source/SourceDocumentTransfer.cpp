@@ -5,6 +5,7 @@
 #include "../FBDoc.h"
 #include "../StartupTrace.h"
 #include "../XmlDeclaration.h"
+#include <mlang.h>
 #include "BodySourceSelectionTransfer.h"
 
 SourceTransitionResult SourceDocumentTransfer::ReadSourceText(CWindow& source, SourceDocumentText& result)
@@ -124,6 +125,24 @@ SourceDocumentApplyResult SourceDocumentTransfer::ApplySourceDocument(FB::Doc& d
 	result.result = SourceTransitionResult::Success;
 	result.documentChanged = true;
 	return result;
+}
+
+bool SourceDocumentTransfer::IsSupportedXmlEncoding(const CString& encoding)
+{
+	// XML EncName is ASCII, independent of the current Windows locale.
+	for (int i = 0; i < encoding.GetLength(); ++i) {
+		const wchar_t c = encoding[i];
+		const bool letter = (c >= L'A' && c <= L'Z') || (c >= L'a' && c <= L'z');
+		if (!letter && (i == 0 || !((c >= L'0' && c <= L'9') || c == L'.' || c == L'_' || c == L'-'))) return false;
+	}
+	if (encoding.IsEmpty()) return false;
+	CComPtr<IMultiLanguage2> languages;
+	if (FAILED(languages.CoCreateInstance(CLSID_CMultiLanguage))) return false;
+	MIMECSETINFO charset = {};
+	return SUCCEEDED(languages->GetCharsetInfo(CComBSTR(encoding), &charset)) &&
+		// UTF-16 is handled by MSXML, rather than the Win32 byte-codepage API.
+		(charset.uiInternetEncoding == 1200 || charset.uiInternetEncoding == 1201 ||
+		 ::IsValidCodePage(charset.uiInternetEncoding));
 }
 
 CString SourceDocumentTransfer::ExtractXmlDeclarationEncoding(const CString& xmlText)
