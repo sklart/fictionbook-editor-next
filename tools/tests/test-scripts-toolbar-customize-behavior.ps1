@@ -216,7 +216,8 @@ foreach ($dpi in @(96, 192, 96)) {
 if ($dialogHeader -notmatch 'BOOL PreTranslateMessage\(MSG\* message\)' -or $dialog -notmatch "message->wParam == 'F'") {
     throw 'Ctrl+F must be handled before the focused child control consumes it.'
 }
-foreach($required in @('ImageList_GetIconSize', 'const int leftPadding = Scale(8), iconGap = Scale(8), rightPadding = Scale(8);', 'int iconArea = Scale(20);', 'rect.top + (rect.Height() - iconHeight) / 2', 'DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS', 'separator ? DT_CENTER : 0', 'itemHeight = Scale(28)')) {
+& (Join-Path $PSScriptRoot 'test-toolbar-customize-row-metrics.ps1')
+foreach($required in @('ImageList_GetIconSize', 'const int leftPadding = Scale(8), iconGap = Scale(8), rightPadding = Scale(8);', 'int iconArea = Scale(20);', 'rect.top + (rect.Height() - iconHeight) / 2', 'DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS', 'separator ? DT_CENTER : 0')) {
     if($dialog.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
         throw "Owner-draw list layout regression guard is missing: $required"
     }

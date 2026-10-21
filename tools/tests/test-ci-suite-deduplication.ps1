@@ -18,4 +18,32 @@ foreach ($static in @('test-plugin-localization-catalog.ps1','test-runtime-lang-
 foreach ($blockStart in @('if (-not $SkipEarlyRuntimeSuites) {')) {
     if (-not $verify.Contains($blockStart)) { throw 'Default local verifier must retain early suites behind the CI-only skip.' }
 }
+if ($workflow.Contains('test-interface-theme-policy-runtime.ps1') -or
+    [regex]::Matches($verify, 'test-interface-theme-policy-runtime\.ps1').Count -ne 1 -or
+    $verify -notmatch '(?m)^& \(Join-Path \$repoRoot "tools\\tests\\test-interface-theme-policy-runtime\.ps1"\) -FbeExe') {
+    throw 'Interface theme policy runtime must run once through the mandatory verify-release contour.'
+}
+# Icon-size stress is already part of lifecycle in both profiles. Do not also
+# schedule the standalone convenience runner and repeat its 100 size switches.
+if ($workflow.Contains('test-script-icon-size-runtime.ps1') -or $verify.Contains('test-script-icon-size-runtime.ps1')) {
+    throw 'Standalone icon-size runner duplicates lifecycle stress coverage.'
+}
+$lifecycle = Get-Content -Raw -LiteralPath (Join-Path $root 'tools/tests/test-script-toolbar-lifecycle-runtime.ps1')
+foreach ($mode in @('portable','installed')) {
+    foreach ($scenario in @('script-toolbar-runtime-size','script-icon-size-read')) {
+        if ([regex]::Matches($lifecycle, [regex]::Escape("Invoke-Lifecycle '--$mode' '$scenario'")).Count -ne 1) {
+            throw "Lifecycle must cover $mode/$scenario exactly once."
+        }
+    }
+}
+$tokens = $null; $errors = $null
+$verifyAst = [Management.Automation.Language.Parser]::ParseInput($verify, [ref]$tokens, [ref]$errors)
+$themeCall = $verifyAst.Find({ param($node)
+    $node -is [Management.Automation.Language.CommandAst] -and $node.Extent.Text.Contains('test-interface-theme-policy-runtime.ps1')
+}, $true)
+for ($parent = $themeCall.Parent; $parent; $parent = $parent.Parent) {
+    if ($parent -is [Management.Automation.Language.IfStatementAst]) {
+        throw 'Theme policy runtime must be unconditional, including SkipEarlyRuntimeSuites and FAST.'
+    }
+}
 Write-Host 'CI duplicate-suite contract passed.'

@@ -92,7 +92,8 @@ foreach ($required in @('ThemeManager::ApplyToWindow(m_hWnd)', 'ThemeManager::Co
         throw "Настройка панели скриптов не использует dark-aware palette: $required"
     }
 }
-foreach ($required in @('ImageList_GetIconSize', 'const int leftPadding = Scale(8), iconGap = Scale(8), rightPadding = Scale(8);', 'int iconArea = Scale(20);', 'rect.top + (rect.Height() - iconHeight) / 2', 'itemHeight = Scale(28)', 'DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS', 'separator ? DT_CENTER : 0')) {
+& (Join-Path $PSScriptRoot 'test-toolbar-customize-row-metrics.ps1')
+foreach ($required in @('ImageList_GetIconSize', 'const int leftPadding = Scale(8), iconGap = Scale(8), rightPadding = Scale(8);', 'int iconArea = Scale(20);', 'rect.top + (rect.Height() - iconHeight) / 2', 'DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS', 'separator ? DT_CENTER : 0')) {
     if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
         throw "Customize owner-draw DPI/layout contract is missing: $required"
     }
