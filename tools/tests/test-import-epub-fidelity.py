@@ -3,9 +3,11 @@ import argparse
 import base64
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
+import time
 import unittest
 import xml.etree.ElementTree as ET
 import zipfile
@@ -20,7 +22,7 @@ PNG = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4
 class Fidelity(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.folders, cls.outputs = [], []
+        cls.folders, cls.outputs, cls.performance = [], [], []
 
     @classmethod
     def tearDownClass(cls):
@@ -47,6 +49,8 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             if result.returncode:
                 raise AssertionError(result.stdout + result.stderr)
             print('Independent FB2 XSD validation: PASS')
+            if cls.performance:
+                (ROOT / 'out/tests/epub-notes-perf-after.json').write_text(json.dumps(cls.performance, indent=2), encoding='utf-8')
         finally:
             for folder in cls.folders:
                 folder.cleanup()
@@ -471,6 +475,149 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 root = self.convert('<p>SVG<img src="../a.svg"/></p>', {'a.svg': ('a', 'image/svg+xml', svg)}, svg=mode)
                 binary = root.find('f:binary', NS)
                 self.assertEqual(None if binary is None else binary.get('content-type'), expected)
+
+    def assert_once(self, root, *phrases):
+        for phrase in phrases:
+            self.assertEqual(self.text(root).count(phrase), 1, phrase)
+
+    def test_non_spine_ambiguous_note_continuation_recovered(self):
+        root = self.convert('<p>Main<a href="../links.xhtml#n">1</a></p>',
+                            {'links.xhtml': ('notes', 'application/xhtml+xml',
+                             '<p><a id="n"/>Certain note</p><p>Ambiguous continuation</p>')})
+        note, = self.notes(root)
+        self.assertIn('Certain note', self.text(note)); self.assertNotIn('Ambiguous continuation', self.text(note))
+        main = root.find('f:body', NS)
+        self.assertIn('Ambiguous continuation', self.text(main)); self.assertNotIn('Certain note', self.text(main))
+        self.assertIn('links.xhtml', self.text(main))
+        self.assertIn('Preserved ambiguous residual note content', self.diagnostics)
+        self.assertIn('found=1 recovered=1 unaccounted=0', self.diagnostics)
+        self.assert_once(root, 'Certain note', 'Ambiguous continuation')
+
+    def test_non_spine_multiple_notes_and_residual_fragments(self):
+        root = self.convert('<p>Main<a href="../links.xhtml#n">1</a><a href="../links.xhtml#m">2</a></p>',
+                            {'links.xhtml': ('notes', 'application/xhtml+xml',
+                             '<p id="n">Note alpha</p><p>Residual alpha</p><p id="m">Note beta</p><p>Residual beta</p>'),
+                             'unused.xhtml': ('unused', 'application/xhtml+xml', '<p>Unrelated non-spine document</p>')})
+        self.assertEqual(len(self.notes(root)), 2)
+        self.assert_once(root, 'Note alpha', 'Residual alpha', 'Note beta', 'Residual beta')
+        self.assertNotIn('Unrelated non-spine document', self.text(root))
+        self.assertIn('Residual alpha', self.text(root.find('f:body', NS)))
+        self.assertNotIn('Residual beta', self.text(self.notes(root)[0]))
+
+    def test_residual_links_images_and_cross_references(self):
+        root = self.convert('<h1 id="main">Main</h1><p>Body<a href="../links.xhtml#n">1</a>'
+                            '<a href="../links.xhtml#tail">Residual link</a></p>',
+                            {'links.xhtml': ('notes', 'application/xhtml+xml',
+                             '<p><a id="n"/>Selected note <a href="#tail">Tail link</a></p>'
+                             '<div id="tail"><p>Residual text <em>with emphasis</em><a href="Text/chapter.xhtml#main">Back to main</a></p>'
+                             '<img src="a.png"/></div>'), 'a.png': ('a', 'image/png', PNG)})
+        self.assert_once(root, 'Selected note', 'Residual text', 'with emphasis', 'Back to main')
+        main = root.find('f:body', NS)
+        self.assertIsNotNone(main.find('.//f:emphasis', NS))
+        self.assertEqual(len(main.findall('.//f:image', NS)), 1)
+        binary, = root.findall('f:binary', NS)
+        self.assertEqual(base64.b64decode(binary.text), PNG)
+        self.assertNotIn('outside imported content', self.diagnostics)
+
+    def test_spine_remainder_not_duplicated(self):
+        root = self.convert('<p>Main<a href="../links.xhtml#n">1</a></p>',
+                            {'links.xhtml': ('notes', 'application/xhtml+xml',
+                             '<p><a id="n"/>Selected note</p><p>Remaining text</p>')}, spine=['chapter', 'notes'])
+        self.assert_once(root, 'Selected note', 'Remaining text')
+        self.assertNotIn('Preserved ambiguous residual', self.diagnostics)
+        self.assertIn('found=0 recovered=0 unaccounted=0', self.diagnostics)
+
+    def test_unrecoverable_residual_image_is_an_error(self):
+        self.convert('<p>Main<a href="../links.xhtml#n">1</a></p>',
+                     {'links.xhtml': ('notes', 'application/xhtml+xml',
+                      '<p id="n">Selected note</p><p>Residual text<img src="missing.png"/></p>')}, fail=True)
+        self.assertIn('Cannot safely preserve unaccounted EPUB note content', self.diagnostics)
+        self.assertIn('Residual note image integrity check failed', self.diagnostics)
+        self.assertIn('found=2 recovered=0 unaccounted=2', self.diagnostics)
+
+    def test_residual_image_filters_are_intentional(self):
+        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4"/></svg>'
+        for options, mode in [(['--no-images'], 'keep'), ([], 'skip')]:
+            with self.subTest(options=options, mode=mode):
+                root = self.convert('<p>Main<a href="../links.xhtml#n">1</a></p>',
+                                    {'links.xhtml': ('notes', 'application/xhtml+xml',
+                                     '<p id="n">Selected note</p><p>Residual text<img src="a.svg"/></p>'),
+                                     'a.svg': ('a', 'image/svg+xml', svg)}, options=options, svg=mode)
+                self.assert_once(root, 'Selected note', 'Residual text')
+                self.assertEqual(root.findall('.//f:image', NS), [])
+
+    def test_residual_notes_disabled_and_backlinks(self):
+        content = '<p id="n">Selected note<a epub:type="backlink" href="Text/chapter.xhtml#ref">ReturnMarker</a></p><p>Remaining text</p>'
+        for options, spine, kept, has_recovery in [([], ['chapter'], False, True),
+                                                  (['--keep-footnote-backlinks'], ['chapter'], True, True),
+                                                  (['--no-notes'], ['chapter', 'notes'], False, False),
+                                                  (['--no-notes'], ['chapter'], False, False)]:
+            with self.subTest(options=options, spine=spine):
+                root = self.convert('<p>Main<a id="ref" href="../links.xhtml#n">1</a></p>',
+                                    {'links.xhtml': ('notes', 'application/xhtml+xml', content)}, options=options, spine=spine)
+                self.assertEqual('ReturnMarker' in self.text(root), kept)
+                self.assertEqual('Preserved ambiguous residual' in self.diagnostics, has_recovery)
+                if '--no-notes' not in options or 'notes' in spine:
+                    self.assert_once(root, 'Selected note', 'Remaining text')
+                else:
+                    self.assertNotIn('Remaining text', self.text(root))
+                if '--no-notes' in options:
+                    self.assertEqual(self.notes(root), [])
+                    self.assertIn('Note structure index: elements=0 lookups=0', self.diagnostics)
+
+    def test_residual_nested_containers_and_duplicate_ids(self):
+        root = self.convert('<p>Main<a href="../links.xhtml#n">1</a><a href="../notes.xhtml#n">2</a>'
+                            '<a href="../links.xhtml#tail">Alpha tail link</a><a href="../notes.xhtml#tail">Beta tail link</a></p>',
+                            {path: (ident, 'application/xhtml+xml',
+                             f'<div><ol><li><p><a id="n"/>{word} first</p><p>{word} last</p></li></ol>'
+                             f'<section id="tail"><p>{word} residual</p></section></div>')
+                             for path, ident, word in [('links.xhtml', 'links', 'Alpha'), ('notes.xhtml', 'notes', 'Beta')]})
+        self.assertEqual(len(self.notes(root)), 2)
+        self.assert_once(root, 'Alpha first', 'Alpha last', 'Beta first', 'Beta last', 'Alpha residual', 'Beta residual')
+        self.assertNotIn('Alpha last', self.text(root.find('f:body', NS)))
+
+    def test_residual_whitespace_stable_across_document_passes(self):
+        for spacing in ['', '\n  ', '\n\t\n']:
+            with self.subTest(spacing=repr(spacing)):
+                content = spacing.join(['<div>', '<ol>', '<li>', '<p><a id="n"/>First stable</p>',
+                                        '<p>Last stable</p>', '</li>', '</ol>', '<p id="tail">Residual stable</p>', '</div>'])
+                root = self.convert('<p>Main<a href="../links.xhtml#n">1</a><a href="../links.xhtml#tail">Tail</a></p>',
+                                    {'links.xhtml': ('notes', 'application/xhtml+xml', content)})
+                self.assert_once(root, 'First stable', 'Last stable', 'Residual stable')
+                self.assertNotIn('Last stable', self.text(root.find('f:body', NS)))
+
+    def performance_samples(self, notes):
+        metrics = []
+        for count in [1000, 3000]:
+            body = ''.join(f'<p>Paragraph {i} remains.</p>' for i in range(count))
+            if notes:
+                body += ('<p>References <a epub:type="noteref" href="#n1">1</a><a epub:type="noteref" href="#n2">2</a></p>'
+                         '<ol><li id="n1"><p>First note</p></li><li id="n2"><p>Second note</p></li></ol>')
+            start = time.perf_counter()
+            root = self.convert(body)
+            elapsed = round(time.perf_counter() - start, 3)
+            self.assert_once(root, 'Paragraph 0 remains.', f'Paragraph {count-1} remains.')
+            self.assertEqual(len(self.notes(root)), 2 if notes else 0)
+            found = re.search(r'Note structure index: elements=(\d+) lookups=(\d+)', self.diagnostics)
+            self.assertIsNotNone(found, self.diagnostics)
+            indexed, lookups = map(int, found.groups())
+            sample = dict(notes=notes, paragraphs=count, seconds=elapsed, indexed_elements=indexed, structural_lookups=lookups)
+            self.performance.append(sample); metrics.append(sample)
+            print('EPUB performance: ' + json.dumps(sample), flush=True)
+            if not notes:
+                self.assertEqual((indexed, lookups), (0, 0))
+            else:
+                self.assertLessEqual(indexed, 4 * (count + 30))
+                self.assertLessEqual(lookups, 5 * (count + 30))
+        if notes:
+            for metric in ['indexed_elements', 'structural_lookups']:
+                self.assertLessEqual(metrics[1][metric], metrics[0][metric] * 3.1)
+
+    def test_linear_structure_index_without_notes(self):
+        self.performance_samples(False)
+
+    def test_linear_structure_index_with_notes(self):
+        self.performance_samples(True)
 
 
 if __name__ == '__main__':

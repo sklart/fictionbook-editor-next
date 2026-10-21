@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <string>
 #include <set>
 #include <algorithm>
@@ -90,12 +91,14 @@ namespace
         std::map<std::wstring, CStringW> binaryIds;
         std::map<std::wstring, ManifestItem> extraImages;
         std::set<std::wstring> reservedIds, emittedIds, noteTargets, requestedNotes;
-        std::set<std::wstring> mainDocuments, noteContentAnchors;
+        std::set<std::wstring> mainDocuments, noteContentAnchors, noteRootDocuments, residualDocuments;
         std::map<std::wstring, CStringW> noteLinks;
         std::map<std::wstring, CStringW> noteRoots;
         CStringW warnings;
         int noteReferences = 0, importedNoteReferences = 0, lostNoteReferences = 0;
         int imageReferences = 0, importedImages = 0, skippedImages = 0;
+        unsigned indexedElements = 0, structuralLookups = 0;
+        unsigned residualFragments = 0, recoveredFragments = 0;
     };
     thread_local ContentInventory g_content;
 
@@ -2872,24 +2875,57 @@ namespace
         return MSXML2::IXMLDOMNodePtr(parent, false);
     }
 
-    // Structural keys survive reopening the same XHTML without altering source IDs.
+    // Only this scope holds DOM identities. The owner outlives the index and no
+    // pointer is retained in ContentInventory after a document pass ends.
+    struct SourceNoteIndex;
+    thread_local SourceNoteIndex* g_noteIndex = nullptr;
+    struct SourceNoteIndex
+    {
+        MSXML2::IXMLDOMDocument2Ptr owner;
+        std::unordered_map<IUnknown*, unsigned> elements;
+        std::vector<CComPtr<IUnknown>> identities;
+        SourceNoteIndex* previous;
+        bool indexed = false;
+
+        explicit SourceNoteIndex(const MSXML2::IXMLDOMDocument2Ptr& doc) : owner(doc), previous(g_noteIndex) {g_noteIndex = this;}
+        ~SourceNoteIndex() {g_noteIndex = previous;}
+        SourceNoteIndex(const SourceNoteIndex&) = delete;
+        SourceNoteIndex& operator=(const SourceNoteIndex&) = delete;
+
+        void Index(const MSXML2::IXMLDOMNodePtr& node)
+        {
+            if (!node || MsxmlGetNodeType(node) != MSXML2::NODE_ELEMENT) return;
+            const unsigned ordinal = static_cast<unsigned>(elements.size());
+            CComPtr<IUnknown> identity;
+            CheckError(node->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&identity.p)));
+            elements.emplace(identity.p, ordinal);
+            identities.push_back(identity.p);
+            ++g_content.indexedElements;
+            const auto children = MsxmlGetChildNodes(node);
+            const long count = children ? MsxmlGetNodeListLength(children) : 0;
+            for (long i = 0; i < count; ++i) Index(MsxmlGetNodeListItem(children, i));
+        }
+    };
+
+    // Preorder element ordinals are stable across reparses and ignore whitespace.
+    // One forward DOM walk per pass; subsequent identity lookups are O(1).
     CStringW NoteRootKey(const MSXML2::IXMLDOMNodePtr& node, const CStringW& path)
     {
-        CStringW key = path;key.MakeLower();
-        for (auto current = node; current; current = ParentNode(current))
+        if (!node || MsxmlGetNodeType(node) != MSXML2::NODE_ELEMENT) return CStringW();
+        if (!g_noteIndex) _com_issue_error(E_UNEXPECTED);
+        if (!g_noteIndex->indexed)
         {
-            long index = 0;
-            IXMLDOMNode* previous = nullptr;
-            current->get_previousSibling(&previous);
-            MSXML2::IXMLDOMNodePtr sibling(previous, false);
-            while (sibling)
-            {
-                ++index;previous = nullptr;sibling->get_previousSibling(&previous);
-                sibling.Attach(previous);
-            }
-            CStringW part;part.Format(L"/%ld", index);key += part;
+            g_noteIndex->Index(MsxmlGetDocumentElement(g_noteIndex->owner));
+            g_noteIndex->indexed = true;
         }
-        return key;
+        ++g_content.structuralLookups;
+        CComPtr<IUnknown> identity;
+        CheckError(node->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&identity.p)));
+        const auto found = g_noteIndex->elements.find(identity.p);
+        if (found == g_noteIndex->elements.end()) _com_issue_error(E_UNEXPECTED);
+        CStringW key = path;key.MakeLower();
+        CStringW ordinal;ordinal.Format(L"/e%u", found->second);
+        return key + ordinal;
     }
 
     CStringW NoteAnchorId(const MSXML2::IXMLDOMNodePtr& node, const CStringW& path)
@@ -2900,6 +2936,9 @@ namespace
 
     bool IsCollectedNoteNode(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
     {
+        if (g_content.noteRoots.empty()) return false;
+        CStringW path = ctx.currentXhtmlPath;path.MakeLower();
+        if (!g_content.noteRootDocuments.count(std::wstring(path))) return false;
         return g_content.noteRoots.count(std::wstring(NoteRootKey(node, ctx.currentXhtmlPath))) != 0;
     }
 
@@ -4154,6 +4193,8 @@ namespace
             {
                 const auto root = LogicalNoteContainer(node, path);
                 const CStringW rootKey = NoteRootKey(root, path);
+                CStringW documentKey = path;documentKey.MakeLower();
+                g_content.noteRootDocuments.emplace(std::wstring(documentKey));
                 const CStringW rootId = RawAnchorId(root).IsEmpty() ? id : RawAnchorId(root);
                 if (g_content.noteRoots.emplace(std::wstring(rootKey), rootId).second && LocalName(root) == L"p" && !IsEndnoteElement(root))
                 {
@@ -4184,7 +4225,7 @@ namespace
 
     bool HasMainContent(const MSXML2::IXMLDOMNodePtr& node, const CStringW& path)
     {
-        if (!node || IsHiddenElement(node) || IsHeadingName(LocalName(node)) || IsBacklinkElement(node)) return false;
+        if (!node || IsHiddenElement(node) || IsBacklinkElement(node)) return false;
         const CStringW localName = LocalName(node);
         if (localName == L"script" || localName == L"style" || localName == L"head") return false;
         ConvertContext context = {};context.currentXhtmlPath = path;
@@ -4192,7 +4233,7 @@ namespace
         const auto type = MsxmlGetNodeType(node);
         if (type == MSXML2::NODE_TEXT || type == MSXML2::NODE_CDATA_SECTION) return !TrimString(NodeText(node)).IsEmpty();
         const CStringW name = LocalName(node);
-        if (name == L"img" || name == L"image" || name == L"object") return true;
+        if (name == L"img" || name == L"image" || name == L"picture" || name == L"object") return g_options.importImages;
         const auto children = MsxmlGetChildNodes(node);
         const long count = children ? MsxmlGetNodeListLength(children) : 0;
         for (long i = 0; i < count; ++i) if (HasMainContent(MsxmlGetNodeListItem(children, i), path)) return true;
@@ -4324,6 +4365,7 @@ namespace
             const auto doc = documents.find(entry.first);
             if (doc == documents.end()) continue;
             std::vector<MSXML2::IXMLDOMNodePtr> notes;
+            SourceNoteIndex index(doc->second);
             CollectEndnoteElements(MsxmlGetDocumentElement(doc->second), notes, entry.second.absPath);
             for (const auto& note : notes)
             {
@@ -4340,6 +4382,15 @@ namespace
                     if (g_content.requestedNotes.count(std::wstring(alias)))
                         g_content.noteLinks[std::wstring(alias)] = CStringW(id->second.c_str());
                 }
+            }
+            const CStringW path = LowerMapKey(entry.second.absPath);
+            if (!notes.empty() && !spinePaths.count(std::wstring(path)) &&
+                HasMainContent(FindFirstElementByLocalName(MsxmlGetDocumentElement(doc->second), L"body"), entry.second.absPath))
+            {
+                g_content.residualDocuments.emplace(std::wstring(path));
+                // Publish before rendering notes or main chapters, including
+                // forward links to residual anchors outside the original spine.
+                g_content.mainDocuments.emplace(std::wstring(path));
             }
         }
     }
@@ -4410,6 +4461,7 @@ namespace
         if (!body)
             return false;
 
+        SourceNoteIndex index(doc);
         std::vector<MSXML2::IXMLDOMNodePtr> noteNodes;
         CollectEndnoteElements(body, noteNodes, xhtmlPath);
 
@@ -4672,6 +4724,7 @@ namespace
             return false;
         }
 
+        SourceNoteIndex index(doc);
         MSXML2::IXMLDOMNodePtr body = FindFirstElementByLocalName(MsxmlGetDocumentElement(doc), L"body");
         if (!body)
         {
@@ -4740,6 +4793,89 @@ namespace
             sectionTitle = XmlEscape(fallbackTitle);
 
         AppendFb2Section(outSection, sectionTitle, content, sectionIdAttr);
+        return true;
+    }
+
+    CStringW CompactContentText(const CStringW& text)
+    {
+        CStringW result;
+        const CStringW normalized = NormalizeImportedText(text);
+        for (int i = 0; i < normalized.GetLength(); ++i)
+            if (!iswspace(normalized[i])) result += normalized[i];
+        return result;
+    }
+
+    void CollectResidualContent(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx,
+        std::vector<CStringW>& text, unsigned& fragments, unsigned& images)
+    {
+        if (!node || IsHiddenElement(node) || IsBacklinkElement(node) || IsCollectedNoteNode(node, ctx)) return;
+        const CStringW name = LocalName(node);
+        if (name == L"script" || name == L"style" || name == L"head" ||
+            (LooksLikePageBreak(node) && !g_options.importPageBreaks)) return;
+        if (name == L"img" || name == L"image" || name == L"picture" || name == L"object")
+        {
+            if (g_options.importImages)
+            {
+                bool filteredSvg = false, available = false;
+                std::vector<CStringW> candidates;ImageCandidates(node, candidates);
+                for (size_t i = 0; i < candidates.size(); ++i)
+                {
+                    const auto item = FindManifestImageByHref(ctx, candidates[i]);
+                    const bool skippedSvg = item && IsSvgImage(*item) && g_options.svgConversionMode == SVG_IMPORT_SKIP;
+                    if (i == 0) filteredSvg = skippedSvg;
+                    available = available || (item && FileExists(item->absPath) && !skippedSvg);
+                }
+                if (!filteredSvg || available) {++fragments;++images;}
+            }
+            return; // Alternate image content follows the existing image options.
+        }
+        const auto type = MsxmlGetNodeType(node);
+        if (type == MSXML2::NODE_TEXT || type == MSXML2::NODE_CDATA_SECTION)
+        {
+            const CStringW value = CompactContentText(MsxmlGetNodeText(node));
+            if (!value.IsEmpty()) {text.push_back(value);++fragments;}
+            return;
+        }
+        const auto children = MsxmlGetChildNodes(node);
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        for (long i = 0; i < count; ++i) CollectResidualContent(MsxmlGetNodeListItem(children, i), ctx, text, fragments, images);
+    }
+
+    bool RecoverNoteDocumentRemainder(const ManifestItem& item, const ConvertContext& ctx, CStringW& body, CStringW& warning)
+    {
+        MSXML2::IXMLDOMDocument2Ptr source;
+        CStringW error;
+        if (!LoadXmlFile(item.absPath, source, error))
+        {warning += L"Cannot read residual note content: " + item.href + L"\r\n" + error;return false;}
+        SourceNoteIndex index(source);
+        std::vector<CStringW> expectedText;
+        unsigned fragments = 0, expectedImages = 0;
+        CollectResidualContent(FindFirstElementByLocalName(MsxmlGetDocumentElement(source), L"body"), ctx, expectedText, fragments, expectedImages);
+        g_content.residualFragments += fragments;
+        CStringW recovered;
+        if (!ConvertXhtmlFileToFb2Section(item.absPath, CStringW(), ctx, recovered, warning) || recovered.IsEmpty())
+        {warning += L"Cannot preserve residual note content: " + item.href + L"\r\n";return false;}
+        MSXML2::IXMLDOMDocument2Ptr check;
+        if (FAILED(CreateMsxmlDom(check))) return false;
+        VARIANT_BOOL loaded = VARIANT_FALSE;
+        const CStringW wrapped = L"<body xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\" xmlns:l=\"http://www.w3.org/1999/xlink\">" + recovered + L"</body>";
+        if (FAILED(check->loadXML(CComBSTR(wrapped), &loaded)) || loaded != VARIANT_TRUE) return false;
+        std::vector<MSXML2::IXMLDOMNodePtr> images;
+        CollectElementsByLocalName(MsxmlGetDocumentElement(check), L"image", images);
+        if (images.size() != expectedImages)
+        {warning += L"Residual note image integrity check failed: " + item.href + L"\r\n";return false;}
+        const CStringW actualText = CompactContentText(NodeText(MsxmlGetDocumentElement(check)));
+        int position = 0;
+        for (const auto& expected : expectedText)
+        {
+            const int found = actualText.Find(expected, position);
+            if (found < 0)
+            {warning += L"Residual note text integrity check failed: " + item.href + L"\r\n";return false;}
+            position = found + expected.GetLength();
+        }
+        AppendFb2Section(body, XmlEscape(item.href), recovered);
+        g_content.recoveredFragments += fragments;
+        warning += L"Preserved ambiguous residual note content in main body from: " + item.href + L"\r\n";
         return true;
     }
 
@@ -5630,6 +5766,30 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         else if (mandatory) { errorText=L"Cannot import mandatory EPUB chapter: "+item.href+L"\r\n"+warning; return false; }
         else log.AddFormat(L"Skipped invalid optional EPUB chapter: %s", item.href);
     }
+
+    // Recover only unaccounted content from documents actually used for notes.
+    // Append after spine text so navigation can never reorder mandatory chapters.
+    if (options.importNotes) for (const auto& entry : package.manifest)
+    {
+        const auto& item = entry.second;
+        if (!g_content.residualDocuments.count(std::wstring(LowerMapKey(item.absPath)))) continue;
+        ConvertContext ctx = {};
+        ctx.package = &package;ctx.currentXhtmlDir = DirectoryOf(item.absPath);ctx.currentXhtmlPath = item.absPath;
+        ctx.usedImageIds = &usedImageIds;ctx.noteIds = &noteIds;ctx.usedFb2Ids = &usedFb2Ids;ctx.anchorIdMap = &anchorIdMap;
+        if (!RecoverNoteDocumentRemainder(item, ctx, body, warning))
+        {
+            CStringW counts;counts.Format(L"Residual note fragments: found=%u recovered=%u unaccounted=%u\r\n",
+                g_content.residualFragments, g_content.recoveredFragments, g_content.residualFragments - g_content.recoveredFragments);
+            errorText = L"Cannot safely preserve unaccounted EPUB note content: " + item.href + L"\r\n" + counts + warning;
+            log.Add(errorText);log.SaveIfRequested(epubPath, options.writeLogOnWarnings);return false;
+        }
+        ++importedSections;
+    }
+    CStringW accounting;
+    accounting.Format(L"Residual note fragments: found=%u recovered=%u unaccounted=%u\r\nNote structure index: elements=%u lookups=%u\r\n",
+        g_content.residualFragments, g_content.recoveredFragments, g_content.residualFragments - g_content.recoveredFragments,
+        g_content.indexedElements, g_content.structuralLookups);
+    log.Add(accounting);
 
     if (options.importCover)
     {

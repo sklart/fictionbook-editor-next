@@ -47,6 +47,36 @@ paragraph is reliably identified and adjacent unmarked paragraphs could be
 continuations, the importer warns about limited boundary recognition and
 does not absorb the ambiguous text. Source verification remains necessary.
 
+For a note-bearing XHTML outside `spine`, the importer also checks what remains
+after extracting the selected note subtrees. Meaningful residual text is
+preserved in a separate main-body section titled with the source's relative
+XHTML path, after the spine chapters, with an explicit warning. It is not
+silently discarded or guessed to belong to an adjacent note. Existing inline
+formatting, links and supported images follow the normal conversion rules.
+Forward references to these residual anchors are resolved before rendering.
+Only note-bearing documents are eligible; unrelated XHTML outside `spine` is
+not imported. For a document already in `spine`, its remainder stays at its
+original reading position and no additional recovery copy is made.
+
+The residual audit excludes extracted notes and deliberately filtered content
+(such as hidden nodes, scripts/styles and optionally removed backlinks). It
+counts substantive text nodes and image fragments, verifies the retained text
+in source order and the number of required image references, and reports
+`Residual note fragments: found=... recovered=...
+unaccounted=...` in the import log. A failed recovery or text-integrity check
+stops the conversion, including an unavailable residual image that was not
+excluded by the image/SVG options. XML/XSD and internal-link checks still apply to the final
+book. `--no-notes` disables both extraction and recovery from non-spine note
+documents; the original spine content still follows the selected options.
+
+Note-root identification uses a lazy forward index of DOM elements instead of
+walking each node's previous siblings. Element ordinals ignore inter-element
+whitespace and remain stable across reopening the source. COM identities and
+their references live only inside the current document pass. Documents without
+selected notes take the fast path without building this index. The log's
+`Note structure index: elements=... lookups=...` counters expose the actual
+index visits and lookups without changing the plug-in ABI.
+
 Image selection follows XHTML-relative paths, including parent segments,
 UTF-8 URL escapes and Cyrillic names. `img`, `srcset`, `picture` sources,
 `figure`, SVG `image` references and image `object data` are supported. A
@@ -116,6 +146,12 @@ absent/incomplete/conflicting navigation, repeated fragment targets and
 excluded page lists; symbolic/letter markers, ordinary lookalike links,
 ambiguous note boundaries and disabled import options. Existing image, SVG,
 encoding, traversal and ID regressions remain in the same short test contour.
+Residual cases check non-spine continuations, multiple notes with ambiguous
+text, formatted/link/image fragments, unchanged spine behavior, note/backlink
+options, nested containers, duplicate IDs and whitespace-stable reparsing.
+Two small 1000/3000-paragraph samples, with and without notes, check index visit
+and lookup counts as well as reporting elapsed batch/DLL conversion time.
+These are bounded scaling checks, not a stress or book-corpus run.
 
 Synthetic results do not establish that particular e-paper source books are
 fixed. Those books and Windows 7 SP1 require direct verification in the
