@@ -155,11 +155,8 @@ bool IsNativeFileDialogWindow(HWND window)
 		if(::GetPropW(parent, kOwnedWindowProperty)) return false;
 		if(::GetPropW(parent, kNativeFileDialogProperty)) return true;
 	}
-	if(::GetPropW(::GetAncestor(window, GA_ROOT), kAppliedThemeGenerationProperty)) return false;
-	// Before HCBT_ACTIVATE the dialog and its Shell children may already paint.
-	// Exclude only windows in the new modal subtree, not the existing owner.
-	return ModernFileDialog::IsShowingOnCurrentThread() &&
-		::GetAncestor(window, GA_ROOT) != ::GetAncestor(ModernFileDialog::CurrentOwnerOnThread(), GA_ROOT);
+	const HWND dialog = ModernFileDialog::DialogWindowOnThread();
+	return dialog && (window == dialog || ::IsChild(dialog, window));
 }
 
 void ApplyPreferredAppMode(bool dark, bool highContrast);
@@ -419,6 +416,27 @@ void PaintPluginOptionsTabs(HWND window, HDC dc)
 	if(oldFont) ::SelectObject(dc, oldFont);
 }
 
+bool IsDisabledTextLabel(HWND window)
+{
+    if(!IsClass(window,L"Static")||::IsWindowEnabled(window))return false;
+    const LONG_PTR type=::GetWindowLongPtrW(window,GWL_STYLE)&SS_TYPEMASK;
+    return type==SS_LEFT||type==SS_CENTER||type==SS_RIGHT||type==SS_SIMPLE||type==SS_LEFTNOWORDWRAP;
+}
+void PaintDisabledTextLabel(HWND window,HDC dc)
+{
+    RECT rect={};::GetClientRect(window,&rect);::FillRect(dc,&rect,ThemeManager::WindowBrush());
+    const LONG_PTR style=::GetWindowLongPtrW(window,GWL_STYLE),type=style&SS_TYPEMASK;
+    UINT flags=type==SS_CENTER?DT_CENTER:type==SS_RIGHT?DT_RIGHT:DT_LEFT;
+    flags|=(type==SS_SIMPLE||type==SS_LEFTNOWORDWRAP)?DT_SINGLELINE:DT_WORDBREAK;
+    if(style&SS_CENTERIMAGE)flags=(flags&~DT_WORDBREAK)|DT_SINGLELINE|DT_VCENTER;
+    if(style&SS_NOPREFIX)flags|=DT_NOPREFIX;
+    std::vector<wchar_t> text(static_cast<size_t>(::GetWindowTextLengthW(window))+1);::GetWindowTextW(window,text.data(),static_cast<int>(text.size()));
+    HFONT font=reinterpret_cast<HFONT>(::SendMessage(window,WM_GETFONT,0,0));
+    HGDIOBJ old=::SelectObject(dc,font?font:UiMetrics::DialogFontForWindow(window));
+    const COLORREF previous=::SetTextColor(dc,ThemeManager::DisabledTextColor());const int mode=::SetBkMode(dc,TRANSPARENT);
+    ::DrawTextW(dc,text.data(),-1,&rect,flags);::SetBkMode(dc,mode);::SetTextColor(dc,previous);::SelectObject(dc,old);
+}
+
 LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
 {
 	if(message == WM_NCDESTROY)
@@ -442,10 +460,19 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 	if(message == kApplyNewThemeChild)
 	{
 		HWND child = reinterpret_cast<HWND>(lParam);
-		if(::IsWindow(child) && ::GetParent(child) == window) ThemeManager::ApplyToWindow(child);
+		if(::IsWindow(child) && (::GetParent(child) == window ||
+			(wParam == 1 && ::GetWindowThreadProcessId(child, NULL) == ::GetCurrentThreadId()))) ThemeManager::ApplyToWindow(child);
 		return 0;
 	}
 	if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);
+    // Disabled STATIC uses COLOR_GRAYTEXT instead of the parent's HDC text
+    // colour. Paint only text labels, with the semantic disabled foreground.
+    if(ThemeManager::IsDark()&&IsDisabledTextLabel(window)) {
+        if(message==WM_ERASEBKGND)return 1;
+        if(message==WM_PAINT){PAINTSTRUCT paint={};HDC dc=::BeginPaint(window,&paint);PaintDisabledTextLabel(window,dc);::EndPaint(window,&paint);return 0;}
+        if((message==WM_PRINTCLIENT||message==WM_PRINT)&&wParam){PaintDisabledTextLabel(window,reinterpret_cast<HDC>(wParam));return 0;}
+    }
+
 	if(ThemeManager::IsDark() && IsClass(window, L"FBEImportEPUBOptionsWindow") && message == WM_ERASEBKGND)
 	{
 		RECT client = {}; ::GetClientRect(window, &client);
@@ -509,6 +536,13 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 
 void ApplyNativeControlPalette(HWND window)
 {
+	if(IsClass(window, TOOLTIPS_CLASSW)) {
+		const bool highContrast = IsHighContrastEnabled();
+		const bool dark = ThemeManager::IsDark() && !highContrast;
+		::SendMessage(window, TTM_SETTIPBKCOLOR, dark ? ThemeManager::ControlColor() : ::GetSysColor(COLOR_INFOBK), 0);
+		::SendMessage(window, TTM_SETTIPTEXTCOLOR, dark ? ThemeManager::TextColor() : ::GetSysColor(COLOR_INFOTEXT), 0);
+		return;
+	}
 	if(IsHighContrastEnabled()) return;
 	if(IsClass(window, WC_TREEVIEWW))
 	{
@@ -632,7 +666,8 @@ void ApplyWindowSurface(HWND window)
 	const DWORD userBefore = g_recordApplyDiagnostics ? ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS) : 0;
 	const bool dark = ThemeManager::IsDark() && !IsHighContrastEnabled();
 	::SetWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId, 0);
-	if(dark && (UsesClassicSurfacePalette(window) || IsRadioButton(window) || IsCheckBox(window)))
+	if((dark && (UsesClassicSurfacePalette(window) || IsRadioButton(window) || IsCheckBox(window))) ||
+		(IsClass(window, TOOLTIPS_CLASSW) && (dark || IsHighContrastEnabled())))
 		::SetWindowTheme(window, L" ", L" ");
 	else if(dark && IsComboBox(window))
 		::SetWindowTheme(window, L"DarkMode_CFD", NULL);
@@ -677,11 +712,18 @@ BOOL CALLBACK ApplyThreadWindow(HWND window, LPARAM)
 
 LRESULT CALLBACK ThemeCbtHookProc(int code, WPARAM wParam, LPARAM lParam)
 {
-	if(code == HCBT_CREATEWND && wParam && ModernFileDialog::IsShowingOnCurrentThread()) {
+	if(code == HCBT_CREATEWND && wParam) {
 		HWND window = reinterpret_cast<HWND>(wParam);
 		const auto* created = reinterpret_cast<const CBT_CREATEWND*>(lParam);
-		if(created && !(created->lpcs->style & WS_CHILD) && IsClass(window, L"#32770") && window != ModernFileDialog::CurrentOwnerOnThread())
+		if(window == ModernFileDialog::DialogWindowOnThread())
 			::SetPropW(window, kNativeFileDialogProperty, reinterpret_cast<HANDLE>(1));
+		// Tooltip popups never activate and are not descendants of their owner.
+		// Defer until WM_CREATE has completed; the EXE hook also sees plugin DLLs.
+		if(created && IsClass(window, TOOLTIPS_CLASSW) && !IsNativeFileDialogWindow(window)) {
+			HWND owner = created->lpcs->hwndParent;
+			if(owner) owner = ::GetAncestor(owner, GA_ROOTOWNER);
+			if(owner) ::PostMessageW(owner, kApplyNewThemeChild, 1, reinterpret_cast<LPARAM>(window));
+		}
 	}
 	if(code == HCBT_ACTIVATE && wParam != 0)
 	{

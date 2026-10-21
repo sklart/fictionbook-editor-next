@@ -18,6 +18,12 @@ inline HWND ScopeWindow() { return ::FindWindowExW(HWND_MESSAGE, NULL, ScopeName
 inline UINT ScopeChangedMessage() { static const UINT message = ::RegisterWindowMessageW(L"FBE.NativeFileDialog.ScopeChanged"); return message; }
 inline bool IsShowingOnCurrentThread() { return ScopeWindow() != NULL; }
 inline HWND CurrentOwnerOnThread() { return reinterpret_cast<HWND>(::GetPropW(ScopeWindow(), L"FBE.ScopeOwner")); }
+inline HWND DialogWindowOnThread() {
+    IFileDialog* dialog = reinterpret_cast<IFileDialog*>(::GetPropW(ScopeWindow(), L"FBE.ScopeDialog"));
+    if(!dialog) return NULL;
+    CComQIPtr<IOleWindow> window(dialog); HWND root = NULL;
+    return window && SUCCEEDED(window->GetWindow(&root)) ? root : NULL;
+}
 inline void NotifyScopeChanged() {
     ::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM message) -> BOOL {
         return ::SendMessageW(window, static_cast<UINT>(message), 0, 0) != 1;
@@ -25,6 +31,7 @@ inline void NotifyScopeChanged() {
 }
 class ShowingScope {
     HWND state = NULL, previousOwner = NULL;
+    HANDLE previousDialog = NULL;
     bool outer = false;
 public:
     explicit ShowingScope(HWND owner) {
@@ -36,18 +43,27 @@ public:
                 state=::CreateWindowExW(0,ScopeName().c_str(),L"",0,0,0,0,0,HWND_MESSAGE,NULL,klass.hInstance,NULL);
         }
         previousOwner = reinterpret_cast<HWND>(::GetPropW(state, L"FBE.ScopeOwner"));
+        previousDialog = ::GetPropW(state, L"FBE.ScopeDialog");
+        ::RemovePropW(state, L"FBE.ScopeDialog");
         if(owner) ::SetPropW(state, L"FBE.ScopeOwner", owner); else ::RemovePropW(state, L"FBE.ScopeOwner");
         if(outer && state) NotifyScopeChanged();
     }
     ~ShowingScope() {
+        const HWND dialog=DialogWindowOnThread();
+        if(dialog)::RemovePropW(dialog,L"FBE.NativeFileDialog");
         if(outer) {
             if(state)::DestroyWindow(state);
             ::UnregisterClassW(ScopeName().c_str(),::GetModuleHandleW(NULL));
             if(state)NotifyScopeChanged();
         }
-        else if(previousOwner) ::SetPropW(state, L"FBE.ScopeOwner", previousOwner);
-        else ::RemovePropW(state, L"FBE.ScopeOwner");
+        else {
+            if(previousOwner) ::SetPropW(state, L"FBE.ScopeOwner", previousOwner);
+            else ::RemovePropW(state, L"FBE.ScopeOwner");
+            if(previousDialog) ::SetPropW(state, L"FBE.ScopeDialog", previousDialog);
+            else ::RemovePropW(state, L"FBE.ScopeDialog");
+        }
     }
+    bool BindDialog(IFileDialog* dialog) { return ::SetPropW(state, L"FBE.ScopeDialog", reinterpret_cast<HANDLE>(dialog)) != FALSE; }
     bool Valid() const { return state != NULL; }
     ShowingScope(const ShowingScope&) = delete;
     ShowingScope& operator=(const ShowingScope&) = delete;
@@ -81,12 +97,15 @@ inline HRESULT CreateShellItemFromPath(LPCWSTR path, IShellItem** item) {
 inline Result Show(HWND owner, const Request& request) {
     Result result;
     if (request.save && request.allowMultiSelect) { result.error = E_INVALIDARG; return result; }
+    // The dialog outlives the scope's borrowed pointer, including on failure.
+    CComPtr<IFileDialog> dialog;
     ShowingScope showing(owner);
     if(!showing.Valid()) { result.error = HRESULT_FROM_WIN32(ERROR_NOT_ENOUGH_MEMORY); return result; }
-    CComPtr<IFileDialog> dialog; HRESULT hr = E_FAIL;
+    HRESULT hr = E_FAIL;
     if (request.save) { CComPtr<IFileSaveDialog> save; hr = save.CoCreateInstance(CLSID_FileSaveDialog); dialog = save; }
     else { CComPtr<IFileOpenDialog> open; hr = open.CoCreateInstance(CLSID_FileOpenDialog); dialog = open; }
     if (FAILED(hr)) { result.error = hr; return result; }
+    if(!showing.BindDialog(dialog)) { const DWORD error=::GetLastError(); result.error=HRESULT_FROM_WIN32(error?error:ERROR_NOT_ENOUGH_MEMORY); return result; }
     DWORD options = 0; hr = dialog->GetOptions(&options);
     if (FAILED(hr)) { result.error = hr; return result; }
     options |= FOS_FORCEFILESYSTEM;
