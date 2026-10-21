@@ -4451,52 +4451,82 @@ void CMainFrame::UpdateTableCommandState()
 
 bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
 {
-	if(!::IsWindow(m_CmdToolbar)) return false;
-	CImageList replacement;
-	if(!ToolbarFactory::CreateCommandToolbarImages(replacement, IDR_MAINFRAME, dpi)) return false;
-	const HINSTANCE module = ATL::_AtlBaseModule.GetModuleInstance();
-	const int imageSize = ToolbarFactory::CommandToolbarImageSize(dpi);
-	HICON qualityIcon = static_cast<HICON>(::LoadImageW(module, MAKEINTRESOURCEW(IDI_FB2_QUALITY),
-		IMAGE_ICON, imageSize, imageSize, LR_DEFAULTCOLOR));
-	const int qualityImage = qualityIcon ? ::ImageList_AddIcon(replacement, qualityIcon) : -1;
-	if(qualityIcon) ::DestroyIcon(qualityIcon);
-	if(qualityImage < 0) return false;
-	int imageIndices[8] = {};
-	for(size_t index = 0; index < kTableToolbarCommandCount; ++index)
-	{
-		imageIndices[index] = ToolbarFactory::AddBitmapFromModule(static_cast<HIMAGELIST>(replacement), module, kTableToolbarCommands[index].bitmapResourceId, imageSize);
-		if(imageIndices[index] < 0) return false;
-	}
-	HIMAGELIST oldImages = m_commandToolbarImages.Detach();
-	HIMAGELIST newImages = replacement.Detach();
-	// Detach before changing bitmap metrics: the common control can reset its
-	// internal list while doing so. The prepared replacement is already valid.
-	m_CmdToolbar.SetImageList(NULL);
-	ToolbarFactory::ApplyCommandToolbarMetrics(m_CmdToolbar, IDR_MAINFRAME, dpi);
-	m_CmdToolbar.SetImageList(newImages);
-	m_commandToolbarImages.Attach(newImages);
-	if(oldImages) ::ImageList_Destroy(oldImages);
-	TBBUTTONINFO qualityInfo = {}; qualityInfo.cbSize = sizeof(qualityInfo); qualityInfo.dwMask = TBIF_IMAGE; qualityInfo.iImage = qualityImage;
-	m_CmdToolbar.SetButtonInfo(ID_FILE_QUALITY_CHECK, &qualityInfo);
-	for(size_t index = 0; index < kTableToolbarCommandCount; ++index)
-	{
-		m_table_toolbar_image_indices[index] = imageIndices[index];
-		TBBUTTONINFO info = {}; info.cbSize = sizeof(info); info.dwMask = TBIF_IMAGE; info.iImage = imageIndices[index];
-		m_CmdToolbar.SetButtonInfo(kTableToolbarCommands[index].commandId, &info);
-	}
-    AutoSizeToolbar(m_CmdToolbar);
-    if(m_rebar.IsWindow()) {
-        for(int band=0;band<static_cast<int>(m_rebar.GetBandCount());++band) {
-            REBARBANDINFO info={};info.cbSize=sizeof(info);info.fMask=RBBIM_CHILD|RBBIM_CHILDSIZE;
-            if(!m_rebar.GetBandInfo(band,&info)||info.hwndChild!=m_CmdToolbar)continue;
-            const UINT height=HIWORD(m_CmdToolbar.SendMessage(TB_GETBUTTONSIZE));
-            info.fMask=RBBIM_CHILDSIZE;info.cyMinChild=info.cyChild=info.cyMaxChild=height;
-            m_rebar.SetBandInfo(band,&info);break;
+    if(!m_CmdToolbar.IsWindow()) return false;
+    struct PreparedImages {
+        CImageList images;
+        ~PreparedImages() { if(images) images.Destroy(); }
+    } prepared;
+    CImageList& replacement=prepared.images;
+    if(ToolbarFactory::RebuildFailurePoint()==ToolbarFactory::RebuildFailure::Create ||
+        !ToolbarFactory::CreateCommandToolbarImages(replacement,IDR_MAINFRAME,dpi)) return false;
+    const HINSTANCE module=ATL::_AtlBaseModule.GetModuleInstance();
+    const int imageSize=ToolbarFactory::CommandToolbarImageSize(dpi);
+    HICON qualityIcon=static_cast<HICON>(::LoadImageW(module,MAKEINTRESOURCEW(IDI_FB2_QUALITY),IMAGE_ICON,imageSize,imageSize,LR_DEFAULTCOLOR));
+    const int qualityImage=qualityIcon ? ::ImageList_AddIcon(replacement,qualityIcon) : -1;
+    if(qualityIcon) ::DestroyIcon(qualityIcon);
+    if(qualityImage<0) return false;
+    int imageIndices[8]={};
+    for(size_t i=0;i<kTableToolbarCommandCount;++i) {
+        imageIndices[i]=ToolbarFactory::AddBitmapFromModule(replacement,module,kTableToolbarCommands[i].bitmapResourceId,imageSize);
+        if(imageIndices[i]<0) return false;
+    }
+    if(ToolbarFactory::RebuildFailurePoint()==ToolbarFactory::RebuildFailure::Prepared) return false;
+    const HIMAGELIST oldImages=m_commandToolbarImages,previous=m_CmdToolbar.GetImageList(),next=replacement;
+    int oldWidth=0,oldHeight=0;
+    if(!::ImageList_GetIconSize(oldImages,&oldWidth,&oldHeight)) return false;
+    const LRESULT oldButtonSize=m_CmdToolbar.SendMessage(TB_GETBUTTONSIZE);
+    std::vector<TBBUTTON> buttons;
+    for(int i=0;i<m_CmdToolbar.GetButtonCount();++i) { TBBUTTON button={};if(!m_CmdToolbar.GetButton(i,&button))return false;buttons.push_back(button); }
+    RECT oldBounds={};m_CmdToolbar.GetWindowRect(&oldBounds);::MapWindowPoints(NULL,::GetParent(m_CmdToolbar),reinterpret_cast<POINT*>(&oldBounds),2);
+    int bandIndex=-1;REBARBANDINFO oldBand={};oldBand.cbSize=sizeof(oldBand);oldBand.fMask=RBBIM_CHILD|RBBIM_CHILDSIZE;
+    if(m_rebar.IsWindow()) for(int i=0;i<static_cast<int>(m_rebar.GetBandCount());++i) {
+        if(m_rebar.GetBandInfo(i,&oldBand)&&oldBand.hwndChild==m_CmdToolbar) {bandIndex=i;break;}
+    }
+    auto rollback=[&]() {
+        m_CmdToolbar.SetImageList(NULL);
+        m_CmdToolbar.SendMessage(TB_SETBITMAPSIZE,0,MAKELPARAM(oldWidth,oldHeight));
+        m_CmdToolbar.SendMessage(TB_SETBUTTONSIZE,0,oldButtonSize);
+        m_CmdToolbar.SetImageList(previous);
+        for(const auto& button:buttons) if(!(button.fsStyle&BTNS_SEP)) {
+            TBBUTTONINFO info={};info.cbSize=sizeof(info);info.dwMask=TBIF_IMAGE|TBIF_STATE;info.iImage=button.iBitmap;info.fsState=button.fsState;
+            m_CmdToolbar.SetButtonInfo(button.idCommand,&info);
         }
+        if(bandIndex>=0) {oldBand.fMask=RBBIM_CHILDSIZE;m_rebar.SetBandInfo(bandIndex,&oldBand);m_rebar.SendMessage(WM_SIZE);}
+        m_CmdToolbar.SetWindowPos(NULL,oldBounds.left,oldBounds.top,oldBounds.right-oldBounds.left,oldBounds.bottom-oldBounds.top,SWP_NOZORDER|SWP_NOACTIVATE);
+        // If the HWND stopped accepting restoration, retain ownership of any
+        // replacement it still references rather than free a bound image list.
+        if(m_CmdToolbar.IsWindow()&&m_CmdToolbar.GetImageList()==next) {
+            m_commandToolbarImages.Destroy();m_commandToolbarImages.Attach(replacement.Detach());
+            ::RemovePropW(m_CmdToolbar,L"FBE.Toolbar.DarkImages");
+        }
+        m_CmdToolbar.Invalidate();return false;
+    };
+    // Detach before TB_SETBITMAPSIZE, which can replace the control's internal
+    // image storage. Read back TB_GETIMAGELIST; TB_SETIMAGELIST returns the OLD list.
+    m_CmdToolbar.SetImageList(NULL);
+    if(m_CmdToolbar.GetImageList()!=NULL) return false;
+    ToolbarFactory::ApplyCommandToolbarMetrics(m_CmdToolbar,IDR_MAINFRAME,dpi);
+    m_CmdToolbar.SetImageList(next);
+    if(m_CmdToolbar.GetImageList()!=next) return rollback();
+    TBBUTTONINFO info={};info.cbSize=sizeof(info);info.dwMask=TBIF_IMAGE;info.iImage=qualityImage;
+    if(m_CmdToolbar.CommandToIndex(ID_FILE_QUALITY_CHECK)>=0&&!m_CmdToolbar.SetButtonInfo(ID_FILE_QUALITY_CHECK,&info)) return rollback();
+    for(size_t i=0;i<kTableToolbarCommandCount;++i) {
+        info.iImage=imageIndices[i];
+        if(m_CmdToolbar.CommandToIndex(kTableToolbarCommands[i].commandId)>=0 &&
+            !m_CmdToolbar.SetButtonInfo(kTableToolbarCommands[i].commandId,&info)) return rollback();
+    }
+    AutoSizeToolbar(m_CmdToolbar);
+    if(bandIndex>=0) {
+        REBARBANDINFO band=oldBand;band.fMask=RBBIM_CHILDSIZE;
+        band.cyMinChild=band.cyChild=band.cyMaxChild=HIWORD(m_CmdToolbar.SendMessage(TB_GETBUTTONSIZE));
+        if(!m_rebar.SetBandInfo(bandIndex,&band)) return rollback();
         m_rebar.SendMessage(WM_SIZE);
     }
-	::SetPropW(m_CmdToolbar,L"FBE.Toolbar.DarkImages",reinterpret_cast<HANDLE>(ThemeManager::IsDark() && !ThemeManager::IsHighContrast()?2:1));
-	return true;
+    if(!::SetPropW(m_CmdToolbar,L"FBE.Toolbar.DarkImages",reinterpret_cast<HANDLE>(ThemeManager::IsDark()&&!ThemeManager::IsHighContrast()?2:1)))return rollback();
+    m_commandToolbarImages.Detach();m_commandToolbarImages.Attach(replacement.Detach());
+    if(oldImages) ::ImageList_Destroy(oldImages);
+    for(size_t i=0;i<kTableToolbarCommandCount;++i)m_table_toolbar_image_indices[i]=imageIndices[i];
+    return true;
 }
 
 bool CMainFrame::RebuildScriptToolbarImages(HWND window, HIMAGELIST& ownedImages, UINT dpi)
