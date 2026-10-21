@@ -1,6 +1,7 @@
 #include "../../src/fbe/BackupFileCommit.h"
 #include <fstream>
 #include <string>
+#include <thread>
 
 static std::wstring Read(const std::wstring& path) { std::wifstream file(path.c_str()); std::wstring value; std::getline(file, value); return value; }
 static void Write(const std::wstring& path, const wchar_t* value) { std::wofstream file(path.c_str()); file << value; }
@@ -69,6 +70,34 @@ int wmain()
     Write(temp, L"competing-result");keep = false;
     try { FbeBackupFileCommit::CommitSavedFile(temp.c_str(), file.c_str(), false, ::ReplaceFileW, &keep, false); Require(false); }
     catch (const _com_error&) { }
-    Require(keep && Read(file) == L"create-only" && Read(temp) == L"competing-result");
+    Require(!keep && Read(file) == L"create-only" && Read(temp) == L"competing-result");
+    if (!keep) DeleteFileW(temp.c_str());
+    Require(!Exists(temp));
+    Remove(file);
+    // A real CREATE_NEW competitor races the single atomic move. Exactly one
+    // creator wins; a failed move must retain the competitor's complete bytes.
+    Write(temp, L"move-winner");HANDLE start = CreateEventW(NULL, TRUE, FALSE, NULL);
+    Require(start != NULL);bool competitor = false;
+    std::thread writer([&]() {
+        WaitForSingleObject(start, INFINITE);
+        HANDLE output = CreateFileW(file.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (output != INVALID_HANDLE_VALUE) {
+            const char text[] = "create-winner";DWORD written = 0;
+            competitor = WriteFile(output, text, sizeof(text)-1, &written, NULL) && written == sizeof(text)-1;
+            CloseHandle(output);
+        }
+    });
+    SetEvent(start);bool moved = false;keep = false;
+    try {FbeBackupFileCommit::CommitSavedFile(temp.c_str(), file.c_str(), false, ::ReplaceFileW, &keep, false);moved = true;}
+    catch (const _com_error&) { }
+    writer.join();CloseHandle(start);
+    Require(moved != competitor && !keep && Read(file) == (moved ? L"move-winner" : L"create-winner"));
+    if (!keep) DeleteFileW(temp.c_str());Require(!Exists(temp));
+    Remove(file);
+    Write(file, L"safe-original");Write(temp, L"safe-unused");keep = true;
+    try {FbeBackupFileCommit::CommitSavedFile(temp.c_str(),file.c_str(),false,FailReplace,&keep);Require(false);}
+    catch (const _com_error&) { }
+    Require(!keep && Read(file) == L"safe-original");
+    if (!keep) DeleteFileW(temp.c_str());Require(!Exists(temp));
     Remove(file); return 0;
 }

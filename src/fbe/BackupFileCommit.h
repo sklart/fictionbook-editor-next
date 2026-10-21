@@ -10,10 +10,9 @@ inline void CommitSavedFile(const CString& temporaryFile, const CString& destina
 	BOOL (WINAPI* replaceFile)(LPCWSTR, LPCWSTR, LPCWSTR, DWORD, LPVOID, LPVOID) = ::ReplaceFileW,
 	bool* preserveTemporaryFileOnFailure = NULL, bool overwrite = true)
 {
-	// Once this helper owns a completed temporary save, keep it on every
-	// failure path. ReplaceFile may report a partial state (1176/1177), and
-	// the temporary file can then be the only copy of the newly saved book.
-	if (preserveTemporaryFileOnFailure) *preserveTemporaryFileOnFailure = true;
+	// Before replacement, failures cannot have partially replaced an existing
+	// destination. Let the owner remove its completed but unused temporary.
+	if (preserveTemporaryFileOnFailure) *preserveTemporaryFileOnFailure = false;
 	HANDLE temporaryHandle = ::CreateFileW(temporaryFile, GENERIC_WRITE, FILE_SHARE_READ,
 		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (temporaryHandle == INVALID_HANDLE_VALUE)
@@ -48,8 +47,17 @@ inline void CommitSavedFile(const CString& temporaryFile, const CString& destina
 	const LPCWSTR backupFilePath = createBackupFile ? static_cast<LPCWSTR>(backupFile) : NULL;
 	// ReplaceFile atomically replaces an existing backup itself.  Do not delete
 	// it first: a failed replacement must leave the last known good backup intact.
-	if (!replaceFile(destinationFile, temporaryFile, backupFilePath, 0, NULL, NULL))
-		throw _com_error(HRESULT_FROM_WIN32(::GetLastError()));
+	// From this point a partial ReplaceFile failure (notably 1176/1177) may
+	// leave this temporary as the only recoverable copy. Keep unknown failures.
+	if (preserveTemporaryFileOnFailure) *preserveTemporaryFileOnFailure = true;
+	if (!replaceFile(destinationFile, temporaryFile, backupFilePath, 0, NULL, NULL)) {
+		const DWORD error = ::GetLastError();
+		if (error == ERROR_ACCESS_DENIED || error == ERROR_SHARING_VIOLATION ||
+			error == ERROR_LOCK_VIOLATION || error == ERROR_UNABLE_TO_REMOVE_REPLACED ||
+			error == ERROR_INVALID_PARAMETER || error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND)
+			if (preserveTemporaryFileOnFailure) *preserveTemporaryFileOnFailure = false;
+		throw _com_error(HRESULT_FROM_WIN32(error));
+	}
 	if (preserveTemporaryFileOnFailure) *preserveTemporaryFileOnFailure = false;
 }
 

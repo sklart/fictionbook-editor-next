@@ -14,6 +14,8 @@ $old=@{};foreach($name in $names){$old[$name]=[Environment]::GetEnvironmentVaria
 try {
     $null=New-IsolatedFbeSettingsSeed $iso
     $root=Join-Path $iso.Root 'api3d';New-Item -ItemType Directory $root | Out-Null
+    $conflict=Join-Path $root "conflict.$DocumentType"
+    [IO.File]::WriteAllBytes($conflict,[byte[]](0,255,13,10,42))
     $script=@'
 function Run(){}
 var ext=window.external,root=@@ROOT@@,suffix=@@TYPE@@,rar=@@RAR@@,normal=@@NORMAL@@;
@@ -27,9 +29,14 @@ function copies3d(){try{
  var selected=ext.GetSelectionHtml(),mode=ext.GetCurrentViewMode();
  var xml=ext.SerializeCurrentDocument();check3d(xml.indexOf("FictionBook")>=0,"snapshot root");
  check3d(before===document.body.outerHTML,"snapshot changed visual DOM");
+ fails3d(function(){ext.SaveDocumentCopy(root+"\\conflict."+suffix,false);});
+ fails3d(function(){ext.SaveSerializedDocumentCopy(root+"\\conflict."+suffix,'{"overwrite":false}');});
  var path=root+"\\copy."+suffix;check3d(ext.SaveDocumentCopy(path,false),"copy");
  fails3d(function(){ext.SaveDocumentCopy(path,false);});
  var lastError=ext.GetLastScriptingError();
+ fails3d(function(){ext.SaveSerializedDocumentCopy(path,'{"overwrite":false}');});
+ check3d(ext.GetLastScriptingError()!=="","serialized conflict error");
+ lastError=ext.GetLastScriptingError();
  check3d(ext.SaveDocumentCopy(path,true),"explicit overwrite");
  check3d(ext.GetLastScriptingError()===lastError,"success cleared previous error");
  fails3d(function(){ext.SaveDocumentCopy(path,1);});
@@ -107,6 +114,8 @@ function large3d(){try{fails3d(function(){ext.SerializeCurrentDocument();});chec
     $code=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'stage3d' -Report $report -TimeoutSeconds 60
     $text=if(Test-Path $report){Get-Content $report -Raw}else{'missing report'}
     if($code -ne 0 -or $text -notmatch 'result=PASS'){throw "Stage3D failed (exit=$code): $text"}
+    if(-not [Linq.Enumerable]::SequenceEqual([byte[]](0,255,13,10,42),[IO.File]::ReadAllBytes($conflict))){throw 'Conflict changed existing destination bytes'}
+    if(@(Get-ChildItem -LiteralPath $root -Filter 'fbs*.tmp').Count){throw 'Unused snapshot temporary file remains'}
     [xml]$copy=Get-Content (Join-Path $root "copy.$DocumentType") -Raw
     [xml]$source=Get-Content (Join-Path $root "source.$DocumentType") -Raw
     if($Container -eq 'normal') {
