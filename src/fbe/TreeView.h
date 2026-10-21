@@ -212,6 +212,13 @@ public:
 
   // get document structure from view
   void GetDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v);
+  void ClearDocumentStructure() {
+    if (m_script_mode) return;
+    DeleteAllItems();
+    m_source_index.clear(); m_identity_index.clear(); m_current_path.clear();
+    m_current_item = NULL; m_last_lookup_item = NULL;
+    InvalidateStructurePath();
+  }
   void UpdateDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v,MSHTML::IHTMLDOMNodePtr node);
   void UpdateAll();
   void HighlightItemAtPos(MSHTML::IHTMLElement *p);

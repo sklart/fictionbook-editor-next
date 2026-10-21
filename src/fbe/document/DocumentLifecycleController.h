@@ -32,6 +32,7 @@ public:
 	DocumentLifecycleController(CMainFrame& frame, FB::Doc*& document, DocumentSession& session, HWND view);
 
 	DocumentLifecycleResult NewDocument();
+	DocumentLifecycleResult CloseDocument();
 	DocumentLifecycleResult Open(const DocumentOpenSource& source);
 	DocumentLifecycleResult ReloadNormal(const CString& path);
 

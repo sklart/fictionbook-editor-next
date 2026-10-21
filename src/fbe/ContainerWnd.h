@@ -1,5 +1,6 @@
 #ifndef CONTAINERWND_H
 #define CONTAINERWND_H
+#include "ThemeManager.h"
 
 #if _MSC_VER >= 1000
 #pragma once
@@ -46,7 +47,11 @@ public:
     return 0;
   }
 
-  LRESULT OnErase(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL&) {
+  LRESULT OnErase(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /* unused: lParam */, BOOL&) {
+    if (GetActiveWnd() == NULL) {
+      RECT rect = {}; GetClientRect(&rect);
+      ::FillRect(reinterpret_cast<HDC>(wParam), &rect, ThemeManager::WindowBrush());
+    }
     return 1;
   }
 

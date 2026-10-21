@@ -5,6 +5,7 @@
 #include "PendingDocument.h"
 #include "..\\apputils.h"
 #include "..\\FBDoc.h"
+#include "..\\mainfrm.h"
 
 namespace
 {
@@ -53,6 +54,25 @@ DocumentLifecycleResult DocumentLifecycleController::NewDocument()
 DocumentLifecycleResult DocumentLifecycleController::Open(const DocumentOpenSource& source)
 {
 	return Load(source, false);
+}
+
+DocumentLifecycleResult DocumentLifecycleController::CloseDocument()
+{
+	if (!m_session.HasDocument()) return Completed(DocumentLocation(), false);
+	// Prepare the private MSHTML host before releasing any part of the book.
+	// PendingDocument restores the old active document if preparation fails.
+	PendingDocument pending(m_frame, m_document);
+	if (!pending.Document().LoadFromHTML(m_view, L"blank.fb2")) {
+		pending.Rollback();
+		return Failed(m_session.Location(), m_session.IsArchive());
+	}
+	m_frame.DetachDocumentForClose();
+	FB::Doc* previous = m_document;
+	m_document = pending.Commit();
+	delete previous;
+	m_session.CloseDocument();
+	FB::Doc::m_active_doc = nullptr;
+	return Completed(DocumentLocation(), false);
 }
 
 DocumentLifecycleResult DocumentLifecycleController::ReloadNormal(const CString& path)

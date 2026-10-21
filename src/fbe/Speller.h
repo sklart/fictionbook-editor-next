@@ -147,6 +147,7 @@ public:
 	CSpeller(CString dictPath = L"..\\Dict");
 	~CSpeller();
 	void AttachDocument(MSHTML::IHTMLDocumentPtr doc);
+	void DetachDocument();
 	void SetFrame(HWND frame) { m_frame = frame; }
 	inline bool Available() { return (m_Dictionaries[m_Lang].handle != NULL); }
 	inline bool Enabled() { return m_Enabled; }

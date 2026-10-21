@@ -92,6 +92,24 @@
         "bg-BG": "&Отвори..."
       }
     },
+    "fbe.menu.idr_mainframe.file.close": {
+      "kind": "MENUITEM",
+      "targetId": "ID_FILE_CLOSE",
+      "translations": {
+        "en-US": "Close",
+        "ru-RU": "Закрыть",
+        "uk-UA": "Закрити",
+        "de-DE": "Schließen",
+        "fr-FR": "Fermer",
+        "es-ES": "Cerrar",
+        "it-IT": "Chiudi",
+        "pl-PL": "Zamknij",
+        "pt-PT": "Fechar",
+        "nl-NL": "Sluiten",
+        "cs-CZ": "Zavřít",
+        "bg-BG": "Затвори"
+      }
+    },
     "fbe.menu.idr_mainframe.file.save": {
       "kind": "MENUITEM",
       "targetId": "ID_FILE_SAVE",

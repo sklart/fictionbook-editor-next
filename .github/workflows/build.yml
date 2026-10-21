@@ -189,6 +189,15 @@ jobs:
             }
           }
           ./tools/tests/test-status-bar-state.ps1
+      - name: Run File Close lifecycle regression in isolated profiles
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/tests/test-fbe-file-close-runtime.ps1 -FbeExe out/Release/FBE.exe
+          ./tools/tests/test-fbe-file-close-runtime.ps1 -FbeExe out/Release/FBE.exe -Mode installed -Kind fbd -Theme dark
+          foreach ($container in 'zip','rar') {
+            ./tools/tests/test-fbe-file-close-runtime.ps1 -FbeExe out/Release/FBE.exe -Container $container
+          }
       - name: Run scripting API 1.5 save and snapshot regression
         shell: pwsh
         run: |

@@ -213,6 +213,7 @@ static const RuntimeStringBinding g_runtimeStringBindings[] = {
 	{ IDS_HOTKEY_EDIT_ADD_ANNOTATION, L"fbe.hotkey.edit.add_annotation" },
 	{ IDS_HOTKEY_EDIT_ADD_BODY, L"fbe.hotkey.edit.add_body" },
 	{ IDS_HOTKEY_FILE_OPEN, L"fbe.hotkey.file.open" },
+	{ IDS_HOTKEY_FILE_CLOSE, L"fbe.hotkey.file.close" },
 	{ IDS_HOTKEY_FILE_SAVE, L"fbe.hotkey.file.save" },
 	{ IDS_HOTKEY_FILE_SAVEAS, L"fbe.hotkey.file.save_as" },
 	{ IDS_HOTKEY_FILE_VALIDATE, L"fbe.hotkey.file.validate" },

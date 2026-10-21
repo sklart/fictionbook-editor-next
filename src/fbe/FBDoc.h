@@ -61,6 +61,7 @@ public:
   MSXML2::IXMLDOMDocument2Ptr CreateDOMForAnalysis(CString* errorMessage = NULL);
   MSXML2::IXMLDOMDocument2Ptr CreateScriptingSnapshot(const CString& encoding, CString& errorMessage);
   bool IsSerializationUnsafe() const { return m_serialization_unsafe; }
+  bool IsSaveTransactionActive() const { return m_save_transaction_active; }
   HRESULT InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CComVariant &vtResult, bool quiet = false);
   void	  ShowDescription(bool Show);
   void	  RunScript(LPCOLESTR filePath);

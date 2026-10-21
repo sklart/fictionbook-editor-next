@@ -13,6 +13,7 @@
 #include "structure/StructuralTrace.h"
 #include "table/TableGrid.h"
 #include "document\DocumentLifecycleController.h"
+#include "document/PendingDocument.h"
 #include "document\DocumentLoader.h"
 #include "document\DocumentOpenSource.h"
 #include "document\DocumentSavePlan.h"
@@ -51,6 +52,8 @@
 #include "archive\\ArchiveReader.h"
 #include "archive\\ArchiveDocumentResolver.h"
 #include <thread>
+#include <atomic>
+#include <array>
 #include "archive\\ArchiveDocumentWriter.h"
 #include "recovery\\RecoveryService.h"
 #include "xmlMatchedTagsHighlighter.h"
@@ -632,6 +635,7 @@ struct RuntimeMenuCommandBinding
 static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 	{ ID_FILE_NEW, L"fbe.menu.idr_mainframe.file.new" },
 	{ ID_FILE_OPEN, L"fbe.menu.idr_mainframe.file.open" },
+	{ ID_FILE_CLOSE, L"fbe.menu.idr_mainframe.file.close" },
 	{ ID_FILE_SAVE, L"fbe.menu.idr_mainframe.file.save" },
 	{ ID_FILE_SAVE_AS, L"fbe.menu.idr_mainframe.file.save_as" },
 	{ ID_FILE_VALIDATE, L"fbe.menu.idr_mainframe.file.validate" },
@@ -1382,6 +1386,12 @@ bool  CMainFrame::IsBandVisible(int id) {
 
 void CMainFrame::AttachDocument(FB::Doc *doc)
 {
+    if (!m_document_session.HasDocument()) { PresentClosedDocument(); return; }
+    if (m_closed_document_ui) {
+        SetDocumentCommandAvailability(true);
+        if (m_document_tree.IsWindow()) m_document_tree.EnableWindow(TRUE);
+        m_closed_document_ui = false;
+    }
     FbeScripts::Status::Invalidate(m_hWnd);
 	HideCaretMarker();
 	if (!doc || !doc->m_body.HasDoc())
@@ -1460,10 +1470,11 @@ CString	CMainFrame::GetSaveFileName(CString& encoding) {
 }
 
 bool	CMainFrame::DocChanged() {
-	return m_doc && m_doc->DocChanged() || IsSourceActive() && m_source.SendMessage(SCI_GETMODIFY);
+	return m_document_session.HasDocument() && (m_doc && m_doc->DocChanged() || IsSourceActive() && m_source.SendMessage(SCI_GETMODIFY));
 }
 
 bool	CMainFrame::DiscardChanges() {
+  if (!m_document_session.HasDocument()) return true;
   U::SaveFileSelectedPos(m_doc->m_filename, m_doc->GetSelectedPos());
 
   if (DocChanged())
@@ -1631,6 +1642,7 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
 }
 
 void  CMainFrame::GetDocumentStructure() {
+  if (!m_document_session.HasDocument()) return;
   m_doc_changed=false;
   m_document_tree.GetDocumentStructure(m_doc->m_body.Document());
 }
@@ -1654,6 +1666,7 @@ LRESULT CMainFrame::OnXmlScriptApi(UINT, WPARAM, LPARAM data, BOOL&)
 {
 	XmlScriptApiRequest* request = reinterpret_cast<XmlScriptApiRequest*>(data);
 	if(request == NULL) return 0;
+	if (!m_document_session.HasDocument()) { request->error = E_UNEXPECTED; return 1; }
 	if (FbeScripts::extendedModalActive) { request->error = E_UNEXPECTED; return 1; }
 	if (request->operation == XmlScriptApiOperation::ValidateCurrentDocument) {
 		const XmlScriptDiagnostic diagnostic = m_xml_script_backend.ValidateCurrentDocument();
@@ -1825,6 +1838,11 @@ BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
 LRESULT CMainFrame::OnPreCommand(UINT, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
 	bHandled = FALSE;
+	if (!m_document_session.HasDocument() && RequiresOpenDocument(LOWORD(wParam))) {
+		bHandled = TRUE;
+		return 0;
+	}
+    if (!m_document_session.HasDocument()) InvalidateUi(UiDirtyAll);
 	TraceMainFrameCommand(wParam, lParam);
 	if((HIWORD(wParam) == 0 || HIWORD(wParam) == 1) && LOWORD(wParam) != ID_EDIT_INCSEARCH)
 		StopIncSearch(true);
@@ -1956,6 +1974,12 @@ BOOL CMainFrame::OnIdle()
 {
 	const bool profileIdle = StartupTrace::Enabled();
 	const ULONGLONG idleStarted = profileIdle ? ::GetTickCount64() : 0;
+    if (m_doc && !m_document_session.HasDocument()) {
+        if (m_ui_dirty != UiDirtyNone || m_need_title_update) PresentClosedDocument();
+        m_ui_dirty = UiDirtyNone;
+        if (profileIdle) g_idleProfile.Finish(idleStarted);
+        return false;
+    }
 	// LoadFromHTML pumps messages before DocumentComplete.  Do not run the
 	// command-update path until its MSHTML document is available.
 	if (!m_doc || !m_doc->m_body.HasDoc())
@@ -5363,6 +5387,7 @@ LRESULT CMainFrame::OnNavigate(WORD, WORD, HWND, BOOL&)
 }
 
 // commands
+#include "document/ClosedDocumentPresentation.inl"
 LRESULT CMainFrame::OnFileNew(WORD, WORD, HWND, BOOL&)
 {
   if (!DiscardChanges())
@@ -5947,6 +5972,7 @@ LRESULT CMainFrame::OnToolsRefreshScripts(WORD, WORD, HWND, BOOL&)
 
 LRESULT CMainFrame::OnToolsScript(WORD /* unused: wNotifyCode */, WORD wID, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
+    if (!m_document_session.HasDocument()) return 0;
 	wID -= ID_SCRIPT_BASE;
 
 	if(IsSourceActive())
@@ -6849,6 +6875,7 @@ void CMainFrame::PresentEditorViewChangeFailure(const EditorViewChangeResult& re
 
 void CMainFrame::ShowView(EditorView vt)
 {
+    if (!m_document_session.HasDocument()) return;
 	const EditorView previous = m_editor_view_state.Current();
 	StartupTrace::ScopedOperation operation(previous == vt ? StartupTrace::Operation::None : StartupTrace::Operation::ViewSwitch);
 	if(previous != vt) HideCaretMarker();
@@ -7478,7 +7505,7 @@ bool CMainFrame::RefreshClipboardState()
 
 void CMainFrame::UpdateClipboardCommands()
 {
-	if (!m_doc) return;
+	if (!m_doc || !m_document_session.HasDocument()) return;
 	if (IsSourceActive())
 	{
 		const bool canPaste = m_source.SendMessage(SCI_CANPASTE) != 0;
@@ -7588,6 +7615,10 @@ void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 	// Перекраска XML-редактора не должна менять активный режим документа.
 	if(activeView == BODY && m_doc)
 		m_view.ActivateWnd(m_doc->m_body);
+    if (!m_document_session.HasDocument()) {
+        if (m_Speller) m_Speller->DetachDocument();
+        PresentClosedDocument();
+    }
 	if(saveSettings)
 		_Settings.Save();
 }
@@ -7716,7 +7747,7 @@ void CMainFrame::RestartProgram()
 	const HWND frame = m_hWnd;
 	const CString filename = U::GetModulePath(_Module.GetModuleInstance());
 	CString arguments;
-	if(m_doc)
+	if(m_doc && m_document_session.HasDocument())
 		arguments.Format(L"\"%s\"", static_cast<LPCWSTR>(m_doc->GetOpenFileName()));
 	BOOL handled = FALSE;
 	OnClose(0, 0, 0, handled);
@@ -7927,7 +7958,8 @@ bool CMainFrame::LoadToScintilla(CString filename)
 	bool result = false;
 	bool isUTF8 = true;
 	CString enc;
-	ShowView(SOURCE);
+	const bool wasClosed = !m_document_session.HasDocument();
+	if (!wasClosed) ShowView(SOURCE);
 
 	CString src(L"");
 	std::ifstream load;
@@ -7935,6 +7967,12 @@ bool CMainFrame::LoadToScintilla(CString filename)
 	if (load.is_open())
 	try
 	{
+		if (wasClosed) {
+			m_document_session.NewDocument();
+			FB::Doc::m_active_doc = m_doc;
+			AttachDocument(m_doc);
+			ShowView(SOURCE);
+		}
 		std::vector<char> buffer(65535);
 		do
 		{
@@ -8051,6 +8089,7 @@ bool CMainFrame::CurrentOverwriteMode() const
 void CMainFrame::RefreshStatusMainPane()
 {
 	if (!m_status.IsWindow()) return;
+    if (!m_document_session.HasDocument()) { m_status.SetPaneText(ID_DEFAULT_PANE, L""); return; }
 	const bool profileStatus = StartupTrace::Enabled();
 	const ULONGLONG started = profileStatus ? ::GetTickCount64() : 0;
 	m_status.SetPaneText(ID_DEFAULT_PANE,
@@ -8087,7 +8126,7 @@ void CMainFrame::SetValidationStatus(FBEStatusBar::ValidationStatus status)
 {
 	if (m_status_state.Validation() == status) return;
 	m_status_state.SetValidation(status);
-	if (m_status.IsWindow()) m_status.SetPaneText(ID_PANE_VALIDATION, m_doc ? GetStatusValidationText() : L"");
+	if (m_status.IsWindow()) m_status.SetPaneText(ID_PANE_VALIDATION, m_document_session.HasDocument() ? GetStatusValidationText() : L"");
 	UpdateStatusBarLayout();
 }
 
@@ -8154,6 +8193,7 @@ LRESULT CMainFrame::OnStatusPaneVisibility(WORD, WORD command, HWND, BOOL&)
 
 LRESULT CMainFrame::OnStatusBarClick(int, LPNMHDR hdr, BOOL& bHandled)
 {
+	if (!m_document_session.HasDocument()) return 0;
 	if(hdr->hwndFrom != m_status) { bHandled = FALSE; return 0; }
 	const UINT pane = StatusPaneAt(reinterpret_cast<LPNMMOUSE>(hdr)->pt);
 	if(FBEStatusBar::ClickAction(pane == ID_PANE_VALIDATION ? FBEStatusBar::Validation : FBEStatusBar::Position) == FBEStatusBar::Validate)
@@ -8163,6 +8203,7 @@ LRESULT CMainFrame::OnStatusBarClick(int, LPNMHDR hdr, BOOL& bHandled)
 
 LRESULT CMainFrame::OnStatusBarDoubleClick(int, LPNMHDR hdr, BOOL& bHandled)
 {
+	if (!m_document_session.HasDocument()) return 0;
 	if(hdr->hwndFrom != m_status) { bHandled = FALSE; return 0; }
 	const UINT pane = StatusPaneAt(reinterpret_cast<LPNMMOUSE>(hdr)->pt);
 	const FBEStatusBar::Action action = FBEStatusBar::DoubleClickAction(
@@ -8247,6 +8288,13 @@ void CMainFrame::UpdateStatusBar()
 {
 	if (!m_status.IsWindow())
 		return;
+    if (!m_document_session.HasDocument()) {
+        const UINT panes[] = {ID_DEFAULT_PANE, ID_PANE_POSITION, ID_PANE_SELECTION, ID_PANE_CHAR,
+            ID_PANE_ENCODING, ID_PANE_VALIDATION, ID_PANE_INS};
+        for (const auto pane : panes) m_status.SetPaneText(pane, L"");
+        UpdateStatusBarLayout();
+        return;
+    }
 	const bool profileStatus = StartupTrace::Enabled();
 	const ULONGLONG started = profileStatus ? ::GetTickCount64() : 0;
 	CString position, selection, character, encoding;

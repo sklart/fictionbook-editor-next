@@ -418,6 +418,21 @@ void CSpeller::AttachDocument(MSHTML::IHTMLDocumentPtr doc)
 	SetDocumentLanguage();
 }
 
+void CSpeller::DetachDocument()
+{
+	try { EndDocumentCheck(); } catch (const _com_error&) { }
+	m_prevSelRange = nullptr; m_selRange = nullptr;
+	m_impStart = nullptr; m_impEnd = nullptr; m_undoSrv = nullptr;
+	m_ElementHighlights.clear(); m_uniqIDs.clear(); m_yoUsageCache.clear();
+	m_IgnoreWords.RemoveAll(); m_ChangeWords.RemoveAll(); m_ChangeWordsTo.RemoveAll();
+	m_CurrentSpellWord.Empty();
+	if (m_menuSuggestions) m_menuSuggestions->RemoveAll();
+	m_isRussianDocument = false;
+	m_browser = nullptr; m_doc2 = nullptr; m_doc3 = nullptr; m_doc4 = nullptr;
+	m_fbw_body = nullptr; m_scrollElement = nullptr; m_irs = nullptr; m_irsYo = nullptr;
+	m_mkc = nullptr; m_ims = nullptr; m_ids = nullptr; m_ihrs = nullptr;
+}
+
 void CSpeller::SetDocumentLanguage()
 {
 	m_yoUsageCache.clear();

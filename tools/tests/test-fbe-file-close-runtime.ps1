@@ -1,0 +1,47 @@
+[CmdletBinding()]
+param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
+    [ValidateSet('portable','installed')][string]$Mode='portable',
+    [ValidateSet('fb2','fbd')][string]$Kind='fb2',
+    [ValidateSet('light','dark')][string]$Theme='light',
+    [ValidateSet('normal','zip','rar')][string]$Container='normal')
+$ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$iso=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'file-close'
+$passed=$false
+$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_CLOSE_SECOND','FBE_NEXT_TEST_SETTINGS_DIRECTORY')
+$old=@{};foreach($name in $names){$old[$name]=[Environment]::GetEnvironmentVariable($name)}
+try {
+    $seed=New-IsolatedFbeSettingsSeed $iso
+    $text=[IO.File]::ReadAllText($seed).Replace('<InterfaceTheme>0</InterfaceTheme>',"<InterfaceTheme>$(if($Theme -eq 'dark'){2}else{1})</InterfaceTheme>")
+    [IO.File]::WriteAllText($seed,$text,[Text.UTF8Encoding]::new($false))
+    $body=if($Kind -eq 'fb2'){'<body><section><p id="close-probe">CLOSE_FIRST_UNIQUE</p><p><image l:href="#cover"/></p></section></body>'}else{''}
+    $xml='<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>CLOSE_FIRST_UNIQUE</book-title><coverpage><image l:href="#cover"/></coverpage><lang>en</lang></title-info><document-info><id>close-test</id><version>1</version></document-info></description>'+$body+'<binary id="cover" content-type="image/png">iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=</binary></FictionBook>'
+    $first=Join-Path $iso.Root "first.$Kind";$second=Join-Path $iso.Root "second.$Kind";$report=Join-Path $iso.Root 'file-close.txt'
+    [IO.File]::WriteAllText($first,$xml,[Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $iso.Root 'malformed.fb2'),'<invalid>',[Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText($second,$xml.Replace('CLOSE_FIRST_UNIQUE','CLOSE_SECOND_UNIQUE'),[Text.UTF8Encoding]::new($false))
+    $inputPath=$first
+    if($Container -eq 'zip') {
+        Add-Type -AssemblyName System.IO.Compression
+        $inputPath=Join-Path $iso.Root 'first.zip';$stream=[IO.File]::Create($inputPath)
+        $zip=[IO.Compression.ZipArchive]::new($stream,[IO.Compression.ZipArchiveMode]::Create)
+        try{$entry=$zip.CreateEntry("first.$Kind");$writer=[IO.StreamWriter]::new($entry.Open(),[Text.UTF8Encoding]::new($false));try{$writer.Write($xml)}finally{$writer.Dispose()}}finally{$zip.Dispose();$stream.Dispose()}
+    } elseif($Container -eq 'rar') {
+        if($Kind -ne 'fb2'){throw 'RAR fixture contains FB2'}
+        $inputPath=Join-Path $iso.Root 'first.rar'
+        [IO.File]::WriteAllBytes($inputPath,[Convert]::FromBase64String((Get-Content (Join-Path $PSScriptRoot 'fixtures/archive-runtime-rar5.b64') -Raw).Trim()))
+    }
+    $before=(Get-FileHash $inputPath -Algorithm SHA256).Hash
+    $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='file-close-runtime'
+    $env:FBE_NEXT_TEST_CLOSE_SECOND=$second;$env:FBE_NEXT_TEST_SETTINGS_DIRECTORY=Join-Path $iso.DataPath 'Settings'
+    $process=Start-Process $iso.Exe -WorkingDirectory $iso.Root -ArgumentList @("--$Mode",'-b',$report,$inputPath) -WindowStyle Hidden -PassThru
+    $code=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'file-close' -Report $report -TimeoutSeconds 90
+    $text=if(Test-Path $report){Get-Content $report -Raw}else{'missing report'}
+    if($code -ne 0 -or $text -notmatch 'result=PASS'){throw "File Close failed (exit=$code): $text"}
+    if((Get-FileHash $inputPath -Algorithm SHA256).Hash -ne $before){throw 'Opening/closing changed the initial file/container'}
+    if($Container -eq 'normal' -and (Get-Content $second -Raw) -notmatch 'CLOSE_UNSAVED'){throw 'Confirmed Save did not write Source changes'}
+    Write-Host $text;$passed=$true;Write-Host "File Close $Mode/$Kind/$Theme/$Container PASS"
+}finally{
+    foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$old[$name])}
+    Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed
+}

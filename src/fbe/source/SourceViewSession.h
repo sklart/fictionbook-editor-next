@@ -39,6 +39,7 @@ public:
 	void SetMemoryProfilingEnabled(bool enabled);
 	bool DocumentChanged() const;
 	const SourceDocumentApplyResult& LastApplyResult() const;
+	void ResetDocument();
 
 private:
 	SourceEditorControl& m_source;

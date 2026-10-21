@@ -16,6 +16,9 @@ void BuildDefaults(std::vector<CHotkeysGroup>& groups, DWORD interfaceLanguageId
 	CHotkey FileOpen(L"Open", IDS_HOTKEY_FILE_OPEN, FCONTROL, ID_FILE_OPEN, U::StringToKeycode(L"O"));
 	file_hotkeys_group.m_hotkeys.push_back(FileOpen);
 
+	CHotkey FileClose(L"Close", IDS_HOTKEY_FILE_CLOSE, FCONTROL | FSHIFT, ID_FILE_CLOSE, U::StringToKeycode(L"W"));
+	file_hotkeys_group.m_hotkeys.push_back(FileClose);
+
 	// Save
 	CHotkey FileSave(L"Save", IDS_HOTKEY_FILE_SAVE, NULL, ID_FILE_SAVE, VK_F2);
 	file_hotkeys_group.m_hotkeys.push_back(FileSave);

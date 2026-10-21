@@ -10,6 +10,8 @@ class DocumentSession
 public:
 	const DocumentLocation& Location() const;
 	bool IsArchive() const;
+	bool HasDocument() const;
+	void CloseDocument();
 	void NewDocument();
 	void OpenNormal(const CString& path, FictionBookFileType documentType);
 	void OpenArchive(const DocumentLocation& location);

@@ -1,6 +1,7 @@
 	CAtlFile output;
 	if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS)))
 		return 0;
+#include "RuntimeTestFileClose.inl"
 	if (IsFbeTestScenario(L"script-card-block-runtime"))
 	{
 		const BYTE ascii[] = "\xEF\xBB\xBF/*<FBE-SCRIPT-CARD version=\"1\">\r\n{}\r\n</FBE-SCRIPT-CARD>*/\r\nABC";

@@ -152,6 +152,7 @@ public:
 	}
 
 	void RefreshLocalizedMenuCaptions();
+	void ClearDocument() { if (!m_tree.IsScriptMode()) { ClearTree(); m_tree.ClearDocumentStructure(); } }
 
 private:
 	BOOL ModifyStyle(DWORD dwRemove, DWORD dwAdd, UINT nFlags = 0) throw();

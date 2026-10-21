@@ -4,7 +4,7 @@
 #include "..\FBDoc.h"
 
 PendingDocument::PendingDocument(CMainFrame& frame, FB::Doc* previous)
-	: m_previous(previous), m_document(new FB::Doc(frame)), m_state(Pending)
+	: m_previous(FB::Doc::m_active_doc ? previous : nullptr), m_document(new FB::Doc(frame)), m_state(Pending)
 {
 	FB::Doc::m_active_doc = m_document.get();
 }

@@ -2226,6 +2226,24 @@
         "bg-BG": "Отваряне"
       }
     },
+    "fbe.hotkey.file.close": {
+      "resourceId": "IDS_HOTKEY_FILE_CLOSE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Close",
+        "ru-RU": "Закрыть",
+        "uk-UA": "Закрити",
+        "de-DE": "Schließen",
+        "fr-FR": "Fermer",
+        "es-ES": "Cerrar",
+        "it-IT": "Chiudi",
+        "pl-PL": "Zamknij",
+        "pt-PT": "Fechar",
+        "nl-NL": "Sluiten",
+        "cs-CZ": "Zavřít",
+        "bg-BG": "Затвори"
+      }
+    },
     "fbe.hotkey.file.save": {
       "resourceId": "IDS_HOTKEY_FILE_SAVE",
       "component": "fbe.core",

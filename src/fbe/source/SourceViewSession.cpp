@@ -63,6 +63,14 @@ EditorSourceOperationResult SourceViewSession::CommitSourceDocument()
 	return EditorSourceOperationResult::Success;
 }
 
+void SourceViewSession::ResetDocument()
+{
+	m_savedXml = nullptr;
+	m_serializedSourceCache = SourceSerializedTextCache();
+	m_documentChanged = false;
+	m_lastApplyResult = SourceDocumentApplyResult();
+}
+
 EditorSourceOperationResult SourceViewSession::PrepareSourceDocument(EditorView previous)
 {
 	std::unique_ptr<FbeSourceDiagnostics::SourceViewPhaseProfiler> phaseProfiler;

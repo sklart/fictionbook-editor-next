@@ -182,6 +182,8 @@ public:
   FbeRecentDocuments::Controller m_recentDocuments;
   FB::Doc		  *m_doc; // currently open document
   DocumentSession m_document_session;
+  bool m_document_close_active = false;
+  bool m_closed_document_ui = false;
   DWORD			  m_last_tree_update;
 	DWORD			  m_last_external_file_check;
   bool			  m_external_file_check_started;
@@ -308,6 +310,10 @@ public:
   
   // browser controls
   void	  AttachDocument(FB::Doc *doc);
+  void DetachDocumentForClose();
+  void PresentClosedDocument();
+  void SetDocumentCommandAvailability(bool available);
+  static bool RequiresOpenDocument(UINT command);
   CFBEView& ActiveView() {
 /*    return m_doc->m_desc==m_view.GetActiveWnd() ?
 	      m_doc->m_desc : m_doc->m_body;*/
@@ -413,6 +419,9 @@ public:
 	virtual BOOL OnIdle();
   
 	BEGIN_UPDATE_UI_MAP(CMainFrame)
+		UPDATE_ELEMENT(ID_FILE_CLOSE, UPDUI_MENUPOPUP)
+		UPDATE_ELEMENT(ID_FILE_SAVE, UPDUI_MENUPOPUP|UPDUI_TOOLBAR)
+		UPDATE_ELEMENT(ID_FILE_SAVE_AS, UPDUI_MENUPOPUP)
 		UPDATE_ELEMENT(ID_FILE_QUALITY_CHECK, UPDUI_MENUPOPUP)
 		// ui windows
 		UPDATE_ELEMENT(ATL_IDW_BAND_FIRST, UPDUI_MENUPOPUP)
@@ -543,6 +552,7 @@ public:
 		COMMAND_ID_HANDLER(ID_APP_EXIT, OnFileExit)
 		COMMAND_ID_HANDLER(ID_FILE_NEW, OnFileNew)
 		COMMAND_ID_HANDLER(ID_FILE_OPEN, OnFileOpen)
+		COMMAND_ID_HANDLER(ID_FILE_CLOSE, OnFileClose)
 		COMMAND_ID_HANDLER(ID_FILE_SAVE, OnFileSave)
 		COMMAND_ID_HANDLER(ID_FILE_SAVE_AS, OnFileSaveAs)
 		COMMAND_ID_HANDLER(ID_FILE_VALIDATE, OnFileValidate)
@@ -831,6 +841,7 @@ public:
 		return 0;
 	}
 	LRESULT OnFileNew(WORD, WORD, HWND, BOOL&);
+	LRESULT OnFileClose(WORD, WORD, HWND, BOOL&);
 	LRESULT OnFileOpen(WORD, WORD, HWND, BOOL&);
 	LRESULT OnFileOpenMRU(WORD, WORD, HWND, BOOL&);
 	LRESULT OnFileSave(WORD, WORD, HWND, BOOL&);

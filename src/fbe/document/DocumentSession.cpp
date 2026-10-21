@@ -3,6 +3,8 @@
 
 const DocumentLocation& DocumentSession::Location() const { return m_state.Location(); }
 bool DocumentSession::IsArchive() const { return m_state.Location().IsArchive(); }
+bool DocumentSession::HasDocument() const { return m_state.HasDocument(); }
+void DocumentSession::CloseDocument() { m_state.CloseDocument(); }
 void DocumentSession::NewDocument() { m_state.NewDocument(); }
 void DocumentSession::OpenNormal(const CString& path, FictionBookFileType documentType) { m_state.OpenNormal(path, documentType); }
 void DocumentSession::OpenArchive(const DocumentLocation& location) { m_state.OpenArchive(location); }

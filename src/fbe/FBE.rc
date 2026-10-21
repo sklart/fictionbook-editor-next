@@ -898,6 +898,7 @@ BEGIN
     BEGIN
         MENUITEM "&New",                        ID_FILE_NEW
         MENUITEM "&Open...",                    ID_FILE_OPEN
+        MENUITEM "&Close",                      ID_FILE_CLOSE
         MENUITEM "&Save",                       ID_FILE_SAVE
         MENUITEM "Save &As...",                 ID_FILE_SAVE_AS
         MENUITEM "&Validate",                   ID_FILE_VALIDATE
@@ -1175,6 +1176,7 @@ BEGIN
     IDS_STATUS_PANE_INSERT_MODE "INS/OVR"
     IDS_DOC_TREE_CLEANUP    "Clean"
     IDS_HOTKEY_FILE_OPEN    "Open"
+    IDS_HOTKEY_FILE_CLOSE   "Close"
     IDS_HOTKEY_FILE_SAVE    "Save"
     IDS_HOTKEY_FILE_SAVEAS  "Save as..."
     IDS_HOTKEY_FILE_VALIDATE "Validate"
@@ -1243,6 +1245,7 @@ STRINGTABLE
 BEGIN
     ID_FILE_NEW             "Create a new document\nNew"
     ID_FILE_OPEN            "Open an existing document\nOpen"
+    ID_FILE_CLOSE           "Close the active document\nClose"
     ID_FILE_SAVE            "Save the active document\nSave"
     ID_FILE_SAVE_AS         "Save the active document with a new name\nSave As"
 END
