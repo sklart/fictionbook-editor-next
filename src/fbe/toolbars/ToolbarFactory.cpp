@@ -206,9 +206,10 @@ HWND ToolbarFactory::CreateCommandToolbarCtrl(HWND parent, CImageList& ownedImag
 	HWND window = ::CreateWindowEx(0, TOOLBARCLASSNAME, NULL, style, 0, 0, 100, 100, parent, (HMENU)LongToHandle(controlId), module, NULL); if(window == NULL) return NULL;
 	::SendMessage(window, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
 	if(!CreateCommandToolbarImages(ownedImages, toolbarResourceId, dpi, baseImageSize)) { ::DestroyWindow(window); return NULL; }
-	const HIMAGELIST previousImages = reinterpret_cast<HIMAGELIST>(::SendMessage(window, TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>(static_cast<HIMAGELIST>(ownedImages))));
+	ApplyCommandToolbarMetrics(window, toolbarResourceId, dpi, baseImageSize);
+    const HIMAGELIST previousImages = reinterpret_cast<HIMAGELIST>(::SendMessage(window, TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>(static_cast<HIMAGELIST>(ownedImages))));
 	if(previousImages != NULL || ::SendMessage(window, TB_ADDBUTTONS, toolbarData->itemCount, reinterpret_cast<LPARAM>(buttons)) == FALSE) { ::SendMessage(window, TB_SETIMAGELIST, 0, 0); ownedImages.Destroy(); ::DestroyWindow(window); return NULL; }
-	SetDialogFontForToolbarRow(window); ApplyCommandToolbarMetrics(window, toolbarResourceId, dpi, baseImageSize);
+	SetDialogFontForToolbarRow(window); AutoSizeToolbar(window);
 	StartupTrace::Event(L"toolbar", L"TB210", L"command-toolbar ARGB image list created at current DPI without mask composition"); return window;
 }
 
