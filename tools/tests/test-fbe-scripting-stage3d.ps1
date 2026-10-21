@@ -12,8 +12,20 @@ $junction=$null
 $names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_SCRIPT_API_ROOT','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_TRACE')
 $old=@{};foreach($name in $names){$old[$name]=[Environment]::GetEnvironmentVariable($name)}
 try {
-    $null=New-IsolatedFbeSettingsSeed $iso
+    $settingsFile=New-IsolatedFbeSettingsSeed $iso
     $root=Join-Path $iso.Root 'api3d';New-Item -ItemType Directory $root | Out-Null
+    # Exercise normal script discovery/loading with this fixture, not every
+    # bundled/user script inherited from the runtime being tested. That unrelated
+    # startup work previously consumed the process's 60-second API test budget.
+    # Keep the catalog separate from api3d/source-dir (a deliberate alias junction).
+    $startupScripts=Join-Path $iso.Root 'api3d-startup-scripts'
+    New-Item -ItemType Directory $startupScripts | Out-Null
+    [xml]$settingsXml=[IO.File]::ReadAllText($settingsFile)
+    foreach($setting in @(@('ScriptsFolder',$startupScripts),@('CheckScriptsOnStartup','true'))) {
+        $node=$settingsXml.CreateElement($setting[0]);$node.InnerText=$setting[1]
+        $null=$settingsXml.FBE.Settings.AppendChild($node)
+    }
+    $settingsXml.Save($settingsFile)
     $conflict=Join-Path $root "conflict.$DocumentType"
     [IO.File]::WriteAllBytes($conflict,[byte[]](0,255,13,10,42))
     $script=@'
@@ -117,6 +129,7 @@ function large3d(){try{fails3d(function(){ext.SerializeCurrentDocument();});chec
 '@
     $script=$script.Replace('@@ROOT@@',($root|ConvertTo-Json -Compress)).Replace('@@TYPE@@',($DocumentType|ConvertTo-Json -Compress)).Replace('@@RAR@@',(($Container -eq 'rar')|ConvertTo-Json -Compress)).Replace('@@NORMAL@@',(($Container -eq 'normal')|ConvertTo-Json -Compress))
     $script | Set-Content (Join-Path $root 'stage3d.js') -Encoding utf8
+    Copy-Item (Join-Path $root 'stage3d.js') (Join-Path $startupScripts 'stage3d.js')
     $fixture=Join-Path $iso.Root "api3d.$DocumentType";$report=Join-Path $iso.Root 'api3d.txt'
     $png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII='
     $body=if($DocumentType -eq 'fb2'){'<body><section><p>ordinary paragraph Кириллица 😀 <a l:href="#n" type="note">1</a></p><p id="probe">editable paragraph</p><p><image l:href="#cover"/></p><table><tr><td colspan="2">Cell A</td></tr><tr><td>Cell B</td><td>Cell C</td></tr><tr><td rowspan="2">Cell D</td><td>Cell E</td></tr><tr><td>Cell F</td></tr></table></section></body><body name="notes"><section id="n"><p>note paragraph</p></section></body>'}else{''}

@@ -213,6 +213,7 @@ jobs:
             ./tools/tests/test-fbe-scripting-stage3d.ps1 -FbeExe out/Release/FBE.exe -Container $container
           }
           ./tools/tests/test-fbe-scripting-stage3d.ps1 -FbeExe out/Release/FBE.exe -InputEncoding utf-16
+          ./tools/tests/test-fbe-scripting-stage3d.ps1 -FbeExe out/Release/FBE.exe -Mode installed -DocumentType fbd -InputEncoding utf-16
           ./tools/tests/test-fbe-scripting-examples.ps1 -FbeExe out/Release/FBE.exe
       - name: Run real OLE Clipboard in a disposable user logon
         shell: pwsh
