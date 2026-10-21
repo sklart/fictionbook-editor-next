@@ -177,6 +177,13 @@ bool IsRadioButton(HWND window)
 	return type == BS_RADIOBUTTON || type == BS_AUTORADIOBUTTON;
 }
 
+bool IsCheckBox(HWND window)
+{
+	if(!IsClass(window, L"Button")) return false;
+	const LONG_PTR type = ::GetWindowLongPtrW(window, GWL_STYLE) & BS_TYPEMASK;
+	return type == BS_CHECKBOX || type == BS_AUTOCHECKBOX || type == BS_3STATE || type == BS_AUTO3STATE;
+}
+
 bool HasClientEdge(HWND window)
 {
 	return (::GetWindowLongPtrW(window, GWL_EXSTYLE) & WS_EX_CLIENTEDGE) != 0;
@@ -491,7 +498,8 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 		HDC dc = reinterpret_cast<HDC>(wParam);
 		HWND control = reinterpret_cast<HWND>(lParam);
 		const bool enabled = control == NULL || IsPaletteControlEnabled(control);
-		const bool input = enabled && IsEditableComboInput(control, message);
+		const bool input = (enabled && IsEditableComboInput(control, message)) ||
+			(message == WM_CTLCOLORBTN && (IsCheckBox(control) || IsRadioButton(control)));
 		::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
 		::SetBkColor(dc, input ? ThemeManager::WindowColor() : ThemeManager::ControlColor());
 		return reinterpret_cast<LRESULT>(input ? ThemeManager::WindowBrush() : ThemeManager::ControlBrush());
@@ -624,7 +632,7 @@ void ApplyWindowSurface(HWND window)
 	const DWORD userBefore = g_recordApplyDiagnostics ? ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS) : 0;
 	const bool dark = ThemeManager::IsDark() && !IsHighContrastEnabled();
 	::SetWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId, 0);
-	if(dark && (UsesClassicSurfacePalette(window) || IsRadioButton(window)))
+	if(dark && (UsesClassicSurfacePalette(window) || IsRadioButton(window) || IsCheckBox(window)))
 		::SetWindowTheme(window, L" ", L" ");
 	else if(dark && IsComboBox(window))
 		::SetWindowTheme(window, L"DarkMode_CFD", NULL);

@@ -1089,9 +1089,8 @@ private:
         try { LoadDocxSettings(m_settings, &m_revision); m_original = m_settings; }
         catch(const _com_error& error) { FbePluginSettings::ShowSaveError(m_hWnd, error.Error(), LoadDocxString(IDS_PLUGIN_SETTINGS_SAVE_ERROR, L""), LoadDocxString(IDS_PLUGIN_SETTINGS_CONFLICT, L"")); EndDialog(IDCANCEL); return TRUE; }
         NormalizeSettings(m_settings);
-        if (::IsThemeActive() && ::IsAppThemed()) {
-            ::EnableThemeDialogTexture(m_hWnd, ETDT_ENABLETAB);
-        }
+        // Pages inherit the owning FBE palette. ETDT_ENABLETAB forces a
+        // system tab texture, which can disagree with that palette on Win10.
         ApplyRuntimeTexts();
         InitTabs();
         CheckDlgButton(IDC_EXPORT_IMAGES, m_settings.exportImages ? BST_CHECKED : BST_UNCHECKED);
@@ -1400,6 +1399,7 @@ private:
         ::RemovePropW(m_hWnd,L"FBE.NativeFileDialog");
         HWND hTab = GetDlgItem(IDC_SETTINGS_TAB);
         if (hTab == NULL) return;
+        ::SetPropW(hTab,L"FBE.PluginOptionsTabs",reinterpret_cast<HANDLE>(1));
         TCITEM item = { 0 };
         item.mask = TCIF_TEXT;
         CStringW tabMain = LoadDocxString(IDS_DOCX_TAB_MAIN, L"Main");
