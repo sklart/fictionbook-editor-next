@@ -35,6 +35,9 @@ class CSettingsDlg : public CAxDialogImpl<CSettingsDlg>
 	bool ProbeFollowup();
 	int ProbeResidual();
 	bool ProbeUiDefects();
+	int m_uiProbeStage = 0;
+	bool m_uiModalKeysPassed = true;
+	BYTE m_uiProbeKeyboard[256] = {};
 	CListBox m_navigation;
 	CSettingsAdvancedPage* m_advancedPage;
 	CSettingsGeneralPage* m_generalPage;
@@ -132,6 +135,8 @@ private:
 	void RevealFocusedPageControl(int index);
 	bool ProbeLayout();
 	static LRESULT CALLBACK PageSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam,
+		UINT_PTR subclassId, DWORD_PTR reference);
+	static LRESULT CALLBACK NavigationKeysSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam,
 		UINT_PTR subclassId, DWORD_PTR reference);
 	void RestoreGeometry();
 	void SaveGeometry();

@@ -278,18 +278,26 @@ bool CSettingsDlg::ProbeUiDefects()
         RECT client = {}; if(info.hwndCaret) ::GetClientRect(info.hwndCaret, &client);
         const bool inside = !info.hwndCaret || (info.rcCaret.left >= 0 && info.rcCaret.top >= 0 &&
             info.rcCaret.right <= client.right && info.rcCaret.bottom <= client.bottom && ::IsWindowVisible(info.hwndCaret));
-        const bool ok = got && ::GetFocus() == expected && inside &&
-            (!info.hwndCaret || info.hwndCaret == expected);
+        const bool needsCaret=expected==m_hotkeysPage->m_search.m_hWnd;
+        const bool ok = got && info.hwndFocus == expected && ::GetFocus() == expected && inside &&
+            (needsCaret ? info.hwndCaret==expected&&info.rcCaret.right>info.rcCaret.left&&info.rcCaret.bottom>info.rcCaret.top :
+                !info.hwndCaret||info.hwndCaret==expected);
         report.AppendFormat("caret_%s=%d; focus=%d; owner=%d; rect=%ld,%ld,%ld,%ld\n", phase, ok,
             ::GetDlgCtrlID(info.hwndFocus), ::GetDlgCtrlID(info.hwndCaret),
             info.rcCaret.left, info.rcCaret.top, info.rcCaret.right, info.rcCaret.bottom);
         passed = ok && passed;
     };
-    caret("initial", ::GetFocus());
+    report.AppendFormat("modal_queue_ctrl_f=%d\n",m_uiModalKeysPassed);
+    caret("initial", m_navigation);
     passed=!m_sourcePage->m_preview.Editor().Send(SCI_GETFOCUS)&&passed;
     SelectPage(SettingsPageId::Source);
     passed=!m_sourcePage->m_preview.Editor().Send(SCI_GETFOCUS)&&passed;
-    SelectPage(SettingsPageId::Keyboard);caret("keyboard_selected", ::GetFocus());
+    const HWND preview=m_sourcePage->m_preview.Editor().Handle();
+    ::SetFocus(preview);caret("xml_preview",preview);
+    passed=m_sourcePage->m_preview.Editor().Send(SCI_GETFOCUS)&&passed;
+    m_navigation.SetFocus();
+    passed=!m_sourcePage->m_preview.Editor().Send(SCI_GETFOCUS)&&passed;
+    SelectPage(SettingsPageId::Keyboard);caret("keyboard_selected", m_navigation);
     m_hotkeysPage->m_search.SetFocus(); caret("search", m_hotkeysPage->m_search);
     m_hotkeysPage->m_search.SendMessage(WM_CHAR, 'a', 1); caret("typed", m_hotkeysPage->m_search);
     m_hotkeysPage->m_search.SetWindowText(L""); caret("cleared", m_hotkeysPage->m_search);
@@ -303,17 +311,11 @@ bool CSettingsDlg::ProbeUiDefects()
     SelectPage(SettingsPageId::General); caret("general", m_navigation);
     SelectPage(SettingsPageId::Keyboard);
     m_navigation.SetFocus();
-    std::array<BYTE,256> navigationKeys={}, originalKeys={};::GetKeyboardState(originalKeys.data());navigationKeys=originalKeys;navigationKeys[VK_CONTROL]=0x80;::SetKeyboardState(navigationKeys.data());
-    MSG navigationKey={};navigationKey.hwnd=m_navigation;navigationKey.message=WM_KEYDOWN;navigationKey.wParam='F';
-    passed=m_hotkeysPage->PreTranslateMessage(&navigationKey)&&passed;::SetKeyboardState(originalKeys.data());caret("navigation_ctrl_f",m_hotkeysPage->m_search);
+    caret("navigation",m_navigation);
     m_hotkeysPage->m_hkGroups.SetFocus();
     m_hotkeysPage->m_hkGroups.SetCurSel(0);
     m_hotkeysPage->SendMessage(WM_COMMAND, MAKEWPARAM(IDC_LIST_HOTKEYS_GROUPS,LBN_SELCHANGE), reinterpret_cast<LPARAM>(m_hotkeysPage->m_hkGroups.m_hWnd));
     caret("group", m_hotkeysPage->m_hkGroups);
-    std::array<BYTE,256> oldKeys={}, keys={}; ::GetKeyboardState(oldKeys.data()); keys=oldKeys; keys[VK_CONTROL]=0x80; ::SetKeyboardState(keys.data());
-    MSG key={};key.hwnd=m_hotkeysPage->m_hkGroups;key.message=WM_KEYDOWN;key.wParam='F';
-    passed = m_hotkeysPage->PreTranslateMessage(&key) && passed; ::SetKeyboardState(oldKeys.data());
-    caret("ctrl_f", m_hotkeysPage->m_search);
     m_hotkeysPage->m_hotkeys.SetFocus(); caret("commands", m_hotkeysPage->m_hotkeys);
     m_hotkeysPage->m_editHotkey.SetFocus(); caret("recording", m_hotkeysPage->m_editHotkey);
     for(UINT vk : std::array<UINT,4>{VK_CONTROL,VK_SHIFT,VK_MENU,'Q'}) m_hotkeysPage->m_editHotkey.SendMessage(WM_KEYDOWN,vk,0);

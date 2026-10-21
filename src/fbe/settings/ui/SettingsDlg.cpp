@@ -58,6 +58,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	ThemeManager::ApplyToWindow(m_hWnd);
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_TOOLS_SETTINGS);
 	m_navigation = GetDlgItem(IDC_SETTINGS_NAV);
+	::SetWindowSubclass(m_navigation, NavigationKeysSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
 	const struct { LPCWSTR key; LPCWSTR fallback; } navigationItems[] = {
 		{ L"fbe.settings.nav.general", L"General" },
 		{ L"fbe.settings.nav.editor", L"Editor" },
@@ -193,8 +194,33 @@ LRESULT CSettingsDlg::OnTimer(UINT, WPARAM timerId, LPARAM, BOOL&)
 {
 	if(timerId == 0x55494446 && RuntimeTests::IsScenario(L"ui-defects-runtime")) {
 		KillTimer(timerId);
-		::SetPropW(GetParent(), L"FBE_UI_DEFECTS_SETTINGS", reinterpret_cast<HANDLE>(ProbeUiDefects() ? 1 : 2));
-		BOOL handled = FALSE; return OnClickedCancel(0, IDCANCEL, NULL, handled);
+		if(m_uiProbeStage==0) {
+			::GetKeyboardState(m_uiProbeKeyboard);
+			BYTE keys[256]={};keys[VK_CONTROL]=0x80;::SetKeyboardState(keys);
+			SelectPage(SettingsPageId::Keyboard);m_navigation.SetFocus();
+		} else {
+			const HWND expected=m_uiProbeStage==3?m_hotkeysPage->m_editHotkey.m_hWnd:m_hotkeysPage->m_search.m_hWnd;
+			GUITHREADINFO info={};info.cbSize=sizeof(info);RECT client={};::GetClientRect(expected,&client);
+			const bool ok=::GetGUIThreadInfo(::GetCurrentThreadId(),&info)&&info.hwndFocus==expected&&
+				info.hwndCaret==expected&&info.rcCaret.left>=0&&info.rcCaret.top>=0&&
+				info.rcCaret.right>info.rcCaret.left&&info.rcCaret.bottom>info.rcCaret.top&&
+				info.rcCaret.right<=client.right&&info.rcCaret.bottom<=client.bottom;
+			m_uiModalKeysPassed=ok&&m_uiModalKeysPassed;
+			if(m_uiProbeStage==3) {
+				::SetKeyboardState(m_uiProbeKeyboard);SelectPage(SettingsPageId::General);m_navigation.SetFocus();
+				const bool probes=ProbeUiDefects();
+				::SetPropW(GetParent(), L"FBE_UI_DEFECTS_SETTINGS", reinterpret_cast<HANDLE>(probes&&m_uiModalKeysPassed?1:2));
+				BOOL handled=FALSE;return OnClickedCancel(0,IDCANCEL,NULL,handled);
+			}
+			if(m_uiProbeStage==1)m_hotkeysPage->m_hkGroups.SetFocus();
+			else m_hotkeysPage->m_editHotkey.SetFocus();
+		}
+		// Return to DoModal: the queued key must pass through the real modal
+		// dialog manager, rather than calling a message filter from the test.
+		++m_uiProbeStage;
+		::PostMessageW(::GetFocus(),WM_KEYDOWN,'F',1);
+		SetTimer(timerId,100);
+		return 0;
 	}
 	if (timerId != 0x53455454 || !IsSettingsDialogRuntimeTest()) return 0;
 	KillTimer(timerId);
@@ -794,6 +820,23 @@ void CSettingsDlg::RevealFocusedPageControl(int index)
 	if(rect.top < client.top) layout.scrollY += rect.top - client.top;
 	else if(rect.bottom > client.bottom) layout.scrollY += rect.bottom - client.bottom;
 	if(layout.scrollX != oldX || layout.scrollY != oldY) LayoutPage(index);
+}
+
+LRESULT CALLBACK CSettingsDlg::NavigationKeysSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam,
+	UINT_PTR subclassId, DWORD_PTR reference)
+{
+	auto* dialog=reinterpret_cast<CSettingsDlg*>(reference);
+	if(message==WM_NCDESTROY) ::RemoveWindowSubclass(window,NavigationKeysSubclassProc,subclassId);
+	// DoModal runs the dialog manager, not the outer CMessageLoop filters.
+	// Keep this local to navigation; the hotkey recorder retains its chords.
+	if(dialog->m_currentPage==SettingsPageId::Keyboard&&wParam=='F'&&(::GetKeyState(VK_CONTROL)&0x8000)) {
+		if(message==WM_GETDLGCODE) return ::DefSubclassProc(window,message,wParam,lParam)|DLGC_WANTMESSAGE;
+		if(message==WM_KEYDOWN) {
+			MSG key={};key.hwnd=window;key.message=message;key.wParam=wParam;key.lParam=lParam;
+			if(dialog->m_hotkeysPage->PreTranslateMessage(&key))return 0;
+		}
+	}
+	return ::DefSubclassProc(window,message,wParam,lParam);
 }
 
 LRESULT CALLBACK CSettingsDlg::PageSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam,
