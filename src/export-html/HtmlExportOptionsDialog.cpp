@@ -51,6 +51,8 @@ INT_PTR CHtmlExportOptionsDialog::Open(HWND owner)
 }
 LRESULT CHtmlExportOptionsDialog::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
+    ::SetPropW(m_hWnd, L"FBE.OwnedWindow", reinterpret_cast<HANDLE>(1));
+    ::RemovePropW(m_hWnd, L"FBE.NativeFileDialog");
     ::SetPropW(m_hWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION", reinterpret_cast<HANDLE>(1));
     SetWindowText(LoadExportHtmlString(IDS_HTML_EXPORT_OPTIONS_TITLE));
     for(int id : {IDOK, IDCANCEL}) {

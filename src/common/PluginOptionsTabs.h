@@ -80,6 +80,8 @@ public:
         owner = NULL; viewport = NULL; tabs = NULL;
     }
     bool Create(HWND window, const std::vector<std::wstring>& labels, const std::vector<int>& buttons) {
+        ::SetPropW(window, L"FBE.OwnedWindow", reinterpret_cast<HANDLE>(1));
+        ::RemovePropW(window, L"FBE.NativeFileDialog");
         owner = window; font = reinterpret_cast<HFONT>(::SendMessageW(window, WM_GETFONT, 0, 0));
         if(!font) font = reinterpret_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT));
         ::SetWindowLongW(window, GWL_STYLE, (::GetWindowLongW(window, GWL_STYLE) | WS_CLIPCHILDREN) & ~(WS_VSCROLL | WS_HSCROLL));

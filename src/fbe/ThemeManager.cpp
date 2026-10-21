@@ -21,6 +21,7 @@ HBRUSH g_brushes[THEME_COLOR_COUNT] = {};
 std::map<UINT, HBITMAP> g_nativeMenuBitmaps;
 const wchar_t kAppliedThemeGenerationProperty[] = L"FBE.AppliedThemeGeneration";
 const wchar_t kNativeFileDialogProperty[] = L"FBE.NativeFileDialog";
+const wchar_t kOwnedWindowProperty[] = L"FBE.OwnedWindow";
 const UINT kApplyNewThemeChild = WM_APP + 0x147;
 DWORD g_paletteGeneration = 1;
 ThemeManager::ApplyDiagnostics g_applyDiagnostics = {};
@@ -146,6 +147,22 @@ bool IsClass(HWND window, LPCWSTR className)
 	wchar_t actual[64] = {};
 	return ::GetClassNameW(window, actual, _countof(actual)) && ::lstrcmpiW(actual, className) == 0;
 }
+
+bool IsNativeFileDialogWindow(HWND window)
+{
+	if(::GetPropW(::GetAncestor(window, GA_ROOT), kOwnedWindowProperty)) return false;
+	for(HWND parent = window; parent; parent = ::GetParent(parent)) {
+		if(::GetPropW(parent, kOwnedWindowProperty)) return false;
+		if(::GetPropW(parent, kNativeFileDialogProperty)) return true;
+	}
+	if(::GetPropW(::GetAncestor(window, GA_ROOT), kAppliedThemeGenerationProperty)) return false;
+	// Before HCBT_ACTIVATE the dialog and its Shell children may already paint.
+	// Exclude only windows in the new modal subtree, not the existing owner.
+	return ModernFileDialog::IsShowingOnCurrentThread() &&
+		::GetAncestor(window, GA_ROOT) != ::GetAncestor(ModernFileDialog::CurrentOwnerOnThread(), GA_ROOT);
+}
+
+void ApplyPreferredAppMode(bool dark, bool highContrast);
 
 bool IsGroupBox(HWND window)
 {
@@ -404,6 +421,11 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 		::RemoveWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId);
 		return ::DefSubclassProc(window, message, wParam, lParam);
 	}
+	if(message == ModernFileDialog::ScopeChangedMessage()) {
+		ApplyPreferredAppMode(ThemeManager::IsDark(), ThemeManager::IsHighContrast());
+		return 1;
+	}
+	if(IsNativeFileDialogWindow(window)) return ::DefSubclassProc(window, message, wParam, lParam);
 	if(message == WM_PARENTNOTIFY && LOWORD(wParam) == WM_CREATE)
 	{
 		// Child creation can precede WM_CREATE of the child itself. Apply after
@@ -526,9 +548,9 @@ void ApplyPreferredAppMode(bool dark, bool highContrast)
 	if(ordinal135 != NULL)
 	{
 		if(build < 18362)
-			reinterpret_cast<AllowDarkModeForAppFn>(ordinal135)(dark && !highContrast ? TRUE : FALSE);
+			reinterpret_cast<AllowDarkModeForAppFn>(ordinal135)(dark && !highContrast && !ModernFileDialog::IsShowingOnCurrentThread() ? TRUE : FALSE);
 		else
-			reinterpret_cast<SetPreferredAppModeFn>(ordinal135)(highContrast ? 0 /* Default */ :
+			reinterpret_cast<SetPreferredAppModeFn>(ordinal135)(highContrast || ModernFileDialog::IsShowingOnCurrentThread() ? 0 /* Default */ :
 			(dark ? 2 /* ForceDark */ : 3 /* ForceLight */));
 	}
 	// Rebuild popup-menu rendering after changing the preferred app mode.  This
@@ -583,7 +605,7 @@ void ApplyModernTitleBar(HWND window, bool dark)
 
 void ApplyWindowSurface(HWND window)
 {
-	if(!::IsWindow(window)) return;
+	if(!::IsWindow(window) || IsNativeFileDialogWindow(window)) return;
 	if(::GetPropW(window, kAppliedThemeGenerationProperty) == AppliedThemeGeneration())
 	{
 		if(g_recordApplyDiagnostics) ++g_applyDiagnostics.skipped;
@@ -647,15 +669,17 @@ BOOL CALLBACK ApplyThreadWindow(HWND window, LPARAM)
 
 LRESULT CALLBACK ThemeCbtHookProc(int code, WPARAM wParam, LPARAM lParam)
 {
+	if(code == HCBT_CREATEWND && wParam && ModernFileDialog::IsShowingOnCurrentThread()) {
+		HWND window = reinterpret_cast<HWND>(wParam);
+		const auto* created = reinterpret_cast<const CBT_CREATEWND*>(lParam);
+		if(created && !(created->lpcs->style & WS_CHILD) && IsClass(window, L"#32770") && window != ModernFileDialog::CurrentOwnerOnThread())
+			::SetPropW(window, kNativeFileDialogProperty, reinterpret_cast<HANDLE>(1));
+	}
 	if(code == HCBT_ACTIVATE && wParam != 0)
 	{
 		HWND window = reinterpret_cast<HWND>(wParam);
-		wchar_t className[32] = {};
-		const bool shellDialog = ModernFileDialog::IsShowingOnCurrentThread() &&
-			window != ModernFileDialog::CurrentOwnerOnThread() &&
-			::GetPropW(window, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION") == NULL &&
-			::GetClassNameW(window, className, _countof(className)) && wcscmp(className, L"#32770") == 0;
-		if(shellDialog)
+		if(::GetPropW(window, kOwnedWindowProperty)) ::RemovePropW(window, kNativeFileDialogProperty);
+		if(IsNativeFileDialogWindow(window))
 			::SetPropW(window, kNativeFileDialogProperty, reinterpret_cast<HANDLE>(1));
 		else if(::GetPropW(window, kAppliedThemeGenerationProperty) != AppliedThemeGeneration())
 			ThemeManager::ApplyToWindow(window);
@@ -1317,11 +1341,7 @@ HBRUSH ControlBrush() { if(!g_controlBrush) RebuildBrushes(); return g_controlBr
 
 void ApplyToWindow(HWND window)
 {
-	if(!::IsWindow(window)) return;
-	// A native file dialog may also be visited by a thread-wide theme refresh.
-	// Its children must retain the Shell's own theme and paint handlers.
-	for(HWND parent = window; parent != NULL; parent = ::GetParent(parent))
-		if(::GetPropW(parent, kNativeFileDialogProperty) != NULL) return;
+	if(!::IsWindow(window) || IsNativeFileDialogWindow(window)) return;
 	ApplyWindowSurface(window);
 	// EnumChildWindows already visits every descendant. Its callback must not
 	// recursively enumerate again; state set on each HWND also suppresses any

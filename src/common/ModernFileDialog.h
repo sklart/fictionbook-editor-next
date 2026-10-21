@@ -11,18 +11,47 @@
 namespace ModernFileDialog {
 enum class Outcome { Accepted, Cancelled, Failed };
 
-inline unsigned& ShowDepth() {
-    static thread_local unsigned depth = 0;
-    return depth;
+// A header-local TLS counter is not shared between the EXE and plugin DLLs.
+// A message-only HWND is thread-owned, module-independent and gone at scope exit.
+inline const std::wstring& ScopeName() { static thread_local const std::wstring name = L"FBE.NativeFileDialog.Scope." + std::to_wstring(::GetCurrentThreadId()); return name; }
+inline HWND ScopeWindow() { return ::FindWindowExW(HWND_MESSAGE, NULL, ScopeName().c_str(), NULL); }
+inline UINT ScopeChangedMessage() { static const UINT message = ::RegisterWindowMessageW(L"FBE.NativeFileDialog.ScopeChanged"); return message; }
+inline bool IsShowingOnCurrentThread() { return ScopeWindow() != NULL; }
+inline HWND CurrentOwnerOnThread() { return reinterpret_cast<HWND>(::GetPropW(ScopeWindow(), L"FBE.ScopeOwner")); }
+inline void NotifyScopeChanged() {
+    ::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM message) -> BOOL {
+        return ::SendMessageW(window, static_cast<UINT>(message), 0, 0) != 1;
+    }, ScopeChangedMessage());
 }
-inline HWND& ShowOwner() {
-    static thread_local HWND owner = NULL;
-    return owner;
-}
-// The Shell owns the windows created by IFileDialog::Show. Thread-wide UI
-// hooks can use this scope to leave the native dialog untouched.
-inline bool IsShowingOnCurrentThread() { return ShowDepth() != 0; }
-inline HWND CurrentOwnerOnThread() { return ShowOwner(); }
+class ShowingScope {
+    HWND state = NULL, previousOwner = NULL;
+    bool outer = false;
+public:
+    explicit ShowingScope(HWND owner) {
+        state = ScopeWindow(); outer = state == NULL;
+        if(outer) {
+            WNDCLASSW klass={};klass.lpfnWndProc=::DefWindowProcW;klass.hInstance=::GetModuleHandleW(NULL);klass.lpszClassName=ScopeName().c_str();
+            const ATOM atom=::RegisterClassW(&klass);
+            if(atom || ::GetLastError()==ERROR_CLASS_ALREADY_EXISTS)
+                state=::CreateWindowExW(0,ScopeName().c_str(),L"",0,0,0,0,0,HWND_MESSAGE,NULL,klass.hInstance,NULL);
+        }
+        previousOwner = reinterpret_cast<HWND>(::GetPropW(state, L"FBE.ScopeOwner"));
+        if(owner) ::SetPropW(state, L"FBE.ScopeOwner", owner); else ::RemovePropW(state, L"FBE.ScopeOwner");
+        if(outer && state) NotifyScopeChanged();
+    }
+    ~ShowingScope() {
+        if(outer) {
+            if(state)::DestroyWindow(state);
+            ::UnregisterClassW(ScopeName().c_str(),::GetModuleHandleW(NULL));
+            if(state)NotifyScopeChanged();
+        }
+        else if(previousOwner) ::SetPropW(state, L"FBE.ScopeOwner", previousOwner);
+        else ::RemovePropW(state, L"FBE.ScopeOwner");
+    }
+    bool Valid() const { return state != NULL; }
+    ShowingScope(const ShowingScope&) = delete;
+    ShowingScope& operator=(const ShowingScope&) = delete;
+};
 
 struct Request {
     bool save = false, allowMultiSelect = false, fileMustExist = false, pathMustExist = false, overwritePrompt = false;
@@ -52,6 +81,8 @@ inline HRESULT CreateShellItemFromPath(LPCWSTR path, IShellItem** item) {
 inline Result Show(HWND owner, const Request& request) {
     Result result;
     if (request.save && request.allowMultiSelect) { result.error = E_INVALIDARG; return result; }
+    ShowingScope showing(owner);
+    if(!showing.Valid()) { result.error = HRESULT_FROM_WIN32(ERROR_NOT_ENOUGH_MEMORY); return result; }
     CComPtr<IFileDialog> dialog; HRESULT hr = E_FAIL;
     if (request.save) { CComPtr<IFileSaveDialog> save; hr = save.CoCreateInstance(CLSID_FileSaveDialog); dialog = save; }
     else { CComPtr<IFileOpenDialog> open; hr = open.CoCreateInstance(CLSID_FileOpenDialog); dialog = open; }
@@ -89,11 +120,6 @@ inline Result Show(HWND owner, const Request& request) {
     }
     DWORD cookie = 0;
     if (request.events && FAILED(hr = dialog->Advise(request.events, &cookie))) { result.error = hr; return result; }
-    struct ShowingScope {
-        HWND previousOwner;
-        explicit ShowingScope(HWND owner) : previousOwner(ShowOwner()) { ++ShowDepth(); ShowOwner() = owner; }
-        ~ShowingScope() { ShowOwner() = previousOwner; --ShowDepth(); }
-    } showing(owner);
     hr = dialog->Show(owner); if (cookie) dialog->Unadvise(cookie);
     if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) { result.outcome = Outcome::Cancelled; result.error = hr; return result; }
     if (FAILED(hr)) { result.error = hr; return result; }

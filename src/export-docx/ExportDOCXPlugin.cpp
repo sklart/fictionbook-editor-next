@@ -1396,6 +1396,8 @@ private:
     }
 
     void InitTabs() {
+        ::SetPropW(m_hWnd,L"FBE.OwnedWindow",reinterpret_cast<HANDLE>(1));
+        ::RemovePropW(m_hWnd,L"FBE.NativeFileDialog");
         HWND hTab = GetDlgItem(IDC_SETTINGS_TAB);
         if (hTab == NULL) return;
         TCITEM item = { 0 };
