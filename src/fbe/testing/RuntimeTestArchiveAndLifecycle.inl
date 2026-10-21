@@ -4,6 +4,7 @@
 #include "RuntimeTestFileClose.inl"
 #include "RuntimeTestNewDocument.inl"
 #include "RuntimeTestUiDefects.inl"
+if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 	if (IsFbeTestScenario(L"script-card-block-runtime"))
 	{
 		const BYTE ascii[] = "\xEF\xBB\xBF/*<FBE-SCRIPT-CARD version=\"1\">\r\n{}\r\n</FBE-SCRIPT-CARD>*/\r\nABC";

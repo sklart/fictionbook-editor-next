@@ -2,8 +2,8 @@ if(IsFbeTestScenario(L"plugin-options-tabs-runtime"))
 {
     CStringA report;
     bool passed = false;
-    wchar_t captures[32768] = {};
-    ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_PLUGIN_CAPTURES", captures, _countof(captures));
+    std::vector<wchar_t> captures(32768);
+    ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_PLUGIN_CAPTURES", captures.data(), static_cast<DWORD>(captures.size()));
     try {
         struct RegistryFixture {
             CRegKey key;
@@ -26,15 +26,18 @@ if(IsFbeTestScenario(L"plugin-options-tabs-runtime"))
         } registryFixture;
         registryFixture.Open();
         ShowWindow(SW_SHOWNORMAL); UpdateWindow();
-        const CString xmlBefore(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+        CString analysisError;const auto initialDom=m_doc->CreateDOMForAnalysis(&analysisError);
+        if(!initialDom) {report.AppendFormat("initial_dom_error=%s\n",CStringA(analysisError).GetString());CheckError(E_FAIL);}
+        const CString xmlBefore(static_cast<LPCWSTR>(initialDom->xml));
         const bool dirtyBefore = m_doc->DocChanged();
         ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_PLUGIN_SETTINGS", L"1");
-        for(InterfaceTheme theme : {INTERFACE_THEME_LIGHT, INTERFACE_THEME_DARK}) {
+        for(InterfaceTheme theme : {INTERFACE_THEME_LIGHT, INTERFACE_THEME_DARK, INTERFACE_THEME_AUTOMATIC, INTERFACE_THEME_DARK}) {
             ThemeManager::SetSelectedTheme(theme); ThemeManager::ApplyToWindow(m_hWnd);
-            for(LPCWSTR locale : {L"ru-RU", L"de-DE"}) {
+            if(ThemeManager::GetSelectedTheme()!=theme) CheckError(E_FAIL);
+            for(LPCWSTR locale : {L"ru-RU", L"en-US", L"de-DE"}) {
+                if(theme==INTERFACE_THEME_AUTOMATIC && wcscmp(locale,L"ru-RU")) continue;
                 ::SetEnvironmentVariableW(L"FBE_NEXT_UI_LOCALE", locale);
                 for(int index : {0, 1, 2, 3}) {
-                    if(index < 2 && (theme != INTERFACE_THEME_LIGHT || wcscmp(locale, L"ru-RU") != 0)) continue;
                     CLSID clsid = {};
                     const wchar_t* ids[] = {L"{C3098839-EF69-4DE5-B27D-1E80051CA843}", L"{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}", L"{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}", L"{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}"};
                     CheckError(::CLSIDFromString(ids[index], &clsid));
@@ -42,9 +45,10 @@ if(IsFbeTestScenario(L"plugin-options-tabs-runtime"))
                     CComPtr<IFBEPluginHost> host; CheckError(FbePluginApiV2::CreateHost(m_hWnd, locale, &host));
                     const wchar_t* names[] = {L"html", L"docx", L"import", L"export"};
                     const wchar_t* profiles[] = {L"export-html.json", L"export-docx.json", L"import-epub.json", L"export-epub.json"};
-                    const std::wstring name = std::wstring(names[index]) + L"-" + locale + (theme == INTERFACE_THEME_DARK ? L"-dark" : L"-light");
+                    const std::wstring name = std::wstring(names[index]) + L"-" + locale + (theme == INTERFACE_THEME_AUTOMATIC ? L"-automatic" : theme == INTERFACE_THEME_DARK ? L"-dark" : L"-light");
                     const std::wstring profile = DeploymentContext::SettingsDirectory() + L"Plugins\\" + profiles[index];
-                    PluginOptionsProbe::Start(index, PluginOptionsProbe::Action::Inspect, captures, name, profile);
+                    PluginOptionsProbe::Start(index, PluginOptionsProbe::Action::Inspect, captures.data(), name, profile);
+                    PluginOptionsProbe::expectedDarkTabs = ThemeManager::IsDark();
                     std::map<std::wstring, CStringW> buttonTranslations;
                     FbeRuntimeLocalization::LoadRuntimeStringFiles(::GetModuleHandleW(NULL), profiles[index], buttonTranslations);
                     const wchar_t* cancelKeys[] = {L"common.button.cancel", L"export_docx.dialog.settings.cancel", L"import_epub.options.button_cancel", L"export_epub.options.button_cancel"};
@@ -54,7 +58,6 @@ if(IsFbeTestScenario(L"plugin-options-tabs-runtime"))
                         FbeRuntimeLocalization::LoadRuntimeStringFiles(::GetModuleHandleW(NULL), index == 2 ? L"import-epub.json" : L"export-epub.json", translations);
                         PluginOptionsProbe::expectedTitle = translations.at(index == 2 ? L"import_epub.options.title" : L"export_epub.options.dialog_title").GetString();
                         if(index == 2) PluginOptionsProbe::expectedConfirmText = translations.at(L"import_epub.options.button_ok").GetString();
-                        PluginOptionsProbe::expectedDarkTabs = theme == INTERFACE_THEME_DARK;
                     }
                     const UINT_PTR timer = ::SetTimer(NULL, 0, 80, PluginOptionsProbe::Timer); if(!timer) CheckError(E_FAIL);
                     HRESULT result = E_NOINTERFACE;

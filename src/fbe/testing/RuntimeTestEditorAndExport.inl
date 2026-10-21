@@ -2391,6 +2391,7 @@
 	}
 	if (IsFbeTestScenario(L"toolbar-alpha-scale"))
 	{
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
 		const int sourceSize = 24;
 		BITMAPINFO sourceInfo = {}; sourceInfo.bmiHeader.biSize = sizeof(sourceInfo.bmiHeader); sourceInfo.bmiHeader.biWidth = sourceSize; sourceInfo.bmiHeader.biHeight = -sourceSize; sourceInfo.bmiHeader.biPlanes = 1; sourceInfo.bmiHeader.biBitCount = 24;
 		void* sourceBits = NULL; HBITMAP source = ::CreateDIBSection(NULL, &sourceInfo, DIB_RGB_COLORS, &sourceBits, NULL, 0);

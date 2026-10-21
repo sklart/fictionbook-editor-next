@@ -5,8 +5,11 @@
 
 #include "../view/VisualDomNormalizer.h"
 #include "PluginOptionsDialogProbe.h"
+#include "../../common/ModernFileDialog.h"
 #include "../../common/DeploymentContext.h"
 #include "RuntimeTestPortableState.inl"
+
+#include "RuntimeTestIssue64.inl"
 
 LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 {

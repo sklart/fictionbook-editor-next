@@ -706,6 +706,7 @@ public:
 	LRESULT OnDescriptionFormChanged(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnPostCreate(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&);
+  LRESULT RunIssue64Runtime(CAtlFile& output);
   LRESULT OnTimer(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnApplyXmlSourceTheme(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&);

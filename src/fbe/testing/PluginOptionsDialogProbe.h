@@ -7,6 +7,8 @@
 #include <vector>
 #include "../../common/PluginOptionsTabs.h"
 #include "../../common/PluginWindowPlacement.h"
+#include "../ThemeManager.h"
+#include "../UiMetrics.h"
 
 namespace PluginOptionsProbe {
 enum class Action { Inspect, EditSave, EditCancel, DefaultsCancel, PresetDefault, PresetCompat, PresetRich, ReadOnly, Conflict, Corrupt, PositionDefault, PositionMove, PositionVerify };
@@ -123,6 +125,15 @@ inline bool Capture(HWND window, const std::wstring& name) {
     HGDIOBJ old = ::SelectObject(memory, bitmap);
     ::RedrawWindow(window, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW);
     const BOOL copied = ::PrintWindow(window, memory, 0); ::GdiFlush();
+    bool visibleContent=true;wchar_t windowClass[64]={};::GetClassNameW(window,windowClass,_countof(windowClass));
+    if(!wcscmp(windowClass,L"ToolbarWindow32")) {
+        const COLORREF background=::GetPixel(memory,width-1,height-1);unsigned ink=0;
+        for(int y=0;y<height&&ink<100;++y)for(int x=0;x<(std::min)(width,1200)&&ink<100;++x) {
+            const COLORREF pixel=::GetPixel(memory,x,y);
+            if(pixel!=CLR_INVALID&&abs(static_cast<int>(GetRValue(pixel))-GetRValue(background))+abs(static_cast<int>(GetGValue(pixel))-GetGValue(background))+abs(static_cast<int>(GetBValue(pixel))-GetBValue(background))>80)++ink;
+        }
+        visibleContent=ink>=100;
+    }
     if(expectedDarkTabs) {
         const COLORREF footer = ::GetPixel(memory, width - 20, height - 20);
         FBE_OPTIONS_CHECK(footer != CLR_INVALID && GetRValue(footer) < 128 && GetGValue(footer) < 128 && GetBValue(footer) < 128);
@@ -130,6 +141,22 @@ inline bool Capture(HWND window, const std::wstring& name) {
         for(POINT point : {POINT{1, client.bottom / 2}, POINT{client.right - 2, 2}}) {
             const COLORREF pixel = ::GetPixel(memory, r.left - bounds.left + point.x, r.top - bounds.top + point.y);
             FBE_OPTIONS_CHECK(pixel != CLR_INVALID && GetRValue(pixel) < 128 && GetGValue(pixel) < 128 && GetBValue(pixel) < 128);
+        }
+        std::vector<HWND> controls;
+        ::EnumChildWindows(window,[](HWND child,LPARAM state)->BOOL {reinterpret_cast<std::vector<HWND>*>(state)->push_back(child);return TRUE;},reinterpret_cast<LPARAM>(&controls));
+        for(HWND control:controls) if(::IsWindowVisible(control)&&Checkbox(control)&&::GetWindowTextLengthW(control)>0) {
+            RECT controlRect={},clip={};::GetWindowRect(control,&controlRect);::GetClientRect(::GetParent(control),&clip);::MapWindowPoints(::GetParent(control),NULL,reinterpret_cast<POINT*>(&clip),2);
+            if(controlRect.top<clip.top||controlRect.bottom>clip.bottom||controlRect.left<clip.left||controlRect.right>clip.right) continue;
+            // Inspect rendered caption pixels, excluding the check glyph. An
+            // HDC colour query alone misses Win10's themed black checkbox text.
+            const COLORREF expected=::IsWindowEnabled(control)?ThemeManager::TextColor():ThemeManager::DisabledTextColor();
+            bool foreground=false;
+            const int glyph=::MulDiv(22,static_cast<int>(UiMetrics::DpiForWindow(control)),96);
+            for(int y=controlRect.top;y<controlRect.bottom&&!foreground;++y)for(int x=controlRect.left+glyph;x<controlRect.right;++x) {
+                const COLORREF pixel=::GetPixel(memory,x-bounds.left,y-bounds.top);
+                if(pixel!=CLR_INVALID&&abs(static_cast<int>(GetRValue(pixel))-GetRValue(expected))<24&&abs(static_cast<int>(GetGValue(pixel))-GetGValue(expected))<24&&abs(static_cast<int>(GetBValue(pixel))-GetBValue(expected))<24){foreground=true;break;}
+            }
+            FBE_OPTIONS_CHECK(foreground);
         }
     }
     ::SelectObject(memory, old); ::DeleteDC(memory); ::ReleaseDC(window, source);
@@ -141,7 +168,7 @@ inline bool Capture(HWND window, const std::wstring& name) {
           saved = image.Save((captures + L"\\" + prefix + L"-" + name + L".png").c_str(), &png, NULL) == Gdiplus::Ok; }
         Gdiplus::GdiplusShutdown(token);
     }
-    ::DeleteObject(bitmap); return copied && saved;
+    ::DeleteObject(bitmap); return copied && saved && visibleContent;
 }
 inline void Select(HWND window, HWND tab, int page) {
     TabCtrl_SetCurSel(tab, page); NMHDR change = {tab, static_cast<UINT_PTR>(::GetDlgCtrlID(tab)), TCN_SELCHANGE};

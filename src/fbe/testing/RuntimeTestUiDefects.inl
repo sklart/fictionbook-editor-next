@@ -2,6 +2,26 @@ if (IsFbeTestScenario(L"ui-defects-runtime")) {
     bool passed = true; CStringA report;
     auto check = [&](const char* name, bool ok) {report.AppendFormat("%s=%d\n",name,ok);passed=ok&&passed;};
     ShowWindow(SW_SHOWNORMAL);
+    wchar_t requested[16]={};::GetEnvironmentVariableW(L"FBE_NEXT_TEST_REQUESTED_THEME",requested,_countof(requested));
+    check("requested_theme_applied",requested[0]&&ThemeManager::GetSelectedTheme()==_wtoi(requested));
+    const CString initialXml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));const bool initialDirty=DocChanged();
+    std::vector<wchar_t> captures(32768);::GetEnvironmentVariableW(L"FBE_NEXT_TEST_ARTIFACT_DIR",captures.data(),static_cast<DWORD>(captures.size()));
+    PluginOptionsProbe::captures=captures.data();PluginOptionsProbe::dialog=m_hWnd;
+    auto showTools=[&](HMENU menu,const std::wstring& name) {
+        PluginOptionsProbe::prefix=name;::RemovePropW(m_hWnd,L"FBE.MenuCapture");
+        struct MenuProbe {static void CALLBACK Tick(HWND,UINT,UINT_PTR,DWORD) {
+            ::EnumThreadWindows(::GetCurrentThreadId(),[](HWND window,LPARAM)->BOOL {
+                wchar_t kind[32]={};::GetClassNameW(window,kind,_countof(kind));
+                if(!wcscmp(kind,L"#32768")&&::IsWindowVisible(window)) {
+                    if(PluginOptionsProbe::Capture(window,L"tools"))::SetPropW(PluginOptionsProbe::dialog,L"FBE.MenuCapture",reinterpret_cast<HANDLE>(1));return FALSE;
+                }return TRUE;
+            },0);::EndMenu();
+        }};
+        const UINT_PTR timer=::SetTimer(NULL,0,120,MenuProbe::Tick);check("menu_timer",timer!=0);
+        RECT bounds={};m_MenuBar.GetWindowRect(&bounds);
+        ThemeManager::TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,bounds.left,bounds.bottom,m_hWnd);
+        ::KillTimer(NULL,timer);check("menu_display_capture",::GetPropW(m_hWnd,L"FBE.MenuCapture")!=NULL);
+    };
     auto toolsMenu = [&]() {
         HMENU menu=::GetSubMenu(m_MenuBar.GetMenu(),5);
         int count=0,position=-1;
@@ -15,9 +35,31 @@ if (IsFbeTestScenario(L"ui-defects-runtime")) {
         }
         wchar_t caption[1024]={};::GetMenuString(menu,ID_TOOLS_REFRESH_SCRIPTS,caption,_countof(caption),MF_BYCOMMAND);
         check("refresh_translation",CString(caption).Find(FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.tools.refresh_scripts"))==0);
+        for(const auto& neighbor:{std::make_pair(ID_TOOLS_WORDS,L"fbe.menu.idr_mainframe.tools.words"),std::make_pair(ID_VIEW_OPTIONS,L"fbe.menu.idr_mainframe.tools.options"),std::make_pair(ID_TOOLS_SPELLCHECK,L"fbe.menu.idr_mainframe.tools.spellcheck")}) {
+            wchar_t text[1024]={};::GetMenuStringW(menu,neighbor.first,text,_countof(text),MF_BYCOMMAND);
+            check("neighbor_translation",CString(text).Find(FbeLoadRuntimeStringByKey(neighbor.second))==0);
+        }
         return menu;
     };
     HMENU tools=toolsMenu();
+    showTools(tools,L"startup");
+    auto metadata=[&]() {MENUITEMINFO info={};info.cbSize=sizeof(info);info.fMask=MIIM_BITMAP|MIIM_STATE|MIIM_ID|MIIM_FTYPE|MIIM_DATA|MIIM_SUBMENU;check("refresh_metadata_read",::GetMenuItemInfoW(tools,ID_TOOLS_REFRESH_SCRIPTS,FALSE,&info)!=FALSE);return info;};
+    const auto original=metadata();
+    const InterfaceTheme sequence[]={INTERFACE_THEME_LIGHT,INTERFACE_THEME_DARK,INTERFACE_THEME_LIGHT,INTERFACE_THEME_DARK,INTERFACE_THEME_LIGHT,INTERFACE_THEME_DARK,INTERFACE_THEME_AUTOMATIC,INTERFACE_THEME_LIGHT,INTERFACE_THEME_DARK,INTERFACE_THEME_AUTOMATIC};
+    const DWORD savedLanguage=_Settings.GetInterfaceLanguageID();
+    for(int iteration=0;iteration<40;++iteration) {
+        if(iteration%2==0)SendMessage(WM_COMMAND,ID_TOOLS_REFRESH_SCRIPTS);
+        ThemeManager::SetSelectedTheme(sequence[iteration%_countof(sequence)]);ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+        _Settings.SetInterfaceLanguage(iteration%3==1?1033:1049);FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName());FbeResetRuntimeLocalization();RefreshLocalizedMainFrameUi();RebuildRuntimeHotkeys();
+        if(iteration%2)SendMessage(WM_COMMAND,ID_TOOLS_REFRESH_SCRIPTS);
+        toolsMenu();const auto now=metadata();
+        check("menu_metadata_preserved",now.wID==original.wID&&now.fType==original.fType&&now.dwItemData==original.dwItemData&&now.hSubMenu==original.hSubMenu&&now.hbmpItem==original.hbmpItem);
+        check("refresh_enabled",!(now.fState&(MFS_DISABLED|MFS_GRAYED)));
+        if(iteration<10)showTools(tools,L"cycle-"+std::to_wstring(iteration));
+    }
+    _Settings.SetInterfaceLanguage(savedLanguage);FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName());FbeResetRuntimeLocalization();RefreshLocalizedMainFrameUi();
+    ThemeManager::SetSelectedTheme(static_cast<InterfaceTheme>(_wtoi(requested)));ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+    check("theme_document_preserved",initialXml==CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml))&&initialDirty==DocChanged());
     // Localization must preserve the command's state and bitmap metadata.
     ::EnableMenuItem(tools,ID_TOOLS_REFRESH_SCRIPTS,MF_BYCOMMAND|MF_GRAYED);
     RefreshLocalizedMainFrameUi();
@@ -56,5 +98,6 @@ if (IsFbeTestScenario(L"ui-defects-runtime")) {
         check("closed_mode_inert",!m_document_session.HasDocument()&&m_view.GetActiveWnd()==NULL);
     }
     toolsMenu();check("refresh_without_book",!(::GetMenuState(tools,ID_TOOLS_REFRESH_SCRIPTS,MF_BYCOMMAND)&MF_GRAYED));
+    PluginOptionsProbe::dialog=m_hWnd;showTools(tools,L"closed");
     report.AppendFormat("result=%s\n",passed?"PASS":"FAIL");DWORD written=0;output.Write(report,report.GetLength(),&written);output.Close();::PostQuitMessage(passed?0:1);return 0;
 }

@@ -3,7 +3,7 @@ param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [ValidateSet('portable','installed')][string]$Mode = 'portable',
     [string]$CaptureDirectory,
-    [int]$TimeoutSeconds = 90
+    [int]$TimeoutSeconds = 240
 )
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -30,8 +30,8 @@ try {
     Copy-Item $report (Join-Path $CaptureDirectory 'runtime.log') -ErrorAction SilentlyContinue
     if($code -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw "Native tabbed plug-in windows failed ($Mode), exit=$code`n$text" }
     if($text -notmatch '(?m)^scroll_fixed_footer=pass\r?$') { throw 'Missing native scrolling/fixed-footer verification.' }
-    $expectedCaptures = @('html-ru-RU-light', 'docx-ru-RU-light')
-    foreach($plugin in @('import', 'export')) { foreach($locale in @('ru-RU','de-DE')) { foreach($theme in @('light','dark')) { $expectedCaptures += "$plugin-$locale-$theme" } } }
+    $expectedCaptures = @()
+    foreach($plugin in @('html','docx','import', 'export')) { foreach($locale in @('ru-RU','en-US','de-DE')) { foreach($theme in @('light','dark')) { $expectedCaptures += "$plugin-$locale-$theme" } } }
     foreach($name in $expectedCaptures) {
         $count = if($name.StartsWith('import-')) { 5 } else { 4 }
         for($page = 0; $page -lt $count; $page++) {
