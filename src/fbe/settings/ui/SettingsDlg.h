@@ -34,6 +34,7 @@ class CSettingsDlg : public CAxDialogImpl<CSettingsDlg>
 	bool TryCommit(CString& error);
 	bool ProbeFollowup();
 	int ProbeResidual();
+	bool ProbeUiDefects();
 	CListBox m_navigation;
 	CSettingsAdvancedPage* m_advancedPage;
 	CSettingsGeneralPage* m_generalPage;

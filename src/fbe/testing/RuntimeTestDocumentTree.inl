@@ -1,3 +1,47 @@
+// Addressed title-only contour; the full tree interaction scenario remains below.
+if(IsFbeTestScenario(L"document-tree-titles-runtime")) {
+    bool passed=false;CStringA report,phase="titles";
+    auto require=[&](bool ok){if(!ok)CheckError(E_FAIL);};
+    try {
+        ShowWindow(SW_SHOWNOACTIVATE);
+        ShowView(BODY);CTreeView& tree=m_document_tree.m_tree.m_tree;tree.SetScriptMode(false);
+        auto document=m_doc->m_body.Document();
+        auto element=[&](LPCWSTR id){return MSHTML::IHTMLElementPtr(MSHTML::IHTMLDocument3Ptr(document)->getElementById(id));};
+        auto caption=[&](LPCWSTR id){
+            CString text;bool found=false;
+            std::function<void(HTREEITEM)> walk=[&](HTREEITEM item){for(;item;item=tree.GetNextSiblingItem(item)){
+                MSHTML::IHTMLElementPtr node(reinterpret_cast<MSHTML::IHTMLElement*>(tree.GetItemData(item)));
+                if(node&&CString(static_cast<LPCWSTR>(node->id))==id){tree.GetItemText(item,text);found=true;return;}
+                walk(tree.GetChildItem(item));if(found)return;
+            }};walk(tree.GetRootItem());report.AppendFormat("caption_%s=%s;found=%d\n",static_cast<LPCSTR>(CW2A(id,CP_UTF8)),static_cast<LPCSTR>(CW2A(text,CP_UTF8)),found);require(found);return text;
+        };
+        auto verify=[&](){
+            m_document_tree.GetDocumentStructure(document);
+            require(caption(L"head0")==L"Head 0 Heading text");require(caption(L"leaf0")==L"Leaf 0");
+            require(caption(L"title-unicode")==L"СТАДИЯ ПЕРВАЯ Глава первая");
+            require(caption(L"title-empty")==L"<section>");require(caption(L"title-parent-empty")==L"<section>");
+        };
+        verify();
+        MSHTML::IHTMLElementPtr probe(document->createElement(L"DIV"));
+        const LPCWSTR prefixes[]={L"",L" \r\n",L"<!-- comment -->",L"<DIV class='image'></DIV>",L" \n<!-- comment --><DIV class='image'></DIV> \n"};
+        phase="DOM-prefixes";for(LPCWSTR prefix:prefixes){probe->innerHTML=_bstr_t(CString(prefix)+L"<DIV class='title'><P>Введение <EM>книга</EM></P><P>Часть 2</P></DIV>");
+            CString title=U::FindTitle(probe);U::NormalizeInplace(title);title.Remove(L' ');require(title==L"ВведениекнигаЧасть2");}
+        probe->innerHTML=L"<DIV class='section'><DIV class='title'><P>Child title</P></DIV></DIV>";require(!U::FindTitleNode(probe));
+        const CString before(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));const bool dirty=m_doc->DocChanged();
+        ShowView(SOURCE);ShowView(BODY);verify();
+        require(CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml))==before&&dirty==m_doc->DocChanged());
+        phase="edit/undo/redo";
+        m_doc->m_body.MarkupServices()->BeginUndoUnit(L"Title test");element(L"head-title0")->insertAdjacentText(L"beforeEnd",L" changed");m_doc->m_body.MarkupServices()->EndUndoUnit();
+        tree.UpdateDocumentStructure(document,element(L"head-title0"));require(caption(L"head0")==L"Head 0 changed Heading text");
+        CheckError(static_cast<HRESULT>(m_doc->m_body.ExecCommand(IDM_UNDO)));verify();
+        CheckError(static_cast<HRESULT>(m_doc->m_body.ExecCommand(IDM_REDO)));m_document_tree.GetDocumentStructure(document);require(caption(L"head0")==L"Head 0 changed Heading text");
+        CheckError(static_cast<HRESULT>(m_doc->m_body.ExecCommand(IDM_UNDO)));verify();
+        phase="save/reopen";const CString path=U::GetProgDir()+L"title-probe.fb2";require(m_doc->Save(path));require(LoadFile(path)==OK);document=m_doc->m_body.Document();verify();
+        require(CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml))==before);
+        passed=true;
+    }catch(const _com_error& error){report.AppendFormat("hr=0x%08lX\n",static_cast<unsigned long>(error.Error()));}
+    report.AppendFormat("phase=%s\nresult=%s\n",phase.GetString(),passed?"pass":"fail");DWORD n=0;output.Write(report,report.GetLength(),&n);output.Close();::PostQuitMessage(passed?0:1);return 0;
+}
 if(IsFbeTestScenario(L"document-tree-window-runtime"))
 {
     CStringA report, phase("setup");

@@ -92,6 +92,9 @@ void CMainFrame::PresentClosedDocument()
     m_change_state = false; m_need_title_update = false;
     m_doc_changed = false; m_sel_changed = false; m_want_focus = 0;
     SetWindowText(L"FictionBook Editor Next");
+    UISetCheck(ID_VIEW_DESC, false);
+    UISetCheck(ID_VIEW_BODY, false);
+    UISetCheck(ID_VIEW_SOURCE, false);
     SetDocumentCommandAvailability(false);
     ResetStatusForDocument();
     m_view.Invalidate(TRUE);

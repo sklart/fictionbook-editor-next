@@ -13,6 +13,8 @@ if (IsFbeTestScenario(L"file-close-runtime")) {
             require(::IsWindow(m_hWnd)&&!m_document_session.HasDocument()&&!DocChanged(),"closed session/window");
             require(title==L"FictionBook Editor Next"&&FB::Doc::m_active_doc==nullptr,"closed title/active");
             require(m_view.GetActiveWnd()==nullptr&&!m_source.IsWindowVisible()&&!m_doc->m_body.IsWindowVisible(),"closed panes");
+            for(UINT command:{ID_VIEW_DESC,ID_VIEW_BODY,ID_VIEW_SOURCE})
+                require((m_CmdToolbar.SendMessage(TB_GETSTATE,command,0)&(TBSTATE_ENABLED|TBSTATE_CHECKED|TBSTATE_PRESSED))==0,"closed mode buttons disabled and unchecked");
             CClientDC display(m_view);CDC paint;paint.CreateCompatibleDC(display);
             CBitmap bitmap;bitmap.CreateCompatibleBitmap(display,4,4);HBITMAP old=paint.SelectBitmap(bitmap);
             m_view.SendMessage(WM_ERASEBKGND,reinterpret_cast<WPARAM>(paint.m_hDC));const COLORREF background=paint.GetPixel(1,1);paint.SelectBitmap(old);

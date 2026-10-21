@@ -18,7 +18,7 @@ foreach($contract in @(
 }
 
 foreach($pageContract in @{
-	'SettingsGeneralPage.cpp' = @('general.backup', 'general.full_path')
+	'SettingsGeneralPage.cpp' = @('general.backup', 'general.full_path', 'general.script_icon_size')
 	'SettingsEditorPage.cpp' = @('editor.font')
 	'SettingsSourcePage.cpp' = @('source.font', 'source.wrap', 'source.syntax', 'source.eol', 'source.whitespace', 'source.line_numbers')
 	'SettingsImagesPage.cpp' = @('images.paste_format', 'images.paste_quality')

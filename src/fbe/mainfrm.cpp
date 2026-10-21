@@ -965,8 +965,14 @@ static void ApplyRuntimeMenuCommandTexts(HMENU menu)
 			continue;
 
 		CString text = FbeLoadRuntimeStringByKey(key);
-		if(!text.IsEmpty())
-			::ModifyMenu(menu, i, MF_BYPOSITION | MF_STRING, commandId, text);
+		if(!text.IsEmpty()) {
+			// Change only the caption: ModifyMenu also replaces type, state and
+			// bitmap metadata maintained by the native/WTL popup renderers.
+			MENUITEMINFO info = {};
+			info.cbSize = sizeof(info); info.fMask = MIIM_STRING;
+			info.dwTypeData = text.GetBuffer();
+			::SetMenuItemInfo(menu, i, TRUE, &info);
+		}
 	}
 }
 

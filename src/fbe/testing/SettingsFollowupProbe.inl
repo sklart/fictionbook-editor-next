@@ -1,4 +1,5 @@
 #include "../XmlSourceThemes.h"
+#include <array>
 // Called only by the isolated settings runtime scenario.
 namespace {
 int g_followupWarnings = 0;
@@ -248,4 +249,87 @@ int CSettingsDlg::ProbeResidual()
         }
     }
     return result;
+}
+
+// Narrow HWND/caret regression, separate from the larger settings probes.
+bool CSettingsDlg::ProbeUiDefects()
+{
+    bool passed = true;
+    CStringA report;
+    struct TooltipProbe {HWND page;HWND tooltip;} tips{m_generalPage->m_hWnd,NULL};
+    ::EnumThreadWindows(::GetCurrentThreadId(),[](HWND window,LPARAM data)->BOOL {
+        auto& probe=*reinterpret_cast<TooltipProbe*>(data);wchar_t name[64]={};::GetClassNameW(window,name,_countof(name));
+        if(!wcscmp(name,TOOLTIPS_CLASSW)) {
+            wchar_t text[2048]={};CToolInfo info(TTF_IDISHWND,::GetDlgItem(probe.page,IDC_SCRIPT_ICON_SIZE),0,NULL,text);
+            if(::SendMessageW(window,TTM_GETTOOLINFOW,0,reinterpret_cast<LPARAM>(&info))) {probe.tooltip=window;return FALSE;}
+        }
+        return TRUE;
+    },reinterpret_cast<LPARAM>(&tips));
+    const CString expectedTip=FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.general.script_icon_size");
+    for(int id:{IDC_SCRIPT_ICON_SIZE,IDC_SCRIPT_ICON_SIZE_LABEL}) {
+        wchar_t text[2048]={};CToolInfo info(TTF_IDISHWND,m_generalPage->GetDlgItem(id),0,NULL,text);
+        const bool ok=tips.tooltip&&::SendMessageW(tips.tooltip,TTM_GETTOOLINFOW,0,reinterpret_cast<LPARAM>(&info))&&
+            info.lpszText&&expectedTip==info.lpszText&&!expectedTip.IsEmpty();
+        report.AppendFormat("tooltip_%d=%d\n",id,ok);passed=ok&&passed;
+    }
+    auto caret = [&](const char* phase, HWND expected) {
+        GUITHREADINFO info = {}; info.cbSize = sizeof(info);
+        const bool got = ::GetGUIThreadInfo(::GetCurrentThreadId(), &info) != FALSE;
+        RECT client = {}; if(info.hwndCaret) ::GetClientRect(info.hwndCaret, &client);
+        const bool inside = !info.hwndCaret || (info.rcCaret.left >= 0 && info.rcCaret.top >= 0 &&
+            info.rcCaret.right <= client.right && info.rcCaret.bottom <= client.bottom && ::IsWindowVisible(info.hwndCaret));
+        const bool ok = got && ::GetFocus() == expected && inside &&
+            (!info.hwndCaret || info.hwndCaret == expected);
+        report.AppendFormat("caret_%s=%d; focus=%d; owner=%d; rect=%ld,%ld,%ld,%ld\n", phase, ok,
+            ::GetDlgCtrlID(info.hwndFocus), ::GetDlgCtrlID(info.hwndCaret),
+            info.rcCaret.left, info.rcCaret.top, info.rcCaret.right, info.rcCaret.bottom);
+        passed = ok && passed;
+    };
+    caret("initial", ::GetFocus());
+    passed=!m_sourcePage->m_preview.Editor().Send(SCI_GETFOCUS)&&passed;
+    SelectPage(SettingsPageId::Source);
+    passed=!m_sourcePage->m_preview.Editor().Send(SCI_GETFOCUS)&&passed;
+    SelectPage(SettingsPageId::Keyboard);caret("keyboard_selected", ::GetFocus());
+    m_hotkeysPage->m_search.SetFocus(); caret("search", m_hotkeysPage->m_search);
+    m_hotkeysPage->m_search.SendMessage(WM_CHAR, 'a', 1); caret("typed", m_hotkeysPage->m_search);
+    m_hotkeysPage->m_search.SetWindowText(L""); caret("cleared", m_hotkeysPage->m_search);
+    CRect original; GetWindowRect(original);
+    SetWindowPos(NULL, 0, 0, original.Width()+80, original.Height()+40, SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE);
+    caret("resized", m_hotkeysPage->m_search);
+    const UINT dpi=m_layoutDpi;
+    SendMessage(WM_DPICHANGED,MAKEWPARAM(120,120),0);caret("dpi120",m_hotkeysPage->m_search);
+    SendMessage(WM_DPICHANGED,MAKEWPARAM(144,144),0);caret("dpi144",m_hotkeysPage->m_search);
+    SendMessage(WM_DPICHANGED,MAKEWPARAM(dpi,dpi),0);caret("dpi_restored",m_hotkeysPage->m_search);
+    SelectPage(SettingsPageId::General); caret("general", m_navigation);
+    SelectPage(SettingsPageId::Keyboard);
+    m_navigation.SetFocus();
+    std::array<BYTE,256> navigationKeys={}, originalKeys={};::GetKeyboardState(originalKeys.data());navigationKeys=originalKeys;navigationKeys[VK_CONTROL]=0x80;::SetKeyboardState(navigationKeys.data());
+    MSG navigationKey={};navigationKey.hwnd=m_navigation;navigationKey.message=WM_KEYDOWN;navigationKey.wParam='F';
+    passed=m_hotkeysPage->PreTranslateMessage(&navigationKey)&&passed;::SetKeyboardState(originalKeys.data());caret("navigation_ctrl_f",m_hotkeysPage->m_search);
+    m_hotkeysPage->m_hkGroups.SetFocus();
+    m_hotkeysPage->m_hkGroups.SetCurSel(0);
+    m_hotkeysPage->SendMessage(WM_COMMAND, MAKEWPARAM(IDC_LIST_HOTKEYS_GROUPS,LBN_SELCHANGE), reinterpret_cast<LPARAM>(m_hotkeysPage->m_hkGroups.m_hWnd));
+    caret("group", m_hotkeysPage->m_hkGroups);
+    std::array<BYTE,256> oldKeys={}, keys={}; ::GetKeyboardState(oldKeys.data()); keys=oldKeys; keys[VK_CONTROL]=0x80; ::SetKeyboardState(keys.data());
+    MSG key={};key.hwnd=m_hotkeysPage->m_hkGroups;key.message=WM_KEYDOWN;key.wParam='F';
+    passed = m_hotkeysPage->PreTranslateMessage(&key) && passed; ::SetKeyboardState(oldKeys.data());
+    caret("ctrl_f", m_hotkeysPage->m_search);
+    m_hotkeysPage->m_hotkeys.SetFocus(); caret("commands", m_hotkeysPage->m_hotkeys);
+    m_hotkeysPage->m_editHotkey.SetFocus(); caret("recording", m_hotkeysPage->m_editHotkey);
+    for(UINT vk : std::array<UINT,4>{VK_CONTROL,VK_SHIFT,VK_MENU,'Q'}) m_hotkeysPage->m_editHotkey.SendMessage(WM_KEYDOWN,vk,0);
+    passed = m_hotkeysPage->m_accel.key=='Q' && (m_hotkeysPage->m_accel.fVirt&(FCONTROL|FSHIFT|FALT))==(FCONTROL|FSHIFT|FALT) && passed;
+    for(UINT vk : std::array<UINT,4>{'Q',VK_MENU,VK_SHIFT,VK_CONTROL}) m_hotkeysPage->m_editHotkey.SendMessage(WM_KEYUP,vk,0);
+    caret("recorded", m_hotkeysPage->m_editHotkey);
+    const WORD command=m_hotkeysPage->m_accel.cmd;
+    m_hotkeysPage->SendMessage(WM_COMMAND,MAKEWPARAM(IDC_BUTTON_HOTKEY_ASSIGN,BN_CLICKED),0);
+    bool assigned=false;
+    for(const auto& group:_Settings.m_hotkey_groups)for(const auto& hotkey:group.m_hotkeys)
+        if(hotkey.m_accel.cmd==command)assigned=hotkey.m_accel.key=='Q'&&(hotkey.m_accel.fVirt&(FCONTROL|FSHIFT|FALT))==(FCONTROL|FSHIFT|FALT);
+    report.AppendFormat("assigned_ctrl_shift_alt=%d\n",assigned);passed=assigned&&passed;
+    const HWND focused=::GetFocus();m_hotkeysPage->m_search.SendMessage(WM_MOUSEMOVE,0,MAKELPARAM(2,2));
+    passed = ::GetFocus()==focused && passed;
+    SetWindowPos(NULL, 0, 0, original.Width(), original.Height(), SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE);
+    caret("restored", m_hotkeysPage->m_editHotkey);
+    FollowupWrite(U::GetSettingsDir()+L"ui-caret-probe.txt",report);
+    return passed;
 }

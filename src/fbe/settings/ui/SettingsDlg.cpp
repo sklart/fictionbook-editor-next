@@ -162,6 +162,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	LayoutControls(client.Width(), client.Height());
 	m_navigation.SetCurSel(0);
 	SelectPage(SettingsPageId::General);
+	if(RuntimeTests::IsScenario(L"ui-defects-runtime")) SetTimer(0x55494446, 1);
 	if (IsSettingsDialogRuntimeTest())
 	{
 		::SetPropW(::GetParent(m_hWnd), L"FBE_CARET_INITIAL_SYSTEM",
@@ -181,11 +182,20 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 		m_advancedPage->SendMessage(WM_COMMAND, MAKEWPARAM(IDC_DEFAULT_SCRIPTS_FOLDER, BN_CLICKED), 0);
 		SetTimer(0x53455454, 1);
 	}
-	return 1;
+	// Creating child pages can move focus to a control on a hidden page.
+	// Establish the modal dialog's initial focus once, after all pages/layouts
+	// are ready; FALSE prevents the dialog manager from assigning it again.
+	m_navigation.SetFocus();
+	return 0;
 }
 
 LRESULT CSettingsDlg::OnTimer(UINT, WPARAM timerId, LPARAM, BOOL&)
 {
+	if(timerId == 0x55494446 && RuntimeTests::IsScenario(L"ui-defects-runtime")) {
+		KillTimer(timerId);
+		::SetPropW(GetParent(), L"FBE_UI_DEFECTS_SETTINGS", reinterpret_cast<HANDLE>(ProbeUiDefects() ? 1 : 2));
+		BOOL handled = FALSE; return OnClickedCancel(0, IDCANCEL, NULL, handled);
+	}
 	if (timerId != 0x53455454 || !IsSettingsDialogRuntimeTest()) return 0;
 	KillTimer(timerId);
 	if(RuntimeTests::IsScenario(L"settings-residual-runtime"))

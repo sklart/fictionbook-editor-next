@@ -41,9 +41,10 @@ void CSourcePreviewHost::ApplyConfiguration(const SourceEditorConfig& config)
 	m_config = config;
 	if(m_editor.Handle() == NULL) return;
 	m_editor.ApplyConfiguration(config);
-	// Logical focus displays the caret without moving Windows keyboard focus
-	// away from the settings controls.
-	m_editor.Send(SCI_SETFOCUS, TRUE);
+	// Scintilla's logical focus also creates a thread-wide native caret. A
+	// passive or hidden preview must not replace the focused settings edit's
+	// caret. Normal WM_SETFOCUS/WM_KILLFOCUS still allow clicking the preview.
+	m_editor.Send(SCI_SETFOCUS, ::GetFocus() == m_editor.Handle());
 	UpdateTagHighlight();
 }
 

@@ -129,7 +129,7 @@ static LRESULT CALLBACK HotkeySearchKeys(HWND window, UINT message, WPARAM wPara
 BOOL CSettingsHotkeysDlg::PreTranslateMessage(MSG* message)
 {
 	if(!message || !::IsWindow(m_hWnd) || !::IsWindowVisible(m_hWnd) ||
-		(message->hwnd != m_hWnd && !::IsChild(m_hWnd, message->hwnd))) return FALSE;
+		(message->hwnd != GetParent() && !::IsChild(GetParent(), message->hwnd))) return FALSE;
 	// The recording edit owns every key chord, including Ctrl+F and Escape.
 	if(::GetFocus() == m_editHotkey.m_hWnd) return FALSE;
 	if(message->message == WM_KEYDOWN) {

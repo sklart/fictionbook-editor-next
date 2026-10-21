@@ -135,7 +135,8 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 		if(isScriptsToolbar && ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
 			return CDRF_NOTIFYPOSTPAINT;
 		const UINT commandId = static_cast<UINT>(customDraw->nmcd.dwItemSpec);
-		if (isCommandToolbar && IsTableToolbarCommand(commandId) &&
+		if (isCommandToolbar && (IsTableToolbarCommand(commandId) ||
+			commandId == ID_VIEW_DESC || commandId == ID_VIEW_BODY || commandId == ID_VIEW_SOURCE) &&
 			disabled)
 		{
 			const int imageIndex = static_cast<int>(m_CmdToolbar.SendMessage(TB_GETBITMAP, commandId, 0));

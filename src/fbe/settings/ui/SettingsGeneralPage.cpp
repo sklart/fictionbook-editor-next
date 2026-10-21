@@ -55,6 +55,8 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Initialize(m_hWnd);
 	m_tooltips.Add(m_language, L"fbe.settings.tooltip.general.language", L"Interface language. System default uses the Windows language.");
 	m_tooltips.Add(m_interfaceTheme, L"fbe.settings.tooltip.general.interface_theme", L"Automatic follows the Windows app theme.");
+	for(HWND control : {m_scriptIconSize.m_hWnd, GetDlgItem(IDC_SCRIPT_ICON_SIZE_LABEL).m_hWnd})
+		m_tooltips.Add(control, L"fbe.settings.tooltip.general.script_icon_size", L"Sets the icon size in the script tree and script toolbars. Available sizes: 16, 20, 24 and 32 pixels (scaled for DPI).");
 	m_tooltips.Add(m_genreCatalog, L"fbe.settings.tooltip.general.genre_catalog", L"Selects genres available when editing book metadata.");
 	m_tooltips.Add(m_restorePosition, L"fbe.settings.tooltip.general.restore_position", L"Restores the saved reading or editing position when reopening a document.");
 	m_tooltips.Add(m_defaultEncoding, L"fbe.settings.tooltip.general.default_encoding", L"Encoding used when saving if the original encoding is not kept.");
