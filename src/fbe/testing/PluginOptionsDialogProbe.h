@@ -158,6 +158,14 @@ inline bool Capture(HWND window, const std::wstring& name) {
             }
             FBE_OPTIONS_CHECK(foreground);
         }
+        for(HWND control:controls) if(::IsWindowVisible(control)&&!::IsWindowEnabled(control)&&::GetWindowTextLengthW(control)>0) {
+            wchar_t kind[32]={};::GetClassNameW(control,kind,_countof(kind));if(wcscmp(kind,L"Static"))continue;
+            RECT controlRect={},clip={};::GetWindowRect(control,&controlRect);::GetClientRect(::GetParent(control),&clip);::MapWindowPoints(::GetParent(control),NULL,reinterpret_cast<POINT*>(&clip),2);
+            if(controlRect.top<clip.top||controlRect.bottom>clip.bottom||controlRect.left<clip.left||controlRect.right>clip.right)continue;
+            bool foreground=false;const COLORREF expected=ThemeManager::DisabledTextColor();
+            for(int y=controlRect.top;y<controlRect.bottom&&!foreground;++y)for(int x=controlRect.left;x<controlRect.right;++x){const COLORREF pixel=::GetPixel(memory,x-bounds.left,y-bounds.top);if(pixel!=CLR_INVALID&&abs(static_cast<int>(GetRValue(pixel))-GetRValue(expected))<24&&abs(static_cast<int>(GetGValue(pixel))-GetGValue(expected))<24&&abs(static_cast<int>(GetBValue(pixel))-GetBValue(expected))<24){foreground=true;break;}}
+            if(!foreground)errorText=L"disabled label palette: "+std::to_wstring(::GetDlgCtrlID(control));FBE_OPTIONS_CHECK(foreground);
+        }
     }
     ::SelectObject(memory, old); ::DeleteDC(memory); ::ReleaseDC(window, source);
     Gdiplus::GdiplusStartupInput input; ULONG_PTR token = 0;
@@ -169,6 +177,49 @@ inline bool Capture(HWND window, const std::wstring& name) {
         Gdiplus::GdiplusShutdown(token);
     }
     ::DeleteObject(bitmap); return copied && saved && visibleContent;
+}
+// Render the native control, then inspect the actual pixels (not only TTM getters).
+inline bool TooltipPixels(HWND tip,const std::wstring& name) {
+    const COLORREF background=ThemeManager::IsHighContrast()||!ThemeManager::IsDark()?::GetSysColor(COLOR_INFOBK):ThemeManager::ControlColor();
+    const COLORREF foreground=ThemeManager::IsHighContrast()||!ThemeManager::IsDark()?::GetSysColor(COLOR_INFOTEXT):ThemeManager::TextColor();
+    bool ok=static_cast<COLORREF>(::SendMessage(tip,TTM_GETTIPBKCOLOR,0,0))==background&&static_cast<COLORREF>(::SendMessage(tip,TTM_GETTIPTEXTCOLOR,0,0))==foreground;
+    RECT rect={};::GetWindowRect(tip,&rect);const int width=rect.right-rect.left,height=rect.bottom-rect.top;
+    HDC source=::GetWindowDC(tip),memory=::CreateCompatibleDC(source);HBITMAP bitmap=::CreateCompatibleBitmap(source,width,height);
+    if(!source||!memory||!bitmap||width<=0||height<=0){if(bitmap)::DeleteObject(bitmap);if(memory)::DeleteDC(memory);if(source)::ReleaseDC(tip,source);return false;}
+    HGDIOBJ old=::SelectObject(memory,bitmap);ok=::PrintWindow(tip,memory,0)!=FALSE&&ok;::GdiFlush();
+    unsigned ink=0,paper=0;
+    auto matchesColor=[](COLORREF a,COLORREF b){return abs(static_cast<int>(GetRValue(a))-GetRValue(b))<24&&abs(static_cast<int>(GetGValue(a))-GetGValue(b))<24&&abs(static_cast<int>(GetBValue(a))-GetBValue(b))<24;};
+    for(int y=2;y<height-2;++y)for(int x=2;x<width-2;++x){const COLORREF pixel=::GetPixel(memory,x,y);if((ThemeManager::IsDark()||ThemeManager::IsHighContrast())?matchesColor(pixel,foreground):(GetRValue(pixel)<112&&GetGValue(pixel)<112&&GetBValue(pixel)<112))++ink;if((ThemeManager::IsDark()||ThemeManager::IsHighContrast())?matchesColor(pixel,background):(GetRValue(pixel)>230&&GetGValue(pixel)>230&&GetBValue(pixel)>200))++paper;}
+    ::SelectObject(memory,old);::DeleteObject(bitmap);::DeleteDC(memory);::ReleaseDC(tip,source);
+    const bool prior=expectedDarkTabs;expectedDarkTabs=false;const bool saved=Capture(tip,name);expectedDarkTabs=prior;
+    if(!ok||ink<8||paper<100)errorText=L"tooltip: property="+std::to_wstring(ok)+L" ink="+std::to_wstring(ink)+L" paper="+std::to_wstring(paper);
+    return ok&&saved&&ink>=8&&paper>=100;
+}
+inline bool ShowTooltip(HWND tip,TOOLINFOW& tool,const std::wstring& name) {
+    // Add a short-lived tracking entry with the real registered text. Never
+    // replace an application's stored text pointer with a test stack buffer.
+    TOOLINFOW tracking=tool;tracking.uFlags=TTF_TRACK|TTF_ABSOLUTE;tracking.uId=0xFBE06464u;
+    if(!::SendMessageW(tip,TTM_ADDTOOLW,0,reinterpret_cast<LPARAM>(&tracking)))return false;
+    RECT owner={};::GetWindowRect(tool.hwnd,&owner);::SendMessage(tip,TTM_TRACKPOSITION,0,MAKELPARAM(owner.left+40,owner.top+70));
+    ::SendMessageW(tip,TTM_TRACKACTIVATE,TRUE,reinterpret_cast<LPARAM>(&tracking));
+    const bool ready=::IsWindowVisible(tip)&&TooltipPixels(tip,name);
+    ::SendMessageW(tip,TTM_TRACKACTIVATE,FALSE,reinterpret_cast<LPARAM>(&tracking));
+    ::SendMessageW(tip,TTM_DELTOOLW,0,reinterpret_cast<LPARAM>(&tracking));return ready;
+}
+inline bool CaptureOwnedTooltip(HWND owner,const std::wstring& name) {
+    std::vector<HWND> tips;
+    ::EnumThreadWindows(::GetCurrentThreadId(),[](HWND window,LPARAM value)->BOOL {
+        wchar_t kind[64]={};::GetClassNameW(window,kind,_countof(kind));
+        if(!wcscmp(kind,TOOLTIPS_CLASSW))reinterpret_cast<std::vector<HWND>*>(value)->push_back(window);return TRUE;
+    },reinterpret_cast<LPARAM>(&tips));
+    for(HWND tip:tips)for(int i=0;i<static_cast<int>(::SendMessage(tip,TTM_GETTOOLCOUNT,0,0));++i) {
+        wchar_t text[4096]={};TOOLINFOW tool={};tool.cbSize=sizeof(tool);tool.lpszText=text;
+        if(!::SendMessageW(tip,TTM_ENUMTOOLSW,i,reinterpret_cast<LPARAM>(&tool)))continue;
+        if(!::IsWindowVisible(tool.hwnd)||(tool.hwnd!=owner&&!::IsChild(owner,tool.hwnd)))continue;
+        if((tool.uFlags&TTF_IDISHWND)&&!::IsWindowVisible(reinterpret_cast<HWND>(tool.uId)))continue;
+        const bool shown=ShowTooltip(tip,tool,name);if(!shown&&errorText.empty())errorText=L"visible page tooltip show/pixel check failed";return shown;
+    }
+    errorText=L"visible page tooltip not found";return false;
 }
 inline void Select(HWND window, HWND tab, int page) {
     TabCtrl_SetCurSel(tab, page); NMHDR change = {tab, static_cast<UINT_PTR>(::GetDlgCtrlID(tab)), TCN_SELCHANGE};
@@ -283,6 +334,7 @@ inline BOOL CALLBACK Visit(HWND window, LPARAM) {
             Select(window, tab, page); Validate(window); ++pages;
             FBE_OPTIONS_CHECK(Snapshot(window) == initial);
             FBE_OPTIONS_CHECK(Capture(window, L"page" + std::to_wstring(page)));
+            FBE_OPTIONS_CHECK(CaptureOwnedTooltip(window,L"page"+std::to_wstring(page)+L"-tooltip"));
         }
         // Controlled WM_DPICHANGED probes exercise layout at 100--200%; these
         // are reported separately from the native monitor's actual DPI.
