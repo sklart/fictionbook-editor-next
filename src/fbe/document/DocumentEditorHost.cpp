@@ -2,6 +2,7 @@
 #include "DocumentEditorHost.h"
 
 void DocumentEditorHost::SetDocumentFilePathSource(const CString* filename, const bool* namevalid) { m_editor.SetDocumentFilePathSource(filename, namevalid); }
+void DocumentEditorHost::SetOwningDocument(FB::Doc* document) { m_editor.SetOwningDocument(document); }
 bool DocumentEditorHost::IsWindow() const { return m_editor.IsWindow() != FALSE; }
 void DocumentEditorHost::DestroyWindow() { m_editor.DestroyWindow(); }
 HWND DocumentEditorHost::Create(HWND parent, const CRect& bounds, LPCTSTR classId)

@@ -267,7 +267,7 @@ Doc::Doc(HWND hWndFrame) :
 {
 	  ::CoCreateGuid(&m_clipboard_identity);
 	  m_editor.SetDocumentFilePathSource(&m_filename, &m_namevalid);
-	  m_body.SetOwningDocument(this);
+	  m_editor.SetOwningDocument(this);
   m_active_docs.Add(this,this);
 }
 

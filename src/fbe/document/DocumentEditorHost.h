@@ -12,6 +12,7 @@ public:
 	explicit DocumentEditorHost(CFBEView& editor) : m_editor(editor) {}
 
 	void SetDocumentFilePathSource(const CString* filename, const bool* namevalid);
+	void SetOwningDocument(FB::Doc* document);
 	bool IsWindow() const;
 	void DestroyWindow();
 	HWND Create(HWND parent, const CRect& bounds, LPCTSTR classId);
