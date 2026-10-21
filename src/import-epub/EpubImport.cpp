@@ -41,6 +41,13 @@ namespace
         CStringW absPath;
     };
 
+    struct NavigationEntry
+    {
+        CStringW title, path, fragment;
+        int parent = -1, spineIndex = -1;
+        std::vector<size_t> children;
+    };
+
     struct EpubPackage
     {
         CStringW opfPath;
@@ -67,6 +74,7 @@ namespace
         std::vector<CStringW> spine;
         std::set<std::wstring> mandatorySpine;
         std::map<std::wstring, CStringW> navTitlesByAbsPath;
+        std::vector<NavigationEntry> navigation;
         std::set<std::wstring> guideServiceDocuments;
         int guideReferenceCount;
 
@@ -84,6 +92,7 @@ namespace
         std::set<std::wstring> reservedIds, emittedIds, noteTargets, requestedNotes;
         std::set<std::wstring> mainDocuments, noteContentAnchors;
         std::map<std::wstring, CStringW> noteLinks;
+        std::map<std::wstring, CStringW> noteRoots;
         CStringW warnings;
         int noteReferences = 0, importedNoteReferences = 0, lostNoteReferences = 0;
         int imageReferences = 0, importedImages = 0, skippedImages = 0;
@@ -1824,6 +1833,51 @@ namespace
             package.navTitlesByAbsPath[std::wstring(key.GetString())] = normalizedTitle;
     }
 
+    bool IsExternalHref(CStringW href);
+
+    void ReadNavigationTree(EpubPackage& package, const MSXML2::IXMLDOMNodePtr& node,
+        const CStringW& baseDir, int parent, bool ncx)
+    {
+        if (!node) return;
+        const CStringW name = LocalName(node);
+        int nextParent = parent;
+        if (name == (ncx ? L"navPoint" : L"li"))
+        {
+            MSXML2::IXMLDOMNodePtr link, label;
+            const auto children = MsxmlGetChildNodes(node);
+            const long count = children ? MsxmlGetNodeListLength(children) : 0;
+            for (long i = 0; i < count; ++i)
+            {
+                const auto child = MsxmlGetNodeListItem(children, i);
+                if (LocalName(child) == (ncx ? L"content" : L"a")) link = child;
+                if (LocalName(child) == L"navLabel") label = child;
+            }
+            NavigationEntry entry;
+            entry.parent = parent;
+            entry.title = NormalizeImportedText(TrimString(NodeText(ncx ? label : link)));
+            const CStringW href = Attr(link, ncx ? L"src" : L"href");
+            if (!href.IsEmpty() && !IsExternalHref(href))
+            {
+                entry.path = TocKeyForHref(baseDir, href);
+                entry.fragment = HrefFragment(href);
+                AddNavigationTitle(package, baseDir, href, entry.title);
+                for (size_t i = 0; i < package.spine.size(); ++i)
+                {
+                    const auto item = package.manifest.find(std::wstring(package.spine[i]));
+                    if (item != package.manifest.end() && item->second.absPath.CompareNoCase(entry.path) == 0)
+                    { entry.spineIndex = static_cast<int>(i);break; }
+                }
+            }
+            nextParent = static_cast<int>(package.navigation.size());
+            package.navigation.push_back(entry);
+            if (parent >= 0) package.navigation[static_cast<size_t>(parent)].children.push_back(static_cast<size_t>(nextParent));
+        }
+        const auto children = MsxmlGetChildNodes(node);
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        for (long i = 0; i < count; ++i)
+            ReadNavigationTree(package, MsxmlGetNodeListItem(children, i), baseDir, nextParent, ncx);
+    }
+
     void ParseNavigationXhtml(EpubPackage& package, const ManifestItem& navItem, ImportLog& log)
     {
         MSXML2::IXMLDOMDocument2Ptr doc;
@@ -1835,13 +1889,12 @@ namespace
             return;
         }
 
-        std::vector<MSXML2::IXMLDOMNodePtr> links;
-        CollectElementsByLocalName(MsxmlGetDocumentElement(doc), L"a", links);
-        for (size_t i = 0; i < links.size(); ++i)
+        std::vector<MSXML2::IXMLDOMNodePtr> navs;
+        CollectElementsByLocalName(MsxmlGetDocumentElement(doc), L"nav", navs);
+        for (const auto& nav : navs)
         {
-            CStringW href = Attr(links[i], L"href");
-            CStringW title = NodeText(links[i]);
-            AddNavigationTitle(package, DirectoryOf(navItem.absPath), href, title);
+            if (!IsEpubType(nav, L"toc") && !IsRoleToken(nav, L"doc-toc")) continue;
+            ReadNavigationTree(package, nav, DirectoryOf(navItem.absPath), -1, false);
         }
         log.AddFormatInt(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_NAV_HEADINGS_COUNT, L"nav.xhtml: headings found: %d")), static_cast<int>(package.navTitlesByAbsPath.size()));
     }
@@ -1878,14 +1931,10 @@ namespace
 
         std::vector<MSXML2::IXMLDOMNodePtr> navPoints;
         CollectElementsByLocalName(MsxmlGetDocumentElement(doc), L"navPoint", navPoints);
-        for (size_t i = 0; i < navPoints.size(); ++i)
-        {
-            MSXML2::IXMLDOMNodePtr content = FindFirstDescendantByLocalNameForToc(navPoints[i], L"content");
-            MSXML2::IXMLDOMNodePtr textNode = FindFirstDescendantByLocalNameForToc(navPoints[i], L"text");
-            CStringW src = content ? Attr(content, L"src") : CStringW();
-            CStringW title = textNode ? NodeText(textNode) : CStringW();
-            AddNavigationTitle(package, DirectoryOf(ncxItem.absPath), src, title);
-        }
+        // EPUB 3 nav wins when both navigation formats are present.
+        if (package.navigation.empty())
+            ReadNavigationTree(package, FindFirstDescendantByLocalNameForToc(MsxmlGetDocumentElement(doc), L"navMap"),
+                DirectoryOf(ncxItem.absPath), -1, true);
         log.AddFormatInt(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_NCX_NAVPOINT_COUNT, L"toc.ncx: navPoint found: %d")), static_cast<int>(navPoints.size()));
     }
 
@@ -2816,15 +2865,42 @@ namespace
         return id;
     }
 
+    MSXML2::IXMLDOMNodePtr ParentNode(const MSXML2::IXMLDOMNodePtr& node)
+    {
+        IXMLDOMNode* parent = nullptr;
+        if (node) node->get_parentNode(&parent);
+        return MSXML2::IXMLDOMNodePtr(parent, false);
+    }
+
+    // Structural keys survive reopening the same XHTML without altering source IDs.
+    CStringW NoteRootKey(const MSXML2::IXMLDOMNodePtr& node, const CStringW& path)
+    {
+        CStringW key = path;key.MakeLower();
+        for (auto current = node; current; current = ParentNode(current))
+        {
+            long index = 0;
+            IXMLDOMNode* previous = nullptr;
+            current->get_previousSibling(&previous);
+            MSXML2::IXMLDOMNodePtr sibling(previous, false);
+            while (sibling)
+            {
+                ++index;previous = nullptr;sibling->get_previousSibling(&previous);
+                sibling.Attach(previous);
+            }
+            CStringW part;part.Format(L"/%ld", index);key += part;
+        }
+        return key;
+    }
+
+    CStringW NoteAnchorId(const MSXML2::IXMLDOMNodePtr& node, const CStringW& path)
+    {
+        const auto found = g_content.noteRoots.find(std::wstring(NoteRootKey(node, path)));
+        return found == g_content.noteRoots.end() ? RawAnchorId(node) : found->second;
+    }
+
     bool IsCollectedNoteNode(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
     {
-        if (g_content.noteTargets.count(PathAnchorMapKey(ctx.currentXhtmlPath, RawAnchorId(node)).GetString())) return true;
-        const CStringW name = LocalName(node);
-        if (name != L"p" && name != L"li") return false;
-        std::vector<MSXML2::IXMLDOMNodePtr> anchors;CollectElementsByLocalName(node, L"a", anchors);
-        for (const auto& anchor : anchors)
-            if (g_content.noteTargets.count(PathAnchorMapKey(ctx.currentXhtmlPath, RawAnchorId(anchor)).GetString())) return true;
-        return false;
+        return g_content.noteRoots.count(std::wstring(NoteRootKey(node, ctx.currentXhtmlPath))) != 0;
     }
 
     CStringW FirstDescendantAnchorId(const MSXML2::IXMLDOMNodePtr& node)
@@ -4032,6 +4108,34 @@ namespace
         return nullptr;
     }
 
+    size_t CountIndependentNoteTargets(const MSXML2::IXMLDOMNodePtr& node, const CStringW& path)
+    {
+        if (!node) return 0;
+        size_t result = g_content.requestedNotes.count(std::wstring(PathAnchorMapKey(path, RawAnchorId(node))));
+        const auto children = MsxmlGetChildNodes(node);
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        for (long i = 0; i < count; ++i)
+            result += CountIndependentNoteTargets(MsxmlGetNodeListItem(children, i), path);
+        return result;
+    }
+
+    MSXML2::IXMLDOMNodePtr LogicalNoteContainer(const MSXML2::IXMLDOMNodePtr& target, const CStringW& path)
+    {
+        auto result = target;
+        for (auto ancestor = ParentNode(target); ancestor && LocalName(ancestor) != L"body"; ancestor = ParentNode(ancestor))
+        {
+            const CStringW name = LocalName(ancestor);
+            if (IsEndnotesContainerElement(ancestor)) break;
+            if (name == L"li" || IsEndnoteElement(ancestor))
+            {
+                if (CountIndependentNoteTargets(ancestor, path) <= 1) return ancestor;
+                break; // A shared container must never merge independent notes.
+            }
+            if ((LocalName(result) == L"a" || LocalName(result) == L"span") && name == L"p") result = ancestor;
+        }
+        return result;
+    }
+
     void CollectEndnoteElements(const MSXML2::IXMLDOMNodePtr& node, std::vector<MSXML2::IXMLDOMNodePtr>& out, const CStringW& path, bool insideNotesContainer = false)
     {
         if (!node)
@@ -4048,7 +4152,23 @@ namespace
             CStringW id = RawAnchorId(node);
             if (!id.IsEmpty())
             {
-                out.push_back(node);
+                const auto root = LogicalNoteContainer(node, path);
+                const CStringW rootKey = NoteRootKey(root, path);
+                const CStringW rootId = RawAnchorId(root).IsEmpty() ? id : RawAnchorId(root);
+                if (g_content.noteRoots.emplace(std::wstring(rootKey), rootId).second && LocalName(root) == L"p" && !IsEndnoteElement(root))
+                {
+                    const auto parent = ParentNode(root);
+                    IXMLDOMNode* rawNext = nullptr;root->get_nextSibling(&rawNext);
+                    MSXML2::IXMLDOMNodePtr next(rawNext, false);
+                    while (next && MsxmlGetNodeType(next) != MSXML2::NODE_ELEMENT)
+                    {rawNext = nullptr;next->get_nextSibling(&rawNext);next.Attach(rawNext);}
+                    if (parent && next && LocalName(next) == L"p" && RawAnchorId(next).IsEmpty() &&
+                        (LocalName(parent) == L"div" || LocalName(parent) == L"section" || LocalName(parent) == L"body"))
+                        g_content.warnings += L"Note boundary recognition limited to one paragraph: " + path + L"#" + id + L"\r\n";
+                }
+                bool duplicate = false;
+                for (const auto& selected : out) duplicate = duplicate || selected == root;
+                if (!duplicate) out.push_back(root);
                 return; // Do not descend into an already selected note.
             }
         }
@@ -4154,6 +4274,11 @@ namespace
                 marker.Trim(L"[]() .");
                 bool numeric = !marker.IsEmpty() && marker.GetLength() <= 8;
                 for (int i = 0; i < marker.GetLength(); ++i) numeric = numeric && iswdigit(marker[i]) != 0;
+                bool symbolic = !marker.IsEmpty() && marker.GetLength() <= 3;
+                for (int i = 0; i < marker.GetLength(); ++i)
+                    symbolic = symbolic && (marker[i] == L'*' || marker[i] == 0x2020 || marker[i] == 0x2021 || marker[i] == 0x00A7);
+                const bool letter = marker.GetLength() == 1 && ((marker[0] >= L'a' && marker[0] <= L'z') ||
+                    (marker[0] >= L'A' && marker[0] <= L'Z') || (marker[0] >= 0x0410 && marker[0] <= 0x044F) || marker[0] == 0x0401 || marker[0] == 0x0451);
                 const CStringW filename = LowerMapKey(FileNameOnly(path));
                 const bool noteFile = filename == L"notes" || filename == L"links" || filename == L"footnotes" || filename == L"endnotes";
                 const bool externalDocument = path.CompareNoCase(item.absPath) != 0;
@@ -4174,7 +4299,8 @@ namespace
                 const bool superscript = !superscripts.empty() || LocalName(parent) == L"sup";
                 if (target != nodes.end() && !sourceId.IsEmpty())
                 {
-                    std::vector<MSXML2::IXMLDOMNodePtr> backLinks;CollectElementsByLocalName(target->second, L"a", backLinks);
+                    std::vector<MSXML2::IXMLDOMNodePtr> backLinks;
+                    CollectElementsByLocalName(LogicalNoteContainer(target->second, path), L"a", backLinks);
                     for (const auto& back : backLinks)
                     {
                         const CStringW backHref = Attr(back, L"href");
@@ -4184,7 +4310,9 @@ namespace
                         backlink = backlink || backPath.CompareNoCase(item.absPath) == 0;
                     }
                 }
-                if (IsNoteReferenceElement(link) || (numeric &&
+                const bool marked = numeric || ((symbolic || letter) && (noteFile || backlink ||
+                    (target != nodes.end() && IsEndnoteElement(LogicalNoteContainer(target->second, path)))));
+                if (IsNoteReferenceElement(link) || (marked &&
                     ((noteShape && ((externalDocument && !spinePaths.count(LowerMapKey(path).GetString())) || noteFile || superscript || backlink)) ||
                      (target == nodes.end() && noteFile))))
                     g_content.requestedNotes.emplace(PathAnchorMapKey(path, fragment).GetString());
@@ -4199,14 +4327,19 @@ namespace
             CollectEndnoteElements(MsxmlGetDocumentElement(doc->second), notes, entry.second.absPath);
             for (const auto& note : notes)
             {
-                const CStringW key = PathAnchorMapKey(entry.second.absPath, RawAnchorId(note));
+                const CStringW key = PathAnchorMapKey(entry.second.absPath, NoteAnchorId(note, entry.second.absPath));
                 const auto id = anchors.find(std::wstring(key));
                 if (id == anchors.end()) continue;
                 g_content.noteLinks.emplace(key.GetString(), CStringW(id->second.c_str()));
                 g_content.noteTargets.emplace(key.GetString());
                 g_content.emittedIds.emplace(id->second);
                 for (const auto& raw : CollectRawAnchorIds(note))
+                {
                     g_content.noteContentAnchors.emplace(PathAnchorMapKey(entry.second.absPath, raw).GetString());
+                    const CStringW alias = PathAnchorMapKey(entry.second.absPath, raw);
+                    if (g_content.requestedNotes.count(std::wstring(alias)))
+                        g_content.noteLinks[std::wstring(alias)] = CStringW(id->second.c_str());
+                }
             }
         }
     }
@@ -4282,7 +4415,7 @@ namespace
 
         for (const auto& node : noteNodes)
         {
-            const CStringW key = PathAnchorMapKey(xhtmlPath, RawAnchorId(node));
+            const CStringW key = PathAnchorMapKey(xhtmlPath, NoteAnchorId(node, xhtmlPath));
             const auto id = ctx.anchorIdMap->find(std::wstring(key));
             if (id == ctx.anchorIdMap->end()) continue;
             g_content.noteLinks[std::wstring(key)] = CStringW(id->second.c_str());
@@ -4293,7 +4426,7 @@ namespace
 
         for (size_t i = 0; i < noteNodes.size(); ++i)
         {
-            CStringW rawId = RawAnchorId(noteNodes[i]);
+            CStringW rawId = NoteAnchorId(noteNodes[i], xhtmlPath);
             const auto found = g_content.noteLinks.find(std::wstring(PathAnchorMapKey(xhtmlPath, rawId)));
             CStringW id = found == g_content.noteLinks.end() ? CStringW() : found->second;
             if (id.IsEmpty())
@@ -4340,7 +4473,7 @@ namespace
         {
             for (const auto& node : noteNodes)
             {
-                const auto target = g_content.noteLinks.find(std::wstring(PathAnchorMapKey(xhtmlPath, RawAnchorId(node))));
+                const auto target = g_content.noteLinks.find(std::wstring(PathAnchorMapKey(xhtmlPath, NoteAnchorId(node, xhtmlPath))));
                 if (target == g_content.noteLinks.end()) continue;
                 (*ctx.anchorIdMap)[std::wstring(LowerMapKey(xhtmlPath))] = std::wstring(target->second);
                 break;
@@ -4483,6 +4616,7 @@ namespace
         if (!sawHeading) return false;
         struct Section { int level; CStringW title, content, id; };
         std::vector<Section> stack;
+        const int initialLength = outSection.GetLength();
         CStringW preface;
         auto close = [&]() {
             const Section section = stack.back();stack.pop_back();
@@ -4510,7 +4644,7 @@ namespace
                 }
                 Section section = {};section.level = level;section.title = heading;
                 section.id = OptionalIdAttributeAndExtraMarkersIncludingDescendant(child, ctx, section.content);
-                if (outSection.IsEmpty() && stack.empty())
+                if (outSection.GetLength() == initialLength && stack.empty())
                 {
                     if (section.id.IsEmpty()) section.id = OptionalIdAttributeFromRaw(FileNameOnly(ctx.currentXhtmlPath), ctx);
                     AddDocumentHrefMap(ctx, IdFromAttributeText(section.id));
@@ -5076,7 +5210,74 @@ namespace
         }
     }
 
-    void NormalizeSectionChildren(const MSXML2::IXMLDOMDocument2Ptr& dom, const MSXML2::IXMLDOMNodePtr& node)
+    void AppendDomChild(const MSXML2::IXMLDOMNodePtr& parent, const MSXML2::IXMLDOMNodePtr& child)
+    {
+        IXMLDOMNode* moved = nullptr;CheckError(parent->appendChild(child, &moved));if (moved) moved->Release();
+    }
+
+    void ApplyNavigationHierarchy(const MSXML2::IXMLDOMDocument2Ptr& dom, const EpubPackage& package,
+        const std::map<std::wstring, std::wstring>& anchors, CStringW& warning)
+    {
+        if (!g_options.splitSectionsByHeadings) return;
+        std::map<std::wstring, MSXML2::IXMLDOMNodePtr> targets;
+        std::vector<MSXML2::IXMLDOMNodePtr> sections;
+        CollectElementsByLocalName(FindFirstElementByLocalName(MsxmlGetDocumentElement(dom), L"body"), L"section", sections);
+        for (const auto& section : sections)
+        {
+            std::vector<CStringW> ids = CollectRawAnchorIds(section);
+            for (const auto& id : ids)
+                // Traverse outer sections first, so the innermost owner wins.
+                targets[std::wstring(id)] = section;
+        }
+        std::vector<MSXML2::IXMLDOMNodePtr> mapped(package.navigation.size());
+        for (size_t i = 0; i < package.navigation.size(); ++i)
+        {
+            const auto& entry = package.navigation[i];
+            if (entry.spineIndex < 0) continue;
+            const CStringW key = entry.fragment.IsEmpty() ? LowerMapKey(entry.path) : PathAnchorMapKey(entry.path, entry.fragment);
+            const auto anchor = anchors.find(std::wstring(key));
+            if (anchor == anchors.end()) continue;
+            const auto target = targets.find(anchor->second);
+            if (target != targets.end()) mapped[i] = target->second;
+        }
+        for (size_t i = 0; i < mapped.size(); ++i)
+        {
+            const auto child = mapped[i];
+            int parentIndex = package.navigation[i].parent;
+            while (parentIndex >= 0 && (!mapped[static_cast<size_t>(parentIndex)] || mapped[static_cast<size_t>(parentIndex)] == child))
+                parentIndex = package.navigation[static_cast<size_t>(parentIndex)].parent;
+            if (!child || parentIndex < 0) continue;
+            const auto parent = mapped[static_cast<size_t>(parentIndex)];
+            bool alreadyNested = false;
+            for (auto ancestor = ParentNode(child); ancestor; ancestor = ParentNode(ancestor))
+                alreadyNested = alreadyNested || ancestor == parent;
+            if (alreadyNested) continue;
+            // Append only at the current reading-order boundary. Never sort by TOC.
+            auto edge = parent;
+            const auto container = ParentNode(child);
+            bool safe = true;
+            while (ParentNode(edge) != container)
+            {
+                const auto upper = ParentNode(edge);
+                if (!upper || LocalName(upper) != L"section") {safe = false;break;}
+                IXMLDOMNode* raw = nullptr;upper->get_lastChild(&raw);
+                MSXML2::IXMLDOMNodePtr last(raw, false);
+                while (last && MsxmlGetNodeType(last) != MSXML2::NODE_ELEMENT)
+                {raw = nullptr;last->get_previousSibling(&raw);last.Attach(raw);}
+                if (last != edge) {safe = false;break;}
+                edge = upper;
+            }
+            IXMLDOMNode* raw = nullptr;child->get_previousSibling(&raw);
+            MSXML2::IXMLDOMNodePtr previous(raw, false);
+            while (previous && MsxmlGetNodeType(previous) != MSXML2::NODE_ELEMENT)
+            {raw = nullptr;previous->get_previousSibling(&raw);previous.Attach(raw);}
+            if (safe && previous == edge) AppendDomChild(parent, child);
+            else warning += L"Navigation hierarchy not applied because it conflicts with spine order or section boundaries: " +
+                package.navigation[i].path + L"#" + package.navigation[i].fragment + L"\r\n";
+        }
+    }
+
+    void NormalizeSectionChildren(const MSXML2::IXMLDOMDocument2Ptr& dom, const MSXML2::IXMLDOMNodePtr& node, CStringW& warning)
     {
         std::vector<MSXML2::IXMLDOMNodePtr> children;
         const auto list = MsxmlGetChildNodes(node);
@@ -5086,10 +5287,52 @@ namespace
         {
             const auto child = MsxmlGetNodeListItem(list, i);
             if (MsxmlGetNodeType(child) != MSXML2::NODE_ELEMENT) continue;
-            NormalizeSectionChildren(dom, child);
+            NormalizeSectionChildren(dom, child, warning);
             children.push_back(child);sections = sections || LocalName(child) == L"section";
         }
-        if (LocalName(node) != L"section" || !sections) return;
+        if (LocalName(node) != L"section") return;
+        if (!sections)
+        {
+            MSXML2::IXMLDOMNodePtr title;
+            bool content = false;
+            for (const auto& child : children)
+            {
+                if (LocalName(child) == L"title") title = child;
+                else content = content || LocalName(child) != L"p" || !TrimString(NodeText(child)).IsEmpty() ||
+                    FindFirstElementByLocalName(child, L"image") != nullptr;
+            }
+            if (title && !content)
+            {
+                const auto paragraphs = MsxmlGetChildNodes(title);
+                std::vector<MSXML2::IXMLDOMNodePtr> saved;
+                const long length = paragraphs ? MsxmlGetNodeListLength(paragraphs) : 0;
+                for (long i = 0; i < length; ++i)
+                {
+                    const auto paragraph = MsxmlGetNodeListItem(paragraphs, i);
+                    if (LocalName(paragraph) == L"p") saved.push_back(paragraph);
+                }
+                for (const auto& paragraph : saved)
+                {
+                    IXMLDOMNode* created = nullptr;
+                    CheckError(dom->createNode(CComVariant(static_cast<long>(MSXML2::NODE_ELEMENT)), CComBSTR(L"strong"),
+                        CComBSTR(L"http://www.gribuser.ru/xml/fictionbook/2.0"), &created));
+                    MSXML2::IXMLDOMNodePtr strong(created, false);
+                    for (;;)
+                    {
+                        IXMLDOMNode* raw = nullptr;paragraph->get_firstChild(&raw);
+                        MSXML2::IXMLDOMNodePtr first(raw, false);if (!first) break;
+                        AppendDomChild(strong, first);
+                    }
+                    AppendDomChild(paragraph, strong);
+                    IXMLDOMNode* inserted = nullptr;
+                    CheckError(node->insertBefore(paragraph, CComVariant(static_cast<IDispatch*>(title.GetInterfacePtr())), &inserted));
+                    if (inserted) inserted->Release();
+                }
+                IXMLDOMNode* removed = nullptr;CheckError(node->removeChild(title, &removed));if (removed) removed->Release();
+                warning += L"Title-only section preserved as emphasized text: " + Attr(node, L"id") + L"\r\n";
+            }
+            return;
+        }
         MSXML2::IXMLDOMNodePtr run;
         for (const auto& child : children)
         {
@@ -5109,7 +5352,8 @@ namespace
         }
     }
 
-    bool ValidateGeneratedFb2Xml(CStringW& xml, CStringW& warning)
+    bool ValidateGeneratedFb2Xml(CStringW& xml, CStringW& warning, const EpubPackage& package,
+        const std::map<std::wstring, std::wstring>& anchors)
     {
         MSXML2::IXMLDOMDocument2Ptr dom;
         HRESULT hr = CreateMsxmlDom(dom);
@@ -5137,7 +5381,8 @@ namespace
             return false;
         }
 
-        NormalizeSectionChildren(dom, MsxmlGetDocumentElement(dom));
+        ApplyNavigationHierarchy(dom, package, anchors, warning);
+        NormalizeSectionChildren(dom, MsxmlGetDocumentElement(dom), warning);
         BSTR normalized = nullptr;
         if (FAILED(dom->get_xml(&normalized))) return false;
         xml = MsxmlBstrToString(normalized);
@@ -5439,7 +5684,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     // check additionally follows the user's existing validation option.
     {
         CStringW validationWarning;
-        const bool valid = ValidateGeneratedFb2Xml(outFb2Xml, validationWarning);
+        const bool valid = ValidateGeneratedFb2Xml(outFb2Xml, validationWarning, package, anchorIdMap);
         if (!validationWarning.IsEmpty())
         {
             warning += validationWarning;

@@ -26,12 +26,26 @@ sufficient: ordinary heading links remain ordinary links. References lacking
 these signals remain ordinary links; ambiguous unmarked markup still requires
 verification against the source book.
 
+Markers `*`, `**`, `***`, single Latin/Cyrillic letters, daggers and double
+daggers are also recognized when a notes document, semantic note container or
+matching backlink supplies additional evidence. A marker alone never moves
+ordinary navigation text into notes.
+
 Only collected note subtrees are removed from the main text. A chapter with an
 inline note retains its other text; a document is omitted from the main body
 only when it contains no remaining substantive content. Notes can contain
 multiple paragraphs, inline formatting, lists and images. Unresolved note
 references retain a visible marker and produce a warning with the source and
 target; there is no fabricated note text.
+
+An anchor inside the first paragraph of a note list item selects the entire
+`li`, including subsequent paragraphs and images. The same rule applies to
+semantic `div`, `section` and `aside` note containers. Selection is shared by
+inventory, extraction and removal from the main body; neighboring notes are
+kept separate. Backlinks follow the existing removal option. When only a
+paragraph is reliably identified and adjacent unmarked paragraphs could be
+continuations, the importer warns about limited boundary recognition and
+does not absorb the ambiguous text. Source verification remains necessary.
 
 Image selection follows XHTML-relative paths, including parent segments,
 UTF-8 URL escapes and Cyrillic names. `img`, `srcset`, `picture` sources,
@@ -45,8 +59,21 @@ reproduced: the first available supported candidate is selected.
 
 Heading levels `h1`–`h6` and XHTML section containers preserve nesting and
 reading order. Parents containing only child sections have no filler paragraph.
+The EPUB 3 `toc` navigation tree (or EPUB 2 NCX `navMap`) can also join parts
+and chapters stored in different XHTML files. Fragment targets are mapped to
+existing sections; repeated TOC links do not duplicate source content.
+`page-list` and other navigation lists do not define chapter nesting. Spine
+order takes precedence: a TOC relationship is applied only at a contiguous
+reading-order boundary; conflicts produce a warning, rather than moving text.
+Absent or incomplete TOC data does not invent parent relationships. Turning
+off navigation titles or heading splitting retains their existing behavior
+and disables this TOC-based nesting.
 When FB2 requires choosing between child sections and paragraph content, real
 text runs are wrapped in anonymous child sections in their original order.
+After nesting, an independent section containing only its source title is
+preserved once as emphasized paragraph text, with a structure-conversion
+warning. A title-only parent with children retains its actual title. Neither
+case needs filler text, blank paragraphs or disabled schema validation.
 Extraction failures are diagnostics, never a "chapter text was not extracted"
 sentence inserted into the book.
 
@@ -82,6 +109,13 @@ binary bytes, warning diagnostics, options and all SVG modes. A separate .NET
 XML reader validates every successful result against the repository's FB2 XSD.
 The test requires Windows, Python 3 and Windows PowerShell; it does not require
 third-party Python packages and does not run a book corpus.
+Additional cases cover anchors inside multi-paragraph list/semantic notes,
+neighboring notes, note images, embedded notes and backlink options; NCX/nav
+cross-file and three-level hierarchy, mixed parent text, title-only leaves,
+absent/incomplete/conflicting navigation, repeated fragment targets and
+excluded page lists; symbolic/letter markers, ordinary lookalike links,
+ambiguous note boundaries and disabled import options. Existing image, SVG,
+encoding, traversal and ID regressions remain in the same short test contour.
 
 Synthetic results do not establish that particular e-paper source books are
 fixed. Those books and Windows 7 SP1 require direct verification in the

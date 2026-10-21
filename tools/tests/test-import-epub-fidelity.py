@@ -51,7 +51,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for folder in cls.folders:
                 folder.cleanup()
 
-    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None):
+    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav=''):
         extra = extra or {}
         temp = tempfile.TemporaryDirectory(prefix='epub-fidelity-')
         self.folders.append(temp)
@@ -63,10 +63,26 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             (extraction_temp / name).write_bytes(data)
         epub = folder / 'case.epub'
         files = {'Text/chapter.xhtml': ('chapter', 'application/xhtml+xml', body), **extra}
-        if version.startswith('3'):
-            files['nav.xhtml'] = ('fixture-nav', 'application/xhtml+xml', '<nav epub:type="toc"><ol><li><a href="Text/chapter.xhtml">Fixture</a></li></ol></nav>')
+        tree = [('Fixture', 'Text/chapter.xhtml', [])] if navigation is None else (navigation or [])
+        counter = [0]
+        def render_tree(entries, ncx=False):
+            result = ''
+            for title, href, children in entries:
+                counter[0] += 1
+                ident = counter[0]
+                if ncx:
+                    result += (f'<navPoint id="nav{ident}" playOrder="{ident}"><navLabel><text>{title}</text></navLabel>'
+                               f'<content src="{href}"/>' + render_tree(children, True) + '</navPoint>')
+                else:
+                    nested = '<ol>' + render_tree(children) + '</ol>' if children else ''
+                    result += f'<li><a href="{href}">{title}</a>{nested}</li>'
+            return result
+        if navigation is False:
+            pass  # Deliberately exercise a package with no usable navigation resource.
+        elif version.startswith('3'):
+            files['nav.xhtml'] = ('fixture-nav', 'application/xhtml+xml', '<nav epub:type="toc"><ol>' + render_tree(tree) + '</ol></nav>' + extra_nav)
         else:
-            files['toc.ncx'] = ('fixture-ncx', 'application/x-dtbncx+xml', '<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1"><head><meta name="dtb:uid" content="fixture"/></head><docTitle><text>Fixture</text></docTitle><navMap><navPoint id="nav1" playOrder="1"><navLabel><text>Fixture</text></navLabel><content src="Text/chapter.xhtml"/></navPoint></navMap></ncx>')
+            files['toc.ncx'] = ('fixture-ncx', 'application/x-dtbncx+xml', '<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1"><head><meta name="dtb:uid" content="fixture"/></head><docTitle><text>Fixture</text></docTitle><navMap>' + render_tree(tree, True) + '</navMap></ncx>')
         def xhtml(content):
             return ('<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml" '
                     'xmlns:epub="http://www.idpf.org/2007/ops" xmlns:xlink="http://www.w3.org/1999/xlink">'
@@ -80,7 +96,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 manifest.append(f'<item id="{ident}" href="{quote(path, safe="/")}" media-type="{mime}"{properties}/>')
                 z.writestr('OEBPS/' + path, xhtml(content) if mime == 'application/xhtml+xml' else content)
             modified = '<meta property="dcterms:modified">2026-10-21T00:00:00Z</meta>' if version.startswith('3') else ''
-            toc = '' if version.startswith('3') else ' toc="fixture-ncx"'
+            toc = '' if version.startswith('3') or navigation is False else ' toc="fixture-ncx"'
             z.writestr('OEBPS/book.opf', f'<package xmlns="http://www.idpf.org/2007/opf" version="{version}" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">fixture</dc:identifier><dc:title>Fixture</dc:title><dc:language>ru</dc:language><dc:creator>Tester</dc:creator>' + modified + '</metadata><manifest>' + ''.join(manifest) + ''.join(manifest_extra) + f'</manifest><spine{toc}>' + ''.join(f'<itemref idref="{ident}"/>' for ident in (spine or ['chapter'])) + '</spine></package>')
             for path, content in (raw or {}).items():
                 z.writestr(path, content)
@@ -173,13 +189,13 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                             spine=['chapter', 'later'])
         self.assertTrue(all(a.get(HREF).startswith('#') for a in root.findall('.//f:a', NS)))
 
-    def test_empty_leaf_reports_failure_without_filler(self):
-        self.convert('<h1>Empty leaf</h1>', fail=True, options=['--save-on-warning'])
-        self.assertIn('FB2 schema validation failed', self.diagnostics)
-        recovery = self.last_folder / 'case.failed-import.fb2'
-        self.assertTrue(recovery.is_file())
-        self.assertNotIn('text was not extracted', recovery.read_text(encoding='utf-8-sig'))
-        self.assertNotIn('<empty-line', recovery.read_text(encoding='utf-8-sig'))
+    def test_title_only_leaf_preserved_without_filler(self):
+        root = self.convert('<h1>Empty leaf</h1>')
+        body = root.find('f:body', NS)
+        self.assertEqual(self.text(body).count('Empty leaf'), 1)
+        self.assertIsNotNone(body.find('.//f:p/f:strong', NS))
+        self.assertEqual(body.findall('.//f:empty-line', NS), [])
+        self.assertIn('Title-only section preserved', self.diagnostics)
 
     def test_empty_binary_reports_failure(self):
         self.convert('<p><img src="../empty.png"/></p>', {'empty.png': ('pic', 'image/png', b'')}, fail=True)
@@ -291,6 +307,162 @@ Write-Output 'Independent FB2 XSD validation: PASS'
     def test_unsafe_manifest_forbidden(self):
         self.convert('<p>Safe</p>', manifest_extra=['<item id="bad" href="../../outside.png" media-type="image/png"/>'], fail=True)
         self.assertIn('Unsafe EPUB manifest resource', self.diagnostics)
+
+    def test_anchor_in_multiparagraph_list_note(self):
+        root = self.convert('<p>Body<a href="../notes.xhtml#n">1</a></p>',
+                            {'notes.xhtml': ('notes', 'application/xhtml+xml',
+                             '<ol><li><p><a id="n"/>First paragraph</p><p><em>Second paragraph</em></p><p>Third paragraph</p></li></ol>')})
+        note, = self.notes(root)
+        self.assertEqual([self.text(p) for p in note.findall('f:p', NS)],
+                         ['First paragraph', 'Second paragraph', 'Third paragraph'])
+        self.assertIsNotNone(note.find('.//f:emphasis', NS))
+
+    def test_neighboring_multiblock_notes_with_image(self):
+        root = self.convert('<p>Body<a href="../notes.xhtml#n">1</a><a href="../notes.xhtml#m">2</a></p>',
+                            {'notes.xhtml': ('notes', 'application/xhtml+xml',
+                             '<ol><li><p><a id="n"/>First A</p><p>Second A</p><img src="a.png"/></li>'
+                             '<li><p><a id="m"/>First B</p><p><b>Second B</b></p></li></ol>'),
+                             'a.png': ('a', 'image/png', PNG)})
+        a, b = self.notes(root)
+        self.assertIn('Second A', self.text(a)); self.assertNotIn('First B', self.text(a))
+        self.assertIn('Second B', self.text(b)); self.assertNotIn('First A', self.text(b))
+        self.assertIsNotNone(a.find('.//f:image', NS))
+        self.assertEqual(base64.b64decode(root.find('f:binary', NS).text), PNG)
+        for phrase in ['First A', 'Second A', 'First B', 'Second B']:
+            self.assertEqual(self.text(root).count(phrase), 1)
+
+    def test_inline_multiblock_note_keeps_neighbors(self):
+        root = self.convert('<h1>Chapter</h1><p>Before<a epub:type="noteref" href="#n">1</a></p>'
+                            '<aside epub:type="footnote"><p><a id="n"/>Note first</p><p>Note last</p></aside><p>After</p>')
+        main = self.text(root.find('f:body', NS))
+        self.assertIn('Before', main); self.assertIn('After', main)
+        self.assertNotIn('Note first', main); self.assertNotIn('Note last', main)
+        self.assertIn('Note last', self.text(self.notes(root)[0]))
+
+    def test_semantic_note_containers_and_backlink_option(self):
+        for tag in ['div', 'section', 'aside']:
+            for option, kept in [([], False), (['--keep-footnote-backlinks'], True)]:
+                with self.subTest(tag=tag, option=option):
+                    root = self.convert('<p>Text<a id="ref" epub:type="noteref" href="#n">1</a></p>'
+                                        f'<{tag} epub:type="footnote"><p><a id="n"/>First</p><p>Last '
+                                        f'<a epub:type="backlink" href="#ref">ReturnMarker</a></p></{tag}><p>Tail</p>', options=option)
+                    note, = self.notes(root)
+                    self.assertIn('Last', self.text(note))
+                    self.assertEqual('ReturnMarker' in self.text(note), kept)
+
+    def hierarchy_fixture(self, version='3.0', intro=False, navigation=None, options=()):
+        tree = [('Part one', 'Text/chapter.xhtml', [('Chapter one', 'Text/c1.xhtml', []), ('Chapter two', 'Text/c2.xhtml', [])]),
+                ('Part two', 'Text/p2.xhtml', [('Chapter three', 'Text/c3.xhtml', [])])]
+        return self.convert('<h1 id="part">Part one</h1>' + ('<p>Introduction</p>' if intro else ''),
+                            {path: (ident, 'application/xhtml+xml', text) for path, ident, text in [
+                                ('Text/c1.xhtml', 'c1', '<h1 id="h1">Chapter one</h1><p>Text one<a href="c3.xhtml#h3">Jump</a></p>'),
+                                ('Text/c2.xhtml', 'c2', '<h1>Chapter two</h1><p>Text two</p>'),
+                                ('Text/p2.xhtml', 'p2', '<h1>Part two</h1>'),
+                                ('Text/c3.xhtml', 'c3', '<h1 id="h3">Chapter three</h1><p>Text three</p>')]},
+                            spine=['chapter', 'c1', 'c2', 'p2', 'c3'], version=version,
+                            navigation=tree if navigation is None else navigation, options=options)
+
+    def assert_hierarchy(self, root, intro=False):
+        body = root.find('f:body', NS)
+        first, second = body.findall('f:section', NS)
+        self.assertEqual(self.text(first.find('f:title', NS)), 'Part one')
+        self.assertEqual(self.text(second.find('f:title', NS)), 'Part two')
+        self.assertEqual(len(first.findall('f:section', NS)), 3 if intro else 2)
+        self.assertEqual(len(second.findall('f:section', NS)), 1)
+        text = self.text(body)
+        phrases = ['Part one', *(['Introduction'] if intro else []), 'Chapter one', 'Text one', 'Chapter two', 'Text two', 'Part two', 'Chapter three', 'Text three']
+        self.assertEqual([text.index(p) for p in phrases], sorted(text.index(p) for p in phrases))
+        for phrase in phrases:
+            self.assertEqual(text.count(phrase), 1)
+        self.assertEqual(body.findall('.//f:empty-line', NS), [])
+
+    def test_cross_document_ncx_hierarchy(self):
+        self.assert_hierarchy(self.hierarchy_fixture(version='2.0'))
+
+    def test_cross_document_nav_hierarchy(self):
+        self.assert_hierarchy(self.hierarchy_fixture())
+
+    def test_cross_document_parent_with_text(self):
+        self.assert_hierarchy(self.hierarchy_fixture(intro=True), intro=True)
+
+    def test_absent_incomplete_or_conflicting_navigation(self):
+        for tree in [False, [], [('Only part', 'Text/chapter.xhtml', [])],
+                     [('Part', 'Text/p2.xhtml', [('Earlier', 'Text/c1.xhtml', [])])]]:
+            with self.subTest(tree=tree):
+                root = self.hierarchy_fixture(navigation=tree)
+                body = root.find('f:body', NS)
+                self.assertEqual(len(body.findall('f:section', NS)), 5)
+                text = self.text(body)
+                for phrase in ['Part one', 'Text one', 'Text two', 'Part two', 'Text three']:
+                    self.assertEqual(text.count(phrase), 1)
+                self.assertLess(text.index('Text one'), text.index('Part two'))
+
+    def test_navigation_fragments_no_duplication_and_page_list_ignored(self):
+        tree = [('Part', 'Text/chapter.xhtml#part', [('One', 'Text/c1.xhtml#one', []), ('Two', 'Text/c1.xhtml#two', []), ('Repeated', 'Text/c1.xhtml#two', [])])]
+        root = self.convert('<h1 id="part">Part</h1>',
+                            {'Text/c1.xhtml': ('c1', 'application/xhtml+xml', '<h1 id="one">One</h1><p>Alpha</p><h1 id="two">Two</h1><p>Beta</p>')},
+                            spine=['chapter', 'c1'], navigation=tree,
+                            extra_nav='<nav epub:type="page-list"><ol><li><a href="Text/c1.xhtml#two">Page</a><ol><li><a href="Text/chapter.xhtml#part">Other</a></li></ol></li></ol></nav>')
+        parent, = root.find('f:body', NS).findall('f:section', NS)
+        self.assertEqual(len(parent.findall('f:section', NS)), 2)
+        for phrase in ['Part', 'Alpha', 'Beta']:
+            self.assertEqual(self.text(root.find('f:body', NS)).count(phrase), 1)
+        self.assertNotIn('conflicts with spine', self.diagnostics)
+
+    def test_symbol_and_letter_note_markers(self):
+        for marker in ['*', '**', '***', 'a', 'Ж', '†', '‡']:
+            with self.subTest(marker=marker):
+                root = self.convert(f'<p>Text<a href="../notes.xhtml#n">{marker}</a></p>',
+                                    {'notes.xhtml': ('notes', 'application/xhtml+xml', '<li><p><a id="n"/>First</p><p>Last</p></li>')})
+                self.assertEqual(len(self.notes(root)), 1)
+                self.assertIn('Last', self.text(self.notes(root)[0]))
+
+    def test_ordinary_symbol_and_letter_links(self):
+        for marker in ['*', 'a', 'Ж', '†', '‡']:
+            with self.subTest(marker=marker):
+                root = self.convert(f'<p><a href="#target">{marker}</a></p><p id="target">Ordinary text</p>')
+                self.assertEqual(self.notes(root), [])
+                self.assertEqual(root.findall('.//f:a[@type="note"]', NS), [])
+                self.assertIn('Ordinary text', self.text(root.find('f:body', NS)))
+
+    def test_ambiguous_note_boundary_warns_without_absorbing_neighbors(self):
+        root = self.convert('<p>Main<a href="../links.xhtml#n">1</a></p>',
+                            {'links.xhtml': ('notes', 'application/xhtml+xml',
+                             '<p><a id="n"/>Certain note</p><p>Ambiguous continuation</p>')}, spine=['chapter', 'notes'])
+        self.assertIn('Note boundary recognition limited', self.diagnostics)
+        note, = self.notes(root)
+        self.assertIn('Certain note', self.text(note)); self.assertNotIn('Ambiguous continuation', self.text(note))
+        self.assertIn('Ambiguous continuation', self.text(root.find('f:body', NS)))
+
+    def test_three_level_cross_document_navigation(self):
+        root = self.convert('<h1>Part</h1>',
+                            {'Text/c1.xhtml': ('c1', 'application/xhtml+xml', '<h1>Chapter</h1><p>Introduction</p>'),
+                             'Text/c2.xhtml': ('c2', 'application/xhtml+xml', '<h1>Detail</h1><p>Detail text</p>')},
+                            spine=['chapter', 'c1', 'c2'],
+                            navigation=[('Part', 'Text/chapter.xhtml', [('Chapter', 'Text/c1.xhtml', [('Detail', 'Text/c2.xhtml', [])])])])
+        parent, = root.find('f:body', NS).findall('f:section', NS)
+        chapter, = parent.findall('f:section', NS)
+        detail = chapter.findall('f:section', NS)[-1]
+        self.assertIn('Detail text', self.text(detail))
+        self.assertEqual(self.text(parent).count('Introduction'), 1)
+
+    def test_multi_paragraph_duplicate_document_ids(self):
+        root = self.convert('<p><a href="../notes.xhtml#n">1</a><a href="../links.xhtml#n">2</a></p>',
+                            {path: (ident, 'application/xhtml+xml', f'<ol><li><p><a id="n"/>{word} first</p><p>{word} last</p></li></ol>')
+                             for path, ident, word in [('notes.xhtml', 'notes', 'Alpha'), ('links.xhtml', 'links', 'Beta')]})
+        self.assertEqual(len(self.notes(root)), 2)
+        for word in ['Alpha', 'Beta']:
+            self.assertEqual(sum(word + ' last' in self.text(n) for n in self.notes(root)), 1)
+
+    def test_hierarchy_and_inline_notes_options_disabled(self):
+        root = self.hierarchy_fixture(options=['--no-split-sections'])
+        self.assertEqual(len(root.find('f:body', NS).findall('f:section', NS)), 5)
+        root = self.convert('<h1>Title</h1><p>Body<a epub:type="noteref" href="#n">1</a></p>'
+                            '<aside epub:type="footnote"><p><a id="n"/>First</p><p>Last</p></aside><p>Tail</p>',
+                            options=['--no-notes', '--no-split-sections'])
+        self.assertEqual(self.notes(root), [])
+        for phrase in ['Body', 'First', 'Last', 'Tail']:
+            self.assertEqual(self.text(root.find('f:body', NS)).count(phrase), 1)
 
     def test_svg_modes(self):
         svg = '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="red"/></svg>'
