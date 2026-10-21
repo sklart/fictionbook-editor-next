@@ -8,6 +8,7 @@ on:
       - 'tools/docs/**'
       - 'tools/audit-script-cards.py'
       - 'tools/tests/test-docs-tools.py'
+      - 'tools/tests/test-scripting-api-examples.py'
       - 'src/contracts/fbe.idl'
       - 'src/fbe/ExternalHelper.cpp'
       - 'src/fbe/scripts/**'
@@ -21,6 +22,7 @@ on:
       - 'tools/docs/**'
       - 'tools/audit-script-cards.py'
       - 'tools/tests/test-docs-tools.py'
+      - 'tools/tests/test-scripting-api-examples.py'
       - 'src/contracts/fbe.idl'
       - 'src/fbe/ExternalHelper.cpp'
       - 'src/fbe/scripts/**'
@@ -37,7 +39,9 @@ jobs:
           persist-credentials: false
           submodules: false
       - name: Test documentation structure, tools and isolated audit output
-        run: python3 tools/tests/test-docs-tools.py
+        run: |
+          python3 tools/tests/test-docs-tools.py
+          python3 tools/tests/test-scripting-api-examples.py
       - name: Check local documentation links and anchors
         run: python3 tools/docs/doc_links.py --root .
       - name: Check current public scripting API and navigation

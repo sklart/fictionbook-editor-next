@@ -105,8 +105,14 @@ def main() -> int:
     root = args.root
     def read(name):
         return (root / name).read_text(encoding='utf-8-sig')
+    documentation = read('docs/scripting-api.md')
     result = check(read('src/contracts/fbe.idl'), read('src/fbe/ExternalHelper.cpp'),
-                   read('docs/scripting-api.md'), read('src/fbe/scripts/ScriptingApi.inl'))
+                   documentation, read('src/fbe/scripts/ScriptingApi.inl'))
+    from check_scripting_api_examples import check_examples
+    result['example_errors'] = check_examples(args.root, documentation,
+        expected_methods(read('src/contracts/fbe.idl'), read('src/fbe/ExternalHelper.cpp')))
+    if result['example_errors']:
+        result['status'] = 'FAIL'
     data = json.dumps(result, ensure_ascii=False, indent=2) + '\n'
     print(data, end='')
     if args.json:
