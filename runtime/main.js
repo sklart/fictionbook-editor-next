@@ -1,4 +1,4 @@
-// Версия файла - 2.3
+﻿// Версия файла - 2.3
 
 // Object reference maker
 Object.prototype.$=function $(val){if(val)this.valueOf=this.toSource=this.toString=function(){return val};return val;};
@@ -2238,6 +2238,19 @@ function IsEmpty(ii)
 
 var fbeAnalysisSnapshot = false;
 var fbeAnalysisMarkup = null;
+var fbeAnalysisDescription = null;
+
+function DescriptionControls()
+{
+ // Retrieving a live SELECT can materialize selected attributes. Keep every
+ // description control lookup detached throughout a read-only snapshot.
+ return fbeAnalysisSnapshot ? fbeAnalysisDescription : document;
+}
+
+function ReadDescriptionValue(control)
+{
+ return control.value;
+}
 
 function ReadLanguageValue(id)
 {
@@ -2260,7 +2273,7 @@ function MakeTitleInfo(doc,desc,ann,indent)
  desc.appendChild(ti);
 
  // genres
- var list=document.all.tiGenre.getElementsByTagName("DIV");
+ var list=DescriptionControls().all.tiGenre.getElementsByTagName("DIV");
  for(var i=0; i<list.length; i++)
  {
   var ge=doc.createNode(1,"genre",fbNS);
@@ -2277,28 +2290,28 @@ function MakeTitleInfo(doc,desc,ann,indent)
 
  // authors
  var added=false;
- list=document.all.tiAuthor.getElementsByTagName("DIV");
+ list=DescriptionControls().all.tiAuthor.getElementsByTagName("DIV");
  for(var i=0; i<list.length; i++) added=MakeAuthor(ti,"author",list.item(i),false,indent+1) || added;
 
  if(!added && list.length>0) MakeAuthor(ti,"author",list.item(0),true,indent+1);
 
- MakeText(ti,"book-title",document.all.tiTitle.value,true,indent+1);
+ MakeText(ti,"book-title",DescriptionControls().all.tiTitle.value,true,indent+1);
 
  // annotation, will be filled by body.xsl
  if(!IsEmpty(ann)){ Indent(ti,indent+1); ti.appendChild(ann); }
 
- MakeText(ti,"keywords",document.all.tiKwd.value,false,indent+1);
- MakeDate(ti,document.all.tiDate.value,document.all.tiDateVal.value,indent+1);
+ MakeText(ti,"keywords",DescriptionControls().all.tiKwd.value,false,indent+1);
+ MakeDate(ti,DescriptionControls().all.tiDate.value,DescriptionControls().all.tiDateVal.value,indent+1);
 
  // coverpage images
- list=document.all.tiCover.getElementsByTagName("DIV");
+ list=DescriptionControls().all.tiCover.getElementsByTagName("DIV");
  var cp=doc.createNode(1,"coverpage",fbNS);
  for(var i=0; i<list.length; i++)
-   if(list.item(i).all.href.value.length>0)
+   if(ReadDescriptionValue(list.item(i).all.href).length>0)
    {
      var xn=doc.createNode(1,"image",fbNS);
      var an=doc.createNode(2,"l:href",xlNS);
-     an.appendChild(doc.createTextNode(list.item(i).all.href.value));
+     an.appendChild(doc.createTextNode(ReadDescriptionValue(list.item(i).all.href)));
      xn.setAttributeNode(an);
      Indent(cp,indent+2);
      cp.appendChild(xn);
@@ -2312,12 +2325,12 @@ function MakeTitleInfo(doc,desc,ann,indent)
  MakeText(ti,"src-lang",ReadLanguageValue("tiSrcLang"),false,indent+1);
 
  // translator
- list=document.all.tiTrans.getElementsByTagName("DIV");
+ list=DescriptionControls().all.tiTrans.getElementsByTagName("DIV");
 
  for(var i=0; i<list.length; i++) MakeAuthor(ti,"translator",list.item(i),false,indent+1);
 
  // sequence
- MakeSeq(ti,document.all.tiSeq,indent+1);
+ MakeSeq(ti,DescriptionControls().all.tiSeq,indent+1);
  Indent(ti,indent);
 }
 
@@ -2373,7 +2386,7 @@ function IsSTBFieldTextExist(sti,desc,doc) {
   var exist=false;
 
   // authors
-  var list=document.all.stiAuthor.getElementsByTagName("DIV");
+  var list=DescriptionControls().all.stiAuthor.getElementsByTagName("DIV");
   for (var i=0;i<list.length;++i)
   {
     exist=IsAuthorExist(sti,"author",list.item(i)) || exist;
@@ -2382,10 +2395,10 @@ function IsSTBFieldTextExist(sti,desc,doc) {
     //exist=false;
 
   // book title
-  exist=IsTextExist(document.all.stiTitle.value) || exist;
+  exist=IsTextExist(DescriptionControls().all.stiTitle.value) || exist;
 
   // genres
-  list=document.all.stiGenre.getElementsByTagName("DIV");
+  list=DescriptionControls().all.stiGenre.getElementsByTagName("DIV");
   for (var i=0;i<list.length;++i) {
     var ge=doc.createNode(1,"genre",fbNS);
     var match=list.item(i).all.match.value;
@@ -2403,20 +2416,20 @@ function IsSTBFieldTextExist(sti,desc,doc) {
   }*/
 
   // keywords
-  exist=IsTextExist(document.all.stiKwd.value) || exist;
+  exist=IsTextExist(DescriptionControls().all.stiKwd.value) || exist;
 
   // date
   var dt=sti.ownerDocument.createNode(1,"date",fbNS);
-  if (document.all.stiDateVal.value.length>0)
+  if (DescriptionControls().all.stiDateVal.value.length>0)
     exist=true;
-  if (document.all.stiDate.value.length>0)
+  if (DescriptionControls().all.stiDate.value.length>0)
     exist=true;
 
   // coverpage images
-  list=document.all.stiCover.getElementsByTagName("DIV");
+  list=DescriptionControls().all.stiCover.getElementsByTagName("DIV");
   var cp=doc.createNode(1,"coverpage",fbNS);
   for (var i=0;i<list.length;++i) {
-    if (list.item(i).all.href.value.length>0)
+    if (ReadDescriptionValue(list.item(i).all.href).length>0)
       exist=true;
   }
   if (cp.hasChildNodes())
@@ -2427,12 +2440,12 @@ function IsSTBFieldTextExist(sti,desc,doc) {
   exist=IsTextExist(ReadLanguageValue("stiSrcLang")) || exist;
 
   // translator
-  list=document.all.stiTrans.getElementsByTagName("DIV");
+  list=DescriptionControls().all.stiTrans.getElementsByTagName("DIV");
   for (var i=0;i<list.length;++i)
     exist=IsAuthorExist(sti,"translator",list.item(i)) || exist;
 
   // sequence
-  exist=IsSeqExist(sti,document.all.stiSeq) || exist;
+  exist=IsSeqExist(sti,DescriptionControls().all.stiSeq) || exist;
 
   return exist;
 }
@@ -2446,7 +2459,7 @@ function MakeSourceTitleInfo(doc,desc,ann,indent)
 		desc.appendChild(sti);
 
 		// genres
-		var list=document.all.stiGenre.getElementsByTagName("DIV");
+		var list=DescriptionControls().all.stiGenre.getElementsByTagName("DIV");
 		for (var i=0;i<list.length;++i)
 		{
 			var ge=doc.createNode(1,"genre",fbNS);
@@ -2460,25 +2473,25 @@ function MakeSourceTitleInfo(doc,desc,ann,indent)
 
 		// authors
 		var added=false;
-		list=document.all.stiAuthor.getElementsByTagName("DIV");
+		list=DescriptionControls().all.stiAuthor.getElementsByTagName("DIV");
 		for (var i=0;i<list.length;++i)
 			added=MakeAuthor(sti,"author",list.item(i),false,indent+1) || added;
 		if (!added && list.length>0)
 			MakeAuthor(sti,"author",list.item(0),true,indent+1);
 
-		MakeText(sti,"book-title",document.all.stiTitle.value,true,indent+1);
-		MakeText(sti,"keywords",document.all.stiKwd.value,false,indent+1);
-		MakeDate(sti,document.all.stiDate.value,document.all.stiDateVal.value,indent+1);
+		MakeText(sti,"book-title",DescriptionControls().all.stiTitle.value,true,indent+1);
+		MakeText(sti,"keywords",DescriptionControls().all.stiKwd.value,false,indent+1);
+		MakeDate(sti,DescriptionControls().all.stiDate.value,DescriptionControls().all.stiDateVal.value,indent+1);
 
 		// coverpage images
-		list=document.all.stiCover.getElementsByTagName("DIV");
+		list=DescriptionControls().all.stiCover.getElementsByTagName("DIV");
 		var cp=doc.createNode(1,"coverpage",fbNS);
 		for (var i=0;i<list.length;++i)
-			if (list.item(i).all.href.value.length>0)
+			if (ReadDescriptionValue(list.item(i).all.href).length>0)
 			{
 				var xn=doc.createNode(1,"image",fbNS);
 				var an=doc.createNode(2,"l:href",xlNS);
-				an.appendChild(doc.createTextNode(list.item(i).all.href.value));
+				an.appendChild(doc.createTextNode(ReadDescriptionValue(list.item(i).all.href)));
 				xn.setAttributeNode(an);
 				Indent(cp,indent+2);
 				cp.appendChild(xn);
@@ -2493,12 +2506,12 @@ function MakeSourceTitleInfo(doc,desc,ann,indent)
 		MakeText(sti,"src-lang",ReadLanguageValue("stiSrcLang"),false,indent+1);
 
 		// translator
-		list=document.all.stiTrans.getElementsByTagName("DIV");
+		list=DescriptionControls().all.stiTrans.getElementsByTagName("DIV");
 		for (var i=0;i<list.length;++i)
 		  MakeAuthor(sti,"translator",list.item(i),false,indent+1);
 
 		// sequence
-		MakeSeq(sti,document.all.stiSeq,indent+1);
+		MakeSeq(sti,DescriptionControls().all.stiSeq,indent+1);
 		Indent(sti,indent);
 	}
 }
@@ -2508,22 +2521,22 @@ function MakeDocInfo(doc,desc,hist,indent)
  var added=false; var di=doc.createNode(1,"document-info",fbNS);
 
  // authors
- var i; var list=document.all.diAuthor.getElementsByTagName("DIV");
+ var i; var list=DescriptionControls().all.diAuthor.getElementsByTagName("DIV");
 
  for(i=0; i<list.length; i++) added=MakeAuthor(di,"author",list.item(i),false,indent+1) || added;
 
  if(!added && list.length>0) MakeAuthor(di,"author",list.item(0),true,indent+1);
 
- added=MakeText(di,"program-used",document.all.diProgs.value,false,indent+1) || added;
- added=MakeDate(di,document.all.diDate.value,document.all.diDateVal.value,indent+1) || added;
+ added=MakeText(di,"program-used",DescriptionControls().all.diProgs.value,false,indent+1) || added;
+ added=MakeDate(di,DescriptionControls().all.diDate.value,DescriptionControls().all.diDateVal.value,indent+1) || added;
 
  // src-url
- list=document.all.diURL.getElementsByTagName("INPUT");
+ list=DescriptionControls().all.diURL.getElementsByTagName("INPUT");
  for(i=0; i<list.length; i++) added=MakeText(di,"src-url",list.item(i).value,false,indent+1) || added;
 
- added=MakeText(di,"src-ocr",document.all.diOCR.value,false,indent+1) || added;
- added=MakeText(di,"id",document.all.diID.value,true,indent+1) || added;
- added=MakeText(di,"version",document.all.diVersion.value,true,indent+1) || added;
+ added=MakeText(di,"src-ocr",DescriptionControls().all.diOCR.value,false,indent+1) || added;
+ added=MakeText(di,"id",DescriptionControls().all.diID.value,true,indent+1) || added;
+ added=MakeText(di,"version",DescriptionControls().all.diVersion.value,true,indent+1) || added;
 
  // history
  if(!IsEmpty(hist))
@@ -2542,14 +2555,14 @@ function MakePubInfo(doc,desc,indent)
 {
  var added=false; var pi=doc.createNode(1,"publish-info",fbNS);
 
- added=MakeText(pi,"book-name",document.all.piName.value,false,indent+1) || added;
- added=MakeText(pi,"publisher",document.all.piPub.value,false,indent+1) || added;
- added=MakeText(pi,"city",document.all.piCity.value,false,indent+1) || added;
- added=MakeText(pi,"year",document.all.piYear.value,false,indent+1) || added;
- added=MakeText(pi,"isbn",document.all.piISBN.value,false,indent+1) || added;
+ added=MakeText(pi,"book-name",DescriptionControls().all.piName.value,false,indent+1) || added;
+ added=MakeText(pi,"publisher",DescriptionControls().all.piPub.value,false,indent+1) || added;
+ added=MakeText(pi,"city",DescriptionControls().all.piCity.value,false,indent+1) || added;
+ added=MakeText(pi,"year",DescriptionControls().all.piYear.value,false,indent+1) || added;
+ added=MakeText(pi,"isbn",DescriptionControls().all.piISBN.value,false,indent+1) || added;
 
  // sequence
- added=MakeSeq(pi,document.all.piSeq,indent+1) || added;
+ added=MakeSeq(pi,DescriptionControls().all.piSeq,indent+1) || added;
 
  // only append publisher info it is non-empty
  if(added)
@@ -2562,7 +2575,7 @@ function MakePubInfo(doc,desc,indent)
 
 function MakeCustInfo(doc,desc,indent)
 {
- var list=document.all.ci.getElementsByTagName("DIV");
+ var list=DescriptionControls().all.ci.getElementsByTagName("DIV");
 
  for(var i=0; i<list.length; i++)
  {
@@ -2609,9 +2622,13 @@ function GetDesc(doc,ann,hist)
 function GetDescForAnalysis(doc,ann,hist)
 {
  fbeAnalysisSnapshot=true;
- fbeAnalysisMarkup=document.getElementById("fbw_desc").outerHTML;
- try { GetDesc(doc,ann,hist); }
- finally { fbeAnalysisMarkup=null; fbeAnalysisSnapshot=false; }
+ try {
+  fbeAnalysisMarkup=document.getElementById("fbw_desc").outerHTML;
+  fbeAnalysisDescription=document.createElement("DIV");
+  fbeAnalysisDescription.innerHTML=fbeAnalysisMarkup;
+  GetDesc(doc,ann,hist);
+ }
+ finally { fbeAnalysisDescription=null; fbeAnalysisMarkup=null; fbeAnalysisSnapshot=false; }
 }
 
 function GetBinaries(doc)

@@ -8,7 +8,7 @@ namespace FbeBackupFileCommit {
 
 inline void CommitSavedFile(const CString& temporaryFile, const CString& destinationFile, bool createBackupFile,
 	BOOL (WINAPI* replaceFile)(LPCWSTR, LPCWSTR, LPCWSTR, DWORD, LPVOID, LPVOID) = ::ReplaceFileW,
-	bool* preserveTemporaryFileOnFailure = NULL)
+	bool* preserveTemporaryFileOnFailure = NULL, bool overwrite = true)
 {
 	// Once this helper owns a completed temporary save, keep it on every
 	// failure path. ReplaceFile may report a partial state (1176/1177), and
@@ -23,6 +23,14 @@ inline void CommitSavedFile(const CString& temporaryFile, const CString& destina
 	::CloseHandle(temporaryHandle);
 	if (!flushed)
 		throw _com_error(HRESULT_FROM_WIN32(flushError));
+	if (!overwrite) {
+		// No existence-check race: MoveFileEx without REPLACE_EXISTING never
+		// replaces a concurrently created destination.
+		if (!::MoveFileExW(temporaryFile, destinationFile, MOVEFILE_WRITE_THROUGH))
+			throw _com_error(HRESULT_FROM_WIN32(::GetLastError()));
+		if (preserveTemporaryFileOnFailure) *preserveTemporaryFileOnFailure = false;
+		return;
+	}
 
 	const DWORD attributes = ::GetFileAttributesW(destinationFile);
 	if (attributes == INVALID_FILE_ATTRIBUTES)

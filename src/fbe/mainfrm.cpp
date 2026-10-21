@@ -37,6 +37,7 @@
 #include "scripts/ScriptExtendedDialogs.h"
 #include "scripts/ScriptClipboard.h"
 #include "scripts/ScriptStatus.h"
+#include "scripts/ScriptDocumentSave.h"
 #include "KeyboardLayoutSelection.h"
 #include "RuntimeLocalization.h"
 #include "ImageImport.h"
@@ -1665,6 +1666,7 @@ LRESULT CMainFrame::OnXmlScriptApi(UINT, WPARAM, LPARAM data, BOOL&)
 	}
 	if(request->operation == XmlScriptApiOperation::ScriptingDocumentOperation)
 	{
+#include "scripts/ScriptingDocumentSave.inl"
         if (request->scriptingMethod >= 153 && request->scriptingMethod <= 163) {
             try {
                 if(request->scriptingMethod>=161)

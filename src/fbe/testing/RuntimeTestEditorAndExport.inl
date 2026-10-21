@@ -2,6 +2,7 @@
 #include "RuntimeTestScriptingStage3A.inl"
 #include "RuntimeTestScriptingStage3B.inl"
 #include "RuntimeTestScriptingStage3C.inl"
+#include "RuntimeTestScriptingStage3D.inl"
 #include "RuntimeTestScriptingDialogs.inl"
 #include "RuntimeTestScriptingEnvironment.inl"
 #include "RuntimeTestDocumentTree.inl"

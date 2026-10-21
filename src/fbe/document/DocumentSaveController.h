@@ -2,6 +2,7 @@
 
 #include "DocumentLocation.h"
 #include "../archive/ArchiveError.h"
+#include <vector>
 
 class DocumentSession;
 namespace FB { class Doc; }
@@ -27,6 +28,10 @@ struct DocumentSaveAsRequest
 class DocumentSaveController
 {
 public:
+	static void WriteSnapshot(const std::vector<unsigned char>& bytes, const CString& path, bool overwrite, bool backup = false);
 	DocumentSaveResult SaveCurrent(FB::Doc& document, DocumentSession& session, const DocumentLocation& location);
 	DocumentSaveResult SaveAsNormal(FB::Doc& document, DocumentSession& session, const DocumentSaveAsRequest& request);
+	DocumentSaveResult SaveCurrentSnapshot(DocumentSession& session, const std::vector<unsigned char>& bytes);
+	void SaveAsSnapshot(DocumentSession& session, const CString& path, FictionBookFileType type,
+		const std::vector<unsigned char>& bytes, bool overwrite);
 };

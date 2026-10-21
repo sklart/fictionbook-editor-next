@@ -1286,7 +1286,7 @@ static MSXML2::IXMLDOMNodePtr	  ProcessInline(MSHTML::IHTMLDOMNode *inl,
 // handle a paragraph element with subelements
 static MSXML2::IXMLDOMNodePtr	  ProcessP(MSHTML::IHTMLElement *p,
 					   MSXML2::IXMLDOMDocument2 *doc,
-					   const wchar_t *baseName)
+					   const wchar_t *baseName, bool forceEmptyLine = false)
 {
   _bstr_t cls(p->className);
   if (U::scmp(cls,L"text-author")==0)
@@ -1309,7 +1309,7 @@ static MSXML2::IXMLDOMNodePtr	  ProcessP(MSHTML::IHTMLElement *p,
 		U::is_whitespace(hp->firstChild->nodeValue.bstrVal)))
 	{
 		MSHTML::IHTMLElementPtr pParent = MSHTML::IHTMLElementPtr(p)->parentElement;
-		if (MSHTML::IHTMLElement3Ptr(p)->inflateBlock == VARIANT_TRUE)
+		if (forceEmptyLine || MSHTML::IHTMLElement3Ptr(p)->inflateBlock == VARIANT_TRUE)
 		{
 			if(pParent && U::scmp(pParent->className, L"stanza") == 0)
 			{
@@ -1370,7 +1370,7 @@ static MSXML2::IXMLDOMNodePtr	  ProcessP(MSHTML::IHTMLElement *p,
 // handle a div element with subelements
 static MSXML2::IXMLDOMNodePtr	  ProcessDiv(MSHTML::IHTMLElement *div,
 					     MSXML2::IXMLDOMDocument2 *doc,
-					     int indent)
+					     int indent, bool readOnly = false)
 {
   _bstr_t		    cls(div->className);
 
@@ -1418,7 +1418,7 @@ static MSXML2::IXMLDOMNodePtr	  ProcessDiv(MSHTML::IHTMLElement *div,
     _bstr_t	name(fc->nodeName);
     MSHTML::IHTMLElementPtr efc(fc);
 	// process empty lines
-    MSHTML::IHTMLElement3Ptr(efc)->inflateBlock = VARIANT_TRUE;
+    if (!readOnly) MSHTML::IHTMLElement3Ptr(efc)->inflateBlock = VARIANT_TRUE;
 
     // Tables are deliberately represented by native HTML elements in the
     // visual editor.  Accept both the legacy DIV/P form and TABLE/TR/TD/TH
@@ -1432,15 +1432,15 @@ static MSXML2::IXMLDOMNodePtr	  ProcessDiv(MSHTML::IHTMLElement *div,
 			MSHTML::IHTMLElementPtr row(rowNode);
 			if (U::scmp(row->tagName, L"TR") != 0) continue;
 			Indent(xdiv, doc, indent + 1);
-			xdiv->appendChild(ProcessDiv(row, doc, indent + 1));
+			xdiv->appendChild(ProcessDiv(row, doc, indent + 1, readOnly));
 		}
 	} else if (U::scmp(name,L"DIV")==0 || U::scmp(name,L"TABLE")==0 || U::scmp(name,L"TR")==0) {
       Indent(xdiv,doc,indent+1);
-	  MSXML2::IXMLDOMNodePtr nnp = ProcessDiv(efc,doc,indent+1);
+	  MSXML2::IXMLDOMNodePtr nnp = ProcessDiv(efc,doc,indent+1,readOnly);
       xdiv->appendChild(nnp);
     } else if (U::scmp(name,L"P")==0 || U::scmp(name,L"TD")==0 || U::scmp(name,L"TH")==0) {
 		MSXML2::IXMLDOMNodePtr  np;
-		np = ProcessP(efc,doc,bn);
+		np = ProcessP(efc,doc,bn,readOnly);
       if (np) {
 		Indent(xdiv,doc,indent+1);
 		xdiv->appendChild(np);
@@ -1459,7 +1459,7 @@ static MSXML2::IXMLDOMNodePtr	  ProcessDiv(MSHTML::IHTMLElement *div,
 static MSXML2::IXMLDOMNodePtr  GetDiv(MSHTML::IHTMLElementPtr body,
 				      MSXML2::IXMLDOMDocument2 *xml,
 				      const wchar_t *name,
-				      int indent)
+				      int indent, bool readOnly = false)
 {
   MSHTML::IHTMLElementCollectionPtr children(body->children);
   long				    c_len=children->length;
@@ -1469,7 +1469,7 @@ static MSXML2::IXMLDOMNodePtr  GetDiv(MSHTML::IHTMLElementPtr body,
     if (!(bool)div)
       continue;
     if (U::scmp(div->tagName,L"DIV")==0 && U::scmp(div->className,name)==0)
-      return ProcessDiv(div,xml,indent);
+      return ProcessDiv(div,xml,indent,readOnly);
   }
 
   return MSXML2::IXMLDOMNodePtr();
@@ -1576,7 +1576,7 @@ static void GetBodies(MSHTML::IHTMLElementPtr body,
 		continue;
 	  if (synthetic && !pristineSynthetic && normalizeVisualDom)
 		div->removeAttribute(L"fbdsynthetic", 0);
-      MSXML2::IXMLDOMElementPtr	xb(ProcessDiv(div,doc,1));
+      MSXML2::IXMLDOMElementPtr	xb(ProcessDiv(div,doc,1,!normalizeVisualDom));
       _bstr_t	  bn(AU::GetAttrB(div,L"fbname"));
       if (bn.length()>0)
 		SetAttr(xb,L"name",FBNS,bn,doc);
@@ -1741,14 +1741,15 @@ static bool ReportFbdStructureValidationFailure(HWND frame, const CString& messa
 	return false;
 }
 
-HRESULT Doc::ValidateForScripting(BSTR sourceOverride, bool& valid, int& line, int& column, CString& message)
+HRESULT Doc::ValidateForScripting(BSTR sourceOverride, bool& valid, int& line, int& column, CString& message, FictionBookFileType targetType)
 {
+	const auto fileType = targetType == FictionBookFileType::Unknown ? m_file_type : targetType;
 	valid = false; line = column = 0; message.Empty();
 	try {
 		MSXML2::ISAXXMLReaderPtr reader;
 		CheckError(reader.CreateInstance(L"Msxml2.SAXXMLReader.6.0"));
 		MSXML2::IXMLDOMSchemaCollection2Ptr schemas;
-		ConfigureFictionBookSaxReader(reader, m_file_type, schemas);
+		ConfigureFictionBookSaxReader(reader, fileType, schemas);
 		CComObject<SAXErrorHandler>* raw = nullptr;
 		CheckError(CComObject<SAXErrorHandler>::CreateInstance(&raw));
 		CComPtr<CComObject<SAXErrorHandler>> errors(raw);
@@ -1760,7 +1761,7 @@ HRESULT Doc::ValidateForScripting(BSTR sourceOverride, bool& valid, int& line, i
 			input.vt = VT_BSTR;
 			input.bstrVal = ::SysAllocStringLen(sourceOverride, ::SysStringLen(sourceOverride));
 			if (!input.bstrVal) return E_OUTOFMEMORY;
-			if (m_file_type == FictionBookFileType::Fbd) {
+			if (fileType == FictionBookFileType::Fbd) {
 				snapshot = U::CreateDocument(true);
 				CheckError(writer.CreateInstance(L"Msxml2.MXXMLWriter.6.0"));
 				writer->output = snapshot.GetInterfacePtr();
@@ -1779,7 +1780,7 @@ HRESULT Doc::ValidateForScripting(BSTR sourceOverride, bool& valid, int& line, i
 			message = errors->m_msg; line = errors->m_line; column = errors->m_col;
 			return S_OK;
 		}
-		if (m_file_type == FictionBookFileType::Fbd && !ValidateFbdDocumentStructure(snapshot, &message)) {
+		if (fileType == FictionBookFileType::Fbd && !ValidateFbdDocumentStructure(snapshot, &message)) {
 			line = column = 1; return S_OK;
 		}
 		valid = true; return S_OK;
@@ -1986,10 +1987,10 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
     }
   }
 
-  MSXML2::IXMLDOMNodePtr  ann(GetDiv(fbw_body,ndoc,L"annotation",3));
+  MSXML2::IXMLDOMNodePtr  ann(GetDiv(fbw_body,ndoc,L"annotation",3,analysisSnapshot));
 
   // fetch history
-  MSXML2::IXMLDOMNodePtr  hist(GetDiv(fbw_body,ndoc,L"history",3));
+  MSXML2::IXMLDOMNodePtr  hist(GetDiv(fbw_body,ndoc,L"history",3,analysisSnapshot));
 
   // fetch description
   CComDispatchDriver	body(m_editor.Script());
@@ -2088,6 +2089,14 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMForAnalysis(CString* errorMessage)
 		if (errorMessage && errorMessage->IsEmpty()) errorMessage->Format(L"XML snapshot failed (HRESULT 0x%08lX).", static_cast<unsigned long>(error.Error()));
 		return NULL;
 	}
+}
+
+MSXML2::IXMLDOMDocument2Ptr Doc::CreateScriptingSnapshot(const CString& encoding, CString& errorMessage)
+{
+	if (m_serialization_unsafe) _com_issue_error(E_FAIL);
+	// The analysis branch uses detached XML, GetDescForAnalysis and the same
+	// native/serialized table guard, without normalizing the live visual DOM.
+	return CreateDOMImp(encoding, true, m_file_type, false, true, &errorMessage);
 }
 
 static void CommitRecoveryFile(const CString& temporaryFile, const CString& destinationFile)

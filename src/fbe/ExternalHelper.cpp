@@ -34,7 +34,8 @@ const wchar_t* const ScriptingMethods[] = {
  L"GetBinaryInfo", L"GenerateUniqueBinaryId", L"AddBinaryFromFile", L"ReplaceBinaryFromFile", L"RemoveBinary", L"SaveAllBinaries",
  L"ShowMessage", L"SelectFromList", L"SelectMultipleFromList", L"ChooseColor",
  L"GetClipboardText", L"SetClipboardText", L"GetClipboardHtml", L"SetClipboardHtml",
- L"PushStatusBarText", L"PopStatusBarText", L"ClearStatusBarText"
+ L"PushStatusBarText", L"PopStatusBarText", L"ClearStatusBarText",
+ L"SaveCurrentDocument", L"SaveCurrentDocumentAs", L"SaveDocumentCopy", L"SerializeCurrentDocument", L"SaveSerializedDocumentCopy"
 };
 DISPID ScriptingMethodId(LPCWSTR name)
 {

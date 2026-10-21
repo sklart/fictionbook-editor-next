@@ -59,6 +59,7 @@ public:
   bool	  LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSource = NULL);
   MSXML2::IXMLDOMDocument2Ptr CreateDOM(const CString& encoding, bool compactBinaries = true);
   MSXML2::IXMLDOMDocument2Ptr CreateDOMForAnalysis(CString* errorMessage = NULL);
+  MSXML2::IXMLDOMDocument2Ptr CreateScriptingSnapshot(const CString& encoding, CString& errorMessage);
   bool IsSerializationUnsafe() const { return m_serialization_unsafe; }
   HRESULT InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CComVariant &vtResult, bool quiet = false);
   void	  ShowDescription(bool Show);
@@ -79,7 +80,8 @@ public:
   // sourceOverride is used by the internal XML-scripting backend.  It takes
   // the exact same production SAX/schema/FBD path as Source validation.
   bool	  SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errcol,CString* errorMessage=NULL, BSTR sourceOverride=NULL);
-  HRESULT ValidateForScripting(BSTR sourceOverride, bool& valid, int& line, int& column, CString& message);
+  HRESULT ValidateForScripting(BSTR sourceOverride, bool& valid, int& line, int& column, CString& message,
+      FictionBookFileType targetType = FictionBookFileType::Unknown);
   bool	  TextToXML(BSTR text, MSXML2::IXMLDOMDocument2Ptr *xml);
 
   //bool	  SetXML(MSXML2::IXMLDOMDocument2 *dom);

@@ -4,9 +4,11 @@
 #include "ScriptingDiagnostics.inl"
 #include "ScriptingBinary.inl"
 #include "ScriptingStage3C.inl"
+#include "ScriptingStage3D.inl"
 HRESULT ExternalHelper::InvokeScriptingExtension(DISPID dispid, WORD flags, DISPPARAMS* parameters,
     VARIANT* result, UINT* argumentError)
 {
+    if (dispid >= 164 && dispid <= 168) return FbeScripts::InvokeStage3D(m_xmlScriptHost, dispid, flags, parameters, result, argumentError);
     if (dispid >= 153 && dispid <= 163) return FbeScripts::InvokeStage3C(m_xmlScriptHost, dispid, flags, parameters, result, argumentError);
     if (dispid >= 147 && dispid <= 152) return FbeScripts::InvokeBinary(m_xmlScriptHost, dispid, flags, parameters, result, argumentError);
     if (dispid >= 143 && dispid <= 146) return FbeScripts::InvokeStage3A(m_xmlScriptHost, dispid, flags, parameters, result, argumentError);
