@@ -358,6 +358,7 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-export-epub-v2-runtime.ps1") -Configuration $Configuration -BatchExecutable (Join-Path $batchOutputDir "ExportEPUBBatch.exe")
 & (Join-Path $repoRoot "tools\tests\test-export-docx-v2-runtime.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-import-epub-v2-runtime.ps1") -Configuration $Configuration
+& (Join-Path $repoRoot 'tools\tests\test-import-epub-fidelity.ps1') -BatchPath (Join-Path $batchOutputDir 'ImportEPUBBatch.exe')
 & (Join-Path $repoRoot "tools\tests\test-prerelease-epub-import.ps1") -Importer (Join-Path $batchOutputDir "ImportEPUBBatch.exe")
 & (Join-Path $repoRoot "tools\tests\test-prerelease-serialization.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-xml-script-backend-contract.ps1")

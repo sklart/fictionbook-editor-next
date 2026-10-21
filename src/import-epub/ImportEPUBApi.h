@@ -59,6 +59,8 @@ typedef struct ImportEpubRuntimeStatsV1
 // caller owns *fb2Xml and *errorText and releases either non-null value with
 // SysFreeString.  BSTR uses the system allocator, so no CRT or C++ allocation
 // crosses the ABI.  A failed conversion returns a failed HRESULT and errorText.
+// A successful conversion can also return non-null errorText with import
+// warnings. The FB2 remains available; callers should surface those warnings.
 HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
     LPCWSTR epubPath,
     const ImportEpubOptionsV1* options,

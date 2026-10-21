@@ -536,6 +536,7 @@ STDMETHODIMP CImportEPUBPlugin::Import(IFBEPluginHost* host, BSTR* suggestedFile
         if (xml.IsEmpty()) return ReportImportFailure(host, E_FAIL, L"ImportEPUB could not create diagnostic FB2");
         host->ReportMessage(1, CComBSTR(L"import-diagnostic"), CComBSTR(error));
     }
+    else if (!error.IsEmpty()) host->ReportMessage(1, CComBSTR(L"import-warning"), CComBSTR(error));
     const int bytes = ::WideCharToMultiByte(CP_UTF8, 0, xml, xml.GetLength(), nullptr, 0, nullptr, nullptr);
     if (bytes <= 0) return ReportImportFailure(host, E_FAIL, L"Could not convert FB2 text to UTF-8");
     CComPtr<IStream> stream;
@@ -634,6 +635,8 @@ STDMETHODIMP CImportEPUBPlugin::Import(long hWnd, BSTR* filename, IDispatch** do
             ::MessageBoxW(ownerWindow, msg, L"ImportEPUB", MB_OK | MB_ICONWARNING);
             fb2Xml = BuildDiagnosticFb2Xml(epubPath, importError);
         }
+        else if (!importError.IsEmpty())
+            ::MessageBoxW(ownerWindow, importError, L"ImportEPUB", MB_OK | MB_ICONWARNING);
 
         stage = LoadPluginString(IDS_IMPORT_PLUGIN_STAGE_CREATE_DOM, L"creating FB2 DOM document");
         HRESULT hr = CreateFb2Dom(fb2Xml, document);

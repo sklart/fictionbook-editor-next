@@ -138,7 +138,7 @@ namespace
         ConsolePrintf(L"  --no-tables          Do not import tables\n");
         ConsolePrintf(L"  --no-lists           Do not import lists\n");
         ConsolePrintf(L"  --no-links           Do not preserve links and anchors\n");
-        ConsolePrintf(L"  --no-validate        Skip final FB2 XML/reference validation\n");
+        ConsolePrintf(L"  --no-validate        Skip FB2 schema validation; XML/reference checks remain enabled\n");
         ConsolePrintf(L"  --save-on-warning    Save .failed-import.fb2 when warnings are found\n");
         ConsolePrintf(L"  --dry-run            Convert in memory but do not write output FB2\n");
         ConsolePrintf(L"  --stats              Print generated FB2 statistics and add them to CSV report\n");
@@ -807,6 +807,7 @@ namespace
         int svgPlaceholders;
         int svgSkipped;
         CStringW svgBackend;
+        CStringW importWarnings;
 
         Fb2QualityStats()
             : sections(0)
@@ -835,7 +836,7 @@ namespace
 
         int WarningCount() const
         {
-            return missingImageBinaries + missingInternalLinks + missingNoteTargets + duplicateIds;
+            return missingImageBinaries + missingInternalLinks + missingNoteTargets + duplicateIds + (importWarnings.IsEmpty() ? 0 : 1);
         }
     };
 
@@ -1379,9 +1380,11 @@ namespace
             return false;
         }
         fb2 = apiFb2;
+        const CStringW importWarnings(apiError ? apiError : L"");
         SysFreeString(apiFb2);
         SysFreeString(apiError);
         quality = AnalyzeFb2Quality(fb2);
+        quality.importWarnings = importWarnings;
         quality.svgImages = runtimeStats.svgImages;
         quality.svgConverted = runtimeStats.svgConverted;
         quality.svgPlaceholders = runtimeStats.svgPlaceholders;
@@ -1434,7 +1437,7 @@ namespace
         CStringW status;
         if (ok)
         {
-            qualityMessage = BuildQualityMessage(quality);
+            qualityMessage = BuildQualityMessage(quality) + quality.importWarnings;
             status = consoleOptions.dryRun ? CStringW(L"OK_DRY_RUN") : CStringW(L"OK");
             if (quality.WarningCount() > 0)
                 status = consoleOptions.dryRun ? CStringW(L"OK_DRY_RUN_WITH_WARNINGS") : CStringW(L"OK_WITH_WARNINGS");
@@ -1751,7 +1754,7 @@ namespace
                 ULONGLONG elapsed = GetTickCount64() - started;
                 CStringW elapsedText;
                 elapsedText.Format(L"%I64u", elapsed);
-                CStringW qualityMessage = BuildQualityMessage(quality);
+                CStringW qualityMessage = BuildQualityMessage(quality) + quality.importWarnings;
                 CStringW okStatus = options.dryRun ? CStringW(L"OK_DRY_RUN") : CStringW(L"OK");
                 if (quality.WarningCount() > 0)
                 {
