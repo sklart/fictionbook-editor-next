@@ -2,7 +2,8 @@
 // keeps legacy MSHTML/configuration code alive; it is never an open book.
 bool CMainFrame::RequiresOpenDocument(UINT command)
 {
-    if ((command >= ID_FILE_MRU_FIRST && command <= ID_FILE_MRU_LAST) ||
+    if ((command >= ID_PLUGIN_IMPORT_FIRST && command <= ID_PLUGIN_IMPORT_LAST) ||
+        (command >= ID_FILE_MRU_FIRST && command <= ID_FILE_MRU_LAST) ||
         (command >= ATL_IDW_BAND_FIRST && command <= ATL_IDW_BAND_FIRST + 8) ||
         (command >= ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_FIRST && command <= ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_LAST) ||
         (command >= ID_STATUS_PANE_POSITION && command <= ID_STATUS_PANE_INSERT_MODE)) return false;
@@ -10,11 +11,12 @@ bool CMainFrame::RequiresOpenDocument(UINT command)
     case ID_FILE_NEW: case ID_FILE_OPEN: case ID_APP_EXIT: case ID_FILE_RESTART:
     case ID_APP_ABOUT: case ID_VIEW_OPTIONS: case ID_TOOLS_OPTIONS:
     case ID_VIEW_STATUS_BAR: case ID_VIEW_SCRIPT_TOOLBARS_MANAGE:
+    case ID_VIEW_TREE: case ID_PANE_CLOSE:
     case ID_TOOLS_REFRESH_SCRIPTS: case ID_TOOLS_CUSTOMIZE:
     case ID_TOOLS_DIAGNOSTIC_TRACE: case ID_TOOLS_OPEN_DIAGNOSTIC_LOG:
     case ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER: case ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH:
     case ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS: case ID_TOOLS_CREATE_DIAGNOSTIC_PACKAGE:
-    case ID_FILE_IMPORT_PLACEHOLDER: case ID_FILE_EXPORT_PLACEHOLDER:
+    case ID_FILE_IMPORT_PLACEHOLDER:
     case IDCANCEL:
         return false;
     default: return true;
@@ -82,7 +84,8 @@ void CMainFrame::PresentClosedDocument()
     m_source.ShowWindow(SW_HIDE);
     m_doc->m_body.ShowWindow(SW_HIDE);
     m_editor_view_state.Reset(EditorView::Body, EditorView::Description);
-    m_document_tree.EnableWindow(FALSE);
+    m_document_tree.EnableWindow(TRUE);
+    m_document_tree.m_tree.SetDocumentAvailable(false);
     m_contextAttributeBars.ClearLinkState(); m_contextAttributeBars.ClearTableState();
     m_contextAttributeBars.SetLinkAvailability({false, false, false, false});
     m_contextAttributeBars.SetTableAvailability({false, false, false, false, false, false, false, false, false});

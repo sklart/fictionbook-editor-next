@@ -1460,6 +1460,11 @@ void CTreeView::SetScriptMode(bool value)
 		m_script_info_pressed = NULL;
 		if(::GetCapture() == m_hWnd) ::ReleaseCapture();
 	}
+	// Delete script nodes while their mode still identifies their item data.
+	// With no book, UpdateAll is deliberately blocked by the frame.
+	DeleteAllItems();
+	m_script_nodes.clear(); m_source_index.clear(); m_identity_index.clear();
+	m_current_path.clear(); m_current_item = NULL; m_last_lookup_item = NULL;
 	m_script_mode = value;
 	ApplyModeAppearance();
 	if(m_script_mode) { SetImageList(m_scriptImageList,TVSIL_NORMAL); RebuildScriptTree(); }

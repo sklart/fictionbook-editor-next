@@ -913,6 +913,7 @@ void CTreeWithToolBar::UpdateDpiMetrics(UINT dpi)
 }
 LRESULT CTreeWithToolBar::OnMenuCommand(WORD, WORD wID, HWND, BOOL&)
 {
+	if (!m_documentAvailable) return 0;
 	bool ctrl_state = (GetKeyState(VK_CONTROL) & 0x8000) != 0x0;
 	unsigned int index = wID - IDC_TREE_BASE;
 	CElementDescriptor* ED = _EDMnr.GetED(index);
@@ -945,6 +946,7 @@ void CTreeWithToolBar::ClearTree()
 
 LRESULT CTreeWithToolBar::OnMenuStCommand(WORD, WORD wID, HWND, BOOL&)
 {
+	if (!m_documentAvailable) return 0;
 	unsigned int index = wID - IDC_TREE_ST_BASE;
 	CElementDescriptor* ED = _EDMnr.GetStED(index);
 	bool view = ED->ViewInTree();

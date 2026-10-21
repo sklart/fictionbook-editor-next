@@ -32,6 +32,7 @@ public:
 	DocumentLifecycleController(CMainFrame& frame, FB::Doc*& document, DocumentSession& session, HWND view);
 
 	DocumentLifecycleResult NewDocument();
+	DocumentLifecycleResult Import(const MSXML2::IXMLDOMDocument2Ptr& dom, const CString& suggestedFilename);
 	DocumentLifecycleResult CloseDocument();
 	DocumentLifecycleResult Open(const DocumentOpenSource& source);
 	DocumentLifecycleResult ReloadNormal(const CString& path);

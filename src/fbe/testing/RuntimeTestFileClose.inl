@@ -64,9 +64,45 @@ if (IsFbeTestScenario(L"file-close-runtime")) {
         require(recentBefore==recent(),"close preserved MRU");
         {PendingDocument pending(*this,m_doc);pending.Rollback();}
         require(FB::Doc::m_active_doc==nullptr&&!m_document_session.HasDocument(),"rollback preserves closed state");
-        if(extensive){phase("settings without a document");askClose(IDCANCEL,false,ID_VIEW_OPTIONS);closed();}
-        require(LoadFile(second.data())==OK&&m_document_session.HasDocument(),"reopen after close");
-        require(!m_doc->m_body.CheckCommand(ID_EDIT_UNDO)&&!m_doc->m_body.CheckCommand(ID_EDIT_REDO),"reopen history empty");
+        if(extensive){
+            phase("settings Apply without a document");askClose(IDOK,false,ID_VIEW_OPTIONS);closed();
+            const bool spell=_Settings.GetUseSpellChecker();
+            _Settings.SetUseSpellChecker(true);ApplyConfChanges(true,false);closed();
+            _Settings.SetUseSpellChecker(false);ApplyConfChanges(false,false);closed();
+            _Settings.SetUseSpellChecker(spell);
+            phase("theme/background/source settings without a document");
+            const InterfaceTheme theme=_Settings.GetInterfaceTheme();
+            _Settings.SetInterfaceTheme(theme==INTERFACE_THEME_DARK?INTERFACE_THEME_LIGHT:INTERFACE_THEME_DARK,true);
+            ApplyEditorBackgroundChanges(false);closed();ApplyXmlSourceEditorChanges(false);closed();
+            _Settings.SetInterfaceTheme(theme,true);closed();
+            phase("language without a document");
+            const DWORD language=_Settings.GetInterfaceLanguageID();
+            _Settings.SetInterfaceLanguage(language==1049?1033:1049,true);
+            FbeResetRuntimeLocalization();RefreshLocalizedMainFrameUi();closed();
+            _Settings.SetInterfaceLanguage(language,true);
+            FbeResetRuntimeLocalization();RefreshLocalizedMainFrameUi();closed();
+            phase("DPI message without a document");
+            const UINT dpi=m_current_dpi;
+            SendMessage(WM_DPICHANGED,MAKEWPARAM(dpi==144?96:144,dpi==144?96:144),0);closed();
+            SendMessage(WM_DPICHANGED,MAKEWPARAM(dpi,dpi),0);closed();
+            phase("script catalog/structure without a document");
+            require(m_document_tree.IsWindowEnabled()!=FALSE,"navigation enabled");
+            m_document_tree.m_tree.SendMessage(WM_COMMAND,ID_DOCUMENT_TREE_MODE_SCRIPTS);
+            require(m_document_tree.m_tree.m_tree.IsScriptMode(),"script catalog enabled");
+            SendMessage(WM_COMMAND,ID_TOOLS_REFRESH_SCRIPTS);
+            require(m_document_tree.m_tree.m_tree.GetCount()>0&&RequiresOpenDocument(ID_SCRIPT_BASE+1),"catalog refreshed; execution requires a book");
+            SendMessage(WM_COMMAND,ID_SCRIPT_BASE+1);SendMessage(WM_COMMAND,ID_LAST_SCRIPT);
+            SendMessage(WM_COMMAND,ID_PLUGIN_EXPORT_FIRST);SendMessage(WM_COMMAND,ID_VIEW_SOURCE);
+            m_document_tree.m_tree.SendMessage(WM_COMMAND,ID_DOCUMENT_TREE_MODE_STRUCTURE);closed();
+            require(!m_document_tree.m_tree.m_tree.IsScriptMode(),"empty structure selected");
+            // Also close with the script catalog selected; no DOM references may survive it.
+            SendMessage(WM_COMMAND,ID_FILE_NEW);clean();
+            m_document_tree.m_tree.SendMessage(WM_COMMAND,ID_DOCUMENT_TREE_MODE_SCRIPTS);
+            SendMessage(WM_COMMAND,ID_FILE_CLOSE);
+            m_document_tree.m_tree.SendMessage(WM_COMMAND,ID_DOCUMENT_TREE_MODE_STRUCTURE);closed();
+        }
+        fileGroup=_Settings.GetGroupByName(L"File");closeKey=fileGroup?_Settings.GetHotkeyByName(L"Close",*fileGroup):nullptr;
+        require(closeKey!=nullptr,"Close hotkey after settings");
         const ACCEL originalClose=closeKey->m_accel;closeKey->m_accel.key='Q';_Settings.SaveHotkeyGroups();_Settings.LoadHotkeyGroups();RebuildRuntimeHotkeys();
         fileGroup=_Settings.GetGroupByName(L"File");closeKey=fileGroup?_Settings.GetHotkeyByName(L"Close",*fileGroup):nullptr;
         require(closeKey&&closeKey->m_accel.key=='Q',"Close remap persisted");
@@ -74,6 +110,35 @@ if (IsFbeTestScenario(L"file-close-runtime")) {
         ::CopyAcceleratorTableW(m_hAccel,bindings.data(),static_cast<int>(bindings.size()));
         require(std::any_of(bindings.begin(),bindings.end(),[](const ACCEL& item){return item.cmd==ID_FILE_CLOSE&&item.key=='Q';}),"remap in accelerator table");
         closeKey->m_accel=originalClose;_Settings.SaveHotkeyGroups();RebuildRuntimeHotkeys();
+        closed();
+        if(extensive){
+            phase("EPUB import cancel/error/success after close");
+            WORD importCommand=0;
+            for(int i=0;i<m_plugins.ImportPlugins().GetSize();++i){
+                const auto* plugin=m_plugins.Manager().FindPlugin(m_plugins.ImportPlugins()[i]);
+                if(plugin&&plugin->id==L"import-epub")importCommand=static_cast<WORD>(ID_IMPORT_BASE+i);
+            }
+            require(importCommand!=0&&!RequiresOpenDocument(importCommand),"EPUB import available");
+            std::vector<wchar_t> epub(32768);::GetEnvironmentVariableW(L"FBE_NEXT_TEST_CLOSE_EPUB",epub.data(),static_cast<DWORD>(epub.size()));
+            require(epub[0]!=0,"EPUB fixture supplied");
+            struct ScenarioGuard { ~ScenarioGuard(){::SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO",L"file-close-runtime");::SetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_EPUB_CANCEL",nullptr);::SetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_EPUB_PATH",nullptr);} } scenarioGuard;
+            ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO",L"import-epub");
+            ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_EPUB_CANCEL",L"1");
+            SendMessage(WM_COMMAND,importCommand);closed();
+            ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_EPUB_CANCEL",nullptr);
+            ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_EPUB_PATH",L"Z:\\fbe-missing-close-test.epub");
+            // -b suppresses U::ReportError; a failed import must return normally.
+            SendMessage(WM_COMMAND,importCommand);closed();
+            ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_EPUB_PATH",epub.data());
+            SendMessage(WM_COMMAND,importCommand);
+            require(m_document_session.HasDocument()&&FB::Doc::m_active_doc==m_doc&&m_view.GetActiveWnd()==m_doc->m_body,"import committed/presented");
+            require(DocChanged()&&!m_doc->m_body.CheckCommand(ID_EDIT_UNDO)&&!m_doc->m_body.CheckCommand(ID_EDIT_REDO),"import dirty with empty history");
+            require(m_source.SendMessage(SCI_GETLENGTH)==0&&!m_source.SendMessage(SCI_CANUNDO),"import Source reset");
+            require(CString(static_cast<LPCWSTR>(m_doc->m_body.Document()->body->innerText)).Find(L"CLOSE_FIRST_UNIQUE")<0,"import has no previous content");
+            clean();SendMessage(WM_COMMAND,ID_FILE_CLOSE);closed();
+        }
+        require(LoadFile(second.data())==OK&&m_document_session.HasDocument(),"reopen after close");
+        require(!m_doc->m_body.CheckCommand(ID_EDIT_UNDO)&&!m_doc->m_body.CheckCommand(ID_EDIT_REDO),"reopen history empty");
         HMENU fileMenu=::GetSubMenu(m_MenuBar.GetMenu(),0);wchar_t caption[256]={};::GetMenuStringW(fileMenu,ID_FILE_CLOSE,caption,_countof(caption),MF_BYCOMMAND);
         const CString localized=FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.file.close",L"&Close");
         require(CString(caption).Find(localized)==0,"localized Close menu");

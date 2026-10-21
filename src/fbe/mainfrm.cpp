@@ -1389,6 +1389,7 @@ void CMainFrame::AttachDocument(FB::Doc *doc)
     if (!m_document_session.HasDocument()) { PresentClosedDocument(); return; }
     if (m_closed_document_ui) {
         SetDocumentCommandAvailability(true);
+        m_document_tree.m_tree.SetDocumentAvailable(true);
         if (m_document_tree.IsWindow()) m_document_tree.EnableWindow(TRUE);
         m_closed_document_ui = false;
     }
@@ -1422,15 +1423,19 @@ void CMainFrame::AttachDocument(FB::Doc *doc)
 		m_document_tree.HighlightItemAtPos(doc->m_body.SelectionContainer());
 	}
 	// added by SeNS
-	if (m_Speller && m_Speller->Enabled())
+	if (_Settings.GetUseSpellChecker())
 	{
+		if (!m_Speller) m_Speller = new CSpeller(U::GetProgDir()+L"Dict\\");
 		m_Speller->SetFrame(m_hWnd);
 
 		const CString custDictName = U::GetUserDataFile(_Settings.GetCustomDict(), doc->m_body.m_file_path);
 
 		m_Speller->SetCustomDictionary(custDictName, _Settings.GetCustomDictCodepage());
 		m_Speller->AttachDocument(doc->m_body.Document());
-	}
+		m_Speller->SetEnabled(true);
+		m_Speller->SetCheckRussianYoUsage(_Settings.GetCheckRussianYoUsage());
+		m_Speller->SetHighlightMisspells(_Settings.GetHighlightMisspells());
+	} else if (m_Speller) m_Speller->SetEnabled(false);
     ShowView(DESC);
     ShowView(BODY);
 	m_view.ActivateWnd(doc->m_body);
@@ -4404,6 +4409,7 @@ LRESULT CMainFrame::OnSettingChange(UINT, WPARAM, LPARAM, BOOL&)
 			m_document_tree.m_tree.m_tree.SetBkColor(ThemeManager::WindowColor());
 	}
 	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_FRAME);
+	if (m_doc && !m_document_session.HasDocument()) PresentClosedDocument();
 	return 0;
 }
 void CMainFrame::UpdateTableCommandState()
@@ -4609,6 +4615,7 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 	UpdateLayout();
 	UpdateStatusBarLayout();
 	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_FRAME);
+	if (m_doc && !m_document_session.HasDocument()) PresentClosedDocument();
 	return 0;
 }
 
@@ -5703,55 +5710,35 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
         U::ReportError(execution.hr);
       return 0;
     }
-    m_plugins.SetLastCommand(wID + ID_IMPORT_BASE);
     try {
-      const MSXML2::IXMLDOMDocument2Ptr& dom = execution.document;
-      if (!(bool)dom)
-	  {
-		U::MessageBox(MB_OK|MB_ICONERROR, IDS_ERRMSGBOX_CAPTION, IDS_IMPORT_XML_ERR_MSG);
-	  }
-      else if (DiscardChanges())
-	  {
-		/*FB::Doc *doc=new FB::Doc(*this);
-		FB::Doc::m_active_doc = doc;*/
-
-		//if (doc->LoadFromDOM(m_view,dom)) {
-		CComDispatchDriver	body(m_doc->m_body.Script());
-		CComVariant		    args[2];
-		CComVariant		    res;
-		args[1]=dom.GetInterfacePtr();
-		args[0] = _Settings.GetInterfaceLanguageName();
-		CheckError(body.InvokeN(L"LoadFromDOM", args, 2, &res));
-		if(res.boolVal)
-		//if (doc->LoadFromHTML(m_view,(const wchar_t* )filename))
-		{
-			if (!execution.suggestedFilename.IsEmpty())
-			{
-				m_doc->m_filename=execution.suggestedFilename;
-				U::SetCurrentDirectoryToFile(execution.suggestedFilename);
-				if (m_doc->m_filename.GetLength()<4 || m_doc->m_filename.Right(4).CompareNoCase(_T(".fb2"))!=0)
-				m_doc->m_filename+=_T(".fb2");
-				m_doc->m_namevalid=true;
-			}
-			/*AttachDocument(doc);
-			delete m_doc;
-			m_doc=doc;*/
-			m_doc->m_body.Init();
-			m_doc->ResetSavePoint();
-		}// else
-			//FB::Doc::m_active_doc = m_doc;
-		//delete doc;
-	  }
-    }
-    catch (_com_error& e) {
-      U::ReportError(e);
-    }
+      if (!execution.document) {
+        U::MessageBox(MB_OK|MB_ICONERROR, IDS_ERRMSGBOX_CAPTION, IDS_IMPORT_XML_ERR_MSG);
+      } else if (DiscardChanges()) {
+        DocumentLifecycleController lifecycle(*this, m_doc, m_document_session, m_view);
+        if (lifecycle.Import(execution.document, execution.suggestedFilename).Succeeded()) {
+          m_source.SendMessage(SCI_SETREADONLY, FALSE);
+          m_source.SendMessage(SCI_CLEARALL);
+          m_source.SendMessage(SCI_EMPTYUNDOBUFFER);
+          m_source.SendMessage(SCI_SETSAVEPOINT);
+          ClearSourceValidationAnnotations();
+          m_bad_xml = false; m_bad_filename.Empty();
+          m_recovery.DeleteIfWritten();
+          m_recovery_saved_generation = m_recovery_generation;
+          AttachDocument(m_doc);
+          ResetStatusForDocument();
+          if (!execution.suggestedFilename.IsEmpty()) U::SetCurrentDirectoryToFile(execution.suggestedFilename);
+          m_plugins.SetLastCommand(wID + ID_IMPORT_BASE);
+        } else U::ReportError(E_FAIL);
+      }
+    } catch (_com_error& e) { U::ReportError(e); }
+    catch (const std::bad_alloc&) { U::ReportError(E_OUTOFMEMORY); }
   }
   return 0;
 }
 
 LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 {
+	if (!m_document_session.HasDocument()) return 0;
 	wID -= ID_EXPORT_BASE;
 	if(wID<m_plugins.ExportPlugins().GetSize())
 	{
@@ -5967,6 +5954,7 @@ LRESULT CMainFrame::OnToolsRefreshScripts(WORD, WORD, HWND, BOOL&)
 	// settings remain live while discovery refreshes menus, the tree and UID
 	// based toolbar/hotkey bindings.
 	InitializeScripts();
+	if (!m_document_session.HasDocument()) PresentClosedDocument();
 	return 0;
 }
 
@@ -7613,7 +7601,7 @@ void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 	m_source.UpdateTagHighlight({ config.tagHighlight, config.tagHighlightFullTag ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, config.tagHighlightAttributes, config.tagHighlightErrors });
 	UIEnable(ID_GOTO_MATCHTAG, m_source.HasMatchingTag());
 	// Перекраска XML-редактора не должна менять активный режим документа.
-	if(activeView == BODY && m_doc)
+	if(activeView == BODY && m_doc && m_document_session.HasDocument())
 		m_view.ActivateWnd(m_doc->m_body);
     if (!m_document_session.HasDocument()) {
         if (m_Speller) m_Speller->DetachDocument();
@@ -7632,7 +7620,7 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles, bool saveSettings)
 	wchar_t restartMsg[MAX_LOAD_STRING + 1];
 	FbeLoadString(_Module.GetResourceInstance(), IDS_SETTINGS_NEED_RESTART, restartMsg, MAX_LOAD_STRING);
 
-	if (applyDocumentStyles && m_doc)
+	if (applyDocumentStyles && m_doc && m_document_session.HasDocument())
 		m_doc->ApplyConfChanges();
 	const SourceEditorConfig config = BuildSourceEditorConfig();
 	m_source.ApplyConfiguration(config);
@@ -7640,7 +7628,7 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles, bool saveSettings)
 	UIEnable(ID_GOTO_MATCHTAG, m_source.HasMatchingTag());
 
 	// added by SeNS
-	if (_Settings.GetUseSpellChecker())
+	if (_Settings.GetUseSpellChecker() && m_document_session.HasDocument())
 	{
 		if (!m_Speller)
 		{
@@ -7655,9 +7643,9 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles, bool saveSettings)
 		}
 	}
 	// don't use spellchecker
-	else if (m_Speller) m_Speller->SetEnabled(false);
+	else if (m_Speller && m_document_session.HasDocument()) m_Speller->SetEnabled(false);
 
-	if (m_doc && m_Speller && m_Speller->Enabled())
+	if (m_doc && m_document_session.HasDocument() && m_Speller && m_Speller->Enabled())
 	{
 		const CString custDictName = U::GetUserDataFile(_Settings.GetCustomDict(), m_doc->m_body.m_file_path);
 
@@ -7667,7 +7655,7 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles, bool saveSettings)
 	}
 
 	// added by SeNS: issue 17: process nbsp change
-	if (m_doc && _Settings.GetOldNBSPChar().Compare (_Settings.GetNBSPChar()) != 0)
+	if (m_doc && m_document_session.HasDocument() && _Settings.GetOldNBSPChar().Compare (_Settings.GetNBSPChar()) != 0)
 	{
 		int numChanges = 0;
 		// save caret position
@@ -7721,8 +7709,12 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles, bool saveSettings)
 
 	if(saveSettings) { _Settings.SaveHotkeyGroups(); _Settings.Save(); _Settings.SaveWords(); }
 	RebuildRuntimeHotkeys();
+	if (!m_document_session.HasDocument()) {
+		if (m_Speller) m_Speller->DetachDocument();
+		PresentClosedDocument();
+	}
 	// Rebuilding source-editor styles must not replace the active visual editor.
-	if(activeView == BODY && m_doc)
+	if(activeView == BODY && m_doc && m_document_session.HasDocument())
 		m_view.ActivateWnd(m_doc->m_body);
 
 
@@ -7737,9 +7729,10 @@ void CMainFrame::ApplyEditorBackgroundChanges(bool saveSettings)
 {
 	// A background-only change is visual-editor CSS.  Avoid rebuilding
 	// Scintilla styles, spell-check state and NBSP display for this path.
-	if(m_doc)
+	if(m_doc && m_document_session.HasDocument())
 		m_doc->ApplyConfChanges();
 	if(saveSettings) _Settings.Save();
+	if (!m_document_session.HasDocument()) PresentClosedDocument();
 }
 
 void CMainFrame::RestartProgram()
@@ -8119,6 +8112,7 @@ LRESULT CMainFrame::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 	if(m_document_tree.IsWindow() && m_document_tree.m_tree.m_tree.IsWindow())
 		m_document_tree.m_tree.m_tree.SetBkColor(ThemeManager::WindowColor());
 	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_FRAME);
+	if (m_doc && !m_document_session.HasDocument()) PresentClosedDocument();
 	return 0;
 }
 

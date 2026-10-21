@@ -56,6 +56,35 @@ DocumentLifecycleResult DocumentLifecycleController::Open(const DocumentOpenSour
 	return Load(source, false);
 }
 
+DocumentLifecycleResult DocumentLifecycleController::Import(const MSXML2::IXMLDOMDocument2Ptr& dom, const CString& suggestedFilename)
+{
+	if (!dom) return Failed(m_session.Location(), m_session.IsArchive());
+	PendingDocument pending(m_frame, m_document);
+	FB::Doc& document = pending.Document();
+	if (!document.LoadFromHTML(m_view, L"blank.fb2"))
+		return Failed(m_session.Location(), m_session.IsArchive());
+	CComDispatchDriver body(document.m_body.Script());
+	CComVariant args[2], result;
+	args[1] = dom.GetInterfacePtr();
+	args[0] = _Settings.GetInterfaceLanguageName();
+	CheckError(body.InvokeN(L"LoadFromDOM", args, 2, &result));
+	if (result.vt != VT_BOOL || result.boolVal == VARIANT_FALSE || !document.m_body.Init())
+		return Failed(m_session.Location(), m_session.IsArchive());
+	if (!suggestedFilename.IsEmpty()) {
+		document.m_filename = suggestedFilename;
+		if (document.m_filename.Right(4).CompareNoCase(L".fb2") != 0) document.m_filename += L".fb2";
+		document.m_namevalid = true;
+	}
+	document.ResetSavePoint();
+	// Release editor-owned references only after the replacement is ready.
+	m_frame.DetachDocumentForClose();
+	FB::Doc* previous = m_document;
+	m_document = pending.Commit();
+	delete previous;
+	m_session.NewDocument();
+	return Completed(DocumentLocation(), false);
+}
+
 DocumentLifecycleResult DocumentLifecycleController::CloseDocument()
 {
 	if (!m_session.HasDocument()) return Completed(DocumentLocation(), false);

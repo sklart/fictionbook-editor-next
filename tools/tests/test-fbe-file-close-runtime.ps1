@@ -5,14 +5,36 @@ param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [ValidateSet('light','dark')][string]$Theme='light',
     [ValidateSet('normal','zip','rar')][string]$Container='normal')
 $ErrorActionPreference='Stop'
+$catalog=Get-Content (Join-Path $PSScriptRoot '../../localization/app-ui/fbe-idr-mainframe-menu.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$close=$catalog.strings.'fbe.menu.idr_mainframe.file.close'
+foreach($language in $catalog.targetLanguages) {
+    $caption=$close.translations.$language
+    if($caption -notmatch '&([^&])'){throw "Close mnemonic missing: $language"}
+    $mnemonic=$Matches[1]
+    foreach($item in $catalog.strings.PSObject.Properties) {
+        if($item.Name -eq 'fbe.menu.idr_mainframe.file.close'){continue}
+        if($item.Name -notlike 'fbe.menu.idr_mainframe.file.*' -and $item.Name -notin @('fbe.menu.idr_mainframe.popup.import','fbe.menu.idr_mainframe.popup.export','fbe.menu.idr_mainframe.popup.recent_documents')){continue}
+        if($item.Value.translations.$language -match '&([^&])' -and $Matches[1] -ieq $mnemonic){throw "Close mnemonic conflict: $language / $($item.Name)"}
+    }
+}
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $iso=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'file-close'
 $passed=$false
-$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_CLOSE_SECOND','FBE_NEXT_TEST_SETTINGS_DIRECTORY')
+$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_CLOSE_SECOND','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_TEST_CLOSE_EPUB')
 $old=@{};foreach($name in $names){$old[$name]=[Environment]::GetEnvironmentVariable($name)}
 try {
+    $fixture=Join-Path $PSScriptRoot '../../out/tests/export-epub-cyrillic/fb2-metadata-cyrillic-smoke.epub'
+    if(!(Test-Path -LiteralPath $fixture)) {
+        & (Join-Path $PSScriptRoot 'test-export-epub-cyrillic.ps1') -OutputPath $fixture
+        if($LASTEXITCODE -ne 0){throw 'EPUB fixture generation failed'}
+    }
+    $env:FBE_NEXT_TEST_CLOSE_EPUB=(Resolve-Path -LiteralPath $fixture).Path
     $seed=New-IsolatedFbeSettingsSeed $iso
+    $scripts=Join-Path $iso.Root 'CloseScripts'
+    New-Item -ItemType Directory -Path $scripts | Out-Null
+    [IO.File]::WriteAllText((Join-Path $scripts 'CloseProbe.js'),'function Run() { throw new Error("closed script executed"); }',[Text.UTF8Encoding]::new($false))
     $text=[IO.File]::ReadAllText($seed).Replace('<InterfaceTheme>0</InterfaceTheme>',"<InterfaceTheme>$(if($Theme -eq 'dark'){2}else{1})</InterfaceTheme>")
+    $text=$text.Replace('</Settings>',"<ScriptsFolder>$scripts</ScriptsFolder></Settings>")
     [IO.File]::WriteAllText($seed,$text,[Text.UTF8Encoding]::new($false))
     $body=if($Kind -eq 'fb2'){'<body><section><p id="close-probe">CLOSE_FIRST_UNIQUE</p><p><image l:href="#cover"/></p></section></body>'}else{''}
     $xml='<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>CLOSE_FIRST_UNIQUE</book-title><coverpage><image l:href="#cover"/></coverpage><lang>en</lang></title-info><document-info><id>close-test</id><version>1</version></document-info></description>'+$body+'<binary id="cover" content-type="image/png">iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=</binary></FictionBook>'

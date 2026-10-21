@@ -280,4 +280,5 @@ void CMainFrame::RefreshLocalizedMainFrameUi()
 	m_document_tree.RefreshLocalizedTitle();
 	m_script_card_window.RefreshLocalization();
 	UpdateLayout();
+	if (m_doc && !m_document_session.HasDocument()) PresentClosedDocument();
 }

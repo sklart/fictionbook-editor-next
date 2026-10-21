@@ -30,6 +30,7 @@ private:
 	HBITMAP m_structureMenuUncheckedBitmap = NULL;
 	UINT m_structureMenuCheckmarkDpi = 0;
 	std::function<void()> m_modeChanged;
+	bool m_documentAvailable = true;
 
 public:
 	CTreeView m_tree;
@@ -152,7 +153,12 @@ public:
 	}
 
 	void RefreshLocalizedMenuCaptions();
-	void ClearDocument() { if (!m_tree.IsScriptMode()) { ClearTree(); m_tree.ClearDocumentStructure(); } }
+	void ClearDocument() { ClearTree(); m_tree.ClearDocumentStructure(); }
+	void SetDocumentAvailable(bool available) {
+		m_documentAvailable = available;
+		m_toolbar.EnableWindow(available);
+		m_element_browser_tb.EnableWindow(available);
+	}
 
 private:
 	BOOL ModifyStyle(DWORD dwRemove, DWORD dwAdd, UINT nFlags = 0) throw();
