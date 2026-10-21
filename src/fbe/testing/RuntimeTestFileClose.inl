@@ -1,4 +1,5 @@
 if (IsFbeTestScenario(L"file-close-runtime")) {
+    extern CElementDescMnr _EDMnr;
     bool passed=false;CStringA details="start";
     auto require=[&](bool ok,const char* label){details=label;if(!ok)CheckError(E_FAIL);};
     auto phase=[&](const char* label){CStringA row=CStringA("phase=")+label+"\r\n";DWORD n=0;output.Write(row,row.GetLength(),&n);output.Flush();};
@@ -6,9 +7,25 @@ if (IsFbeTestScenario(L"file-close-runtime")) {
         const CString first=m_document_session.Location().storagePath;
         std::vector<wchar_t> second(32768);::GetEnvironmentVariableW(L"FBE_NEXT_TEST_CLOSE_SECOND",second.data(),static_cast<DWORD>(second.size()));
         const bool extensive=!m_document_session.IsArchive();
+        // Deliberately keep both selected and unselected filters across close.
+        for (int index : {0, 2}) {
+            const bool selected = index == 2;
+            if (_EDMnr.GetStED(index)->ViewInTree() != selected)
+                m_document_tree.m_tree.SendMessage(WM_COMMAND, IDC_TREE_ST_BASE + index);
+        }
+        std::vector<bool> elementFilters;
+        for (int i=0;i<_EDMnr.GetStEDsCount();++i) elementFilters.push_back(_EDMnr.GetStED(i)->ViewInTree());
+        auto filtersPreserved=[&](){
+            for (int i=0;i<_EDMnr.GetStEDsCount();++i) {
+                const auto descriptor=_EDMnr.GetStED(i);
+                require(descriptor->ViewInTree()==elementFilters[i],"close preserved element filters");
+                require(_Settings.GetDocTreeItemState(descriptor->GetCaption(),!elementFilters[i])==elementFilters[i],"close preserved saved element preferences");
+            }
+        };
         auto recent=[&](){std::vector<CString> names;for(int i=0;i<m_recentDocuments.List().m_arrDocs.GetSize();++i)names.emplace_back(m_recentDocuments.List().m_arrDocs[i].szDocName);return names;};
         auto clean=[&](){m_doc->MarkSavePoint();m_source.SendMessage(SCI_SETSAVEPOINT);};
         auto closed=[&](){
+            filtersPreserved();
             OnIdle();CString title;GetWindowText(title);
             require(::IsWindow(m_hWnd)&&!m_document_session.HasDocument()&&!DocChanged(),"closed session/window");
             require(title==L"FictionBook Editor Next"&&FB::Doc::m_active_doc==nullptr,"closed title/active");
@@ -140,10 +157,19 @@ if (IsFbeTestScenario(L"file-close-runtime")) {
             clean();SendMessage(WM_COMMAND,ID_FILE_CLOSE);closed();
         }
         require(LoadFile(second.data())==OK&&m_document_session.HasDocument(),"reopen after close");
+        filtersPreserved();
+        require(m_document_tree.m_tree.m_tree.GetCount()>0,"reopen restored document elements");
         require(!m_doc->m_body.CheckCommand(ID_EDIT_UNDO)&&!m_doc->m_body.CheckCommand(ID_EDIT_REDO),"reopen history empty");
         HMENU fileMenu=::GetSubMenu(m_MenuBar.GetMenu(),0);wchar_t caption[256]={};::GetMenuStringW(fileMenu,ID_FILE_CLOSE,caption,_countof(caption),MF_BYCOMMAND);
         const CString localized=FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.file.close",L"&Close");
         require(CString(caption).Find(localized)==0,"localized Close menu");
+        int closePosition=-1,restartPosition=-1;
+        for(int i=0;i<::GetMenuItemCount(fileMenu);++i) {
+            const UINT command=::GetMenuItemID(fileMenu,i);
+            if(command==ID_FILE_CLOSE) closePosition=i;
+            if(command==ID_FILE_RESTART) restartPosition=i;
+        }
+        require(closePosition>=0&&restartPosition==closePosition+1,"Close directly above Restart FBE");
         if(extensive){
             phase("Source cancel/recovery");dirtySource();require(SaveRecoveryNow(),"recovery created");
             const CString recovery=m_recovery.SnapshotPath(),path=m_doc->m_filename;const auto source=FbeScripts::SourceBytes(m_source);FB::Doc* original=m_doc;

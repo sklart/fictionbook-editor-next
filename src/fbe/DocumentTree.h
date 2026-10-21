@@ -153,7 +153,8 @@ public:
 	}
 
 	void RefreshLocalizedMenuCaptions();
-	void ClearDocument() { ClearTree(); m_tree.ClearDocumentStructure(); }
+	// Release document data without changing the user's element filters.
+	void ClearDocument();
 	void SetDocumentAvailable(bool available) {
 		m_documentAvailable = available;
 		m_toolbar.EnableWindow(available);

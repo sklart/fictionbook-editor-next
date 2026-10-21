@@ -898,7 +898,6 @@ BEGIN
     BEGIN
         MENUITEM "&New",                        ID_FILE_NEW
         MENUITEM "&Open...",                    ID_FILE_OPEN
-        MENUITEM "&Close",                      ID_FILE_CLOSE
         MENUITEM "&Save",                       ID_FILE_SAVE
         MENUITEM "Save &As...",                 ID_FILE_SAVE_AS
         MENUITEM "&Validate",                   ID_FILE_VALIDATE
@@ -918,6 +917,7 @@ BEGIN
             MENUITEM "No Recent Files",             ID_FILE_MRU_FIRST, INACTIVE
         END
         MENUITEM SEPARATOR
+        MENUITEM "&Close",                      ID_FILE_CLOSE
         MENUITEM "&Restart FBE",                ID_FILE_RESTART
         MENUITEM SEPARATOR
         MENUITEM "E&xit",                       ID_APP_EXIT

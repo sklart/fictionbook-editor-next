@@ -933,6 +933,12 @@ LRESULT CTreeWithToolBar::OnMenuCommand(WORD, WORD wID, HWND, BOOL&)
 	return 0;
 }
 
+void CTreeWithToolBar::ClearDocument()
+{
+	_EDMnr.CleanUpAll();
+	m_tree.ClearDocumentStructure();
+}
+
 void CTreeWithToolBar::ClearTree()
 {
 	_EDMnr.CleanTree();	
