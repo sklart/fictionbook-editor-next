@@ -73,8 +73,9 @@ DocumentLifecycleResult DocumentLifecycleController::Import(const MSXML2::IXMLDO
 	if (!suggestedFilename.IsEmpty()) {
 		document.m_filename = suggestedFilename;
 		if (document.m_filename.Right(4).CompareNoCase(L".fb2") != 0) document.m_filename += L".fb2";
-		document.m_namevalid = true;
 	}
+	// The plugin supplies a Save As suggestion, not an existing file identity.
+	document.m_namevalid = false;
 	document.ResetSavePoint();
 	// Release editor-owned references only after the replacement is ready.
 	m_frame.DetachDocumentForClose();
@@ -126,6 +127,9 @@ DocumentLifecycleResult DocumentLifecycleController::Load(const DocumentOpenSour
 		return Failed(source.location, source.IsArchive());
 	}
 
+	// Reopening a saved import must release speller/display interfaces while
+	// the previous MSHTML host is still alive, just as Import and Close do.
+	m_frame.DetachDocumentForClose();
 	FB::Doc* previous = m_document;
 	m_document = pending.Commit();
 	delete previous;

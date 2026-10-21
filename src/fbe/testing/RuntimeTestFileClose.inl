@@ -81,6 +81,31 @@ if (IsFbeTestScenario(L"file-close-runtime")) {
         MSG key={};key.hwnd=m_hWnd;key.message=WM_KEYDOWN;key.wParam='W';key.lParam=1;
         const BOOL translated=::TranslateAcceleratorW(m_hWnd,m_hAccel,&key);::SetKeyboardState(keyboard.data());require(translated!=FALSE,"Ctrl+Shift+W translated");closed();
         require(recentBefore==recent(),"close preserved MRU");
+        phase("closed tree hide/show and mode preservation");
+        for(bool scripts:{false,true}) {
+            m_document_tree.m_tree.SendMessage(WM_COMMAND,scripts?ID_DOCUMENT_TREE_MODE_SCRIPTS:ID_DOCUMENT_TREE_MODE_STRUCTURE);
+            for(int toggle=0;toggle<2;++toggle) {
+                const bool visible=_Settings.ViewDocumentTree();
+                SendMessage(WM_COMMAND,ID_VIEW_TREE);
+                require(_Settings.ViewDocumentTree()!=visible,"closed tree panel toggled");
+                require(m_document_tree.m_tree.m_tree.IsScriptMode()==scripts,"panel preserved tree mode");
+                if(!scripts) require(m_document_tree.m_tree.m_tree.GetCount()==0,"no old or blank DOM nodes after showing tree");
+                else require(m_document_tree.m_tree.m_tree.GetCount()>0,"script catalog survives panel toggle");
+            }
+        }
+        m_document_tree.m_tree.SendMessage(WM_COMMAND,ID_DOCUMENT_TREE_MODE_STRUCTURE);closed();
+        require(LoadFile(second.data())==OK,"tree scenario opened another book");
+        require(m_document_tree.m_tree.m_tree.GetCount()>0,"other book structure restored");
+        {
+            auto& tree=m_document_tree.m_tree.m_tree;
+            bool secondBook=false;
+            for(HTREEITEM item=tree.GetRootItem();item;item=tree.GetNextSiblingItem(item)) {
+                MSHTML::IHTMLElementPtr root(reinterpret_cast<MSHTML::IHTMLElement*>(tree.GetItemData(item)));
+                if(root&&CString(static_cast<LPCWSTR>(root->outerHTML)).Find(L"CLOSE_SECOND_UNIQUE")>=0) secondBook=true;
+            }
+            require(secondBook,"tree belongs to second book");
+        }
+        clean();SendMessage(WM_COMMAND,ID_FILE_CLOSE);closed();
         {PendingDocument pending(*this,m_doc);pending.Rollback();}
         require(FB::Doc::m_active_doc==nullptr&&!m_document_session.HasDocument(),"rollback preserves closed state");
         if(extensive){
@@ -154,6 +179,107 @@ if (IsFbeTestScenario(L"file-close-runtime")) {
             require(DocChanged()&&!m_doc->m_body.CheckCommand(ID_EDIT_UNDO)&&!m_doc->m_body.CheckCommand(ID_EDIT_REDO),"import dirty with empty history");
             require(m_source.SendMessage(SCI_GETLENGTH)==0&&!m_source.SendMessage(SCI_CANUNDO),"import Source reset");
             require(CString(static_cast<LPCWSTR>(m_doc->m_body.Document()->body->innerText)).Find(L"CLOSE_FIRST_UNIQUE")<0,"import has no previous content");
+            auto bytes=[&](const CString& path){
+                CAtlFile file;CheckError(file.Create(path,GENERIC_READ,FILE_SHARE_READ,OPEN_EXISTING));
+                ULONGLONG length=0;CheckError(file.GetSize(length));require(length<MAXDWORD,"small import fixture");
+                std::vector<BYTE> data(static_cast<size_t>(length));
+                if(length) CheckError(file.Read(data.data(),static_cast<DWORD>(length)));
+                return data;
+            };
+            const CString epubPath(epub.data()),existing=epubPath.Left(epubPath.GetLength()-5)+L".fb2";
+            const auto existingBytes=bytes(existing),epubBytes=bytes(epubPath);
+            auto nativeSave=[&](const CString& target,bool cancel,int overwriteAnswer,WORD command=ID_FILE_SAVE){
+                auto& probe=FileCloseSaveDialogProbe::Current();
+                probe.active=true;probe.ready=false;probe.target=target;probe.suggestion.Empty();probe.options=0;probe.overwrites=0;
+                std::atomic<bool> stop(false);bool found=false,confirmation=false;CStringA dialogTrace;const DWORD thread=::GetCurrentThreadId();
+                std::thread driver([&](){
+                    HWND save=nullptr,answered=nullptr;bool submitted=false,rejected=false;
+                    std::set<HWND> observed;
+                    const ULONGLONG until=::GetTickCount64()+15000;
+                    while(!stop.load()&&::GetTickCount64()<until){
+                        struct Dialogs{HWND save;HWND confirm;HWND yes;HWND no;CStringA* trace;std::set<HWND>* observed;} dialogs={nullptr,nullptr,nullptr,nullptr,&dialogTrace,&observed};
+                        ::EnumThreadWindows(thread,[](HWND window,LPARAM data)->BOOL{
+                            auto& dialogs=*reinterpret_cast<Dialogs*>(data);wchar_t name[64]={};::GetClassNameW(window,name,_countof(name));
+                            if(::IsWindowVisible(window)&&(!wcscmp(name,L"#32770")||!wcscmp(name,L"FBEThemedMessageDialog"))) {
+                                struct Buttons{HWND yes;HWND no;} buttons={nullptr,nullptr};
+                                ::EnumChildWindows(window,[](HWND child,LPARAM data)->BOOL{
+                                    auto& buttons=*reinterpret_cast<Buttons*>(data);
+                                    if(::GetDlgCtrlID(child)==IDYES)buttons.yes=child;
+                                    if(::GetDlgCtrlID(child)==IDNO)buttons.no=child;
+                                    // Windows 11's native DirectUI confirmation exposes
+                                    // proxy buttons with ID 0 rather than IDYES/IDNO.
+                                    wchar_t name[32]={},text[128]={};::GetClassNameW(child,name,_countof(name));
+                                    if(!wcscmp(name,L"Button")) {
+                                        ::GetWindowTextW(child,text,_countof(text));CString caption(text);caption.Remove(L'&');caption.Trim();
+                                        if(caption.CompareNoCase(L"Yes")==0||caption==L"Да")buttons.yes=child;
+                                        if(caption.CompareNoCase(L"No")==0||caption==L"Нет")buttons.no=child;
+                                    }
+                                    return TRUE;
+                                },reinterpret_cast<LPARAM>(&buttons));
+                                if(buttons.yes&&buttons.no){dialogs.confirm=window;dialogs.yes=buttons.yes;dialogs.no=buttons.no;}
+                                else if(::GetDlgItem(window,IDOK)&&::GetDlgItem(window,IDCANCEL)) dialogs.save=window;
+                                if(dialogs.observed->insert(window).second){
+                                    dialogs.trace->AppendFormat("dialog=%ls\r\n",name);
+                                    ::EnumChildWindows(window,[](HWND child,LPARAM data)->BOOL{
+                                        auto& trace=*reinterpret_cast<CStringA*>(data);wchar_t name[64]={},text[128]={};::GetClassNameW(child,name,_countof(name));::GetWindowTextW(child,text,_countof(text));
+                                        trace.AppendFormat("control=%d,%ls,%ls\r\n",::GetDlgCtrlID(child),name,text);return TRUE;
+                                    },reinterpret_cast<LPARAM>(dialogs.trace));
+                                }
+                            }return TRUE;
+                        },reinterpret_cast<LPARAM>(&dialogs));
+                        if(dialogs.save&&probe.ready.load()&&!submitted){
+                            save=dialogs.save;found=true;submitted=true;
+                            const int action=cancel?IDCANCEL:IDOK;
+                            ::PostMessageW(save,WM_COMMAND,MAKEWPARAM(action,BN_CLICKED),reinterpret_cast<LPARAM>(::GetDlgItem(save,action)));
+                        }
+                        if(dialogs.confirm&&dialogs.confirm!=answered){
+                            answered=dialogs.confirm;confirmation=true;rejected=overwriteAnswer==IDNO;
+                            const HWND button=overwriteAnswer==IDYES?dialogs.yes:dialogs.no;
+                            ::PostMessageW(button,BM_CLICK,0,0);
+                        }
+                        if(rejected&&!dialogs.confirm&&save&&::IsWindow(save)){
+                            ::PostMessageW(save,WM_COMMAND,MAKEWPARAM(IDCANCEL,BN_CLICKED),reinterpret_cast<LPARAM>(::GetDlgItem(save,IDCANCEL)));rejected=false;
+                        }
+                        ::Sleep(10);
+                    }
+                    if(!stop.load()) ::PostThreadMessageW(thread,WM_QUIT,92,0);
+                });
+                SendMessage(WM_COMMAND,command);stop=true;driver.join();probe.active=false;
+                if(!found||(probe.overwrites&&!confirmation)){DWORD written=0;output.Write(dialogTrace,dialogTrace.GetLength(),&written);output.Flush();}
+                require(found&&probe.ready.load(),"ordinary Save reached native Save As");
+                require((probe.options&FOS_OVERWRITEPROMPT)!=0,"native overwrite prompt enabled");
+                if(!cancel&&::GetFileAttributesW(target)!=INVALID_FILE_ATTRIBUTES&&probe.overwrites)
+                    require(confirmation,"native overwrite confirmation displayed");
+                return confirmation;
+            };
+            for(int replacement=0;replacement<2;++replacement){
+                phase(replacement?"import replaces open book: native first save":"import after close: native first save");
+                if(replacement){
+                    require(LoadFile(second.data())==OK,"book before replacement import");
+                    ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO",L"import-epub");SendMessage(WM_COMMAND,importCommand);
+                }
+                ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO",L"file-close-runtime");
+                require(m_document_session.HasDocument()&&m_document_session.Location().storagePath.IsEmpty()&&!m_document_session.IsArchive(),"import has new pathless session");
+                require(!m_doc->m_namevalid&&m_doc->m_filename==existing&&DocChanged(),"import suggestion is not confirmed identity");
+                const CString imported(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+                nativeSave(CString(),true,IDNO);
+                // The Shell can hide the registered extension in its edit field.
+                require(FileCloseSaveDialogProbe::Current().suggestion.Find(L"import-source")>=0,"Save As uses plugin suggestion");
+                require(!m_doc->m_namevalid&&DocChanged()&&m_document_session.Location().storagePath.IsEmpty()&&bytes(existing)==existingBytes,"cancel preserved new identity and existing FB2 bytes");
+                require(nativeSave(existing,false,IDNO),"existing FB2 prompts before overwrite");
+                require(bytes(existing)==existingBytes&&!m_doc->m_namevalid&&DocChanged(),"declined overwrite preserved FB2 and import");
+                const CString saved=U::GetProgDir()+(replacement?L"import-replaced-saved.fb2":L"import-closed-saved.fb2");
+                nativeSave(saved,false,IDYES);
+                require(m_doc->m_namevalid&&m_doc->m_filename==saved&&!DocChanged()&&m_doc->GetDocumentFileType()==FictionBookFileType::Fb2,"saved imported document identity/type/clean");
+                require(m_document_session.Location().storagePath==saved&&m_document_session.Location().documentType==FictionBookFileType::Fb2&&!m_document_session.IsArchive(),"saved imported session matches document");
+                require(!m_doc->m_body.CheckCommand(ID_EDIT_UNDO)&&!m_doc->m_body.CheckCommand(ID_EDIT_REDO),"saved import has empty history");
+                require(bytes(existing)==existingBytes&&bytes(epubPath)==epubBytes,"source EPUB and original FB2 unchanged");
+                require(LoadFile(saved)==OK&&CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml))==imported&&!DocChanged(),"saved import reopens with matching content");
+                const CString overwrite=U::GetProgDir()+(replacement?L"overwrite-replaced.fb2":L"overwrite-closed.fb2");
+                require(::CopyFileW(existing,overwrite,TRUE)!=FALSE,"create explicit overwrite target");
+                require(nativeSave(overwrite,false,IDYES,ID_FILE_SAVE_AS),"explicit overwrite confirmed");
+                require(bytes(overwrite)!=existingBytes&&m_doc->m_filename==overwrite&&!DocChanged(),"confirmed overwrite saved import");
+            }
             clean();SendMessage(WM_COMMAND,ID_FILE_CLOSE);closed();
         }
         require(LoadFile(second.data())==OK&&m_document_session.HasDocument(),"reopen after close");

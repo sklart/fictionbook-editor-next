@@ -28,7 +28,10 @@ try {
         & (Join-Path $PSScriptRoot 'test-export-epub-cyrillic.ps1') -OutputPath $fixture
         if($LASTEXITCODE -ne 0){throw 'EPUB fixture generation failed'}
     }
-    $env:FBE_NEXT_TEST_CLOSE_EPUB=(Resolve-Path -LiteralPath $fixture).Path
+    $epubCopy=Join-Path $iso.Root 'import-source.epub'
+    Copy-Item -LiteralPath $fixture -Destination $epubCopy
+    $epubHash=(Get-FileHash $epubCopy -Algorithm SHA256).Hash
+    $env:FBE_NEXT_TEST_CLOSE_EPUB=$epubCopy
     $seed=New-IsolatedFbeSettingsSeed $iso
     $scripts=Join-Path $iso.Root 'CloseScripts'
     New-Item -ItemType Directory -Path $scripts | Out-Null
@@ -42,6 +45,7 @@ try {
     [IO.File]::WriteAllText($first,$xml,[Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText((Join-Path $iso.Root 'malformed.fb2'),'<invalid>',[Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText($second,$xml.Replace('CLOSE_FIRST_UNIQUE','CLOSE_SECOND_UNIQUE'),[Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $iso.Root 'import-source.fb2'),$xml.Replace('CLOSE_FIRST_UNIQUE','EXISTING_FB2_MUST_NOT_CHANGE'),[Text.UTF8Encoding]::new($false))
     $inputPath=$first
     if($Container -eq 'zip') {
         Add-Type -AssemblyName System.IO.Compression
@@ -57,10 +61,11 @@ try {
     $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='file-close-runtime'
     $env:FBE_NEXT_TEST_CLOSE_SECOND=$second;$env:FBE_NEXT_TEST_SETTINGS_DIRECTORY=Join-Path $iso.DataPath 'Settings'
     $process=Start-Process $iso.Exe -WorkingDirectory $iso.Root -ArgumentList @("--$Mode",'-b',$report,$inputPath) -WindowStyle Hidden -PassThru
-    $code=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'file-close' -Report $report -TimeoutSeconds 90
+    $code=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'file-close' -Report $report -TimeoutSeconds 120
     $text=if(Test-Path $report){Get-Content $report -Raw}else{'missing report'}
     if($code -ne 0 -or $text -notmatch 'result=PASS'){throw "File Close failed (exit=$code): $text"}
     if((Get-FileHash $inputPath -Algorithm SHA256).Hash -ne $before){throw 'Opening/closing changed the initial file/container'}
+    if((Get-FileHash $epubCopy -Algorithm SHA256).Hash -ne $epubHash){throw 'Import/save changed the source EPUB'}
     if($Container -eq 'normal' -and (Get-Content $second -Raw) -notmatch 'CLOSE_UNSAVED'){throw 'Confirmed Save did not write Source changes'}
     Write-Host $text;$passed=$true;Write-Host "File Close $Mode/$Kind/$Theme/$Container PASS"
 }finally{

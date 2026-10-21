@@ -4,6 +4,7 @@
 #include "..\..\StartupTrace.h"
 #include "..\..\RuntimeLocalization.h"
 #include "..\..\testing\RuntimeTestScenarioMode.h"
+#include "..\..\testing\FileCloseSaveDialogProbe.h"
 
 namespace DocumentFileDialogs
 {
@@ -37,6 +38,8 @@ namespace DocumentFileDialogs
 		ModernFileDialog::Request request; request.save = true; request.pathMustExist = true; request.overwritePrompt = true; request.defaultExtension = L"fb2"; request.initialFileName = input.initialFileName; request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = IsFbdFile(input.initialFileName) ? 2 : 1;
 		request.customize = [&input, &selectedEncoding](IFileDialogCustomize* customize) -> HRESULT { const DWORD controlId = 1001; HRESULT hr = customize->AddComboBox(controlId); if (FAILED(hr)) return hr; hr = customize->SetControlLabel(controlId, FbeLoadRuntimeStringByKey(L"fbe.save_as.encoding", L"Encoding:").GetString()); if (FAILED(hr)) return hr; int index = 0, selectedIndex = 0; CString remaining(input.encodingList); while (!remaining.IsEmpty()) { const int comma = remaining.Find(L','); const CString item = comma >= 0 ? remaining.Left(comma) : remaining; remaining = comma >= 0 ? remaining.Mid(comma + 1) : CString(); if (!item.IsEmpty()) { customize->AddControlItem(controlId, ++index, item); if (item == selectedEncoding) selectedIndex = index; } } return customize->SetSelectedControlItem(controlId, selectedIndex ? selectedIndex : 1); };
 		request.readCustomization = [&input, &selectedEncoding](IFileDialogCustomize* customize) { DWORD selected = 0; if (!customize || FAILED(customize->GetSelectedControlItem(1001, &selected))) return; int index = 0; CString remaining(input.encodingList); while (!remaining.IsEmpty()) { const int comma = remaining.Find(L','); const CString item = comma >= 0 ? remaining.Left(comma) : remaining; remaining = comma >= 0 ? remaining.Mid(comma + 1) : CString(); if (!item.IsEmpty() && ++index == static_cast<int>(selected)) { selectedEncoding = item; return; } } };
+		FileCloseSaveDialogProbe::Events probe;
+		if (RuntimeTests::IsScenario(L"file-close-runtime") && FileCloseSaveDialogProbe::Current().active) request.events = &probe;
 		const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(owner, request);
 		if (dialogResult.outcome == ModernFileDialog::Outcome::Failed) StartupTrace::HResult(L"file-dialog", L"FD102", dialogResult.error, L"Save FictionBook dialog");
 		SaveResult result;

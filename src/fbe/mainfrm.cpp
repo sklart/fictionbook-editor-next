@@ -26,6 +26,7 @@
 #include "..\\common\\ModernFileDialog.h"
 #include "settings\\ui\\SettingsDlg.h"
 #include "Settings.h"
+#include "testing/FileCloseSaveDialogProbe.h"
 #include "settings/hotkeys/HotkeyStore.h"
 #include "settings/SettingsPaths.h"
 #include "XmlSourceThemes.h"
@@ -5633,7 +5634,7 @@ LRESULT CMainFrame::OnViewTree(WORD, WORD, HWND, BOOL&)
 
 	BOOL bVisible = !_Settings.ViewDocumentTree();
 	m_document_tree.ShowWindow(bVisible ? SW_SHOWNOACTIVATE : SW_HIDE);
-	if(bVisible)
+	if(bVisible && m_document_session.HasDocument())
 		m_document_tree.GetDocumentStructure(m_doc->m_body.Document());
 	UISetCheck(ID_VIEW_TREE, bVisible);
 	m_splitter.SetSinglePaneMode(bVisible ? SPLIT_PANE_NONE : SPLIT_PANE_RIGHT);
