@@ -4469,11 +4469,11 @@ bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
 	}
 	HIMAGELIST oldImages = m_commandToolbarImages.Detach();
 	HIMAGELIST newImages = replacement.Detach();
-	// TB_SETBITMAPSIZE may reset the toolbar's current image storage. Set
-	// metrics before attaching the prepared list, or the new glyphs disappear.
+	// Detach before changing bitmap metrics: the common control can reset its
+	// internal list while doing so. The prepared replacement is already valid.
+	m_CmdToolbar.SetImageList(NULL);
 	ToolbarFactory::ApplyCommandToolbarMetrics(m_CmdToolbar, IDR_MAINFRAME, dpi);
-	HIMAGELIST replaced = m_CmdToolbar.SetImageList(newImages);
-	if(replaced != oldImages) { m_CmdToolbar.SetImageList(oldImages); ::ImageList_Destroy(newImages); m_commandToolbarImages.Attach(oldImages); return false; }
+	m_CmdToolbar.SetImageList(newImages);
 	m_commandToolbarImages.Attach(newImages);
 	if(oldImages) ::ImageList_Destroy(oldImages);
 	TBBUTTONINFO qualityInfo = {}; qualityInfo.cbSize = sizeof(qualityInfo); qualityInfo.dwMask = TBIF_IMAGE; qualityInfo.iImage = qualityImage;
@@ -4484,6 +4484,17 @@ bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
 		TBBUTTONINFO info = {}; info.cbSize = sizeof(info); info.dwMask = TBIF_IMAGE; info.iImage = imageIndices[index];
 		m_CmdToolbar.SetButtonInfo(kTableToolbarCommands[index].commandId, &info);
 	}
+    AutoSizeToolbar(m_CmdToolbar);
+    if(m_rebar.IsWindow()) {
+        for(int band=0;band<static_cast<int>(m_rebar.GetBandCount());++band) {
+            REBARBANDINFO info={};info.cbSize=sizeof(info);info.fMask=RBBIM_CHILD|RBBIM_CHILDSIZE;
+            if(!m_rebar.GetBandInfo(band,&info)||info.hwndChild!=m_CmdToolbar)continue;
+            const UINT height=HIWORD(m_CmdToolbar.SendMessage(TB_GETBUTTONSIZE));
+            info.fMask=RBBIM_CHILDSIZE;info.cyMinChild=info.cyChild=info.cyMaxChild=height;
+            m_rebar.SetBandInfo(band,&info);break;
+        }
+        m_rebar.SendMessage(WM_SIZE);
+    }
 	::SetPropW(m_CmdToolbar,L"FBE.Toolbar.DarkImages",reinterpret_cast<HANDLE>(ThemeManager::IsDark() && !ThemeManager::IsHighContrast()?2:1));
 	return true;
 }
@@ -4776,6 +4787,10 @@ LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 	RunPortableStateTestScenario();
 	StartupTrace::AppendTestStartupBreadcrumb("postcreate-before-runtime-dispatch");
     m_ui_watchdog.Start(m_hWnd);
+    // Reconcile command-band height after initial theme and rebar setup.
+    RebuildCommandToolbarImages(UiMetrics::DpiForWindow(m_CmdToolbar));
+    UpdateLayout();
+    m_CmdToolbar.RedrawWindow(NULL,NULL,RDW_INVALIDATE|RDW_ERASE|RDW_UPDATENOW);
 	if (!AU::_ARGS.source_memory_benchmark_path.IsEmpty())
 	{
 		if (PostMessage(AU::WM_SOURCE_MEMORY_BENCHMARK))
