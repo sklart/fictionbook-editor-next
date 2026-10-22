@@ -5,6 +5,7 @@
 
 #include "../view/VisualDomNormalizer.h"
 #include "PluginOptionsDialogProbe.h"
+#include "TreeMarkerProbe.h"
 #include "../../common/ModernFileDialog.h"
 #include "../../common/DeploymentContext.h"
 #include "RuntimeTestPortableState.inl"

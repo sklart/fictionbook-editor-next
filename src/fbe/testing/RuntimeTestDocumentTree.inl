@@ -2,7 +2,9 @@
 if(IsFbeTestScenario(L"document-tree-titles-runtime")) {
     bool passed=false;CStringA report,phase="titles";
     auto require=[&](bool ok){if(!ok)CheckError(E_FAIL);};
+    TreeMarkerProbe::RegistryIsolation registry;
     try {
+        require(registry.ready);
         ShowWindow(SW_SHOWNOACTIVATE);
         ShowView(BODY);CTreeView& tree=m_document_tree.m_tree.m_tree;tree.SetScriptMode(false);
         auto document=m_doc->m_body.Document();
@@ -50,15 +52,24 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
         CStringA row; row.Format("stage=%s\n", phase.GetString());
         DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
     };
+    TreeMarkerProbe::RegistryIsolation registry;
     try {
+        CheckError(registry.ready?S_OK:E_FAIL);
         CTreeView& tree = m_document_tree.m_tree.m_tree;
-        ShowWindow(SW_SHOWNORMAL);
+        wchar_t backgroundFlag[2]={};
+        const bool background=::GetEnvironmentVariableW(L"FBE_NEXT_TEST_TREE_BACKGROUND",backgroundFlag,_countof(backgroundFlag))&&backgroundFlag[0]==L'1';
+        // This fixture deliberately exercises a long synchronous UI scenario.
+        // Prevent Windows from substituting a ghost of this test process only.
+        ::DisableProcessWindowsGhosting();
+        TreeMarkerProbe::WindowPresentation presentation(m_hWnd,background);
+        CheckError(presentation.ready?S_OK:E_FAIL);
+        report.AppendFormat("pixel_source=window-dc\nnonactivating_topmost=%d\n",!background);
+        ShowWindow(SW_SHOWNOACTIVATE);
         ShowView(BODY);
         if(!_Settings.ViewDocumentTree()) SendMessage(WM_COMMAND, ID_VIEW_TREE);
         tree.SetScriptMode(false);
         m_document_tree.GetDocumentStructure(m_doc->m_body.Document());
         UpdateLayout();
-        ::SetForegroundWindow(m_hWnd);
         InvalidateUi(UiDirtyAll); m_sel_changed = true; OnIdle();
         auto document = m_doc->m_body.Document();
         auto element = [&](LPCWSTR id) { return MSHTML::IHTMLElementPtr(MSHTML::IHTMLDocument3Ptr(document)->getElementById(id)); };
@@ -77,11 +88,17 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
         auto require = [&](bool value, int line) { if(!value) { report.AppendFormat("failed_line=%d\n", line); CheckError(E_FAIL); } };
 #define FBE_TREE_CHECK(value) require((value), __LINE__)
         auto paint = [&]() { tree.UpdateWindow(); ::GdiFlush(); };
+        TreeMarkerProbe::PaintObserver paintObserver(tree);
+        unsigned markerCheck=0;
+        wchar_t focusFlag[2]={};
+        const bool focusTree=::GetEnvironmentVariableW(L"FBE_NEXT_TEST_TREE_FOCUS",focusFlag,_countof(focusFlag))&&focusFlag[0]==L'1';
         auto verifyMarker = [&](HTREEITEM item) {
+            ++markerCheck;
             RECT marker = {}; FBE_TREE_CHECK(tree.StructureMarkerRect(item, marker));
             RECT label = {}, client = {}, expectedRect = {};
             FBE_TREE_CHECK(tree.GetItemRect(item, &label, TRUE) != FALSE);
             tree.GetClientRect(&client);
+            const RECT nativeLabel=label;
             const int thickness = UiMetrics::ScaleForDpi(tree.StructureHighlight(item) == 2 ? 3 : 1, UiMetrics::DpiForWindow(tree));
             label.top = (std::max)(label.top, label.bottom - thickness);
             FBE_TREE_CHECK(::IntersectRect(&expectedRect, &label, &client) != FALSE);
@@ -89,16 +106,31 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
             const bool selectedItem = (tree.GetItemState(item, TVIS_SELECTED) & TVIS_SELECTED) != 0;
             const COLORREF expected = ThemeManager::IsHighContrast() ? ::GetSysColor(selectedItem ? COLOR_HIGHLIGHTTEXT : COLOR_WINDOWTEXT) :
                 (selectedItem ? ThemeManager::SelectionTextColor() : (tree.StructureHighlight(item) == 2 ? ThemeManager::AccentColor() : ThemeManager::SecondaryTextColor()));
-            HDC dc = tree.GetDC(); const COLORREF actual = ::GetPixel(dc, marker.left, marker.bottom - 1);
+            TreeMarkerProbe::Frame snapshot;
+            std::vector<COLORREF> markerSamples;
+            HDC dc = tree.GetDC();
+            auto readPixel=[&](int x,int y){return ::GetPixel(dc,x,y);};
+            const COLORREF actual = readPixel(marker.left, marker.bottom - 1);
             bool entireLine = true;
             for(int y = marker.top; y < marker.bottom; ++y)
                 for(int x = marker.left; x < marker.right; ++x)
-                    if(::GetPixel(dc, x, y) != expected) entireLine = false;
-            tree.ReleaseDC(dc);
+                    {const COLORREF value=readPixel(x,y);if(value!=expected){entireLine=false;if(markerSamples.empty())markerSamples.assign(static_cast<size_t>(marker.right-marker.left)*(marker.bottom-marker.top),expected);markerSamples[static_cast<size_t>(y-marker.top)*(marker.right-marker.left)+x-marker.left]=value;}}
+            if(dc)tree.ReleaseDC(dc);
+            if(!entireLine||actual!=expected) {
+                if(markerSamples.empty())markerSamples.assign(static_cast<size_t>(marker.right-marker.left)*(marker.bottom-marker.top),expected);
+                CString text;tree.GetItemText(item,text);
+                MSHTML::IHTMLElementPtr node(reinterpret_cast<MSHTML::IHTMLElement*>(tree.GetItemData(item)));
+                const CString id=node?CString(static_cast<LPCWSTR>(node->id)):CString();
+                TreeMarkerProbe::Diagnose(report,tree,item,phase,id,text,tree.StructureHighlight(item),marker,nativeLabel,client,expectedRect,expected,actual,markerSamples,snapshot,markerCheck);
+                paintObserver.Dump(report);paintObserver.Compare(report,marker,expected);
+            }
             if(actual != expected) report.AppendFormat("marker_rank=%d\nmarker_rect=%ld,%ld,%ld,%ld\nmarker_actual=0x%08lX\nmarker_expected=0x%08lX\n",
                 tree.StructureHighlight(item), marker.left, marker.top, marker.right, marker.bottom, actual, expected);
             FBE_TREE_CHECK(actual == expected);
             FBE_TREE_CHECK(entireLine);
+            if(paintObserver.trace&&phase=="paint-1-1"){paintObserver.Dump(report);paintObserver.Compare(report,marker,expected);}
+            if(phase=="paint-1-1") {RECT bounds={};::GetWindowRect(tree,&bounds);report.AppendFormat("marker_pass_context=focus:%p,tree_focus:%d,foreground:%p,dpi:%u,rect:%ld,%ld,%ld,%ld\n",::GetFocus(),::GetFocus()==tree.m_hWnd,::GetForegroundWindow(),UiMetrics::DpiForWindow(tree),bounds.left,bounds.top,bounds.right,bounds.bottom);}
+
         };
         auto input = [&](HTREEITEM item, UINT modifiers, bool button, UINT down = WM_LBUTTONDOWN) {
             FBE_TREE_CHECK(item != NULL);
@@ -293,20 +325,15 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
         report += "caret_title_section_paragraph=1\nancestor_chain=1\ncollapsed_parent=1\n";
         phase = "incremental-paint";
         auto pixels = [&]() {
-            RECT client = {}; tree.GetClientRect(&client);
-            const int width = client.right, height = client.bottom; FBE_TREE_CHECK(width > 0 && height > 0);
-            BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-            info.bmiHeader.biWidth = width; info.bmiHeader.biHeight = -height;
-            info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
-            void* bits = NULL; HDC source = tree.GetDC(); HDC memory = ::CreateCompatibleDC(source);
-            HBITMAP bitmap = ::CreateDIBSection(source, &info, DIB_RGB_COLORS, &bits, NULL, 0);
-            FBE_TREE_CHECK(source && memory && bitmap && bits);
-            HGDIOBJ old = ::SelectObject(memory, bitmap);
-            const BOOL copied = ::BitBlt(memory, 0, 0, width, height, source, 0, 0, SRCCOPY);
-            ::GdiFlush();
-            std::vector<DWORD> result(static_cast<DWORD*>(bits), static_cast<DWORD*>(bits) + width * height);
-            ::SelectObject(memory, old); ::DeleteObject(bitmap); ::DeleteDC(memory); tree.ReleaseDC(source);
-            FBE_TREE_CHECK(copied != FALSE); return result;
+            RECT client={};tree.GetClientRect(&client);
+            HDC dc=tree.GetDC();
+            const bool visible=TreeMarkerProbe::EntireClientVisible(dc,client);
+            TreeMarkerProbe::Frame frame;
+            const bool copied=visible&&frame.ReadDc(dc,client.right,client.bottom);
+            tree.ReleaseDC(dc);
+            if(!visible)report+="snapshot_unavailable=client-occluded\n";
+            FBE_TREE_CHECK(visible&&copied);
+            return frame.pixels;
         };
         for(InterfaceTheme theme : {INTERFACE_THEME_LIGHT, INTERFACE_THEME_DARK}) {
             ThemeManager::SetSelectedTheme(theme); ThemeManager::ApplyToWindow(m_hWnd);
@@ -345,6 +372,7 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
             for(int index = 0; index < 24; ++index) {
                 phase.Format("paint-%d-%d", static_cast<int>(theme), index);
                 selectCaret(index % 2 ? L"head-text0" : L"leaf-text0");
+                if(focusTree){tree.SetFocus();paint();}
                 const auto incremental = pixels();
                 tree.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
                 const auto complete = pixels();
@@ -373,6 +401,7 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
             xml() == before, m_doc->DocChanged() == dirty, revision, m_doc->m_body.GetVersionNumber(), undoBefore == history(false), redoBefore == history(true));
         FBE_TREE_CHECK(xml() == before && m_doc->DocChanged() == dirty && undoBefore == history(false) && redoBefore == history(true));
         report += "document_preserved=1\n";
+        paintObserver.Dump(report);
         phase = "rebuild-current-position";
         tree.DeleteAllItems(); FBE_TREE_CHECK(tree.CurrentStructureItem() == NULL);
         m_document_tree.GetDocumentStructure(document);
