@@ -61,14 +61,16 @@ function Invoke-ScopeProbe([string]$Name, [string[]]$Defines, [string[]]$RunArgu
     $start.CreateNoWindow = $true
     $start.RedirectStandardOutput = $true
     $start.RedirectStandardError = $true
+    # Synthetic marker detects future accidental environment serialization.
+    $secretCanary = 'FbeDiagnosticCanary-' + [guid]::NewGuid().ToString('N')
+    $start.EnvironmentVariables['FBE_DIAGNOSTIC_SECRET_CANARY'] = $secretCanary
     if ($LongPath) {
         # cmd.exe drops an inherited PATH longer than 8191 characters. The host must
         # still start through !system, without changing the parent gate environment.
         $start.EnvironmentVariables['Path'] = ('C:\FbeScopePathPadding;' * 450) + $env:Path
     }
-    $environment = @{}
-    foreach ($key in $start.EnvironmentVariables.Keys) { $environment[$key] = $start.EnvironmentVariables[$key] }
-    $environment | ConvertTo-Json | Set-Content (Join-Path $directory 'environment.json')
+    # Deliberate allowlist: never serialize the inherited environment, PATH
+    # contents, credentials or arbitrary environment-variable names/values.
     $nestedHostBinary = if ([Environment]::Is64BitOperatingSystem) { 'SysWOW64' } else { 'System32' }
     $meta = @{
         exe=$makensis; commandLine=('"' + $makensis + '" ' + $start.Arguments)
@@ -101,6 +103,11 @@ function Invoke-ScopeProbe([string]$Name, [string[]]$Defines, [string[]]$RunArgu
     $meta.nestedCommandLine = $nestedCommand.Groups[1].Value
     $meta.nestedExitCode = if ($nestedExit.Success) { [int]$nestedExit.Groups[1].Value } else { $null }
     $meta | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $directory 'compile.json')
+    foreach ($diagnostic in Get-ChildItem -LiteralPath $directory -File | Where-Object { $_.Extension -in '.json','.log' }) {
+        if ([IO.File]::ReadAllText($diagnostic.FullName).Contains($secretCanary)) {
+            throw "Inherited secret canary leaked into diagnostics: $($diagnostic.FullName)"
+        }
+    }
     if ($meta.exitCode -ne 0) { throw "makensis failed for $Name scope probe; full diagnostics: $directory" }
     if (-not $nestedCommand.Success -or -not $nestedExit.Success -or $meta.nestedExitCode -ne 0) { throw "Missing successful mandatory !system verification: $directory" }
     $process = Start-Process -FilePath $setup -ArgumentList $RunArguments -Wait -PassThru -WindowStyle Hidden
