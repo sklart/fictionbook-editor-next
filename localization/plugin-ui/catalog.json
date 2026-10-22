@@ -5636,22 +5636,22 @@
       }
     },
     "import_epub.options.button_ok": {
-      "source": "Import",
+      "source": "OK",
       "component": "import-epub.options",
       "resourceId": "IDS_IMPORT_OPTIONS_BUTTON_OK",
       "translations": {
-        "en-US": "Import",
-        "ru-RU": "Импорт",
-        "uk-UA": "Імпорт",
-        "de-DE": "Importieren",
-        "fr-FR": "Importer",
-        "es-ES": "Importar",
-        "it-IT": "Importa",
-        "pl-PL": "Importuj",
-        "pt-PT": "Importar",
-        "nl-NL": "Importeren",
-        "cs-CZ": "Importovat",
-        "bg-BG": "Импорт"
+        "en-US": "OK",
+        "ru-RU": "ОК",
+        "uk-UA": "ОК",
+        "de-DE": "OK",
+        "fr-FR": "OK",
+        "es-ES": "Aceptar",
+        "it-IT": "OK",
+        "pl-PL": "OK",
+        "pt-PT": "OK",
+        "nl-NL": "OK",
+        "cs-CZ": "OK",
+        "bg-BG": "ОК"
       }
     },
     "import_epub.options.button_cancel": {
