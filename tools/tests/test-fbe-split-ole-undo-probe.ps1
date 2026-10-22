@@ -1,5 +1,5 @@
 param(
-    [string]$FbeExe = (Join-Path (Split-Path $PSScriptRoot -Parent -Parent) 'out\Release\FBE.exe'),
+    [string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [int]$TimeoutSeconds = 45,
     [switch]$KeepArtifacts
 )
@@ -25,7 +25,7 @@ try {
     Copy-Item -LiteralPath $report -Destination (Join-Path $directory 'summary.tsv') -Force
     Write-Host "OLE parent Split/Undo probe completed: $report"
     $row | Select-Object manager_hr,open_hr,close_hr,parent_units,state_before,state_after,state_undo,state_redo,undo_description_before,undo_description_after,undo_description_undo,undo_description_redo,result | Format-List
-    if($row[0].result -ne 'pass') { Write-Warning 'OLE parent unit did not prove one-Undo/one-Redo Split composition; this is a diagnostic result, not a skipped assertion.' }
+    if($row[0].result -ne 'pass') { Write-Warning 'OLE parent unit did not prove one-Undo/one-Redo Split composition; this is a retained diagnostic FAIL for the test-only OLE parent, not the production Split wrapper. This MSHTML limitation is documented in docs/archive/undo/split-undo-mshtml-probe.md.' }
 } finally {
     if($KeepArtifacts) { Write-Host "Artifacts: $directory" } else { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
 }

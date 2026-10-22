@@ -1,5 +1,5 @@
 param(
-    [string]$FbeExe = (Join-Path (Split-Path $PSScriptRoot -Parent -Parent) 'out\Release\FBE.exe'),
+    [string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [int]$TimeoutSeconds = 45,
     [switch]$KeepArtifacts
 )
@@ -31,6 +31,9 @@ try {
     if($rows.Count -ne $variants.Count) { throw 'Split probe did not report every requested MSHTML variant.' }
     Write-Host "Split/Undo MSHTML probe completed: $summary"
     $rows | Select-Object variant,hresult,undos_required,result | Format-Table -AutoSize
+    if(@($rows | Where-Object result -ne 'pass').Count) {
+        Write-Warning 'Direct MSHTML mutation alternatives did not prove one-Undo/one-Redo Split composition. These diagnostic FAIL results are retained; they do not exercise the production Split wrapper. undos_required=3 means not restored after two Undo calls, not a measured third Undo. See docs/architecture/undo.md and docs/archive/undo/split-undo-mshtml-probe.md.'
+    }
 } finally {
     if($KeepArtifacts) { Write-Host "Artifacts: $directory" } else { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
 }

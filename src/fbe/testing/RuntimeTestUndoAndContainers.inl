@@ -100,7 +100,9 @@
 				else operationHr = E_INVALIDARG;
 			} catch (const _com_error& error) { operationHr = error.Error(); }
 			m_doc->m_body.EndUndoUnit();
-			const CString after(snapshot()); BOOL handled = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); const CString undo1(snapshot()); m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); const CString undo2(snapshot()); m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled); const CString redo1(snapshot());
+			const CString after(snapshot()); BOOL handled = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); const CString undo1(snapshot()); m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled); const CString redo1(snapshot());
+            // Measure one Undo/Redo before separately probing a second Undo.
+            m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); const CString undo2(snapshot());
 			const CString expected(L"<DIV class=section><P>AAA</P></DIV><DIV id=probe-old class=section><DIV class=title><P>123</P></DIV><P>ZZZ</P></DIV>");
 			const bool oneUndo = SUCCEEDED(operationHr) && undo1 == before && redo1 == after;
 			const long required = undo1 == before ? 1 : undo2 == before ? 2 : 3;
