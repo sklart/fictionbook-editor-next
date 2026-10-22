@@ -1,4 +1,5 @@
 LRESULT CMainFrame::RunIssue64Runtime(CAtlFile& output) {
+    PluginOptionsProbe::paletteForWindow = EditorPluginProbePalette;
     bool passed=true;CStringA report;const auto originalTheme=ThemeManager::GetSelectedTheme();
     auto check=[&](const char* label,bool value){report.AppendFormat("%s=%d\n",label,value);passed=value&&passed;};
     struct RegistryIsolation {

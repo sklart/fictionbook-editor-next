@@ -7,10 +7,24 @@
 #include <vector>
 #include "../../common/PluginOptionsTabs.h"
 #include "../../common/PluginWindowPlacement.h"
-#include "../ThemeManager.h"
-#include "../UiMetrics.h"
+
 
 namespace PluginOptionsProbe {
+// The standalone COM host has native controls; only the editor knows its
+// current theme. Supply expectations without linking editor internals here.
+struct Palette {
+    bool dark, highContrast;
+    COLORREF text, disabledText, control;
+    UINT dpi;
+};
+inline Palette NativePalette(HWND window) {
+    HIGHCONTRASTW contrast = {sizeof(contrast)};
+    ::SystemParametersInfoW(SPI_GETHIGHCONTRAST, sizeof(contrast), &contrast, 0);
+    return {false, (contrast.dwFlags & HCF_HIGHCONTRASTON) != 0,
+        ::GetSysColor(COLOR_WINDOWTEXT), ::GetSysColor(COLOR_GRAYTEXT),
+        ::GetSysColor(COLOR_BTNFACE), FbePluginUi::WindowDpi(window)};
+}
+inline Palette (*paletteForWindow)(HWND) = NativePalette;
 enum class Action { Inspect, EditSave, EditCancel, DefaultsCancel, PresetDefault, PresetCompat, PresetRich, ReadOnly, Conflict, Corrupt, PositionDefault, PositionMove, PositionVerify };
 inline int plugin = 0, failedLine = 0, stage = 0, pages = 0;
 inline Action action = Action::Inspect;
@@ -117,6 +131,7 @@ inline bool Check(bool success, int line) { if(!success && !failedLine) failedLi
 
 inline bool Capture(HWND window, const std::wstring& name) {
     if(captures.empty()) return true;
+    const Palette palette = paletteForWindow(window);
     RECT bounds = {}; ::GetWindowRect(window, &bounds);
     const int width = bounds.right - bounds.left, height = bounds.bottom - bounds.top;
     HDC source = ::GetWindowDC(window), memory = ::CreateCompatibleDC(source);
@@ -149,9 +164,9 @@ inline bool Capture(HWND window, const std::wstring& name) {
             if(controlRect.top<clip.top||controlRect.bottom>clip.bottom||controlRect.left<clip.left||controlRect.right>clip.right) continue;
             // Inspect rendered caption pixels, excluding the check glyph. An
             // HDC colour query alone misses Win10's themed black checkbox text.
-            const COLORREF expected=::IsWindowEnabled(control)?ThemeManager::TextColor():ThemeManager::DisabledTextColor();
+            const COLORREF expected=::IsWindowEnabled(control)?palette.text:palette.disabledText;
             bool foreground=false;
-            const int glyph=::MulDiv(22,static_cast<int>(UiMetrics::DpiForWindow(control)),96);
+            const int glyph=::MulDiv(22,static_cast<int>(palette.dpi),96);
             for(int y=controlRect.top;y<controlRect.bottom&&!foreground;++y)for(int x=controlRect.left+glyph;x<controlRect.right;++x) {
                 const COLORREF pixel=::GetPixel(memory,x-bounds.left,y-bounds.top);
                 if(pixel!=CLR_INVALID&&abs(static_cast<int>(GetRValue(pixel))-GetRValue(expected))<24&&abs(static_cast<int>(GetGValue(pixel))-GetGValue(expected))<24&&abs(static_cast<int>(GetBValue(pixel))-GetBValue(expected))<24){foreground=true;break;}
@@ -162,7 +177,7 @@ inline bool Capture(HWND window, const std::wstring& name) {
             wchar_t kind[32]={};::GetClassNameW(control,kind,_countof(kind));if(wcscmp(kind,L"Static"))continue;
             RECT controlRect={},clip={};::GetWindowRect(control,&controlRect);::GetClientRect(::GetParent(control),&clip);::MapWindowPoints(::GetParent(control),NULL,reinterpret_cast<POINT*>(&clip),2);
             if(controlRect.top<clip.top||controlRect.bottom>clip.bottom||controlRect.left<clip.left||controlRect.right>clip.right)continue;
-            bool foreground=false;const COLORREF expected=ThemeManager::DisabledTextColor();
+            bool foreground=false;const COLORREF expected=palette.disabledText;
             for(int y=controlRect.top;y<controlRect.bottom&&!foreground;++y)for(int x=controlRect.left;x<controlRect.right;++x){const COLORREF pixel=::GetPixel(memory,x-bounds.left,y-bounds.top);if(pixel!=CLR_INVALID&&abs(static_cast<int>(GetRValue(pixel))-GetRValue(expected))<24&&abs(static_cast<int>(GetGValue(pixel))-GetGValue(expected))<24&&abs(static_cast<int>(GetBValue(pixel))-GetBValue(expected))<24){foreground=true;break;}}
             if(!foreground)errorText=L"disabled label palette: "+std::to_wstring(::GetDlgCtrlID(control));FBE_OPTIONS_CHECK(foreground);
         }
@@ -180,8 +195,9 @@ inline bool Capture(HWND window, const std::wstring& name) {
 }
 // Render the native control, then inspect the actual pixels (not only TTM getters).
 inline bool TooltipPixels(HWND tip,const std::wstring& name) {
-    const COLORREF background=ThemeManager::IsHighContrast()||!ThemeManager::IsDark()?::GetSysColor(COLOR_INFOBK):ThemeManager::ControlColor();
-    const COLORREF foreground=ThemeManager::IsHighContrast()||!ThemeManager::IsDark()?::GetSysColor(COLOR_INFOTEXT):ThemeManager::TextColor();
+    const Palette palette = paletteForWindow(tip);
+    const COLORREF background=palette.highContrast||!palette.dark?::GetSysColor(COLOR_INFOBK):palette.control;
+    const COLORREF foreground=palette.highContrast||!palette.dark?::GetSysColor(COLOR_INFOTEXT):palette.text;
     bool ok=static_cast<COLORREF>(::SendMessage(tip,TTM_GETTIPBKCOLOR,0,0))==background&&static_cast<COLORREF>(::SendMessage(tip,TTM_GETTIPTEXTCOLOR,0,0))==foreground;
     RECT rect={};::GetWindowRect(tip,&rect);const int width=rect.right-rect.left,height=rect.bottom-rect.top;
     HDC source=::GetWindowDC(tip),memory=::CreateCompatibleDC(source);HBITMAP bitmap=::CreateCompatibleBitmap(source,width,height);
@@ -189,7 +205,7 @@ inline bool TooltipPixels(HWND tip,const std::wstring& name) {
     HGDIOBJ old=::SelectObject(memory,bitmap);ok=::PrintWindow(tip,memory,0)!=FALSE&&ok;::GdiFlush();
     unsigned ink=0,paper=0;
     auto matchesColor=[](COLORREF a,COLORREF b){return abs(static_cast<int>(GetRValue(a))-GetRValue(b))<24&&abs(static_cast<int>(GetGValue(a))-GetGValue(b))<24&&abs(static_cast<int>(GetBValue(a))-GetBValue(b))<24;};
-    for(int y=2;y<height-2;++y)for(int x=2;x<width-2;++x){const COLORREF pixel=::GetPixel(memory,x,y);if((ThemeManager::IsDark()||ThemeManager::IsHighContrast())?matchesColor(pixel,foreground):(GetRValue(pixel)<112&&GetGValue(pixel)<112&&GetBValue(pixel)<112))++ink;if((ThemeManager::IsDark()||ThemeManager::IsHighContrast())?matchesColor(pixel,background):(GetRValue(pixel)>230&&GetGValue(pixel)>230&&GetBValue(pixel)>200))++paper;}
+    for(int y=2;y<height-2;++y)for(int x=2;x<width-2;++x){const COLORREF pixel=::GetPixel(memory,x,y);if((palette.dark||palette.highContrast)?matchesColor(pixel,foreground):(GetRValue(pixel)<112&&GetGValue(pixel)<112&&GetBValue(pixel)<112))++ink;if((palette.dark||palette.highContrast)?matchesColor(pixel,background):(GetRValue(pixel)>230&&GetGValue(pixel)>230&&GetBValue(pixel)>200))++paper;}
     ::SelectObject(memory,old);::DeleteObject(bitmap);::DeleteDC(memory);::ReleaseDC(tip,source);
     const bool prior=expectedDarkTabs;expectedDarkTabs=false;const bool saved=Capture(tip,name);expectedDarkTabs=prior;
     if(!ok||ink<8||paper<100)errorText=L"tooltip: property="+std::to_wstring(ok)+L" ink="+std::to_wstring(ink)+L" paper="+std::to_wstring(paper);
