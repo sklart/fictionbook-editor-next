@@ -49,10 +49,16 @@ Unicode true
 !ifndef FBE_SCHEMA_SHA256
 !define FBE_SCHEMA_SHA256 ""
 !endif
+; cmd.exe ignores an inherited PATH longer than 8191 characters; use the system host path.
+; Diagnostic output is opt-in for isolated scope probes; the exit check remains mandatory.
+!define FBE_PAYLOAD_LOG_REDIRECT ""
+!ifdef FBE_INSTALLER_PAYLOAD_LOG_DIRECTORY
+  !define /redef FBE_PAYLOAD_LOG_REDIRECT ' 1>"${FBE_INSTALLER_PAYLOAD_LOG_DIRECTORY}\powershell.stdout.log" 2>"${FBE_INSTALLER_PAYLOAD_LOG_DIRECTORY}\powershell.stderr.log"'
+!endif
 !ifdef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
-  !system 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "..\..\..\tools\build\verify-installer-payload.ps1" -X86Sha256 "${FBE_SHELL_X86_SHA256}" -X64Sha256 "${FBE_SHELL_X64_SHA256}" -SchemaSha256 "${FBE_SCHEMA_SHA256}" -FormatOnly' = 0
+  !system '"$%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "..\..\..\tools\build\verify-installer-payload.ps1" -X86Sha256 "${FBE_SHELL_X86_SHA256}" -X64Sha256 "${FBE_SHELL_X64_SHA256}" -SchemaSha256 "${FBE_SCHEMA_SHA256}" -FormatOnly${FBE_PAYLOAD_LOG_REDIRECT}' = 0
 !else
-  !system 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "..\..\..\tools\build\verify-installer-payload.ps1" -X86Sha256 "${FBE_SHELL_X86_SHA256}" -X64Sha256 "${FBE_SHELL_X64_SHA256}" -SchemaSha256 "${FBE_SCHEMA_SHA256}" -InputDirectory "${INPUTDIR}"' = 0
+  !system '"$%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "..\..\..\tools\build\verify-installer-payload.ps1" -X86Sha256 "${FBE_SHELL_X86_SHA256}" -X64Sha256 "${FBE_SHELL_X64_SHA256}" -SchemaSha256 "${FBE_SCHEMA_SHA256}" -InputDirectory "${INPUTDIR}"${FBE_PAYLOAD_LOG_REDIRECT}' = 0
 !endif
 !define FB2_INFOTIP_PROPERTIES "prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;System.Size"
 !define FB2_TILEINFO_PROPERTIES "prop:System.Author;System.Title"

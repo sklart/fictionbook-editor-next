@@ -1,11 +1,14 @@
 ﻿<# Exercises NSIS' test-only deployment branches without installing FBE. #>
 [CmdletBinding()]
-param()
+param([string]$TestDirectory)
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $installerDirectory = Join-Path $root 'packaging\nsis\Installer'
-$testRoot = Join-Path $root 'out\tests\nsis-install-scopes'
+$testsDirectory = [IO.Path]::GetFullPath((Join-Path $root 'out\tests')) + [IO.Path]::DirectorySeparatorChar
+$testRoot = if ($TestDirectory) { [IO.Path]::GetFullPath($TestDirectory) } else { Join-Path $testsDirectory 'nsis-install-scopes' }
+if (-not $testRoot.StartsWith($testsDirectory, [StringComparison]::OrdinalIgnoreCase)) { throw 'NSIS scope artifacts must stay inside out/tests.' }
+if ($TestDirectory -and (Test-Path -LiteralPath $testRoot)) { throw 'Use a fresh isolated TestDirectory to preserve previous scope evidence.' }
 $inputDirectory = Join-Path $testRoot 'input'
 
 $makensis = & (Join-Path $root 'tools\build\resolve-nsis.ps1')
@@ -32,11 +35,12 @@ function Read-Probe([string]$Path) {
     }
     return $result
 }
-function Invoke-ScopeProbe([string]$Name, [string[]]$Defines, [string[]]$RunArguments) {
+function Invoke-ScopeProbe([string]$Name, [string[]]$Defines, [string[]]$RunArguments, [switch]$LongPath) {
     $directory = Join-Path $testRoot $Name
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
     $setup = Join-Path $directory 'scope-probe.exe'
     $arguments = @(
+        '/V4',
         '/X!addincludedir ..\NSIS',
         '/X!addplugindir /x86-unicode ..\NSIS',
         ('/DINPUTDIR=' + $inputDirectory),
@@ -46,12 +50,60 @@ function Invoke-ScopeProbe([string]$Name, [string[]]$Defines, [string[]]$RunArgu
         ('/DFBE_SHELL_X64_SHA256=' + ('0' * 64)),
         ('/DFBE_SCHEMA_SHA256=' + ('0' * 64)),
         '/DFBE_DEPLOYMENT_TEST_SCOPE_PROBE=1',
-        ('/DFBE_DEPLOYMENT_TEST_ROOT=' + $directory)
+        ('/DFBE_DEPLOYMENT_TEST_ROOT=' + $directory),
+        ('/DFBE_INSTALLER_PAYLOAD_LOG_DIRECTORY=' + $directory)
     ) + $Defines + @('MakeInstaller.nsi')
-    Push-Location $installerDirectory
-    try { & $makensis @arguments } finally { Pop-Location }
-    if ($LASTEXITCODE -ne 0) { throw "makensis failed for $Name scope probe." }
-    $process = Start-Process -FilePath $setup -ArgumentList $RunArguments -Wait -PassThru
+    $start = New-Object Diagnostics.ProcessStartInfo
+    $start.FileName = $makensis
+    $start.Arguments = ($arguments | ForEach-Object { '"' + $_ + '"' }) -join ' '
+    $start.WorkingDirectory = $installerDirectory
+    $start.UseShellExecute = $false
+    $start.CreateNoWindow = $true
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    if ($LongPath) {
+        # cmd.exe drops an inherited PATH longer than 8191 characters. The host must
+        # still start through !system, without changing the parent gate environment.
+        $start.EnvironmentVariables['Path'] = ('C:\FbeScopePathPadding;' * 450) + $env:Path
+    }
+    $environment = @{}
+    foreach ($key in $start.EnvironmentVariables.Keys) { $environment[$key] = $start.EnvironmentVariables[$key] }
+    $environment | ConvertTo-Json | Set-Content (Join-Path $directory 'environment.json')
+    $nestedHostBinary = if ([Environment]::Is64BitOperatingSystem) { 'SysWOW64' } else { 'System32' }
+    $meta = @{
+        exe=$makensis; commandLine=('"' + $makensis + '" ' + $start.Arguments)
+        arguments=$arguments; cwd=$installerDirectory; pathLength=$start.EnvironmentVariables['Path'].Length
+        makensisVersion=(& $makensis /VERSION | Out-String).Trim()
+        driverPowerShell=$PSVersionTable.PSVersion.ToString()
+        nestedHost=(Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe')
+        nestedHostVersion=[Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $env:SystemRoot ($nestedHostBinary + '\WindowsPowerShell\v1.0\powershell.exe'))).FileVersion
+    }
+    $process = New-Object Diagnostics.Process
+    $process.StartInfo = $start
+    $stdout = [IO.File]::Create((Join-Path $directory 'makensis.stdout.log'))
+    $stderr = [IO.File]::Create((Join-Path $directory 'makensis.stderr.log'))
+    try {
+        if (-not $process.Start()) { throw 'Could not start makensis.' }
+        $outTask = $process.StandardOutput.BaseStream.CopyToAsync($stdout)
+        $errTask = $process.StandardError.BaseStream.CopyToAsync($stderr)
+        $process.WaitForExit()
+        $outTask.GetAwaiter().GetResult()
+        $errTask.GetAwaiter().GetResult()
+        $meta.exitCode = $process.ExitCode
+    }
+    finally {
+        $stdout.Dispose(); $stderr.Dispose(); $process.Dispose()
+        $meta | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $directory 'compile.json')
+    }
+    $compilerOutput = Get-Content -Raw -LiteralPath (Join-Path $directory 'makensis.stdout.log')
+    $nestedCommand = [regex]::Match($compilerOutput, '(?m)^!system: "(.+)"\r?$')
+    $nestedExit = [regex]::Match($compilerOutput, '(?m)^!system: returned (-?\d+)')
+    $meta.nestedCommandLine = $nestedCommand.Groups[1].Value
+    $meta.nestedExitCode = if ($nestedExit.Success) { [int]$nestedExit.Groups[1].Value } else { $null }
+    $meta | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $directory 'compile.json')
+    if ($meta.exitCode -ne 0) { throw "makensis failed for $Name scope probe; full diagnostics: $directory" }
+    if (-not $nestedCommand.Success -or -not $nestedExit.Success -or $meta.nestedExitCode -ne 0) { throw "Missing successful mandatory !system verification: $directory" }
+    $process = Start-Process -FilePath $setup -ArgumentList $RunArguments -Wait -PassThru -WindowStyle Hidden
     if ($process.ExitCode -ne 0) { throw "NSIS $Name scope probe exited with $($process.ExitCode)." }
     $probe = Join-Path $directory 'deployment-scope.txt'
     if (-not (Test-Path -LiteralPath $probe -PathType Leaf)) { throw "NSIS $Name scope probe did not write its result." }
@@ -98,6 +150,9 @@ if (Test-Path -LiteralPath (Join-Path $portable.Directory 'uninst.exe')) { throw
 
 $transitions = Invoke-ScopeProbe 'scope-transitions' @('/DFBE_DEPLOYMENT_TEST_SCOPE_TRANSITIONS=1') @('/S', '/CURRENTUSER')
 if ($transitions.State.ScopeTransitions -ne 'passed') { throw "NSIS scope path transition regression failed: $($transitions.State | Out-String)" }
+
+$longPath = Invoke-ScopeProbe 'long-path' @() @('/S', '/CURRENTUSER') -LongPath
+if ($longPath.State.InstallScope -ne 'current') { throw 'Long PATH scope probe returned an unexpected scope.' }
 
 foreach ($key in $registryKeys) {
     if ((Get-RegistrySnapshot $key) -cne $before[$key]) { throw "NSIS scope probe changed registry state: $key" }
