@@ -1,6 +1,6 @@
 // Exercise the command bar's own popup lifecycle, including the modal settings pump.
     struct MenuRouteProbe {
-        HWND frame, bar; HMENU root; CStringA* report; bool seen=false, done=false; int choose=-1; ULONGLONG selectedAt=0; unsigned options=0, refresh=0, enters=0, exits=0, depth=0, maxDepth=0; HWND owner=NULL, selectedMenu=NULL; bool timedOut=false, refreshedOpen=false, refreshWhileOpen=false;
+        HWND frame, bar; HMENU root; CStringA* report; bool seen=false, done=false; int choose=-1; ULONGLONG selectedAt=0; unsigned options=0, refresh=0, enters=0, exits=0, depth=0, maxDepth=0; HWND owner=NULL, selectedMenu=NULL; bool timedOut=false, refreshedOpen=false, refreshWhileOpen=false; unsigned readyEvents=0, cancelEvents=0, deactivations=0; ULONGLONG enteredAt=0, exitedAt=0; UINT readyMessage=0; unsigned serial=0; HWND readyMenu=NULL;
         std::wstring stage;
         void Dump(const char* phase) {
             CStringA rows;rows.AppendFormat("stage=%ls phase=%s theme=%d\n",stage.c_str(),phase,ThemeManager::GetSelectedTheme());
@@ -20,13 +20,27 @@
         static LRESULT CALLBACK MenuLoop(HWND window,UINT message,WPARAM wParam,LPARAM lParam,UINT_PTR,DWORD_PTR data) {
             auto* self=reinterpret_cast<MenuRouteProbe*>(data);
             if(window==self->owner) {
-                if(message==WM_ENTERMENULOOP){++self->enters;++self->depth;self->maxDepth=(std::max)(self->maxDepth,self->depth);}
-                if(message==WM_EXITMENULOOP){++self->exits;if(self->depth)--self->depth;}
+                if(message==WM_ENTERMENULOOP){self->enteredAt=::GetTickCount64();++self->enters;++self->depth;self->maxDepth=(std::max)(self->maxDepth,self->depth);}
+                if(message==WM_EXITMENULOOP){self->exitedAt=::GetTickCount64();++self->exits;if(self->depth)--self->depth;}
+                if(message==WM_CANCELMODE)++self->cancelEvents;
             }
-            return ::DefSubclassProc(window,message,wParam,lParam);
+            const LRESULT result = ::DefSubclassProc(window,message,wParam,lParam);
+            // A real menu-ready notification is a stronger rendezvous than a
+            // 150-ms polling timer, which can miss an entire short menu loop.
+            if(window==self->owner && message==WM_ENTERIDLE && wParam==MSGF_MENU && self->depth && !self->done && !self->readyEvents) {
+                ++self->readyEvents; self->readyMenu=reinterpret_cast<HWND>(lParam);
+                ::PostMessageW(self->frame,self->readyMessage,self->serial,0);
+            }
+            return result;
         }
         static LRESULT CALLBACK Commands(HWND window,UINT message,WPARAM wParam,LPARAM lParam,UINT_PTR,DWORD_PTR data) {
             auto* self=reinterpret_cast<MenuRouteProbe*>(data);
+            if(message==self->readyMessage) {
+                if(wParam==self->serial && self->depth && !self->done) Tick(NULL,0,0,0);
+                return 0;
+            }
+            if(message==WM_ACTIVATEAPP && !wParam)++self->deactivations;
+            if(message==WM_CANCELMODE)++self->cancelEvents;
             if(message==WM_COMMAND) {
                 if(LOWORD(wParam)==ID_VIEW_OPTIONS)++self->options;
                 if(LOWORD(wParam)==ID_TOOLS_REFRESH_SCRIPTS)++self->refresh;
@@ -35,13 +49,17 @@
         }
         static void CALLBACK Tick(HWND,UINT,UINT_PTR,DWORD) {
             auto* probe=reinterpret_cast<MenuRouteProbe*>(::GetPropW(PluginOptionsProbe::dialog,L"FBE.MenuRoute"));
-            if(!probe)return;
+            if(!probe || !probe->depth)return;
+            if(!probe->readyEvents) {
+                if(::GetTickCount64()-probe->enteredAt>2000){probe->timedOut=true;::EndMenu();probe->done=true;}
+                return;
+            }
             if(probe->selectedAt) {
                 if(::IsWindowVisible(probe->selectedMenu)&&::GetTickCount64()-probe->selectedAt>2000){probe->timedOut=true;::EndMenu();probe->done=true;}
                 return;
             }
-            ::EnumThreadWindows(::GetCurrentThreadId(),[](HWND window,LPARAM value)->BOOL {
-                auto* self=reinterpret_cast<MenuRouteProbe*>(value);wchar_t kind[32]={};::GetClassNameW(window,kind,_countof(kind));
+            const HWND window=probe->readyMenu; auto* self=probe;
+            wchar_t kind[32]={};::GetClassNameW(window,kind,_countof(kind));
                 if(!wcscmp(kind,L"#32768")&&::IsWindowVisible(window)) {
                     self->seen=true;self->Dump("open");
                     if(self->refreshWhileOpen&&!self->refreshedOpen) {
@@ -55,11 +73,11 @@
                         for(int i=0;i<=self->choose;++i)::PostMessageW(window,WM_KEYDOWN,VK_DOWN,0);
                         ::PostMessageW(window,WM_KEYDOWN,VK_RETURN,0);
                     } else ::EndMenu();
-                    self->done=true;return FALSE;
-                }return TRUE;
-            },reinterpret_cast<LPARAM>(probe));
+                    self->done=true;
+                }
         }
     } probe={m_hWnd,m_MenuBar,m_MenuBar.GetMenu(),&report};
+    probe.readyMessage=::RegisterWindowMessageW(L"FBE.Test.MenuRouteReady"); check("menu_ready_message",probe.readyMessage!=0);
     ::SetPropW(m_hWnd,L"FBE.MenuRoute",&probe);
     check("command_observer",::SetWindowSubclass(m_hWnd,MenuRouteProbe::Commands,0x4d525450,reinterpret_cast<DWORD_PTR>(&probe))!=FALSE);
     check("menu_loop_observers",::SetWindowSubclass(m_MenuBar,MenuRouteProbe::MenuLoop,0x4d524c50,reinterpret_cast<DWORD_PTR>(&probe))&&
@@ -67,6 +85,7 @@
     auto route=[&](int item,const std::wstring& stage,int choose=-1,bool refreshOpen=false) {
         probe.owner=ThemeManager::IsDark()&&!ThemeManager::IsHighContrast()?m_MenuBar.GetParent():m_MenuBar.m_hWnd;
         probe.enters=probe.exits=probe.depth=probe.maxDepth=0;probe.timedOut=false;probe.selectedMenu=NULL;
+        ++probe.serial; probe.readyMenu=NULL; probe.readyEvents=probe.cancelEvents=probe.deactivations=0;probe.enteredAt=probe.exitedAt=0;
         probe.refreshWhileOpen=refreshOpen;probe.refreshedOpen=false;
         const unsigned options=probe.options, refresh=probe.refresh;
         probe.stage=stage;probe.seen=false;probe.done=false;probe.choose=choose;probe.selectedAt=0;probe.Dump("before");
@@ -81,6 +100,10 @@
         }
         ::KillTimer(NULL,timer);check("single_menu_loop",probe.enters==1&&probe.exits==1&&probe.depth==0&&probe.maxDepth==1);
         check("menu_selection_no_timeout",!probe.timedOut);
+        report.AppendFormat("menu_ready_events=%u;cancel_events=%u;deactivations=%u;loop_ms=%llu;foreground=%p\n",
+            probe.readyEvents,probe.cancelEvents,probe.deactivations,
+            probe.exitedAt>=probe.enteredAt?probe.exitedAt-probe.enteredAt:0,::GetForegroundWindow());
+        check("menu_ready_observed",probe.readyEvents>0);
         check("commandbar_popup",probe.seen);probe.Dump("after");toolsMenu();
         const auto restored=metadata();
         check("commandbar_metadata_restored",restored.fType==original.fType&&restored.dwItemData==original.dwItemData&&restored.hbmpItem==original.hbmpItem);
