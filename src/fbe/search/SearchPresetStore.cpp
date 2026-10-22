@@ -146,8 +146,13 @@ bool WriteUtf16FileAtomically(const CString& path, const CString& xml
 #endif
 )
 {
-    const CString temporary = path + L".tmp";
-    HANDLE file = ::CreateFileW(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    GUID id = {};
+    if (FAILED(::CoCreateGuid(&id))) return false;
+    wchar_t suffix[40] = {};
+    if (::StringFromGUID2(id, suffix, _countof(suffix)) == 0) return false;
+    // Each writer owns its staging file, on the same volume as the destination.
+    const CString temporary = path + L"." + suffix + L".tmp";
+    HANDLE file = ::CreateFileW(temporary, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
     if (file == INVALID_HANDLE_VALUE) return false;
     const DWORD bytes = static_cast<DWORD>(xml.GetLength() * sizeof(wchar_t));
     DWORD written = 0;
@@ -163,8 +168,23 @@ bool WriteUtf16FileAtomically(const CString& path, const CString& xml
         ::DeleteFileW(temporary);
         return false;
     }
-    if (::MoveFileExW(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return true;
+    // Windows may briefly deny replacement; retry only the already flushed rename.
+    DWORD replaceError = ERROR_SUCCESS;
+    for (unsigned attempt = 0; attempt != 5; ++attempt)
+    {
+        if (::MoveFileExW(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return true;
+        replaceError = ::GetLastError();
+        if (replaceError != ERROR_ACCESS_DENIED &&
+            replaceError != ERROR_SHARING_VIOLATION && replaceError != ERROR_LOCK_VIOLATION) break;
+        if (replaceError == ERROR_ACCESS_DENIED)
+        {
+            const DWORD attributes = ::GetFileAttributesW(path);
+            if (attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_READONLY)) break;
+        }
+        if (attempt != 4) ::Sleep(10u << attempt);
+    }
     ::DeleteFileW(temporary);
+    ::SetLastError(replaceError);
     return false;
 }
 }

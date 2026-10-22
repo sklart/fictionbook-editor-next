@@ -2,6 +2,10 @@
 #include "../../src/fbe/search/SearchPresetStore.h"
 
 #include <iostream>
+#include <thread>
+#include <atomic>
+#include <sddl.h>
+#pragma comment(lib, "advapi32.lib")
 
 using namespace FbeSearchPresets;
 
@@ -27,6 +31,29 @@ void WriteUtf16(const CString& path, const CString& text)
     const bool ok = ::WriteFile(file, static_cast<LPCWSTR>(text), bytes, &written, NULL) != FALSE && written == bytes;
     ::CloseHandle(file);
     if (!ok) throw 101;
+}
+
+std::vector<BYTE> ReadBytes(const CString& path)
+{
+    HANDLE file = ::CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (file == INVALID_HANDLE_VALUE) throw 102;
+    const DWORD size = ::GetFileSize(file, NULL);
+    if (size == INVALID_FILE_SIZE) { ::CloseHandle(file); throw 103; }
+    std::vector<BYTE> bytes(size);
+    DWORD read = 0;
+    const bool ok = ::ReadFile(file, bytes.data(), size, &read, NULL) != FALSE && read == size;
+    ::CloseHandle(file);
+    if (!ok) throw 104;
+    return bytes;
+}
+
+bool NoTemporaryFiles(const CString& directory)
+{
+    WIN32_FIND_DATAW found = {};
+    HANDLE search = ::FindFirstFileW(directory + L"\\*.tmp", &found);
+    if (search == INVALID_HANDLE_VALUE) return ::GetLastError() == ERROR_FILE_NOT_FOUND;
+    ::FindClose(search);
+    return false;
 }
 
 SearchPreset MakePreset(const wchar_t* id, SearchUiContext context, bool hasReplacement)
@@ -121,11 +148,115 @@ int wmain()
         if (result == 0 && store.Save(oversized)) result = 15;
         loaded.clear();
         if (result == 0 && (!store.Load(loaded) || loaded.size() != expected.size())) result = 16; // oversized save preserves old file
+        // Permanent denials still fail, preserve every byte, and remove the temporary file.
+        if (result == 0)
+        {
+            const std::vector<BYTE> before = ReadBytes(store.FilePath());
+            std::vector<SearchPreset> blocked = expected;
+            blocked[0].name = L"must not replace good data";
+            const DWORD attributes = ::GetFileAttributesW(store.FilePath());
+            if (attributes == INVALID_FILE_ATTRIBUTES ||
+                !::SetFileAttributesW(store.FilePath(), attributes | FILE_ATTRIBUTE_READONLY)) result = 17;
+            if (result == 0)
+            {
+                const bool savedReadOnly = store.Save(blocked);
+                const bool restored = ::SetFileAttributesW(store.FilePath(), attributes) != FALSE;
+                if (savedReadOnly || !restored) result = 18;
+                if (result == 0 && (ReadBytes(store.FilePath()) != before ||
+                    !NoTemporaryFiles(directory))) result = 19;
+            }
+            HANDLE lock = ::CreateFileW(store.FilePath(), GENERIC_READ, FILE_SHARE_READ, NULL,
+                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+            if (result == 0 && lock == INVALID_HANDLE_VALUE) result = 20;
+            const bool savedLocked = result == 0 && store.Save(blocked);
+            if (lock != INVALID_HANDLE_VALUE) ::CloseHandle(lock);
+            if (result == 0 && savedLocked) result = 21;
+            if (result == 0 && (ReadBytes(store.FilePath()) != before ||
+                !NoTemporaryFiles(directory))) result = 22;
+            loaded.clear();
+            if (result == 0 && (!store.Load(loaded) || loaded.size() != expected.size() ||
+                !Same(loaded[0], expected[0]) || !Same(loaded[1], expected[1]))) result = 23;
+            if (result == 0 && !store.Save(expected)) result = 24; // replacement works after unlocking
+
+            // Exercise the actual rename denial before releasing a short-lived reader.
+            HANDLE transient = ::CreateFileW(store.FilePath(), GENERIC_READ, FILE_SHARE_READ, NULL,
+                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+            const CString probe = store.FilePath() + L".probe";
+            WriteUtf16(probe, L"probe");
+            const bool moved = ::MoveFileExW(probe, store.FilePath(), MOVEFILE_REPLACE_EXISTING);
+            const DWORD denied = ::GetLastError();
+            ::DeleteFileW(probe);
+            if (transient == INVALID_HANDLE_VALUE || moved ||
+                (denied != ERROR_ACCESS_DENIED && denied != ERROR_SHARING_VIOLATION && denied != ERROR_LOCK_VIOLATION)) result = 25;
+            std::thread unlock([transient]() { ::Sleep(15); if (transient != INVALID_HANDLE_VALUE) ::CloseHandle(transient); });
+            const bool savedTransient = result == 0 && store.Save(blocked);
+            unlock.join();
+            if (result == 0 && !savedTransient) result = 26;
+            loaded.clear();
+            if (result == 0 && (!store.Load(loaded) || loaded.size() != blocked.size() || !Same(loaded[0], blocked[0]))) result = 27;
+
+            // A real directory ACL denial must not be converted into successful saving.
+            const std::vector<BYTE> beforeAcl = ReadBytes(store.FilePath());
+            DWORD needed = 0;
+            ::GetFileSecurityW(directory, DACL_SECURITY_INFORMATION, NULL, 0, &needed);
+            std::vector<BYTE> security(needed);
+            PSECURITY_DESCRIPTOR deniedSecurity = NULL;
+            if (needed == 0 || !::GetFileSecurityW(directory, DACL_SECURITY_INFORMATION,
+                security.data(), needed, &needed) ||
+                !::ConvertStringSecurityDescriptorToSecurityDescriptorW(L"D:P(D;;0x2;;;WD)(A;;FA;;;OW)",
+                    SDDL_REVISION_1, &deniedSecurity, NULL)) result = 28;
+            if (result == 0)
+            {
+                SECURITY_DESCRIPTOR_CONTROL control = 0;
+                DWORD revision = 0;
+                const bool gotControl = ::GetSecurityDescriptorControl(security.data(), &control, &revision) != FALSE;
+                const bool applied = gotControl && ::SetFileSecurityW(directory,
+                    DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION, deniedSecurity) != FALSE;
+                const bool savedDenied = applied && store.Save(expected);
+                const DWORD accessError = ::GetLastError();
+                const bool restored = !applied || ::SetFileSecurityW(directory, DACL_SECURITY_INFORMATION |
+                    ((control & SE_DACL_PROTECTED) ? PROTECTED_DACL_SECURITY_INFORMATION : UNPROTECTED_DACL_SECURITY_INFORMATION),
+                    security.data()) != FALSE;
+                if (!applied || savedDenied || accessError != ERROR_ACCESS_DENIED || !restored) result = 29;
+            }
+            if (deniedSecurity != NULL) ::LocalFree(deniedSecurity);
+            if (result == 0 && (ReadBytes(store.FilePath()) != beforeAcl || !NoTemporaryFiles(directory))) result = 30;
+
+            // Independent store instances race in the same directory; whole XML always wins.
+            std::atomic<bool> start(false);
+            std::atomic<unsigned> failures(0);
+            std::vector<std::thread> writers;
+            if (result == 0)
+            {
+                for (unsigned writer = 0; writer != 4; ++writer)
+                    writers.emplace_back([&, writer]() {
+                        SearchPresetStore concurrent(directory);
+                        std::vector<SearchPreset> values = expected;
+                        values[0].name.Format(L"writer-%u", writer);
+                        while (!start.load()) ::SwitchToThread();
+                        for (unsigned attempt = 0; attempt != 4; ++attempt)
+                            if (!concurrent.Save(values))
+                            {
+                                const DWORD error = ::GetLastError();
+                                ++failures;
+                                std::wcerr << L"Concurrent Save error=" << error << std::endl;
+                            }
+                    });
+                start.store(true);
+                for (auto& writer : writers) writer.join();
+                if (failures.load() != 0) result = 31;
+                loaded.clear();
+                if (result == 0 && (!store.Load(loaded) || loaded.size() != expected.size() ||
+                    loaded[0].name.Left(7) != L"writer-" || !Same(loaded[1], expected[1]) ||
+                    !NoTemporaryFiles(directory))) result = 32;
+            }
+        }
     }
     catch (...) { result = 12; }
     ::DeleteFileW(directory + L"\\SearchTemplates.xml");
     ::DeleteFileW(directory + L"\\SearchTemplates.xml.tmp");
     ::RemoveDirectoryW(directory);
     ::CoUninitialize();
+    if (result != 0) std::wcerr << L"SearchPresetStore smoke failed: " << result << std::endl;
     return result;
 }
