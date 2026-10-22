@@ -132,6 +132,7 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
             if(phase=="paint-1-1") {RECT bounds={};::GetWindowRect(tree,&bounds);report.AppendFormat("marker_pass_context=focus:%p,tree_focus:%d,foreground:%p,dpi:%u,rect:%ld,%ld,%ld,%ld\n",::GetFocus(),::GetFocus()==tree.m_hWnd,::GetForegroundWindow(),UiMetrics::DpiForWindow(tree),bounds.left,bounds.top,bounds.right,bounds.bottom);}
 
         };
+        unsigned dispatchedDown = 0, dispatchedUp = 0; POINT lastInputPoint = {};
         auto input = [&](HTREEITEM item, UINT modifiers, bool button, UINT down = WM_LBUTTONDOWN) {
             FBE_TREE_CHECK(item != NULL);
             tree.EnsureVisible(item);
@@ -147,10 +148,15 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
             }
             // Queue the release before dispatching the press: native TreeView
             // can enter DragDetect's message loop on an already focused row.
-            tree.PostMessage(down, MK_LBUTTON | modifiers, MAKELPARAM(point.x, point.y));
-            tree.PostMessage(WM_LBUTTONUP, modifiers, MAKELPARAM(point.x, point.y));
+            lastInputPoint = point; dispatchedDown = dispatchedUp = 0;
+            FBE_TREE_CHECK(tree.PostMessage(down, MK_LBUTTON | modifiers, MAKELPARAM(point.x, point.y)) != FALSE);
+            FBE_TREE_CHECK(tree.PostMessage(WM_LBUTTONUP, modifiers, MAKELPARAM(point.x, point.y)) != FALSE);
             MSG message = {};
-            while(::PeekMessage(&message, tree, WM_MOUSEFIRST, WM_MOUSELAST, PM_REMOVE)) ::DispatchMessage(&message);
+            while(::PeekMessage(&message, tree, WM_MOUSEFIRST, WM_MOUSELAST, PM_REMOVE)) {
+                if(message.message == down) ++dispatchedDown;
+                if(message.message == WM_LBUTTONUP) ++dispatchedUp;
+                ::DispatchMessage(&message);
+            }
             paint();
         };
         int caretProbes = 0;
@@ -269,7 +275,21 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
             const unsigned expanding=notifications.expanding, expandedEvents=notifications.expanded;
             const bool expanded = (tree.GetItemState(child, TVIS_EXPANDED) & TVIS_EXPANDED) != 0;
             input(child, index % 3 == 1 ? MK_CONTROL : (index % 3 == 2 ? MK_SHIFT : 0), true);
-            FBE_TREE_CHECK(expanded != ((tree.GetItemState(child, TVIS_EXPANDED) & TVIS_EXPANDED) != 0));
+            const bool changedImmediately = expanded != ((tree.GetItemState(child, TVIS_EXPANDED) & TVIS_EXPANDED) != 0);
+            if(!changedImmediately) {
+                const unsigned beforeWaitExpanding = notifications.expanding, beforeWaitExpanded = notifications.expanded;
+                const ULONGLONG deadline = ::GetTickCount64() + 200;
+                while(::GetTickCount64() < deadline) {
+                    MSG timer = {}; while(::PeekMessage(&timer, tree, WM_TIMER, WM_TIMER, PM_REMOVE)) ::DispatchMessage(&timer);
+                    tree.UpdateWindow(); ::Sleep(1);
+                }
+                UINT hitFlags = 0; const HTREEITEM hit = tree.HitTest(CPoint(lastInputPoint), &hitFlags);
+                report.AppendFormat("toggle_failure=index:%d,before:%d,after_wait:%d,down:%u,up:%u,hit_child:%d,hit_flags:0x%X,expanding:%u/%u,expanded:%u/%u,wait_expanding:%u,wait_expanded:%u,capture:%p,focus:%p,left_button:%d\n",
+                    index, expanded, (tree.GetItemState(child, TVIS_EXPANDED) & TVIS_EXPANDED) != 0,
+                    dispatchedDown, dispatchedUp, hit == child, hitFlags, expanding, beforeWaitExpanding, expandedEvents, beforeWaitExpanded,
+                    notifications.expanding, notifications.expanded, ::GetCapture(), ::GetFocus(), (::GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0);
+            }
+            FBE_TREE_CHECK(changedImmediately);
             FBE_TREE_CHECK(selected() == originalSelection);
             FBE_TREE_CHECK(notifications.expanding==expanding+1&&notifications.expanded==expandedEvents+1);
         }
