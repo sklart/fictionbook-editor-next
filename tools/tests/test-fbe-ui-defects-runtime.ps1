@@ -2,12 +2,13 @@
 param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [ValidateSet('light','dark','automatic')][string]$Theme='light',
     [ValidateSet('ru-RU','en-US')][string]$Locale='ru-RU',
-    [string]$ArtifactDirectory)
+    [string]$ArtifactDirectory,
+    [ValidateRange(1,100)][int]$MenuCycles=20)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $iso=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'ui-defects'
 $passed=$false
-$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_UI_LOCALE','FBE_NEXT_TEST_REQUESTED_THEME','FBE_NEXT_TEST_ARTIFACT_DIR')
+$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_UI_LOCALE','FBE_NEXT_TEST_REQUESTED_THEME','FBE_NEXT_TEST_ARTIFACT_DIR','FBE_NEXT_TEST_MENU_CYCLES','FBE_NEXT_TEST_MENU_THEME')
 $old=@{};foreach($name in $names){$old[$name]=[Environment]::GetEnvironmentVariable($name)}
 try {
     $seed=New-IsolatedFbeSettingsSeed $iso
@@ -19,14 +20,17 @@ try {
     [IO.File]::WriteAllText($seed,$settings,[Text.UTF8Encoding]::new($false))
     $fixture=Join-Path $iso.Root 'probe.fb2';$report=Join-Path $iso.Root 'ui-defects.txt'
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'fb2-metadata-cyrillic-smoke.fb2') -Destination $fixture
+    $env:FBE_NEXT_TEST_MENU_CYCLES=[string]$MenuCycles;$env:FBE_NEXT_TEST_MENU_THEME=$null
     $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='ui-defects-runtime'
     $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY=Split-Path $seed;$env:FBE_NEXT_UI_LOCALE=$null
     if(!$ArtifactDirectory){$ArtifactDirectory=Join-Path $PSScriptRoot "../../out/issue64/menu-$Theme-$Locale"}
     New-Item -ItemType Directory -Path $ArtifactDirectory -Force | Out-Null
     $env:FBE_NEXT_TEST_ARTIFACT_DIR=(Resolve-Path $ArtifactDirectory).Path;$env:FBE_NEXT_TEST_REQUESTED_THEME="$requestedTheme"
+    @{exe=(Get-FileHash $iso.Exe -Algorithm SHA256).Hash;os=[Environment]::OSVersion.VersionString;theme=$Theme;locale=$Locale;cycles=$MenuCycles;profile=$seed} | ConvertTo-Json | Set-Content (Join-Path $ArtifactDirectory 'inputs.json') -Encoding utf8
     $process=Start-Process $iso.Exe -WorkingDirectory $iso.Root -ArgumentList @('--portable','-b',$report,$fixture) -WindowStyle Hidden -PassThru
-    $code=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'ui-defects' -Report $report -TimeoutSeconds 120
+    $code=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'ui-defects' -Report $report -TimeoutSeconds 300
     $text=if(Test-Path $report){Get-Content $report -Raw}else{'missing report'}
+    [IO.File]::WriteAllText((Join-Path $ArtifactDirectory 'ui-defects.txt'),$text,[Text.UTF8Encoding]::new($false))
     $caret=Join-Path (Split-Path $seed) 'ui-caret-probe.txt'
     if(Test-Path $caret){Write-Host (Get-Content $caret -Raw)}
     Write-Host $text

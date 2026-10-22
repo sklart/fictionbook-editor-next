@@ -2,6 +2,7 @@
 #define	LTREEVIEW_H
 
 #include "ElementDescMnr.h"
+#include "ThemeManager.h"
 #include "scripts\\ScriptUiController.h"
 #include <map>
 #include <string>
@@ -112,6 +113,7 @@ public:
   BOOL PreTranslateMessage(MSG* pMsg);
   
   BEGIN_MSG_MAP(CTreeView)
+    MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnInterfaceThemeChanged)
 	MESSAGE_HANDLER(WM_MOUSEMOVE, OnMouseMove)
 		MESSAGE_HANDLER(WM_MOUSELEAVE, OnMouseLeave)
 	MESSAGE_HANDLER(WM_TIMER, OnScriptPreviewTimer)
@@ -151,6 +153,7 @@ public:
    // REFLECTED_NOTIFY_CODE_HANDLER(NM_RCLICK, OnRClick)
   END_MSG_MAP()
     
+  LRESULT OnInterfaceThemeChanged(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnScriptInfoTip(int, LPNMHDR, BOOL&);
   LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);

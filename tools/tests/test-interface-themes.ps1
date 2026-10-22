@@ -54,8 +54,14 @@ if($mainFrame -notlike '*ThemeManager::RefreshSystemTheme()*' -or $mainFrame -no
 if($mainFrame -notlike '*OnPostCreate*' -or $mainFrame -notlike '*ThemeManager::ApplyToWindow(m_hWnd);*') {
     throw 'Main frame does not reapply its DWM theme after creation has completed.'
 }
-foreach($required in @('WM_INITMENUPOPUP', 'native dark popup', 'CCommandBarCtrl::TrackPopupMenu', 'ThemeManager::TrackPopupMenu')) {
-	if($mainFrame -notlike "*$required*") { throw "Native dark menus do not retain command-bar icons: $required." }
+# Native popup state must not leak into WTL's legacy owner-draw lifecycle.
+# The runtime contour also opens the real command bar and commits modal settings.
+foreach($required in @('ScopedNativeMenuBitmaps', '~ScopedNativeMenuBitmaps', 'saved.bitmap', 'MIIM_BITMAP | MIIM_FTYPE', 'MFT_OWNERDRAW')) {
+    if($manager -notlike "*$required*") { throw "Native popup bitmap ownership is incomplete: $required." }
+}
+$nativePopup = [regex]::Match($mainFrame, '(?s)bool ShowNativeMainMenuPopup\(.*?(?=LRESULT CALLBACK MainMenuBarWindowThemeProc)').Value
+if(!$nativePopup -or $nativePopup -notlike '*ThemeManager::TrackPopupMenu*' -or $nativePopup -match 'SendMessage\([^;]*WM_INITMENUPOPUP') {
+    throw 'Native popups must not initialize WTL owner-draw state outside its popup lifecycle.'
 }
 foreach($required in @('RegisterNativeMenuBitmap', 'NativeMenuBitmap', 'RegisterOwnedNativeMenuBitmap', 'CreateScaledAlphaBitmap', 'IDB_TABLE_INSERT_ROW_ABOVE', 'IDB_TABLE_MAKE_NORMAL_CELLS', 'IDB_TOOLS_REFRESH_SCRIPTS', 'ApplyMainRebarTheme', 'RBS_BANDBORDERS', 'RBBS_CHILDEDGE', 'RBBIM_COLORS')) {
 	if($mainFrame -notlike "*$required*") { throw "Native dark menus or rebar bands do not apply the required dark path: $required." }
@@ -91,7 +97,7 @@ foreach($source in @(
 	$directMessageSource = Read-ProjectFile $source.Trim()
 	if($directMessageSource -match '(?<!U)::MessageBox\(') { throw "FBE-owned message dialog bypasses the shared themed wrapper: $($source.Trim())." }
 }
-foreach($required in @('RegisterNativeMenuBitmap', 'UnregisterNativeMenuBitmap', 'ApplyNativeMenuBitmaps', 'MIIM_BITMAP', 'TrackPopupMenuEx')) {
+foreach($required in @('RegisterNativeMenuBitmap', 'UnregisterNativeMenuBitmap', 'ScopedNativeMenuBitmaps', 'bitmaps.Apply(menu)', 'MIIM_BITMAP', 'TrackPopupMenuEx')) {
 	if($manager -notlike "*$required*") { throw "Theme manager does not attach registered native popup bitmaps: $required." }
 }
 if($mainFrameHeader -notlike '*ThemeManager::TrackPopupMenu(tp->hMenu*') {

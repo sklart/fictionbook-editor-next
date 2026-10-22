@@ -71,21 +71,44 @@ void AdvanceThemeGeneration()
 	if(++g_paletteGeneration == 0) ++g_paletteGeneration;
 }
 
-void ApplyNativeMenuBitmaps(HMENU menu)
+// Native MIIM_BITMAP state must not escape into WTL's legacy MIIM_TYPE
+// owner-draw conversion (the editor deliberately disables Vista menus).
+class ScopedNativeMenuBitmaps
 {
-	if(menu == NULL) return;
-	for(int index = 0; index < ::GetMenuItemCount(menu); ++index)
+	struct Saved { HMENU menu; int position; UINT command; HBITMAP bitmap; };
+	std::vector<Saved> m_saved;
+public:
+	void Apply(HMENU menu)
 	{
-		const UINT command = ::GetMenuItemID(menu, index);
-		const std::map<UINT, HBITMAP>::const_iterator bitmap = g_nativeMenuBitmaps.find(command);
-		if(bitmap != g_nativeMenuBitmaps.end())
+		if(menu == NULL) return;
+		for(int index = 0; index < ::GetMenuItemCount(menu); ++index)
 		{
-			MENUITEMINFO info = {}; info.cbSize = sizeof(info); info.fMask = MIIM_BITMAP; info.hbmpItem = bitmap->second;
-			::SetMenuItemInfo(menu, index, TRUE, &info);
+			const UINT command = ::GetMenuItemID(menu, index);
+			const std::map<UINT, HBITMAP>::const_iterator bitmap = g_nativeMenuBitmaps.find(command);
+			if(bitmap != g_nativeMenuBitmaps.end())
+			{
+				MENUITEMINFO info = {}; info.cbSize = sizeof(info); info.fMask = MIIM_BITMAP | MIIM_FTYPE;
+				if(::GetMenuItemInfo(menu, index, TRUE, &info) && !(info.fType & MFT_OWNERDRAW))
+				{
+					m_saved.push_back({menu, index, command, info.hbmpItem});
+					info.fMask = MIIM_BITMAP; info.hbmpItem = bitmap->second;
+					::SetMenuItemInfo(menu, index, TRUE, &info);
+				}
+			}
+			Apply(::GetSubMenu(menu, index));
 		}
-		ApplyNativeMenuBitmaps(::GetSubMenu(menu, index));
 	}
-}
+	~ScopedNativeMenuBitmaps()
+	{
+		for(const auto& saved : m_saved)
+		{
+			// A callback may have rebuilt a submenu. Never restore into another item.
+			if(!::IsMenu(saved.menu) || ::GetMenuItemID(saved.menu, saved.position) != saved.command) continue;
+			MENUITEMINFO info = {}; info.cbSize = sizeof(info); info.fMask = MIIM_BITMAP; info.hbmpItem = saved.bitmap;
+			::SetMenuItemInfo(saved.menu, saved.position, TRUE, &info);
+		}
+	}
+};
 
 bool IsHighContrastEnabled()
 {
@@ -1240,7 +1263,8 @@ public:
 UINT TrackPopupMenu(HMENU menu, UINT flags, int x, int y, HWND owner)
 {
 	if(menu == NULL || !::IsWindow(owner)) return 0;
-	ApplyNativeMenuBitmaps(menu);
+	ScopedNativeMenuBitmaps bitmaps;
+	bitmaps.Apply(menu);
 	return ::TrackPopupMenuEx(menu, flags | TPM_RETURNCMD, x, y, owner, NULL);
 }
 

@@ -1471,6 +1471,13 @@ void CTreeView::SetScriptMode(bool value)
 	else { SetImageList(m_ImageList,TVSIL_NORMAL); UpdateAll(); }
 }
 
+LRESULT CTreeView::OnInterfaceThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
+{
+	// The generic child-window theme pass must not override the selected mode.
+	ApplyModeAppearance();
+	return 0;
+}
+
 void CTreeView::ApplyModeAppearance()
 {
 	if(!IsWindow()) return;
@@ -1486,7 +1493,10 @@ void CTreeView::ApplyModeAppearance()
 	}
 	else
 	{
-		::SetWindowTheme(m_hWnd, NULL, NULL);
+		// A null class restores the TreeView default (+/-), not Explorer's
+		// structure chevrons. Keep the mode stable across theme/mode changes.
+		::SetWindowTheme(m_hWnd, ThemeManager::IsHighContrast() ? NULL :
+			(ThemeManager::IsDark() ? L"DarkMode_Explorer" : L"Explorer"), NULL);
 		SetItemHeight(-1);
 	}
 	::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME);

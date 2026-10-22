@@ -194,6 +194,12 @@ LRESULT CSettingsDlg::OnTimer(UINT, WPARAM timerId, LPARAM, BOOL&)
 {
 	if(timerId == 0x55494446 && RuntimeTests::IsScenario(L"ui-defects-runtime")) {
 		KillTimer(timerId);
+		wchar_t menuTheme[16]={};
+		if(::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MENU_THEME",menuTheme,_countof(menuTheme))) {
+			m_generalPage->SendDlgItemMessage(IDC_INTERFACE_THEME,CB_SETCURSEL,_wtoi(menuTheme),0);
+			m_generalPage->SendMessage(WM_COMMAND,MAKEWPARAM(IDC_INTERFACE_THEME,CBN_SELCHANGE),reinterpret_cast<LPARAM>(m_generalPage->GetDlgItem(IDC_INTERFACE_THEME).m_hWnd));
+			BOOL handled=FALSE;return OnClickedOK(0,IDOK,NULL,handled);
+		}
 		if(m_uiProbeStage==0) {
 			::GetKeyboardState(m_uiProbeKeyboard);
 			BYTE keys[256]={};keys[VK_CONTROL]=0x80;::SetKeyboardState(keys);

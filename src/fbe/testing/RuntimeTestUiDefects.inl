@@ -24,7 +24,9 @@ if (IsFbeTestScenario(L"ui-defects-runtime")) {
     };
     auto toolsMenu = [&]() {
         HMENU menu=::GetSubMenu(m_MenuBar.GetMenu(),5);
-        int count=0,position=-1;
+        int count=0,options=0,position=-1;
+        for(int i=0;i<::GetMenuItemCount(menu);++i)if(::GetMenuItemID(menu,i)==ID_VIEW_OPTIONS)++options;
+        check("settings_once",options==1);
         for(int i=0;i<::GetMenuItemCount(menu);++i)if(::GetMenuItemID(menu,i)==ID_TOOLS_REFRESH_SCRIPTS){++count;position=i;}
         check("refresh_once",count==1);
         check("refresh_neighbors",position==2&&::GetMenuItemID(menu,position-1)==ID_VIEW_OPTIONS&&::GetMenuItemID(menu,position+2)==ID_TOOLS_SPELLCHECK);
@@ -42,9 +44,21 @@ if (IsFbeTestScenario(L"ui-defects-runtime")) {
         return menu;
     };
     HMENU tools=toolsMenu();
-    showTools(tools,L"startup");
     auto metadata=[&]() {MENUITEMINFO info={};info.cbSize=sizeof(info);info.fMask=MIIM_BITMAP|MIIM_STATE|MIIM_ID|MIIM_FTYPE|MIIM_DATA|MIIM_SUBMENU;check("refresh_metadata_read",::GetMenuItemInfoW(tools,ID_TOOLS_REFRESH_SCRIPTS,FALSE,&info)!=FALSE);return info;};
     const auto original=metadata();
+#include "RuntimeTestMainMenu.inl"
+    showTools(tools,L"startup");
+    {
+        auto& tree=m_document_tree.m_tree.m_tree;
+        tree.SetScriptMode(true);
+        check("scripts_classic_before_theme",::GetWindowTheme(tree)==NULL);
+        ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+        check("scripts_classic_after_theme",::GetWindowTheme(tree)==NULL);
+        report.AppendFormat("script_theme_after_refresh=%p\n",::GetWindowTheme(tree));
+        tree.SetScriptMode(false);
+        check("structure_themed_after_mode_switch",!::IsAppThemed()||::GetWindowTheme(tree)!=NULL);
+        m_document_tree.GetDocumentStructure(m_doc->m_body.Document());
+    }
     const InterfaceTheme sequence[]={INTERFACE_THEME_LIGHT,INTERFACE_THEME_DARK,INTERFACE_THEME_LIGHT,INTERFACE_THEME_DARK,INTERFACE_THEME_LIGHT,INTERFACE_THEME_DARK,INTERFACE_THEME_AUTOMATIC,INTERFACE_THEME_LIGHT,INTERFACE_THEME_DARK,INTERFACE_THEME_AUTOMATIC};
     const DWORD savedLanguage=_Settings.GetInterfaceLanguageID();
     for(int iteration=0;iteration<40;++iteration) {
@@ -99,5 +113,6 @@ if (IsFbeTestScenario(L"ui-defects-runtime")) {
     }
     toolsMenu();check("refresh_without_book",!(::GetMenuState(tools,ID_TOOLS_REFRESH_SCRIPTS,MF_BYCOMMAND)&MF_GRAYED));
     PluginOptionsProbe::dialog=m_hWnd;showTools(tools,L"closed");
+    route(5,L"closed-commandbar");::RemovePropW(m_hWnd,L"FBE.MenuRoute");::RemoveWindowSubclass(m_hWnd,MenuRouteProbe::Commands,0x4d525450);
     report.AppendFormat("result=%s\n",passed?"PASS":"FAIL");DWORD written=0;output.Write(report,report.GetLength(),&written);output.Close();::PostQuitMessage(passed?0:1);return 0;
 }

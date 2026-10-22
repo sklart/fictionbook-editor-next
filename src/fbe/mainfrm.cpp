@@ -535,13 +535,9 @@ bool ShowNativeMainMenuPopup(HWND commandBar, int item)
 	POINT point = { itemRect.left, itemRect.bottom };
 	::ClientToScreen(commandBar, &point);
 	const HWND owner = ::GetParent(commandBar);
-	// The dark popup deliberately uses the native menu renderer rather than
-	// CCommandBarCtrl::TrackPopupMenu().  Let the unchanged stock command bar
-	// perform its normal Vista-menu bitmap assignment first, so script and
-	// plug-in icons remain visible in the native dark popup.
-	::SendMessage(commandBar, WM_INITMENUPOPUP, reinterpret_cast<WPARAM>(popup), 0);
-	// TrackPopupMenu() restores all registered FBE bitmap resources after the
-	// stock command-bar setup, including script and table submenus.
+	// This popup uses the native renderer. Do not prepare WTL owner-draw data
+	// outside its TrackPopupMenu lifecycle. Native bitmaps are scoped to this
+	// call so the next light-theme WTL popup sees ordinary string items.
 	const UINT command = ThemeManager::TrackPopupMenu(popup,
 		TPM_LEFTALIGN | TPM_TOPALIGN | TPM_LEFTBUTTON, point.x, point.y, owner);
 	if(command != 0)
@@ -3620,6 +3616,8 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 	ApplyRuntimeMainFrameMenuLocalization(mainMenu);
 	RefreshScriptToolbarViewMenu();
 	RefreshNavigationScriptTree();
+	// Localization above replaced captions after the hotkey rebuild.
+	FillMenuWithHkeys(mainMenu);
 	return true;
 }
 

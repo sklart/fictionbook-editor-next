@@ -67,7 +67,7 @@ try {
     if($exitCode -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw "Document Tree window runtime failed ($Mode), exit=$exitCode`n$text" }
     if(!$TitlesOnly) {
     if(([regex]::Matches($text, '(?m)^marker_text_width_theme_\d+=1\r?$')).Count -ne 2) { throw "Document Tree marker width coverage is missing ($Mode)." }
-    foreach($check in @('section_title_extraction','title_normal_fast_layout','title_source_roundtrip','title_edit_undo_redo','clone_section_caption_undo_redo','title_save_reopen_xml')) {
+    foreach($check in @('toggle_100','section_title_extraction','title_normal_fast_layout','title_source_roundtrip','title_edit_undo_redo','clone_section_caption_undo_redo','title_save_reopen_xml')) {
         if($text -notmatch ('(?m)^' + [regex]::Escape($check) + '=1\r?$')) { throw "Document Tree title coverage is missing ($Mode): $check" }
     }
     }

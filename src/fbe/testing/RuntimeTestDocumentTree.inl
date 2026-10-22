@@ -249,13 +249,32 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
         report.AppendFormat("initial_selected=%u\n", static_cast<unsigned>(originalSelection.size()));
         FBE_TREE_CHECK(originalSelection.size() == 2);
         phase = "expand-window-messages";
-        for(int index = 0; index < 20; ++index) {
+        struct ExpansionProbe {
+            HWND parent,tree;unsigned expanding=0,expanded=0;
+            static LRESULT CALLBACK Observe(HWND window,UINT message,WPARAM wParam,LPARAM lParam,UINT_PTR,DWORD_PTR data) {
+                auto* self=reinterpret_cast<ExpansionProbe*>(data);
+                if(message==WM_NOTIFY) {
+                    const auto* info=reinterpret_cast<const NMHDR*>(lParam);
+                    if(info&&info->hwndFrom==self->tree) {
+                        if(info->code==TVN_ITEMEXPANDING)++self->expanding;
+                        if(info->code==TVN_ITEMEXPANDED)++self->expanded;
+                    }
+                }
+                return ::DefSubclassProc(window,message,wParam,lParam);
+            }
+            ~ExpansionProbe(){::RemoveWindowSubclass(parent,Observe,0x45585052);}
+        } notifications={tree.GetParent(),tree};
+        FBE_TREE_CHECK(::SetWindowSubclass(notifications.parent,ExpansionProbe::Observe,0x45585052,reinterpret_cast<DWORD_PTR>(&notifications))!=FALSE);
+        for(int index = 0; index < 100; ++index) {
+            const unsigned expanding=notifications.expanding, expandedEvents=notifications.expanded;
             const bool expanded = (tree.GetItemState(child, TVIS_EXPANDED) & TVIS_EXPANDED) != 0;
             input(child, index % 3 == 1 ? MK_CONTROL : (index % 3 == 2 ? MK_SHIFT : 0), true);
             FBE_TREE_CHECK(expanded != ((tree.GetItemState(child, TVIS_EXPANDED) & TVIS_EXPANDED) != 0));
             FBE_TREE_CHECK(selected() == originalSelection);
+            FBE_TREE_CHECK(notifications.expanding==expanding+1&&notifications.expanded==expandedEvents+1);
         }
-        report += "toggle_20=1\nbutton_modifiers_selection=1\n";
+        report.AppendFormat("expanding_events=%u\nexpanded_events=%u\n",notifications.expanding,notifications.expanded);
+        report += "toggle_20=1\ntoggle_100=1\nbutton_modifiers_selection=1\n";
         phase = "double-click-button";
         const bool expanded = (tree.GetItemState(child, TVIS_EXPANDED) & TVIS_EXPANDED) != 0;
         input(child, 0, true, WM_LBUTTONDBLCLK);
