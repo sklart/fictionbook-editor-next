@@ -55,7 +55,7 @@ if ($factory -notmatch '(?s)HBITMAP ScaleLegacyToolbarAlphaBitmap\(.*?targetSize
 foreach ($forbidden in @('connectedCanvas', 'edge-connected', 'pending.Enqueue', 'maximum =', 'minimum =')) {
 	if ($factory.Contains($forbidden)) { throw "Table toolbar alpha conversion must not use a brightness or flood-fill heuristic: $forbidden" }
 }
-if ($factory -notmatch '(?s)HWND ToolbarFactory::CreateCommandToolbarCtrl\(.*?UINT dpi.*?CreateCommandToolbarImages\(ownedImages, toolbarResourceId, dpi, baseImageSize\).*?TB_SETIMAGELIST.*?TB_ADDBUTTONS.*?ApplyCommandToolbarMetrics\(window, toolbarResourceId, dpi, baseImageSize\)') {
+if ($factory -notmatch '(?s)HWND ToolbarFactory::CreateCommandToolbarCtrl\(.*?UINT dpi.*?CreateCommandToolbarImages\(ownedImages, toolbarResourceId, dpi, baseImageSize\).*?ApplyCommandToolbarMetrics\(window, toolbarResourceId, dpi, baseImageSize\).*?TB_SETIMAGELIST.*?TB_ADDBUTTONS') {
     throw 'Command toolbar must install its current-DPI owned image list and geometry before adding buttons.'
 }
 if ($factory -notmatch 'CommandToolbarImageSize' -or $factory -notmatch 'CreateCommandToolbarImages' -or $cpp -notmatch 'RebuildCommandToolbarImages\(newDpi\)') {
@@ -79,9 +79,9 @@ foreach ($forbidden in @('TB_ADDBITMAP', 'ImageList_Replace', 'SetDisabledImageL
 }
 if ($bitmapHelper.Value.Contains('maskOneCount')) { throw 'Table toolbar bitmap helper must not retain the redundant mask-one counter.' }
 
-if ($runtimeUi -notmatch '(?s)LRESULT CMainFrame::OnCommandToolbarCustomDraw\(.*?isCommandToolbar\s*=\s*pnmh->hwndFrom == m_CmdToolbar\.m_hWnd.*?isScriptsToolbar\s*=\s*pnmh->hwndFrom == m_ScriptsToolbar\.m_hWnd.*?!isCommandToolbar && !isScriptsToolbar && !isContextAttributeBar.*?isCommandToolbar && IsTableToolbarCommand\(commandId\).*?disabled.*?TB_GETBITMAP.*?DrawThemeParentBackground.*?ILS_SATURATE.*?ImageList_DrawIndirect.*?CDRF_SKIPDEFAULT' -or
+if ($runtimeUi -notmatch '(?s)LRESULT CMainFrame::OnCommandToolbarCustomDraw\(.*?isCommandToolbar\s*=\s*pnmh->hwndFrom == m_CmdToolbar\.m_hWnd.*?isScriptsToolbar\s*=\s*pnmh->hwndFrom == m_ScriptsToolbar\.m_hWnd.*?!isCommandToolbar && !isScriptsToolbar && !isContextAttributeBar.*?isCommandToolbar && \(IsTableToolbarCommand\(commandId\) \|\|.*?commandId == ID_VIEW_DESC \|\| commandId == ID_VIEW_BODY \|\| commandId == ID_VIEW_SOURCE\) &&.*?disabled.*?TB_GETBITMAP.*?DrawThemeParentBackground.*?ILS_SATURATE.*?ImageList_DrawIndirect.*?CDRF_SKIPDEFAULT' -or
     $header -notmatch 'NOTIFY_CODE_HANDLER\(NM_CUSTOMDRAW, OnCommandToolbarCustomDraw\)') {
-    throw 'Table toolbar custom draw must grayscale only disabled table icons with ImageList_DrawIndirect.'
+    throw 'Toolbar custom draw must grayscale disabled table and Description/Body/Source icons with ImageList_DrawIndirect.'
 }
 if ($runtimeUi -notmatch 'ImageList_DrawIndirect\(&draw\) \? CDRF_SKIPDEFAULT : CDRF_DODEFAULT') {
     throw 'Table toolbar custom draw must fall back to native painting when ImageList_DrawIndirect fails.'
