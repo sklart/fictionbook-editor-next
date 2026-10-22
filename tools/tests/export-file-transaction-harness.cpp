@@ -4,7 +4,38 @@
 static bool failRestore = false;
 static BOOL WINAPI PartialReplace(LPCWSTR target, LPCWSTR, LPCWSTR backup, DWORD, LPVOID, LPVOID)
 {
-    if (!::MoveFileExW(target, backup, MOVEFILE_REPLACE_EXISTING)) return FALSE;
+    // Retry fixture setup only while both file identities and contents' metadata
+    // are unchanged. Never retry the injected partial failure or its rollback.
+    const auto snapshot = [](LPCWSTR path, BY_HANDLE_FILE_INFORMATION& info) {
+        HANDLE file = ::CreateFileW(path, FILE_READ_ATTRIBUTES,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 0, NULL);
+        if (file == INVALID_HANDLE_VALUE) return false;
+        const BOOL read = ::GetFileInformationByHandle(file, &info);
+        ::CloseHandle(file);
+        return read != FALSE;
+    };
+    const auto same = [](const BY_HANDLE_FILE_INFORMATION& a, const BY_HANDLE_FILE_INFORMATION& b) {
+        return a.dwVolumeSerialNumber == b.dwVolumeSerialNumber && a.nFileIndexHigh == b.nFileIndexHigh &&
+            a.nFileIndexLow == b.nFileIndexLow && a.dwFileAttributes == b.dwFileAttributes &&
+            a.nFileSizeHigh == b.nFileSizeHigh && a.nFileSizeLow == b.nFileSizeLow &&
+            ::CompareFileTime(&a.ftLastWriteTime, &b.ftLastWriteTime) == 0 &&
+            ::CompareFileTime(&a.ftCreationTime, &b.ftCreationTime) == 0;
+    };
+    BY_HANDLE_FILE_INFORMATION original = {}, reserved = {};
+    const bool captured = snapshot(target, original) && snapshot(backup, reserved);
+    for (unsigned attempt = 0;; ++attempt) {
+        if (::MoveFileExW(target, backup, MOVEFILE_REPLACE_EXISTING)) break;
+        const DWORD error = ::GetLastError();
+        BY_HANDLE_FILE_INFORMATION currentOriginal = {}, currentReserved = {};
+        const DWORD forbidden = FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT;
+        if (attempt == 4 || (error != ERROR_ACCESS_DENIED && error != ERROR_SHARING_VIOLATION && error != ERROR_LOCK_VIOLATION) ||
+            !captured || !snapshot(target, currentOriginal) || !snapshot(backup, currentReserved) ||
+            !same(original, currentOriginal) || !same(reserved, currentReserved) ||
+            (original.dwFileAttributes & forbidden) || (reserved.dwFileAttributes & forbidden)) {
+            ::SetLastError(error); return FALSE;
+        }
+        ::Sleep(10u << attempt); // Total delay: 10 + 20 + 40 + 80 = 150 ms.
+    }
     ::SetLastError(ERROR_UNABLE_TO_MOVE_REPLACEMENT_2);
     return FALSE;
 }
