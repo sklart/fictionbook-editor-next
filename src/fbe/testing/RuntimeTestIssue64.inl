@@ -109,6 +109,20 @@ LRESULT CMainFrame::RunIssue64Runtime(CAtlFile& output) {
             return ::DefSubclassProc(window,message,w,l);
         }
     };
+    struct RejectRestore {
+        HIMAGELIST previous; int mode; bool triggered=false; bool assigned=false;
+        static LRESULT CALLBACK Proc(HWND window,UINT message,WPARAM w,LPARAM l,UINT_PTR,DWORD_PTR data) {
+            auto& state=*reinterpret_cast<RejectRestore*>(data);
+            if(message==TB_SETIMAGELIST) {
+                if(state.mode==0&&!l&&!state.triggered) {state.triggered=true;return ::SendMessage(window,TB_GETIMAGELIST,0,0);}
+                if(state.mode>0&&l&&reinterpret_cast<HIMAGELIST>(l)!=state.previous)state.assigned=true;
+                if(state.mode>0&&state.triggered&&(reinterpret_cast<HIMAGELIST>(l)==state.previous||(state.mode==2&&!l)))
+                    return ::SendMessage(window,TB_GETIMAGELIST,0,0);
+            }
+            if(state.mode>0&&state.assigned&&!state.triggered&&message==TB_SETBUTTONINFOW) {state.triggered=true;return FALSE;}
+            return ::DefSubclassProc(window,message,w,l);
+        }
+    };
         HWND tooltip=::CreateWindowExW(WS_EX_TOPMOST,TOOLTIPS_CLASSW,NULL,WS_POPUP|TTS_ALWAYSTIP|TTS_NOPREFIX,0,0,0,0,m_hWnd,NULL,_Module.GetModuleInstance(),NULL);
         MSG pending={};while(::PeekMessageW(&pending,NULL,WM_APP+0x147,WM_APP+0x147,PM_REMOVE))::DispatchMessageW(&pending);
         check("tooltip_created_automatically_themed",tooltip&&::GetPropW(tooltip,L"FBE.AppliedThemeGeneration")!=NULL);
@@ -153,6 +167,22 @@ LRESULT CMainFrame::RunIssue64Runtime(CAtlFile& output) {
             ::SendMessage(tooltip,WM_SETFONT,reinterpret_cast<WPARAM>(oldFont),TRUE);if(tipFont)::DeleteObject(tipFont);
             ::SendMessageW(tooltip,TTM_DELTOOLW,0,reinterpret_cast<LPARAM>(&tool));
         }
+        // Controlled HWND/font metrics, not a change to the monitor's DPI.
+        for(UINT labelDpi:{96u,120u,144u,192u}) {
+            const int scale=static_cast<int>(labelDpi);
+            HWND panel=::CreateWindowExW(WS_EX_TOOLWINDOW,L"#32770",L"",WS_POPUP,0,0,::MulDiv(440,scale,96),::MulDiv(195,scale,96),m_hWnd,NULL,_Module.GetModuleInstance(),NULL);
+            HFONT font=UiMetrics::CreateDialogFontForDpi(labelDpi);
+            int row=0;
+            for(DWORD style:{DWORD(SS_LEFT),DWORD(SS_CENTER),DWORD(SS_RIGHT),DWORD(SS_LEFT|SS_CENTERIMAGE),DWORD(SS_LEFT|SS_NOPREFIX)}) {
+                HWND label=::CreateWindowExW(0,L"STATIC",L"&Long disabled label / Длинная отключённая подпись: структура документа",WS_CHILD|WS_VISIBLE|WS_DISABLED|style,::MulDiv(8,scale,96),::MulDiv(5+row*38,scale,96),::MulDiv(420,scale,96),::MulDiv(36,scale,96),panel,NULL,_Module.GetModuleInstance(),NULL);
+                ::SendMessage(label,WM_SETFONT,reinterpret_cast<WPARAM>(font),FALSE);++row;
+            }
+            ThemeManager::ApplyToWindow(panel);
+            PluginOptionsProbe::prefix=L"disabled-theme"+std::to_wstring(theme)+L"-dpi"+std::to_wstring(labelDpi);
+            ::ShowWindow(panel,SW_SHOWNOACTIVATE);
+            check("disabled_label_capture",PluginOptionsProbe::Capture(panel,L"alignment"));
+            ::DestroyWindow(panel);if(font)::DeleteObject(font);
+        }
         for(int plugin=-2;plugin<4;++plugin) {
             PluginOptionsProbe::dialog=NULL;PluginOptionsProbe::failedLine=0;
             PluginOptionsProbe::prefix=L"issue64-theme"+std::to_wstring(theme)+L"-plugin"+std::to_wstring(plugin);
@@ -184,6 +214,9 @@ LRESULT CMainFrame::RunIssue64Runtime(CAtlFile& output) {
             m_CmdToolbar.SendMessage(TB_SETSTATE,ID_EDIT_SUP,TBSTATE_ENABLED|TBSTATE_PRESSED);
             m_CmdToolbar.SendMessage(TB_SETSTATE,ID_EDIT_SUB,TBSTATE_ENABLED);
             std::vector<TBBUTTON> beforeButtons;for(int i=0;i<m_CmdToolbar.GetButtonCount();++i){TBBUTTON b={};m_CmdToolbar.GetButton(i,&b);beforeButtons.push_back(b);}
+            RECT beforeBounds={};m_CmdToolbar.GetWindowRect(&beforeBounds);
+            int savedBandIndex=-1;REBARBANDINFO savedBand={};savedBand.cbSize=sizeof(savedBand);savedBand.fMask=RBBIM_CHILD|RBBIM_CHILDSIZE;
+            for(int i=0;i<static_cast<int>(m_rebar.GetBandCount());++i)if(m_rebar.GetBandInfo(i,&savedBand)&&savedBand.hwndChild==m_CmdToolbar){savedBandIndex=i;break;}
             const DWORD beforeGdi=::GetGuiResources(::GetCurrentProcess(),GR_GDIOBJECTS);
             for(int fault=0;fault<3;++fault){
                 bool reject=fault==2;if(reject)::SetWindowSubclass(m_CmdToolbar,RejectList::Proc,0x6401,reinterpret_cast<DWORD_PTR>(&reject));
@@ -192,7 +225,24 @@ LRESULT CMainFrame::RunIssue64Runtime(CAtlFile& output) {
                 ToolbarFactory::RebuildFailurePoint()=ToolbarFactory::RebuildFailure::None;::RemoveWindowSubclass(m_CmdToolbar,RejectList::Proc,0x6401);
                 check("image_list_failure_rollback",!rebuilt&&m_CmdToolbar.GetImageList()==accepted&&static_cast<HIMAGELIST>(m_commandToolbarImages)==accepted&&m_CmdToolbar.SendMessage(TB_GETBUTTONSIZE)==buttonSize&&::GetPropW(m_CmdToolbar,L"FBE.Toolbar.DarkImages")==imageTheme);
                 bool same=true;for(size_t i=0;i<beforeButtons.size();++i){TBBUTTON b={};m_CmdToolbar.GetButton(static_cast<int>(i),&b);same=same&&b.fsState==beforeButtons[i].fsState&&b.iBitmap==beforeButtons[i].iBitmap;}
+                RECT bounds={};m_CmdToolbar.GetWindowRect(&bounds);check("rollback_toolbar_bounds",::EqualRect(&bounds,&beforeBounds)!=FALSE);
+                REBARBANDINFO band=savedBand;
+                check("rollback_rebar_metrics",savedBandIndex>=0&&m_rebar.GetBandInfo(savedBandIndex,&band)&&band.cyMinChild==savedBand.cyMinChild&&band.cyChild==savedBand.cyChild&&band.cyMaxChild==savedBand.cyMaxChild&&band.cxMinChild==savedBand.cxMinChild&&band.cyIntegral==savedBand.cyIntegral);
                 check("rollback_button_states",same);check("rollback_no_gdi_leak",::GetGuiResources(::GetCurrentProcess(),GR_GDIOBJECTS)==beforeGdi);
+            }
+
+            for(int failure=0;failure<3;++failure) {
+                RejectRestore refusal={m_CmdToolbar.GetImageList(),failure};
+                const DWORD resources=::GetGuiResources(::GetCurrentProcess(),GR_GDIOBJECTS);
+                ::SetWindowSubclass(m_CmdToolbar,RejectRestore::Proc,0x6402,reinterpret_cast<DWORD_PTR>(&refusal));
+                const bool rebuilt=RebuildCommandToolbarImages(dpi==192?96:192);
+                ::RemoveWindowSubclass(m_CmdToolbar,RejectRestore::Proc,0x6402);
+                check("restore_refusal_triggered",refusal.triggered&&!rebuilt);
+                const HIMAGELIST bound=m_CmdToolbar.GetImageList();
+                check("restore_refusal_safe_ownership",!bound||(bound==static_cast<HIMAGELIST>(m_commandToolbarImages)&&::ImageList_GetImageCount(bound)>0));
+                check("restore_refusal_diagnosed",failure==0?bound==refusal.previous : ::GetPropW(m_CmdToolbar,L"FBE.Toolbar.ImageRestoreFailed")!=NULL);
+                check("restore_refusal_recovery",RebuildCommandToolbarImages(dpi)&&!::GetPropW(m_CmdToolbar,L"FBE.Toolbar.ImageRestoreFailed"));
+                check("restore_refusal_no_gdi_leak",::GetGuiResources(::GetCurrentProcess(),GR_GDIOBJECTS)==resources);
             }
 
             for(const auto& state:originalStates)m_CmdToolbar.SendMessage(TB_SETSTATE,state.first,state.second);

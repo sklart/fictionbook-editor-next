@@ -51,6 +51,13 @@ try {
     $settings = $settings.Replace('<DocumentTreeScripts>false</DocumentTreeScripts>', '<DocumentTreeScripts>true</DocumentTreeScripts>')
     if ($settings -notmatch '<InterfaceTheme>0</InterfaceTheme>') { throw 'Settings fixture has no automatic theme.' }
     $settings = $settings.Replace('<InterfaceTheme>0</InterfaceTheme>', "<InterfaceTheme>$Theme</InterfaceTheme>")
+    # This test covers startup navigation visibility, not catalog-scan throughput.
+    # Keep a real script, but avoid making its 15-second visibility deadline
+    # depend on the hundreds of unrelated bundled scripts on a developer host.
+    $scripts = Join-Path $isolation.Root 'NavigationProbeScripts'
+    New-Item -ItemType Directory -Path $scripts | Out-Null
+    [IO.File]::WriteAllText((Join-Path $scripts 'Probe.js'), 'function Run() {}', [Text.UTF8Encoding]::new($false))
+    $settings = $settings.Replace('</Settings>', ('<ScriptsFolder>' + [Security.SecurityElement]::Escape($scripts) + '</ScriptsFolder></Settings>'))
     [IO.File]::WriteAllText($source, $settings, [Text.UTF8Encoding]::new($false))
     $fixture = (Resolve-Path (Join-Path $PSScriptRoot 'fb2-validate-valid-smoke.fb2')).Path
     $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('--portable', ('"' + $fixture + '"')) -PassThru

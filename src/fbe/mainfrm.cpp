@@ -1,4 +1,4 @@
-// MainFrm.cpp : implmentation of the CMainFrame class
+﻿// MainFrm.cpp : implmentation of the CMainFrame class
 //
 /////////////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
@@ -4484,27 +4484,36 @@ bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
     }
     auto rollback=[&]() {
         m_CmdToolbar.SetImageList(NULL);
-        m_CmdToolbar.SendMessage(TB_SETBITMAPSIZE,0,MAKELPARAM(oldWidth,oldHeight));
-        m_CmdToolbar.SendMessage(TB_SETBUTTONSIZE,0,oldButtonSize);
+        const bool detached=m_CmdToolbar.GetImageList()==NULL;
+        bool restored=detached;
+        if(detached) {
+            restored=(m_CmdToolbar.SendMessage(TB_SETBITMAPSIZE,0,MAKELPARAM(oldWidth,oldHeight))!=FALSE)&&restored;
+            restored=(m_CmdToolbar.SendMessage(TB_SETBUTTONSIZE,0,oldButtonSize)!=FALSE)&&restored;
+        }
         m_CmdToolbar.SetImageList(previous);
+        restored=(m_CmdToolbar.GetImageList()==previous)&&restored;
         for(const auto& button:buttons) if(!(button.fsStyle&BTNS_SEP)) {
             TBBUTTONINFO info={};info.cbSize=sizeof(info);info.dwMask=TBIF_IMAGE|TBIF_STATE;info.iImage=button.iBitmap;info.fsState=button.fsState;
-            m_CmdToolbar.SetButtonInfo(button.idCommand,&info);
+            restored=(m_CmdToolbar.SetButtonInfo(button.idCommand,&info)!=FALSE)&&restored;
         }
-        if(bandIndex>=0) {oldBand.fMask=RBBIM_CHILDSIZE;m_rebar.SetBandInfo(bandIndex,&oldBand);m_rebar.SendMessage(WM_SIZE);}
-        m_CmdToolbar.SetWindowPos(NULL,oldBounds.left,oldBounds.top,oldBounds.right-oldBounds.left,oldBounds.bottom-oldBounds.top,SWP_NOZORDER|SWP_NOACTIVATE);
-        // If the HWND stopped accepting restoration, retain ownership of any
-        // replacement it still references rather than free a bound image list.
-        if(m_CmdToolbar.IsWindow()&&m_CmdToolbar.GetImageList()==next) {
+        if(bandIndex>=0) {oldBand.fMask=RBBIM_CHILDSIZE;restored=(m_rebar.SetBandInfo(bandIndex,&oldBand)!=FALSE)&&restored;m_rebar.SendMessage(WM_SIZE);}
+        restored=(m_CmdToolbar.SetWindowPos(NULL,oldBounds.left,oldBounds.top,oldBounds.right-oldBounds.left,oldBounds.bottom-oldBounds.top,SWP_NOZORDER|SWP_NOACTIVATE)!=FALSE)&&restored;
+        // Only the HWND's read-back determines which owned list must survive.
+        // Never destroy a replacement still referenced by the native control.
+        if(m_CmdToolbar.GetImageList()==next) {
             m_commandToolbarImages.Destroy();m_commandToolbarImages.Attach(replacement.Detach());
+        }
+        if(!restored) {
             ::RemovePropW(m_CmdToolbar,L"FBE.Toolbar.DarkImages");
+            ::SetPropW(m_CmdToolbar,L"FBE.Toolbar.ImageRestoreFailed",reinterpret_cast<HANDLE>(1));
+            StartupTrace::Error(L"toolbar",L"TB235",L"command toolbar rollback rejected; bound image list retained safely");
         }
         m_CmdToolbar.Invalidate();return false;
     };
     // Detach before TB_SETBITMAPSIZE, which can replace the control's internal
     // image storage. Read back TB_GETIMAGELIST; TB_SETIMAGELIST returns the OLD list.
     m_CmdToolbar.SetImageList(NULL);
-    if(m_CmdToolbar.GetImageList()!=NULL) return false;
+    if(m_CmdToolbar.GetImageList()!=NULL) return rollback();
     ToolbarFactory::ApplyCommandToolbarMetrics(m_CmdToolbar,IDR_MAINFRAME,dpi);
     m_CmdToolbar.SetImageList(next);
     if(m_CmdToolbar.GetImageList()!=next) return rollback();
@@ -4523,6 +4532,7 @@ bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
         m_rebar.SendMessage(WM_SIZE);
     }
     if(!::SetPropW(m_CmdToolbar,L"FBE.Toolbar.DarkImages",reinterpret_cast<HANDLE>(ThemeManager::IsDark()&&!ThemeManager::IsHighContrast()?2:1)))return rollback();
+    ::RemovePropW(m_CmdToolbar,L"FBE.Toolbar.ImageRestoreFailed");
     m_commandToolbarImages.Detach();m_commandToolbarImages.Attach(replacement.Detach());
     if(oldImages) ::ImageList_Destroy(oldImages);
     for(size_t i=0;i<kTableToolbarCommandCount;++i)m_table_toolbar_image_indices[i]=imageIndices[i];

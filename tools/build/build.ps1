@@ -535,3 +535,10 @@ if ($true) {
 }
 
 Assert-TrackedEditorRuntimeDllSnapshot -RepositoryRoot $repoRoot -Snapshot $trackedEditorRuntimeSnapshot
+
+# Both sets are produced by this authoritative build. A direct build followed
+# by verify-release must not depend on a manifest from an earlier packaging run.
+& (Join-Path $repoRoot 'tools\build\build-provenance.ps1') -Action Write -Kind Runtime `
+    -Configuration $Configuration -ProfileDirectory $editorRuntimeDirectory `
+    -BatchDirectory $(if ($BatchOutputDirectory) { $BatchOutputDirectory } else { Join-Path $repoRoot "out\$Configuration" }) `
+    -PlatformToolset $PlatformToolset
