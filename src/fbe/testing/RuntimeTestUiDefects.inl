@@ -46,6 +46,7 @@ if (IsFbeTestScenario(L"ui-defects-runtime")) {
     HMENU tools=toolsMenu();
     auto metadata=[&]() {MENUITEMINFO info={};info.cbSize=sizeof(info);info.fMask=MIIM_BITMAP|MIIM_STATE|MIIM_ID|MIIM_FTYPE|MIIM_DATA|MIIM_SUBMENU;check("refresh_metadata_read",::GetMenuItemInfoW(tools,ID_TOOLS_REFRESH_SCRIPTS,FALSE,&info)!=FALSE);return info;};
     const auto original=metadata();
+#include "RuntimeTestMenuBitmapLifetime.inl"
 #include "RuntimeTestMainMenu.inl"
     showTools(tools,L"startup");
     {
@@ -114,5 +115,6 @@ if (IsFbeTestScenario(L"ui-defects-runtime")) {
     toolsMenu();check("refresh_without_book",!(::GetMenuState(tools,ID_TOOLS_REFRESH_SCRIPTS,MF_BYCOMMAND)&MF_GRAYED));
     PluginOptionsProbe::dialog=m_hWnd;showTools(tools,L"closed");
     route(5,L"closed-commandbar");::RemovePropW(m_hWnd,L"FBE.MenuRoute");::RemoveWindowSubclass(m_hWnd,MenuRouteProbe::Commands,0x4d525450);
+    ::RemoveWindowSubclass(m_MenuBar,MenuRouteProbe::MenuLoop,0x4d524c50);::RemoveWindowSubclass(m_MenuBar.GetParent(),MenuRouteProbe::MenuLoop,0x4d524c50);
     report.AppendFormat("result=%s\n",passed?"PASS":"FAIL");DWORD written=0;output.Write(report,report.GetLength(),&written);output.Close();::PostQuitMessage(passed?0:1);return 0;
 }

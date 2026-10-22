@@ -19,6 +19,7 @@ HBRUSH g_windowBrush = NULL;
 HBRUSH g_controlBrush = NULL;
 HBRUSH g_brushes[THEME_COLOR_COUNT] = {};
 std::map<UINT, HBITMAP> g_nativeMenuBitmaps;
+ULONGLONG g_nativeMenuGeneration = 0;
 const wchar_t kAppliedThemeGenerationProperty[] = L"FBE.AppliedThemeGeneration";
 const wchar_t kNativeFileDialogProperty[] = L"FBE.NativeFileDialog";
 const wchar_t kOwnedWindowProperty[] = L"FBE.OwnedWindow";
@@ -75,7 +76,7 @@ void AdvanceThemeGeneration()
 // owner-draw conversion (the editor deliberately disables Vista menus).
 class ScopedNativeMenuBitmaps
 {
-	struct Saved { HMENU menu; int position; UINT command; HBITMAP bitmap; };
+	struct Saved { HMENU menu; int position; UINT command; HBITMAP bitmap, applied; ULONGLONG generation; };
 	std::vector<Saved> m_saved;
 public:
 	void Apply(HMENU menu)
@@ -90,8 +91,12 @@ public:
 				MENUITEMINFO info = {}; info.cbSize = sizeof(info); info.fMask = MIIM_BITMAP | MIIM_FTYPE;
 				if(::GetMenuItemInfo(menu, index, TRUE, &info) && !(info.fType & MFT_OWNERDRAW))
 				{
-					m_saved.push_back({menu, index, command, info.hbmpItem});
-					info.fMask = MIIM_BITMAP; info.hbmpItem = bitmap->second;
+					// A script refresh can destroy the caller-owned source while a
+					// popup is running. Keep the displayed pixels alive independently.
+					CBitmap copy(static_cast<HBITMAP>(::CopyImage(bitmap->second, IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION)));
+					if(copy.IsNull()) continue;
+					m_saved.push_back({menu, index, command, info.hbmpItem, copy, g_nativeMenuGeneration});
+					info.fMask = MIIM_BITMAP; info.hbmpItem = copy.Detach();
 					::SetMenuItemInfo(menu, index, TRUE, &info);
 				}
 			}
@@ -102,10 +107,18 @@ public:
 	{
 		for(const auto& saved : m_saved)
 		{
-			// A callback may have rebuilt a submenu. Never restore into another item.
-			if(!::IsMenu(saved.menu) || ::GetMenuItemID(saved.menu, saved.position) != saved.command) continue;
-			MENUITEMINFO info = {}; info.cbSize = sizeof(info); info.fMask = MIIM_BITMAP; info.hbmpItem = saved.bitmap;
-			::SetMenuItemInfo(saved.menu, saved.position, TRUE, &info);
+			// A callback may rebuild a submenu or replace an item's bitmap.
+			MENUITEMINFO info = {}; info.cbSize = sizeof(info); info.fMask = MIIM_BITMAP | MIIM_ID;
+			if(::IsMenu(saved.menu) && ::GetMenuItemInfo(saved.menu, saved.position, TRUE, &info) &&
+				info.wID == saved.command && info.hbmpItem == saved.applied)
+			{
+				const INT_PTR value = reinterpret_cast<INT_PTR>(saved.bitmap);
+				const bool predefined = value >= -1 && value <= reinterpret_cast<INT_PTR>(HBMMENU_POPUP_MINIMIZE);
+				const bool alive = predefined || (saved.generation == g_nativeMenuGeneration && ::GetObjectType(saved.bitmap) == OBJ_BITMAP);
+				info.fMask = MIIM_BITMAP; info.hbmpItem = alive ? saved.bitmap : NULL;
+				::SetMenuItemInfo(saved.menu, saved.position, TRUE, &info);
+			}
+			::DeleteObject(saved.applied);
 		}
 	}
 };
@@ -1270,12 +1283,12 @@ UINT TrackPopupMenu(HMENU menu, UINT flags, int x, int y, HWND owner)
 
 void RegisterNativeMenuBitmap(UINT command, HBITMAP bitmap)
 {
-	if(command != 0 && bitmap != NULL) g_nativeMenuBitmaps[command] = bitmap;
+	if(command != 0 && bitmap != NULL) { g_nativeMenuBitmaps[command] = bitmap; ++g_nativeMenuGeneration; }
 }
 
 void UnregisterNativeMenuBitmap(UINT command)
 {
-	g_nativeMenuBitmaps.erase(command);
+	if(g_nativeMenuBitmaps.erase(command)) ++g_nativeMenuGeneration;
 }
 
 int MessageBox(HWND owner, LPCWSTR message, LPCWSTR caption, UINT type)
