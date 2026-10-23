@@ -181,7 +181,7 @@ private:
 	int m_current_tab;
 	CString m_title;
 	WTL::CToolBarCtrl m_mode_button;
-	WTL::CImageList m_mode_images;
+	WTL::CImageListManaged m_mode_images;
 
 
 public:

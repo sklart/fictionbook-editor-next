@@ -70,7 +70,7 @@ HBITMAP CreateDocumentTreeMenuCheckmarkBitmap(UINT dpi, bool checked)
 	return bitmap;
 }
 
-bool AddDocumentTreeModeImage(CImageList& images, UINT resourceId)
+bool AddDocumentTreeModeImage(HIMAGELIST images, UINT resourceId)
 {
 	HIMAGELIST source = ::ImageList_LoadImage(_Module.GetResourceInstance(), MAKEINTRESOURCE(resourceId), 16, 1,
 		RGB(255, 0, 255), IMAGE_BITMAP, LR_CREATEDIBSECTION);
@@ -1222,6 +1222,8 @@ LRESULT CDocumentTree::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CDocumentTree::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
+	if(m_mode_button.IsWindow()) m_mode_button.SetImageList(NULL);
+	if(!m_mode_images.IsNull()) m_mode_images.Destroy();
 	bHandled=FALSE;
 	return 0;
 }
