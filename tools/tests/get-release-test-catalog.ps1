@@ -11,13 +11,18 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $verifyPath = Join-Path $repoRoot 'tools\build\verify-release.ps1'
 $lines = Get-Content -LiteralPath $verifyPath
+$sourceLocations = @(for ($sourceIndex=0; $sourceIndex -lt $lines.Count; ++$sourceIndex) { @{path='tools/build/verify-release.ps1'; line=$sourceIndex+1} })
 # FULL also consumes the workflow's canonical lifecycle/API matrices. Include
 # their real commands rather than claiming the local verifier covers them by name.
 $lines += 'if ($FullValidation) {'
+$sourceLocations += $null
 foreach ($suite in (& (Join-Path $PSScriptRoot 'get-required-ci-runtime-suites.ps1'))) {
-    $lines += ($suite.Command.Replace('tools/tests/', 'tools\tests\') -split '\r?\n')
+    $suiteLines = @($suite.Command.Replace('tools/tests/', 'tools\tests\') -split '\r?\n')
+    $lines += $suiteLines
+    $sourceLocations += @(for ($suiteLine=0; $suiteLine -lt $suiteLines.Count; ++$suiteLine) { @{path='.github/workflows/build.yml'; line=$suite.SourceLine+$suiteLine} })
 }
 $lines += '}'
+$sourceLocations += $null
 $entries = @{}
 $tableDepth = 0
 $fullDepth = 0
@@ -32,6 +37,7 @@ function Get-Component([string]$FileName) {
 
 for ($index = 0; $index -lt $lines.Count; $index++) {
     $line = $lines[$index]
+    $commandLocation = $sourceLocations[$index]
     # A release invocation may deliberately span physical lines for readability.
     # Catalog its complete PowerShell command, not merely its first line.
     while ($line.TrimEnd().EndsWith('`') -and $index + 1 -lt $lines.Count) {
@@ -72,7 +78,7 @@ for ($index = 0; $index -lt $lines.Count; $index++) {
         if ($name -match 'pcre2|scintilla|image-import-native|plugin-v2') {
             $entry.requirements = @($entry.requirements + 'native-toolchain' | Where-Object { $_ } | Select-Object -Unique)
         }
-        $entry.invocations += [pscustomobject][ordered]@{ line = $index + 1; command = $line.Trim() }
+        $entry.invocations += [pscustomobject][ordered]@{ source = $commandLocation.path; line = $commandLocation.line; command = $line.Trim() }
     }
     if ($line -match '^\s*foreach \(\$commandRouteOperation in @\((?<operations>[^)]*)\)\)') {
         $operations = [regex]::Matches($Matches.operations, "'(?<operation>[^']+)'") | ForEach-Object { $_.Groups['operation'].Value }

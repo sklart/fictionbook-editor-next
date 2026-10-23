@@ -16,5 +16,7 @@ foreach ($id in $required.Keys) {
     $run = [regex]::Match($match.Groups['step'].Value, '(?ms)^        run: \|\r?\n(?<body>(?:          .*\r?\n|\r?\n)+)')
     if (!$match.Success -or !$run.Success) { throw "Missing required CI runtime matrix: $id" }
     $body = [regex]::Replace($run.Groups['body'].Value, '(?m)^          ', '').Replace("`r`n", "`n").TrimEnd() + "`n"
-    [pscustomobject]@{ Id=$id; Name=$required[$id]; Command=$body; RequiresGitHubHosted=($id -eq 'clipboard-ole') }
+    $bodyOffset = $match.Groups['step'].Index + $run.Groups['body'].Index
+    $sourceLine = [regex]::Matches($workflow.Substring(0, $bodyOffset), '\n').Count + 1
+    [pscustomobject]@{ Id=$id; Name=$required[$id]; Command=$body; SourceLine=$sourceLine; RequiresGitHubHosted=($id -eq 'clipboard-ole') }
 }

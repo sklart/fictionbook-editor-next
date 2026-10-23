@@ -27,6 +27,12 @@ foreach ($id in @('release.fbe-file-close-runtime', 'release.fbe-new-document-sa
     }
 }
 $requiredSuites = @(& (Join-Path $PSScriptRoot 'get-required-ci-runtime-suites.ps1'))
+$workflowLines=Get-Content (Join-Path $repoRoot '.github/workflows/build.yml')
+foreach($invocation in ($fullProfile.tests | Where-Object id -eq 'release.fbe-file-close-runtime').invocations) {
+    if ($invocation.source -ne '.github/workflows/build.yml' -or $workflowLines[$invocation.line-1] -notmatch 'test-fbe-file-close-runtime.ps1') {
+        throw 'Shared runtime catalog must preserve real workflow source locations.'
+    }
+}
 if ($requiredSuites.Count -ne 4 -or @($requiredSuites | Where-Object RequiresGitHubHosted).Count -ne 1) {
     throw 'Required runtime matrix/isolated OLE constraints are incomplete.'
 }

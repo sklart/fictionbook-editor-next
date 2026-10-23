@@ -2,7 +2,9 @@
 param()
 $ErrorActionPreference = 'Stop'
 $suites = @(& (Join-Path $PSScriptRoot 'get-required-ci-runtime-suites.ps1'))
+$workflowLines=Get-Content (Join-Path $PSScriptRoot '../../.github/workflows/build.yml')
 foreach ($suite in $suites) {
+    if ($workflowLines[$suite.SourceLine-1].Trim() -ne './tools/build/Initialize-CiUtf8.ps1') { throw "Invalid workflow source location: $($suite.Id)" }
     $tokens=$null; $errors=$null
     $null=[Management.Automation.Language.Parser]::ParseInput($suite.Command,[ref]$tokens,[ref]$errors)
     if ($errors.Count) { throw "Invalid shared CI command: $($suite.Id)" }
