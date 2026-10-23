@@ -3425,7 +3425,8 @@ static CString CrossParagraphReplacementError()
 
 void  CFBEView::DoReplace() {
   bool replaced = false;
-  bool undoStarted = false;
+  std::unique_ptr<FbeDom::MarkupUndoUnitScope> undo;
+  _com_error failure(S_OK);
   try {
     MSHTML::IHTMLTxtRangePtr  sel(Document()->selection->createRange());
     if (!(bool)sel)
@@ -3445,15 +3446,13 @@ void  CFBEView::DoReplace() {
 	  const bool zeroLengthNoOp = m_fo.match->Length == 0 && rep.IsEmpty() && rl.empty();
 	  if (!zeroLengthNoOp)
 	  {
-		m_mk_srv->BeginUndoUnit(L"replace");
-		undoStarted = true;
+		undo.reset(new FbeDom::MarkupUndoUnitScope(m_mk_srv, L"replace"));
 		sel->text=(const wchar_t *)rep;
 		replaced = true;
 		ApplyReplacementFormatting(sel, rep, rl);
 	  }
     } else { // plain text
-	  m_mk_srv->BeginUndoUnit(L"replace");
-	  undoStarted = true;
+	  undo.reset(new FbeDom::MarkupUndoUnitScope(m_mk_srv, L"replace"));
       sel->text=(const wchar_t *)m_fo.replacement;
       replaced = true;
       adv=m_fo.replacement.GetLength();
@@ -3465,8 +3464,15 @@ void  CFBEView::DoReplace() {
 	}
   }
   catch (_com_error& e) {
-    U::ReportError(e);
+    failure = e;
   }
+  catch (const std::bad_alloc&) { failure = _com_error(E_OUTOFMEMORY); }
+  catch (const ATL::CAtlException& e) { failure = _com_error(e.m_hr); }
+  if (undo) {
+    try { undo->Close(); }
+    catch (_com_error& e) { failure = e; }
+  }
+  undo.reset();
   if (replaced)
   {
     // Replacement changes MSHTML text synchronously, while RANGE_SINK may be
@@ -3474,8 +3480,7 @@ void  CFBEView::DoReplace() {
     m_fo.ClearMatch();
     AdvanceSearchDocumentGeneration();
   }
-  if (undoStarted)
-    m_mk_srv->EndUndoUnit();
+  if (FAILED(failure.Error())) U::ReportError(failure);
 }
 
 int CFBEView::ReplaceAllSearchCore(CString* errorText)
@@ -3545,7 +3550,13 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 
 	int replaced = 0;
 	bool mutationApplied = false;
-	bool undoStarted = false;
+	struct ControlledMutationScope
+	{
+		DesignSearchController& search;
+		~ControlledMutationScope() { search.SetControlledReplaceAllMutation(false); }
+	} controlledMutation{ m_design_search };
+	std::unique_ptr<FbeDom::MarkupUndoUnitScope> undo;
+	HRESULT failure = S_OK;
 	// MSHTML notifies RANGE_SINK for every individual assignment below.  Those
 	// notifications are part of this one controlled operation; invalidate once
 	// after EndUndoUnit instead of repeatedly clearing the completion status.
@@ -3582,10 +3593,9 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 			const bool zeroLengthNoOp = result->Hit.Length == 0 && replacement.IsEmpty() && formatting.empty();
 			if (zeroLengthNoOp)
 				continue;
-			if (!undoStarted)
+			if (!undo)
 			{
-				m_mk_srv->BeginUndoUnit(L"replace all");
-				undoStarted = true;
+				undo.reset(new FbeDom::MarkupUndoUnitScope(m_mk_srv, L"replace all"));
 			}
 			ranges[index]->text = static_cast<LPCWSTR>(replacement);
 			mutationApplied = true;
@@ -3596,17 +3606,30 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	}
 	catch (const _com_error& error)
 	{
-		if (undoStarted)
-			m_mk_srv->EndUndoUnit();
+		failure = error.Error();
+	}
+	catch (const std::bad_alloc&)
+	{
+		failure = E_OUTOFMEMORY;
+	}
+	catch (const ATL::CAtlException& error)
+	{
+		failure = error.m_hr;
+	}
+	if (undo)
+	{
+		try { undo->Close(); }
+		catch (const _com_error& error) { failure = error.Error(); }
+	}
+	if (FAILED(failure))
+	{
 		m_design_search.SetControlledReplaceAllMutation(false);
 		if (mutationApplied)
 			AdvanceSearchDocumentGeneration();
 		if (errorText != NULL)
-			*errorText = error.ErrorMessage();
+			*errorText = _com_error(failure).ErrorMessage();
 		return -1;
 	}
-	if (undoStarted)
-		m_mk_srv->EndUndoUnit();
 	m_fo.ClearMatch();
 	m_design_search.ClearReplacePreview();
 	if (replaced != 0)
@@ -3630,8 +3653,10 @@ int CFBEView::GlobalReplace(MSHTML::IHTMLElementPtr elem, CString cntTag)
 	UNREFERENCED_PARAMETER(cntTag); // retained for the public Tools API signature
 	if (m_fo.pattern.IsEmpty() || !Document())
 		return 0;
-	bool undoStarted = false;
+	std::unique_ptr<FbeDom::MarkupUndoUnitScope> undo;
 	bool mutationApplied = false;
+	int replaced = 0;
+	_com_error failure(S_OK);
 	try
 	{
 		const std::uint64_t generation = SearchDocumentGeneration();
@@ -3669,7 +3694,6 @@ int CFBEView::GlobalReplace(MSHTML::IHTMLElementPtr elem, CString cntTag)
 			if (!m_design_search.Coordinator().CreateResultRange(Document(), generation, index, ranges[index]) || !ranges[index])
 				return 0;
 
-		int replaced = 0;
 		const AU::Search::SearchTextSnapshot& snapshot = m_design_search.Coordinator().GetSnapshot();
 		for (std::size_t index = count; index-- > 0;)
 		{
@@ -3696,33 +3720,36 @@ int CFBEView::GlobalReplace(MSHTML::IHTMLElementPtr elem, CString cntTag)
 			const bool zeroLengthNoOp = result->Hit.Length == 0 && replacement.IsEmpty() && formatting.empty();
 			if (zeroLengthNoOp)
 				continue;
-			if (!undoStarted)
+			if (!undo)
 			{
-				m_mk_srv->BeginUndoUnit(L"replace");
-				undoStarted = true;
+				undo.reset(new FbeDom::MarkupUndoUnitScope(m_mk_srv, L"replace"));
 			}
 			ranges[index]->text = static_cast<LPCWSTR>(replacement);
 			mutationApplied = true;
 			if (m_fo.fRegexp) ApplyReplacementFormatting(ranges[index], replacement, formatting);
 			++replaced;
 		}
-		if (undoStarted)
-		{
-			m_mk_srv->EndUndoUnit();
-			undoStarted = false;
-		}
-		if (mutationApplied)
-			AdvanceSearchDocumentGeneration();
-		return replaced;
 	}
 	catch (_com_error& err)
 	{
-		if (undoStarted) m_mk_srv->EndUndoUnit();
-		if (mutationApplied)
-			AdvanceSearchDocumentGeneration();
-		U::ReportError(err);
+		failure = err;
 	}
-	return 0;
+	catch (const std::bad_alloc&) { failure = _com_error(E_OUTOFMEMORY); }
+	catch (const ATL::CAtlException& err) { failure = _com_error(err.m_hr); }
+	if (undo)
+	{
+		try { undo->Close(); }
+		catch (_com_error& err) { failure = err; }
+	}
+	undo.reset();
+	if (mutationApplied)
+		AdvanceSearchDocumentGeneration();
+	if (FAILED(failure.Error()))
+	{
+		U::ReportError(failure);
+		return 0;
+	}
+	return replaced;
 }
 
 int CFBEView::ToolWordsGlobalReplace(	MSHTML::IHTMLElementPtr fbw_body,

@@ -44,7 +44,7 @@ Assert-Contains $parser 'ReplacementFormatStrong' 'production strong formatting 
 Assert-Contains $snapshot 'explicit anchor for an empty source paragraph' 'mapped zero-length paragraph anchor'
 Assert-Contains $frame 'SCI_SETSTATUS, SC_STATUS_OK' 'Source search resets Scintilla status'
 Assert-Contains $frame 'SCI_GETSTATUS' 'Source search reads Scintilla status'
-Assert-Contains $frame 'fbe\.regex\.error\.source' 'Source regexp error is localized'
+Assert-Contains $source 'fbe\.regex\.error\.source' 'Source regexp error is localized'
 Assert-NotContains $frame 'num_pat_nbsp|num_rep_nbsp' 'NBSP byte-offset correction arithmetic'
 Assert-Contains $frame 'ScintillaPositionAfter\(m_source, static_cast<int>\(m_source\.SendMessage\(SCI_GETTARGETEND\)\)\)' 'Source Replace All advances zero-length matches through SCI_POSITIONAFTER'
 Assert-Contains $source 'skipCurrentZeroLength[\s\S]*?const int nextPosition = rev \? guardBoundary : ScintillaPositionAfter\(src, guardBoundary\)' 'Source Find starts reverse filtering at the protected boundary and advances forward through SCI_POSITIONAFTER'
@@ -129,12 +129,13 @@ $singleReplace = [regex]::Match($source, 'void\s+CFBEView::DoReplace\(\)\s*\{[\s
 if ([string]::IsNullOrWhiteSpace($singleReplace)) { throw 'Unable to locate native single Replace path.' }
 Assert-Contains $singleReplace 'CheckReplacementRange\(sel, m_fo\.fRegexp\) == ReplacementPreflightResult::CrossParagraph[\s\S]*?CrossParagraphReplacementError\(\)[\s\S]*?return;' 'single Replace production preflight rejection'
 $singleGuard = $singleReplace.IndexOf('CheckReplacementRange(sel, m_fo.fRegexp)')
-$singleUndo = $singleReplace.IndexOf('BeginUndoUnit(L"replace")')
+$singleUndo = $singleReplace.IndexOf('MarkupUndoUnitScope(m_mk_srv, L"replace")')
 if ($singleGuard -lt 0 -or $singleUndo -lt 0 -or $singleGuard -gt $singleUndo) { throw 'Single Replace must reject a cross-paragraph range before opening Undo.' }
 if ($header -notmatch 'MSHTML::IHTMLTxtRangePtr\s+m_selection_search_scope') { throw 'Selection scope must retain a live MSHTML anchor across a single replacement.' }
 Assert-Contains $singleReplace 'bool replaced = false;' 'single Replace tracks a successful DOM text mutation'
 Assert-Contains $singleReplace 'zeroLengthNoOp = m_fo\.match->Length == 0 && rep\.IsEmpty\(\) && rl\.empty\(\)' 'Design single Replace recognizes zero-length empty no-op'
-Assert-Contains $singleReplace 'if \(!zeroLengthNoOp\)[\s\S]*?BeginUndoUnit\(L"replace"\)' 'Design no-op does not open an Undo mutation'
+Assert-Contains $singleReplace 'if \(!zeroLengthNoOp\)[\s\S]*?MarkupUndoUnitScope\(m_mk_srv, L"replace"\)' 'Design no-op does not open an Undo mutation'
+Assert-Contains $singleReplace 'undo\.reset\(\);[\s\S]*?U::ReportError\(failure\)' 'Single Replace releases its owned Undo before reporting an error'
 Assert-Contains $singleReplace 'if \(replaced\)[\s\S]*?m_fo\.ClearMatch\(\);[\s\S]*?AdvanceSearchDocumentGeneration\(\);' 'single Replace clears the saved match and invalidates snapshots before the next Find'
 Assert-NotContains $singleReplace 'oldLen|newLen|replacementDelta|offsetDelta' 'single Replace must not compensate stale search offsets by text-length deltas'
 Assert-Contains $source 'void CFBEView::ResetSearchScope\(\)[\s\S]*?m_selection_search_scope\.Release\(\);' 'resetting search scope releases its live Selection anchor'
@@ -145,7 +146,7 @@ $replaceAll = [regex]::Match($source, 'int\s+CFBEView::ReplaceAllSearchCore\(CSt
 if ([string]::IsNullOrWhiteSpace($replaceAll)) { throw 'Unable to locate native Replace All path.' }
 Assert-Contains $replaceAll 'CheckReplacementRange\(ranges\[index\], m_fo\.fRegexp\) == ReplacementPreflightResult::CrossParagraph[\s\S]*?\*errorText = CrossParagraphReplacementError\(\)[\s\S]*?return -1;' 'Replace All production preflight rejection and error'
 $allGuard = $replaceAll.IndexOf('CheckReplacementRange(ranges[index], m_fo.fRegexp)')
-$allUndo = $replaceAll.IndexOf('BeginUndoUnit(L"replace all")')
+$allUndo = $replaceAll.IndexOf('MarkupUndoUnitScope(m_mk_srv, L"replace all")')
 if ($allGuard -lt 0 -or $allUndo -lt 0 -or $allGuard -gt $allUndo) { throw 'Replace All must reject a cross-paragraph range before opening Undo.' }
 Assert-Contains $replaceAll 'SetReplaceAllCompletion\(replaced\);[\s\S]*?WM_FINALIZE_REPLACE_ALL_COMPLETION' 'successful Replace All defers completion until queued MSHTML notifications have drained'
 Assert-Contains $replaceAll 'if \(!previewIsCurrent\(\)\)[\s\S]*?DoFindAll\(true, &searchError\)' 'first Replace All builds and displays the preview'
@@ -155,9 +156,13 @@ Assert-NotContains $replaceAll 'fbe\.replace\.preview\.ready|MB_OK \| MB_ICONINF
 Assert-Contains $replaceAll 'MB_YESNO \| MB_ICONQUESTION\) != IDYES\)\s*return -2;[\s\S]*?std::vector<MSHTML::IHTMLTxtRangePtr> ranges' 'No leaves preview intact before any replacement range is opened'
 Assert-Contains $replaceAll 'if \(!previewIsCurrent\(\)\)[\s\S]*?return -1;[\s\S]*?std::vector<MSHTML::IHTMLTxtRangePtr> ranges' 'changed preview identity blocks replacement before ranges and Undo'
 Assert-Contains $source 'OnFinalizeReplaceAllCompletion[\s\S]*?m_find_results_completion_status = completion;' 'successful replacement clears stale preview rows and reports completion'
-Assert-Contains $replaceAll 'bool undoStarted = false;' 'Replace All tracks whether a real mutation opened Undo'
+Assert-Contains $replaceAll 'std::unique_ptr<FbeDom::MarkupUndoUnitScope> undo;' 'Replace All owns an exception-safe Undo scope'
 Assert-Contains $replaceAll 'zeroLengthNoOp = result->Hit\.Length == 0 && replacement\.IsEmpty\(\) && formatting\.empty\(\);[\s\S]*?if \(zeroLengthNoOp\)[\s\S]*?continue;' 'Design Replace All skips zero-length empty no-op writes'
-Assert-Contains $replaceAll 'if \(!undoStarted\)[\s\S]*?BeginUndoUnit\(L"replace all"\)' 'Replace All opens Undo only for a real write'
+Assert-Contains $replaceAll 'if \(!undo\)[\s\S]*?MarkupUndoUnitScope\(m_mk_srv, L"replace all"\)' 'Replace All opens Undo only for a real write'
+Assert-Contains $replaceAll '~ControlledMutationScope\(\) \{ search\.SetControlledReplaceAllMutation\(false\); \}' 'Replace All clears controlled mutation on every exit'
+Assert-Contains $replaceAll 'catch \(const std::bad_alloc&\)[\s\S]*?failure = E_OUTOFMEMORY;' 'Replace All reports allocation failure'
+Assert-Contains $replaceAll 'catch \(const ATL::CAtlException& error\)[\s\S]*?failure = error\.m_hr;' 'Replace All reports CString allocation failure'
+Assert-Contains $replaceAll 'try \{ undo->Close\(\); \}[\s\S]*?catch \(const _com_error& error\) \{ failure = error\.Error\(\); \}' 'Replace All handles failure to close Undo'
 Assert-Contains $replaceAll 'SetReplaceAllCompletion\(replaced\);[\s\S]*?PostMessage\(m_hWnd, AU::WM_FINALIZE_REPLACE_ALL_COMPLETION' 'successful Replace All schedules one protected completion phase'
 
 Assert-Contains $source 'OnFinalizeReplaceAllCompletion[\s\S]*?TakeReplaceAllCompletion\(\);[\s\S]*?AdvanceSearchDocumentGeneration\(false\);[\s\S]*?m_find_results_completion_status = completion;[\s\S]*?WM_REFRESH_FIND_RESULTS_PANE' 'posted completion finalizes one invalidation before publishing the Results-pane status'
@@ -168,7 +173,8 @@ if ([string]::IsNullOrWhiteSpace($globalReplace)) { throw 'Unable to locate Sear
 Assert-Contains $globalReplace 'const std::size_t count = m_design_search\.Coordinator\(\)\.GetResults\(\)\.GetCount\(\);\s*if \(count == 0\)\s*return 0;' 'GlobalReplace does not open a no-op Undo unit or invalidate results'
 Assert-Contains $globalReplace 'bool mutationApplied = false;' 'GlobalReplace tracks actual DOM writes'
 Assert-Contains $globalReplace 'zeroLengthNoOp = result->Hit\.Length == 0 && replacement\.IsEmpty\(\) && formatting\.empty\(\);[\s\S]*?if \(zeroLengthNoOp\)[\s\S]*?continue;' 'Global Replace skips zero-length empty no-op writes'
-Assert-Contains $globalReplace 'if \(!undoStarted\)[\s\S]*?BeginUndoUnit\(L"replace"\)' 'GlobalReplace opens Undo only for a real write'
+Assert-Contains $globalReplace 'if \(!undo\)[\s\S]*?MarkupUndoUnitScope\(m_mk_srv, L"replace"\)' 'GlobalReplace opens Undo only for a real write'
+Assert-Contains $globalReplace 'undo\.reset\(\);[\s\S]*?U::ReportError\(failure\)' 'GlobalReplace releases its owned Undo before reporting an error'
 Assert-Contains $globalReplace 'catch \(_com_error& err\)[\s\S]*?if \(mutationApplied\)\s*AdvanceSearchDocumentGeneration\(\);' 'GlobalReplace invalidates partial failed writes only'
 Assert-Contains $regexBackend 'return L"\(\?<!\[\\\\p\{L\}\\\\p\{N\}_\]\)\(\?:" \+ pattern' 'whole-word RegExp always adds external Unicode boundaries'
 Assert-NotContains $regexBackend 'pattern\.Find\(L"\\\\b"\)|pattern\.Find\(L"\(\?<="\)' 'whole-word RegExp no longer depends on internal boundaries or lookarounds'
