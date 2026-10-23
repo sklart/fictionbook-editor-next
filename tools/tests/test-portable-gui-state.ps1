@@ -2,6 +2,8 @@
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$PackageDirectory)
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'PortableHotkeyFixture.ps1')
+& (Join-Path $PSScriptRoot 'test-portable-hotkey-fixture.ps1')
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $package = (Resolve-Path -LiteralPath $PackageDirectory).Path
 $testRoot = Join-Path $root 'out\tests\portable-gui-state'
@@ -104,17 +106,17 @@ Copy-Item -LiteralPath $scriptTemplate.FullName -Destination (Join-Path $data 'S
 $iconTemplate = Get-ChildItem -LiteralPath (Join-Path $root 'runtime\Scripts') -Recurse -Filter '*.ico' | Select-Object -First 1
 if ($null -eq $iconTemplate) { throw 'Could not locate a script icon fixture.' }
 Copy-Item -LiteralPath $iconTemplate.FullName -Destination (Join-Path $data 'Scripts\foo.ico') -Force
-$legacyHotkeys = Get-Content -Raw -LiteralPath (Join-Path $settings 'Hotkeys.xml')
+$legacyHotkeys = [xml]::new()
+$legacyHotkeys.PreserveWhitespace = $true
+$legacyHotkeys.Load((Join-Path $settings 'Hotkeys.xml'))
 $legacyScriptEntries = @"
 <Hotkeys>
     <Hotkey><Name>E:\BeforeMove\Scripts\tools\foo.js</Name><Accel>9;120</Accel></Hotkey>
     <Hotkey><Name>E:\BeforeMove\Scripts\missing.js</Name><Accel>9;121</Accel></Hotkey>
 </Hotkeys>
 "@
-$scriptsGroupMatch = [regex]::Match($legacyHotkeys, '(?s)(<GroupName>Scripts</GroupName>\s*)<Hotkeys\s*/>')
-if (-not $scriptsGroupMatch.Success) { throw 'Could not prepare legacy Scripts hotkey fixture.' }
-$legacyHotkeys = $legacyHotkeys.Substring(0, $scriptsGroupMatch.Index) + $scriptsGroupMatch.Groups[1].Value + $legacyScriptEntries + $legacyHotkeys.Substring($scriptsGroupMatch.Index + $scriptsGroupMatch.Length)
-Set-Content -LiteralPath (Join-Path $settings 'Hotkeys.xml') -Value $legacyHotkeys -Encoding utf8
+Set-PortableLegacyScriptHotkeys -Document $legacyHotkeys -EntriesXml $legacyScriptEntries
+$legacyHotkeys.Save((Join-Path $settings 'Hotkeys.xml'))
 Invoke-PortableStateScenario 'portable-legacy-hotkey-read'
 $legacyReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')
 if ($legacyReport -notmatch '(?m)^legacy-hotkey=1$' -or $legacyReport -notmatch '(?m)^result=pass$') { throw "Moved portable legacy hotkey was not migrated:`n$legacyReport" }
@@ -136,8 +138,8 @@ $nonEmptyToolbars = Get-Content -Raw -Encoding Unicode -LiteralPath (Join-Path $
 $alphaUid = Get-ScriptUid 'test/alpha.js'; $betaUid = Get-ScriptUid 'test/beta.js'
 [xml]$nonEmptyLayout = $nonEmptyToolbars
 $scriptItems = @($nonEmptyLayout.SelectNodes('/Toolbars/Toolbar[@id="scripts-main"]/*'))
-if ($scriptItems.Count -ne 3 -or $scriptItems[0].Name -ne 'Script' -or $scriptItems[0].uid -ne $alphaUid -or
-    $scriptItems[1].Name -ne 'Separator' -or $scriptItems[2].Name -ne 'Script' -or $scriptItems[2].uid -ne $betaUid -or
+if ($scriptItems.Count -ne 3 -or $scriptItems[0].LocalName -ne 'Script' -or $scriptItems[0].uid -ne $alphaUid -or
+    $scriptItems[1].LocalName -ne 'Separator' -or $scriptItems[2].LocalName -ne 'Script' -or $scriptItems[2].uid -ne $betaUid -or
     $nonEmptyLayout.Toolbars.LastScript.uid -ne $betaUid) { throw 'Scripts toolbar or last script did not persist exact script identities and order.' }
 Invoke-PortableStateScenario 'portable-toolbar-layout-read'
 $nonEmptyReadReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')

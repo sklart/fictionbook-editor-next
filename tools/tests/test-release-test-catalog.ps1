@@ -21,6 +21,12 @@ foreach ($selection in @(
 }
 $fullProfile = (& $catalogTool -AsJson -Contour FULL | ConvertFrom-Json)
 $fastProfile = (& $catalogTool -AsJson -Contour FAST | ConvertFrom-Json)
+$packageState=@($fullProfile.tests | Where-Object id -eq 'release.portable-gui-state')
+if($packageState.Count -ne 1 -or $packageState[0].execution -ne 'package-stage' -or
+    $packageState[0].requirements -notcontains 'materialized-portable-package' -or
+    $packageState[0].invocations[0].source -ne 'tools/build/create-release.ps1' -or $fastProfile.tests.id -contains 'release.portable-gui-state'){
+    throw 'FULL must explicitly catalog its separate materialised-package GUI producer.'
+}
 foreach ($id in @('release.fbe-file-close-runtime', 'release.fbe-new-document-safety-runtime', 'release.fbe-scripting-stage3c', 'release.fbe-scripting-stage3d', 'release.fbe-scripting-examples', 'release.fbe-scripting-clipboard-ole-ci')) {
     if ($fullProfile.tests.id -notcontains $id -or $fastProfile.tests.id -contains $id) {
         throw "Required CI runtime matrix must appear in FULL: $id"

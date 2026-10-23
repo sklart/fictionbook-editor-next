@@ -95,6 +95,17 @@ for ($index = 0; $index -lt $lines.Count; $index++) {
     if ($fullDepth -gt 0) { $fullDepth += ([regex]::Matches($line, '\{').Count - [regex]::Matches($line, '\}').Count) }
 }
 
+# Materialised portable state is a required FULL package producer, not a test
+# silently supplied by the core verifier. Keep that execution boundary explicit.
+$packageLines=Get-Content (Join-Path $repoRoot 'tools/build/create-release.ps1')
+$packageCalls=@(for($packageIndex=0;$packageIndex -lt $packageLines.Count;++$packageIndex){if($packageLines[$packageIndex] -match 'tools\\tests\\test-portable-gui-state\.ps1'){@{line=$packageIndex+1;command=$packageLines[$packageIndex].Trim()}}})
+if($packageCalls.Count -ne 1){throw 'Expected one mandatory FULL portable package state producer.'}
+$entries['release.portable-gui-state']=[pscustomobject][ordered]@{
+    id='release.portable-gui-state';path='tools/tests/test-portable-gui-state.ps1';component='packaging-localization';
+    contours=@('FULL');invocations=@([pscustomobject]@{source='tools/build/create-release.ps1';line=$packageCalls[0].line;command=$packageCalls[0].command});
+    fixtures=$null;requirements=@('gui','materialized-portable-package','external-ci-package');required=$true;
+    timeoutSeconds='declared-by-test';isolation='declared-by-test';execution='package-stage'
+}
 $catalog = [ordered]@{ schemaVersion = 2; generatedFrom = 'tools/build/verify-release.ps1'; tests = @($entries.Values | Sort-Object id) }
 foreach ($entry in $catalog.tests) {
     if ($entry.id -eq 'release.fbe-scripting-clipboard-ole-ci') { $entry.requirements = @('github-hosted', 'disposable-user-logon', 'private-window-station') }
@@ -125,6 +136,6 @@ if ($Id.Count -gt 0) {
     $selectedTests = @($selectedTests | Where-Object { $_.id -in $Id })
 }
 $selectedCatalog = [ordered]@{ schemaVersion = $catalog.schemaVersion; generatedFrom = $catalog.generatedFrom; selection = [ordered]@{ contours = @($Contour); ids = @($Id) }; tests = $selectedTests }
-$selectedCatalog.additionalSources = @('.github/workflows/build.yml: required lifecycle/API/OLE runtime matrices')
+$selectedCatalog.additionalSources = @('.github/workflows/build.yml: required lifecycle/API/OLE runtime matrices','tools/build/create-release.ps1: FULL package state producer')
 if ($AsJson) { $selectedCatalog | ConvertTo-Json -Depth 7 }
 else { $selectedTests | Select-Object id, path, component, contours, required, requirements }
