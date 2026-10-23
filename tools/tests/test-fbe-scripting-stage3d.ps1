@@ -34,26 +34,27 @@ var ext=window.external,root=@@ROOT@@,suffix=@@TYPE@@,rar=@@RAR@@,normal=@@NORMA
 function check3d(ok,message){if(!ok)throw new Error(message);}
 function fails3d(fn){var failed=false;try{fn();}catch(e){failed=true;}check3d(failed,"expected failure");}
 function copies3d(){try{
+ var copyStep="metadata";
  check3d(ext.GetScriptingApiVersion()==="1.5.0","API version");
  var caps=ext.GetScriptingCapabilities();check3d(caps.indexOf('"documentSave":true')>=0&&caps.indexOf('"documentCopies":true')>=0&&caps.indexOf('"documentSerialization":true')>=0,"capabilities");
  var probe=document.getElementById("probe");if(probe){var range=document.body.createTextRange();range.moveToElementText(probe);range.select();}
  var before=document.body.outerHTML;
  var selected=ext.GetSelectionHtml(),mode=ext.GetCurrentViewMode();
- var xml=ext.SerializeCurrentDocument();check3d(xml.indexOf("FictionBook")>=0,"snapshot root");
+ copyStep="snapshot";var xml=ext.SerializeCurrentDocument();check3d(xml.indexOf("FictionBook")>=0,"snapshot root");
  check3d(before===document.body.outerHTML,"snapshot changed visual DOM");
  fails3d(function(){ext.SaveDocumentCopy(root+"\\conflict."+suffix,false);});
  fails3d(function(){ext.SaveSerializedDocumentCopy(root+"\\conflict."+suffix,'{"overwrite":false}');});
- var path=root+"\\copy."+suffix;check3d(ext.SaveDocumentCopy(path,false),"copy");
+ copyStep="create-copy";var path=root+"\\copy."+suffix;check3d(ext.SaveDocumentCopy(path,false),"copy");
  fails3d(function(){ext.SaveDocumentCopy(path,false);});
  var lastError=ext.GetLastScriptingError();
  fails3d(function(){ext.SaveSerializedDocumentCopy(path,'{"overwrite":false}');});
  check3d(ext.GetLastScriptingError()!=="","serialized conflict error");
  lastError=ext.GetLastScriptingError();
- check3d(ext.SaveDocumentCopy(path,true),"explicit overwrite");
+ copyStep="overwrite-copy";check3d(ext.SaveDocumentCopy(path,true),"explicit overwrite");
  check3d(ext.GetLastScriptingError()===lastError,"success cleared previous error");
  fails3d(function(){ext.SaveDocumentCopy(path,1);});
  fails3d(function(){ext.SaveDocumentCopy(path);});
- check3d(ext.SaveSerializedDocumentCopy(root+"\\export."+suffix,'{"encoding":"utf-8"}'),"explicit export");
+ copyStep="export-utf8";check3d(ext.SaveSerializedDocumentCopy(root+"\\export."+suffix,'{"encoding":"utf-8"}'),"explicit export");
  fails3d(function(){ext.SaveSerializedDocumentCopy(path,'{"overwrite":true,"overwrite":false}');});
  fails3d(function(){ext.SaveSerializedDocumentCopy(path,'{"unknown":1}');});
  fails3d(function(){ext.SaveDocumentCopy(root+"\\bad.zip",false);});
@@ -70,7 +71,7 @@ function copies3d(){try{
  else check3d(ext.SaveSerializedDocumentCopy(root+"\\converted.fbd",'{"format":"fbd"}'),"lossless format export");
  check3d(selected===ext.GetSelectionHtml()&&mode===ext.GetCurrentViewMode(),"selection/view changed");
  return "PASS";
-}catch(e){return String(e.message||e);}}
+}catch(e){var detail=String(e.message||e);try{detail+=";lastApiError="+ext.GetLastScriptingError();}catch(ignore){}return "copyStep="+copyStep+";"+detail;}}
 function blocked3d(){try{var token=ext.BeginDocumentUpdate("blocked save",'{}');try{fails3d(function(){ext.SerializeCurrentDocument();});}finally{ext.EndDocumentUpdate(token);}return "PASS";}catch(e){return String(e.message||e);}}
 function blockedUndo3d(){try{ext.BeginUndoUnit(document,"blocked save");try{fails3d(function(){ext.SerializeCurrentDocument();});}finally{ext.EndUndoUnit(document);}return "PASS";}catch(e){return String(e.message||e);}}
 function selectState3d(){var controls=document.getElementsByTagName("SELECT"),state="";for(var i=0;i<controls.length;i++)state+=controls[i].id+":"+controls[i].selectedIndex+":"+controls[i].value+";";return state;}

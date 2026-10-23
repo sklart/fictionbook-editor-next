@@ -50,8 +50,18 @@ inline void CommitSavedFile(const CString& temporaryFile, const CString& destina
 	// From this point a partial ReplaceFile failure (notably 1176/1177) may
 	// leave this temporary as the only recoverable copy. Keep unknown failures.
 	if (preserveTemporaryFileOnFailure) *preserveTemporaryFileOnFailure = true;
-	if (!replaceFile(destinationFile, temporaryFile, backupFilePath, 0, NULL, NULL)) {
+	DWORD retryBudget = 150, retryPause = 10;
+	while (!replaceFile(destinationFile, temporaryFile, backupFilePath, 0, NULL, NULL)) {
 		const DWORD error = ::GetLastError();
+		// 1175 leaves both original names in place (ReplaceFile's documented
+		// contract). A short-lived delete denial can resolve after a completed
+		// copy. Retry only this non-partial, no-backup case; never 1176/1177.
+		if (!createBackupFile && error == ERROR_UNABLE_TO_REMOVE_REPLACED && retryBudget) {
+			const DWORD pause = retryPause < retryBudget ? retryPause : retryBudget;
+			::Sleep(pause);
+			retryBudget -= pause; retryPause += 10;
+			continue;
+		}
 		if (error == ERROR_ACCESS_DENIED || error == ERROR_SHARING_VIOLATION ||
 			error == ERROR_LOCK_VIOLATION || error == ERROR_UNABLE_TO_REMOVE_REPLACED ||
 			error == ERROR_INVALID_PARAMETER || error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND)
