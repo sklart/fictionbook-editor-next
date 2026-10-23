@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
 Проверяет релизные EXE/DLL на прямые импорты WinAPI, отсутствующие в Windows 7.
 
@@ -49,10 +49,20 @@ $warningPatterns = @(
     "api-ms-win-crt-"
 )
 
-$files = Get-ChildItem -LiteralPath $outDir -File |
-    Where-Object { $_.Extension -in ".exe", ".dll" } |
-    Where-Object { -not $IncludeNames -or $_.Name -in $IncludeNames } |
-    Sort-Object Name
+$files = if ($IncludeNames) {
+    # Callers include relative plug-in paths. Comparing those paths to the
+    # names of root-only children silently omitted every Plugins/*.dll.
+    foreach ($name in $IncludeNames) {
+        $path = Join-Path $outDir $name
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Requested PE input is missing: $path" }
+        $file = Get-Item -LiteralPath $path
+        if ($file.Extension -notin '.exe', '.dll') { throw "Requested input is not an EXE/DLL: $path" }
+        $file
+    }
+} else {
+    Get-ChildItem -LiteralPath $outDir -File | Where-Object { $_.Extension -in '.exe', '.dll' }
+}
+$files = @($files | Sort-Object FullName -Unique)
 
 if ($files.Count -eq 0) {
     throw "В каталоге $outDir не найдены бинарники для проверки импортов."
@@ -62,6 +72,7 @@ $errors = New-Object System.Collections.Generic.List[string]
 $warnings = New-Object System.Collections.Generic.List[string]
 
 foreach ($file in $files) {
+    Write-Host "Checking Win7 imports: $($file.FullName)"
     $imports = & dumpbin.exe /imports $file.FullName 2>$null
     if ($LASTEXITCODE -ne 0) {
         throw "dumpbin /imports завершился с кодом $LASTEXITCODE для $($file.FullName)."

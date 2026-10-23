@@ -484,9 +484,10 @@ if ($FullValidation) {
     -EditorRuntimeDirectory (Join-Path $repoRoot "out\editor-runtime")
 
 # Every binary in the single release must pass the Windows 7 import gate.
+& (Join-Path $repoRoot "tools\tests\test-win7-import-input-coverage.ps1")
 $sharedReleaseFiles = @(
     "FBE.exe", "FBV.exe", "Plugins\ExportHTML.dll", "Plugins\ExportDOCX.dll", "Plugins\ExportEPUB.dll",
-    "Plugins\ImportEPUB.dll", "Plugins\ImportEPUBLunaSVG.dll", "FBShell.dll"
+    "Plugins\ImportEPUB.dll", "Plugins\ImportEPUBLunaSVG.dll", "FBShell.dll", "Lang\Shell\FBVVerbResources.dll"
 )
 & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
     -Configuration $Configuration `
