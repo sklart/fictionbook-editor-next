@@ -14,10 +14,10 @@
 
 ```powershell
 pwsh ./tools/build/build.ps1 -Configuration Release -Platform Win32
-pwsh ./tools/build/verify-release.ps1 -Configuration Release
+pwsh ./tools/build/verify-release.ps1 -Configuration Release -FullValidation
 ```
 
-Перед tag/релизом выберите применимые FULL-сценарии и пройдите [ручную регрессию](testing/manual-regression.md). В неё входят базовое редактирование и сохранение, Undo/Redo, ZIP/RAR, поиск и массовая замена, таблицы, скрипты, диагностика, импорт/экспорт и installed/portable-изоляция.
+Перед tag/релизом выполните весь обязательный FULL-контур и запишите результаты [ручной регрессии](testing/manual-regression.md) отдельно. Windows 10 до следующего выпуска не является обязательным ручным gate: пользователь проверит опубликованную версию (POST-RELEASE). Недоступные Windows 7, DPI/locale и High Contrast отмечаются NOT RUN/DEFERRED. В автоматический контур входят редактирование и сохранение, Undo/Redo, ZIP/RAR, поиск и массовая замена, таблицы, скрипты, диагностика, импорт/экспорт и installed/portable-изоляция. Реальный OLE Clipboard требует отдельного GitHub-hosted logon; локально можно принять только проверенное свидетельство успешного Build того же SHA, не выдавая его за локальный запуск.
 
 Изменения поиска требуют [regex-проверок](testing/regex-regression.md), орфографии — [проверок словарей](testing/spellcheck.md), системной интеграции — [Shell-матрицы](testing/shell-integration.md). Проверку Windows 7, интерактивного UAC и переходов между мониторами записывайте как `NOT RUN`, пока её не выполнили в соответствующей среде.
 

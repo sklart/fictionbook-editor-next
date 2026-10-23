@@ -23,7 +23,7 @@ pwsh ./tools/version/sync-version.ps1
 | Обозначение | Что означает |
 | --- | --- |
 | FBE Next 3.0.9 | Версия продукта и набора поставки. |
-| Scripting API 1.2.0 | Возможности `window.external`; наличие метода проверяется через публичный API. |
+| Scripting API 1.5.0 (104 метода) | Возможности `window.external`; наличие метода проверяется через публичный API. |
 | FBELib 1.0 | Версия type library со своими инвариантами совместимости. |
 
 Из расширения scripting API не следует автоматическое повышение версии type library. IID, существующие DISPID и бинарная совместимость управляются правилами [FBELib](reference/fbelib-typelib-versioning.md). Архитектура XML backend вынесена в [отдельный документ](architecture/xml-scripting-api.md), полный публичный справочник — в [scripting-api.md](scripting-api.md).
