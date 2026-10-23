@@ -374,6 +374,15 @@ jobs:
           }
           "editor_background_has_files=$(Test-DiagnosticFiles 'out/tests/editor-background-runtime-failure')" >> $env:GITHUB_OUTPUT
           "runtime_has_files=$(Test-DiagnosticFiles 'out/tests/runtime-failure')" >> $env:GITHUB_OUTPUT
+          "issue64_has_files=$(Test-DiagnosticFiles 'out/issue64')" >> $env:GITHUB_OUTPUT
+      - name: Upload failed issue64 capture diagnostics
+        if: failure() && steps.runtime-diagnostics.outputs.issue64_has_files == 'True'
+        uses: actions/upload-artifact@v7
+        with:
+          name: issue64-capture-diagnostics-${{ github.sha }}
+          path: out/issue64/**
+          if-no-files-found: error
+          retention-days: 7
       - name: Upload editor background runtime diagnostics
         if: failure() && steps.runtime-diagnostics.outputs.editor_background_has_files == 'True'
         uses: actions/upload-artifact@v7

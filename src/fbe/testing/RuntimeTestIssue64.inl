@@ -57,20 +57,33 @@ LRESULT CMainFrame::RunIssue64Runtime(CAtlFile& output) {
     };
     // This is also exercised while Show() lives in a separate plugin DLL.
     struct NativeProbe {
+        static DWORD& Started(){static DWORD value=0;return value;}
+        static bool& NeedsOptions(){static bool value=false;return value;}
+        static bool& Completed(){static bool value=false;return value;}
+        static unsigned& Pages(){static unsigned value=0;return value;}
+        static bool& Defer(){static bool value=false;return value;}
+        static bool& Missing(){static bool value=false;return value;}
+        static CStringA& Trace(){static CStringA value;return value;}
+        static bool Flag(LPCWSTR name){wchar_t value[2]={};return ::GetEnvironmentVariableW(name,value,_countof(value))==1&&value[0]==L'1';}
+        static void Reset(int plugin,UINT theme){Started()=0;NeedsOptions()=plugin>=0;Completed()=false;Pages()=0;Trace().Empty();Defer()=Flag(L"FBE_NEXT_TEST_ISSUE64_DEFER_SETTINGS");Missing()=plugin==0&&theme==INTERFACE_THEME_LIGHT&&Flag(L"FBE_NEXT_TEST_ISSUE64_MISSING_SETTINGS");}
         static void CALLBACK Tick(HWND,UINT,UINT_PTR,DWORD) {
             bool options=false;
             ::EnumThreadWindows(::GetCurrentThreadId(),[](HWND window,LPARAM state)->BOOL {
                 HWND owner=::GetWindow(window,GW_OWNER);
                 if(::GetPropW(window,L"FBE.OwnedWindow")&&owner&&::GetPropW(owner,L"FBE.NativeFileDialog")&&::IsWindowVisible(window)) {
                     *reinterpret_cast<bool*>(state)=true;
+                    if(::GetPropW(window,L"FBE.Issue64.OptionsVisited"))return FALSE;
+                    ::SetPropW(window,L"FBE.Issue64.OptionsVisited",reinterpret_cast<HANDLE>(1));
                     const bool previous=PluginOptionsProbe::expectedDarkTabs;PluginOptionsProbe::expectedDarkTabs=ThemeManager::IsDark();
                     HWND tab=PluginOptionsProbe::Tab(window);PluginOptionsProbe::Check(tab!=NULL,__LINE__);
                     if(tab)for(int page=0;page<TabCtrl_GetItemCount(tab);++page) {
                         PluginOptionsProbe::Select(window,tab,page);
-                        PluginOptionsProbe::Check(PluginOptionsProbe::Capture(window,L"nested-options-"+std::to_wstring(page)),__LINE__);
+                        const bool captured=PluginOptionsProbe::Capture(window,L"nested-options-"+std::to_wstring(page));
+                        PluginOptionsProbe::Check(captured,__LINE__);if(captured)++Pages();
                         PluginOptionsProbe::Check(PluginOptionsProbe::CaptureOwnedTooltip(window,L"nested-tooltip-"+std::to_wstring(page)),__LINE__);
                     }
                     PluginOptionsProbe::expectedDarkTabs=previous;
+                    Completed()=true;
                     ::SetPropW(owner,L"FBE.Issue64.SettingsOpened",reinterpret_cast<HANDLE>(2));
                     ::PostMessageW(window,WM_COMMAND,IDCANCEL,0);return FALSE;
                 }return TRUE;
@@ -78,19 +91,33 @@ LRESULT CMainFrame::RunIssue64Runtime(CAtlFile& output) {
             if(options)return;
             ::EnumThreadWindows(::GetCurrentThreadId(),[](HWND window,LPARAM)->BOOL {
                 if(::GetPropW(window,L"FBE.NativeFileDialog")&&!::GetPropW(window,L"FBE.OwnedWindow")&&::IsWindowVisible(window)) {
+                    if(!Started())Started()=::GetTickCount();
+                    const DWORD elapsed=::GetTickCount()-Started();
                     ::SetPropW(window,L"FBE.Issue64.ScopeSeen",reinterpret_cast<HANDLE>(ModernFileDialog::IsShowingOnCurrentThread()?1:2));
                     PluginOptionsProbe::Check(ModernFileDialog::DialogWindowOnThread()==window,__LINE__);
                     ThemeManager::ApplyToWindow(window);ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
                     bool clean=::GetPropW(window,L"FBE.AppliedThemeGeneration")==NULL;
                     ::EnumChildWindows(window,[](HWND child,LPARAM state)->BOOL {auto& clean=*reinterpret_cast<bool*>(state);clean=clean&&::GetPropW(child,L"FBE.AppliedThemeGeneration")==NULL;return TRUE;},reinterpret_cast<LPARAM>(&clean));
                     PluginOptionsProbe::Check(clean&&ModernFileDialog::IsShowingOnCurrentThread(),__LINE__);
-                    if(::IsWindowEnabled(window)&&!::GetPropW(window,L"FBE.Issue64.SettingsOpened")) {
+                    if(NeedsOptions()&&::IsWindowEnabled(window)&&!::GetPropW(window,L"FBE.Issue64.SettingsOpened")) {
                         HWND settings=NULL;
                         ::EnumChildWindows(window,[](HWND child,LPARAM state)->BOOL {
                             wchar_t kind[64]={},text[512]={};::GetClassNameW(child,kind,_countof(kind));::GetWindowTextW(child,text,_countof(text));
-                            if(!wcscmp(kind,L"Button")&&(wcsstr(text,L"Настройки")||wcsstr(text,L"Параметры")||wcsstr(text,L"settings"))) {*reinterpret_cast<HWND*>(state)=child;return FALSE;}return TRUE;
+                            CString caption(text);caption.MakeLower();caption.Remove(L'&');
+                            if(!wcscmp(kind,L"Button")&&(caption.Find(L"настройки")>=0||caption.Find(L"параметры")>=0||caption.Find(L"settings")>=0||caption.Find(L"option")>=0)) {*reinterpret_cast<HWND*>(state)=child;return FALSE;}return TRUE;
                         },reinterpret_cast<LPARAM>(&settings));
+                        if(Missing()||(Defer()&&elapsed<500))settings=NULL;
                         if(settings) {::SetPropW(window,L"FBE.Issue64.SettingsOpened",reinterpret_cast<HANDLE>(1));::PostMessageW(settings,BM_CLICK,0,0);return FALSE;}
+                        // Root visibility does not mean Shell has created its
+                        // custom controls. Never close a plugin dialog before
+                        // its options were actually opened and captured.
+                        if(elapsed<2000)return FALSE;
+                        Trace().AppendFormat("settings_button_missing_after_ms=%lu\n",static_cast<unsigned long>(elapsed));
+                        ::EnumChildWindows(window,[](HWND child,LPARAM)->BOOL {
+                            wchar_t kind[64]={},text[512]={};::GetClassNameW(child,kind,_countof(kind));
+                            if(!wcscmp(kind,L"Button")){::GetWindowTextW(child,text,_countof(text));Trace().AppendFormat("button_id=%d;caption=%s\n",::GetDlgCtrlID(child),static_cast<LPCSTR>(CW2A(text,CP_UTF8)));}return TRUE;
+                        },0);
+                        PluginOptionsProbe::Check(false,__LINE__);
                     }
                     if(!::IsWindowEnabled(window))return FALSE;
                     if(::GetPropW(window,L"FBE.Issue64.SettingsOpened")==reinterpret_cast<HANDLE>(1))return FALSE;
@@ -185,6 +212,7 @@ LRESULT CMainFrame::RunIssue64Runtime(CAtlFile& output) {
             ::DestroyWindow(panel);if(font)::DeleteObject(font);
         }
         for(int plugin=-2;plugin<4;++plugin) {
+            NativeProbe::Reset(plugin,theme);
             PluginOptionsProbe::dialog=NULL;PluginOptionsProbe::failedLine=0;
             PluginOptionsProbe::prefix=L"issue64-theme"+std::to_wstring(theme)+L"-plugin"+std::to_wstring(plugin);
             const UINT_PTR timer=::SetTimer(NULL,0,250,NativeProbe::Tick);check("shell_timer",timer!=0);
@@ -199,6 +227,9 @@ LRESULT CMainFrame::RunIssue64Runtime(CAtlFile& output) {
                 else if(SUCCEEDED(result)) {CComQIPtr<IFBEExportPlugin2> exporter(instance);CComPtr<IFBEDocumentSnapshot> snapshot;result=FbePluginApiV2::CreateSnapshot(m_doc->CreateDOMForAnalysis(),L"fixture.fb2",L"utf-8",&snapshot);if(SUCCEEDED(result))result=exporter?exporter->Export(host,CComBSTR(L"fixture.fb2"),snapshot):E_NOINTERFACE;}
             }
             ::KillTimer(NULL,timer);
+            report.AppendFormat("native_case_theme=%u;plugin=%d;nested_completed=%d;pages=%u\n",static_cast<unsigned>(theme),plugin,NativeProbe::Completed()?1:0,NativeProbe::Pages());
+            report+=NativeProbe::Trace();
+            check("nested_options_completed",plugin<0||(NativeProbe::Completed()&&NativeProbe::Pages()==(plugin==2?5u:4u)));
             check("native_dialog_untouched",PluginOptionsProbe::dialog&&!PluginOptionsProbe::failedLine);
             if(PluginOptionsProbe::failedLine)report.AppendFormat("native_probe_failed_line=%d;detail=%s\n",PluginOptionsProbe::failedLine,CStringA(PluginOptionsProbe::errorText.c_str()).GetString());
             check("native_cancel",result==HRESULT_FROM_WIN32(ERROR_CANCELLED)||result==E_ABORT||result==S_FALSE);

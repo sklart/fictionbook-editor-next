@@ -182,7 +182,7 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-theme-application-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-ui-defects-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -MenuCycles 1
 & (Join-Path $repoRoot "tools\tests\test-issue64-release-contract.ps1")
-& (Join-Path $repoRoot "tools\tests\test-issue64-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Mode portable
+& (Join-Path $repoRoot "tools\tests\test-issue64-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Mode portable -DeferSettingsDiscovery
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-theme-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-interface-theme-policy-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-settings-editor-page-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")

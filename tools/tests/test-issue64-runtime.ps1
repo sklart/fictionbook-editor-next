@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),[ValidateSet('portable','installed')][string]$Mode='portable',[string]$ArtifactDirectory,[switch]$BlankDocument,[switch]$SimulateTooltipDefect)
+param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),[ValidateSet('portable','installed')][string]$Mode='portable',[string]$ArtifactDirectory,[switch]$BlankDocument,[switch]$SimulateTooltipDefect,[switch]$DeferSettingsDiscovery,[switch]$SimulateMissingSettings)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $repoRoot=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -16,7 +16,7 @@ function Get-FbeRegistryFingerprint {
 $registryBefore=Get-FbeRegistryFingerprint
 $iso=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'issue64'
 $passed=$false
-$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_TEST_ARTIFACT_DIR','FBE_NEXT_TEST_PLUGIN_SETTINGS','FBE_NEXT_UI_LOCALE','FBE_NEXT_TEST_ISSUE64_TOOLTIP_DEFECT')
+$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_TEST_ARTIFACT_DIR','FBE_NEXT_TEST_PLUGIN_SETTINGS','FBE_NEXT_UI_LOCALE','FBE_NEXT_TEST_ISSUE64_TOOLTIP_DEFECT','FBE_NEXT_TEST_ISSUE64_DEFER_SETTINGS','FBE_NEXT_TEST_ISSUE64_MISSING_SETTINGS')
 $saved=@{};foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name)}
 try {
     $seed=New-IsolatedFbeSettingsSeed $iso
@@ -28,6 +28,8 @@ try {
     $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='issue64-runtime';$env:FBE_NEXT_TEST_PLUGIN_SETTINGS=$null;$env:FBE_NEXT_UI_LOCALE='ru-RU'
     $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY=Split-Path $seed;$env:FBE_NEXT_TEST_ARTIFACT_DIR=$ArtifactDirectory
     $env:FBE_NEXT_TEST_ISSUE64_TOOLTIP_DEFECT=if($SimulateTooltipDefect){'1'}else{$null}
+    $env:FBE_NEXT_TEST_ISSUE64_DEFER_SETTINGS=if($DeferSettingsDiscovery){'1'}else{$null}
+    $env:FBE_NEXT_TEST_ISSUE64_MISSING_SETTINGS=if($SimulateMissingSettings){'1'}else{$null}
     $captureStart=[DateTime]::UtcNow
     $arguments=@("--$Mode",'-b',$report);if(!$BlankDocument){$arguments+=$fixture}
     $process=Start-Process $iso.Exe -WorkingDirectory $iso.Root -ArgumentList $arguments -WindowStyle Hidden -PassThru
@@ -40,12 +42,22 @@ try {
         $pages=if($plugin -eq 2){5}else{4}
         for($page=0;$page -lt $pages;$page++) {
             $path=Join-Path $ArtifactDirectory "issue64-theme$theme-plugin$plugin-nested-options-$page.png"
-            if(!(Test-Path -LiteralPath $path) -or (Get-Item -LiteralPath $path).LastWriteTimeUtc -lt $captureStart){throw "Missing fresh nested options capture: $path"}
+            $capture=Get-Item -LiteralPath $path -ErrorAction SilentlyContinue
+            if(!$capture -or $capture.LastWriteTimeUtc -lt $captureStart){throw "Missing fresh nested options capture: $path; exists=$([bool]$capture); lastWriteUtc=$(if($capture){$capture.LastWriteTimeUtc.ToString('o')}else{'absent'}); captureStartUtc=$($captureStart.ToString('o'))"}
         }
     } }
     if((Get-FbeRegistryFingerprint) -ne $registryBefore){throw 'User FBE registry settings changed during the isolated test'}
     Write-Host 'user_registry_unchanged=PASS'
     $passed=$true
+} catch {
+    # Retain only this test's captures and safe file metadata. A native PASS
+    # must not hide a missing/stale screenshot, and CI must preserve the proof.
+    $captureFiles=@(Get-ChildItem -LiteralPath $ArtifactDirectory -File | ForEach-Object {
+        @{name=$_.Name;length=$_.Length;lastWriteUtc=$_.LastWriteTimeUtc.ToString('o')}
+    })
+    @{captureStartUtc=$(if(Get-Variable captureStart -ErrorAction SilentlyContinue){$captureStart.ToString('o')}else{$null});error=$_.Exception.Message;files=$captureFiles} |
+        ConvertTo-Json -Depth 5 | Set-Content (Join-Path $ArtifactDirectory 'capture-failure.json') -Encoding utf8
+    throw
 } finally {
     foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name])}
     Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed
