@@ -572,6 +572,9 @@
     <ClInclude Include="utils\utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="utils\UnsignedDecimal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="Words.h">
       <Filter>Header Files</Filter>
     </ClInclude>

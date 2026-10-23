@@ -656,6 +656,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="TreeView.h" />
     <ClInclude Include="utils\utils.h" />
+    <ClInclude Include="utils\UnsignedDecimal.h" />
     <ClInclude Include="Words.h" />
     <ClInclude Include="xmlMatchedTagsHighlighter.h" />
     <ClInclude Include="XMLSerializer\XMLSerializer.h" />

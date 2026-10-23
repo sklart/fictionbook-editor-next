@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "ArchiveOpenCoordinator.h"
+#include "../../utils/UnsignedDecimal.h"
 #include "..\..\ArchiveEntryPicker.h"
 #include "..\..\document\DocumentLocation.h"
 #include "..\..\RuntimeLocalization.h"
@@ -39,10 +40,9 @@ bool FbeArchiveUi::ResolveOpenRequest(const CString& storagePath, FbeArchive::Re
 		const DWORD occurrenceLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_OCCURRENCE", requestedOccurrence, _countof(requestedOccurrence));
 		if (testModeLength == 1 && testMode[0] == L'1' && requestedLength && requestedLength < _countof(requestedEntry))
 		{
-			unsigned int requestedIndex = 0; wchar_t* occurrenceEnd = NULL;
-			const unsigned long parsedOccurrence = occurrenceLength ? wcstoul(requestedOccurrence, &occurrenceEnd, 10) : 0;
-			if (occurrenceLength && (occurrenceEnd == requestedOccurrence || *occurrenceEnd != L'\0' || parsedOccurrence > UINT_MAX)) { error.code = FbeArchive::ErrorCode::EntryNotFound; if (failure) *failure = error; return false; }
-			requestedIndex = static_cast<unsigned int>(parsedOccurrence);
+			unsigned int requestedIndex = 0;
+			if (occurrenceLength && (occurrenceLength >= _countof(requestedOccurrence) ||
+				!FbeNumbers::ParseUnsignedDecimal(CString(requestedOccurrence), requestedIndex))) { error.code = FbeArchive::ErrorCode::EntryNotFound; if (failure) *failure = error; return false; }
 			selected = -1;
 			for (size_t index = 0; index < entries.size(); ++index)
 				if (entries[index].path == requestedEntry && (!occurrenceLength || entries[index].occurrence == requestedIndex)) { selected = static_cast<int>(index); break; }

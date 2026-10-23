@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "ArchiveRecentDocuments.h"
+#include "../utils/UnsignedDecimal.h"
 
 namespace
 {
@@ -53,12 +54,7 @@ CString CompactCaptionPart(const CString& value, int limit)
 
 bool ParseUnsigned(const CString& text, unsigned int& value)
 {
-	if (text.IsEmpty()) return false;
-	wchar_t* end = NULL;
-	const unsigned long parsed = wcstoul(text, &end, 10);
-	if (end == text.GetString() || *end != L'\0' || parsed > UINT_MAX) return false;
-	value = static_cast<unsigned int>(parsed);
-	return true;
+	return FbeNumbers::ParseUnsignedDecimal(text, value);
 }
 
 bool IsValidRecord(const Record& record)

@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "RecoveryStore.h"
+#include "../utils/UnsignedDecimal.h"
 #include "..\\..\\common\\DeploymentContext.h"
 
 namespace FbeRecovery
@@ -59,11 +60,15 @@ bool RecoveryStore::ReadArchiveLocation(DocumentLocation& location) const
 	std::vector<CString> fields; int position = 0;
 	while (position >= 0) { CString field = CString(&text[0]).Tokenize(L"\n", position); field.TrimRight(L"\r"); fields.push_back(field); }
 	if (fields.size() < 8 || fields[0] != L"2") return false;
-	const unsigned long kind = wcstoul(fields[1], NULL, 10), occurrence = wcstoul(fields[2], NULL, 10), type = wcstoul(fields[3], NULL, 10);
-	if (kind != static_cast<unsigned long>(DocumentContainerKind::Zip) && kind != static_cast<unsigned long>(DocumentContainerKind::Rar)) return false;
-	if (occurrence > UINT_MAX || type > static_cast<unsigned long>(FictionBookFileType::Fbd) || fields[6].IsEmpty() || fields[7].IsEmpty()) return false;
-	location.containerKind = static_cast<DocumentContainerKind>(kind); location.entryOccurrence = static_cast<unsigned int>(occurrence);
-	location.documentType = static_cast<FictionBookFileType>(type); location.containerLastWriteTime = _wcstoui64(fields[4], NULL, 10); location.containerFileSize = _wcstoui64(fields[5], NULL, 10);
+	unsigned int kind = 0, occurrence = 0, type = 0;
+	unsigned __int64 lastWriteTime = 0, fileSize = 0;
+	if (!FbeNumbers::ParseUnsignedDecimal(fields[1], kind) || !FbeNumbers::ParseUnsignedDecimal(fields[2], occurrence) ||
+		!FbeNumbers::ParseUnsignedDecimal(fields[3], type) || !FbeNumbers::ParseUnsignedDecimal(fields[4], lastWriteTime) ||
+		!FbeNumbers::ParseUnsignedDecimal(fields[5], fileSize)) return false;
+	if (kind != static_cast<unsigned int>(DocumentContainerKind::Zip) && kind != static_cast<unsigned int>(DocumentContainerKind::Rar)) return false;
+	if (type > static_cast<unsigned int>(FictionBookFileType::Fbd) || fields[6].IsEmpty() || fields[7].IsEmpty()) return false;
+	location.containerKind = static_cast<DocumentContainerKind>(kind); location.entryOccurrence = occurrence;
+	location.documentType = static_cast<FictionBookFileType>(type); location.containerLastWriteTime = lastWriteTime; location.containerFileSize = fileSize;
 	location.storagePath = fields[6]; location.entryPath = fields[7];
 	return location.documentType != FictionBookFileType::Unknown;
 }
