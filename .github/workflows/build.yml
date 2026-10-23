@@ -220,6 +220,14 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-fbe-scripting-clipboard-ole-ci.ps1 -FbeExe out/Release/FBE.exe
+          ./tools/tests/write-ci-ole-runtime-receipt.ps1 -FbeExe out/Release/FBE.exe
+      - name: Upload isolated OLE runtime receipt
+        uses: actions/upload-artifact@v7
+        with:
+          name: required-ci-runtime-${{ github.sha }}
+          path: out/tests/required-ci-runtime/clipboard-ole.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Run navigation scripts runtime regression
         shell: pwsh
         run: |
@@ -252,6 +260,7 @@ jobs:
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-search-core-suite.ps1 -Configuration Release -PlatformToolset v143 -FbeExe ./out/Release/FBE.exe
       - name: Run Full Regex Help regressions
+        id: full-regex-help
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
@@ -261,7 +270,7 @@ jobs:
           ./tools/tests/test-regex-help-runtime.ps1 -FbeExe ./out/Release/FBE.exe
           ./tools/tests/test-regex-help-visual-runtime.ps1 -ArtifactDirectory ./out/tests/full-regex-help-html
       - name: Upload Full Regex Help visual smoke captures
-        if: always()
+        if: always() && steps.full-regex-help.outcome != 'skipped' && steps.full-regex-help.outcome != ''
         uses: actions/upload-artifact@v7
         with:
           name: full-regex-help-html-${{ github.sha }}

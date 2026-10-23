@@ -11,6 +11,13 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $verifyPath = Join-Path $repoRoot 'tools\build\verify-release.ps1'
 $lines = Get-Content -LiteralPath $verifyPath
+# FULL also consumes the workflow's canonical lifecycle/API matrices. Include
+# their real commands rather than claiming the local verifier covers them by name.
+$lines += 'if ($FullValidation) {'
+foreach ($suite in (& (Join-Path $PSScriptRoot 'get-required-ci-runtime-suites.ps1'))) {
+    $lines += ($suite.Command.Replace('tools/tests/', 'tools\tests\') -split '\r?\n')
+}
+$lines += '}'
 $entries = @{}
 $tableDepth = 0
 $fullDepth = 0
@@ -83,6 +90,9 @@ for ($index = 0; $index -lt $lines.Count; $index++) {
 }
 
 $catalog = [ordered]@{ schemaVersion = 2; generatedFrom = 'tools/build/verify-release.ps1'; tests = @($entries.Values | Sort-Object id) }
+foreach ($entry in $catalog.tests) {
+    if ($entry.id -eq 'release.fbe-scripting-clipboard-ole-ci') { $entry.requirements = @('github-hosted', 'disposable-user-logon', 'private-window-station') }
+}
 if ($Validate) {
     if ($catalog.tests.Count -eq 0) { throw 'Release test catalog is empty.' }
     $ids = @{}
@@ -109,5 +119,6 @@ if ($Id.Count -gt 0) {
     $selectedTests = @($selectedTests | Where-Object { $_.id -in $Id })
 }
 $selectedCatalog = [ordered]@{ schemaVersion = $catalog.schemaVersion; generatedFrom = $catalog.generatedFrom; selection = [ordered]@{ contours = @($Contour); ids = @($Id) }; tests = $selectedTests }
+$selectedCatalog.additionalSources = @('.github/workflows/build.yml: required lifecycle/API/OLE runtime matrices')
 if ($AsJson) { $selectedCatalog | ConvertTo-Json -Depth 7 }
 else { $selectedTests | Select-Object id, path, component, contours, required, requirements }

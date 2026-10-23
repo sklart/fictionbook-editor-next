@@ -1,4 +1,4 @@
-﻿<# Ensures the machine-readable release catalog is complete and listable. #>
+<# Ensures the machine-readable release catalog is complete and listable. #>
 [CmdletBinding()]
 param()
 
@@ -21,6 +21,15 @@ foreach ($selection in @(
 }
 $fullProfile = (& $catalogTool -AsJson -Contour FULL | ConvertFrom-Json)
 $fastProfile = (& $catalogTool -AsJson -Contour FAST | ConvertFrom-Json)
+foreach ($id in @('release.fbe-file-close-runtime', 'release.fbe-new-document-safety-runtime', 'release.fbe-scripting-stage3c', 'release.fbe-scripting-stage3d', 'release.fbe-scripting-examples', 'release.fbe-scripting-clipboard-ole-ci')) {
+    if ($fullProfile.tests.id -notcontains $id -or $fastProfile.tests.id -contains $id) {
+        throw "Required CI runtime matrix must appear in FULL: $id"
+    }
+}
+$requiredSuites = @(& (Join-Path $PSScriptRoot 'get-required-ci-runtime-suites.ps1'))
+if ($requiredSuites.Count -ne 4 -or @($requiredSuites | Where-Object RequiresGitHubHosted).Count -ne 1) {
+    throw 'Required runtime matrix/isolated OLE constraints are incomplete.'
+}
 foreach ($id in @('release.plugin-settings-runtime', 'release.plugin-options-tabs-runtime')) {
     $entry = @($fullProfile.tests | Where-Object id -eq $id)
     if ($entry.Count -ne 1 -or -not $entry[0].required -or $entry[0].contours -notcontains 'FULL' -or $fastProfile.tests.id -contains $id) {

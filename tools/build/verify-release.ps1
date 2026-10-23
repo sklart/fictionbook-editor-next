@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [string]$Configuration = "Release",
 
@@ -113,6 +113,8 @@ $requiredSymbols = @(
 
 & (Join-Path $repoRoot "tools\tests\test-update-manifest-candidate.ps1")
 & (Join-Path $repoRoot "tools\tests\test-release-test-catalog.ps1")
+& (Join-Path $repoRoot "tools\tests\test-required-ci-runtime-matrices.ps1")
+& (Join-Path $repoRoot "tools\tests\test-ci-ole-runtime-evidence.ps1")
 & (Join-Path $repoRoot "tools\tests\test-release-test-catalog-table-matrix.ps1")
 & (Join-Path $repoRoot "tools\tests\test-build-provenance.ps1")
 & (Join-Path $repoRoot "tools\tests\test-resource-id-safety.ps1")
@@ -152,6 +154,7 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-regex-help-markdown.ps1")
 & (Join-Path $repoRoot "tools\tests\test-regex-help-html.ps1")
 & (Join-Path $repoRoot "tools\tests\test-regex-help-formatting.ps1")
+& (Join-Path $repoRoot "tools\tests\test-regex-help-upload-policy.ps1")
 & (Join-Path $repoRoot "tools\tests\test-regex-help-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-find-results-pane-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-settings-background-boundary.ps1")
@@ -445,6 +448,12 @@ if (-not $SkipEarlyRuntimeSuites) {
 
 if ($FullValidation) {
     Write-Host 'Running FULL GUI, production, stress and benchmark validation.'
+    if (-not $SkipEarlyRuntimeSuites) {
+        $requiredCiRuntimeReport = Join-Path $outputDir '../tests/required-ci-runtime.json'
+        & (Join-Path $repoRoot 'tools/tests/invoke-required-ci-runtime-suites.ps1') -FbeExe (Join-Path $outputDir 'FBE.exe') -ReportPath $requiredCiRuntimeReport
+        & (Join-Path $repoRoot "tools\tests\test-regex-help-visual-runtime.ps1") -ArtifactDirectory (Join-Path $repoRoot 'out/tests/full-regex-help-html')
+        & (Join-Path $repoRoot "tools\tests\test-script-hotkey-management-runtime.ps1") -FbeExe (Join-Path $outputDir 'FBE.exe')
+    }
 	& (Join-Path $repoRoot "tools\tests\test-fbe-split-undo-probe.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -KeepArtifacts
 	& (Join-Path $repoRoot "tools\tests\test-fbe-split-ole-undo-probe.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -KeepArtifacts
     & (Join-Path $repoRoot "tools\tests\test-fbd-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
@@ -697,4 +706,7 @@ finally {
 
 & (Join-Path $repoRoot 'tools\build\report-release-binary-sizes.ps1') -BatchOutputDirectory $batchOutputDir
 Assert-TrackedEditorRuntimeDllSnapshot -RepositoryRoot $repoRoot -Snapshot $trackedEditorRuntimeSnapshot
+if ($FullValidation -and -not $SkipEarlyRuntimeSuites -and -not (Get-Content -LiteralPath $requiredCiRuntimeReport -Raw | ConvertFrom-Json).complete) {
+    throw "FullValidation incomplete: required external runtime checks are NOT RUN. See $requiredCiRuntimeReport"
+}
 Write-Host "Проверка релиза для версии $expectedVersion прошла успешно."
