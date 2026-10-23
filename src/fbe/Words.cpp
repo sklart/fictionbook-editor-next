@@ -8,6 +8,8 @@
 #include "FBDoc.h"
 #include "Words.h"
 #include "RuntimeLocalization.h"
+#include "dom/MarkupUndoUnitScope.h"
+#include <memory>
 
 #include "Settings.h"
 
@@ -1155,7 +1157,7 @@ bool ShowWordsDialog(FB::Doc& document, HWND parent)
 
 	// Replace words
 	int nRepl = 0, nTried = 0;
-	bool doUndo = false;
+	std::unique_ptr<FbeDom::MarkupUndoUnitScope> undo;
 
 
 	for(i = 0; i < hwords.GetSize(); ++i)
@@ -1169,10 +1171,9 @@ bool ShowWordsDialog(FB::Doc& document, HWND parent)
 		}
 		else
 		{
-			if(!doUndo)
+			if(!undo)
 			{
-				document.m_body.BeginUndoUnit(L"replace");
-				doUndo = true;
+				undo.reset(new FbeDom::MarkupUndoUnitScope(document.m_body.MarkupServices(), L"replace"));
 			}
 		}
 
@@ -1204,9 +1205,10 @@ bool ShowWordsDialog(FB::Doc& document, HWND parent)
 		nRepl += nWordRepl;
 	}
 
+	if(undo)
+		undo->Close();
 	if(nTried > 0)
 	{
-		document.m_body.EndUndoUnit();
 		U::MessageBox(MB_OK, IDS_REPL_WORDS_CPT, IDS_REPL_WORDS_MSG, nRepl);
 	}
 
