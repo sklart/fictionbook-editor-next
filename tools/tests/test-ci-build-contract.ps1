@@ -114,6 +114,7 @@ foreach ($required in @('Get-FirstPartyToolchainFingerprint', 'Test-FirstPartyTo
 }
 
 $utf8Bootstrap = Join-Path $root 'tools\build\Initialize-CiUtf8.ps1'
+& (Join-Path $PSScriptRoot 'test-ci-utf8-long-path.ps1')
 & $utf8Bootstrap
 $expected = 'Проверка UTF-8: Ёж'
 $nativeOutput = (& cmd.exe /d /c "echo $expected").Trim()

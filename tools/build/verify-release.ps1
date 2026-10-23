@@ -114,6 +114,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-update-manifest-candidate.ps1")
 & (Join-Path $repoRoot "tools\tests\test-release-test-catalog.ps1")
 & (Join-Path $repoRoot "tools\tests\test-required-ci-runtime-matrices.ps1")
+& (Join-Path $repoRoot "tools\tests\test-ci-utf8-long-path.ps1")
 & (Join-Path $repoRoot "tools\tests\test-ci-ole-runtime-evidence.ps1")
 & (Join-Path $repoRoot "tools\tests\test-release-test-catalog-table-matrix.ps1")
 & (Join-Path $repoRoot "tools\tests\test-build-provenance.ps1")

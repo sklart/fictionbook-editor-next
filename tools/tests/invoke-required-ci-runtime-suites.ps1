@@ -5,6 +5,7 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $exe = (Resolve-Path -LiteralPath $FbeExe).Path
 $results = @()
+Write-Host ("Required runtime matrices: inherited PATH length={0}." -f $env:Path.Length)
 Push-Location $root
 try {
     foreach ($suite in (& (Join-Path $PSScriptRoot 'get-required-ci-runtime-suites.ps1'))) {
