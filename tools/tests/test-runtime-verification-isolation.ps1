@@ -25,4 +25,37 @@ if($gate -notmatch 'test-fbe-document-tree-selection-contract\.ps1' -or
    $gate -notmatch '(?s)foreach \(\$treeMode in @\(''portable'', ''installed''\)\).*?test-fbe-document-tree-window-runtime\.ps1.*?-Mode \$treeMode') {
     throw 'Release verification must run the tree contract and both deployment modes.'
 }
-Write-Host 'Runtime verification isolation contract passed.'
+Require 'tools\tests\test-fbe-editor-view-lifecycle-runtime.ps1' 'Wait-IsolatedFbeProcess' 'View lifecycle must reap its timed-out process before cleanup.'
+Require 'tools\tests\test-fbe-editor-view-lifecycle-runtime.ps1' 'New-IsolatedFbeSettingsSeed' 'View lifecycle must use a fresh settings seed.'
+Require 'tools\tests\test-fbe-editor-view-lifecycle-runtime.ps1' 'FBE_NEXT_TEST_STARTUP_BREADCRUMB' 'View lifecycle must retain startup phase diagnostics.'
+
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+# Exercise the real process bookkeeping without opening a GUI or modifying FBE.
+$waitRoot = Join-Path ([IO.Path]::GetTempPath()) ('fbe-wait-contract-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $waitRoot | Out-Null
+$pwsh = (Get-Process -Id $PID).Path
+$waitIsolation = [pscustomobject]@{Root=$waitRoot;Runtime=$waitRoot;Exe=$pwsh;DataPath=$waitRoot;StagePath=(Join-Path $waitRoot 'stage.txt')}
+$waitReport = Join-Path $waitRoot 'report.txt'
+$child = $null
+try {
+    $child = Start-Process $pwsh -ArgumentList '-NoProfile -Command "Start-Sleep -Seconds 30"' -WindowStyle Hidden -PassThru
+    $timeoutObserved = $false
+    try {
+        $null = Wait-IsolatedFbeProcess -Process $child -Isolation $waitIsolation -Scenario 'controlled-wait-timeout' -Report $waitReport -TimeoutSeconds 1
+    } catch {
+        if ($_.Exception.Message -notlike "FBE runtime scenario 'controlled-wait-timeout' timed out after 1 seconds.*") { throw }
+        if ($_.Exception.Message -notlike '*report_exists=False*') { throw 'Timeout omitted report diagnostics.' }
+        $timeoutObserved = $true
+    }
+    $child.Refresh()
+    if (!$timeoutObserved -or !$child.HasExited) { throw 'Timeout must fail and reap the child before runtime cleanup.' }
+    Complete-IsolatedFbeRuntime -Isolation $waitIsolation -Passed $true
+    if (Test-Path $waitRoot) { throw 'Reaped child prevented disposable cleanup.' }
+
+    $child = Start-Process $pwsh -ArgumentList '-NoProfile -Command "exit 7"' -WindowStyle Hidden -PassThru
+    $code = Wait-IsolatedFbeProcess -Process $child -Isolation $waitIsolation -Scenario 'controlled-nonzero-exit' -Report $waitReport -TimeoutSeconds 10
+    if ($code -ne 7) { throw 'Nonzero child exit was hidden.' }
+} finally {
+    if ($child -and !$child.HasExited) { Stop-Process -Id $child.Id -Force -ErrorAction SilentlyContinue; $child.WaitForExit() }
+}
+Write-Host 'Runtime verification isolation contract and controlled timeout/nonzero-exit regressions passed.'
