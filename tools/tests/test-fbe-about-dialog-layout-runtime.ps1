@@ -1,4 +1,4 @@
-<# Opens About in four representative UI locales and checks its real text geometry. #>
+﻿<# Opens About in four representative UI locales and checks its real text geometry. #>
 [CmdletBinding()]
 param([string]$FbeExe)
 $ErrorActionPreference = 'Stop'
@@ -16,6 +16,8 @@ public static class AboutLayoutWindow {
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetClassName(IntPtr window, StringBuilder name, int capacity);
     [DllImport("user32.dll")] static extern IntPtr GetDlgItem(IntPtr window, int id);
+    [DllImport("user32.dll", EntryPoint="SendMessageW")] static extern IntPtr TextLength(IntPtr window, uint message, IntPtr wp, IntPtr lp);
+    [DllImport("user32.dll", EntryPoint="SendMessageW", CharSet=CharSet.Unicode)] static extern IntPtr ReadText(IntPtr window, uint message, IntPtr capacity, StringBuilder text);
     [DllImport("user32.dll", EntryPoint="GetWindowLongW")] static extern int GetWindowStyle(IntPtr window, int index);
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr window);
     [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr window, int command);
@@ -43,6 +45,13 @@ public static class AboutLayoutWindow {
         PostMessage(frame, 0x0111, (IntPtr)0xE140, IntPtr.Zero); // ID_APP_ABOUT
     }
     public static void Close(IntPtr window) { PostMessage(window, 0x0010, IntPtr.Zero, IntPtr.Zero); }
+    public static string ContributorsText(IntPtr about) {
+        IntPtr control = GetDlgItem(about, 1070);
+        // WM_GETTEXT supports reading another process's edit control.
+        var text = new StringBuilder(TextLength(control, 0x000E, IntPtr.Zero, IntPtr.Zero).ToInt32() + 1);
+        ReadText(control, 0x000D, (IntPtr)text.Capacity, text);
+        return text.ToString();
+    }
     public static int ContributorsStyle(IntPtr about, int index) {
         return GetWindowStyle(GetDlgItem(about, 1070), index);
     }
@@ -52,10 +61,12 @@ try {
     & pwsh -NoProfile -File (Join-Path $PSScriptRoot '..\localization\export-runtime-lang.ps1') -OutputDirectory (Join-Path $isolation.Runtime 'Lang') -Clean | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Runtime localization export failed.' }
     $fixture = (Resolve-Path (Join-Path $PSScriptRoot 'fb2-validate-valid-smoke.fb2')).Path
+    $expectedContributors = [IO.File]::ReadAllText((Join-Path $PSScriptRoot '..\..\runtime\contributors.txt')).Replace("`r`n", "`n").Replace("`r", "`n").Replace("`n", "`r`n").TrimEnd()
     $languageIds = @{ 'ru-RU'=0xFBE002; 'en-US'=0xFBE001; 'de-DE'=0xFBE004; 'uk-UA'=0xFBE003 }
     $settingsDirectory = Join-Path $isolation.DataPath 'Settings'
     New-Item -ItemType Directory -Path $settingsDirectory -Force | Out-Null
-    $settingsTemplate = [IO.File]::ReadAllText((Join-Path $isolation.Runtime 'Data\Settings\Settings.xml'))
+    $seed = New-IsolatedFbeSettingsSeed $isolation
+    $settingsTemplate = [IO.File]::ReadAllText($seed).Replace('<Settings ID="0">', '<Settings ID="0"><IntefaceLangID>1</IntefaceLangID>')
     $pattern = [regex]::new('<IntefaceLangID>[0-9]+</IntefaceLangID>')
     if (-not $pattern.IsMatch($settingsTemplate)) { throw 'The settings template lacks the interface language.' }
     foreach ($locale in 'ru-RU', 'en-US', 'de-DE', 'uk-UA') {
@@ -78,6 +89,7 @@ try {
                 $about = [AboutLayoutWindow]::Find($process.Id, $true)
             }
             if ($about -eq [IntPtr]::Zero) { throw "$locale About dialog missing." }
+            if ([AboutLayoutWindow]::ContributorsText($about) -cne $expectedContributors) { throw "$locale About contributors text differs from the embedded UTF-8 resource." }
             $report = Join-Path $isolation.Root "about-layout-$locale.json"
             & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $report | Out-Null
             $audit = Get-Content -Raw -Encoding UTF8 -LiteralPath $report | ConvertFrom-Json

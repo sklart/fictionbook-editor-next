@@ -19,14 +19,6 @@ DEFINE_GUID(CLSID_VBScript, 0xb54f3741, 0x5b07, 0x11cf, 0xa4, 0xb0, 0x0,
 DEFINE_GUID(CLSID_JScript, 0xf414c260, 0x6ac0, 0x11cf, 0xb6, 0xd1, 0x00,
    0xaa, 0x00, 0xbb, 0xbb, 0x58);
 
-void *::operator new(size_t amount) {
-  return ::HeapAlloc(::GetProcessHeap(),0,amount);
-}
-
-void ::operator delete(void *p) noexcept {
-  ::HeapFree(::GetProcessHeap(),0,p);
-}
-
 static bool EQ(REFIID i1,REFIID i2) {
   char	*c1 = (char *)&i1;
   char	*c2 = (char *)&i2;

@@ -15,10 +15,10 @@ namespace DeploymentContext
 
     inline std::wstring ExecutableDirectory()
     {
-        wchar_t path[32768] = {};
-        const DWORD length = ::GetModuleFileNameW(NULL, path, _countof(path));
-        if (length == 0 || length >= _countof(path)) return std::wstring();
-        std::wstring result(path, length);
+        std::wstring path(32768, L'\0');
+        const DWORD length = ::GetModuleFileNameW(NULL, path.data(), static_cast<DWORD>(path.size()));
+        if (length == 0 || length >= path.size()) return std::wstring();
+        std::wstring result(path.data(), length);
         const std::wstring::size_type slash = result.find_last_of(L"\\/");
         return slash == std::wstring::npos ? std::wstring() : result.substr(0, slash + 1);
     }
@@ -51,10 +51,10 @@ namespace DeploymentContext
     {
         wchar_t testMode[2] = {};
         if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) != 1 || testMode[0] != L'1') return std::wstring();
-        wchar_t path[32768] = {};
-        const DWORD length = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SETTINGS_DIRECTORY", path, _countof(path));
-        if (length == 0 || length >= _countof(path)) return std::wstring();
-        std::wstring result(path, length);
+        std::wstring path(32768, L'\0');
+        const DWORD length = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SETTINGS_DIRECTORY", path.data(), static_cast<DWORD>(path.size()));
+        if (length == 0 || length >= path.size()) return std::wstring();
+        std::wstring result(path.data(), length);
         if (result.back() != L'\\') result += L'\\';
         return result;
     }
@@ -63,10 +63,11 @@ namespace DeploymentContext
     {
         if (CurrentMode() != Mode::Portable) return std::wstring();
         const std::wstring root = ExecutableDirectory();
-        wchar_t value[32768] = L"Data";
+        std::wstring value = L"Data";
+        value.resize(32768, L'\0');
         const std::wstring marker = root + L"portable.ini";
-        ::GetPrivateProfileStringW(L"Portable", L"DataPath", L"Data", value, _countof(value), marker.c_str());
-        std::wstring path(value);
+        ::GetPrivateProfileStringW(L"Portable", L"DataPath", L"Data", value.data(), static_cast<DWORD>(value.size()), marker.c_str());
+        std::wstring path(value.c_str());
         if (path.empty() || path.find(L"..") != std::wstring::npos || path.find_first_of(L":/\\") != std::wstring::npos) path = L"Data";
         path = root + path;
         if (path.back() != L'\\') path += L'\\';

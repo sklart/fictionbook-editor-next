@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "Utils.h"
 #include "AboutBox.h"
+#include "AboutContributors.h"
 #include "RuntimeLocalization.h"
 #include "ThemeManager.h"
 #include "../common/DeploymentContext.h"
@@ -321,10 +322,8 @@ LRESULT CAboutDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	::SetWindowText(GetDlgItem(IDC_STATIC_AB_APPNAMEVER), bname);
 
 	m_Contributors = GetDlgItem(IDC_CONTRIBS);
-	HRSRC hres = ::FindResource(NULL, L"ABOUT_FILE", L"ABOUT_FILE");
-	HGLOBAL hbytes = ::LoadResource(NULL, hres);
-	CA2CT contribs((char*)::LockResource(hbytes), 65001);  // UTF-8
-	CString s(contribs);
+	const std::wstring contributors = AboutContributors::Load(NULL);
+	CString s(contributors.c_str(), static_cast<int>(contributors.size()));
 	s.Replace(L"\r\n", L"\n");
 	s.Replace(L"\r", L"\n");
 	s.Replace(L"\n", L"\r\n");

@@ -250,6 +250,7 @@
     <ClCompile Include="script.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MemoryAllocation.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="Settings.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -335,6 +336,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AboutContributors.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="scripts\ScriptMenuBitmap.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="AboutBox.h">
       <Filter>Header Files</Filter>
     </ClInclude>

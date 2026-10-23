@@ -406,6 +406,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     </ClCompile>
     <ClCompile Include="settings\ui\SettingsAdvancedPage.cpp"><AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories></ClCompile>
     <ClCompile Include="script.cpp" />
+    <ClCompile Include="MemoryAllocation.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="Settings.cpp" />
 	<ClCompile Include="settings\SettingsPaths.cpp" />
 	<ClCompile Include="settings\SettingsNormalization.cpp" />
@@ -477,6 +478,8 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
   <ItemGroup>
     <ClInclude Include="diagnostics\DiagnosticDialog.h" />
     <ClInclude Include="..\common\DiagnosticPrivacy.h" />
+    <ClInclude Include="AboutContributors.h" />
+    <ClInclude Include="scripts\ScriptMenuBitmap.h" />
     <ClInclude Include="AboutBox.h" />
     <ClInclude Include="ArchiveEntryPicker.h" />
     <ClInclude Include="apputils.h" />

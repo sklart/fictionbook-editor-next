@@ -33,15 +33,18 @@ class ShowingScope {
     HWND state = NULL, previousOwner = NULL;
     HANDLE previousDialog = NULL;
     bool outer = false;
+    bool registeredClass = false;
 public:
     explicit ShowingScope(HWND owner) {
         state = ScopeWindow(); outer = state == NULL;
         if(outer) {
             WNDCLASSW klass={};klass.lpfnWndProc=::DefWindowProcW;klass.hInstance=::GetModuleHandleW(NULL);klass.lpszClassName=ScopeName().c_str();
             const ATOM atom=::RegisterClassW(&klass);
+            registeredClass = atom != 0;
             if(atom || ::GetLastError()==ERROR_CLASS_ALREADY_EXISTS)
                 state=::CreateWindowExW(0,ScopeName().c_str(),L"",0,0,0,0,0,HWND_MESSAGE,NULL,klass.hInstance,NULL);
         }
+        if(!state) return;
         previousOwner = reinterpret_cast<HWND>(::GetPropW(state, L"FBE.ScopeOwner"));
         previousDialog = ::GetPropW(state, L"FBE.ScopeDialog");
         ::RemovePropW(state, L"FBE.ScopeDialog");
@@ -49,11 +52,15 @@ public:
         if(outer && state) NotifyScopeChanged();
     }
     ~ShowingScope() {
+        if(!state) {
+            if(registeredClass) ::UnregisterClassW(ScopeName().c_str(),::GetModuleHandleW(NULL));
+            return;
+        }
         const HWND dialog=DialogWindowOnThread();
         if(dialog)::RemovePropW(dialog,L"FBE.NativeFileDialog");
         if(outer) {
             if(state)::DestroyWindow(state);
-            ::UnregisterClassW(ScopeName().c_str(),::GetModuleHandleW(NULL));
+            if(registeredClass) ::UnregisterClassW(ScopeName().c_str(),::GetModuleHandleW(NULL));
             if(state)NotifyScopeChanged();
         }
         else {
@@ -63,7 +70,7 @@ public:
             else ::RemovePropW(state, L"FBE.ScopeDialog");
         }
     }
-    bool BindDialog(IFileDialog* dialog) { return ::SetPropW(state, L"FBE.ScopeDialog", reinterpret_cast<HANDLE>(dialog)) != FALSE; }
+    bool BindDialog(IFileDialog* dialog) { return state && ::SetPropW(state, L"FBE.ScopeDialog", reinterpret_cast<HANDLE>(dialog)) != FALSE; }
     bool Valid() const { return state != NULL; }
     ShowingScope(const ShowingScope&) = delete;
     ShowingScope& operator=(const ShowingScope&) = delete;
