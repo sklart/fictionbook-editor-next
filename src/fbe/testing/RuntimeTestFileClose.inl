@@ -98,12 +98,51 @@ if (IsFbeTestScenario(L"file-close-runtime")) {
         require(m_document_tree.m_tree.m_tree.GetCount()>0,"other book structure restored");
         {
             auto& tree=m_document_tree.m_tree.m_tree;
+            const auto document=m_doc->m_body.Document();
+            CComPtr<IUnknown> documentIdentity;
+            const auto body=document->body;
+            // MSHTML's automation document is a wrapper distinct from the
+            // browser's IHTMLDocument2. Compare owners through the same surface,
+            // and independently anchor their body identity to the live view.
+            const IDispatchPtr currentOwner=body->document;
+            CheckError(currentOwner->QueryInterface(IID_IUnknown,reinterpret_cast<void**>(&documentIdentity)));
+            CComPtr<IUnknown> bodyIdentity;
+            CheckError(body->QueryInterface(IID_IUnknown,reinterpret_cast<void**>(&bodyIdentity)));
+            require(m_document_session.Location().storagePath==second.data()&&FB::Doc::m_active_doc==m_doc,"second book session and active document");
+            const auto xml=m_doc->CreateDOMForAnalysis();
+            require(xml!=nullptr,"second book XML snapshot");
+            const auto title=xml->selectSingleNode(L"//*[local-name()='title-info']/*[local-name()='book-title']");
+            require(title&&CString(static_cast<LPCWSTR>(title->text))==L"CLOSE_SECOND_UNIQUE","second book metadata title");
+            require(CString(static_cast<LPCWSTR>(xml->xml)).Find(L"CLOSE_FIRST_UNIQUE")<0,"second book contains no first book content");
             bool secondBook=false;
-            for(HTREEITEM item=tree.GetRootItem();item;item=tree.GetNextSiblingItem(item)) {
-                MSHTML::IHTMLElementPtr root(reinterpret_cast<MSHTML::IHTMLElement*>(tree.GetItemData(item)));
-                if(root&&CString(static_cast<LPCWSTR>(root->outerHTML)).Find(L"CLOSE_SECOND_UNIQUE")>=0) secondBook=true;
+            unsigned checkedNodes=0;
+            std::vector<HTREEITEM> pending;
+            for(HTREEITEM root=tree.GetRootItem();root;root=tree.GetNextSiblingItem(root)) pending.push_back(root);
+            while(!pending.empty()) {
+                const HTREEITEM item=pending.back();pending.pop_back();
+                MSHTML::IHTMLElementPtr element(reinterpret_cast<MSHTML::IHTMLElement*>(tree.GetItemData(item)));
+                require(element!=nullptr,"structure node retains an element");
+                CComPtr<IUnknown> ownerIdentity;
+                const IDispatchPtr owner=element->document;
+                require(owner!=nullptr,"structure element has an owner document");
+                CheckError(owner->QueryInterface(IID_IUnknown,reinterpret_cast<void**>(&ownerIdentity)));
+                require(ownerIdentity==documentIdentity,"tree element owner identity is current document");
+                const MSHTML::IHTMLDocument2Ptr ownerDocument(owner);
+                CComPtr<IUnknown> ownerBodyIdentity;
+                CheckError(ownerDocument->body->QueryInterface(IID_IUnknown,reinterpret_cast<void**>(&ownerBodyIdentity)));
+                require(ownerBodyIdentity==bodyIdentity,"owner document body identity matches live view");
+                require(body->contains(element)!=VARIANT_FALSE,"tree element is attached to current body");
+                const CString html(static_cast<LPCWSTR>(element->outerHTML));
+                require(html.Find(L"CLOSE_FIRST_UNIQUE")<0,"tree contains no first book elements");
+                if(html.Find(L"CLOSE_SECOND_UNIQUE")>=0) secondBook=true;
+                ++checkedNodes;
+                for(HTREEITEM child=tree.GetChildItem(item);child;child=tree.GetNextSiblingItem(child)) pending.push_back(child);
             }
-            require(secondBook,"tree belongs to second book");
+            require(checkedNodes==tree.GetCount(),"all structure nodes checked for DOM ownership");
+            // FBD has no body: its title lives in Description, outside the
+            // filtered structure tree. Ownership and metadata are checked above.
+            require(m_doc->GetDocumentFileType()==FictionBookFileType::Fbd||secondBook,"FB2 tree contains second book marker");
+            phase("second book session, metadata and all tree DOM owners verified");
         }
         clean();SendMessage(WM_COMMAND,ID_FILE_CLOSE);closed();
         {PendingDocument pending(*this,m_doc);pending.Rollback();}
