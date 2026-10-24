@@ -243,8 +243,119 @@ attempt, повтором и pilot, единственность каждого 
 PowerShell. Два сценария проверяют assets/layout без native запуска; им
 не приписывается runtime UB coverage.
 
-Открытых first-party UBSan findings в этом FAST покрытии нет. Весь UBSan этап
-ещё не завершён: остаются FULL, финальная ASan regression (включая FAST),
+Открытых first-party UBSan findings в этом FAST покрытии нет. На этой точке UBSan этап
+ещё не был завершён: оставались FULL, финальная ASan regression (включая FAST),
 строгий MSVC Release Win32, обычный `verify-release.ps1 -Configuration Release`,
 свежие production/package stages и scoped commit. По границе этого продолжения
 эти финальные gates не запускались. Удалённый CI по-прежнему NOT RUN.
+
+## Финальная локальная acceptance — 2026-10-25
+
+Checkpoint `9a43c3e61f35d1acc3e69f55f69bb24545e8c3c4` создан до FULL.
+В него вошли только исходники, build/toolchain/runner, regression tests, CI и
+документация. Отдельное правило `.gitattributes` сохраняет CRLF checkout
+`ubsan.ignorelist`: bytes и SHA политики не изменились при нормализации index.
+LLVM, generated MIDL/type libraries, build/out и диагностические probes в Git
+не добавлялись. Push не выполнялся.
+
+| Проверка | Итог / evidence относительно `out/tests/ubsan/final-acceptance` |
+| --- | --- |
+| UBSan build | PASS, 11 PE / 219 TU; исходная исправленная сборка сохранена без пересборки перед FULL |
+| UBSan self-test после FULL | PASS, `ubsan-self-after-full.log` |
+| UBSan product pilot | PASS 4/4; прежний report и те же 11 SHA-256 |
+| UBSan FAST | PASS 84/84, прежнее audited evidence и полное покрытие этих команд в новом FULL |
+| UBSan FULL | PASS 147/147, **один полный прогон**, `D:\Download\FBeditor\out\tests\ubsan\20261024-204743-add9fbf1e3424369ad27311f7e21cccb/summary.json` |
+| UBSan final diagnostics | 0; `ubsan-full-audit.json` |
+| UBSan policy / narrow exception boundary | PASS, `ubsan-policy.log`; own overflow по-прежнему обнаруживается |
+| MSVC native regressions | PASS 6/6, `msvc-native-regressions.log` |
+| ASan build / policy | PASS, `asan-build.log`, `asan-policy.log` |
+| ASan infrastructure self-test | PASS в полном FAST и повторно в адресном прогоне |
+| ASan native regressions | PASS 6/6, `asan-native-regressions.log` |
+| ASan FAST | PASS 84/84, **audited union**, `D:\Download\FBeditor\out\tests\ubsan\final-acceptance\asan-fast-union-5fe0bc7b3c31464c8fa18aa6b5448cde/summary.json`, `asan-fast-audit.json` |
+| MSVC Release Win32, strict first-party warnings | PASS, 0 compiler warnings / 0 errors; `release-strict-build.log` |
+| Обычный `pwsh ./tools/build/verify-release.ps1 -Configuration Release` | PASS, полный штатный запуск без `Skip*`; `verify-release.log` |
+| Win7 imports contract | PASS: FBE/FBV, plug-ins, batch, FBShell Win32/x64, FBVVerbResources и editor runtime; внутри обычного gate |
+| Свежие Core / Portable / Integration / InstallerInput | PASS / PASS / PASS / PASS; `package-isolation.json` |
+| Production sanitizer leak | 0, guards всех четырёх stages и реальные PE negative controls для ASan/UBSan |
+| Output isolation | PASS, `output-isolation.json`; прежний build audit 3067 файлов и текущие контрольные SHA перед намеренными ASan/Release rebuilds |
+| CI configuration | PASS review, `ci-review.json`; remote CI NOT RUN |
+
+Машинный каталог развёрнут при запуске, число сценариев не задано константой
+runner. Аудит проверяет все команды по catalog ID, их кратность, отсутствие
+пропусков/дубликатов, актуальные SHA-256 всех 11 product modules, child results,
+нулевые diagnostics/dumps и exception-policy hash. Развёртывание scripting
+матриц перебирает PowerShell hashtable, поэтому ordinal вариантов не является
+каноническим: сравнивается **точный multiset команд внутри каждого ID**,
+включая все параметры. Это исправление дополнительного локального аудита,
+а не изменение sanitizer runner или фактически выполненных команд.
+
+FULL coverage: 143 сценария с instrumented native process, два с instrumented
+ExportEPUB.dll в системном x86 PowerShell host и два asset/layout-only.
+ASan FAST coverage: 80 + 2 + 2 соответственно. Asset/layout cases не получают
+runtime UB coverage. `ubsan-full-audit.json` и `asan-fast-audit.json` сохраняют
+команды, тип покрытия и binary evidence.
+
+Дополнительных first-party UB в FULL: **0**. Все три первоначальных finding
+исправлены, известных оставшихся first-party UB в выполненном покрытии: **0**.
+EPUB/LunaSVG ABI/wchar_t boundary проверен policy и настоящими SVG/EPUB
+сценариями в UBSan и обычном Release. Virtual-memory regression проверяет
+ноль, малые/обычные диапазоны, верхнюю границу и wraparound. VARIANT regression
+дополнен явно aligned входом и сохранением borrowed value после null input;
+также проверяет намеренно misaligned storage, bytes, SAFEARRAY pointer и
+исключительное ownership оригинала. Эти проверки прошли в UBSan self-test,
+обычном MSVC и ASan; продуктовый image-inserter сценарий также PASS.
+
+### Отказы acceptance и их классификация
+
+1. **ASan UI capture: FLAKY_NOT_REPRODUCED.** Исходный полный FAST
+   `D:\Download\FBeditor\out\tests\asan\20261024-214735-3249ce074d0540e4a8936dbf43974cb7/summary.json`: 83 PASS / 1 FAIL. Единственный отказ — восемь
+   `menu_display_capture=0`, обычный native exit 1; ASan diagnostics/dumps и
+   monitor errors отсутствуют, остальные boolean assertions успешны.
+   Исходные report/stdout/stderr/child results и snapshot сохранены в
+   `asan-ui-defects-original`. Точная причина capture failure не установлена.
+   Неизменённый повтор `D:\Download\FBeditor\out\tests\asan\20261024-224822-419b94a6e96d4d3da8a0a6d663994c1f/summary.json` прошёл с exit 0, всеми
+   assertions и свежими capture PNG. Команда, 11 module SHA и test/harness
+   неизменны; timeout, checks и expected exits не ослаблялись. Итог ASan FAST
+   объединяет 83 исходных PASS и один точный повтор. Исходный FAIL сохранён;
+   это **не один монолитный зелёный ASan FAST**. Обычный Release UI defects
+   впоследствии также прошёл.
+2. **Release source contract: HARNESS_FAILURE.**
+   `test-script-toolbar-lifecycle-contract.ps1:69` ожидал старую форму ternary
+   с неявным HWND преобразованием. Уже внесённый clang-cl compatibility fix
+   в `mainfrm.cpp:2755` использует `static_cast<HWND>(m_ScriptsToolbar)`.
+   Условие, выбранная панель и fallback HWND те же. Regex обновлён на точную
+   явную форму, без удаления условия/assertions; focused contract PASS.
+   Реальный toolbar lifecycle runtime PASS в UBSan FULL, ASan FAST и обычном
+   MSVC gate. Исходный отказ сохранён в `verify-release-original-fail.log`;
+   после изменения теста выполнен **весь обычный verify-release заново**,
+   без Skip/exclusion. Product binaries этим исправлением не изменялись.
+
+Единственная ignorelist запись осталась прежней: полный SDK Create symbol и
+только `[signed-integer-overflow]`. SHA-256:
+`0B9CE15CE0D27719674F7529F48C47B5B536AB1897D921B346C3885D21D48CE3`.
+Новых suppressions нет. Native LLVM 21.1.8 clang-cl/LLD,
+`i686-pc-windows-msvc`, Release/Win32 и 219 TU однозначно отражены в manifest;
+compiler/linker fallback отсутствует. Production provenance: MSVC / None /
+Release / Win32. Защищённые IDL и Scintilla/Lexilla bytes не изменились.
+
+Нулевые warnings в таблице относятся к compiler/MSBuild first-party gate
+`/W4 /WX`. В vendor configure логе остаются три прежних CMake diagnostic:
+optional OpenH264 и PCRE/PCRE2 POSIX package-name dev warnings. Они присутствуют
+и в до-UBSan `out/tests/asan/continuation-release-build-final.log`.
+Обычный Hunspell probe также печатает прежний LNK4020 о debug-type PDB;
+тот же diagnostic сохранён в до-UBSan `continuation-verify-release-final.log`.
+Они не скрывались, vendor versions/бинарники ради них не менялись;
+`configure-diagnostics.json` и raw logs сохраняют это различие.
+
+ASan FULL **NOT RERUN**: прежнее 147/147 evidence сохранено при `d981ceed`;
+текущие изменения общей инфраструктуры покрыты свежими ASan self-test,
+native regressions, policy и FAST, FULL-only routing не менялась. Прежний
+FULL не выдаётся за прогон текущего ASan binary cohort.
+
+Production policy остаётся Windows 7 SP1+; UBSan diagnostic contour — modern
+Windows. Win7 evidence здесь — imports contract, не запуск на Windows 7.
+Uninstrumented third-party boundaries, отсутствие TSan/MSan, integer/implicit
+conversion groups, vptr/fuzzing и C++20 по-прежнему являются ограничениями
+области работ. UBSan не заменяет ASan. Состав release workflow не менялся;
+отдельный UBSan build/self-test/FAST остаётся blocking на уровне job, FULL —
+для tag/manual, удалённый CI без push не запускался.

@@ -66,7 +66,7 @@ Must $frame 'FindScriptToolbarRuntime\(hdr->hwndFrom\)' 'Double-click dispatch r
 Must $frame 'ShowScriptsToolbarCustomizeDialog\(hdr->hwndFrom\)' 'Double-click selects the clicked script toolbar'
 Must $frame 'SetWindowSubclass\(runtime\.window, ToolbarCustomizeSubclassProc, runtime\.rebarBandId' 'Dynamic script toolbar installs the FBE customize subclass'
 Must $frame 'RemoveWindowSubclass\(runtime\.window, ToolbarCustomizeSubclassProc, runtime\.rebarBandId' 'Dynamic script toolbar removes the customize subclass before destruction'
-Must $frame 'const HWND selected = selectedToolbar != NULL && FindScriptToolbarRuntime\(selectedToolbar\) != NULL \? selectedToolbar : m_ScriptsToolbar' 'Customize dialog keeps the clicked panel selected'
+Must $frame 'const HWND selected = selectedToolbar != NULL && FindScriptToolbarRuntime\(selectedToolbar\) != NULL \? selectedToolbar : static_cast<HWND>\(m_ScriptsToolbar\)' 'Customize dialog keeps the clicked panel selected'
 Must $runtime 'm_scripts\.InitializeCount\(\) == initBefore' 'Lifecycle proves management does not run full initialization'
 Must $runtime 'm_scripts\.DiscoveryCount\(\) == discoveryBefore' 'Lifecycle proves management does not rediscover scripts'
 Must $runtime 'defaultNames' 'Lifecycle proves localized generated names reuse the first freed number'
