@@ -71,18 +71,18 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir Condition="'$(FbeSanitizer)' != 'Address'">$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
-    <OutDir Condition="('$(BatchOutputDirectory)'!='') and '$(FbeSanitizer)' != 'Address'">$(BatchOutputDirectory)</OutDir>
-    <IntDir Condition="'$(FbeSanitizer)' != 'Address'">$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir Condition="'$(FbeSanitizer)' == 'None'">$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
+    <OutDir Condition="('$(BatchOutputDirectory)'!='') and '$(FbeSanitizer)' == 'None'">$(BatchOutputDirectory)</OutDir>
+    <IntDir Condition="'$(FbeSanitizer)' == 'None'">$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir Condition="'$(FbeSanitizer)' != 'Address'">$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
-    <OutDir Condition="('$(BatchOutputDirectory)'!='') and '$(FbeSanitizer)' != 'Address'">$(BatchOutputDirectory)</OutDir>
-    <IntDir Condition="'$(FbeSanitizer)' != 'Address'">$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir Condition="'$(FbeSanitizer)' == 'None'">$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
+    <OutDir Condition="('$(BatchOutputDirectory)'!='') and '$(FbeSanitizer)' == 'None'">$(BatchOutputDirectory)</OutDir>
+    <IntDir Condition="'$(FbeSanitizer)' == 'None'">$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)'=='x64'">
-    <OutDir Condition="'$(FbeSanitizer)' != 'Address'">$(MSBuildProjectDirectory)\..\..\out\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir Condition="'$(FbeSanitizer)' != 'Address'">$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir Condition="'$(FbeSanitizer)' == 'None'">$(MSBuildProjectDirectory)\..\..\out\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(FbeSanitizer)' == 'None'">$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

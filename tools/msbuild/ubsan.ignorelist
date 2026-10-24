@@ -1,0 +1,7 @@
+# VC 14.44 ATL CAxFrameWindow::GetWindow internally calls this SDK function
+# with {CW_USEDEFAULT,CW_USEDEFAULT,0,0}. Its two LONG subtractions intentionally
+# retain CW_USEDEFAULT's 32-bit representation for CreateWindowExW.
+# Exact Unicode /Zc:wchar_t- SDK instantiation; no first-party function entries.
+# Evidence and a live own-overflow negative control: test-ubsan-infrastructure.
+[signed-integer-overflow]
+fun:\?Create@\?$CWindowImplBaseT@VCWindow@ATL@@V\?$CWinTraits@$0FGAAAAAA@$0A@@2@@ATL@@QAEPAUHWND__@@PAU3@V_U_RECT@2@PBGKKV_U_MENUorID@2@GPAX@Z

@@ -26,19 +26,21 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <PropertyGroup>
-    <OutDir Condition="'$(FbeSanitizer)' != 'Address'">$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
-    <IntDir Condition="'$(FbeSanitizer)' != 'Address'">$(MSBuildProjectDirectory)\..\..\build\obj\ImportEPUBLunaSVG\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir Condition="'$(FbeSanitizer)' == 'None'">$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(FbeSanitizer)' == 'None'">$(MSBuildProjectDirectory)\..\..\build\obj\ImportEPUBLunaSVG\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>ImportEPUBLunaSVG</TargetName>
     <TargetExt>.dll</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir Condition="'$(FbeSanitizer)' != 'Address'">$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\Plugins\</OutDir>
+    <OutDir Condition="'$(FbeSanitizer)' == 'None'">$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\Plugins\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;UNICODE;_UNICODE;STRICT;LUNASVG_BUILD_STATIC;PLUTOVG_BUILD_STATIC;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <!-- Match the importer function pointer's UTF-16 C ABI type. -->
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -57,6 +59,7 @@
     <ClCompile>
       <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;UNICODE;_UNICODE;STRICT;LUNASVG_BUILD_STATIC;PLUTOVG_BUILD_STATIC;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>

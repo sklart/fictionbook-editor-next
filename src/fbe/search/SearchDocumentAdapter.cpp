@@ -304,7 +304,7 @@ bool SearchDocumentAdapter::TryGetSearchOffset(
 		if (!source.Element)
 			continue;
 		MSHTML::IHTMLDocument2Ptr document(source.Element->document);
-		MSHTML::IHTMLBodyElementPtr body(document ? document->body : MSHTML::IHTMLBodyElementPtr());
+		MSHTML::IHTMLBodyElementPtr body(document ? MSHTML::IHTMLBodyElementPtr(document->body) : MSHTML::IHTMLBodyElementPtr());
 		MSHTML::IHTMLTxtRangePtr sourceRange(body ? body->createTextRange() : MSHTML::IHTMLTxtRangePtr());
 		if (!sourceRange)
 			continue;
@@ -331,7 +331,7 @@ bool SearchDocumentAdapter::TryGetSearchOffset(
 	{
 		const SourceRange& source = m_sources[0];
 		MSHTML::IHTMLDocument2Ptr document(source.Element->document);
-		MSHTML::IHTMLBodyElementPtr body(document ? document->body : MSHTML::IHTMLBodyElementPtr());
+		MSHTML::IHTMLBodyElementPtr body(document ? MSHTML::IHTMLBodyElementPtr(document->body) : MSHTML::IHTMLBodyElementPtr());
 		MSHTML::IHTMLTxtRangePtr sourceRange(body ? body->createTextRange() : MSHTML::IHTMLTxtRangePtr());
 		if (sourceRange)
 		{

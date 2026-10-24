@@ -48,7 +48,7 @@ void HtmlExportGeneralPage::LoadFromSettings()
     SetDlgItemInt(IDC_TOCDEPTH, m_settings->tocDepth, FALSE);
     SetDlgItemText(IDC_TEMPLATE, m_settings->templatePath);
     m_templateSupportsSplit = ExportHtmlPathsEqual(m_settings->templatePath, U::GetProgDirFile(L"html.xsl"));
-    CComboBox structure = GetDlgItem(IDC_DOCUMENT_STRUCTURE);
+    CComboBox structure(GetDlgItem(IDC_DOCUMENT_STRUCTURE));
     structure.ResetContent();
     structure.AddString(LoadExportHtmlString(IDS_OPTIONS_VALUE_SINGLE_HTML));
     structure.AddString(LoadExportHtmlString(IDS_OPTIONS_VALUE_SPLIT_SECTIONS));

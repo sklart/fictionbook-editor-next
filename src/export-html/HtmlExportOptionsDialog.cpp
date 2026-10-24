@@ -59,7 +59,7 @@ LRESULT CHtmlExportOptionsDialog::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
         const CString text = LoadExportHtmlString(id);
         if(!text.IsEmpty()) SetDlgItemText(id, text);
     }
-    CTabCtrl tabs = GetDlgItem(IDC_OPTIONS_TABS);
+    CTabCtrl tabs(GetDlgItem(IDC_OPTIONS_TABS));
     ::SetPropW(tabs,L"FBE.PluginOptionsTabs",reinterpret_cast<HANDLE>(1));
     const UINT titles[] = { IDS_OPTIONS_TAB_GENERAL, IDS_OPTIONS_TAB_APPEARANCE, IDS_OPTIONS_TAB_IMAGES, IDS_OPTIONS_TAB_NOTES };
     for (int index = 0; index < static_cast<int>(_countof(titles)); ++index) {
@@ -158,7 +158,7 @@ LRESULT CHtmlExportOptionsDialog::OnTabChanged(int, LPNMHDR, BOOL&)
 }
 void CHtmlExportOptionsDialog::LayoutPages()
 {
-    CTabCtrl tabs = GetDlgItem(IDC_OPTIONS_TABS);
+    CTabCtrl tabs(GetDlgItem(IDC_OPTIONS_TABS));
     if (!tabs.IsWindow()) return;
     CRect page;
     tabs.GetWindowRect(&page);

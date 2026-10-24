@@ -516,8 +516,8 @@
 		CStringA header("case\tparagraphs\tempty_divs\tbrs\texact_paragraphs\tempty_line\tnbsp\tformatting\tscope_isolated\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
-		MSHTML::IHTMLElementPtr body(document ? document->body : MSHTML::IHTMLElementPtr());
-		MSHTML::IHTMLElementPtr editable(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr body(document ? MSHTML::IHTMLElementPtr(document->body) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr editable(document ? MSHTML::IHTMLElementPtr(document->all->item(L"fbw_body")) : MSHTML::IHTMLElementPtr());
 		if (!body || !editable)
 		{
 			output.Close(); ::PostQuitMessage(1); return 0;
@@ -540,15 +540,15 @@
 			::CloseClipboard();
 			if (clipboardReady) {
 				MSHTML::IHTMLElementCollectionPtr initialParagraphs(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"P"));
-				MSHTML::IHTMLElementPtr initialParagraph(initialParagraphs && initialParagraphs->length ? initialParagraphs->item(0L) : MSHTML::IHTMLElementPtr());
+				MSHTML::IHTMLElementPtr initialParagraph(initialParagraphs && initialParagraphs->length ? MSHTML::IHTMLElementPtr(initialParagraphs->item(0L)) : MSHTML::IHTMLElementPtr());
 				if (initialParagraph) { MSHTML::IHTMLTxtRangePtr pasteRange(MSHTML::IHTMLBodyElementPtr(body)->createTextRange()); pasteRange->moveToElementText(initialParagraph); pasteRange->collapse(VARIANT_FALSE); pasteRange->select(); BOOL pasteHandled = FALSE; m_doc->m_body.OnPaste(0, ID_EDIT_PASTE, 0, pasteHandled); }
 				editable = document->all->item(L"fbw_body");
 				const CString pastedHtml(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
 				const CString pastedText(editable ? static_cast<LPCWSTR>(editable->innerText) : L"");
 				const int alpha = pastedText.Find(L"paste-alpha"), beta = pastedText.Find(L"paste-beta"), gamma = pastedText.Find(L"paste-gamma");
 				MSHTML::IHTMLElementCollectionPtr sections(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV"));
-				MSHTML::IHTMLElementPtr pastedSection(sections && sections->length ? sections->item(0L) : MSHTML::IHTMLElementPtr());
-				MSHTML::IHTMLElementPtr adjacent(sections && sections->length > 1 ? sections->item(1L) : MSHTML::IHTMLElementPtr());
+				MSHTML::IHTMLElementPtr pastedSection(sections && sections->length ? MSHTML::IHTMLElementPtr(sections->item(0L)) : MSHTML::IHTMLElementPtr());
+				MSHTML::IHTMLElementPtr adjacent(sections && sections->length > 1 ? MSHTML::IHTMLElementPtr(sections->item(1L)) : MSHTML::IHTMLElementPtr());
 				CString pastedSectionHtml(pastedSection ? static_cast<LPCWSTR>(pastedSection->innerHTML) : L""); pastedSectionHtml.MakeUpper();
 				CString adjacentHtml(adjacent ? static_cast<LPCWSTR>(adjacent->innerHTML) : L""); adjacentHtml.MakeUpper();
 				const bool scopeIsolated = adjacent && adjacentHtml.Find(L"<BR") >= 0 && pastedSection && pastedSectionHtml.Find(L"<BR") < 0;
@@ -619,25 +619,25 @@
 		{
 			editable->innerHTML = testCase.html;
 			MSHTML::IHTMLElementCollectionPtr sections(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV"));
-			MSHTML::IHTMLElementPtr section(sections && sections->length ? sections->item(0L) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr section(sections && sections->length ? MSHTML::IHTMLElementPtr(sections->item(0L)) : MSHTML::IHTMLElementPtr());
 			FbeVisualDom::NormalizeStructure(document, MSHTML::IHTMLDOMNodePtr(section));
 			editable = document->all->item(L"fbw_body");
-			section = editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV")->item(0L) : MSHTML::IHTMLElementPtr();
+			section = editable ? MSHTML::IHTMLElementPtr(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV")->item(0L)) : MSHTML::IHTMLElementPtr();
 			const CString once(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
 			FbeVisualDom::NormalizeStructure(document, MSHTML::IHTMLDOMNodePtr(section));
 			editable = document->all->item(L"fbw_body");
 			const CString twice(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
-			section = editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV")->item(0L) : MSHTML::IHTMLElementPtr();
+			section = editable ? MSHTML::IHTMLElementPtr(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV")->item(0L)) : MSHTML::IHTMLElementPtr();
 			long directTitles = 0, nestedTitles = 0;
 			for (MSHTML::IHTMLDOMNodePtr child(section ? MSHTML::IHTMLDOMNodePtr(section)->firstChild : MSHTML::IHTMLDOMNodePtr()); child; child = child->nextSibling) {
 				MSHTML::IHTMLElementPtr element(child); if (element && U::scmp(element->tagName, L"DIV") == 0 && U::scmp(element->className, L"title") == 0) ++directTitles;
 			}
-			MSHTML::IHTMLElementCollectionPtr titles(section ? MSHTML::IHTMLElement2Ptr(section)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementCollectionPtr titles(section ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(section)->getElementsByTagName(L"DIV")) : MSHTML::IHTMLElementCollectionPtr());
 			for (long index = 0; titles && index < titles->length; ++index) {
-				MSHTML::IHTMLElementPtr title(titles->item(_variant_t(index), _variant_t())); MSHTML::IHTMLElementPtr parent(title ? title->parentElement : MSHTML::IHTMLElementPtr());
+				MSHTML::IHTMLElementPtr title(titles->item(_variant_t(index), _variant_t())); MSHTML::IHTMLElementPtr parent(title ? MSHTML::IHTMLElementPtr(title->parentElement) : MSHTML::IHTMLElementPtr());
 				if (title && parent && U::scmp(title->className, L"title") == 0 && U::scmp(parent->className, L"title") == 0) ++nestedTitles;
 			}
-			MSHTML::IHTMLElementPtr title(titles && titles->length ? titles->item(0L) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr title(titles && titles->length ? MSHTML::IHTMLElementPtr(titles->item(0L)) : MSHTML::IHTMLElementPtr());
 			const CString text(title ? static_cast<LPCWSTR>(title->innerText) : L"");
 			const bool order = text.Find(testCase.first) >= 0 && (!*testCase.second || text.Find(testCase.second) > text.Find(testCase.first));
 			const bool formatting = title && MSHTML::IHTMLElement2Ptr(title)->getElementsByTagName(L"STRONG")->length == 1 && MSHTML::IHTMLElement2Ptr(title)->getElementsByTagName(L"EM")->length == 1 && MSHTML::IHTMLElement2Ptr(title)->getElementsByTagName(L"A")->length == 1;
@@ -676,8 +676,8 @@
 		const bool plain = wcscmp(caseName, L"plain") == 0 || singleLine || middle;
 		const bool title = wcscmp(caseName, L"title") == 0;
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
-		MSHTML::IHTMLElementPtr body(document ? document->body : MSHTML::IHTMLElementPtr());
-		MSHTML::IHTMLElementPtr editable(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr body(document ? MSHTML::IHTMLElementPtr(document->body) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr editable(document ? MSHTML::IHTMLElementPtr(document->all->item(L"fbw_body")) : MSHTML::IHTMLElementPtr());
 		bool textOk = false, formatting = false, paragraphs = false, neighborOk = false;
 		bool clipboardOk = false, undoOk = false, redoOk = false, selectionOk = false, dirtyOk = false, recoveryOk = false, validated = false, saved = false;
 		bool dirtyAfterPaste = false, cleanAfterUndo = false, dirtyAfterRedo = false;
@@ -703,9 +703,9 @@
 			MSHTML::IHTMLElementPtr target(document->all->item(L"paste-target"));
 			MSHTML::IHTMLElementPtr neighbor(document->all->item(L"paste-neighbor"));
 			const CString neighborBefore(neighbor ? static_cast<LPCWSTR>(neighbor->outerHTML) : L"");
-			MSHTML::IHTMLElementCollectionPtr ps(target ? MSHTML::IHTMLElement2Ptr(target)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
-			MSHTML::IHTMLElementPtr pasteTarget(internal ? document->all->item(L"paste-internal-target") :
-				ps && ps->length > (title ? 0 : 1) ? ps->item(title ? 0L : 1L) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr ps(target ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(target)->getElementsByTagName(L"P")) : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr pasteTarget(internal ? MSHTML::IHTMLElementPtr(document->all->item(L"paste-internal-target")) :
+				ps && ps->length > (title ? 0 : 1) ? MSHTML::IHTMLElementPtr(ps->item(title ? 0L : 1L)) : MSHTML::IHTMLElementPtr());
 			if (!pasteTarget) throw _com_error(E_FAIL);
 			if (preDirty) {
 				pasteTarget->insertAdjacentText(L"beforeEnd", L" Prior change");
@@ -724,7 +724,7 @@
 				"<div class='section'><p><a class='note' href='file:///C:/OldFBE/main.html#note1'>Legacy link</a></p></div>" :
 				"<p class='MsoNormal' style='margin-left:36pt'><span style='font-weight:700;font-style:italic;color:red'>Bold italic</span>&nbsp;one</p><p>Second</p>");
 			if (internal) {
-				MSHTML::IHTMLElementPtr source(ps && ps->length ? ps->item(ps->length - 1) : MSHTML::IHTMLElementPtr());
+				MSHTML::IHTMLElementPtr source(ps && ps->length ? MSHTML::IHTMLElementPtr(ps->item(ps->length - 1)) : MSHTML::IHTMLElementPtr());
 				if (!source) throw _com_error(E_FAIL);
 				MSHTML::IHTMLTxtRangePtr copyRange(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 				m_doc->m_body.SetFocus(); ::SetFocus(m_doc->m_body);
@@ -1037,7 +1037,7 @@
 			const CString targetHtml(targetAfter ? static_cast<LPCWSTR>(targetAfter->innerHTML) : L"");
 			formatting = internal ? (targetHtml.Find(L"class=code") >= 0 && targetHtml.Find(L"href=\"#paste-neighbor\"") >= 0) : plain ? targetHtml.Find(L"<STRONG") < 0 :
 				(targetHtml.Find(L"<STRONG") >= 0 && targetHtml.Find(L"<EM") >= 0 && targetHtml.Find(L"MsoNormal") < 0 && targetHtml.Find(L"color") < 0);
-			MSHTML::IHTMLElementCollectionPtr paragraphsAfter(targetAfter ? MSHTML::IHTMLElement2Ptr(targetAfter)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementCollectionPtr paragraphsAfter(targetAfter ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(targetAfter)->getElementsByTagName(L"P")) : MSHTML::IHTMLElementCollectionPtr());
 			paragraphs = paragraphsAfter && (singleLine ? paragraphsAfter->length == 2 : paragraphsAfter->length >= (plain ? 4 : 3));
 			if (middle && paragraphsAfter && paragraphsAfter->length == 6) {
 				auto text = [&](long index) { return CString(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(paragraphsAfter->item(index))->innerText)); };
@@ -1050,7 +1050,7 @@
 			const bool twoPasteCase = internal && !internalEnd;
 			auto selectionInTarget = [&]() -> bool {
 			MSHTML::IHTMLTxtRangePtr selected(document->selection->createRange());
-			for (MSHTML::IHTMLElementPtr element(selected ? selected->parentElement() : MSHTML::IHTMLElementPtr()); element; element = element->parentElement)
+			for (MSHTML::IHTMLElementPtr element(selected ? MSHTML::IHTMLElementPtr(selected->parentElement()) : MSHTML::IHTMLElementPtr()); element; element = element->parentElement)
 				if (U::scmp(element->id, L"paste-target") == 0) return true;
 			return false;
 		};
@@ -1142,8 +1142,8 @@
 		CStringA header("case\tnormalized_nested_title\tnormalized_direct_titles\ttext_order\tformatting\tneighbor_unchanged\tundo\tredo\tvalidate\tvalidation_line\tvalidation_column\tsave\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
-		MSHTML::IHTMLElementPtr body(document ? document->body : MSHTML::IHTMLElementPtr());
-		MSHTML::IHTMLElementPtr editable(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr body(document ? MSHTML::IHTMLElementPtr(document->body) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr editable(document ? MSHTML::IHTMLElementPtr(document->all->item(L"fbw_body")) : MSHTML::IHTMLElementPtr());
 		if (!body || !editable) { output.Close(); ::PostQuitMessage(1); return 0; }
 		ShowView(BODY);
 		wchar_t pasteCaseBuffer[64] = {};
@@ -1160,17 +1160,17 @@
 			range->moveToElementText(element); if (collapseAtEnd) range->collapse(VARIANT_FALSE); range->select(); return true;
 		};
 		auto countNestedTitle = [&](MSHTML::IHTMLElementPtr root) -> long {
-			long count = 0; MSHTML::IHTMLElementCollectionPtr divs(root ? MSHTML::IHTMLElement2Ptr(root)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+			long count = 0; MSHTML::IHTMLElementCollectionPtr divs(root ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(root)->getElementsByTagName(L"DIV")) : MSHTML::IHTMLElementCollectionPtr());
 			for (long index = 0; divs && index < divs->length; ++index) {
 				MSHTML::IHTMLElementPtr current(divs->item(_variant_t(index), _variant_t()));
-				MSHTML::IHTMLElementPtr parent(current ? current->parentElement : MSHTML::IHTMLElementPtr());
+				MSHTML::IHTMLElementPtr parent(current ? MSHTML::IHTMLElementPtr(current->parentElement) : MSHTML::IHTMLElementPtr());
 				if (current && parent && U::scmp(current->className, L"title") == 0 && U::scmp(parent->tagName, L"DIV") == 0 && U::scmp(parent->className, L"title") == 0) ++count;
 			}
 			return count;
 		};
 		auto countDirectTitles = [&](MSHTML::IHTMLElementPtr section) -> long {
 			MSHTML::IHTMLDOMNodePtr sectionNode(section);
-			long count = 0; for (MSHTML::IHTMLDOMNodePtr child(sectionNode ? sectionNode->firstChild : MSHTML::IHTMLDOMNodePtr()); child; child = child->nextSibling) {
+			long count = 0; for (MSHTML::IHTMLDOMNodePtr child(sectionNode ? MSHTML::IHTMLDOMNodePtr(sectionNode->firstChild) : MSHTML::IHTMLDOMNodePtr()); child; child = child->nextSibling) {
 				MSHTML::IHTMLElementPtr element(child); if (element && U::scmp(element->tagName, L"DIV") == 0 && U::scmp(element->className, L"title") == 0) ++count;
 			}
 			return count;
@@ -1179,13 +1179,13 @@
 		bool textOrder = false, formatting = false, neighborUnchanged = false, undo = false, redo = false, validated = false, saved = false;
 		int validationLine = 0, validationColumn = 0;
 		try {
-			MSHTML::IHTMLElementPtr sourceTitle(byId(L"title-source") ? MSHTML::IHTMLElement2Ptr(byId(L"title-source"))->getElementsByTagName(L"DIV")->item(0L) : MSHTML::IHTMLElementPtr());
-			MSHTML::IHTMLElementCollectionPtr sourceParagraphs(sourceTitle ? MSHTML::IHTMLElement2Ptr(sourceTitle)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
-			MSHTML::IHTMLElementPtr sourceFirst(sourceParagraphs && sourceParagraphs->length ? sourceParagraphs->item(0L) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr sourceTitle(byId(L"title-source") ? MSHTML::IHTMLElementPtr(MSHTML::IHTMLElement2Ptr(byId(L"title-source"))->getElementsByTagName(L"DIV")->item(0L)) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr sourceParagraphs(sourceTitle ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(sourceTitle)->getElementsByTagName(L"P")) : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr sourceFirst(sourceParagraphs && sourceParagraphs->length ? MSHTML::IHTMLElementPtr(sourceParagraphs->item(0L)) : MSHTML::IHTMLElementPtr());
 			const bool emptyTarget = pasteCase == L"full-title-empty-target";
 			const bool multipleParagraphs = pasteCase == L"multiple-title-paragraphs" || pasteCase == L"full-title-empty-target" || pasteCase == L"full-title-nonempty" || pasteCase == L"ctrl-v-command";
 			MSHTML::IHTMLElementPtr targetSection(byId(emptyTarget ? L"title-target-empty" : L"title-target"));
-			MSHTML::IHTMLElementPtr targetTitle(targetSection ? MSHTML::IHTMLElement2Ptr(targetSection)->getElementsByTagName(L"DIV")->item(0L) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr targetTitle(targetSection ? MSHTML::IHTMLElementPtr(MSHTML::IHTMLElement2Ptr(targetSection)->getElementsByTagName(L"DIV")->item(0L)) : MSHTML::IHTMLElementPtr());
 			MSHTML::IHTMLElementPtr neighbor(byId(L"title-neighbor"));
 			const CString before(static_cast<LPCWSTR>(editable->innerHTML));
 			const CString neighborBefore(neighbor ? static_cast<LPCWSTR>(neighbor->outerHTML) : L"");
@@ -1214,7 +1214,7 @@
 			editable = document->all->item(L"fbw_body"); targetSection = byId(emptyTarget ? L"title-target-empty" : L"title-target");
 			normalizedNested = countNestedTitle(targetSection) > 0;
 			normalizedDuplicate = countDirectTitles(targetSection) > 1;
-			MSHTML::IHTMLElementPtr normalizedTitle(targetSection ? MSHTML::IHTMLElement2Ptr(targetSection)->getElementsByTagName(L"DIV")->item(0L) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr normalizedTitle(targetSection ? MSHTML::IHTMLElementPtr(MSHTML::IHTMLElement2Ptr(targetSection)->getElementsByTagName(L"DIV")->item(0L)) : MSHTML::IHTMLElementPtr());
 			const CString titleText(normalizedTitle ? static_cast<LPCWSTR>(normalizedTitle->innerText) : L"");
 			const int copiedAt = titleText.Find(copiedText);
 			textOrder = copiedAt >= 0 && (emptyTarget || copiedAt > titleText.Find(L"Target existing")) && (!multipleParagraphs || titleText.Find(L"Source second") > titleText.Find(L"Source strong em link"));
@@ -1256,12 +1256,12 @@
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		MSHTML::IHTMLElementPtr editable(FBELinkNavigation::GetEditableBody(document));
-		MSHTML::IHTMLElementCollectionPtr links(editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
-		MSHTML::IHTMLElementPtr internal(links && links->length > 0 ? links->item(0L) : MSHTML::IHTMLElementPtr());
-		MSHTML::IHTMLElementPtr second(links && links->length > 1 ? links->item(1L) : MSHTML::IHTMLElementPtr());
-		MSHTML::IHTMLElementPtr broken(links && links->length > 2 ? links->item(2L) : MSHTML::IHTMLElementPtr());
-		MSHTML::IHTMLElementCollectionPtr strongs(internal ? MSHTML::IHTMLElement2Ptr(internal)->getElementsByTagName(L"STRONG") : MSHTML::IHTMLElementCollectionPtr());
-		MSHTML::IHTMLElementPtr nested(strongs && strongs->length ? strongs->item(0L) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr links(editable ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"A")) : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr internal(links && links->length > 0 ? MSHTML::IHTMLElementPtr(links->item(0L)) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr second(links && links->length > 1 ? MSHTML::IHTMLElementPtr(links->item(1L)) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr broken(links && links->length > 2 ? MSHTML::IHTMLElementPtr(links->item(2L)) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr strongs(internal ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(internal)->getElementsByTagName(L"STRONG")) : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr nested(strongs && strongs->length ? MSHTML::IHTMLElementPtr(strongs->item(0L)) : MSHTML::IHTMLElementPtr());
 		const CString before(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
 		MSHTML::IHTMLElementPtr nearest(FBELinkNavigation::FindNearestLinkElement(nested, editable));
 		const CString targetId(FBELinkNavigation::GetInternalLinkTargetId(document, nearest));
@@ -1285,13 +1285,13 @@
 		const bool secondNavigated = second && secondTargetId == targetId && navigationLeavesDocumentUntouched([&]() { return m_doc->m_body.NavigateInternalLink(second, secondTargetId); }, secondDomUnchanged, secondDirtyUnchanged);
 		OnGoToFootnote(0, ID_GOTO_FOOTNOTE, nullptr);
 		MSHTML::IHTMLTxtRangePtr returnedRange(document->selection->createRange());
-		MSHTML::IHTMLElementPtr returnedLink(returnedRange ? FBELinkNavigation::FindNearestLinkElement(returnedRange->parentElement(), editable) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr returnedLink(returnedRange ? MSHTML::IHTMLElementPtr(FBELinkNavigation::FindNearestLinkElement(returnedRange->parentElement(), editable)) : MSHTML::IHTMLElementPtr());
 		const bool returnedSecond = secondNavigated && returnedLink == second;
 		const CString brokenTargetId(FBELinkNavigation::GetInternalLinkTargetId(document, broken));
 		const bool brokenInternal = !brokenTargetId.IsEmpty() && !FBELinkNavigation::FindTargetElement(document, brokenTargetId);
 		MSHTML::IHTMLElementPtr inserted;
 		MSHTML::IHTMLDOMNodePtr secondNode(second);
-		MSHTML::IHTMLDOMNodePtr secondParent(secondNode ? secondNode->parentNode : MSHTML::IHTMLDOMNodePtr());
+		MSHTML::IHTMLDOMNodePtr secondParent(secondNode ? MSHTML::IHTMLDOMNodePtr(secondNode->parentNode) : MSHTML::IHTMLDOMNodePtr());
 		bool insertedBefore = false;
 		bool insertedNavigate = false, insertedSameUnique = false, insertedReturned = false, insertedReturnedOrigin = false;
 		try {
@@ -1366,22 +1366,22 @@
 			MSHTML::IHTMLElementCollectionPtr links(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"A"));
 			if (!links) return !allowManualLink;
 			if (!allowManualLink) return links->length == 0;
-			MSHTML::IHTMLElementPtr link(links->length == 1 ? links->item(0L) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr link(links->length == 1 ? MSHTML::IHTMLElementPtr(links->item(0L)) : MSHTML::IHTMLElementPtr());
 			return link && CString(static_cast<LPCWSTR>(link->innerText)) == L"manual-link";
 		};
 		auto hasUnlinkedTypedText = [&]() -> bool {
 			MSHTML::IHTMLDocument2Ptr current(m_doc->m_body.Document());
-			MSHTML::IHTMLElementPtr typed(current && current->all ? current->all->item(L"auto-url-typed") : MSHTML::IHTMLElementPtr());
-			MSHTML::IHTMLElementCollectionPtr links(typed ? MSHTML::IHTMLElement2Ptr(typed)->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr typed(current && current->all ? MSHTML::IHTMLElementPtr(current->all->item(L"auto-url-typed")) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr links(typed ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(typed)->getElementsByTagName(L"A")) : MSHTML::IHTMLElementCollectionPtr());
 			return typed && CString(static_cast<LPCWSTR>(typed->innerText)) == L"\\\\слово" && (!links || links->length == 0);
 		};
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		bool enteredByUserInput = false;
 		try
 		{
-			MSHTML::IHTMLElementPtr inputTarget(document && document->all ? document->all->item(L"auto-url-typed") : MSHTML::IHTMLElementPtr());
-			MSHTML::IHTMLElementPtr focusTarget(document && document->all ? document->all->item(L"auto-url-focus") : MSHTML::IHTMLElementPtr());
-			MSHTML::IHTMLTxtRangePtr inputRange(inputTarget ? MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+			MSHTML::IHTMLElementPtr inputTarget(document && document->all ? MSHTML::IHTMLElementPtr(document->all->item(L"auto-url-typed")) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr focusTarget(document && document->all ? MSHTML::IHTMLElementPtr(document->all->item(L"auto-url-focus")) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLTxtRangePtr inputRange(inputTarget ? MSHTML::IHTMLTxtRangePtr(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange()) : MSHTML::IHTMLTxtRangePtr());
 			if (inputRange && inputTarget && focusTarget)
 			{
 				inputRange->moveToElementText(inputTarget); inputRange->collapse(VARIANT_TRUE); inputRange->select();
@@ -1411,8 +1411,8 @@
 		const bool savedReopened = reopened && typedSavedReopened && hasExpectedPlainText(false);
 		bool undo = false, redo = false, manualLink = false;
 		try {
-			MSHTML::IHTMLElementPtr manualTarget(document && document->all ? document->all->item(L"auto-url-manual") : MSHTML::IHTMLElementPtr());
-			MSHTML::IHTMLTxtRangePtr range(manualTarget ? MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+			MSHTML::IHTMLElementPtr manualTarget(document && document->all ? MSHTML::IHTMLElementPtr(document->all->item(L"auto-url-manual")) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLTxtRangePtr range(manualTarget ? MSHTML::IHTMLTxtRangePtr(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange()) : MSHTML::IHTMLTxtRangePtr());
 			if (range && manualTarget) {
 				range->moveToElementText(manualTarget); range->select();
 				BOOL handled = FALSE; m_doc->m_body.OnStyleLink(0, ID_STYLE_LINK, NULL, handled);
@@ -1442,7 +1442,7 @@
 		auto readExternal = [&]() -> PathApiValues {
 			PathApiValues values;
 			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
-			MSHTML::IHTMLWindow2Ptr window(document ? document->parentWindow : MSHTML::IHTMLWindow2Ptr());
+			MSHTML::IHTMLWindow2Ptr window(document ? MSHTML::IHTMLWindow2Ptr(document->parentWindow) : MSHTML::IHTMLWindow2Ptr());
 			IDispatch* rawExternal = NULL;
 			if (!window || FAILED(window->get_external(&rawExternal)) || !rawExternal) return values;
 			CComPtr<IDispatch> external; external.Attach(rawExternal);
@@ -1512,10 +1512,10 @@
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		MSHTML::IHTMLElementPtr editable(FBELinkNavigation::GetEditableBody(document));
-		MSHTML::IHTMLElementCollectionPtr links(editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
-		MSHTML::IHTMLElementPtr link(links && links->length ? links->item(0L) : MSHTML::IHTMLElementPtr());
-		MSHTML::IHTMLElementCollectionPtr strongs(link ? MSHTML::IHTMLElement2Ptr(link)->getElementsByTagName(L"STRONG") : MSHTML::IHTMLElementCollectionPtr());
-		MSHTML::IHTMLElementPtr nested(strongs && strongs->length ? strongs->item(0L) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr links(editable ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"A")) : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr link(links && links->length ? MSHTML::IHTMLElementPtr(links->item(0L)) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr strongs(link ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(link)->getElementsByTagName(L"STRONG")) : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr nested(strongs && strongs->length ? MSHTML::IHTMLElementPtr(strongs->item(0L)) : MSHTML::IHTMLElementPtr());
 		const CString originalHtml(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
 		auto selectElement = [&](MSHTML::IHTMLElementPtr element) -> bool
 		{
@@ -1548,7 +1548,7 @@
 			beforeReference->compareEndPoints(L"EndToEnd", afterReference) == 0;
 		m_doc->m_body.GoToReference(false);
 		MSHTML::IHTMLTxtRangePtr selectedAfterReference(document && document->selection ? MSHTML::IHTMLTxtRangePtr(document->selection->createRange()) : MSHTML::IHTMLTxtRangePtr());
-		MSHTML::IHTMLTxtRangePtr expectedReference(link && document && document->body ? MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+		MSHTML::IHTMLTxtRangePtr expectedReference(link && document && document->body ? MSHTML::IHTMLTxtRangePtr(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange()) : MSHTML::IHTMLTxtRangePtr());
 		if (expectedReference)
 		{
 			expectedReference->moveToElementText(link); expectedReference->collapse(VARIANT_TRUE);

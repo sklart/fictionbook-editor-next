@@ -174,20 +174,20 @@
     <None Include="FBVStrings.generated.rc2" />
   </ItemGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir Condition="'$(FbeSanitizer)' != 'Address'">$(ProjectDir)..\..\out\$(Configuration)\</OutDir>
-    <IntDir Condition="'$(FbeSanitizer)' != 'Address'">$(ProjectDir)..\..\build\obj\fbv\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir Condition="'$(FbeSanitizer)' == 'None'">$(ProjectDir)..\..\out\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(FbeSanitizer)' == 'None'">$(ProjectDir)..\..\build\obj\fbv\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>FBV</TargetName>
     <TargetExt>.exe</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir Condition="'$(FbeSanitizer)' != 'Address'">$(ProjectDir)..\..\out\$(Configuration)\</OutDir>
-    <IntDir Condition="'$(FbeSanitizer)' != 'Address'">$(ProjectDir)..\..\build\obj\fbv\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir Condition="'$(FbeSanitizer)' == 'None'">$(ProjectDir)..\..\out\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(FbeSanitizer)' == 'None'">$(ProjectDir)..\..\build\obj\fbv\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>FBV</TargetName>
     <TargetExt>.exe</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)'=='x64'">
-    <OutDir Condition="'$(FbeSanitizer)' != 'Address'">$(ProjectDir)..\..\out\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir Condition="'$(FbeSanitizer)' != 'Address'">$(ProjectDir)..\..\build\obj\fbv\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir Condition="'$(FbeSanitizer)' == 'None'">$(ProjectDir)..\..\out\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(FbeSanitizer)' == 'None'">$(ProjectDir)..\..\build\obj\fbv\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>FBV</TargetName>
     <TargetExt>.exe</TargetExt>
   </PropertyGroup>

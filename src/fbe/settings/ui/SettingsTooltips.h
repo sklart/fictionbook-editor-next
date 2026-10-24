@@ -11,7 +11,8 @@ public:
 	void Initialize(HWND owner)
 	{
 		m_owner = owner;
-		m_tooltips.Create(owner, NULL, NULL, WS_POPUP | TTS_ALWAYSTIP);
+		RECT tipBounds = {};
+		m_tooltips.Create(owner, tipBounds, NULL, WS_POPUP | TTS_ALWAYSTIP);
 		ATLASSERT(m_tooltips.IsWindow());
 		m_tooltips.Activate(TRUE);
 		m_tooltips.SetDelayTime(TTDT_INITIAL, 500);

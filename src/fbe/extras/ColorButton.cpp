@@ -1135,7 +1135,8 @@ void CColorButton::CreatePickerToolTips (CToolTipCtrl &sToolTip)
     // Create the tool tip
 	//
 
-    if (!sToolTip .Create (m_wndPicker .m_hWnd)) 
+    RECT tipBounds = {};
+    if (!sToolTip .Create (m_wndPicker .m_hWnd, tipBounds))
 		return;
 
 	//

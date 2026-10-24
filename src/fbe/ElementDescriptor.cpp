@@ -18,7 +18,7 @@ const int IMG_ID_POEM = 3;
 
 CString GetTitleSc(const MSHTML::IHTMLElementPtr& elem)
 {
-	CString text = elem->innerText;
+	CString text(static_cast<const wchar_t*>(elem->innerText));
 	text = text.Left(20) + L"...";
 	U::NormalizeInplace(text);
 	return text;
@@ -208,8 +208,8 @@ void CElementDescriptor::SetImageID(int ID)
 // CBodyED
 bool CBodyED::IsMe(const MSHTML::IHTMLElementPtr elem)
 {
-	CString tagName = elem->tagName;
-	CString className = elem->className;
+	CString tagName(static_cast<const wchar_t*>(elem->tagName));
+	CString className(static_cast<const wchar_t*>(elem->className));
 	if(tagName == L"DIV" && className == L"body")
 		return true;
 
@@ -236,8 +236,8 @@ int CBodyED::GetDTImageID()
 // CSectionED
 bool CSectionED::IsMe(const MSHTML::IHTMLElementPtr elem)
 {
-	CString tagName = elem->tagName;
-	CString className = elem->className;
+	CString tagName(static_cast<const wchar_t*>(elem->tagName));
+	CString className(static_cast<const wchar_t*>(elem->className));
 	if(tagName == L"DIV" && className == L"section")
 		return true;
 
@@ -260,8 +260,8 @@ int CSectionED::GetDTImageID()
 
 bool CImageED::IsMe(const MSHTML::IHTMLElementPtr elem)
 {
-	CString tagName = elem->tagName;
-	CString className = elem->className;
+	CString tagName(static_cast<const wchar_t*>(elem->tagName));
+	CString className(static_cast<const wchar_t*>(elem->className));
 	if(tagName == L"DIV" && className == L"image")
 		return true;
 
@@ -283,8 +283,8 @@ int CImageED::GetDTImageID()
 
 bool CPoemED::IsMe(const MSHTML::IHTMLElementPtr elem)
 {
-	CString tagName = elem->tagName;
-	CString className = elem->className;
+	CString tagName(static_cast<const wchar_t*>(elem->tagName));
+	CString className(static_cast<const wchar_t*>(elem->className));
 	if(tagName == L"DIV" && (className == L"poem" || className == L"stanza"))
 		return true;
 

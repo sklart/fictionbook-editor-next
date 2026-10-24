@@ -83,7 +83,7 @@
     check("menu_loop_observers",::SetWindowSubclass(m_MenuBar,MenuRouteProbe::MenuLoop,0x4d524c50,reinterpret_cast<DWORD_PTR>(&probe))&&
         ::SetWindowSubclass(m_MenuBar.GetParent(),MenuRouteProbe::MenuLoop,0x4d524c50,reinterpret_cast<DWORD_PTR>(&probe)));
     auto route=[&](int item,const std::wstring& stage,int choose=-1,bool refreshOpen=false) {
-        probe.owner=ThemeManager::IsDark()&&!ThemeManager::IsHighContrast()?m_MenuBar.GetParent():m_MenuBar.m_hWnd;
+        probe.owner=ThemeManager::IsDark()&&!ThemeManager::IsHighContrast()?static_cast<HWND>(m_MenuBar.GetParent()):m_MenuBar.m_hWnd;
         probe.enters=probe.exits=probe.depth=probe.maxDepth=0;probe.timedOut=false;probe.selectedMenu=NULL;
         ++probe.serial; probe.readyMenu=NULL; probe.readyEvents=probe.cancelEvents=probe.deactivations=0;probe.enteredAt=probe.exitedAt=0;
         probe.refreshWhileOpen=refreshOpen;probe.refreshedOpen=false;

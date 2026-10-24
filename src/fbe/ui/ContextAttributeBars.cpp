@@ -10,7 +10,8 @@
 void ContextAttributeTooltips::Initialize(HWND owner)
 {
 	m_owner = owner;
-	m_control.Create(owner, NULL, NULL, WS_POPUP | TTS_ALWAYSTIP);
+	RECT tipBounds = {};
+	m_control.Create(owner, tipBounds, NULL, WS_POPUP | TTS_ALWAYSTIP);
 	m_control.Activate(TRUE);
 	m_control.SetDelayTime(TTDT_INITIAL, 500);
 	m_control.SetMaxTipWidth(400);

@@ -935,7 +935,7 @@ LRESULT CAboutDlg::OnSize(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CAboutDlg::OnResizeOpenGLWindow(UINT, WPARAM, LPARAM, BOOL&)
 {
-	CButton btn = GetDlgItem(IDOK);
+	CButton btn(GetDlgItem(IDOK));
 	// switch glLogo to full client area
 	if (btn.IsWindowVisible())
 	{

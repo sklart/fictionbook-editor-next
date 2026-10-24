@@ -27,4 +27,6 @@
           Condition="'$(FbeStrictWarnings)' == 'true'" />
   <Import Project="$(MSBuildThisFileDirectory)FBE.Sanitizer.targets"
           Condition="'$(FbeSanitizer)' == 'Address'" />
+  <Import Project="$(MSBuildThisFileDirectory)FBE.UndefinedSanitizer.targets"
+          Condition="'$(FbeSanitizer)' == 'Undefined'" />
 </Project>

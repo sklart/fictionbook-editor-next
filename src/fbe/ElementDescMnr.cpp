@@ -41,7 +41,7 @@ bool IsStylesheet(const MSHTML::IHTMLElementPtr& elem)
 
 bool IsStyle(const MSHTML::IHTMLElementPtr& elem)
 {
-	CString outerHTML = elem->outerHTML;
+	CString outerHTML(static_cast<const wchar_t*>(elem->outerHTML));
 	outerHTML.MakeLower();
 	return (outerHTML.Find(L"<span class=") == 0);
 }

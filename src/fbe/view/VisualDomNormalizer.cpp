@@ -193,7 +193,7 @@ void SplitBRs(MSHTML::IHTMLElement2Ptr element) {
   MSHTML::IHTMLElementPtr root(element);
   if (root && U::scmp(root->tagName, L"P") == 0) paragraphs.push_back(root);
   for (const auto& paragraph : paragraphs) {
-    CString html = paragraph->outerHTML;
+    CString html(static_cast<LPCWSTR>(paragraph->outerHTML));
     if (html.Replace(L"<BR>", L"</P><P>") > 0) paragraph->outerHTML = html.AllocSysString();
   }
 }

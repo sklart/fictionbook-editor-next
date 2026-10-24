@@ -441,7 +441,7 @@ void CSpeller::SetDocumentLanguage()
 	MSHTML::IHTMLSelectElementPtr elem = MSHTML::IHTMLDocument3Ptr(m_doc4)->getElementById(L"tiLang");
 	if (elem)
 	{
-		CString lang = elem->value;
+		CString lang(static_cast<LPCWSTR>(elem->value));
 		for (int i=LANG_EN; i<LANG_NONE; i++)
 			if (m_Dictionaries[i].name.Find(lang) == 0)
 			{
@@ -475,7 +475,7 @@ MSHTML::IHTMLTxtRangePtr CSpeller::GetSelWordRange()
 	if (selRange) rng = selRange->duplicate();
 	if (rng)
 	{
-		CString s = rng->text;
+		CString s(static_cast<LPCWSTR>(rng->text));
 		if (!s.IsEmpty()) rng->collapse(VARIANT_TRUE);
 		rng->expand(L"word");
 		return rng;
@@ -559,7 +559,7 @@ void CSpeller::Replace(int nIndex)
 {
 	if (m_menuSuggestions == nullptr || nIndex < 0 || nIndex >= m_menuSuggestions->GetSize()) return;
 	MSHTML::IHTMLTxtRangePtr range = GetSelWordRange();
-	CString addSpace = range->text;
+	CString addSpace(static_cast<LPCWSTR>(range->text));
 	if (addSpace.Right(1) == L" ") addSpace.SetString(L" "); else addSpace.SetString(L"");
 	try
 	{ 
@@ -918,7 +918,7 @@ size_t CSpeller::TestHighlightedWords(long elementID, LPCWSTR expectedWord)
 //
 void CSpeller::ClearAllMarks()
 {
-	for each (HIGHLIGHT itr in m_ElementHighlights)
+	for (HIGHLIGHT itr : m_ElementHighlights)
 	{
 		m_ihrs->RemoveSegment(itr.second);
 	}
@@ -995,10 +995,10 @@ void CSpeller::CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID)
 		return;
 	if (collectDiagnostic) ++m_testVisitedParagraphs;
 
-	CString html = elem->innerHTML;
+	CString html(static_cast<LPCWSTR>(elem->innerHTML));
 	if (html.Find(L"<DIV") >= 0) return;
 
-	CString innerText = elem->innerText;
+	CString innerText(static_cast<LPCWSTR>(elem->innerText));
 
 	if (!innerText.Trim().IsEmpty())
 	{
@@ -1082,7 +1082,7 @@ void CSpeller::CheckCurrentPage()
 		pr = m_uniqIDs.insert(currNum);
 		if (pr.second) numChanges++;
 
-		CString innerText = elem->innerText;
+		CString innerText(static_cast<LPCWSTR>(elem->innerText));
 		if(!innerText.IsEmpty())
 		{
 			// remove underline

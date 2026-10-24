@@ -1,0 +1,79 @@
+name: UndefinedBehaviorSanitizer
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      full_validation:
+        description: Run the extended UBSan correctness contour
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ubsan-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  ubsan:
+    runs-on: windows-2022
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - name: Prepare native LLVM with i386 UBSan runtime
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          New-Item -ItemType Directory -Force out/tests/ubsan | Out-Null
+          ./tools/build/prepare-ubsan-llvm.ps1 *> out/tests/ubsan/toolchain.log
+      - name: Verify Clang probe before product integration
+        shell: pwsh
+        run: ./tools/tests/test-ubsan-infrastructure.ps1
+      - name: Build isolated Release Win32 UndefinedBehaviorSanitizer
+        shell: pwsh
+        run: |
+          ./tools/build/build.ps1 -Configuration Release -Platform Win32 -Sanitizer Undefined *> out/tests/ubsan/build.log
+          if (-not $? -or $LASTEXITCODE -ne 0) { throw 'UBSan build failed; see build.log' }
+      - name: Verify UBSan build and production rejection policy
+        shell: pwsh
+        run: ./tools/tests/test-ubsan-build-policy.ps1
+      - name: Run UBSan FAST
+        shell: pwsh
+        run: ./tools/tests/run-sanitizers.ps1 -Sanitizer Undefined -Contour Fast
+      - name: Run UBSan FULL
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.full_validation)
+        shell: pwsh
+        run: ./tools/tests/run-sanitizers.ps1 -Sanitizer Undefined -Contour Full
+      - name: Ensure failures have a summary
+        if: always()
+        shell: pwsh
+        env:
+          UBSAN_JOB_STATUS: ${{ job.status }}
+        run: |
+          New-Item -ItemType Directory -Force out/tests/ubsan | Out-Null
+          $summaries = @(Get-ChildItem out/tests/ubsan -Recurse -Filter summary.json)
+          @{status=$env:UBSAN_JOB_STATUS; sanitizer='Undefined'; commit=$env:GITHUB_SHA; summaries=@($summaries.FullName)} |
+            ConvertTo-Json | Set-Content out/tests/ubsan/ci-summary.json -Encoding utf8
+      - name: Upload diagnostic evidence only
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ubsan-diagnostics
+          path: |
+            out/tests/ubsan/**/*.log
+            out/tests/ubsan/**/ubsan.*
+            out/tests/ubsan/**/summary.json
+            out/tests/ubsan/**/result.json
+            out/tests/ubsan/**/case.json
+            out/tests/ubsan/ci-summary.json
+            out/ubsan/Release/fbe-sanitizer.json
+            out/ubsan/Release/fbe-ubsan-toolchain.json
+          if-no-files-found: error
+          retention-days: 14

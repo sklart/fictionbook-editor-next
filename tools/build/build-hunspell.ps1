@@ -10,7 +10,9 @@ param(
 
     [string]$PlatformToolset,
 
-    [switch]$PrepareOnly
+    [switch]$PrepareOnly,
+
+    [switch]$ForLld
 )
 
 $ErrorActionPreference = "Stop"
@@ -21,6 +23,10 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
 $projectPath = Join-Path $repoRoot "build\hunspell\libhunspell.vcxproj"
 $includeDir = Join-Path $repoRoot "build\hunspell\include"
+if ($ForLld) {
+    $projectPath = Join-Path $repoRoot 'build\ubsan\dependencies\hunspell\libhunspell.vcxproj'
+    $includeDir = Join-Path $repoRoot 'build\ubsan\dependencies\hunspell\include'
+}
 $hunvisapiPath = Join-Path $includeDir "hunvisapi.h"
 $solutionDir = $repoRoot
 if (-not $solutionDir.EndsWith("\")) {
@@ -159,12 +165,26 @@ if ($PrepareOnly) {
     return
 }
 
+if ($ForLld) {
+    # LLD cannot consume proprietary MSVC /GL objects. Keep this MSVC vendor
+    # archive separate from the ordinary production dependency cache.
+    $projectText = Get-Content -LiteralPath $projectPath -Raw
+    $projectText = $projectText.Replace('build\hunspell\', 'build\ubsan\dependencies\hunspell\').Replace('<WholeProgramOptimization>true</WholeProgramOptimization>', '<WholeProgramOptimization>false</WholeProgramOptimization>').Replace('<LinkTimeCodeGeneration>true</LinkTimeCodeGeneration>', '<LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>')
+    if ([IO.File]::ReadAllText($projectPath) -ne $projectText) {
+        [IO.File]::WriteAllText($projectPath, $projectText, [Text.UTF8Encoding]::new($false))
+    }
+}
+
 if (-not (Test-Path -LiteralPath $vswhere)) {
     throw "Не найден vswhere.exe. Установите Visual Studio с инструментами сборки C++."
 }
 
-$msbuild = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild `
-    -find "MSBuild\Current\Bin\MSBuild.exe" | Select-Object -First 1
+$vswhereArguments = @('-latest', '-products', '*', '-requires', 'Microsoft.Component.MSBuild')
+if ($ForLld) {
+    . (Join-Path $PSScriptRoot 'Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64 -PlatformToolset v143 -VcVarsVersion 14.44
+    $vswhereArguments += @('-version', '[17.0,18.0)')
+}
+$msbuild = & $vswhere @vswhereArguments -find "MSBuild\Current\Bin\MSBuild.exe" | Select-Object -First 1
 
 if (-not $msbuild) {
     throw "Не найден MSBuild.exe."

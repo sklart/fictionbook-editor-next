@@ -10,6 +10,7 @@
 #include "BinarySaveNotification.h"
 #include "RuntimeLocalization.h"
 #include "XmlScriptApi.h"
+#include "scripts/BorrowedVariant.h"
 #include "..\\common\\ModernFileDialog.h"
 
 inline bool IsDiagnosticFaultInjectionEnabled(const wchar_t* point)
@@ -358,9 +359,12 @@ public:
 
 	STDMETHOD(GetImageDimsByData)(VARIANT* data, BSTR* dims)
 	{
+		if (!dims) return E_POINTER;
+		VARIANT borrowed;
+		if (!FbeAutomation::ReadBorrowedVariant(data, borrowed)) return E_POINTER;
 		int nWidth, nHeight;
 
-		SAFEARRAY* psa = data->parray;
+		SAFEARRAY* psa = borrowed.parray;
 		long lUbound;
 
 		if(SafeArrayGetUBound(psa, 1, &lUbound) == S_OK && U::GetImageDimsByData(psa, lUbound, &nWidth, &nHeight))

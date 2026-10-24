@@ -47,18 +47,19 @@ public sealed class SanitizerProcessMonitor : IDisposable {
     readonly Dictionary<uint,Entry> entries=new Dictionary<uint,Entry>();
     readonly object gate=new object();
     readonly string compilerTelemetry;
+    readonly string sanitizer;
     readonly List<string> infrastructureCleanup=new List<string>();
     public string[] InfrastructureCleanup { get { lock(gate) return infrastructureCleanup.ToArray(); } }
     public string ObservationError { get; private set; }
     static void Require(bool value) { if(!value) throw new Win32Exception(Marshal.GetLastWin32Error()); }
-    static bool HasAsanImport(string path) {
+    static bool HasSanitizerRuntime(string path, string sanitizer) {
         using(var stream=System.IO.File.Open(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))
         using(var reader=new BinaryReader(stream)) {
             stream.Position=60; uint nt=reader.ReadUInt32(); stream.Position=nt;
             if(reader.ReadUInt32()!=0x4550) return false;
             stream.Position=nt+6; ushort sections=reader.ReadUInt16(); stream.Position=nt+20; ushort optionalSize=reader.ReadUInt16();
             long optional=nt+24; stream.Position=optional; bool wide=reader.ReadUInt16()==0x20b;
-            stream.Position=optional+(wide?120:104); uint imports=reader.ReadUInt32();
+            stream.Position=optional+(sanitizer=="Undefined" ? (wide?112:96) : (wide?120:104)); uint imports=reader.ReadUInt32();
             var ranges=new List<uint[]>();
             for(int i=0;i<sections;++i) {
                 stream.Position=optional+optionalSize+i*40+8;
@@ -67,6 +68,19 @@ public sealed class SanitizerProcessMonitor : IDisposable {
             }
             Func<uint,long> offset=rva=> { foreach(var range in ranges) if(rva>=range[0] && rva<range[0]+range[1]) return range[2]+rva-range[0]; return rva; };
             if(imports==0) return false;
+            if(sanitizer=="Undefined") {
+                long exports=offset(imports);
+                stream.Position=exports+24; uint count=reader.ReadUInt32();
+                stream.Position=exports+32; uint names=reader.ReadUInt32();
+                if(count>65536) throw new InvalidDataException("Invalid PE export count.");
+                for(uint i=0;i<count;++i) {
+                    stream.Position=offset(names)+i*4; uint name=reader.ReadUInt32();
+                    stream.Position=offset(name); var text=new StringBuilder();
+                    for(int n=0;n<256;++n) { byte ch=reader.ReadByte(); if(ch==0) break; text.Append((char)ch); }
+                    if(text.ToString().StartsWith("__ubsan_handle_",StringComparison.Ordinal)) return true;
+                }
+                return false;
+            }
             long descriptor=offset(imports);
             for(int i=0;i<4096;++i,descriptor+=20) {
                 stream.Position=descriptor+12; uint name=reader.ReadUInt32(); if(name==0) return false;
@@ -77,7 +91,9 @@ public sealed class SanitizerProcessMonitor : IDisposable {
             throw new InvalidDataException("Unterminated PE import table.");
         }
     }
-    public SanitizerProcessMonitor(string compilerTelemetryPath=null) {
+    public SanitizerProcessMonitor(string compilerTelemetryPath=null, string sanitizerMode="Address") {
+        if(sanitizerMode!="Address" && sanitizerMode!="Undefined") throw new ArgumentException("Unknown sanitizer mode.");
+        sanitizer=sanitizerMode;
         compilerTelemetry=compilerTelemetryPath;
         job=CreateJobObjectW(IntPtr.Zero,IntPtr.Zero); Require(job!=IntPtr.Zero);
         port=CreateIoCompletionPort(new IntPtr(-1),IntPtr.Zero,IntPtr.Zero,1); Require(port!=IntPtr.Zero);
@@ -92,7 +108,7 @@ public sealed class SanitizerProcessMonitor : IDisposable {
             var path=new StringBuilder(32768); uint size=(uint)path.Capacity;
             bool named=handle!=IntPtr.Zero && QueryFullProcessImageNameW(handle,0,path,ref size);
             bool instrumented=false;
-            try { if(named) instrumented=HasAsanImport(path.ToString()); }
+            try { if(named) instrumented=HasSanitizerRuntime(path.ToString(),sanitizer); }
             catch(IOException) { ObservationError="A launched executable could not be inspected."; }
             catch(UnauthorizedAccessException) { ObservationError="A launched executable could not be inspected."; }
             entries.Add(id,new Entry {Id=id,Handle=handle,Path=named ? path.ToString() : null,Instrumented=instrumented});
@@ -134,9 +150,8 @@ public sealed class SanitizerProcessMonitor : IDisposable {
             Require(QueryInformationJobObject(job,1,out accounting,(uint)Marshal.SizeOf<Accounting>(),IntPtr.Zero));
             lock(gate) {
                 if(accounting.Active==0 && accounting.Total==entries.Count) return true;
-                // CL can leave its telemetry daemon alive after a completed
-                // compile. Clean only this exact selected-toolchain executable,
-                // after every other observed process (including FBE) exited.
+                // CL telemetry can outlive compilation. Clean only exact selected-
+                // toolchain paths in this job, after all other children exited.
                 if(compilerTelemetry!=null && accounting.Total==entries.Count && accounting.Active>0) {
                     var active=new List<Entry>(); bool complete=true, compilerSeen=false;
                     foreach(var entry in entries.Values) {
@@ -146,7 +161,10 @@ public sealed class SanitizerProcessMonitor : IDisposable {
                         if(String.Equals(entry.Path,Path.Combine(Path.GetDirectoryName(compilerTelemetry),"cl.exe"),StringComparison.OrdinalIgnoreCase)) compilerSeen=true;
                     }
                     bool onlyTelemetry=complete && compilerSeen && active.Count==accounting.Active;
-                    foreach(var entry in active) if(entry.Instrumented || !String.Equals(entry.Path,compilerTelemetry,StringComparison.OrdinalIgnoreCase)) onlyTelemetry=false;
+                    foreach(var entry in active) {
+                        bool allowed=String.Equals(entry.Path,compilerTelemetry,StringComparison.OrdinalIgnoreCase);
+                        if(entry.Instrumented || !allowed) onlyTelemetry=false;
+                    }
                     if(onlyTelemetry) {
                         foreach(var entry in active) infrastructureCleanup.Add(entry.Path);
                         Require(TerminateJobObject(job,0));

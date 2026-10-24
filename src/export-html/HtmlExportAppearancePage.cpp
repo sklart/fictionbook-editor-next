@@ -65,7 +65,7 @@ void EnumerateInstalledFontFamilies(std::vector<CString>& fonts)
 
 void HtmlExportAppearancePage::FillCombo(UINT id, const UINT* strings, size_t count, int selection)
 {
-    CComboBox combo = GetDlgItem(id);
+    CComboBox combo(GetDlgItem(id));
     combo.ResetContent();
     for (size_t index = 0; index < count; ++index)
         combo.AddString(LoadExportHtmlString(strings[index]));
@@ -144,7 +144,7 @@ void HtmlExportAppearancePage::UpdateEnabledState()
 
 void HtmlExportAppearancePage::PopulateCustomFontCombo(const CString& selected)
 {
-    CComboBox combo = GetDlgItem(IDC_CUSTOM_FONT);
+    CComboBox combo(GetDlgItem(IDC_CUSTOM_FONT));
     if (!combo.IsWindow())
         return;
     std::vector<CString> fonts;

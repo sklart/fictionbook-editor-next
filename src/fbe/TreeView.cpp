@@ -1831,7 +1831,8 @@ void CTreeView::RunSelectedScript()
 	if(scripts.size() == 1)
 	{
 		const ScriptDescriptor* script = scripts[0];
-		m_run_script ? m_run_script(script->commandId) : ::SendMessage(m_main_window, WM_COMMAND, MAKEWPARAM(ID_SCRIPT_BASE + script->commandId, 0), 0);
+		if (m_run_script) m_run_script(script->commandId);
+		else ::SendMessage(m_main_window, WM_COMMAND, MAKEWPARAM(ID_SCRIPT_BASE + script->commandId, 0), 0);
 	}
 }
 

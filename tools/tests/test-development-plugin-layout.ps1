@@ -43,7 +43,7 @@ foreach ($project in $pluginProjects) {
     $namespace = [Xml.XmlNamespaceManager]::new($content.NameTable)
     $namespace.AddNamespace('msb', $content.DocumentElement.NamespaceURI)
     $releaseCondition = '''$(Configuration)|$(Platform)''==''Release|Win32'''
-    $ordinaryCondition = '''$(FbeSanitizer)''!=''Address'''
+    $ordinaryCondition = '''$(FbeSanitizer)''==''None'''
     $outputs = @($content.SelectNodes('/msb:Project/msb:PropertyGroup/msb:OutDir', $namespace) | Where-Object {
         $groupCondition = $_.ParentNode.GetAttribute('Condition') -replace '\s+', ''
         $condition = $_.GetAttribute('Condition') -replace '\s+', ''

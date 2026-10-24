@@ -38,12 +38,12 @@ LRESULT HtmlExportImagesPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 void HtmlExportImagesPage::LoadFromSettings()
 {
     if (!m_settings) return;
-    CComboBox cover = GetDlgItem(IDC_COVER_MODE);
+    CComboBox cover(GetDlgItem(IDC_COVER_MODE));
     cover.ResetContent();
     const UINT coverLabels[] = { IDS_OPTIONS_VALUE_NORMAL, IDS_OPTIONS_VALUE_READING, IDS_OPTIONS_VALUE_VIEWPORT };
     for (size_t index = 0; index < _countof(coverLabels); ++index) cover.AddString(LoadExportHtmlString(coverLabels[index]));
     cover.SetCurSel(m_settings->coverMode >= 0 && m_settings->coverMode < 3 ? m_settings->coverMode : 0);
-    CComboBox folder = GetDlgItem(IDC_IMAGES_FOLDER);
+    CComboBox folder(GetDlgItem(IDC_IMAGES_FOLDER));
     folder.ResetContent();
     folder.AddString(LoadExportHtmlString(IDS_OPTIONS_VALUE_AUTOMATIC));
     folder.AddString(LoadExportHtmlString(IDS_OPTIONS_VALUE_CUSTOM_NAME));

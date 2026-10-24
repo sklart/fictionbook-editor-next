@@ -10,10 +10,11 @@ int CFindResultsPane::Scale(int logicalPixels) const { return UiMetrics::ScaleFo
 
 LRESULT CFindResultsPane::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 {
-	m_header.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOTIFY | static_cast<DWORD>(SS_ENDELLIPSIS), 0, static_cast<UINT>(IDC_STATIC));
-	m_close.Create(m_hWnd, rcDefault, L"\x00D7", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 0, IDCANCEL);
-	m_list.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | LVS_REPORT | LVS_OWNERDATA | LVS_SHOWSELALWAYS | LVS_SINGLESEL, 0, IDC_FIND_RESULTS_LIST);
-	m_status.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOTIFY | SS_ENDELLIPSIS, 0, IDC_FIND_RESULTS_STATUS);
+	RECT childBounds = {};
+	m_header.Create(m_hWnd, childBounds, NULL, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOTIFY | static_cast<DWORD>(SS_ENDELLIPSIS), 0, static_cast<UINT>(IDC_STATIC));
+	m_close.Create(m_hWnd, childBounds, L"\x00D7", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 0, IDCANCEL);
+	m_list.Create(m_hWnd, childBounds, NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | LVS_REPORT | LVS_OWNERDATA | LVS_SHOWSELALWAYS | LVS_SINGLESEL, 0, IDC_FIND_RESULTS_LIST);
+	m_status.Create(m_hWnd, childBounds, NULL, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOTIFY | SS_ENDELLIPSIS, 0, IDC_FIND_RESULTS_STATUS);
 	m_list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
 	m_tooltips.Initialize(m_hWnd);
 	m_tooltips.Add(m_header, L"fbe.dialog.idd_find_results.caption", L"Find results");

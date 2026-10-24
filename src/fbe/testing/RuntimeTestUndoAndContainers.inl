@@ -6,7 +6,7 @@
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		try {
 			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
-			MSHTML::IHTMLElementPtr root(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr root(document ? MSHTML::IHTMLElementPtr(document->all->item(L"fbw_body")) : MSHTML::IHTMLElementPtr());
 			const bool clone = wcscmp(action, L"clone") == 0;
 			const bool clonePoem = wcscmp(action, L"clone-poem") == 0;
 			const bool cloneStanza = wcscmp(action, L"clone-stanza") == 0;
@@ -29,7 +29,7 @@
 				cloneStanza ? L"clone-stanza-line" : cloneCite ? L"clone-cite-source" : cloneEpigraph ? L"clone-epigraph-source" :
 				merge ? L"merge-first" : mergeCite ? L"merge-cite-first" : mergeStanza ? L"merge-stanza-line" : mergeId ? L"merge-id-first" :
 				mergeMixed ? L"merge-mixed-first" : mergeTable ? L"merge-table-first" : citeAuthor ? L"cite-first" : removeMetadata ? L"metadata-inner" : removeId ? L"id-inner" : L"inner-first";
-			MSHTML::IHTMLElementPtr target(document ? document->all->item(targetId) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr target(document ? MSHTML::IHTMLElementPtr(document->all->item(targetId)) : MSHTML::IHTMLElementPtr());
 			if ((remove || body || removeMetadata || removeId) && target) target = target->parentElement;
 			if (body && target) target = target->parentElement;
 			if (!root || !target || !(cloneAny || merge || mergeCite || mergeStanza || remove || body || mergeId || mergeMixed || mergeTable || citeAuthor || removeMetadata || removeId)) throw _com_error(E_INVALIDARG);
@@ -73,8 +73,8 @@
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		try {
 			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
-			MSHTML::IHTMLElementPtr editable(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
-			MSHTML::IHTMLElementCollectionPtr bodies(editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr editable(document ? MSHTML::IHTMLElementPtr(document->all->item(L"fbw_body")) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr bodies(editable ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV")) : MSHTML::IHTMLElementCollectionPtr());
 			MSHTML::IHTMLElementPtr root;
 			for (long i = 0; bodies && i < bodies->length; ++i) { MSHTML::IHTMLElementPtr e(bodies->item(_variant_t(i), _variant_t())); if (e && U::scmp(e->className, L"body") == 0) { root = e; break; } }
 			if (!root) throw _com_error(E_FAIL);
@@ -118,7 +118,7 @@
 			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document()); IServiceProviderPtr service(document); CComPtr<IOleUndoManager> manager;
 			const HRESULT managerHr = service ? service->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&manager)) : E_NOINTERFACE;
 			if (FAILED(managerHr) || !manager) { CStringA row; row.Format("0x%08lX\t\t\t0\t\t\t\t\t\t\t\t\t\t\t\t\tfail\r\n", static_cast<unsigned long>(managerHr)); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(0); return 0; }
-			MSHTML::IHTMLElementPtr editable(document->all->item(L"fbw_body")), root; MSHTML::IHTMLElementCollectionPtr divs(editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr()); for (long i = 0; divs && i < divs->length; ++i) { MSHTML::IHTMLElementPtr div(divs->item(_variant_t(i), _variant_t())); if (div && U::scmp(div->className, L"body") == 0) { root = div; break; } } if (!root) throw _com_error(E_FAIL);
+			MSHTML::IHTMLElementPtr editable(document->all->item(L"fbw_body")), root; MSHTML::IHTMLElementCollectionPtr divs(editable ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV")) : MSHTML::IHTMLElementCollectionPtr()); for (long i = 0; divs && i < divs->length; ++i) { MSHTML::IHTMLElementPtr div(divs->item(_variant_t(i), _variant_t())); if (div && U::scmp(div->className, L"body") == 0) { root = div; break; } } if (!root) throw _com_error(E_FAIL);
 			root->innerHTML = L"<DIV id=probe-old class=section><P>AAA 123 ZZZ</P></DIV>"; manager->DiscardFrom(NULL);
 			auto compact = [](CString value) { value.Replace(L"\r", L""); value.Replace(L"\n", L""); value.Replace(L"\t", L" "); return value; };
 			auto dom = [&]() { return compact(CString(static_cast<const wchar_t*>(root->innerHTML))); };
@@ -152,9 +152,9 @@
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		try {
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
-		MSHTML::IHTMLElementPtr body(document ? document->body : MSHTML::IHTMLElementPtr());
-		MSHTML::IHTMLElementPtr editable(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
-		MSHTML::IHTMLElementCollectionPtr divs(editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr body(document ? MSHTML::IHTMLElementPtr(document->body) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr editable(document ? MSHTML::IHTMLElementPtr(document->all->item(L"fbw_body")) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr divs(editable ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV")) : MSHTML::IHTMLElementCollectionPtr());
 		const wchar_t* requestedContainerClass = containerClassLength ? containerClass : L"section";
 		MSHTML::IHTMLElementPtr container;
 		for (long index = 0; divs && index < divs->length; ++index) {
@@ -190,7 +190,7 @@
 		else {
 			MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(container)->getElementsByTagName(L"P"));
 			const long index = atEnd ? paragraphs->length - 1 : paragraphs->length / 2;
-			MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(index), _variant_t()) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(index), _variant_t())) : MSHTML::IHTMLElementPtr());
 			if (!paragraph) { CStringA row; row.Format("%s\t%s\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tmissing-paragraph\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
 			const bool nonEmptySelection = positionLength >= 9 && wcsncmp(position, L"selection", 9) == 0;
 			if (atEnd) { range->moveToElementText(container); range->collapse(VARIANT_FALSE); }
@@ -262,7 +262,7 @@
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 		}
 		MSHTML::IHTMLTxtRangePtr selectionAfter(document->selection->createRange());
-		MSHTML::IHTMLElementPtr selectionParent(selectionAfter ? selectionAfter->parentElement() : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr selectionParent(selectionAfter ? MSHTML::IHTMLElementPtr(selectionAfter->parentElement()) : MSHTML::IHTMLElementPtr());
 		while (selectionParent && U::scmp(selectionParent->tagName, L"DIV")) selectionParent = selectionParent->parentElement;
 		CStringA selectionParentSummary;
 		if (selectionParent) selectionParentSummary.Format("%S#%S", static_cast<LPCWSTR>(selectionParent->className), static_cast<LPCWSTR>(selectionParent->id));
@@ -277,7 +277,7 @@
 				if (div && U::scmp(div->className, container->className) == 0 && div->sourceIndex != container->sourceIndex) { newContainer = div; break; }
 			}
 		}
-		MSHTML::IHTMLTxtRangePtr newContainerRange(newContainer ? MSHTML::IHTMLBodyElementPtr(body)->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+		MSHTML::IHTMLTxtRangePtr newContainerRange(newContainer ? MSHTML::IHTMLTxtRangePtr(MSHTML::IHTMLBodyElementPtr(body)->createTextRange()) : MSHTML::IHTMLTxtRangePtr());
 		if (newContainerRange) newContainerRange->moveToElementText(newContainer);
 		const long selectionStartInNew = selectionAfter && newContainerRange ? selectionAfter->compareEndPoints(L"StartToStart", newContainerRange) : 99;
 		const long selectionEndInNew = selectionAfter && newContainerRange ? selectionAfter->compareEndPoints(L"EndToEnd", newContainerRange) : 99;
@@ -325,8 +325,8 @@
 		bool endTextInserted = !atEnd;
 		if (atEnd && newContainer) {
 			MSHTML::IHTMLElementPtr inputContainer(document->all->item(containerId));
-			MSHTML::IHTMLElementCollectionPtr leaves(inputContainer ? MSHTML::IHTMLElement2Ptr(inputContainer)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
-			MSHTML::IHTMLElementPtr leaf(leaves && leaves->length ? leaves->item(0L) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr leaves(inputContainer ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(inputContainer)->getElementsByTagName(L"P")) : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr leaf(leaves && leaves->length ? MSHTML::IHTMLElementPtr(leaves->item(0L)) : MSHTML::IHTMLElementPtr());
 			if (leaf) {
 				MSHTML::IHTMLTxtRangePtr input(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 				input->moveToElementText(leaf); leaf->innerText = L"Tail";
@@ -344,11 +344,11 @@
 		const CString originalText(container ? static_cast<const wchar_t*>(container->innerText) : L"");
 		const CString splitText(newContainer ? static_cast<const wchar_t*>(newContainer->innerText) : L"");
 		MSHTML::IHTMLElementPtr newTitle;
-		MSHTML::IHTMLElementCollectionPtr newDivs(newContainer ? MSHTML::IHTMLElement2Ptr(newContainer)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementCollectionPtr newDivs(newContainer ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(newContainer)->getElementsByTagName(L"DIV")) : MSHTML::IHTMLElementCollectionPtr());
 		for (long index = 0; newDivs && index < newDivs->length; ++index) { MSHTML::IHTMLElementPtr div(newDivs->item(_variant_t(index), _variant_t())); if (div && U::scmp(div->className, L"title") == 0) { newTitle = div; break; } }
 		const CString newTitleText(newTitle ? static_cast<const wchar_t*>(newTitle->innerText) : L"");
 		CString newRemainingText;
-		MSHTML::IHTMLElementCollectionPtr newParagraphs(newContainer ? MSHTML::IHTMLElement2Ptr(newContainer)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementCollectionPtr newParagraphs(newContainer ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(newContainer)->getElementsByTagName(L"P")) : MSHTML::IHTMLElementCollectionPtr());
 		for (long index = 0; newParagraphs && index < newParagraphs->length; ++index) { MSHTML::IHTMLElementPtr paragraph(newParagraphs->item(_variant_t(index), _variant_t())); if (paragraph && paragraph->parentElement != newTitle) newRemainingText += static_cast<const wchar_t*>(paragraph->innerText); }
 		const bool fragmentsPreserved = !selectionScenario ||
 			(countText(L"AAA") == 1 && countText(L"123") == 1 && countText(L"ZZZ") == 1 &&
@@ -372,9 +372,9 @@
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		try {
 			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
-			MSHTML::IHTMLElementPtr section(document && containerIdLength ? document->all->item(containerId) : MSHTML::IHTMLElementPtr());
-			MSHTML::IHTMLElementCollectionPtr paragraphs(section ? MSHTML::IHTMLElement2Ptr(section)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
-			MSHTML::IHTMLElementPtr firstParagraph(paragraphs && paragraphs->length ? paragraphs->item(0L) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr section(document && containerIdLength ? MSHTML::IHTMLElementPtr(document->all->item(containerId)) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr paragraphs(section ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(section)->getElementsByTagName(L"P")) : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr firstParagraph(paragraphs && paragraphs->length ? MSHTML::IHTMLElementPtr(paragraphs->item(0L)) : MSHTML::IHTMLElementPtr());
 			const bool idRestored = section && U::scmp(section->id, containerId) == 0;
 			const bool sectionComplete = firstParagraph && !CString(static_cast<const wchar_t*>(firstParagraph->innerText)).IsEmpty();
 			const bool saved = idRestored && sectionComplete && m_doc->Save();

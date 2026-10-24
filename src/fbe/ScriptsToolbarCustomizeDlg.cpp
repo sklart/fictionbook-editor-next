@@ -96,7 +96,8 @@ LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_panelList.SetCurSel(selectedPanel);
 	::SetWindowSubclass(m_availableList, AvailableListSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
 	::SetWindowSubclass(m_currentList, CurrentListSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
-	m_toolTip.Create(m_hWnd); m_toolTip.Activate(TRUE);
+	RECT tipBounds = {};
+	m_toolTip.Create(m_hWnd, tipBounds); m_toolTip.Activate(TRUE);
 	m_toolTip.AddTool(m_availableList, LPSTR_TEXTCALLBACKW, NULL, 1);
 	m_toolTip.AddTool(m_currentList, LPSTR_TEXTCALLBACKW, NULL, 2);
 	CRect client;
@@ -411,7 +412,7 @@ void CScriptsToolbarCustomizeDlg::RestorePlacement()
 		placement.showCmd = SW_SHOWNORMAL;
 		monitor = ::MonitorFromRect(&placement.rcNormalPosition, MONITOR_DEFAULTTONULL);
 	}
-	if(monitor == NULL) monitor = ::MonitorFromWindow(GetParent() != NULL ? GetParent() : m_hWnd, MONITOR_DEFAULTTONEAREST);
+	if(monitor == NULL) monitor = ::MonitorFromWindow(GetParent() != NULL ? static_cast<HWND>(GetParent()) : m_hWnd, MONITOR_DEFAULTTONEAREST);
 	MONITORINFO info = {}; info.cbSize = sizeof(info);
 	if(monitor == NULL || !::GetMonitorInfo(monitor, &info)) { CenterWindow(GetParent()); return; }
 	const CSize logical = m_settings.GetScriptsToolbarCustomizeSize();

@@ -82,7 +82,7 @@ void BodySourceSelectionCoordinator::MapSourceSelectionToBody(FB::Doc& document,
 			if(U::scmp(MSHTML::IHTMLElementPtr(root)->className, L"body") == 0 && bodyIndex-- == 0)
 			{
 				MSHTML::IHTMLElementPtr htmlBegin = beginPath.GetNodeFromHTMLDOM(root);
-				MSHTML::IHTMLElementPtr htmlEnd = caret ? htmlBegin : endPath.GetNodeFromHTMLDOM(root);
+				MSHTML::IHTMLElementPtr htmlEnd = caret ? htmlBegin : MSHTML::IHTMLElementPtr(endPath.GetNodeFromHTMLDOM(root));
 				if(htmlBegin && htmlEnd) { document.m_body.GoTo(htmlBegin); selection.BodyRange() = FbeDom::SelectionRangeMapper::SetSelection(document.m_body.Document(), htmlBegin, htmlEnd, beginCharacter, endCharacter); selection.BodySource().sourceToBodyTransferred = (bool)selection.BodyRange(); }
 				break;
 			}

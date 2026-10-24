@@ -223,7 +223,7 @@ static void FinalizeThemeMetadata(const CString& sourceId, const DWORD* colors,
 	if(metadata.recalculateIsDark)
 		metadata.isDark = IsDarkThemeBackground(colors[XML_SRC_STYLE_EDITOR_BACKGROUND]);
 	if(!metadata.baseThemeId.IsEmpty()) return;
-	metadata.baseThemeId = isSystemTheme ? (metadata.isDark ? L"fbe-dark" : L"fbe-light") : sourceId;
+	metadata.baseThemeId = isSystemTheme ? CString(metadata.isDark ? L"fbe-dark" : L"fbe-light") : sourceId;
 }
 
 LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)

@@ -9,7 +9,9 @@ param(
     [string]$BatchDirectory,
     [string]$PlatformToolset,
     [string]$ProvenanceDirectory,
-    [ValidateSet('None','Address')][string]$Sanitizer = 'None'
+    [ValidateSet('None','Address','Undefined')][string]$Sanitizer = 'None',
+    [string]$Compiler='MSVC',
+    [string]$CompilerVersion=$env:VCToolsVersion
 )
 
 $ErrorActionPreference = 'Stop'
@@ -50,7 +52,7 @@ if ($Action -eq 'Write') {
     }
     New-Item -ItemType Directory -Force -Path $provenanceRoot | Out-Null
     $commit = (& git -C $repoRoot rev-parse HEAD).Trim()
-    [ordered]@{ schemaVersion=1; kind=$Kind; configuration=$Configuration; platform='Win32'; platformToolset=$PlatformToolset; sanitizer=$Sanitizer; gitCommit=$commit; artifacts=$artifacts } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
+    [ordered]@{ schemaVersion=1; kind=$Kind; configuration=$Configuration; platform='Win32'; platformToolset=$PlatformToolset; sanitizer=$Sanitizer; compiler=$Compiler; compilerVersion=$CompilerVersion; gitCommit=$commit; artifacts=$artifacts } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
     Write-Host "Build provenance written: $manifestPath"
     # This script is invoked from the public verification gate.  Do not end
     # its caller's PowerShell host after writing provenance.

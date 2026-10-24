@@ -347,8 +347,8 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 
 		ShowView(BODY);
 		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document()->body);
-		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
-		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P")) : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(0L), _variant_t())) : MSHTML::IHTMLElementPtr());
 		bool edited = false;
 		if (paragraph)
 		{
@@ -1891,7 +1891,7 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		};
 		auto appendBackgroundPhase = [&](const char* phase)
 		{
-			MSHTML::IHTMLStylePtr style(m_doc->m_body.Document() ? m_doc->m_body.Document()->body->style : MSHTML::IHTMLStylePtr());
+			MSHTML::IHTMLStylePtr style(m_doc->m_body.Document() ? MSHTML::IHTMLStylePtr(m_doc->m_body.Document()->body->style) : MSHTML::IHTMLStylePtr());
 			CString image, repeat, position, attachment, cssText, size(L"auto");
 			CString cssUrl;
 			if(style) {
@@ -1994,14 +1994,14 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1);
 		};
 		if (!cite && !poem) { writeFailure("invalid-operation"); return 0; }
-		MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
-		MSHTML::IHTMLElementCollectionPtr divs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? MSHTML::IHTMLElementPtr(m_doc->m_body.Document()->body) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr divs(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV")) : MSHTML::IHTMLElementCollectionPtr());
 		MSHTML::IHTMLElementPtr container;
 		for (long index = 0; divs && index < divs->length; ++index) {
 			MSHTML::IHTMLElementPtr div(divs->item(_variant_t(index), _variant_t()));
 			if (div && U::scmp(div->className, targetClass) == 0) { container = div; break; }
 		}
-		MSHTML::IHTMLElementCollectionPtr paragraphs(container ? MSHTML::IHTMLElement2Ptr(container)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementCollectionPtr paragraphs(container ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(container)->getElementsByTagName(L"P")) : MSHTML::IHTMLElementCollectionPtr());
 		if (!body || !container || !paragraphs || paragraphs->length == 0) { writeFailure("missing-paragraph"); return 0; }
 		MSHTML::IHTMLElementPtr first(paragraphs->item(_variant_t(0L), _variant_t()));
 		MSHTML::IHTMLElementPtr last(paragraphs->item(_variant_t(paragraphs->length - 1), _variant_t()));
@@ -2050,7 +2050,7 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 			MSHTML::IHTMLElementCollectionPtr elements(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(tagName));
 			for (long index = 0; elements && index < elements->length; ++index) {
 				MSHTML::IHTMLElementPtr element(elements->item(_variant_t(index), _variant_t()));
-				MSHTML::IHTMLElementCollectionPtr children(element ? element->children : MSHTML::IHTMLElementCollectionPtr());
+				MSHTML::IHTMLElementCollectionPtr children(element ? MSHTML::IHTMLElementCollectionPtr(element->children) : MSHTML::IHTMLElementCollectionPtr());
 				if (element && (!className || U::scmp(element->className, className) == 0) && (!children || children->length == 0) && CString((const wchar_t*)element->innerHTML).Trim().IsEmpty()) ++count;
 			}
 			return count;
@@ -2114,8 +2114,8 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 					MSHTML::IHTMLElementPtr div(recoveryDivs->item(_variant_t(index), _variant_t()));
 					if (div && U::scmp(div->className, targetClass) == 0) { recoveryContainer = div; break; }
 				}
-				MSHTML::IHTMLElementCollectionPtr recoveryParagraphs(recoveryContainer ? MSHTML::IHTMLElement2Ptr(recoveryContainer)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
-				MSHTML::IHTMLElementPtr recoveryFirst(recoveryParagraphs && recoveryParagraphs->length ? recoveryParagraphs->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+				MSHTML::IHTMLElementCollectionPtr recoveryParagraphs(recoveryContainer ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(recoveryContainer)->getElementsByTagName(L"P")) : MSHTML::IHTMLElementCollectionPtr());
+				MSHTML::IHTMLElementPtr recoveryFirst(recoveryParagraphs && recoveryParagraphs->length ? MSHTML::IHTMLElementPtr(recoveryParagraphs->item(_variant_t(0L), _variant_t())) : MSHTML::IHTMLElementPtr());
 				MSHTML::IHTMLTxtRangePtr recoveryRange(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 				if (recoveryFirst && recoveryRange) {
 					recoveryRange->moveToElementText(recoveryFirst); recoveryRange->collapse(VARIANT_TRUE);

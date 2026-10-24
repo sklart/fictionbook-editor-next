@@ -11,7 +11,7 @@ if($Sanitizer -eq 'Address') { $flags+=@('/fsanitize=address','/D_DISABLE_VECTOR
 $savedDump=$env:ASAN_SAVE_DUMPS; $savedOptions=$env:ASAN_OPTIONS
 $results=@(); $status='FAIL'
 try {
-foreach($name in @('image-data-stream','toolbar-caption-lifetime')) {
+foreach($name in @('image-data-stream','toolbar-caption-lifetime','window-rectangle','pane-close-button','virtual-address-range','borrowed-variant')) {
     $exe=Join-Path $out ($name+'.exe')
     & cl.exe @flags ("/I"+(Join-Path $root 'third_party/wtl')) ("/Fo"+(Join-Path $out ($name+'.obj'))) ("/Fd"+(Join-Path $out ($name+'-compile.pdb'))) "/Fe$exe" (Join-Path $PSScriptRoot ($name+'-test.cpp')) `
         /link /LTCG /DEBUG /INCREMENTAL:NO /SUBSYSTEM:CONSOLE,6.01 ("/PDB:"+(Join-Path $out ($name+'.pdb'))) /MANIFEST:EMBED ("/MANIFESTINPUT:"+(Join-Path $root 'src/fbe/res/FBE.exe.manifest')) ole32.lib oleaut32.lib user32.lib gdi32.lib gdiplus.lib comctl32.lib shell32.lib uuid.lib

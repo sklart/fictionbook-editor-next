@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Only first-party projects import this. Vendor dependencies retain v143. -->
+  <PropertyGroup>
+    <CLToolExe>clang-cl.exe</CLToolExe>
+    <CLToolPath>$([System.IO.Path]::GetDirectoryName('$(FbeClangCl)'))\</CLToolPath>
+    <!-- MSVC LINK rounds UBSan function-prefix targets in its CFG table.
+         LLD preserves the actual targets, retaining CFG and all UBSan checks. -->
+    <LinkToolExe>lld-link.exe</LinkToolExe>
+    <LinkToolPath>$([System.IO.Path]::GetDirectoryName('$(FbeLldLink)'))\</LinkToolPath>
+    <EnableUpx>false</EnableUpx>
+    <LinkIncremental>false</LinkIncremental>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <!-- clang-cl does not provide MSVC /MP scheduling. Keep per-file failure
+         tracking and bounded parallelism within this diagnostic mode only. -->
+    <UseMultiToolTask>true</UseMultiToolTask>
+    <MultiProcCL>true</MultiProcCL>
+    <EnforceProcessCountAcrossBuilds>true</EnforceProcessCountAcrossBuilds>
+    <CL_MPCount Condition="'$(CL_MPCount)' == ''">4</CL_MPCount>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <OmitFramePointers>false</OmitFramePointers>
+      <!-- Official i386 compiler-rt is /MT. Only FBV differs in normal Release. -->
+      <RuntimeLibrary Condition="'$(MSBuildProjectName)' == 'FBV'">MultiThreaded</RuntimeLibrary>
+      <PreprocessorDefinitions>FBE_CLANG_TYPELIBS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory);$(FbeRepoRoot)\build\ubsan\generated\type-libraries;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>$(FbeSanitizerCompileOptions) %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <!-- FBShell has no embedded IDL; its legacy LINK-only MIDL response
+           option is not a file and is unsupported by LLD. MIDL stays MSVC. -->
+      <MidlCommandFile />
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
+      <AdditionalLibraryDirectories>$(FbeLlvmRuntimeDirectory);$(FbeRepoRoot)\build\ubsan\dependencies\hunspell\lib\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <Target Name="ValidateFbeUndefinedSanitizer" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(Configuration)|$(Platform)|$(PlatformToolset)' != 'Release|Win32|v143'" Text="Undefined sanitizer requires Release Win32 and the v143 SDK/CRT environment." />
+    <Error Condition="!Exists('$(FbeClangCl)') or !Exists('$(FbeLldLink)') or !Exists('$(FbeLlvmRuntimeDirectory)\clang_rt.ubsan_standalone-i386.lib')" Text="Native clang-cl, lld-link and i386 UBSan runtime required; no MSVC fallback." />
+    <Error Condition="'$(FbeLanguageStandard)' != 'stdcpp17'" Text="Undefined sanitizer retains C++17." />
+  </Target>
+</Project>

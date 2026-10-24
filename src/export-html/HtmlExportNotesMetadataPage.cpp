@@ -22,7 +22,7 @@ LRESULT HtmlExportNotesMetadataPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 void HtmlExportNotesMetadataPage::LoadFromSettings()
 {
     if (!m_settings) return;
-    CComboBox placement = GetDlgItem(IDC_NOTE_PLACEMENT);
+    CComboBox placement(GetDlgItem(IDC_NOTE_PLACEMENT));
     placement.ResetContent();
     const UINT labels[] = { IDS_OPTIONS_VALUE_SOURCE, IDS_OPTIONS_VALUE_BOOK_END, IDS_OPTIONS_VALUE_SECTION_END };
     for (size_t index = 0; index < _countof(labels); ++index) placement.AddString(LoadExportHtmlString(labels[index]));

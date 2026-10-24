@@ -1,5 +1,6 @@
 #include "../stdafx.h"
 #include "SourceViewDiagnostics.h"
+#include "VirtualAddressRange.h"
 #include <psapi.h>
 
 namespace FbeSourceDiagnostics
@@ -45,15 +46,16 @@ ProcessMemorySnapshot GetProcessMemorySnapshot()
 		snapshot.workingSetBytes = counters.WorkingSetSize;
 	}
 	SYSTEM_INFO systemInfo = {}; ::GetSystemInfo(&systemInfo);
-	for (BYTE* address = NULL; address < systemInfo.lpMaximumApplicationAddress; )
+	const std::uintptr_t maximum = reinterpret_cast<std::uintptr_t>(systemInfo.lpMaximumApplicationAddress);
+	for (std::uintptr_t address = 0; address < maximum; )
 	{
 		MEMORY_BASIC_INFORMATION memory = {};
-		const SIZE_T result = ::VirtualQuery(address, &memory, sizeof(memory));
+		const SIZE_T result = ::VirtualQuery(reinterpret_cast<LPCVOID>(address), &memory, sizeof(memory));
 		if (result == 0) break;
 		if (memory.State == MEM_COMMIT) snapshot.committedBytes += memory.RegionSize;
 		else if (memory.State == MEM_RESERVE) snapshot.reservedBytes += memory.RegionSize;
-		BYTE* const nextAddress = static_cast<BYTE*>(memory.BaseAddress) + memory.RegionSize;
-		if (nextAddress <= address) break;
+		std::uintptr_t nextAddress = 0;
+		if (!NextVirtualRegion(reinterpret_cast<std::uintptr_t>(memory.BaseAddress), memory.RegionSize, address, nextAddress)) break;
 		address = nextAddress;
 	}
 	return snapshot;

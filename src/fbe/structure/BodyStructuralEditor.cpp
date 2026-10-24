@@ -124,7 +124,7 @@ StructuralOperationResult BodyStructuralEditor::InsertPoem(bool checkOnly, CiteP
 		do { html += MSHTML::IHTMLElementPtr(sibling)->outerHTML.GetBSTR(); if (sibling == endElement) break; sibling = sibling->nextSibling; } while (sibling);
 		After(L"capture-html");
 		Before(L"expanded-content-scan"); bool expandedHasContent = false;
-		for (MSHTML::IHTMLDOMNodePtr paragraph = beginElement; paragraph; paragraph = paragraph->nextSibling) { CString text = MSHTML::IHTMLElementPtr(paragraph)->innerText; for (int index = 0; index < text.GetLength(); ++index) { const wchar_t ch = text[index]; if (ch != L' ' && ch != L'\t' && ch != L'\r' && ch != L'\n' && ch != 0x00A0) { expandedHasContent = true; break; } } if (expandedHasContent || paragraph == endElement) break; }
+		for (MSHTML::IHTMLDOMNodePtr paragraph = beginElement; paragraph; paragraph = paragraph->nextSibling) { CString text(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(paragraph)->innerText)); for (int index = 0; index < text.GetLength(); ++index) { const wchar_t ch = text[index]; if (ch != L' ' && ch != L'\t' && ch != L'\r' && ch != L'\n' && ch != 0x00A0) { expandedHasContent = true; break; } } if (expandedHasContent || paragraph == endElement) break; }
 		After(L"expanded-content-scan");
 		Before(L"poem-create"); MSHTML::IHTMLElementPtr poem(m_document->createElement(L"<DIV class=poem>")); After(L"poem-create");
 		if (wasCollapsed && !expandedHasContent) { Before(L"empty-poem-fallback"); poem->innerHTML = L"<DIV class=stanza><P>&nbsp;</P></DIV>"; After(L"empty-poem-fallback"); }
@@ -132,7 +132,7 @@ StructuralOperationResult BodyStructuralEditor::InsertPoem(bool checkOnly, CiteP
 			Before(L"accumulator-create"); MSHTML::IHTMLElementPtr accumulator(m_document->createElement(L"DIV")); After(L"accumulator-create");
 			Before(L"accumulator-innerhtml"); accumulator->innerHTML = html.AllocSysString(); After(L"accumulator-innerhtml");
 			MSHTML::IHTMLElementCollectionPtr children = accumulator->children; bool trim = true; CString stanzaHtml; After(L"stanza-loop-enter");
-			for (long index = 0; children && index < children->length; ++index) { MSHTML::IHTMLElementPtr current(children->item(index)); CString line = current->innerText; if (line.Trim().IsEmpty()) { if (trim) continue; Before(L"stanza-create"); MSHTML::IHTMLElementPtr stanza(m_document->createElement(L"<DIV class=stanza>")); After(L"stanza-create"); Before(L"stanza-innerhtml"); stanza->innerHTML = stanzaHtml.AllocSysString(); After(L"stanza-innerhtml"); Before(L"stanza-insert"); MSHTML::IHTMLElement2Ptr(poem)->insertAdjacentElement(L"beforeEnd", stanza); After(L"stanza-insert"); stanzaHtml.Empty(); trim = true; } else { if (!U::scmp(current->tagName,L"DIV")) { if (current->innerText.GetBSTR()) stanzaHtml += CString(L"<P>") + current->innerText.GetBSTR() + L"</P>"; else continue; } else stanzaHtml += current->outerHTML.GetBSTR(); trim = false; } }
+			for (long index = 0; children && index < children->length; ++index) { MSHTML::IHTMLElementPtr current(children->item(index)); CString line(static_cast<LPCWSTR>(current->innerText)); if (line.Trim().IsEmpty()) { if (trim) continue; Before(L"stanza-create"); MSHTML::IHTMLElementPtr stanza(m_document->createElement(L"<DIV class=stanza>")); After(L"stanza-create"); Before(L"stanza-innerhtml"); stanza->innerHTML = stanzaHtml.AllocSysString(); After(L"stanza-innerhtml"); Before(L"stanza-insert"); MSHTML::IHTMLElement2Ptr(poem)->insertAdjacentElement(L"beforeEnd", stanza); After(L"stanza-insert"); stanzaHtml.Empty(); trim = true; } else { if (!U::scmp(current->tagName,L"DIV")) { if (current->innerText.GetBSTR()) stanzaHtml += CString(L"<P>") + current->innerText.GetBSTR() + L"</P>"; else continue; } else stanzaHtml += current->outerHTML.GetBSTR(); trim = false; } }
 			if (!stanzaHtml.IsEmpty()) { Before(L"stanza-create"); MSHTML::IHTMLElementPtr stanza(m_document->createElement(L"<DIV class=stanza>")); After(L"stanza-create"); Before(L"stanza-innerhtml"); stanza->innerHTML = stanzaHtml.AllocSysString(); After(L"stanza-innerhtml"); Before(L"stanza-insert"); MSHTML::IHTMLElement2Ptr(poem)->insertAdjacentElement(L"beforeEnd", stanza); After(L"stanza-insert"); }
 			MSHTML::IHTMLElementCollectionPtr poemChildren = poem->children;
 			if (!poemChildren || poemChildren->length == 0) { Before(L"empty-poem-fallback"); poem->innerHTML = L"<DIV class=stanza><P>&nbsp;</P></DIV>"; After(L"empty-poem-fallback"); }
@@ -266,8 +266,8 @@ StructuralOperationResult BodyStructuralEditor::SplitContainer(bool checkOnly, S
 		if (nextChildren->length == 1) { MSHTML::IHTMLElementPtr child = nextChildren->item(0); if (!U::scmp(child->tagName, L"DIV") && !U::scmp(child->className, className.GetBSTR())) { Before(L"new-wrapper-remove"); hr = m_markupServices->RemoveElement(child); Hr(L"new-wrapper-remove", hr); if (FAILED(hr)) return StructuralOperationResult::Failed(hr, documentChanged); } }
 		CString titleSection;
 		if (parentTitle) { titleSection = parentTitle->innerHTML.GetBSTR(); titleSection += L"<P>&nbsp;</P>"; }
-		CString parentText = parent->innerText; parentText.Remove(L'\r'); parentText.Remove(L'\n');
-		CString titleText = parentTitle ? parentTitle->innerText : L""; titleText.Remove(L'\r'); titleText.Remove(L'\n');
+		CString parentText(static_cast<LPCWSTR>(parent->innerText)); parentText.Remove(L'\r'); parentText.Remove(L'\n');
+		CString titleText(parentTitle ? static_cast<LPCWSTR>(parentTitle->innerText) : L""); titleText.Remove(L'\r'); titleText.Remove(L'\n');
 		if (parentTitle && !U::scmp(parentText, titleText)) replaceChildren(parent, titleSection, L"source-title-replace");
 		Before(L"undo-end"); undo.Close(); After(L"undo-end");
 		documentChanged = true;
@@ -279,7 +279,7 @@ StructuralOperationResult BodyStructuralEditor::SplitContainer(bool checkOnly, S
 			// the caret in the first leaf of the newly created container instead.
 			MSHTML::IHTMLElementPtr selectionTarget(next);
 			for (;;) {
-				MSHTML::IHTMLElementCollectionPtr selectionChildren(selectionTarget ? selectionTarget->children : MSHTML::IHTMLElementCollectionPtr());
+				MSHTML::IHTMLElementCollectionPtr selectionChildren(selectionTarget ? MSHTML::IHTMLElementCollectionPtr(selectionTarget->children) : MSHTML::IHTMLElementCollectionPtr());
 				if (!selectionChildren || selectionChildren->length == 0) break;
 				MSHTML::IHTMLElementPtr child(selectionChildren->item(0));
 				if (!child) break;

@@ -292,11 +292,11 @@ CString	QuerySV(HKEY hKey, const TCHAR *name, const TCHAR *def) {
   DWORD	    len=0;
   if (::RegQueryValueEx(hKey,name,NULL,&type,NULL,&len)!=ERROR_SUCCESS ||
       (type!=REG_SZ && type!=REG_EXPAND_SZ))
-    return def ? def : CString();
+    return def ? CString(def) : CString();
   TCHAR	    *cp=ret.GetBuffer(len/sizeof(TCHAR));
   if (::RegQueryValueEx(hKey,name,NULL,&type,(BYTE*)cp,&len)!=ERROR_SUCCESS) {
     ret.ReleaseBuffer(0);
-    return def ? def : CString();
+    return def ? CString(def) : CString();
   }
   ret.ReleaseBuffer();
   return ret;
@@ -659,7 +659,7 @@ CString	GetCBString(HWND hWnd,int idx) {
 MSXML2::IXMLDOMDocument2Ptr  CreateDocument(bool fFreeThreaded)
 {
   MSXML2::IXMLDOMDocument2Ptr  doc;
-  wchar_t		      *cls=fFreeThreaded ?
+  const wchar_t		      *cls=fFreeThreaded ?
     L"Msxml2.FreeThreadedDOMDocument.6.0" : L"Msxml2.DOMDocument.6.0";
   CheckError(doc.CreateInstance(cls));
   return doc;

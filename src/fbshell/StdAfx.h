@@ -42,7 +42,11 @@ extern CComModule _Module;
 #include <comutil.h>
 #include <comdef.h>
 
+#ifdef FBE_CLANG_TYPELIBS
+#include "shell/msxml6.tlh"
+#else
 #import <msxml6.dll> exclude("ISequentialStream", "_FILETIME")
+#endif
 
 #include <shellapi.h>
 #include <shlobj.h>

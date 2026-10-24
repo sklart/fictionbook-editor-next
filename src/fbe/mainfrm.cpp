@@ -22,6 +22,7 @@
 #include "archive\ui\ArchiveOpenCoordinator.h"
 
 #include "MainFrm.h"
+#include "utils/WindowRectangle.h"
 #include "AboutBox.h"
 #include "..\\common\\ModernFileDialog.h"
 #include "settings\\ui\\SettingsDlg.h"
@@ -1464,7 +1465,7 @@ CString	CMainFrame::GetSaveFileName(CString& encoding) {
 		}
 	}
 	DocumentFileDialogs::SaveRequest request;
-	bstr_t filename = m_doc->m_filename;
+	bstr_t filename(static_cast<LPCWSTR>(m_doc->m_filename));
 	if (!filename || (filename == bstr_t(L"Untitled.fb2")))
 		filename = L"";
 	request.initialFileName = static_cast<const wchar_t*>(filename);
@@ -1527,6 +1528,33 @@ void  CMainFrame::StopIncSearch(bool fCancel) {
   else
     m_doc->m_body.StopIncSearch();
   RefreshStatusMainPane();
+}
+
+HWND CMainFrame::Create(HWND parent, ATL::_U_RECT rect, LPCTSTR name,
+	DWORD style, DWORD exStyle, HMENU menu, LPVOID parameter)
+{
+	// Preserve WTL's registration, thunk, ownership and CreateEx routing. Only
+	// the rectangle subtraction differs: CW_USEDEFAULT must not overflow LONG.
+	ATLASSERT(m_hWnd == NULL);
+	const ATOM atom = GetWndClassInfo().Register(&m_pfnSuperWindowProc);
+	style = GetWndStyle(style);
+	exStyle = GetWndExStyle(exStyle);
+	if (!m_thunk.Init(NULL, NULL))
+	{
+		::SetLastError(ERROR_OUTOFMEMORY);
+		return NULL;
+	}
+	if (atom == 0) return NULL;
+	WTL::ModuleHelper::AddCreateWndData(&m_thunk.cd, this);
+	if (menu == NULL && (style & WS_CHILD))
+		menu = reinterpret_cast<HMENU>(this);
+	const RECT& bounds = rect.m_lpRect ? *rect.m_lpRect : ATL::CWindow::rcDefault;
+	const HWND window = ::CreateWindowEx(exStyle, MAKEINTATOM(atom), name, style,
+		bounds.left, bounds.top, WindowRectangle::Span(bounds.right, bounds.left),
+		WindowRectangle::Span(bounds.bottom, bounds.top), parent, menu,
+		WTL::ModuleHelper::GetModuleInstance(), parameter);
+	ATLASSERT(window == NULL || m_hWnd == window);
+	return window;
 }
 
 CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
@@ -2724,7 +2752,7 @@ void CMainFrame::ShowScriptsToolbarCustomizeDialog(HWND selectedToolbar)
 			for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) { const ScriptDescriptor& script = m_scripts.Menu().Item(scriptIndex); if(!script.isFolder && script.uid == target.items[itemIndex].scriptUid && script.commandId > 0) { target.items[itemIndex].command = ID_SCRIPT_BASE + script.commandId; break; } }
 		panels.push_back(target);
 	}
-	const HWND selected = selectedToolbar != NULL && FindScriptToolbarRuntime(selectedToolbar) != NULL ? selectedToolbar : m_ScriptsToolbar;
+	const HWND selected = selectedToolbar != NULL && FindScriptToolbarRuntime(selectedToolbar) != NULL ? selectedToolbar : static_cast<HWND>(m_ScriptsToolbar);
 	CScriptsToolbarCustomizeDlg dialog(selected, commands, defaults, _Settings, panels, [this](const CString& id, const std::vector<PortableToolbarItem>& items) { return UpdateScriptToolbarItems(id, items); }, true, FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.caption", L"Customize scripts toolbar"));
 	dialog.DoModal(m_hWnd);
 }
@@ -3668,8 +3696,11 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   m_editor_view_state.SetCtrlTabActive(false);
 
   // create command bar window
+  // CW_USEDEFAULT is ignored for child windows (zero geometry). Supplying
+  // the effective rectangle avoids ATL's overflowing sentinel subtraction.
+  RECT childBounds = {};
   m_MenuBar.SetAlphaImages(true);
-	HWND hWndCmdBar = m_MenuBar.Create(m_hWnd, rcDefault, NULL, ATL_SIMPLE_CMDBAR_PANE_STYLE);
+	HWND hWndCmdBar = m_MenuBar.Create(m_hWnd, childBounds, NULL, ATL_SIMPLE_CMDBAR_PANE_STYLE);
   // attach menu
   ApplyRuntimeMainFrameMenuLocalization(GetMenu());
   m_MenuBar.AttachMenu(GetMenu());
@@ -3859,22 +3890,22 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	UpdateStatusBar();
 
   // create splitter
-  m_hWndClient = m_splitter.Create(m_hWnd,rcDefault,NULL,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|WS_CLIPCHILDREN);
+  m_hWndClient = m_splitter.Create(m_hWnd,childBounds,NULL,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|WS_CLIPCHILDREN);
   m_splitter.SetSplitterExtendedStyle(0);
 
   // The outer splitter remains responsible for the document tree. Its right
   // pane is a horizontal editor/results splitter so Find All never creates a
   // floating top-level window.
-  m_editor_results_splitter.Create(m_splitter, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN);
+  m_editor_results_splitter.Create(m_splitter, childBounds, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN);
   m_editor_results_splitter.SetSplitterExtendedStyle(SPLIT_BOTTOMALIGNED);
 
   // create splitter contents
 //  m_document_tree.Create(m_splitter);
 //  m_document_tree.SetTitle(L"Document Tree");
   StartupTrace::AppendTestStartupBreadcrumb("mshtml-view-create-start");
-  m_view.Create(m_editor_results_splitter,rcDefault,NULL,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|WS_CLIPCHILDREN);
+  m_view.Create(m_editor_results_splitter,childBounds,NULL,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|WS_CLIPCHILDREN);
 	StartupTrace::AppendTestStartupBreadcrumb("mshtml-view-create-complete");
-	 m_find_results_pane.Create(m_editor_results_splitter, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN);
+	 m_find_results_pane.Create(m_editor_results_splitter, childBounds, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN);
 
   // create a tree
   /*m_dummy_pane.Create(m_document_tree,rcDefault,NULL,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|WS_CLIPCHILDREN,WS_EX_CLIENTEDGE);
@@ -3960,7 +3991,10 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   UISetCheck(ID_VIEW_BODY,1);
 
   StartupTrace::AppendTestStartupBreadcrumb("document-tree-create-start");
-  m_document_tree.Create(m_splitter);
+  // The title-less CPaneContainer wrapper internally supplies rcDefault.
+  // Call the same ATL base with the effective child geometry instead.
+  static_cast<ATL::CWindowImpl<CPaneContainer>&>(m_document_tree).Create(m_splitter,
+    childBounds, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN);
 	StartupTrace::AppendTestStartupBreadcrumb("document-tree-create-complete");
   StartupTrace::Event(L"mainframe", L"M150", L"document tree initialized");
 
@@ -4422,7 +4456,7 @@ LRESULT CMainFrame::OnSettingChange(UINT, WPARAM, LPARAM, BOOL&)
 void CMainFrame::UpdateTableCommandState()
 {
 	const bool body = m_editor_view_state.Current() == BODY && m_doc != NULL;
-	MSHTML::IHTMLElementPtr currentCell(body ? FbeTable::FindTableCell(m_selection_context.tableCell) : MSHTML::IHTMLElementPtr());
+	MSHTML::IHTMLElementPtr currentCell(body ? MSHTML::IHTMLElementPtr(FbeTable::FindTableCell(m_selection_context.tableCell)) : MSHTML::IHTMLElementPtr());
 	FbeTable::Grid grid;
 	const bool validCell = currentCell && FbeTable::BuildGrid(FbeTable::FindTableElement(currentCell), grid) && FbeTable::FindCell(grid, currentCell) >= 0;
 	const bool canDeleteRow = validCell && grid.rows.size() > 1;
@@ -7929,10 +7963,10 @@ void CMainFrame::ChangeNBSP(MSHTML::IHTMLElementPtr elem)
 			{
 				tr1->moveToElementText(elem);
 				tr1->setEndPoint(L"EndToStart",sel);
-				CString s = tr1->text;
+				CString s(static_cast<const wchar_t*>(tr1->text));
 				offset = s.GetLength();
 				// special fix for strange MSHTML bug (inline image present in html code)
-				CString s2 = tr1->htmlText;
+				CString s2(static_cast<const wchar_t*>(tr1->htmlText));
 				int l = 0;
 				int imagePos = 0;
 				while ((imagePos = s2.Find(L"<IMG", imagePos)) != -1)

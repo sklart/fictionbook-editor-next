@@ -63,3 +63,6 @@ src/fbe/generated/Fb2SchemaMetadata.h text eol=lf
 runtime/languages.txt -text
 runtime/root_genres.xml -text
 runtime/symbols.ini -text
+
+# UBSan exception policy has a stable CRLF checkout hash.
+tools/msbuild/ubsan.ignorelist text eol=crlf

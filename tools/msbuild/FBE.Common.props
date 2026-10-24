@@ -15,6 +15,13 @@
          /p:FbeLanguageStandard=stdcpp20; release и CI сохраняют C++17. -->
     <FbeLanguageStandard Condition="'$(FbeLanguageStandard)' == ''">stdcpp17</FbeLanguageStandard>
     <FbeSanitizer Condition="'$(FbeSanitizer)' == ''">None</FbeSanitizer>
+    <FbeBuildstampCompiler>cl</FbeBuildstampCompiler>
+    <FbeBuildstampCompiler Condition="'$(FbeSanitizer)' == 'Undefined'">&quot;$(FbeClangCl)&quot;</FbeBuildstampCompiler>
+    <FbeSanitizerCompileOptions Condition="'$(FbeSanitizer)' == 'Undefined'">--target=i686-pc-windows-msvc -fsanitize=undefined -fno-sanitize-recover=undefined -fsanitize-ignorelist=&quot;$(FbeRepoRoot)\tools\msbuild\ubsan.ignorelist&quot; /clang:-fno-omit-frame-pointer /clang:-fno-sanitize-merge /Zi</FbeSanitizerCompileOptions>
+    <OutDir Condition="'$(FbeSanitizer)' == 'Undefined'">$(FbeRepoRoot)\out\ubsan\$(Configuration)\</OutDir>
+    <OutDir Condition="'$(FbeSanitizer)' == 'Undefined' and ('$(MSBuildProjectName)' == 'ExportHTML' or '$(MSBuildProjectName)' == 'ExportDOCX' or '$(MSBuildProjectName)' == 'ExportEPUB' or '$(MSBuildProjectName)' == 'ImportEPUB' or '$(MSBuildProjectName)' == 'ImportEPUBLunaSVG')">$(FbeRepoRoot)\out\ubsan\$(Configuration)\Plugins\</OutDir>
+    <IntDir Condition="'$(FbeSanitizer)' == 'Undefined'">$(FbeRepoRoot)\build\ubsan\obj\$(MSBuildProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <FbeSanitizerBuildstampOptions Condition="'$(FbeSanitizer)' == 'Undefined'">/Fd&quot;$(IntDir)buildstamp.pdb&quot;</FbeSanitizerBuildstampOptions>
     <FbeSanitizerCompileOptions Condition="'$(FbeSanitizer)' == 'Address'">/fsanitize=address /Zi</FbeSanitizerCompileOptions>
     <OutDir Condition="'$(FbeSanitizer)' == 'Address'">$(FbeRepoRoot)\out\asan\$(Configuration)\</OutDir>
     <OutDir Condition="'$(FbeSanitizer)' == 'Address' and ('$(MSBuildProjectName)' == 'ExportHTML' or '$(MSBuildProjectName)' == 'ExportDOCX' or '$(MSBuildProjectName)' == 'ExportEPUB' or '$(MSBuildProjectName)' == 'ImportEPUB' or '$(MSBuildProjectName)' == 'ImportEPUBLunaSVG')">$(FbeRepoRoot)\out\asan\$(Configuration)\Plugins\</OutDir>

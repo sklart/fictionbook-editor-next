@@ -96,20 +96,33 @@ inline CString FbeLoadCString(UINT id)
 #include <time.h>
 
 // MSXML
+#ifdef FBE_CLANG_TYPELIBS
+#include "editor/msxml6.tlh"
+#else
 #import <msxml6.dll> exclude("ISequentialStream", "_FILETIME")
+#endif
 
 // vb regexps
+#ifdef FBE_CLANG_TYPELIBS
+#include "editor/vbscript3.tlh"
+#else
 #import "vbscript3.tlb"
+#endif
 
 // mshtml additional includes
 #include <exdispid.h>
 #include <mshtmdid.h>
 #include <mshtmcid.h>
+#ifdef FBE_CLANG_TYPELIBS
+#include "editor/shdocvw.tlh"
+#include "editor/mshtml.tlh"
+#else
 #import <shdocvw.dll> no_auto_exclude rename_namespace("SHD") rename("FindText","FindTextX")
 #import <mshtml.tlb> no_auto_exclude \
 	rename("TranslateAccelerator","TranslateAcceleratorX") \
 	rename("min","mshtml_min") \
 	rename("max","mshtml_max")
+#endif
 
 // use com utils
 using namespace _com_util;

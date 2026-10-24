@@ -799,7 +799,7 @@ private:
 	HWND m_emptyMessage = NULL;
 	UINT m_columnDpi = 96;
 	void FitInitialColumns() {
-		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
+		CListViewCtrl list(GetDlgItem(IDC_FB2_QUALITY_LIST));
 		RECT client = {}; list.GetClientRect(&client);
 		HDC dc = ::GetDC(list);
 		HFONT font = reinterpret_cast<HFONT>(::SendMessageW(list, WM_GETFONT, 0, 0));
@@ -954,7 +954,7 @@ private:
 		SetDlgItemText(IDCANCEL, FbeLoadRuntimeStringByKey(L"fbe.quality.close", L"Close"));
 		CString summary; summary.Format(FbeLoadRuntimeStringByKey(L"fbe.quality.summary", L"Errors: %d     Warnings: %d     Information: %d"), m_report.ErrorCount(), m_report.WarningCount(), m_report.InfoCount());
 		SetDlgItemText(IDC_FB2_QUALITY_SUMMARY, summary);
-		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
+		CListViewCtrl list(GetDlgItem(IDC_FB2_QUALITY_LIST));
 		list.ModifyStyle(0, WS_CLIPSIBLINGS);
 		list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
 		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
@@ -1006,7 +1006,7 @@ private:
 			bounds.bottom - bounds.top, SWP_NOZORDER | SWP_NOACTIVATE);
 		ApplyDpiFont(LOWORD(wParam));
 		if (m_emptyMessage && m_font) ::SendMessageW(m_emptyMessage, WM_SETFONT, reinterpret_cast<WPARAM>(m_font), TRUE);
-		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
+		CListViewCtrl list(GetDlgItem(IDC_FB2_QUALITY_LIST));
 		for(int column = 0; column < 5; ++column)
 			list.SetColumnWidth(column, ::MulDiv(list.GetColumnWidth(column), LOWORD(wParam), m_columnDpi));
 		m_columnDpi = LOWORD(wParam);
@@ -1027,7 +1027,7 @@ private:
 		return 0;
 	}
 	void UpdateGoTo() {
-		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
+		CListViewCtrl list(GetDlgItem(IDC_FB2_QUALITY_LIST));
 		const int row = list.GetNextItem(-1, LVNI_SELECTED);
 		const int index = row >= 0 ? static_cast<int>(list.GetItemData(row)) : -1;
 		const bool available = index >= 0 && static_cast<size_t>(index) < m_report.issues.size() && m_report.issues[index].start >= 0;
@@ -1069,12 +1069,12 @@ private:
 		if (column != 0 && column != 2 && column != 4) return 0;
 		m_sortDescending = m_sortColumn == column && !m_sortDescending;
 		m_sortColumn = column;
-		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
+		CListViewCtrl list(GetDlgItem(IDC_FB2_QUALITY_LIST));
 		list.SortItems(CompareRows, reinterpret_cast<LPARAM>(this));
 		return 0;
 	}
 	LRESULT OnGoTo(WORD, WORD, HWND, BOOL&) {
-		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
+		CListViewCtrl list(GetDlgItem(IDC_FB2_QUALITY_LIST));
 		const int row = list.GetNextItem(-1, LVNI_SELECTED);
 		const int index = row >= 0 ? static_cast<int>(list.GetItemData(row)) : -1;
 		if (index >= 0 && static_cast<size_t>(index) < m_report.issues.size()) selected = index;
@@ -1083,7 +1083,7 @@ private:
 	}
 	LRESULT OnActivate(int, LPNMHDR, BOOL& handled) { BOOL ignored = FALSE; handled = TRUE; return OnGoTo(0, 0, NULL, ignored); }
 	LRESULT OnCopy(WORD, WORD, HWND, BOOL&) {
-		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
+		CListViewCtrl list(GetDlgItem(IDC_FB2_QUALITY_LIST));
 		const int row = list.GetNextItem(-1, LVNI_SELECTED);
 		if (row < 0) return 0;
 		const Issue& issue = m_report.issues[static_cast<size_t>(list.GetItemData(row))];

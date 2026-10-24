@@ -284,7 +284,7 @@ Doc::~Doc() {
 bool Doc::CaptureBodyHtml(CString& html) {
 	try {
 		MSHTML::IHTMLDocument2Ptr document(m_editor.Document());
-		MSHTML::IHTMLElementPtr body(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr body(document ? MSHTML::IHTMLElementPtr(document->all->item(L"fbw_body")) : MSHTML::IHTMLElementPtr());
 		if (!body) return false;
 		html = static_cast<LPCWSTR>(body->innerHTML);
 		return true;
@@ -2717,7 +2717,7 @@ void Doc::GetWordList(int flags, CSimpleArray<Word>& words, CString /* unused: t
 	while(iNextElem < paras->length)
 	{
 		MSHTML::IHTMLElementPtr currElem(paras->item(iNextElem));
-		CString innerText = currElem->innerText;
+		CString innerText(static_cast<const wchar_t*>(currElem->innerText));
 
 		MSHTML::IHTMLDOMNodePtr currNode(currElem);
 		if(MSHTML::IHTMLElementPtr siblElem = currNode->nextSibling)
@@ -3264,7 +3264,7 @@ bool Doc::TextToXML(BSTR text, MSXML2::IXMLDOMDocument2Ptr* xml)
     HRESULT hr=rdr->raw_parse(vt);
     //::VariantClear(&vt);
 
-	bstr_t msg = eh->m_msg;
+	bstr_t msg(static_cast<LPCWSTR>(eh->m_msg));
     if (FAILED(hr))
 	{
       if (!eh->m_msg.IsEmpty())

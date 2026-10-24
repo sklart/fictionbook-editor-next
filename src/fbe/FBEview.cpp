@@ -66,7 +66,7 @@ static void CaptureClipboardTitlePasteDomForTest(MSHTML::IHTMLDocument2Ptr docum
 		wcscmp(scenario, L"clipboard-title-paste") != 0 ||
 		::GetEnvironmentVariable(L"FBE_NEXT_TEST_PASTE_TRACE", tracePath, _countof(tracePath)) == 0)
 		return;
-	MSHTML::IHTMLElementPtr editable(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
+	MSHTML::IHTMLElementPtr editable(document ? MSHTML::IHTMLElementPtr(document->all->item(L"fbw_body")) : MSHTML::IHTMLElementPtr());
 	if (!editable) return;
 	const CStringA utf8(CW2A(static_cast<LPCWSTR>(editable->innerHTML), CP_UTF8));
 	HANDLE trace = ::CreateFile(tracePath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -3022,7 +3022,7 @@ void RemoveTags(CString &src)
 int CFBEView::TextOffset(MSHTML::IHTMLTxtRange *rng, AU::ReMatch rm, CString txt, CString htmlTxt)
 {
 	CString text(txt);
-	CString match = rm->Value;
+	CString match(static_cast<const wchar_t*>(rm->Value));
 	// special fix for "Words" dialog
 	match = match.TrimRight(10);
 	match = match.TrimRight(13);
@@ -3782,7 +3782,7 @@ int CFBEView::ToolWordsGlobalReplace(	MSHTML::IHTMLElementPtr fbw_body,
 			pAdjElems.RemoveAll();
 
 			MSHTML::IHTMLElementPtr currElem(paras->item(iNextElem));
-			CString innerText = currElem->innerText;
+			CString innerText(static_cast<const wchar_t*>(currElem->innerText));
 			pAdjElems.Add(pElAdjacent(currElem));
 
 			if(pIndex != NULL)
@@ -5365,7 +5365,7 @@ bool CFBEView::GoToReference(bool fCheck)
 	MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
 	range->moveToElementText(result.element);
 	range->collapse(VARIANT_TRUE);
-	CString text = result.element->innerText;
+	CString text(static_cast<LPCWSTR>(result.element->innerText));
 	range->move(L"character", text.GetLength());
 	range->select();
 	MSHTML::IHTMLRectPtr rect = MSHTML::IHTMLElement2Ptr(result.element)->getBoundingClientRect();
@@ -5474,9 +5474,9 @@ LRESULT CFBEView::OnTableInsertColumnRight(WORD, WORD, HWND, BOOL&)
 bool CFBEView::DeleteTableLogicalColumnForTest(long column)
 {
 	try {
-		MSHTML::IHTMLElementPtr body(Document() ? Document()->body : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr body(Document() ? MSHTML::IHTMLElementPtr(Document()->body) : MSHTML::IHTMLElementPtr());
 		MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE") : MSHTML::IHTMLElementCollectionPtr());
-		MSHTML::IHTMLElementPtr table(tables && tables->length ? tables->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr table(tables && tables->length ? MSHTML::IHTMLElementPtr(tables->item(_variant_t(0L), _variant_t())) : MSHTML::IHTMLElementPtr());
 		Grid grid;
 		if (!FbeTable::BuildGrid(table, grid)) return false;
 		FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"delete table column");
@@ -5707,7 +5707,7 @@ long CFBEView::InsertCode()
 			{
 				// select word
 				rng->moveStart(L"word",-1);
-				CString txt = rng->text;
+				CString txt(static_cast<const wchar_t*>(rng->text));
 				offset = txt.GetLength();
 				rng->expand(L"word");
 				rngHTML.SetString(rng->htmlText);
@@ -5743,7 +5743,7 @@ long CFBEView::InsertCode()
 				MSHTML::IHTMLDOMNodePtr bNode = elBegin, eNode = elEnd;
 				while(bNode)
 				{
-					CString elBeginHTML = elBegin->innerHTML;
+					CString elBeginHTML(static_cast<const wchar_t*>(elBegin->innerHTML));
 
 					if(U::scmp(elBegin->tagName, L"P") == 0 && elBeginHTML.Find(L"<SPAN") < 0)
 					{
@@ -5879,7 +5879,7 @@ bool CFBEView::SelectionHasTags(wchar_t* elem)
 		MSHTML::IHTMLTxtRangePtr range = Document()->selection->createRange();
 		if(range)
 		{
-			CString html = range->htmlText;
+			CString html(static_cast<const wchar_t*>(range->htmlText));
 			if(html.Find(CString(L"<") + elem) != -1)
 				return true;
 		}
@@ -5906,9 +5906,9 @@ long CFBEView::TableGridBuildCountForTest()
 bool CFBEView::SelectTableLogicalRangeForTest(long firstRow, long firstColumn, long lastRow, long lastColumn)
 {
 	try {
-		MSHTML::IHTMLElementPtr body(Document() ? Document()->body : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr body(Document() ? MSHTML::IHTMLElementPtr(Document()->body) : MSHTML::IHTMLElementPtr());
 		MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE") : MSHTML::IHTMLElementCollectionPtr());
-		MSHTML::IHTMLElementPtr table(tables && tables->length ? tables->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr table(tables && tables->length ? MSHTML::IHTMLElementPtr(tables->item(_variant_t(0L), _variant_t())) : MSHTML::IHTMLElementPtr());
 		Grid grid;
 		if (!body || !FbeTable::BuildGrid(table, grid)) return false;
 		const long first = grid.At(firstRow, firstColumn), last = grid.At(lastRow, lastColumn);
@@ -5930,9 +5930,9 @@ bool CFBEView::SelectTableLogicalRangeForTest(long firstRow, long firstColumn, l
 CStringA CFBEView::TableStructuralSnapshot()
 {
 	try {
-		MSHTML::IHTMLElementPtr body(Document() ? Document()->body : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr body(Document() ? MSHTML::IHTMLElementPtr(Document()->body) : MSHTML::IHTMLElementPtr());
 		MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE") : MSHTML::IHTMLElementCollectionPtr());
-		MSHTML::IHTMLElementPtr table(tables && tables->length ? tables->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr table(tables && tables->length ? MSHTML::IHTMLElementPtr(tables->item(_variant_t(0L), _variant_t())) : MSHTML::IHTMLElementPtr());
 		Grid grid;
 		return FbeTable::BuildGrid(table, grid) ? FbeTable::BuildStructuralSnapshot(grid) : CStringA("invalid");
 	}

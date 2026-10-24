@@ -51,11 +51,11 @@
     <FbeBuildReleaseDefine Condition="'$(FbeReleaseVersion)'==''">/DFBE_BUILD_RELEASE_VERSION=FBE_VERSION_STRING</FbeBuildReleaseDefine>
     <FbeBuildReleaseDefine Condition="'$(FbeReleaseVersion)'!=''">/DFBE_BUILD_RELEASE_VERSION=\&quot;$(FbeReleaseVersion)\&quot;</FbeBuildReleaseDefine>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
-    <OutDir Condition="('$(Configuration)|$(Platform)'=='Release|Win32') and '$(FbeSanitizer)' != 'Address'">$(SolutionDir)out\$(Configuration)\</OutDir>
-    <IntDir Condition="('$(Configuration)|$(Platform)'=='Release|Win32') and '$(FbeSanitizer)' != 'Address'">$(SolutionDir)build\obj\fbe\$(Configuration)\</IntDir>
+    <OutDir Condition="('$(Configuration)|$(Platform)'=='Release|Win32') and '$(FbeSanitizer)' == 'None'">$(SolutionDir)out\$(Configuration)\</OutDir>
+    <IntDir Condition="('$(Configuration)|$(Platform)'=='Release|Win32') and '$(FbeSanitizer)' == 'None'">$(SolutionDir)build\obj\fbe\$(Configuration)\</IntDir>
     <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</EmbedManifest>
-    <OutDir Condition="('$(Configuration)|$(Platform)'=='Debug|Win32') and '$(FbeSanitizer)' != 'Address'">$(SolutionDir)out\$(Configuration)\</OutDir>
-    <IntDir Condition="('$(Configuration)|$(Platform)'=='Debug|Win32') and '$(FbeSanitizer)' != 'Address'">$(SolutionDir)build\obj\fbe\$(Configuration)\</IntDir>
+    <OutDir Condition="('$(Configuration)|$(Platform)'=='Debug|Win32') and '$(FbeSanitizer)' == 'None'">$(SolutionDir)out\$(Configuration)\</OutDir>
+    <IntDir Condition="('$(Configuration)|$(Platform)'=='Debug|Win32') and '$(FbeSanitizer)' == 'None'">$(SolutionDir)build\obj\fbe\$(Configuration)\</IntDir>
     <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</EmbedManifest>
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
@@ -117,7 +117,7 @@ exit /b 0
     </ResourceCompile>
     <!-- buildstamp.c is compiled manually for version metadata; optimization checks use the project's CL tlog. -->
     <PreLinkEvent>
-<Command>cl /nologo /c $(FbeSanitizerCompileOptions) $(FbeSanitizerBuildstampOptions) /DFBE_BUILD_COMMIT=\"$(FbeBuildCommit)\" $(FbeBuildReleaseDefine) /Fo"$(IntDir)buildstamp.obj" buildstamp.c</Command>
+<Command>$(FbeBuildstampCompiler) /nologo /c $(FbeSanitizerCompileOptions) $(FbeSanitizerBuildstampOptions) /DFBE_BUILD_COMMIT=\"$(FbeBuildCommit)\" $(FbeBuildReleaseDefine) /Fo"$(IntDir)buildstamp.obj" buildstamp.c</Command>
     </PreLinkEvent>
     <Link>
       <GenerateManifest>false</GenerateManifest>
@@ -197,7 +197,7 @@ exit /b 0
       <AdditionalIncludeDirectories>$(SolutionDir)third_party\wtl;extras;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PreLinkEvent>
-<Command>cl /nologo /c $(FbeSanitizerCompileOptions) $(FbeSanitizerBuildstampOptions) /DFBE_BUILD_COMMIT=\"$(FbeBuildCommit)\" $(FbeBuildReleaseDefine) /Fo"$(IntDir)buildstamp.obj" buildstamp.c</Command>
+<Command>$(FbeBuildstampCompiler) /nologo /c $(FbeSanitizerCompileOptions) $(FbeSanitizerBuildstampOptions) /DFBE_BUILD_COMMIT=\"$(FbeBuildCommit)\" $(FbeBuildReleaseDefine) /Fo"$(IntDir)buildstamp.obj" buildstamp.c</Command>
     </PreLinkEvent>
     <Link>
       <GenerateManifest>false</GenerateManifest>

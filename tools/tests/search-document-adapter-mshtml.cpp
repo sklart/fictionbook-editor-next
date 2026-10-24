@@ -442,7 +442,7 @@ int wmain()
 	AU::Search::SearchRange selectionScope;
 	MSHTML::IHTMLTxtRangePtr bodySelection(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
 	MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(document->body)->getElementsByTagName(L"P"));
-	MSHTML::IHTMLElementPtr firstParagraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+        MSHTML::IHTMLElementPtr firstParagraph(paragraphs && paragraphs->length ? MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(0L), _variant_t())) : MSHTML::IHTMLElementPtr());
 	if (!result && (!bodySelection || !firstParagraph)) result = 19;
 	if (!result)
 	{

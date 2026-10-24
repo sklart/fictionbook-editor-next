@@ -18,8 +18,10 @@ param(
     [ValidateSet('stdcpp17', 'stdcpp20')]
     [string]$FbeLanguageStandard = 'stdcpp17',
 
-    [ValidateSet('None', 'Address')]
+    [ValidateSet('None', 'Address', 'Undefined')]
     [string]$Sanitizer = 'None',
+
+    [string]$LlvmRoot,
 
     [switch]$SkipUpx,
 
@@ -158,9 +160,15 @@ function Assert-PreparedDependencies {
 }
 
 function Get-FirstPartyToolchainFingerprint {
-    return [ordered]@{
+    $fingerprint = [ordered]@{
         schemaVersion = 1
         sanitizer = $Sanitizer
+        compiler = $(if ($Sanitizer -eq 'Undefined') { 'clang-cl' } else { 'MSVC' })
+        compilerVersion = $(if ($Sanitizer -eq 'Undefined') { $ubsanToolchain.compilerVersion } else { $env:VCToolsVersion })
+        compilerPath = $(if ($Sanitizer -eq 'Undefined') { $ubsanToolchain.compilerPath } else { Join-Path $env:VCToolsInstallDir 'bin/HostX64/x86/cl.exe' })
+        linker = $(if ($Sanitizer -eq 'Undefined') { $ubsanToolchain.linker } else { 'MSVC LINK' })
+        linkerVersion = $(if ($Sanitizer -eq 'Undefined') { $ubsanToolchain.linkerVersion } else { $env:VCToolsVersion })
+        linkerPath = $(if ($Sanitizer -eq 'Undefined') { $ubsanToolchain.linkerPath } else { Join-Path $env:VCToolsInstallDir 'bin/HostX64/x86/link.exe' })
         configuration = $Configuration
         platform = $Platform
         platformToolset = $PlatformToolset
@@ -169,6 +177,10 @@ function Get-FirstPartyToolchainFingerprint {
         vcToolsInstallDir = $env:VCToolsInstallDir
         vcToolsVersion = $env:VCToolsVersion
     }
+    if ($Sanitizer -eq 'Undefined') {
+        $fingerprint.vendorIgnorelistSha256 = (Get-FileHash -LiteralPath (Join-Path $repoRoot 'tools/msbuild/ubsan.ignorelist')).Hash
+    }
+    return $fingerprint
 }
 
 function Test-FirstPartyToolchainFingerprint {
@@ -197,18 +209,25 @@ function Test-FirstPartyToolchainFingerprint {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-if (("$env:CL $env:_CL_") -match '(?i)/fsanitize[=:]address') {
-    throw 'Use -Sanitizer Address instead of injecting sanitizer flags through CL/_CL_; vendor and production outputs must stay isolated.'
+if (("$env:CL $env:_CL_") -match '(?i)[/-]fsanitize[=:](address|undefined)') {
+    throw 'Use -Sanitizer Address or Undefined instead of injecting sanitizer flags through CL/_CL_; vendor and production outputs must stay isolated.'
 }
-if ($Sanitizer -eq 'Address') {
+if ($Sanitizer -ne 'None') {
     if ($Configuration -ne 'Release' -or $PlatformToolset -ne 'v143' -or $FbeLanguageStandard -ne 'stdcpp17' -or $BatchOutputDirectory) {
-        throw 'AddressSanitizer requires Release Win32 v143 C++17 and its isolated batch output.'
+        throw 'Sanitizers require Release Win32 v143 C++17 and isolated batch output.'
     }
     if ([Environment]::OSVersion.Version.Major -lt 10) { throw 'ASan diagnostics require Windows 10/11.' }
     $SkipUpx = $true
 }
-$commonOutput = if ($Sanitizer -eq 'Address') { Join-Path $repoRoot "out\asan\$Configuration" } else { Join-Path $repoRoot "out\$Configuration" }
-$provenanceDirectory = if ($Sanitizer -eq 'Address') { Join-Path $repoRoot 'out\asan\build-provenance' } else { Join-Path $repoRoot 'out\build-provenance' }
+$sanitizerFolder = if ($Sanitizer -eq 'Address') { 'asan' } elseif ($Sanitizer -eq 'Undefined') { 'ubsan' } else { $null }
+$ubsanToolchain = $null
+if ($Sanitizer -eq 'Undefined') {
+    $ubsanToolchain = & (Join-Path $PSScriptRoot 'Resolve-UbsanToolchain.ps1') -LlvmRoot $LlvmRoot
+    Write-Host $ubsanToolchain.versionText
+    Write-Host "UBSan target=$($ubsanToolchain.target); architecture=$($ubsanToolchain.architecture); runtime=$($ubsanToolchain.runtimeLibrary)"
+}
+$commonOutput = if ($sanitizerFolder) { Join-Path $repoRoot "out/$sanitizerFolder/$Configuration" } else { Join-Path $repoRoot "out/$Configuration" }
+$provenanceDirectory = if ($sanitizerFolder) { Join-Path $repoRoot "out/$sanitizerFolder/build-provenance" } else { Join-Path $repoRoot 'out/build-provenance' }
 $trackedEditorRuntimeSnapshot = Get-TrackedEditorRuntimeDllSnapshot -RepositoryRoot $repoRoot
 $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
 
@@ -223,6 +242,9 @@ if (-not $SkipVersionSync) {
 # Universal release always uses the Win7-compatible VC 14.44 toolset.
 $vsEnvironmentArguments = @{ Arch = "x86"; HostArch = "x64"; PlatformToolset = $PlatformToolset; VcVarsVersion = "14.44" }
 & (Join-Path $repoRoot "tools\build\Import-VsDevEnvironment.ps1") @vsEnvironmentArguments
+$compilerProvenanceArguments=@{Compiler=$(if($ubsanToolchain){'clang-cl'}else{'MSVC'});CompilerVersion=$(if($ubsanToolchain){$ubsanToolchain.compilerVersion}else{$env:VCToolsVersion})}
+
+if ($Sanitizer -eq 'Undefined') { & (Join-Path $PSScriptRoot 'prepare-ubsan-type-libraries.ps1') }
 
 $pcre2BuildScript = Join-Path $repoRoot "tools\build\build-pcre2.ps1"
 $pcre2BuildArgs = @(
@@ -361,6 +383,10 @@ else {
 }
 Write-Host "Подготовка generated Hunspell project/header..."
 & (Join-Path $repoRoot "tools\build\build-hunspell.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset -PrepareOnly
+if ($Sanitizer -eq 'Undefined') {
+    & (Join-Path $repoRoot 'tools\build\build-hunspell.ps1') -Configuration $Configuration -PlatformToolset $PlatformToolset -ForLld
+    if ($LASTEXITCODE) { throw 'UBSan no-LTCG Hunspell dependency build failed.' }
+}
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($ReusePreparedImageStack) {
     $imageInputs = @(
@@ -413,6 +439,11 @@ $properties = @(
 )
 $properties += "/p:FbeLanguageStandard=$FbeLanguageStandard"
 $properties += "/p:FbeSanitizer=$Sanitizer"
+if ($Sanitizer -eq 'Undefined') {
+    $properties += "/p:FbeClangCl=$($ubsanToolchain.compilerPath)"
+    $properties += "/p:FbeLldLink=$($ubsanToolchain.linkerPath)"
+    $properties += "/p:FbeLlvmRuntimeDirectory=$($ubsanToolchain.runtimeDirectory)"
+}
 $buildCommit = (& git -C $repoRoot rev-parse --short=12 HEAD 2>$null | Select-Object -First 1)
 if(-not $buildCommit) { $buildCommit = 'unknown' }
 $properties += "/p:FbeBuildCommit=$buildCommit"
@@ -548,7 +579,7 @@ Remove-ObsoleteRootLanguageDirectories -OutputDirectory $commonOutput
 
 if ($true) {
     & (Join-Path $repoRoot 'tools\build\build-provenance.ps1') -Action Write -Kind CommonCore `
-        -Configuration $Configuration -CommonDirectory $commonOutput -PlatformToolset $PlatformToolset -ProvenanceDirectory $provenanceDirectory -Sanitizer $Sanitizer
+        -Configuration $Configuration -CommonDirectory $commonOutput -PlatformToolset $PlatformToolset -ProvenanceDirectory $provenanceDirectory -Sanitizer $Sanitizer @compilerProvenanceArguments
 }
 
 Assert-TrackedEditorRuntimeDllSnapshot -RepositoryRoot $repoRoot -Snapshot $trackedEditorRuntimeSnapshot
@@ -558,8 +589,12 @@ Assert-TrackedEditorRuntimeDllSnapshot -RepositoryRoot $repoRoot -Snapshot $trac
 & (Join-Path $repoRoot 'tools\build\build-provenance.ps1') -Action Write -Kind Runtime `
     -Configuration $Configuration -ProfileDirectory $editorRuntimeDirectory `
     -BatchDirectory $(if ($BatchOutputDirectory) { $BatchOutputDirectory } else { $commonOutput }) `
-    -PlatformToolset $PlatformToolset -ProvenanceDirectory $provenanceDirectory -Sanitizer $Sanitizer
+    -PlatformToolset $PlatformToolset -ProvenanceDirectory $provenanceDirectory -Sanitizer $Sanitizer @compilerProvenanceArguments
 
 if ($Sanitizer -eq 'Address') {
     & (Join-Path $PSScriptRoot 'complete-sanitizer-build.ps1') -OutputDirectory $commonOutput
+}
+
+if ($Sanitizer -eq 'Undefined') {
+    & (Join-Path $PSScriptRoot 'complete-sanitizer-build.ps1') -Sanitizer Undefined -OutputDirectory $commonOutput -LlvmRoot $(Split-Path (Split-Path $ubsanToolchain.compilerPath))
 }

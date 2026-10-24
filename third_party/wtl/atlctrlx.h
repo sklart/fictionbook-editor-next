@@ -2635,7 +2635,8 @@ public:
 	{
 		ATLASSERT(m_tb.m_hWnd == NULL);
 		// create toolbar for the "x" button
-		m_tb.Create(this->m_hWnd, this->rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | CCS_NODIVIDER | CCS_NORESIZE | CCS_NOPARENTALIGN | CCS_NOMOVEY | TBSTYLE_TOOLTIPS | TBSTYLE_FLAT, 0);
+		RECT rcButton = { 0, 0, 0, 0 };
+		m_tb.Create(this->m_hWnd, rcButton, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | CCS_NODIVIDER | CCS_NORESIZE | CCS_NOPARENTALIGN | CCS_NOMOVEY | TBSTYLE_TOOLTIPS | TBSTYLE_FLAT, 0);
 		ATLASSERT(m_tb.IsWindow());
 
 		if(m_tb.m_hWnd != NULL)

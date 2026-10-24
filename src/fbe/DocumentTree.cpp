@@ -218,8 +218,9 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 
 	LRESULT lRet = DefWindowProc(uMsg, wParam, lParam);
 
-	m_tree.Create(*this, rcDefault);
-	m_script_search.Create(*this, rcDefault, NULL, WS_CHILD | WS_TABSTOP | ES_AUTOHSCROLL | ES_LEFT, WS_EX_CLIENTEDGE, NavigationScriptSearchControlId);
+	RECT childBounds = {};
+	m_tree.Create(*this, childBounds);
+	m_script_search.Create(*this, childBounds, NULL, WS_CHILD | WS_TABSTOP | ES_AUTOHSCROLL | ES_LEFT, WS_EX_CLIENTEDGE, NavigationScriptSearchControlId);
 	::SendMessage(m_script_search, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFontForWindow(m_script_search)), TRUE);
 	::SendMessage(m_script_search, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.search", L"Find script..."))));
 	::SetWindowSubclass(m_script_search, ScriptSearchSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
@@ -1009,7 +1010,8 @@ LRESULT CDocumentTree::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& b
 {
 	LRESULT lRet = DefWindowProc(uMsg, wParam, lParam);
 
-	m_tree.Create(*this, rcDefault);
+	RECT childBounds = {};
+	m_tree.Create(*this, childBounds);
 	m_tree.m_tree.SetMainwindow(GetParent());
 	m_tree.SetModeChangedHandler([this]() { RefreshLocalizedTitle(); });
 	m_tree.m_tree.SetScriptMode(_Settings.DocumentTreeScripts());
@@ -1063,7 +1065,8 @@ void CDocumentTree::CreateModeButton()
 	}
 	const DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | TBSTYLE_TOOLTIPS | TBSTYLE_FLAT |
 		CCS_NODIVIDER | CCS_NORESIZE | CCS_NOPARENTALIGN | CCS_NOMOVEY;
-	if(!imagesReady || m_mode_button.Create(m_hWnd, rcDefault, NULL, style) == NULL) return;
+	RECT childBounds = {};
+	if(!imagesReady || m_mode_button.Create(m_hWnd, childBounds, NULL, style) == NULL) return;
 	m_mode_button.SetButtonStructSize();
 	m_mode_button.SetImageList(m_mode_images);
 	const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);

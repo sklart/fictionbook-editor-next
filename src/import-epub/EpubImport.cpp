@@ -12,7 +12,7 @@
 #include <set>
 #include <algorithm>
 #include <cwctype>
-#include <future>
+#include <thread>
 #include <shlwapi.h>
 #include <gdiplus.h>
 
@@ -1107,7 +1107,13 @@ namespace
 
         _variant_t vItems(static_cast<IDispatch*>(itemsDispatch), true);
         _variant_t vOptions(static_cast<long>(FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_NOCONFIRMMKDIR));
-        std::future<void> delayedCopy;
+        // This worker exists only for the delayed-entry fault fixture. Joining
+        // retains std::async's former scope-exit wait, without MSVC PPL's x86
+        // alignment issue when compiled by clang-cl.
+        struct JoinedTestCopy {
+            std::thread worker;
+            ~JoinedTestCopy() { if (worker.joinable()) worker.join(); }
+        } delayedCopy;
         wchar_t testMode[4]={}, delayedLeaf[MAX_PATH]={};
         const bool delay=::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE",testMode,_countof(testMode))==1 && testMode[0]==L'1' &&
             ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_EPUB_DELAY_ENTRY",delayedLeaf,_countof(delayedLeaf))>0;
@@ -1126,7 +1132,8 @@ namespace
             }
             if(!found) return false;
             const CStringW leaf(delayedLeaf);
-            delayedCopy=std::async(std::launch::async,[zipPath,extractDir,leaf]() {
+            delayedCopy.worker=std::thread([zipPath,extractDir,leaf]() {
+                try {
                 const HRESULT initialized=::CoInitializeEx(nullptr,COINIT_APARTMENTTHREADED);
                 if(FAILED(initialized)) return;
                 {
@@ -1137,6 +1144,10 @@ namespace
                         targetFolder->CopyHere(_variant_t(static_cast<IDispatch*>(item.p)),_variant_t(static_cast<long>(FOF_SILENT|FOF_NOCONFIRMATION|FOF_NOERRORUI|FOF_NOCONFIRMMKDIR)));
                 }
                 ::CoUninitialize();
+                } catch (...) {
+                    // The former future was never get()'d: fixture exceptions
+                    // were retained until destruction, rather than propagated.
+                }
             });
         } else hr = destFolder->CopyHere(vItems, vOptions);
         if (FAILED(hr))

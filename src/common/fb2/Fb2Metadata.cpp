@@ -9,7 +9,11 @@
 
 #pragma comment(lib, "xmllite.lib")
 
+#ifdef FBE_CLANG_TYPELIBS
+#include "common/msxml6.tlh"
+#else
 #import <msxml6.dll> named_guids rename_namespace("MSXML2") exclude("ISequentialStream", "_FILETIME")
+#endif
 
 namespace {
 

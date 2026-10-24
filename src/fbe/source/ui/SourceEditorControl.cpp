@@ -28,7 +28,7 @@ void ApplyCaretPreferences(const SourceEditorControl& editor, const SourceEditor
 }
 }
 
-bool SourceEditorControl::Create(HWND parent) { if(!CWindow::Create(L"Scintilla", parent, rcDefault, NULL, WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, 0)) return false; Send(SCI_USEPOPUP, SC_POPUP_NEVER); ::SetProp(m_hWnd, L"FBE.Next.SourceEditorControl", this); m_previousWindowProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&WindowProc))); if(m_previousWindowProc != NULL) return true; ::RemoveProp(m_hWnd, L"FBE.Next.SourceEditorControl"); DestroyWindow(); return false; }
+bool SourceEditorControl::Create(HWND parent) { RECT childBounds = {}; if(!CWindow::Create(L"Scintilla", parent, childBounds, NULL, WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, 0)) return false; Send(SCI_USEPOPUP, SC_POPUP_NEVER); ::SetProp(m_hWnd, L"FBE.Next.SourceEditorControl", this); m_previousWindowProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&WindowProc))); if(m_previousWindowProc != NULL) return true; ::RemoveProp(m_hWnd, L"FBE.Next.SourceEditorControl"); DestroyWindow(); return false; }
 void SourceEditorControl::Destroy() { if(IsWindow()) { if(m_previousWindowProc) ::SetWindowLongPtr(m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(m_previousWindowProc)); ::RemoveProp(m_hWnd, L"FBE.Next.SourceEditorControl"); DestroyWindow(); } m_previousWindowProc = NULL; m_lineNumberDigits = -1; }
 sptr_t SourceEditorControl::Send(UINT message, uptr_t wParam, sptr_t lParam) const { return ::SendMessage(m_hWnd, message, static_cast<WPARAM>(wParam), static_cast<LPARAM>(lParam)); }
 LRESULT CALLBACK SourceEditorControl::WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)

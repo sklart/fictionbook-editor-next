@@ -309,9 +309,9 @@
 	}
 	if (IsFbeTestScenario(L"fb2-quality-checker-runtime"))
 	{
-		MSHTML::IHTMLElementPtr paragraph(m_doc ? m_doc->m_body.Document()->all->item(L"quality-para") : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr paragraph(m_doc ? MSHTML::IHTMLElementPtr(m_doc->m_body.Document()->all->item(L"quality-para")) : MSHTML::IHTMLElementPtr());
 		if (paragraph) paragraph->innerText = L"Unsaved editor text";
-		MSHTML::IHTMLSelectElementPtr language(m_doc ? m_doc->m_body.Document()->all->item(L"tiLang") : MSHTML::IHTMLSelectElementPtr());
+		MSHTML::IHTMLSelectElementPtr language(m_doc ? MSHTML::IHTMLSelectElementPtr(m_doc->m_body.Document()->all->item(L"tiLang")) : MSHTML::IHTMLSelectElementPtr());
 		if (language) language->value = L"ru";
 		const bool dirtyBefore = m_doc && m_doc->DocChanged();
 		const bool unsafeBefore = m_doc && m_doc->IsSerializationUnsafe();
@@ -847,8 +847,8 @@
 			L"if(!window.external.ValidateSourceText(xml))throw new Error('valid rejected');"
 			L"var changed=xml.replace('XML_API_BEFORE','XML_API_AFTER \\u0451\\u043b\\u043a\\u0430');"
 			L"if(!window.external.ApplySourceText(changed,'\\u041d\\u043e\\u0440\\u043c\\u0430\\u043b\\u0438\\u0437\\u0430\\u0446\\u0438\\u044f XML'))throw new Error(window.external.GetLastSourceDiagnostic());";
-		MSHTML::IHTMLWindow2Ptr window(m_doc && m_doc->m_body.Document() ? m_doc->m_body.Document()->parentWindow : MSHTML::IHTMLWindow2Ptr());
-		const HRESULT scriptResult = window ? window->execScript(_bstr_t(script), _bstr_t(L"JScript")) : E_NOINTERFACE;
+		MSHTML::IHTMLWindow2Ptr window(m_doc && m_doc->m_body.Document() ? MSHTML::IHTMLWindow2Ptr(m_doc->m_body.Document()->parentWindow) : MSHTML::IHTMLWindow2Ptr());
+		const HRESULT scriptResult = window ? static_cast<HRESULT>(window->execScript(_bstr_t(script), _bstr_t(L"JScript"))) : E_NOINTERFACE;
 		CString afterApply;
 		const bool applied = SUCCEEDED(scriptResult) && GetInternalXmlScriptSourceText(afterApply) && afterApply.Find(L"XML_API_AFTER") >= 0 && afterApply.Find(L"ёлка") >= 0;
 		const bool dirty = applied && m_doc->DocChanged();
@@ -901,8 +901,8 @@
 		}
 		if(cursorElement)
 		{
-			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
-			MSHTML::IHTMLTxtRangePtr range(body ? MSHTML::IHTMLBodyElementPtr(body)->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? MSHTML::IHTMLElementPtr(m_doc->m_body.Document()->body) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLTxtRangePtr range(body ? MSHTML::IHTMLTxtRangePtr(MSHTML::IHTMLBodyElementPtr(body)->createTextRange()) : MSHTML::IHTMLTxtRangePtr());
 			if(range) { range->moveToElementText(cursorElement); range->collapse(VARIANT_TRUE); range->select(); }
 			// Use the same Body-to-tree route as normal caret movement.
 			m_document_tree.HighlightItemAtPos(m_doc->m_body.SelectionContainer());
@@ -926,11 +926,11 @@
 		const ULONGLONG start = ::GetTickCount64();
 		auto appendStructuralPhase = [&](const char* phase, long gridBuildCalls = -1)
 		{
-			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
-			MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE") : MSHTML::IHTMLElementCollectionPtr());
-			MSHTML::IHTMLElementCollectionPtr rows(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TR") : MSHTML::IHTMLElementCollectionPtr());
-			MSHTML::IHTMLElementCollectionPtr td(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TD") : MSHTML::IHTMLElementCollectionPtr());
-			MSHTML::IHTMLElementCollectionPtr th(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TH") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? MSHTML::IHTMLElementPtr(m_doc->m_body.Document()->body) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE")) : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementCollectionPtr rows(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TR")) : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementCollectionPtr td(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TD")) : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementCollectionPtr th(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TH")) : MSHTML::IHTMLElementCollectionPtr());
 			CStringA row;
 			row.Format("%s\t%I64u\t%ld\t%ld\t%ld\t%ld\t%ld\t%s\r\n", phase, ::GetTickCount64() - start,
 				tables ? tables->length : 0, rows ? rows->length : 0, td ? td->length : 0, th ? th->length : 0, gridBuildCalls, (LPCSTR)m_doc->m_body.TableStructuralSnapshot());
@@ -938,18 +938,18 @@
 		};
 		auto selectFirstCell = [&]() -> bool
 		{
-			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
-			MSHTML::IHTMLElementCollectionPtr cells(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TD") : MSHTML::IHTMLElementCollectionPtr());
-			MSHTML::IHTMLElementPtr cell(cells && cells->length ? cells->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
-			if (!cell) { cells = body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TH") : MSHTML::IHTMLElementCollectionPtr(); cell = cells && cells->length ? cells->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr(); }
+			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? MSHTML::IHTMLElementPtr(m_doc->m_body.Document()->body) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr cells(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TD")) : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr cell(cells && cells->length ? MSHTML::IHTMLElementPtr(cells->item(_variant_t(0L), _variant_t())) : MSHTML::IHTMLElementPtr());
+			if (!cell) { cells = body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TH") : MSHTML::IHTMLElementCollectionPtr(); cell = cells && cells->length ? MSHTML::IHTMLElementPtr(cells->item(_variant_t(0L), _variant_t())) : MSHTML::IHTMLElementPtr(); }
 			if (!cell) return false;
 			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 			range->moveToElementText(cell); range->collapse(VARIANT_TRUE); range->select(); return true;
 		};
 		auto selectFirstTwoCells = [&](bool headers) -> bool
 		{
-			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
-			MSHTML::IHTMLElementCollectionPtr cells(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(headers ? L"TH" : L"TD") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? MSHTML::IHTMLElementPtr(m_doc->m_body.Document()->body) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr cells(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(headers ? L"TH" : L"TD")) : MSHTML::IHTMLElementCollectionPtr());
 			if (!cells || cells->length < 2) cells = body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(headers ? L"TD" : L"TH") : MSHTML::IHTMLElementCollectionPtr();
 			if (!cells || cells->length < 2) return false;
 			MSHTML::IHTMLElementPtr first(cells->item(_variant_t(0L), _variant_t())), last(cells->item(_variant_t(1L), _variant_t()));
@@ -975,7 +975,7 @@
 			if (!length) return true;
 			if (length >= _countof(cssText)) return false;
 			MSHTML::IHTMLElementPtr cell(m_doc->m_body.SelectionStructTableCon());
-			MSHTML::IHTMLStylePtr style(cell ? cell->style : MSHTML::IHTMLStylePtr());
+			MSHTML::IHTMLStylePtr style(cell ? MSHTML::IHTMLStylePtr(cell->style) : MSHTML::IHTMLStylePtr());
 			if (!style) return false;
 			style->cssText = cssText;
 			return true;
@@ -1045,9 +1045,9 @@
 	}
 	if (IsFbeTestScenario(L"table-attributes"))
 	{
-		MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
-		MSHTML::IHTMLElementCollectionPtr cells(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TD") : MSHTML::IHTMLElementCollectionPtr());
-		MSHTML::IHTMLElementPtr cell(cells && cells->length ? cells->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? MSHTML::IHTMLElementPtr(m_doc->m_body.Document()->body) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr cells(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TD")) : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr cell(cells && cells->length ? MSHTML::IHTMLElementPtr(cells->item(_variant_t(0L), _variant_t())) : MSHTML::IHTMLElementPtr());
 		if (!cell || !m_doc->m_body.SelectTableLogicalRangeForTest(0, 0, 0, 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
 		auto attribute = [&](const wchar_t* name)
 		{
@@ -1087,9 +1087,9 @@
 	}
 	if (IsFbeTestScenario(L"table-tab"))
 	{
-		MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
-		MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE") : MSHTML::IHTMLElementCollectionPtr());
-		MSHTML::IHTMLElementPtr table(tables && tables->length ? tables->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? MSHTML::IHTMLElementPtr(m_doc->m_body.Document()->body) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE")) : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr table(tables && tables->length ? MSHTML::IHTMLElementPtr(tables->item(_variant_t(0L), _variant_t())) : MSHTML::IHTMLElementPtr());
 		std::vector<MSHTML::IHTMLElementPtr> cells; FbeTable::GetCells(table, cells);
 		if (!table || cells.empty()) { output.Close(); ::PostQuitMessage(1); return 0; }
 		auto select = [&](const MSHTML::IHTMLElementPtr& item) { MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange()); range->moveToElementText(item); range->collapse(VARIANT_TRUE); range->select(); };
@@ -1129,8 +1129,8 @@
 			appendProbePhase("probe-failed;reason=image-path"); output.Close(); ::PostQuitMessage(1); return 0;
 		}
 		appendProbePhase("open-complete");
-		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLBodyElementPtr());
-		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document() ? MSHTML::IHTMLBodyElementPtr(m_doc->m_body.Document()->body) : MSHTML::IHTMLBodyElementPtr());
+		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P")) : MSHTML::IHTMLElementCollectionPtr());
 		MSHTML::IHTMLElementPtr paragraph, section;
 		for (long paragraphIndex = 0; paragraphs && paragraphIndex < paragraphs->length && !paragraph; ++paragraphIndex)
 		{
@@ -1147,9 +1147,9 @@
 		if (!body || !paragraph || !section || !script) { appendProbePhase("probe-failed;reason=document"); output.Close(); ::PostQuitMessage(1); return 0; }
 		auto refreshSection = [&]() -> bool
 		{
-			body = m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLBodyElementPtr();
+			body = m_doc->m_body.Document() ? MSHTML::IHTMLBodyElementPtr(m_doc->m_body.Document()->body) : MSHTML::IHTMLBodyElementPtr();
 			section = NULL;
-			MSHTML::IHTMLElementCollectionPtr divs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementCollectionPtr divs(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV")) : MSHTML::IHTMLElementCollectionPtr());
 			for (long index = 0; divs && index < divs->length; ++index)
 			{
 				MSHTML::IHTMLElementPtr candidate(divs->item(_variant_t(index), _variant_t()));
@@ -1208,7 +1208,7 @@
 		auto blockImageCountFor = [&](MSHTML::IHTMLBodyElementPtr targetBody) -> long
 		{
 			long count = 0;
-			MSHTML::IHTMLElementCollectionPtr divs(targetBody ? MSHTML::IHTMLElement2Ptr(targetBody)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementCollectionPtr divs(targetBody ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(targetBody)->getElementsByTagName(L"DIV")) : MSHTML::IHTMLElementCollectionPtr());
 			for (long index = 0; divs && index < divs->length; ++index)
 			{
 				MSHTML::IHTMLElementPtr div(divs->item(_variant_t(index), _variant_t()));
@@ -1270,7 +1270,7 @@
 			MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document()->parentWindow);
 			const wchar_t* exactInsert = L"function FbeBodyCacheProbe(){var rng=document.selection.createRange(),p=rng.parentElement();while(p&&p.tagName!='P')p=p.parentElement;if(!p)throw new Error('paragraph');window.external.BeginUndoUnit(document,'insert image');p.insertAdjacentHTML('beforeBegin',\"<DIV contentEditable='false' class='image' href='#existing-image'></DIV>\");window.external.EndUndoUnit(document);}";
 			appendProbePhase("body-cache-insert-start");
-			hr = window ? window->execScript(_bstr_t(exactInsert), _bstr_t(L"JScript")) : E_NOINTERFACE;
+			hr = window ? static_cast<HRESULT>(window->execScript(_bstr_t(exactInsert), _bstr_t(L"JScript"))) : E_NOINTERFACE;
 			if (SUCCEEDED(hr)) hr = script.Invoke0(L"FbeBodyCacheProbe");
 			if (FAILED(hr)) { appendProbePhase("probe-failed;phase=body-cache-insert"); output.Close(); ::PostQuitMessage(1); return 0; }
 			appendProbePhase("body-cache-insert-complete");
@@ -1398,7 +1398,7 @@
 					functionScript.Replace(L"throw new Error('range');", L"return;");
 					functionScript.Replace(L"throw new Error('section');", L"return;");
 					functionScript.Replace(L"throw new Error('owner');", L"return;");
-					hr = window ? window->execScript(_bstr_t(functionScript), _bstr_t(L"JScript")) : E_NOINTERFACE;
+					hr = window ? static_cast<HRESULT>(window->execScript(_bstr_t(functionScript), _bstr_t(L"JScript"))) : E_NOINTERFACE;
 					if (SUCCEEDED(hr) && dispatchDom) { appendProbePhase("fbe285-begin-undo-start"); hr = window->execScript(_bstr_t(L"window.external.BeginUndoUnit(document,'insert image');"), _bstr_t(L"JScript")); if (SUCCEEDED(hr)) appendProbePhase("fbe285-begin-undo-complete"); }
 					if (SUCCEEDED(hr)) { appendProbePhase("fbe285-dispatch-start"); _variant_t check(false), existingId(L"existing-image"), result; hr = dispatchFullInvoke2 ? script.Invoke2(L"Fbe285DispatchProbe", &check, &existingId, &result) : script.Invoke0(L"Fbe285DispatchProbe"); }
 					if (SUCCEEDED(hr)) appendProbePhase("fbe285-dispatch-complete");
@@ -1409,12 +1409,12 @@
 					CStringW fullScript(L"(function(){window.external.BeginUndoUnit(document,'insert image');");
 					fullScript += legacyAlgorithm; fullScript += L"window.external.EndUndoUnit(document);})();";
 					fullScript.Replace(L"throw new Error('range');", L"return;"); fullScript.Replace(L"throw new Error('section');", L"return;"); fullScript.Replace(L"throw new Error('owner');", L"return;");
-					appendProbePhase("fbe285-exec-full-start"); hr = window ? window->execScript(_bstr_t(fullScript), _bstr_t(L"JScript")) : E_NOINTERFACE; if (SUCCEEDED(hr)) appendProbePhase("fbe285-exec-full-complete");
+					appendProbePhase("fbe285-exec-full-start"); hr = window ? static_cast<HRESULT>(window->execScript(_bstr_t(fullScript), _bstr_t(L"JScript"))) : E_NOINTERFACE; if (SUCCEEDED(hr)) appendProbePhase("fbe285-exec-full-complete");
 				}
 				else
 				{
 					appendProbePhase("fbe285-begin-undo-start");
-					hr = window ? window->execScript(_bstr_t(L"window.external.BeginUndoUnit(document,'insert image');"), _bstr_t(L"JScript")) : E_NOINTERFACE;
+					hr = window ? static_cast<HRESULT>(window->execScript(_bstr_t(L"window.external.BeginUndoUnit(document,'insert image');"), _bstr_t(L"JScript"))) : E_NOINTERFACE;
 					if (SUCCEEDED(hr)) appendProbePhase("fbe285-begin-undo-complete");
 					if (SUCCEEDED(hr)) { appendProbePhase("fbe285-dom-start"); hr = window->execScript(_bstr_t(legacyScript), _bstr_t(L"JScript")); }
 					if (SUCCEEDED(hr)) appendProbePhase("fbe285-dom-complete");
@@ -1455,7 +1455,7 @@
 			else if (probe == L"body-cache-fresh")
 			{
 				MSHTML::IHTMLDocument2Ptr freshDocument(m_doc->m_body.Document());
-				MSHTML::IHTMLBodyElementPtr freshBody(freshDocument ? freshDocument->body : MSHTML::IHTMLBodyElementPtr());
+				MSHTML::IHTMLBodyElementPtr freshBody(freshDocument ? MSHTML::IHTMLBodyElementPtr(freshDocument->body) : MSHTML::IHTMLBodyElementPtr());
 				const long count = blockImageCountFor(freshBody); CStringA phase; phase.Format("fresh-body-count=%ld", count); appendProbePhase(phase);
 			}
 			if (probe.Left(14) != L"fbe285-bisect-" && (probe == L"image" || probe == L"image-start" || probe == L"image-end" || probe == L"image-middle" || probe == L"image-hold-start" || probe == L"image-clear-start" || probe == L"image-discard-start" || probe == L"image-inspect-release-start" || probe == L"call-insimage-empty" || probe == L"image-no-url" || probe == L"plain-block" || probe == L"plain-block-auto") && blockImageCount() != 0)
@@ -1536,8 +1536,8 @@
 		::ShowWindow(m_hWnd, SW_RESTORE);
 		::SetForegroundWindow(m_hWnd);
 		m_doc->m_body.SetFocus();
-		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLBodyElementPtr());
-		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document() ? MSHTML::IHTMLBodyElementPtr(m_doc->m_body.Document()->body) : MSHTML::IHTMLBodyElementPtr());
+		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P")) : MSHTML::IHTMLElementCollectionPtr());
 		auto isSectionDiv = [](const MSHTML::IHTMLElementPtr& element) -> bool
 		{
 			if (!element) return false;
@@ -1560,7 +1560,7 @@
 				}
 			}
 		}
-		MSHTML::IHTMLTxtRangePtr range(body ? body->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+		MSHTML::IHTMLTxtRangePtr range(body ? MSHTML::IHTMLTxtRangePtr(body->createTextRange()) : MSHTML::IHTMLTxtRangePtr());
 		if (!range || !paragraph)
 		{
 			appendImportPhase("import-failed;phase=import;reason=section-range");
@@ -1584,7 +1584,7 @@
 		auto selectionIsInSection = [&]() -> bool
 		{
 			MSHTML::IHTMLTxtRangePtr selected(m_doc->m_body.Document()->selection->createRange());
-			MSHTML::IHTMLElementPtr element(selected ? selected->parentElement() : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr element(selected ? MSHTML::IHTMLElementPtr(selected->parentElement()) : MSHTML::IHTMLElementPtr());
 			while (element && !isSectionDiv(element)) element = element->parentElement;
 			return isSectionDiv(element);
 		};
@@ -1622,11 +1622,11 @@
 			appendImportPhase("post-insert-idle-complete");
 			auto sectionOuterHtml = [&]() -> CString
 			{
-				MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document() ? m_doc->m_body.Document()->parentWindow : MSHTML::IHTMLWindow2Ptr());
+				MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document() ? MSHTML::IHTMLWindow2Ptr(m_doc->m_body.Document()->parentWindow) : MSHTML::IHTMLWindow2Ptr());
 				const wchar_t* snapshotScript = L"function FbeRuntimeImageSectionSnapshot(){var divs=document.body.getElementsByTagName('DIV');for(var i=0;i<divs.length;i++)if(divs[i].className=='section')return divs[i].outerHTML;return '';}";
 				if (!window || FAILED(window->execScript(_bstr_t(snapshotScript), _bstr_t(L"JScript")))) return CString();
 				CComDispatchDriver script(m_doc->m_body.Script()); _variant_t snapshot;
-				return SUCCEEDED(script.Invoke0(L"FbeRuntimeImageSectionSnapshot", &snapshot)) && V_VT(&snapshot) == VT_BSTR ? static_cast<const wchar_t*>(_bstr_t(snapshot)) : CString();
+				return SUCCEEDED(script.Invoke0(L"FbeRuntimeImageSectionSnapshot", &snapshot)) && V_VT(&snapshot) == VT_BSTR ? CString(static_cast<const wchar_t*>(_bstr_t(snapshot))) : CString();
 			};
 			CString insertedSection;
 			insertedSection = sectionOuterHtml();
@@ -1659,7 +1659,7 @@
 			appendImportPhase("reopen-start");
 			if (filename.IsEmpty() || LoadFile(filename) != OK) { appendImportPhase("import-failed;phase=reopen"); output.Close(); ::PostQuitMessage(1); return 0; }
 			MSHTML::IHTMLDocument2Ptr reopenedDocument(m_doc->m_body.Document());
-			MSHTML::IHTMLBodyElementPtr reopenedBody(reopenedDocument ? reopenedDocument->body : MSHTML::IHTMLBodyElementPtr());
+			MSHTML::IHTMLBodyElementPtr reopenedBody(reopenedDocument ? MSHTML::IHTMLBodyElementPtr(reopenedDocument->body) : MSHTML::IHTMLBodyElementPtr());
 			MSHTML::IHTMLElementPtr reopenedElement(reopenedBody);
 			const CString reopenedHtml(reopenedElement ? static_cast<const wchar_t*>(_bstr_t(reopenedElement->outerHTML)) : L"");
 			if (reopenedHtml.Find(L"fbw-internal:#") < 0 || reopenedHtml.Find(L"href=\"#") < 0) { appendImportPhase("import-failed;phase=reopen;reason=image-runtime-url"); output.Close(); ::PostQuitMessage(1); return 0; }
@@ -1993,7 +1993,7 @@
 			L"var lists=document.getElementsByTagName('SELECT');var selected=0;for(var j=0;j<lists.length;j++)if(lists[j].value=='#cover-renamed.png')selected++;"
 			L"var originalMsgBox=MsgBox,blocked=0;MsgBox=function(){blocked++;};other.value='cover-renamed.png';OnBinaryChange(other);var duplicate=(other.value!='cover-renamed.png');Remove(id.parentNode);var deletion=false;for(var d=0;d<bins.length;d++)if(bins[d].all.id==id)deletion=true;var unusedId=other.value;Remove(other.parentNode);var unusedDeleted=true;for(var u=0;u<bins.length;u++)if(bins[u].all.id.value==unusedId)unusedDeleted=false;MsgBox=originalMsgBox;"
 			L"document.title=(ok&&selected>=2&&duplicate&&deletion&&unusedDeleted&&blocked>=2)?'binary-rename-pass':('binary-rename-fail-'+(ok?1:0)+'-'+selected+'-'+duplicate+'-'+deletion+'-'+blocked);})();";
-		const HRESULT scriptResult = window ? window->execScript(_bstr_t(renameScript), _bstr_t(L"JScript")) : E_NOINTERFACE;
+		const HRESULT scriptResult = window ? static_cast<HRESULT>(window->execScript(_bstr_t(renameScript), _bstr_t(L"JScript"))) : E_NOINTERFACE;
 		const bool domRenamed = SUCCEEDED(scriptResult) && document && CString(static_cast<LPCWSTR>(document->title)) == L"binary-rename-pass";
 		bool sourceRoundTrip = false;
 		if (domRenamed)
@@ -2022,7 +2022,7 @@
 			L"var ti=document.all.tiCover,sti=document.all.stiCover;var tc=ti?ti.getElementsByTagName('DIV'):null,sc=sti?sti.getElementsByTagName('DIV'):null;var covers=tc&&sc&&tc.length>0&&sc.length>0&&tc[0].all.href.value=='#cover-renamed.png'&&sc[0].all.href.value=='#cover-renamed.png';"
 			L"var elements=document.all,refs=0,oldRef=false;for(var i=0;i<elements.length;i++){var h=elements[i].getAttribute?elements[i].getAttribute('href'):null;var s=elements[i].getAttribute?elements[i].getAttribute('src'):null;if(h=='#cover-old.png'||s=='fbw-internal:#cover-old.png')oldRef=true;if(h=='#cover-renamed.png'||s=='fbw-internal:#cover-renamed.png')refs++;}"
 			L"document.title=(renamed==1&&old==0&&covers&&refs>=2&&!oldRef)?'binary-rename-reopen-pass':('binary-rename-reopen-fail-'+renamed+'-'+old+'-'+(covers?1:0)+'-'+refs+'-'+(oldRef?1:0));})();";
-		const HRESULT scriptResult = window ? window->execScript(_bstr_t(verifyScript), _bstr_t(L"JScript")) : E_NOINTERFACE;
+		const HRESULT scriptResult = window ? static_cast<HRESULT>(window->execScript(_bstr_t(verifyScript), _bstr_t(L"JScript"))) : E_NOINTERFACE;
 		const CString title = document ? static_cast<LPCWSTR>(document->title) : L"";
 		const bool passed = SUCCEEDED(scriptResult) && title == L"binary-rename-reopen-pass";
 		CStringA report;
@@ -2117,8 +2117,8 @@
 			output.Close(); ::PostQuitMessage(1); return 0;
 		}
 		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document()->body);
-		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
-		MSHTML::IHTMLTxtRangePtr range(body ? body->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P")) : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLTxtRangePtr range(body ? MSHTML::IHTMLTxtRangePtr(body->createTextRange()) : MSHTML::IHTMLTxtRangePtr());
 		if (!body || !paragraphs || !paragraphs->length || !range)
 		{
 			output.Close(); ::PostQuitMessage(1); return 0;
@@ -2200,9 +2200,9 @@
 		wchar_t mutationValue[32] = {}; ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SPELLCHECK_MUTATION", mutationValue, _countof(mutationValue));
 		const CString mutation(mutationValue[0] ? mutationValue : L"direct");
 		const bool formatting = mutation == L"formatting", script = mutation == L"script", dense = mutation == L"dense-misspellings", largeParagraph = mutation == L"large-paragraph" || dense;
-		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLBodyElementPtr());
-		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
-		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(paragraphs->length - 1), _variant_t()) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document() ? MSHTML::IHTMLBodyElementPtr(m_doc->m_body.Document()->body) : MSHTML::IHTMLBodyElementPtr());
+		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P")) : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(paragraphs->length - 1), _variant_t())) : MSHTML::IHTMLElementPtr());
 		if (!body || !paragraph || !m_Speller || (!formatting && !script && !largeParagraph && mutation != L"direct")) { output.Close(); ::PostQuitMessage(1); return 0; }
 		m_doc->m_body.SetFocus(); MSHTML::IHTMLTxtRangePtr range(body->createTextRange());
 		if (!range) { output.Close(); ::PostQuitMessage(1); return 0; }
@@ -2333,8 +2333,8 @@
 		m_Speller->SetEnabled(true);
 		m_Speller->SetDocumentLanguage();
 		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document()->body);
-		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
-		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(paragraphs->length - 1), _variant_t()) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P")) : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(paragraphs->length - 1), _variant_t())) : MSHTML::IHTMLElementPtr());
 		if (!paragraph) { output.Close(); ::PostQuitMessage(1); return 0; }
 		const CString before(static_cast<const wchar_t*>(_bstr_t(m_doc->m_body.Document()->body->outerHTML)));
 		const bool undoBefore = m_Speller->GetUndoState();
@@ -2557,10 +2557,10 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		};
 		auto selectRange = [&](const wchar_t* firstId, const wchar_t* lastId) -> bool
 		{
-			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? MSHTML::IHTMLElementPtr(m_doc->m_body.Document()->body) : MSHTML::IHTMLElementPtr());
 			MSHTML::IHTMLDocument3Ptr document3(m_doc->m_body.Document());
-			MSHTML::IHTMLElementPtr first(document3 ? document3->getElementById(_bstr_t(firstId)) : MSHTML::IHTMLElementPtr());
-			MSHTML::IHTMLElementPtr last(document3 ? document3->getElementById(_bstr_t(lastId)) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr first(document3 ? MSHTML::IHTMLElementPtr(document3->getElementById(_bstr_t(firstId))) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr last(document3 ? MSHTML::IHTMLElementPtr(document3->getElementById(_bstr_t(lastId))) : MSHTML::IHTMLElementPtr());
 			if (!body || !first || !last) return false;
 			m_doc->m_body.SetFocus();
 			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange()), end(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());

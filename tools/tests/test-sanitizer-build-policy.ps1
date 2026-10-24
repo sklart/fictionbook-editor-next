@@ -21,6 +21,7 @@ foreach($project in Get-ChildItem (Join-Path $root 'src') -Recurse -Filter '*.vc
             if($data.Properties.LinkIncremental -ne 'false') { throw 'ASan incremental linking must be disabled.' }
         } elseif($data.Properties.OutDir -match '[/\\]asan[/\\]' -or $data.Properties.IntDir -match '[/\\]asan[/\\]') { throw 'Ordinary Release points into sanitizer output.' }
         foreach($item in @($data.Items.ClCompile)) {
+            if($project.BaseName -in @('ImportEPUB','ImportEPUBBatch','ImportEPUBLunaSVG') -and $item.TreatWChar_tAsBuiltInType -ne 'false') { throw 'Importer/adapter function pointer wchar_t types must agree.' }
             $instrumented=$item.AdditionalOptions -match '(^|\s)/fsanitize=address(\s|$)'
             if($instrumented -ne $asan) { throw "Wrong instrumentation policy: $($project.Name): $($item.Identity)" }
             if($asan -and ($item.DebugInformationFormat -ne 'ProgramDatabase' -or $item.BasicRuntimeChecks -ne 'Default')) { throw 'ASan debug/runtime-check options are incompatible.' }

@@ -146,6 +146,9 @@ public:
 
 	DECLARE_FRAME_WND_CLASS(_T("FictionBookEditorFrame"), IDR_MAINFRAME)
 
+	HWND Create(HWND parent = NULL, ATL::_U_RECT rect = NULL, LPCTSTR name = NULL,
+		DWORD style = 0, DWORD exStyle = 0, HMENU menu = NULL, LPVOID parameter = NULL);
+
 	CSciFindDlg*	m_sci_find_dlg;
 	CSciReplaceDlg*	m_sci_replace_dlg;
 
