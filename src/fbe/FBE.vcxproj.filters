@@ -336,6 +336,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ImageDataStream.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="AboutContributors.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="scripts\ScriptMenuBitmap.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="AboutBox.h">

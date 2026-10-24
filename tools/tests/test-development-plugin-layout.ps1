@@ -39,8 +39,18 @@ $pluginProjects = @(
     'src\import-epub\ImportEPUBLunaSVG.vcxproj'
 )
 foreach ($project in $pluginProjects) {
-    $content = Get-Content -LiteralPath (Join-Path $repoRoot $project) -Raw
-    if ($content -notmatch '(?s)Condition="''\$\(Configuration\)\|\$\(Platform\)''==''Release\|Win32''".*?<OutDir>[^<]*out\\\$\(Configuration\)\\Plugins\\</OutDir>') {
+    [xml]$content = Get-Content -LiteralPath (Join-Path $repoRoot $project) -Raw
+    $namespace = [Xml.XmlNamespaceManager]::new($content.NameTable)
+    $namespace.AddNamespace('msb', $content.DocumentElement.NamespaceURI)
+    $releaseCondition = '''$(Configuration)|$(Platform)''==''Release|Win32'''
+    $ordinaryCondition = '''$(FbeSanitizer)''!=''Address'''
+    $outputs = @($content.SelectNodes('/msb:Project/msb:PropertyGroup/msb:OutDir', $namespace) | Where-Object {
+        $groupCondition = $_.ParentNode.GetAttribute('Condition') -replace '\s+', ''
+        $condition = $_.GetAttribute('Condition') -replace '\s+', ''
+        $groupCondition -eq $releaseCondition -and ($condition -eq '' -or $condition -eq $ordinaryCondition) -and
+            $_.InnerText -match 'out\\\$\(Configuration\)\\Plugins\\$'
+    })
+    if ($outputs.Count -ne 1) {
         throw "Release plugin project does not output directly to Plugins: $project"
     }
 }

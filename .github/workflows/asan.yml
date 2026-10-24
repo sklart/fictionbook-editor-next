@@ -1,0 +1,87 @@
+name: AddressSanitizer
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      full_validation:
+        description: Run the extended sanitizer runtime contour
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: asan-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  asan:
+    runs-on: windows-2022
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - name: Build isolated Release Win32 AddressSanitizer
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          New-Item -ItemType Directory -Force out/tests/asan | Out-Null
+          ./tools/build/build.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143 -Sanitizer Address *> out/tests/asan/build.log
+          if (-not $? -or $LASTEXITCODE -ne 0) { throw 'ASan build failed; see build.log' }
+      - name: Validate sanitizer policy and production package rejection
+        shell: pwsh
+        run: ./tools/tests/test-sanitizer-build-policy.ps1 *> out/tests/asan/build-policy.log
+      - name: Run native regressions for confirmed memory defects
+        shell: pwsh
+        run: ./tools/tests/test-asan-regressions-native.ps1 -Sanitizer Address
+      - name: Run sanitizer FAST and infrastructure self-test
+        shell: pwsh
+        run: ./tools/tests/run-sanitizers.ps1 -Sanitizer Address -Contour Fast
+      - name: Run sanitizer FULL
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.full_validation)
+        shell: pwsh
+        run: ./tools/tests/run-sanitizers.ps1 -Sanitizer Address -Contour Full
+      - name: Ensure build failures also have a summary
+        if: always()
+        shell: pwsh
+        env:
+          ASAN_JOB_STATUS: ${{ job.status }}
+        run: |
+          New-Item -ItemType Directory -Force out/tests/asan | Out-Null
+          $summaries = @(Get-ChildItem out/tests/asan -Recurse -Filter summary.json)
+          if (-not $summaries.Count) {
+            @{status='FAIL'; sanitizer='Address'; commit=$env:GITHUB_SHA; stage='build or infrastructure'; log='build.log'} |
+              ConvertTo-Json | Set-Content out/tests/asan/summary.json -Encoding utf8
+          }
+          @{status=$env:ASAN_JOB_STATUS; sanitizer='Address'; commit=$env:GITHUB_SHA; summaries=@($summaries.FullName)} |
+            ConvertTo-Json | Set-Content out/tests/asan/ci-summary.json -Encoding utf8
+      - name: Upload sanitizer summaries
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: asan-summary
+          path: |
+            out/tests/asan/ci-summary.json
+            out/tests/asan/**/summary.json
+            out/tests/asan/**/result.json
+            out/asan/Release/fbe-sanitizer.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload sanitizer failure logs and dumps
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v7
+        with:
+          name: asan-diagnostics
+          path: |
+            out/tests/asan/**/*.log
+            out/tests/asan/**/asan.*
+            out/tests/asan/**/*.dmp
+            out/tests/asan/**/case.json
+          if-no-files-found: error
+          retention-days: 14

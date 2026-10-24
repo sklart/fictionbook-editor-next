@@ -4,6 +4,7 @@
 #include <deque>
 #include "utils.h"
 #include "../ErrsEx.h"
+#include "../ImageDataStream.h"
 #include "../Settings.h"
 #include "../apputils.h"
 #include "../resource.h"
@@ -802,31 +803,13 @@ bool GetImageDimsByPath(const wchar_t* pszFileName, int* nWidth, int* nHeight)
 
 bool GetImageDimsByData(SAFEARRAY* data, ULONG /* unused: length */, int* nWidth, int* nHeight)
 {
+	CComPtr<IStream> stream;
+	if(FAILED(FbeImageData::CreateStream(data, &stream))) return false;
 	CImage image;
-	bool result = false;
-
-	long elnum = 0;
-	void* pData;
-
-	if(::SafeArrayPtrOfIndex(data, &elnum, &pData) != S_OK)
-		return false;
-	
-	IStream* pIStream;
-	if(S_OK != ::CreateStreamOnHGlobal(pData, FALSE, &pIStream))
-		return false;
-
-	if(image.Load(pIStream) == S_OK)
-	{
-		if(nWidth)
-			*nWidth = image.GetWidth();
-		if(nHeight)
-			*nHeight = image.GetHeight();
-		result = true;
-	}
-
-	pIStream->Release();
-
-	return result;
+	if(image.Load(stream) != S_OK) return false;
+	if(nWidth) *nWidth = image.GetWidth();
+	if(nHeight) *nHeight = image.GetHeight();
+	return true;
 }
 
 WORD StringToKeycode(CString string)

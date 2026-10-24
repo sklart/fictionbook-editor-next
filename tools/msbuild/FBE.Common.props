@@ -14,6 +14,12 @@
     <!-- Baseline собственного C++. Для локального эксперимента передайте
          /p:FbeLanguageStandard=stdcpp20; release и CI сохраняют C++17. -->
     <FbeLanguageStandard Condition="'$(FbeLanguageStandard)' == ''">stdcpp17</FbeLanguageStandard>
+    <FbeSanitizer Condition="'$(FbeSanitizer)' == ''">None</FbeSanitizer>
+    <FbeSanitizerCompileOptions Condition="'$(FbeSanitizer)' == 'Address'">/fsanitize=address /Zi</FbeSanitizerCompileOptions>
+    <OutDir Condition="'$(FbeSanitizer)' == 'Address'">$(FbeRepoRoot)\out\asan\$(Configuration)\</OutDir>
+    <OutDir Condition="'$(FbeSanitizer)' == 'Address' and ('$(MSBuildProjectName)' == 'ExportHTML' or '$(MSBuildProjectName)' == 'ExportDOCX' or '$(MSBuildProjectName)' == 'ExportEPUB' or '$(MSBuildProjectName)' == 'ImportEPUB' or '$(MSBuildProjectName)' == 'ImportEPUBLunaSVG')">$(FbeRepoRoot)\out\asan\$(Configuration)\Plugins\</OutDir>
+    <IntDir Condition="'$(FbeSanitizer)' == 'Address'">$(FbeRepoRoot)\build\asan\obj\$(MSBuildProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <FbeSanitizerBuildstampOptions Condition="'$(FbeSanitizer)' == 'Address'">/Fd"$(IntDir)buildstamp.pdb"</FbeSanitizerBuildstampOptions>
     <FbeGeneratedRoot>$(FbeRepoRoot)\build\generated\</FbeGeneratedRoot>
     <FbeApiOutputDirectory>$(FbeGeneratedRoot)$(Platform)\$(Configuration)\fbe-api\</FbeApiOutputDirectory>
   </PropertyGroup>

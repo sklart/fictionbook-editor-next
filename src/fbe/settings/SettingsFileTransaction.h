@@ -26,11 +26,13 @@ public:
     static BOOL MoveStagedFile(const CString& source, const CString& destination, DWORD flags)
     {
         DWORD error = ERROR_SUCCESS;
-        for(unsigned int attempt = 0; attempt < 4; ++attempt)
+        const ULONGLONG started = ::GetTickCount64();
+        DWORD delay = 10;
+        for(;;)
         {
             if(::MoveFileExW(source, destination, flags)) return TRUE;
             error = ::GetLastError();
-            if(attempt == 3 || (error != ERROR_ACCESS_DENIED && error != ERROR_SHARING_VIOLATION)) break;
+            if(error != ERROR_ACCESS_DENIED && error != ERROR_SHARING_VIOLATION) break;
             const DWORD sourceAttributes = ::GetFileAttributesW(source);
             const DWORD destinationAttributes = ::GetFileAttributesW(destination);
             if(sourceAttributes == INVALID_FILE_ATTRIBUTES ||
@@ -38,7 +40,11 @@ public:
                 (destinationAttributes != INVALID_FILE_ATTRIBUTES &&
                  (destinationAttributes & (FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)))) break;
             // A short-lived reader may have opened the freshly closed staging file.
-            ::Sleep(10u << attempt);
+            const ULONGLONG elapsed = ::GetTickCount64() - started;
+            if(elapsed >= 1000) break;
+            const DWORD remaining = static_cast<DWORD>(1000 - elapsed);
+            ::Sleep(delay < remaining ? delay : remaining);
+            delay = delay < 100 ? (delay * 2 < 100 ? delay * 2 : 100) : 100;
         }
         ::SetLastError(error);
         return FALSE;

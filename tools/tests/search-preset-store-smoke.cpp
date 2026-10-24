@@ -178,7 +178,8 @@ int wmain()
                 !Same(loaded[0], expected[0]) || !Same(loaded[1], expected[1]))) result = 23;
             if (result == 0 && !store.Save(expected)) result = 24; // replacement works after unlocking
 
-            // Exercise the actual rename denial before releasing a short-lived reader.
+            // A real reader can outlive the former 150 ms retry budget. Saving
+            // must wait for its release, while the permanent-lock case still fails.
             HANDLE transient = ::CreateFileW(store.FilePath(), GENERIC_READ, FILE_SHARE_READ, NULL,
                 OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
             const CString probe = store.FilePath() + L".probe";
@@ -188,7 +189,7 @@ int wmain()
             ::DeleteFileW(probe);
             if (transient == INVALID_HANDLE_VALUE || moved ||
                 (denied != ERROR_ACCESS_DENIED && denied != ERROR_SHARING_VIOLATION && denied != ERROR_LOCK_VIOLATION)) result = 25;
-            std::thread unlock([transient]() { ::Sleep(15); if (transient != INVALID_HANDLE_VALUE) ::CloseHandle(transient); });
+            std::thread unlock([transient]() { ::Sleep(250); if (transient != INVALID_HANDLE_VALUE) ::CloseHandle(transient); });
             const bool savedTransient = result == 0 && store.Save(blocked);
             unlock.join();
             if (result == 0 && !savedTransient) result = 26;

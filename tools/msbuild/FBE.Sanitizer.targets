@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Imported only by first-party projects; vendor caches remain ordinary Release. -->
+  <PropertyGroup>
+    <EnableUpx>false</EnableUpx>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <!-- Prebuilt non-ASan vendor archives have annotate_vector/string=0.
+           Keep ordinary heap/stack instrumentation; container slack bounds
+           are explicitly outside this mixed-module contour's coverage. -->
+      <PreprocessorDefinitions>_DISABLE_VECTOR_ANNOTATION;_DISABLE_STRING_ANNOTATION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>$(FbeSanitizerCompileOptions) %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <Target Name="ValidateFbeSanitizer" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(Configuration)|$(Platform)|$(PlatformToolset)' != 'Release|Win32|v143'" Text="AddressSanitizer requires Release Win32 v143." />
+    <Error Condition="!$([System.String]::Copy('$(VCToolsVersion)').StartsWith('14.44'))" Text="AddressSanitizer contour requires VC Tools 14.44." />
+    <Error Condition="'$(FbeLanguageStandard)' != 'stdcpp17'" Text="AddressSanitizer contour retains the C++17 baseline." />
+  </Target>
+</Project>

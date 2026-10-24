@@ -19,13 +19,23 @@ function New-IsolatedFbeRuntime {
 }
 
 function New-IsolatedFbeSettingsSeed {
-    param([Parameter(Mandatory)]$Isolation)
+    param([Parameter(Mandatory)]$Isolation, [string]$StartupScriptsDirectory)
 
     $settingsDir = Join-Path $Isolation.DataPath 'Settings'
     New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
     $settingsFile = Join-Path $settingsDir 'Settings.xml'
     # CSettings reads /FBE/Settings[@ID="0"]; omitted fields retain its defaults.
     $xml = '<?xml version="1.0" encoding="utf-8"?><FBE><Settings ID="0"><DocumentTreeScripts>false</DocumentTreeScripts><InterfaceTheme>0</InterfaceTheme></Settings></FBE>'
+    if($StartupScriptsDirectory) {
+        # A fixture can exercise real startup validation with its own catalog,
+        # without loading every unrelated bundled/user macro before its probe.
+        $scripts = [IO.Path]::GetFullPath($StartupScriptsDirectory)
+        $ownedRoot = [IO.Path]::GetFullPath($Isolation.Root).TrimEnd('\') + '\'
+        if(-not $scripts.StartsWith($ownedRoot, [StringComparison]::OrdinalIgnoreCase)) { throw "Startup script fixture must belong to its disposable runtime: $scripts" }
+        New-Item -ItemType Directory -Path $scripts -Force | Out-Null
+        $startupXml = '<ScriptsFolder>' + [Security.SecurityElement]::Escape($scripts) + '</ScriptsFolder><CheckScriptsOnStartup>true</CheckScriptsOnStartup>'
+        $xml = $xml.Replace('</Settings>', $startupXml + '</Settings>')
+    }
     [IO.File]::WriteAllText($settingsFile, $xml, [Text.UTF8Encoding]::new($false))
     return $settingsFile
 }

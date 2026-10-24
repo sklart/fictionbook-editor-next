@@ -11,8 +11,10 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "FBE.exe was not found: $FbeExe" }
-$testRoot = [IO.Path]::GetTempPath()
-$directory = Join-Path $testRoot ('fbe-structural-' + [guid]::NewGuid().ToString('N'))
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'structural-commands'
+$directory = $isolation.Root
+$suitePassed = $false
 $namespace = 'http://www.gribuser.ru/xml/fictionbook/2.0'
 $cases = @(
     @{ id='clone'; body='<section id="clone-source" xml:lang="en"><p>Alpha <strong>Ω</strong></p></section>'; reopen='clone-source' },
@@ -40,14 +42,17 @@ function Run-Fbe([string]$Scenario, [string]$Action, [string]$Report, [string]$F
         $env:FBE_NEXT_TEST_SCENARIO = $Scenario
         $env:FBE_NEXT_TEST_STRUCTURE_ACTION = $Action
         $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID = $ReopenId
-        $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = $directory
+        $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = Join-Path $isolation.DataPath 'Settings'
         $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB = Join-Path $directory ($Action + '.startup.txt')
-        $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $Report, $Fixture) -WorkingDirectory (Split-Path $FbeExe) -PassThru
+        $process = Start-Process -FilePath $isolation.Exe -ArgumentList @('--portable', '-b', $Report, $Fixture) -WorkingDirectory $isolation.Runtime -PassThru
         if(-not $process.WaitForExit($TimeoutSeconds * 1000)) {
             Stop-Process -Id $process.Id -Force
+            $process.WaitForExit()
             $phase = if(Test-Path -LiteralPath $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB) { Get-Content -LiteralPath $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB -Tail 1 } else { '<no startup breadcrumb>' }
             throw "FBE timed out: $Scenario / $Action after $phase"
         }
+        $process.WaitForExit()
+        $process.Refresh()
         if($process.ExitCode -ne 0) { throw "FBE failed: $Scenario / $Action, exit $($process.ExitCode)" }
     } finally {
         $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_ACTION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY, $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB = $previous
@@ -70,9 +75,8 @@ function Assert-Schema([string]$Fixture) {
 
 try {
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
-    # A readable settings document avoids the legacy serializer's modal error
-    # path on a completely empty per-test settings directory.
-    [IO.File]::WriteAllText((Join-Path $directory 'Settings.xml'), '<FBE><Settings ID="0"/></FBE>', (New-Object Text.UTF8Encoding($false)))
+    # Portable mode reads DataPath/Settings, not the installed-mode test override.
+    $null = New-IsolatedFbeSettingsSeed -Isolation $isolation -StartupScriptsDirectory (Join-Path $isolation.Root 'startup-scripts')
     $selected = @($cases | Where-Object { -not $CaseId -or $_.id -eq $CaseId })
     $passed = 0
     foreach($case in $selected) {
@@ -137,12 +141,8 @@ try {
         $passed++
     }
     Write-Host "Structural MSHTML runtime: selected=$($selected.Count) passed=$passed"
+    $suitePassed = $true
 } finally {
     if($KeepArtifacts) { Write-Host "Artifacts: $directory" }
-    else {
-        $safeRoot = [IO.Path]::GetFullPath($testRoot).TrimEnd('\') + '\'
-        $safeDirectory = [IO.Path]::GetFullPath($directory)
-        if(-not $safeDirectory.StartsWith($safeRoot, [StringComparison]::OrdinalIgnoreCase)) { throw "Unsafe test cleanup path: $safeDirectory" }
-        Remove-Item -LiteralPath $safeDirectory -Recurse -Force -ErrorAction SilentlyContinue
-    }
+    else { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $suitePassed }
 }

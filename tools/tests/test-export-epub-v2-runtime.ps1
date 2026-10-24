@@ -1,13 +1,14 @@
-﻿[CmdletBinding()] param([string]$Configuration = 'Release', [string]$BatchExecutable, [ValidateRange(1,20)][int]$RepeatCount = 1)
+﻿[CmdletBinding()] param([string]$Configuration = 'Release', [string]$RuntimeDirectory, [string]$BatchExecutable, [ValidateRange(1,20)][int]$RepeatCount = 1)
 $ErrorActionPreference = 'Stop'; $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-if (-not $BatchExecutable) { $BatchExecutable = Join-Path $root "out\$Configuration\ExportEPUBBatch.exe" }
+if (-not $RuntimeDirectory) { $RuntimeDirectory = Join-Path $root "out\$Configuration" }
+if (-not $BatchExecutable) { $BatchExecutable = Join-Path $RuntimeDirectory "ExportEPUBBatch.exe" }
 $batch = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchExecutable)
 if (-not (Test-Path -LiteralPath $batch -PathType Leaf)) { throw "Missing ExportEPUBBatch.exe: $batch" }
-$dll = Join-Path $root "out\$Configuration\Plugins\ExportEPUB.dll"; if (-not (Test-Path -LiteralPath $dll)) { throw "Missing ExportEPUB.dll: $dll" }
+$dll = Join-Path $RuntimeDirectory "Plugins\ExportEPUB.dll"; if (-not (Test-Path -LiteralPath $dll)) { throw "Missing ExportEPUB.dll: $dll" }
 & (Join-Path $root 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64 -PlatformToolset v143
 $apiDirectory = & (Join-Path $PSScriptRoot 'ensure-fbe-api.ps1') -Configuration $Configuration
-$exe = Join-Path $root "out\$Configuration\export-epub-v2-runtime.exe"
-$objectDir = Join-Path $root 'out\tests\export-epub-v2-runtime'; New-Item -ItemType Directory -Force -Path $objectDir | Out-Null
+$exe = Join-Path $RuntimeDirectory "export-epub-v2-runtime.exe"
+$objectDir = Join-Path $RuntimeDirectory 'test-obj\export-epub-v2-runtime'; New-Item -ItemType Directory -Force -Path $objectDir | Out-Null
 & cl.exe /nologo /EHsc /std:c++14 /utf-8 /DFBE_TEST_EXPORT_EPUB /DUNICODE /D_UNICODE "/I$apiDirectory" "/Fo:$objectDir\\" (Join-Path $PSScriptRoot 'export-html-v2-runtime-harness.cpp') (Join-Path $apiDirectory 'FBE_i.c') /link ole32.lib oleaut32.lib "/OUT:$exe"
 if ($LASTEXITCODE -ne 0) { throw 'ExportEPUB v2 runtime harness did not compile.' }
 function Test-V2EpubContent([string]$Path, [int]$Version) {

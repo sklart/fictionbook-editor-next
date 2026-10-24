@@ -26,13 +26,13 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <PropertyGroup>
-    <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
-    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ImportEPUBLunaSVG\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir Condition="'$(FbeSanitizer)' != 'Address'">$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(FbeSanitizer)' != 'Address'">$(MSBuildProjectDirectory)\..\..\build\obj\ImportEPUBLunaSVG\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>ImportEPUBLunaSVG</TargetName>
     <TargetExt>.dll</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\Plugins\</OutDir>
+    <OutDir Condition="'$(FbeSanitizer)' != 'Address'">$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\Plugins\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

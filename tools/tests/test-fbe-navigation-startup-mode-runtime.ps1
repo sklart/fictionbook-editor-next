@@ -44,7 +44,10 @@ public static class NavigationStartupWindows {
     }
 }
 '@
+$savedTestMode,$savedTestScenario=$env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO
 try {
+    # This probe owns a disposable fixture and does not test save prompts.
+    $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='navigation-layout-probe'
     $source = New-IsolatedFbeSettingsSeed -Isolation $isolation
     $settings = [IO.File]::ReadAllText($source)
     if ($settings -notmatch '<DocumentTreeScripts>false</DocumentTreeScripts>') { throw 'Settings fixture has no disabled Scripts mode.' }
@@ -94,9 +97,13 @@ try {
     if (-not [NavigationStartupWindows]::IsWindowVisible($search) -or
         [NavigationStartupWindows]::IsWindowVisible($rebar) -or
         [NavigationStartupWindows]::IsWindowVisible($viewBar)) { throw 'Returning to Scripts mode exposed Structure controls.' }
+    [void][NavigationStartupWindows]::PostMessage($main, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
+    if (-not $process.WaitForExit(30000)) { throw 'Navigation startup probe did not shut down normally.' }
+    if ($process.ExitCode -ne 0) { throw "Navigation startup probe exited with $($process.ExitCode)." }
     $passed = $true
 }
 finally {
+    $env:FBE_NEXT_TEST_MODE=$savedTestMode; $env:FBE_NEXT_TEST_SCENARIO=$savedTestScenario
     if ($process) {
         if (-not $process.HasExited) { [void][NavigationStartupWindows]::PostMessage($main, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) }
         if (-not $process.WaitForExit(5000)) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue; $process.WaitForExit() }

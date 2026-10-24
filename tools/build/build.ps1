@@ -18,6 +18,9 @@ param(
     [ValidateSet('stdcpp17', 'stdcpp20')]
     [string]$FbeLanguageStandard = 'stdcpp17',
 
+    [ValidateSet('None', 'Address')]
+    [string]$Sanitizer = 'None',
+
     [switch]$SkipUpx,
 
     # Диагностический локальный режим. CI всегда полагается на корректный
@@ -157,6 +160,7 @@ function Assert-PreparedDependencies {
 function Get-FirstPartyToolchainFingerprint {
     return [ordered]@{
         schemaVersion = 1
+        sanitizer = $Sanitizer
         configuration = $Configuration
         platform = $Platform
         platformToolset = $PlatformToolset
@@ -193,6 +197,18 @@ function Test-FirstPartyToolchainFingerprint {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+if (("$env:CL $env:_CL_") -match '(?i)/fsanitize[=:]address') {
+    throw 'Use -Sanitizer Address instead of injecting sanitizer flags through CL/_CL_; vendor and production outputs must stay isolated.'
+}
+if ($Sanitizer -eq 'Address') {
+    if ($Configuration -ne 'Release' -or $PlatformToolset -ne 'v143' -or $FbeLanguageStandard -ne 'stdcpp17' -or $BatchOutputDirectory) {
+        throw 'AddressSanitizer requires Release Win32 v143 C++17 and its isolated batch output.'
+    }
+    if ([Environment]::OSVersion.Version.Major -lt 10) { throw 'ASan diagnostics require Windows 10/11.' }
+    $SkipUpx = $true
+}
+$commonOutput = if ($Sanitizer -eq 'Address') { Join-Path $repoRoot "out\asan\$Configuration" } else { Join-Path $repoRoot "out\$Configuration" }
+$provenanceDirectory = if ($Sanitizer -eq 'Address') { Join-Path $repoRoot 'out\asan\build-provenance' } else { Join-Path $repoRoot 'out\build-provenance' }
 $trackedEditorRuntimeSnapshot = Get-TrackedEditorRuntimeDllSnapshot -RepositoryRoot $repoRoot
 $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
 
@@ -396,6 +412,7 @@ $properties = @(
     "/p:Platform=$Platform"
 )
 $properties += "/p:FbeLanguageStandard=$FbeLanguageStandard"
+$properties += "/p:FbeSanitizer=$Sanitizer"
 $buildCommit = (& git -C $repoRoot rev-parse --short=12 HEAD 2>$null | Select-Object -First 1)
 if(-not $buildCommit) { $buildCommit = 'unknown' }
 $properties += "/p:FbeBuildCommit=$buildCommit"
@@ -428,7 +445,7 @@ if ($SkipUpx) {
 
 $firstPartyToolchainFingerprint = Get-FirstPartyToolchainFingerprint
 $firstPartyToolchainFingerprintDirectory = Join-Path $repoRoot 'build\toolchain'
-$firstPartyToolchainFingerprintPath = Join-Path $firstPartyToolchainFingerprintDirectory ("first-party-{0}-{1}.json" -f $Configuration, $Platform)
+$firstPartyToolchainFingerprintPath = Join-Path $firstPartyToolchainFingerprintDirectory ("first-party-{0}-{1}-{2}.json" -f $Configuration, $Platform, $Sanitizer)
 $cleanFirstPartyOutputs = -not (Test-FirstPartyToolchainFingerprint -Path $firstPartyToolchainFingerprintPath -Expected $firstPartyToolchainFingerprint)
 if ($cleanFirstPartyOutputs) {
     Write-Host 'Toolchain first-party outputs do not match the selected VS instance; cleaning only solution-generated intermediates.'
@@ -451,14 +468,14 @@ if ($StrictFirstPartyWarnings) {
     -OutputDirectory $editorRuntimeDirectory `
     -ReusePreparedRuntime:$ReuseEditorRuntime
 
-Export-RuntimeLanguageFiles -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
-Export-BuiltInResources -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
-Export-SpellcheckDictionaries -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
-Export-EditorBackgroundAssets -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
+Export-RuntimeLanguageFiles -OutputDirectory $commonOutput
+Export-BuiltInResources -OutputDirectory $commonOutput
+Export-SpellcheckDictionaries -OutputDirectory $commonOutput
+Export-EditorBackgroundAssets -OutputDirectory $commonOutput
 
 # A partial or interrupted build must never leave the previous ImportEPUB
 # output looking authoritative.
-$commonOutput = Join-Path $repoRoot "out\$Configuration"
+
 $bundledPluginDlls = @('ExportHTML.dll', 'ExportDOCX.dll', 'ExportEPUB.dll', 'ImportEPUB.dll', 'ImportEPUBLunaSVG.dll')
 $bundledPluginSymbols = @('ExportHTML.pdb', 'ExportDOCX.pdb', 'ExportEPUB.pdb', 'ImportEPUB.pdb', 'ImportEPUBLunaSVG.pdb')
 $pluginOutput = Join-Path $commonOutput 'Plugins'
@@ -525,13 +542,13 @@ foreach ($name in $bundledPluginDlls + $bundledPluginSymbols) {
     }
 }
 
-Remove-ObsoleteReleaseArtifacts -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
+Remove-ObsoleteReleaseArtifacts -OutputDirectory $commonOutput
 
-Remove-ObsoleteRootLanguageDirectories -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
+Remove-ObsoleteRootLanguageDirectories -OutputDirectory $commonOutput
 
 if ($true) {
     & (Join-Path $repoRoot 'tools\build\build-provenance.ps1') -Action Write -Kind CommonCore `
-        -Configuration $Configuration -CommonDirectory (Join-Path $repoRoot "out\$Configuration") -PlatformToolset $PlatformToolset
+        -Configuration $Configuration -CommonDirectory $commonOutput -PlatformToolset $PlatformToolset -ProvenanceDirectory $provenanceDirectory -Sanitizer $Sanitizer
 }
 
 Assert-TrackedEditorRuntimeDllSnapshot -RepositoryRoot $repoRoot -Snapshot $trackedEditorRuntimeSnapshot
@@ -540,5 +557,9 @@ Assert-TrackedEditorRuntimeDllSnapshot -RepositoryRoot $repoRoot -Snapshot $trac
 # by verify-release must not depend on a manifest from an earlier packaging run.
 & (Join-Path $repoRoot 'tools\build\build-provenance.ps1') -Action Write -Kind Runtime `
     -Configuration $Configuration -ProfileDirectory $editorRuntimeDirectory `
-    -BatchDirectory $(if ($BatchOutputDirectory) { $BatchOutputDirectory } else { Join-Path $repoRoot "out\$Configuration" }) `
-    -PlatformToolset $PlatformToolset
+    -BatchDirectory $(if ($BatchOutputDirectory) { $BatchOutputDirectory } else { $commonOutput }) `
+    -PlatformToolset $PlatformToolset -ProvenanceDirectory $provenanceDirectory -Sanitizer $Sanitizer
+
+if ($Sanitizer -eq 'Address') {
+    & (Join-Path $PSScriptRoot 'complete-sanitizer-build.ps1') -OutputDirectory $commonOutput
+}

@@ -1,4 +1,4 @@
-﻿#ifndef __ATLCTRLSEXT_H__
+#ifndef __ATLCTRLSEXT_H__
 #define __ATLCTRLSEXT_H__
 
 /////////////////////////////////////////////////////////////////////////////
@@ -33,6 +33,9 @@
    #error This file requires WTL version 7.0 or higher
 #endif
 
+
+#include <set>
+#include <string>
 
 namespace WTL
 {
@@ -379,6 +382,10 @@ protected:
    CSimpleMap<HWND, TBBUTTONS> m_aButtons;
    CSimpleMap<HWND, TBBUTTONS> m_aDefaultButtons;
    CSimpleMap<int, CString> m_BtnText;
+   // TB_GETBUTTON may return text owned by the live control. Cached buttons
+   // survive deletion/rebuild and can move between toolbars, so intern their
+   // captions for this frame's lifetime. Set insertion never moves a caption.
+   std::set<std::basic_string<TCHAR>> m_ButtonCaptions;
 
 public:
    // Operations
@@ -463,6 +470,8 @@ public:
       CToolBarCtrl tb = hWndToolBar;
 	  if (!tb) return FALSE;
 	  try {
+		  const auto caption = m_ButtonCaptions.emplace(text.GetString(), static_cast<size_t>(text.GetLength()));
+		  button.iString = reinterpret_cast<INT_PTR>(caption.first->c_str());
 		  m_BtnText.Add(button.idCommand, text);
 		  int idx = m_aButtons.FindKey(hWndToolBar);
 		  if (idx < 0) return FALSE;

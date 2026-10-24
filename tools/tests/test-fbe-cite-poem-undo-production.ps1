@@ -18,7 +18,10 @@ $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPat
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "FBE.exe was not found: $FbeExe" }
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $schemaPath = Join-Path $root 'runtime\FictionBook.xsd'
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-cite-poem-undo-' + [guid]::NewGuid().ToString('N'))
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'cite-poem-undo'
+$directory = $isolation.Root
+$suitePassed = $false
 
 function Assert-Fb2Schema([string]$Path) {
     $cache = New-Object -ComObject Msxml2.XMLSchemaCache.6.0
@@ -32,6 +35,7 @@ function Assert-Fb2Schema([string]$Path) {
 
 try {
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    $null = New-IsolatedFbeSettingsSeed -Isolation $isolation -StartupScriptsDirectory (Join-Path $isolation.Root 'startup-scripts')
     $cases = @(
         @{ id = 'cite-one'; operation = 'cite'; paragraphs = @('Text') },
 		@{ id = 'cite-wrapper-success'; operation = 'cite'; route = 'wrapper'; paragraphs = @('Text') },
@@ -100,12 +104,15 @@ try {
 			$env:FBE_NEXT_TEST_CITE_POEM_FAULT = if($case.ContainsKey('fault')) { $case.fault } else { $null }
             $env:FBE_NEXT_TEST_STRUCTURE_TRACE = if($case.ContainsKey('route')) { $null } else { $trace }
             $env:FBE_NEXT_TEST_STRUCTURE_CASE = $case.id
-            $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -WorkingDirectory (Split-Path $FbeExe) -PassThru
+            $process = Start-Process -FilePath $isolation.Exe -ArgumentList @('--portable', '-b', $report, $fixture) -WorkingDirectory $isolation.Runtime -PassThru
             if(-not $process.WaitForExit($TimeoutSeconds * 1000)) {
                 $tail = if(Test-Path -LiteralPath $trace) { (Get-Content -LiteralPath $trace | Select-Object -Last 20) -join [Environment]::NewLine } else { '<trace unavailable>' }
                 Stop-Process -Id $process.Id -Force
+                $process.WaitForExit()
                 throw "FBE timed out for case=$($case.id), trace=$trace. Last phases:`n$tail"
             }
+            $process.WaitForExit()
+            $process.Refresh()
             if($process.ExitCode -ne 0 -and -not $case.ContainsKey('expectRejected')) { throw "FBE failed for $($case.id): exit $($process.ExitCode)." }
         }
         finally {
@@ -154,8 +161,9 @@ try {
     Write-Host "Cite/Poem scenario counters: selected=$selected started=$started completed=$completed passed=$passed failed=$failed"
     if($selected -le 0 -or $started -ne $selected -or $completed -ne $selected -or $failed -ne 0) { throw 'Cite/Poem scenario execution accounting failed.' }
     Write-Host 'Production Cite/Poem MSHTML Undo/Redo passed.'
+    $suitePassed = $true
 }
 finally {
     if($KeepArtifacts) { Write-Host "Artifacts: $directory" }
-    else { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+    else { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $suitePassed }
 }

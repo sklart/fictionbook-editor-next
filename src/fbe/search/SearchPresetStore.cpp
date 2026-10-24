@@ -168,9 +168,13 @@ bool WriteUtf16FileAtomically(const CString& path, const CString& xml
         ::DeleteFileW(temporary);
         return false;
     }
-    // Windows may briefly deny replacement; retry only the already flushed rename.
+    // Readers and competing replacements can keep the destination unavailable
+    // longer than one scheduler slice. Bound retries by elapsed time, not by
+    // five attempts whose total delay was only 150 ms. Never rewrite the data.
     DWORD replaceError = ERROR_SUCCESS;
-    for (unsigned attempt = 0; attempt != 5; ++attempt)
+    const ULONGLONG deadline = ::GetTickCount64() + 1000;
+    DWORD delay = 10;
+    for (;;)
     {
         if (::MoveFileExW(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return true;
         replaceError = ::GetLastError();
@@ -181,7 +185,10 @@ bool WriteUtf16FileAtomically(const CString& path, const CString& xml
             const DWORD attributes = ::GetFileAttributesW(path);
             if (attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_READONLY)) break;
         }
-        if (attempt != 4) ::Sleep(10u << attempt);
+        const ULONGLONG now = ::GetTickCount64();
+        if (now >= deadline) break;
+        ::Sleep(static_cast<DWORD>((std::min)(static_cast<ULONGLONG>(delay), deadline - now)));
+        delay = (std::min)(delay * 2, DWORD(100));
     }
     ::DeleteFileW(temporary);
     ::SetLastError(replaceError);

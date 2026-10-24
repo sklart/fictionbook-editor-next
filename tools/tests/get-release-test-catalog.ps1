@@ -107,8 +107,10 @@ $entries['release.portable-gui-state']=[pscustomobject][ordered]@{
     timeoutSeconds='declared-by-test';isolation='declared-by-test';execution='package-stage'
 }
 $catalog = [ordered]@{ schemaVersion = 2; generatedFrom = 'tools/build/verify-release.ps1'; tests = @($entries.Values | Sort-Object id) }
+. (Join-Path $PSScriptRoot 'SanitizerCatalog.ps1')
 foreach ($entry in $catalog.tests) {
     if ($entry.id -eq 'release.fbe-scripting-clipboard-ole-ci') { $entry.requirements = @('github-hosted', 'disposable-user-logon', 'private-window-station') }
+    $entry | Add-Member -NotePropertyName sanitizer -NotePropertyValue (Get-FbeSanitizerMetadata -Entry $entry -RepositoryRoot $repoRoot)
 }
 if ($Validate) {
     if ($catalog.tests.Count -eq 0) { throw 'Release test catalog is empty.' }

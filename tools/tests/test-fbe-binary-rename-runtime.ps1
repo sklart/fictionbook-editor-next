@@ -22,7 +22,11 @@ try {
         $deadline=[Diagnostics.Stopwatch]::StartNew()
         while(((-not (Test-Path -LiteralPath $report)) -or (Get-Item -LiteralPath $report).Length -eq 0) -and -not $process.HasExited -and $deadline.Elapsed.TotalSeconds -lt $TimeoutSeconds){Start-Sleep -Milliseconds 100}
         if((-not (Test-Path -LiteralPath $report)) -or (Get-Item -LiteralPath $report).Length -eq 0){if(-not $process.HasExited){Stop-Process -Id $process.Id -Force};throw 'FBE binary rename runtime did not write its report.'}
-        if(-not $process.HasExited){Stop-Process -Id $process.Id -Force; $process.WaitForExit()}    } finally {$env:FBE_NEXT_TEST_MODE=$oldMode;$env:FBE_NEXT_TEST_SCENARIO=$oldScenario}
+        # The native scenario posts WM_CLOSE after writing the report. Await its
+        # real shutdown; killing it here hides teardown defects from ASan.
+        if(-not $process.WaitForExit($TimeoutSeconds*1000)){Stop-Process -Id $process.Id -Force;throw 'FBE binary rename shutdown timed out.'}
+        if($process.ExitCode -ne 0){throw "FBE binary rename failed: exit $($process.ExitCode)."}
+    } finally {$env:FBE_NEXT_TEST_MODE=$oldMode;$env:FBE_NEXT_TEST_SCENARIO=$oldScenario}
     $rows=@{}; Get-Content -LiteralPath $report | ForEach-Object {$pair=$_ -split '=',2;if($pair.Count -eq 2){$rows[$pair[0]]=$pair[1]}}
     if($rows.dom_rename -ne '1' -or $rows.body_source_roundtrip -ne '1' -or $rows.saved -ne '1'){throw "Binary rename runtime report failed: $(Get-Content $report -Raw)"}
     [xml]$xml=Get-Content -LiteralPath $fixture -Raw; $ns=[Xml.XmlNamespaceManager]::new($xml.NameTable);$ns.AddNamespace('fb','http://www.gribuser.ru/xml/fictionbook/2.0')

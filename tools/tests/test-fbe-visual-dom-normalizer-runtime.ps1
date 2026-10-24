@@ -11,6 +11,8 @@ $fixture = Join-Path $directory 'normalizer.fb2'
 $report = Join-Path $directory 'normalizer.tsv'
 $passed = $false
 try {
+    # Keep this document/view probe independent of migrated user preferences.
+    $null = New-IsolatedFbeSettingsSeed -Isolation $isolation
     @"
 <?xml version="1.0" encoding="utf-8"?>
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Normalizer</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>normalizer-test</id><version>1.0</version></document-info></description><body><section><p>До</p><empty-line/><p>После</p></section></body></FictionBook>

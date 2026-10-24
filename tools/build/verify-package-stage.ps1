@@ -6,6 +6,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $stage = (Resolve-Path -LiteralPath $StageDirectory).Path
+& (Join-Path $PSScriptRoot 'assert-production-payload.ps1') -Directory $stage
 $manifest = Get-Content -LiteralPath (Join-Path $repoRoot 'packaging\package-manifest.json') -Raw | ConvertFrom-Json
 $section = $manifest.($Kind.ToLowerInvariant())
 $required = if ($null -ne $section.PSObject.Properties['required']) { @($section.required) } else { @() }

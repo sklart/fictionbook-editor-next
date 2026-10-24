@@ -71,7 +71,11 @@ public static class InputBoxProbeWindows {
 '@
 [void][InputBoxProbeWindows]::SetProcessDPIAware()
 $process = $null
+$savedTestMode,$savedTestScenario=$env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO
 try {
+    # Layout is the subject here; use the existing unattended close policy for
+    # this disposable document instead of leaving a save prompt at teardown.
+    $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='inputbox-layout-probe'
     $scriptFolder = Join-Path $isolation.Runtime 'InputBoxProbe'
     New-Item -ItemType Directory -Path $scriptFolder | Out-Null
     [IO.File]::WriteAllText((Join-Path $scriptFolder 'probe.js'),
@@ -146,9 +150,13 @@ try {
     }
     Write-Host "InputBox long prompt scrolls; bounds $($dialogRect.Left),$($dialogRect.Top)..$($dialogRect.Right),$($dialogRect.Bottom)."
     [void][InputBoxProbeWindows]::PostMessage($dialog, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
+    [void][InputBoxProbeWindows]::PostMessage($frame, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
+    if (-not $process.WaitForExit(30000)) { throw 'InputBox probe did not shut down normally.' }
+    if ($process.ExitCode -ne 0) { throw "InputBox probe exited with $($process.ExitCode)." }
     $passed = $true
 }
 finally {
+    $env:FBE_NEXT_TEST_MODE=$savedTestMode; $env:FBE_NEXT_TEST_SCENARIO=$savedTestScenario
     if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force; $process.WaitForExit() }
     for ($attempt=0; $attempt -lt 8; ++$attempt) {
         try { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed; break }

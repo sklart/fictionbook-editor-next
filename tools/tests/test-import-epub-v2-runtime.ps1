@@ -1,9 +1,10 @@
-[CmdletBinding()]
-param([string]$Configuration = 'Release')
+﻿[CmdletBinding()]
+param([string]$Configuration = 'Release', [string]$RuntimeDirectory)
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$dll = Join-Path $root "out\$Configuration\Plugins\ImportEPUB.dll"
+if (-not $RuntimeDirectory) { $RuntimeDirectory = Join-Path $root "out\$Configuration" }
+$dll = Join-Path $RuntimeDirectory "Plugins\ImportEPUB.dll"
 if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) { throw "Missing ImportEPUB.dll: $dll" }
 
 # Reuse the normal Cyrillic EPUB fixture produced by the existing ExportEPUB
@@ -11,14 +12,14 @@ if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) { throw "Missing ImportEP
 # than adding a second EPUB generator.
 $fixture = Join-Path $root 'out\tests\export-epub-cyrillic\fb2-metadata-cyrillic-smoke.epub'
 if (-not (Test-Path -LiteralPath $fixture -PathType Leaf)) {
-    & (Join-Path $PSScriptRoot 'test-export-epub-cyrillic.ps1') -Configuration $Configuration -OutputPath $fixture
+    & (Join-Path $PSScriptRoot 'test-export-epub-cyrillic.ps1') -Configuration $Configuration -DllPath (Join-Path $RuntimeDirectory "Plugins\ExportEPUB.dll") -OutputPath $fixture
 }
 if (-not (Test-Path -LiteralPath $fixture -PathType Leaf)) { throw "Missing ImportEPUB runtime fixture: $fixture" }
 
 & (Join-Path $root 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64 -PlatformToolset v143
 $apiDirectory = & (Join-Path $PSScriptRoot 'ensure-fbe-api.ps1') -Configuration $Configuration
-$exe = Join-Path $root "out\$Configuration\import-epub-v2-runtime.exe"
-$objectDir = Join-Path $root 'out\tests\import-epub-v2-runtime'; New-Item -ItemType Directory -Force -Path $objectDir | Out-Null
+$exe = Join-Path $RuntimeDirectory "import-epub-v2-runtime.exe"
+$objectDir = Join-Path $RuntimeDirectory 'test-obj\import-epub-v2-runtime'; New-Item -ItemType Directory -Force -Path $objectDir | Out-Null
 try {
     & cl.exe /nologo /EHsc /std:c++14 /utf-8 /DUNICODE /D_UNICODE "/I$apiDirectory" "/Fo:$objectDir\\" (Join-Path $PSScriptRoot 'import-epub-v2-runtime-harness.cpp') (Join-Path $apiDirectory 'FBE_i.c') /link ole32.lib oleaut32.lib msxml6.lib "/OUT:$exe"
     if ($LASTEXITCODE -ne 0) { throw 'ImportEPUB v2 runtime harness did not compile.' }

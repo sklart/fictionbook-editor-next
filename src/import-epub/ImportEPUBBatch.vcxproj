@@ -28,9 +28,9 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <PropertyGroup>
-    <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
-    <OutDir Condition="'$(BatchOutputDirectory)'!=''">$(BatchOutputDirectory)</OutDir>
-    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ImportEPUBBatch\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir Condition="'$(FbeSanitizer)' != 'Address'">$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
+    <OutDir Condition="('$(BatchOutputDirectory)'!='') and '$(FbeSanitizer)' != 'Address'">$(BatchOutputDirectory)</OutDir>
+    <IntDir Condition="'$(FbeSanitizer)' != 'Address'">$(MSBuildProjectDirectory)\..\..\build\obj\ImportEPUBBatch\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>ImportEPUBBatch</TargetName>
     <TargetExt>.exe</TargetExt>
   </PropertyGroup>

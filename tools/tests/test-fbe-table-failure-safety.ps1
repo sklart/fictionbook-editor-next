@@ -82,8 +82,10 @@ try {
         -ArgumentList @('-s', '-b', ('"{0}"' -f $report), ('"{0}"' -f $fixture)) -PassThru
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     do { Start-Sleep -Milliseconds 200; [TableSafetyDialogCloser]::Dismiss($process.Id); $process.Refresh() } while(-not $process.HasExited -and (Get-Date) -lt $deadline)
-    if(-not $process.HasExited) { Stop-Process -Id $process.Id -Force; throw 'FBE не завершил test-only table safety pipeline.' }
-    if($process.ExitCode -eq 0) { throw 'FBE не вернул код ошибки для отклонённого Save.' }
+    if(-not $process.HasExited) { Stop-Process -Id $process.Id -Force; $process.WaitForExit(); throw 'FBE не завершил test-only table safety pipeline.' }
+    $process.WaitForExit()
+    $process.Refresh()
+    if($process.ExitCode -ne 1) { throw "Отклонённый Save должен вернуть exit 1; получен $($process.ExitCode)." }
     if((Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $originalHash) { throw 'Инъекция перезаписала исходный FB2.' }
     if(-not (Test-Path -LiteralPath $report)) { throw 'FBE не записал report безопасного отказа.' }
     $rejection = Import-Csv -LiteralPath $report -Delimiter "`t" | Where-Object { $_.phase -like 'table-save-rejected:*' }
@@ -102,11 +104,26 @@ finally {
     if ($null -eq $previousTrace) { Remove-Item Env:FBE_NEXT_TRACE -ErrorAction SilentlyContinue } else { $env:FBE_NEXT_TRACE = $previousTrace }
     if (Test-Path -LiteralPath $directory) {
         if ($passed) {
-            Remove-Item -LiteralPath $directory -Recurse -Force
+            $safeRoot = [IO.Path]::GetFullPath($temporaryRoot).TrimEnd('\') + '\'
+            $safeDirectory = [IO.Path]::GetFullPath($directory)
+            if(-not $safeDirectory.StartsWith($safeRoot, [StringComparison]::OrdinalIgnoreCase)) { throw "Unsafe cleanup path: $safeDirectory" }
+            # The temporary runtime DLL can remain locked briefly after exit.
+            # Keep cleanup bounded; a persistent failure must still fail the test.
+            for($attempt=0; $attempt -lt 10; ++$attempt) {
+                try { Remove-Item -LiteralPath $safeDirectory -Recurse -Force -ErrorAction Stop; break }
+                catch [IO.IOException], [UnauthorizedAccessException] {
+                    if($attempt -eq 9) { throw }
+                    Start-Sleep -Milliseconds 100
+                }
+            }
         }
         else {
             New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
             $failureDirectory = Join-Path $diagnosticsRoot ('table-failure-' + [IO.Path]::GetFileName($directory))
+            $safeSourceRoot = [IO.Path]::GetFullPath($temporaryRoot).TrimEnd('\') + '\'
+            $safeDiagnosticsRoot = [IO.Path]::GetFullPath($diagnosticsRoot).TrimEnd('\') + '\'
+            if(-not [IO.Path]::GetFullPath($directory).StartsWith($safeSourceRoot, [StringComparison]::OrdinalIgnoreCase) -or
+                -not [IO.Path]::GetFullPath($failureDirectory).StartsWith($safeDiagnosticsRoot, [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe diagnostics move path.' }
             try {
                 Move-Item -LiteralPath $directory -Destination $failureDirectory -Force
                 Write-Warning "Диагностика неуспешного table safety test сохранена: $failureDirectory"

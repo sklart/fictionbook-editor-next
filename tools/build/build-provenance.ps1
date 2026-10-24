@@ -1,4 +1,4 @@
-<# Validates or records authoritative release payload hashes. #>
+﻿<# Validates or records authoritative release payload hashes. #>
 [CmdletBinding()]
 param(
     [ValidateSet('Write', 'Validate')][string]$Action,
@@ -8,7 +8,8 @@ param(
     [string]$ProfileDirectory,
     [string]$BatchDirectory,
     [string]$PlatformToolset,
-    [string]$ProvenanceDirectory
+    [string]$ProvenanceDirectory,
+    [ValidateSet('None','Address')][string]$Sanitizer = 'None'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -49,7 +50,7 @@ if ($Action -eq 'Write') {
     }
     New-Item -ItemType Directory -Force -Path $provenanceRoot | Out-Null
     $commit = (& git -C $repoRoot rev-parse HEAD).Trim()
-    [ordered]@{ schemaVersion=1; kind=$Kind; configuration=$Configuration; platform='Win32'; platformToolset=$PlatformToolset; gitCommit=$commit; artifacts=$artifacts } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
+    [ordered]@{ schemaVersion=1; kind=$Kind; configuration=$Configuration; platform='Win32'; platformToolset=$PlatformToolset; sanitizer=$Sanitizer; gitCommit=$commit; artifacts=$artifacts } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
     Write-Host "Build provenance written: $manifestPath"
     # This script is invoked from the public verification gate.  Do not end
     # its caller's PowerShell host after writing provenance.
@@ -58,6 +59,9 @@ if ($Action -eq 'Write') {
 
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "Build provenance is missing: $manifestPath. Run the authoritative full build pipeline." }
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+$sanitizerProperty = $manifest.PSObject.Properties['sanitizer']
+$actualSanitizer = if ($null -ne $sanitizerProperty) { [string]$sanitizerProperty.Value } else { 'None' }
+if ($actualSanitizer -ne $Sanitizer) { throw "Provenance sanitizer mismatch: expected $Sanitizer, got $actualSanitizer." }
 foreach ($property in $manifest.artifacts.PSObject.Properties) {
     $name = $property.Name
     $source = if ($Kind -eq 'CommonCore') { Get-CommonSourcePath $CommonDirectory $name }

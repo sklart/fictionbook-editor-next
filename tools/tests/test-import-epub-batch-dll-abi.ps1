@@ -79,3 +79,6 @@ if ($BatchPath -or $SmokeEpubPath) {
 }
 
 Write-Host 'ImportEPUB Batch DLL ABI checks passed.'
+# The missing-plugin branch deliberately returns 1 and was asserted above.
+# Do not leak that expected native exit into a calling verification worker.
+$global:LASTEXITCODE = 0

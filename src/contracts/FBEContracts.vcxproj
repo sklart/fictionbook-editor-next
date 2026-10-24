@@ -22,8 +22,8 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <PropertyGroup>
-    <OutDir>$(FbeRepoRoot)\out\$(Configuration)\</OutDir>
-    <IntDir>$(FbeRepoRoot)\build\obj\contracts\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir Condition="'$(FbeSanitizer)' != 'Address'">$(FbeRepoRoot)\out\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(FbeSanitizer)' != 'Address'">$(FbeRepoRoot)\build\obj\contracts\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemGroup>
     <Midl Include="fbe.idl">

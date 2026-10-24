@@ -36,6 +36,12 @@ static bool Equals(const CString& path, const char* text)
     const bool ok = ::ReadFile(file, bytes, sizeof(bytes) - 1, &read, NULL) && read == strlen(text) && strcmp(bytes, text) == 0;
     ::CloseHandle(file); return ok;
 }
+static DWORD WINAPI ReleaseReaderAfterDelay(void* context)
+{
+    ::Sleep(250);
+    ::CloseHandle(static_cast<HANDLE>(context));
+    return 0;
+}
 int wmain(int argc, wchar_t** argv)
 {
     if(argc != 2) return 1;
@@ -51,6 +57,19 @@ int wmain(int argc, wchar_t** argv)
             !Equals(first, "reader-released") || ::GetFileAttributesW(staged) != INVALID_FILE_ATTRIBUTES) return 20;
         g_delayedSource.Empty();
         if(!Write(first, "old-first")) return 21;
+    }
+    // A real transient reader can outlive the former 70ms retry budget.
+    {
+        const CString staged = SettingsFileTransaction::Temporary(first);
+        if(staged.IsEmpty() || !Write(staged, "transient-reader")) return 25;
+        HANDLE reader = ::CreateFileW(staged, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if(reader == INVALID_HANDLE_VALUE) return 26;
+        HANDLE thread = ::CreateThread(NULL, 0, ReleaseReaderAfterDelay, reader, 0, NULL);
+        if(!thread) { ::CloseHandle(reader); return 27; }
+        const bool moved = SettingsFileTransaction::MoveStagedFile(staged, first, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != FALSE;
+        ::WaitForSingleObject(thread, INFINITE); ::CloseHandle(thread);
+        if(!moved || !Equals(first, "transient-reader") || ::GetFileAttributesW(staged) != INVALID_FILE_ATTRIBUTES) return 28;
+        if(!Write(first, "old-first")) return 29;
     }
     // A real persistent reader lock remains an error and preserves both files.
     {

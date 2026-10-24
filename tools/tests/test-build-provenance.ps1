@@ -19,6 +19,18 @@ try {
     $provenance = Join-Path $fixture 'provenance'
     & (Join-Path $root 'tools\build\build-provenance.ps1') -Action Write -Kind CommonCore -CommonDirectory $common -ProvenanceDirectory $provenance
     & (Join-Path $root 'tools\build\build-provenance.ps1') -Action Validate -Kind CommonCore -CommonDirectory $common -ProvenanceDirectory $provenance
+    $manifestPath=Join-Path $provenance 'CommonCore-Release.json'
+    $identity=Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
+    $identity.sanitizer='Address'
+    $identity | ConvertTo-Json -Depth 5 | Set-Content $manifestPath -Encoding utf8
+    try {
+        & (Join-Path $root 'tools/build/build-provenance.ps1') -Action Validate -Kind CommonCore -CommonDirectory $common -ProvenanceDirectory $provenance
+        throw 'Sanitizer provenance was accepted as ordinary Release.'
+    } catch { if($_.Exception.Message -notmatch 'sanitizer mismatch') { throw } }
+    $identity.PSObject.Properties.Remove('sanitizer')
+    $identity | ConvertTo-Json -Depth 5 | Set-Content $manifestPath -Encoding utf8
+    & { Set-StrictMode -Version Latest; & (Join-Path $root 'tools/build/build-provenance.ps1') -Action Validate -Kind CommonCore -CommonDirectory $common -ProvenanceDirectory $provenance }
+    Write-Host 'Sanitizer provenance mismatch and legacy None identity checks passed.'
     Add-Content -LiteralPath (Join-Path $commonPlugins 'ImportEPUB.dll') -Value 'tampered' -Encoding ASCII
     try {
         & (Join-Path $root 'tools\build\build-provenance.ps1') -Action Validate -Kind CommonCore -CommonDirectory $common -ProvenanceDirectory $provenance
