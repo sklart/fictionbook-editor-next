@@ -713,6 +713,7 @@ public:
   LRESULT RunLegacyRuntimeScenarios(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT RunBinaryStoreRuntime(CAtlFile& output);
   LRESULT RunBinaryScriptingCompatibilityRuntime(CAtlFile& output);
+  LRESULT RunXmlScriptBackendRuntime(CAtlFile& output);
   LRESULT OnTimer(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnApplyXmlSourceTheme(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&);

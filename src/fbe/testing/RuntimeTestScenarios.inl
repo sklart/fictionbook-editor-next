@@ -22,13 +22,16 @@ static PluginOptionsProbe::Palette EditorPluginProbePalette(HWND window) {
 
 #include "RuntimeTestBinaryStore.inl"
 #include "RuntimeTestBinaryScriptingCompatibility.inl"
+#include "XmlUndoLifetimeProbe.h"
+#include "RuntimeTestXmlScriptBackend.inl"
 
 // Keep new script/COM probes outside the large legacy scenario stack frame.
 LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT message, WPARAM wparam, LPARAM lparam, BOOL& handled)
 {
-    if (RuntimeTests::IsScenario(L"binary-store") || RuntimeTests::IsScenario(L"binary-scripting-compatibility")) {
+    if (RuntimeTests::IsScenario(L"binary-store") || RuntimeTests::IsScenario(L"binary-scripting-compatibility") || RuntimeTests::IsScenario(L"xml-script-backend-runtime")) {
         CAtlFile output;
         if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS))) return 0;
+        if (RuntimeTests::IsScenario(L"xml-script-backend-runtime")) return RunXmlScriptBackendRuntime(output);
         return RuntimeTests::IsScenario(L"binary-store") ? RunBinaryStoreRuntime(output) : RunBinaryScriptingCompatibilityRuntime(output);
     }
     return RunLegacyRuntimeScenarios(message, wparam, lparam, handled);

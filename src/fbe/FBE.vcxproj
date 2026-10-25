@@ -698,6 +698,8 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <ClInclude Include="testing\RuntimeTestUndoAndContainers.inl" />
     <ClInclude Include="testing\RuntimeTestNavigationAndStructure.inl" />
     <ClInclude Include="testing\RuntimeTestEditorAndExport.inl" />
+    <ClInclude Include="testing\RuntimeTestXmlScriptBackend.inl" />
+    <ClInclude Include="testing\XmlUndoLifetimeProbe.h" />
     <ClInclude Include="ui\MainFrameRuntimeUi.inl" />
     <ClInclude Include="EditorEngine.h" />
   </ItemGroup>

@@ -141,14 +141,23 @@ XML backend runtime прошёл; на обычном C3 Release воспрои�
 document state. `XmlVisualState` удерживает weak leases вместо постоянных
 SAFEARRAY-копий и восстанавливает facade binding после native markup replay.
 Контрольный FAIL сохранён под `out/perf/c3-xml-undo-finding`.
-Расширенный runtime также удерживает старые HTMLDocument/DOM/Undo handles,
-проверяет освобождение canonical bytes при настоящем Reopen и отказ старой
-history менять новый документ. Его отчёт сохраняется по executable SHA под
-`out/tests/binary-store/xml-undo`. COM markup context удерживается до освобождения
-старых handles; DOM-узел освобождается до старого Undo manager. Ранняя версия
-probe с обратным порядком вызвала MSHTML AV при `Release` и была исправлена
-без удаления ownership assertions. Цепочка XML Apply также меняет payload
-A→B→C и сверяет bytes после каждого Undo/Redo.
+Расширенный runtime проверяет освобождение canonical bytes при настоящем
+Reopen и отказ старого XML parent unit менять новый документ. Его отчёт
+сохраняется по executable SHA под `out/tests/binary-store/xml-undo`.
+Цепочка XML Apply также меняет payload
+A→B→C и сверяет bytes после каждого Undo/Redo. Расширенный probe вынесен
+в отдельный `noinline` handler по образцу остальных C3 script probes.
+Удержание полного старого MSHTML DOM/Undo context через Reopen нестабильно:
+dump показывает AV при финальном COM `Release` уже после успешных assertions.
+Выделение handler и варианты порядка cleanup не устранили сбой; отдельные
+PASS этих вариантов не принимаются как финальная acceptance-проверка.
+Отдельный диагностический C2 control с тем же удержанием handles, без C3
+ownership assertions и без replay старой history против нового документа,
+воспроизвёл тот же AV в MSHTML при финальном `Release` (`c2-close-control-result.json`).
+Он не является контрольным performance snapshot. Итоговый probe удерживает
+production XML parent unit с настоящими `XmlVisualState` snapshots, но без
+внутренних native markup child units. Он проверяет освобождение bytes и guard
+против нового документа, не заявляя исправление прежнего ограничения MSHTML.
 
 `manifest.json` фиксирует ревизии, executable/JS/dependency hashes, compiler,
 Release Win32, OS, машину и power profile. `raw.json` содержит отдельные отсчёты;

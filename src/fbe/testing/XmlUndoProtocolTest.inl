@@ -1,4 +1,25 @@
 // Exercise the production parent unit with observable OLE child units.
+#include "XmlUndoLifetimeProbe.h"
+
+HRESULT RuntimeTests::CreateXmlUndoLifetimeProbe(XmlScriptBackend* backend, FB::Doc* document, IOleUndoUnit** result)
+{
+    if (!result) return E_POINTER;
+    *result = nullptr;
+    wchar_t mode[4] = {}, scenario[64] = {};
+    if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", mode, _countof(mode)) != 1 || mode[0] != L'1' ||
+        !::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario)) || wcscmp(scenario, L"xml-script-backend-runtime")) return E_ACCESSDENIED;
+    if (!backend || !document) return E_POINTER;
+    try {
+        XmlVisualState state; state.Capture(document);
+        CComObject<XmlScriptUndoUnit>* raw = nullptr;
+        CheckError(CComObject<XmlScriptUndoUnit>::CreateInstance(&raw));
+        CComPtr<IOleUndoUnit> owned(raw);
+        raw->Initialize(backend, CString(), CString(), false, L"XML lifetime probe", state, state);
+        return owned->QueryInterface(IID_IOleUndoUnit, reinterpret_cast<void**>(result));
+    } catch (const _com_error& error) { return error.Error(); }
+    catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+}
+
 class XmlUndoProtocolProbe : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit {
 public:
     int nextAdds=0;
