@@ -15,6 +15,7 @@ void Doc::ReconcileBinaryStore()
     // two native calls. Reconcile conservatively even if it replaced handlers.
     if (m_binaryLegacyDepth) m_binaryStore.Invalidate();
     if (!m_binaryStore.Dirty()) return;
+    if (!m_binaryStore.CatalogDirty()) { m_binaryStore.RefreshPayloadMetadata(); return; }
     const auto objects = FbeScripts::Binary::Objects(m_body.Document());
     m_binaryStore.Clear();
     m_binaryDuplicateIds = false;

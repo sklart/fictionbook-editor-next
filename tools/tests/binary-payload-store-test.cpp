@@ -53,6 +53,27 @@ int wmain() {
         Require(store.Dirty()); read.Clear(); Check(first.GetPropertyByName(L"base64data", &read)); Equal(read, 42);
         CComVariant invalid(L"invalid"); Check(second.PutPropertyByName(L"base64data", &invalid));
         read.Clear(); Check(second.GetPropertyByName(L"base64data", &read)); Require(read.vt == VT_BSTR);
+        // Byte-only writes must not evict other images' validated metadata.
+        FbeBinary::BinaryMetadata ma, mb;
+        ma.id = L"a"; mb.id = L"b";
+        ma.sizeKnown = ma.dimensionsKnown = ma.dimensionsAttempted = true;
+        mb.sizeKnown = mb.dimensionsKnown = mb.dimensionsAttempted = true;
+        mb.width = 123; mb.height = 45;
+        store.Register(ma, a); store.Register(mb, b); store.Reconciled();
+        const auto unchangedGeneration = store.Find(L"b")->generation;
+        {
+            const auto canonical = store.payloads.Snapshot(a);
+            const auto unchangedRevision = store.payloads.Revision();
+            Check(first.PutPropertyByName(L"base64data", &replacement));
+            Require(store.payloads.Snapshot(a).get() == canonical.get() && store.payloads.Revision() == unchangedRevision);
+        }
+        auto changedBytes = Bytes(43);
+        Check(first.PutPropertyByName(L"base64data", &changedBytes));
+        Require(store.Dirty() && !store.CatalogDirty());
+        store.RefreshPayloadMetadata();
+        Require(!store.Dirty() && !store.Find(L"a")->sizeKnown && !store.Find(L"a")->dimensionsAttempted);
+        Require(store.Find(L"b")->sizeKnown && store.Find(L"b")->dimensionsKnown && store.Find(L"b")->width == 123);
+        Require(store.Find(L"b")->generation == unchangedGeneration);
         // Reset releases canonical arrays even while old DOM nodes survive.
         const auto retained = store.payloads.Retain(store.payloads.Snapshot(a));
         const std::weak_ptr<const CComVariant> previous = retained->Get();

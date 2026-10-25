@@ -13,6 +13,7 @@ public:
         std::unordered_map<unsigned long long, std::shared_ptr<const CComVariant>> values;
         std::unordered_map<unsigned long long, std::shared_ptr<const CComVariant>> history;
         std::unordered_map<IUnknown*, unsigned long long> identities;
+        std::unordered_map<unsigned long long, unsigned long long> revisions;
         unsigned long long next = 0, revision = 0;
     };
     // Undo managers/DOM nodes can survive their editor window. History owns
@@ -41,6 +42,7 @@ public:
     }
     void Reset() { m_state = std::make_shared<State>(); }
     unsigned long long Revision() const { return m_state->revision; }
+    bool ChangedSince(IDispatch* element, unsigned long long revision) const;
     size_t Count() const { return m_state->values.size(); }
 private:
     std::shared_ptr<State> m_state;

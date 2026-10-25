@@ -40,6 +40,7 @@ public:
     bool Dirty() const { return m_dirty || m_payloadRevision != payloads.Revision(); }
     bool CatalogDirty() const { return m_dirty; }
     void AcceptPayloadRevision() { m_payloadRevision = payloads.Revision(); }
+    void RefreshPayloadMetadata();
     void Reconciled(bool rebuilt = false);
     size_t Count() const { return m_entries.size(); }
     void SizeCalculation();

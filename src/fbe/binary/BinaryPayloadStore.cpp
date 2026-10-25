@@ -1,8 +1,24 @@
 #include "BinaryPayloadStore.h"
+#include "BinaryStore.h"
 #include <mshtml.h>
+#include <cstring>
 
 namespace FbeBinary {
 namespace {
+bool SameByteArray(const CComVariant& left, const CComVariant& right) {
+    if (left.vt != (VT_ARRAY | VT_UI1) || right.vt != left.vt || !left.parray || !right.parray ||
+        left.parray->cDims != 1 || right.parray->cDims != 1 ||
+        left.parray->cbElements != 1 || right.parray->cbElements != 1 ||
+        left.parray->rgsabound[0].lLbound != right.parray->rgsabound[0].lLbound ||
+        left.parray->rgsabound[0].cElements != right.parray->rgsabound[0].cElements) return false;
+    void* a = nullptr; void* b = nullptr;
+    if (FAILED(::SafeArrayAccessData(left.parray, &a))) return false;
+    if (FAILED(::SafeArrayAccessData(right.parray, &b))) { ::SafeArrayUnaccessData(left.parray); return false; }
+    const auto count = left.parray->rgsabound[0].cElements;
+    const bool same = !count || std::memcmp(a, b, count) == 0;
+    ::SafeArrayUnaccessData(right.parray); ::SafeArrayUnaccessData(left.parray);
+    return same;
+}
 class ATL_NO_VTABLE PayloadBehavior : public CComObjectRootEx<CComSingleThreadModel>,
     public IElementBehavior, public IElementBehaviorFactory, public IDispatch {
 public:
@@ -15,7 +31,7 @@ public:
     unsigned long long key = 0;
     IUnknown* identity = nullptr; // identity only; no reference back to the DOM
     ~PayloadBehavior() {
-        if (auto owner = state.lock()) { owner->values.erase(key); owner->identities.erase(identity); }
+        if (auto owner = state.lock()) { owner->values.erase(key); owner->identities.erase(identity); owner->revisions.erase(key); }
     }
     STDMETHOD(Init)(IElementBehaviorSite*) { return S_OK; }
     STDMETHOD(Notify)(LONG, VARIANT*) { return S_OK; }
@@ -52,8 +68,12 @@ public:
                 auto value = std::make_shared<CComVariant>();
                 const HRESULT hr = ::VariantCopyInd(value.get(), &args->rgvarg[0]);
                 if (FAILED(hr)) return hr;
+                // BuildBinaryControls writes its already assigned bytes back
+                // through the facade. Keep the canonical Undo snapshot in that
+                // case; the materialized incoming copy is only transient.
+                if (SameByteArray(*found->second, *value)) return S_OK;
                 found->second = std::move(value);
-                ++owner->revision;
+                owner->revisions.at(key) = ++owner->revision;
                 return S_OK;
             } catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
         }
@@ -76,6 +96,7 @@ HRESULT AttachBehavior(const std::shared_ptr<BinaryPayloadStore::State>& state, 
         const auto key = ++state->next;
         state->values.emplace(key, std::make_shared<CComVariant>());
         raw->state = state; raw->key = key; raw->identity = identity;
+        state->revisions.emplace(key, state->revision);
         state->identities.emplace(identity, key);
         CComVariant argument(static_cast<IUnknown*>(factory));
         long cookie = 0;
@@ -128,7 +149,27 @@ HRESULT BinaryPayloadStore::Assign(IDispatch* element, const std::shared_ptr<con
     const auto token = m_state->identities.find(identity);
     if (token == m_state->identities.end()) return CO_E_OBJNOTCONNECTED;
     m_state->values.at(token->second) = value;
-    ++m_state->revision;
+    m_state->revisions.at(token->second) = ++m_state->revision;
     return S_OK;
+}
+bool BinaryPayloadStore::ChangedSince(IDispatch* element, unsigned long long revision) const {
+    CComPtr<IUnknown> identity;
+    if (!element || FAILED(element->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&identity)))) return true;
+    const auto token = m_state->identities.find(identity);
+    if (token == m_state->identities.end()) return true;
+    const auto changed = m_state->revisions.find(token->second);
+    return changed == m_state->revisions.end() || changed->second > revision;
+}
+void BinaryStore::RefreshPayloadMetadata() {
+    // A facade write changes bytes only. Preserve the ID catalog and metadata
+    // of all other entries; rebuilding it would decode every unchanged image.
+    for (auto& entry : m_entries) {
+        if (!payloads.ChangedSince(entry.second.element, m_payloadRevision)) continue;
+        auto& metadata = entry.second.metadata;
+        metadata.sizeKnown = metadata.dimensionsKnown = metadata.dimensionsAttempted = false;
+        metadata.width = metadata.height = 0;
+        metadata.generation = ++m_generation;
+    }
+    Reconciled();
 }
 }
