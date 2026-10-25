@@ -86,7 +86,11 @@ CString Doc::BinaryInfo(const CString& id)
 
 void Doc::BinaryStoreNotification(const CString& action, IDispatch* dispatch)
 {
-    if (action == L"reset") { m_binaryStore.payloads.Reset(); m_binaryStore.Clear(); m_binaryDuplicateIds = false; m_binaryStore.Reconciled(true); return; }
+    // LoadFromDOM can participate in the same document's native XML Undo.
+    // Its old nodes/leases must stay valid until history is discarded. Only
+    // document destruction releases the payload state; reset rebuilds the ID
+    // projection for the newly installed DOM.
+    if (action == L"reset") { m_binaryStore.Clear(); m_binaryDuplicateIds = false; m_binaryStore.Reconciled(true); return; }
     if (action == L"attach") {
         if (m_binaryStore.Dirty()) m_binaryStore.Invalidate();
         CheckError(m_binaryStore.payloads.Attach(dispatch)); return;

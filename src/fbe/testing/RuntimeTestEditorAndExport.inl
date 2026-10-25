@@ -803,26 +803,60 @@
 			CString manual; const bool manualCaptured = GetInternalXmlScriptSourceText(manual) && manual.Find(L"MANUAL") >= 0;
 			CString first(manual); first.Replace(L"XML_API_AFTER", L"XML_APPLY_ONE");
 			CString second(first); second.Replace(L"XML_APPLY_ONE", L"XML_APPLY_TWO");
+			first.Replace(L"AQID", L"BAUG"); second.Replace(L"AQID", L"BwgJ");
 			const bool applyOne=manualCaptured && ApplyInternalXmlScriptText(first,L"Apply 1").valid;
 			const bool applyTwo=applyOne && ApplyInternalXmlScriptText(second,L"Apply 2").valid;
 			historyChain = manualCaptured && applyOne && applyTwo;
 			historyDetails.AppendFormat("manual=%d\napply_one=%d\napply_two=%d\n",manualCaptured,applyOne,applyTwo);
-			auto transition = [&](WORD command, const wchar_t* text, bool manualExpected) {
+			auto transition = [&](WORD command, const wchar_t* text, bool manualExpected, const wchar_t* binaryText) {
 				m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, MAKEWPARAM(command,0),0);
 				CString current; if (!GetInternalXmlScriptSourceText(current)) return false;
-				const bool match=current.Find(text) >= 0 && (current.Find(L"MANUAL") >= 0) == manualExpected && current.Find(L"AQID") >= 0;
-				historyDetails.AppendFormat("transition_%u_%S=%d;manual=%d;binary=%d\n",command,text,match,current.Find(L"MANUAL")>=0,current.Find(L"AQID")>=0);
+				const bool match=current.Find(text) >= 0 && (current.Find(L"MANUAL") >= 0) == manualExpected && current.Find(binaryText) >= 0;
+				historyDetails.AppendFormat("transition_%u_%S=%d;manual=%d;binary=%d\n",command,text,match,current.Find(L"MANUAL")>=0,current.Find(binaryText)>=0);
 				return match;
 			};
-			historyChain = historyChain && transition(ID_EDIT_UNDO,L"XML_APPLY_ONE",true) && transition(ID_EDIT_UNDO,L"XML_API_AFTER",true) && transition(ID_EDIT_UNDO,L"XML_API_AFTER",false) && transition(ID_EDIT_REDO,L"XML_API_AFTER",true) && transition(ID_EDIT_REDO,L"XML_APPLY_ONE",true) && transition(ID_EDIT_REDO,L"XML_APPLY_TWO",true);
+			historyChain = historyChain && transition(ID_EDIT_UNDO,L"XML_APPLY_ONE",true,L"BAUG") && transition(ID_EDIT_UNDO,L"XML_API_AFTER",true,L"AQID") && transition(ID_EDIT_UNDO,L"XML_API_AFTER",false,L"AQID") && transition(ID_EDIT_REDO,L"XML_API_AFTER",true,L"AQID") && transition(ID_EDIT_REDO,L"XML_APPLY_ONE",true,L"BAUG") && transition(ID_EDIT_REDO,L"XML_APPLY_TWO",true,L"BwgJ");
 		} catch (const _com_error&) { historyChain = false; }
 		const bool bodyReady = m_doc->m_body.Document() != NULL;
 		const bool treeReady = !_Settings.ViewDocumentTree() || m_document_tree.m_tree.m_tree.GetCount() > 0;
-		const bool passed = read && valid.valid && !invalid.valid && noOpPreserved && prepared && changedInDocument && dirty && restored && undoRestoredDirtyState && redone && secondUndo && secondRedo && bodyReady && treeReady && historyChain;
+		bool payloadLifetime = false, detachedHistory = false;
+		try {
+			// Keep the COM markup context alive while releasing its retained
+			// element/history handles. FB::Doc itself must still release bytes.
+			MSHTML::IHTMLDocument2Ptr retainedDocument(m_doc->m_body.Document());
+			m_doc->ReconcileBinaryStore();
+			CComPtr<IDispatch> oldElement(m_doc->m_binaryStore.Element(L"runtime.bin"));
+			const std::weak_ptr<const CComVariant> oldPayload = m_doc->m_binaryStore.payloads.Snapshot(oldElement);
+			CComPtr<IOleUndoManager> oldManager; IServiceProviderPtr services(m_doc->m_body.Document());
+			CheckError(services->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&oldManager)));
+			CComPtr<IEnumOleUndoUnits> units; CheckError(oldManager->EnumUndoable(&units));
+			CComPtr<IOleUndoUnit> oldApply;
+			for (;;) {
+				CComPtr<IOleUndoUnit> unit; ULONG count = 0;
+				if (units->Next(1, &unit, &count) != S_OK || !count) break;
+				CComBSTR name; CheckError(unit->GetDescription(&name));
+				if (name && wcscmp(name, L"Apply 2") == 0) { oldApply = unit; break; }
+			}
+			if (!oldApply || oldPayload.expired()) CheckError(E_FAIL);
+			CString saved(m_doc->m_filename);
+			saved = saved.Left(saved.ReverseFind(L'\\') + 1) + L"xml-c3-lifetime.fb2";
+			if (!m_doc->Save(saved) || LoadFile(saved) != OK) CheckError(E_FAIL);
+			payloadLifetime = oldPayload.expired();
+			// Release the retained node while the old Undo manager still keeps
+			// its markup alive; releasing the manager first can detach MSHTML's
+			// internal markup even with an IHTMLDocument2 reference held.
+			oldElement.Release();
+			CString liveBefore, liveAfter;
+			const bool captured = GetInternalXmlScriptSourceText(liveBefore);
+			const HRESULT detached = oldApply->Do(oldManager);
+			detachedHistory = captured && detached == E_UNEXPECTED && GetInternalXmlScriptSourceText(liveAfter) && liveAfter == liveBefore;
+		} catch (const _com_error&) { }
+		const bool passed = read && valid.valid && !invalid.valid && noOpPreserved && prepared && changedInDocument && dirty && restored && undoRestoredDirtyState && redone && secondUndo && secondRedo && bodyReady && treeReady && historyChain && payloadLifetime && detachedHistory;
 		CStringA report;
 		report.Format("read=%d\nvalidate=%d\ninvalid_rejected=%d\nno_op=%d\napply=%d\ndirty=%d\nundo=%d\nundo_dirty_restored=%d\nredo=%d\nundo_second=%d\nredo_second=%d\nbody=%d\ntree=%d\nresult=%s\n",
 			read, valid.valid, !invalid.valid, noOpPreserved, changedInDocument, dirty, restored, undoRestoredDirtyState, redone, secondUndo, secondRedo, bodyReady, treeReady, passed ? "pass" : "fail");
 		report.AppendFormat("history_chain=%d\n",historyChain);
+		report.AppendFormat("payload_lifetime=%d\ndetached_history=%d\n",payloadLifetime,detachedHistory);
 		report+=historyDetails;
 		DWORD written = 0;
 		output.Write(report, static_cast<DWORD>(report.GetLength()), &written);

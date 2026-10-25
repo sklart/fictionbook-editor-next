@@ -33,7 +33,9 @@ Undo edit хранит слабые leases, поэтому даже удержа
 
 `GetBinaries`, обычный Save, Source и экспорт продолжают читать legacy facade.
 Материализация полного XML/base64 допускается на время этих операций. Source
-Apply загружает новое документное состояние; reset освобождает старое хранилище.
+Apply загружает новое документное состояние. Reload DOM внутри того же
+документа сохраняет leases для стандартного XML Undo; полное закрытие документа
+освобождает store независимо от удержания старой COM history.
 Сохранённый FB2 остаётся обычным FB2.
 
 Если старый скрипт самостоятельно создаёт DIV с expando, значение переносится
@@ -131,6 +133,22 @@ SHA-256 всех binary, MIME и references. Результаты сохране
 46/46 + 6/6 прошли. Исходный FAIL и бинарник сохранены локально под
 `out/perf/c3-lifetime-finding`. Старый ASan FAST прерван как superseded и не
 является финальной acceptance-проверкой.
+
+FAST также обнаружил регрессию XML scripting Undo: native history восстанавливает
+старые DOM nodes, а прежний reset C3 отсоединял их payload state. На C2 исходный
+XML backend runtime прошёл; на обычном C3 Release воспроизвёлся timeout после
+ошибки `GetBinaries`. Reload теперь перестраивает ID-проекцию без уничтожения
+document state. `XmlVisualState` удерживает weak leases вместо постоянных
+SAFEARRAY-копий и восстанавливает facade binding после native markup replay.
+Контрольный FAIL сохранён под `out/perf/c3-xml-undo-finding`.
+Расширенный runtime также удерживает старые HTMLDocument/DOM/Undo handles,
+проверяет освобождение canonical bytes при настоящем Reopen и отказ старой
+history менять новый документ. Его отчёт сохраняется по executable SHA под
+`out/tests/binary-store/xml-undo`. COM markup context удерживается до освобождения
+старых handles; DOM-узел освобождается до старого Undo manager. Ранняя версия
+probe с обратным порядком вызвала MSHTML AV при `Release` и была исправлена
+без удаления ownership assertions. Цепочка XML Apply также меняет payload
+A→B→C и сверяет bytes после каждого Undo/Redo.
 
 `manifest.json` фиксирует ревизии, executable/JS/dependency hashes, compiler,
 Release Win32, OS, машину и power profile. `raw.json` содержит отдельные отсчёты;

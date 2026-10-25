@@ -51,11 +51,11 @@ public:
 	~XmlRecordingScope() { Close(); }
 };
 
-// Native units retain MSHTML markup pointers. Supplement them with binary
-// SAFEARRAY expandos, which native innerHTML undo does not restore.
+// Native units retain markup pointers, but not the binary facade binding.
+// Payload bytes remain document-owned; XML history retains only weak leases.
 struct XmlVisualState
 {
-	struct Binary { CString id; CComVariant data; };
+	struct Binary { CString id; std::shared_ptr<FbeBinary::BinaryPayloadStore::RetainedPayload> data; };
 	std::vector<Binary> binaries;
 	FB::Doc::UndoSavepoints savepoints;
 	static CString BinaryId(MSHTML::IHTMLElementPtr element) {
@@ -72,11 +72,16 @@ struct XmlVisualState
 	}
 	void Capture(FB::Doc* document) {
 		savepoints = document->CaptureUndoSavepoints();
+		document->ReconcileBinaryStore();
 		const auto elements=BinaryElements(document);
 		for(long i=0;elements && i<elements->length;++i) {
 			MSHTML::IHTMLElementPtr element(elements->item(_variant_t(i),_variant_t()));
-			Binary binary; CComDispatchDriver driver(element);
-			if(SUCCEEDED(driver.GetPropertyByName(L"base64data",&binary.data)) && binary.data.vt!=VT_EMPTY) { binary.id=BinaryId(element); binaries.push_back(binary); }
+			const auto payload = document->m_binaryStore.payloads.Snapshot(element);
+			if(payload && payload->vt!=VT_EMPTY) {
+				Binary binary; binary.id=BinaryId(element);
+				binary.data=document->m_binaryStore.payloads.Retain(payload);
+				binaries.push_back(std::move(binary));
+			}
 		}
 	}
 	void Restore(FB::Doc* document) const {
@@ -84,8 +89,15 @@ struct XmlVisualState
 		for(long i=0;elements && i<elements->length;++i) {
 			MSHTML::IHTMLElementPtr element(elements->item(_variant_t(i),_variant_t()));
 			const CString id=BinaryId(element);
-			for(const auto& binary:binaries) if(binary.id==id) { CComDispatchDriver driver(element); CComVariant data(binary.data); CheckError(driver.PutPropertyByName(L"base64data",&data)); break; }
+			for(const auto& binary:binaries) if(binary.id==id) {
+				const auto payload = binary.data->Get();
+				if(!payload) CheckError(CO_E_OBJNOTCONNECTED);
+				CheckError(document->m_binaryStore.payloads.Attach(element));
+				CheckError(document->m_binaryStore.payloads.Assign(element,payload));
+				break;
+			}
 		}
+		document->m_binaryStore.Invalidate();
 		if (!document->m_body.Init()) CheckError(E_FAIL);
 		document->RestoreUndoSavepoints(savepoints);
 	}
@@ -107,6 +119,7 @@ public:
 		bool beforeWasDirty, const CString& operationName, const XmlVisualState& beforeState, const XmlVisualState& afterState)
 	{
 		m_backend = backend; m_before = before; m_after = after;
+		m_documentIdentity = backend && backend->m_document ? backend->m_document->ClipboardIdentity() : GUID_NULL;
 		m_beforeWasDirty = beforeWasDirty;
 		m_description = operationName.IsEmpty() ? L"Apply XML source" : operationName;
 		m_applyBefore = true;
@@ -115,7 +128,8 @@ public:
 
 	STDMETHOD(Do)(IOleUndoManager* manager)
 	{
-		if(m_backend == NULL || manager == NULL || m_open) return E_UNEXPECTED;
+		FB::Doc* owner = FB::Doc::BinaryOwner(m_documentIdentity);
+		if(owner == NULL || m_backend == NULL || manager == NULL || m_open || m_backend->m_document != owner) return E_UNEXPECTED;
 		try {
 			CComObject<XmlScriptUndoUnit>* raw=nullptr;
 			CheckError(CComObject<XmlScriptUndoUnit>::CreateInstance(&raw));
@@ -129,6 +143,7 @@ public:
 			CheckError(result); CheckError(closed);
 			{
 				XmlRecordingScope suppress(manager);
+				if(FB::Doc::BinaryOwner(m_documentIdentity) != owner || m_backend->m_document != owner) CheckError(E_UNEXPECTED);
 				(m_applyBefore ? m_beforeState : m_afterState).Restore(m_backend->m_document);
 				if (m_backend->m_synchronize) m_backend->m_synchronize(m_applyBefore ? m_before : m_after);
 			}
@@ -186,6 +201,7 @@ public:
 
 private:
 	XmlScriptBackend* m_backend = NULL;
+	GUID m_documentIdentity = GUID_NULL;
 	CString m_before, m_after, m_description;
 	bool m_beforeWasDirty = false;
 	bool m_applyBefore = true;
