@@ -55,6 +55,8 @@ function Run(){
         [IO.File]::WriteAllText((Join-Path $iso.Root $entry.Key),$cacheJs,[Text.UTF8Encoding]::new($false))
     }
     [IO.File]::WriteAllText((Join-Path $iso.Root 'legacy-error.js'),'function Run(){var b=document.all.binobj.getElementsByTagName("DIV")[2];b.all.type.value="application/x-legacy-error";throw new Error("intentional C2 regression exception");}',[Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $iso.Root 'c3-create-legacy.js'),'function Run(){var data=apiGetBinary("png"),div=document.createElement("DIV");BuildBinaryControls(div,"","c3-legacy","image/png",data);div.base64data=data;document.all.binobj.appendChild(div);}',[Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $iso.Root 'c3-remove-legacy.js'),'function Run(){var all=document.all.binobj.getElementsByTagName("DIV");for(var i=0;i<all.length;i++)if(all[i].all.id.value==="c3-legacy"){all[i].removeNode(true);return;}}',[Text.UTF8Encoding]::new($false))
     $report=Join-Path $iso.Root 'report.txt'
     $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='binary-store';$env:FBE_NEXT_SCRIPT_API_ROOT=$iso.Root
     $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY=Join-Path $iso.DataPath 'Settings';$env:FBE_NEXT_TRACE='1'

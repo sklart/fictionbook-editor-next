@@ -229,6 +229,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="binary\BinaryStore.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="binary\BinaryPayloadStore.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="AboutBox.cpp" />
     <ClCompile Include="ArchiveEntryPicker.cpp" />
     <ClCompile Include="UpdateVersion.cpp" />

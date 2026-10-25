@@ -42,6 +42,7 @@ void BinaryStore::Invalidate(bool legacy) {
 }
 void BinaryStore::Reconciled(bool rebuilt) {
     m_dirty = false;
+    m_payloadRevision = payloads.Revision();
     if (m_diagnostics) { ++m_counters.reconciliations; if (rebuilt) ++m_counters.rebuilds; }
 }
 void BinaryStore::SizeCalculation() { if (m_diagnostics) ++m_counters.sizeCalculations; }

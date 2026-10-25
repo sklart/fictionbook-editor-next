@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include "BinaryPayloadStore.h"
 
 namespace FbeBinary {
 struct BinaryMetadata {
@@ -15,7 +16,7 @@ struct BinaryMetadata {
     unsigned __int64 generation = 0;
 };
 
-// Document-owned, editor-apartment catalog. DOM identity is retained, bytes are not.
+// Document-owned, editor-apartment catalog and canonical payload owner.
 class BinaryStore {
 public:
     struct Counters {
@@ -24,6 +25,7 @@ public:
         std::uint64_t legacyInvalidations = 0;
     };
     explicit BinaryStore(bool diagnostics = false) : m_diagnostics(diagnostics) {}
+    BinaryPayloadStore payloads;
     void Clear();
     bool Contains(const CString& id) const;
     BinaryMetadata* Find(const CString& id);
@@ -35,7 +37,9 @@ public:
     bool Rename(const CString& oldId, const CString& newId);
     void Remove(const CString& id);
     void Invalidate(bool legacy = false);
-    bool Dirty() const { return m_dirty; }
+    bool Dirty() const { return m_dirty || m_payloadRevision != payloads.Revision(); }
+    bool CatalogDirty() const { return m_dirty; }
+    void AcceptPayloadRevision() { m_payloadRevision = payloads.Revision(); }
     void Reconciled(bool rebuilt = false);
     size_t Count() const { return m_entries.size(); }
     void SizeCalculation();
@@ -48,6 +52,7 @@ private:
     static std::wstring Key(const CString& id) { return std::wstring(id.GetString(), id.GetLength()); }
     std::unordered_map<std::wstring, Entry> m_entries;
     unsigned __int64 m_generation = 0;
+    unsigned long long m_payloadRevision = 0;
     bool m_dirty = true, m_diagnostics;
     mutable Counters m_counters;
 };

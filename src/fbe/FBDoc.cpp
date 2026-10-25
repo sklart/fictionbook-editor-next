@@ -659,6 +659,13 @@ void Doc::RunScript(LPCOLESTR filePath)
             // A reentrant command may replace the owning document.
             if (Doc* doc = Doc::BinaryOwner(identity)) {
                 --doc->m_binaryLegacyDepth; doc->m_binaryStore.Invalidate(true);
+                if (!doc->m_binaryLegacyDepth) {
+                    // A script may construct its own binary DIV/expando.
+                    // Transfer such values before returning to idle, including
+                    // the exception path, so they never remain DOM-owned.
+                    try { doc->ReconcileBinaryStore(); }
+                    catch (...) { doc->m_binaryStore.Invalidate(); }
+                }
             }
         }
     } binaryScope(*this);

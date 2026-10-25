@@ -1,4 +1,4 @@
-// Included by FBDoc.cpp. No separate byte ownership or save implementation.
+// Included by FBDoc.cpp. Serialization uses the legacy store-backed facade.
 namespace FB {
 Doc* Doc::BinaryOwner(const GUID& identity)
 {
@@ -20,6 +20,7 @@ void Doc::ReconcileBinaryStore()
     m_binaryDuplicateIds = false;
     try {
         for (const auto& object : objects) {
+            CheckError(m_binaryStore.payloads.AdoptLegacy(object.element));
             // Legacy DOM scripts can temporarily create duplicate IDs. The old
             // API selected the first DOM object; preserve that observable rule.
             if (m_binaryStore.Contains(object.id)) { m_binaryDuplicateIds = true; continue; }
@@ -85,7 +86,11 @@ CString Doc::BinaryInfo(const CString& id)
 
 void Doc::BinaryStoreNotification(const CString& action, IDispatch* dispatch)
 {
-    if (action == L"reset") { m_binaryStore.Clear(); m_binaryDuplicateIds = false; m_binaryStore.Reconciled(true); return; }
+    if (action == L"reset") { m_binaryStore.payloads.Reset(); m_binaryStore.Clear(); m_binaryDuplicateIds = false; m_binaryStore.Reconciled(true); return; }
+    if (action == L"attach") {
+        if (m_binaryStore.Dirty()) m_binaryStore.Invalidate();
+        CheckError(m_binaryStore.payloads.Attach(dispatch)); return;
+    }
     if (action == L"invalidate") { m_binaryStore.Invalidate(); return; }
     if (m_binaryLegacyDepth) { m_binaryStore.Invalidate(true); return; }
     if (m_binaryDuplicateIds) { m_binaryStore.Invalidate(); return; }
@@ -108,7 +113,7 @@ void Doc::BinaryStoreNotification(const CString& action, IDispatch* dispatch)
     if (action != L"register") { m_binaryStore.Invalidate(); return; }
     // Only committed apiAddBinary calls supply these already-computed controls.
     // Reconciliation never trusts UI controls for legacy-mutated data.
-    if (m_binaryStore.Dirty()) return;
+    if (m_binaryStore.CatalogDirty()) return;
     FbeBinary::BinaryMetadata metadata;
     metadata.id = id; metadata.contentType = mime; mime.MakeLower(); metadata.image = mime.Left(6) == L"image/";
     wchar_t* end = nullptr;
@@ -120,6 +125,7 @@ void Doc::BinaryStoreNotification(const CString& action, IDispatch* dispatch)
     }
     metadata.dimensionsAttempted = metadata.image;
     m_binaryStore.Register(metadata, element);
+    m_binaryStore.AcceptPayloadRevision();
 }
 
 void Doc::TraceBinaryStore() const

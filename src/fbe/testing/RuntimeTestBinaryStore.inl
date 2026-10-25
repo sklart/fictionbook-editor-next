@@ -12,6 +12,11 @@ __declspec(noinline) LRESULT CMainFrame::RunBinaryStoreRuntime(CAtlFile& output)
             const auto* metadata = m_doc->m_binaryStore.Find(object.id);
             FbeScripts::Binary::LoadedObject payload; FbeScripts::Binary::Load(object, payload);
             require(metadata && metadata->contentType == object.mime && metadata->byteSize == payload.size, "DOM/store metadata");
+            const auto canonical = m_doc->m_binaryStore.payloads.Snapshot(object.element);
+            require(canonical && canonical->vt == (VT_ARRAY | VT_UI1), "C3 canonical payload missing");
+            require(canonical->parray != payload.data.parray, "C3 legacy read leaked canonical mutable array");
+            FbeScripts::Binary::Bytes stored(canonical->parray), legacy(payload.data.parray);
+            require(!memcmp(stored.data, legacy.data, payload.size), "C3 canonical/legacy bytes differ");
         }
     };
     try {
@@ -20,6 +25,19 @@ __declspec(noinline) LRESULT CMainFrame::RunBinaryStoreRuntime(CAtlFile& output)
         require(m_doc->m_binaryStore.Find(L"png")->dimensionsKnown && m_doc->m_binaryStore.Find(L"png")->sizeKnown,
             "initial UI metadata not reused");
         compare(); require(m_doc->m_binaryStore.Count() == 100, "initial 100 entries");
+        {
+            _Settings.SetScriptsFolder(root);
+            FbeScriptDiagnostics::ScopedDialogSuppression suppress;
+            m_doc->RunScript(CString(root) + L"\\c3-create-legacy.js");
+            // Do not reconcile here: RunScript must adopt the raw expando
+            // before returning, even if no native binary API was called.
+            require(m_doc->m_binaryStore.Count() == 101, "C3 script-exit adoption catalog");
+            auto* created = m_doc->m_binaryStore.Element(L"c3-legacy");
+            require(created && !!m_doc->m_binaryStore.payloads.Snapshot(created), "C3 script-exit payload still DOM-owned");
+            compare();
+            m_doc->RunScript(CString(root) + L"\\c3-remove-legacy.js");
+            require(m_doc->m_binaryStore.Count() == 100, "C3 legacy deletion reconciliation");
+        }
         {
             IDispatch* node = m_doc->m_binaryStore.Element(L"payload2");
             require(FB::Doc::BinaryOwner(m_doc->ClipboardIdentity()) == m_doc, "private bridge document identity");
@@ -116,8 +134,12 @@ __declspec(noinline) LRESULT CMainFrame::RunBinaryStoreRuntime(CAtlFile& output)
         const CString saved = CString(root) + L"\\saved.fb2";
         require(m_doc->Save(saved), "save after legacy mutation");
         const GUID previousIdentity = m_doc->ClipboardIdentity();
+        CComPtr<IDispatch> retainedOldElement(m_doc->m_binaryStore.Element(L"png"));
+        const std::weak_ptr<const CComVariant> oldPayload = m_doc->m_binaryStore.payloads.Snapshot(retainedOldElement);
+        require(!oldPayload.expired(), "C3 lifetime probe missing payload");
         require(LoadFile(saved) == OK, "reopen after legacy mutation"); compare();
         require(FB::Doc::BinaryOwner(previousIdentity) == nullptr, "replaced document identity remains live");
+        require(oldPayload.expired(), "C3 closed document/Undo retained canonical bytes");
         require(m_doc->m_binaryStore.Count() == 100 && !m_doc->m_binaryStore.Contains(L"payload2"), "reopen lifecycle");
         require(m_doc->m_binaryStore.Find(L"legacy-renamed")->byteSize == 17, "reopen legacy bytes");
         m_doc->TraceBinaryStore();

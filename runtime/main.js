@@ -450,6 +450,9 @@ function apiAddBinary(fullpath, id, type, data)
 			}
 	}
 
+	// Install the native legacy property before its first assignment. The DOM
+	// behavior retains only a weak document handle, never the payload itself.
+	window.external._BinaryStoreChanged("attach", div);
 	div.base64data = data;
 
 	document.all.binobj.appendChild(div);

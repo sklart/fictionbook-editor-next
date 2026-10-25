@@ -13,13 +13,20 @@ try {
     if($LASTEXITCODE){throw "BinaryStore unit build failed: $LASTEXITCODE"}
     & ./binary-store-test.exe
     if($LASTEXITCODE){throw "BinaryStore unit failed: $LASTEXITCODE"}
+    & cl.exe /nologo /EHsc /std:c++17 /MT /W4 /WX /DUNICODE /D_UNICODE /utf-8 "/I$root/src/fbe" `
+        (Join-Path $PSScriptRoot 'binary-payload-store-test.cpp') (Join-Path $root 'src/fbe/binary/BinaryPayloadStore.cpp') `
+        (Join-Path $root 'src/fbe/binary/BinaryStore.cpp') `
+        /link ole32.lib oleaut32.lib uuid.lib /SUBSYSTEM:CONSOLE /OUT:binary-payload-store-test.exe
+    if($LASTEXITCODE){throw "C3 payload unit build failed: $LASTEXITCODE"}
+    & ./binary-payload-store-test.exe
+    if($LASTEXITCODE){throw "C3 payload unit failed: $LASTEXITCODE"}
 } finally { Pop-Location }
 $header=Get-Content (Join-Path $root 'src/fbe/binary/BinaryStore.h') -Raw
-if($header -notmatch 'std::unordered_map' -or $header -match 'SAFEARRAY|vector<.*BYTE') {throw 'Metadata-only hash catalog contract'}
+if($header -notmatch 'std::unordered_map' -or $header -notmatch 'BinaryPayloadStore payloads') {throw 'Document-owned hash catalog and payload contract'}
 $idl=Join-Path $root 'src/contracts/fbe.idl'
 if((Get-Content $idl -Raw) -match 'BinaryStore'){throw 'Private store leaked into public IDL'}
 $implementation=Get-Content (Join-Path $root 'src/fbe/binary/BinaryStore.cpp') -Raw
-if($implementation -match 'SAFEARRAY|VariantCopy|vector\s*<\s*(BYTE|unsigned char)|CComVariant|_variant_t') {throw 'Catalog retains or copies binary payloads'}
+if($implementation -match 'SAFEARRAY|VariantCopy|vector\s*<\s*(BYTE|unsigned char)|CComVariant|_variant_t') {throw 'Metadata index duplicates canonical payloads'}
 $helper=Get-Content (Join-Path $root 'src/fbe/ExternalHelper.cpp') -Raw
 $publicMethods=[regex]::Match($helper,'(?s)ScriptingMethods\[\]\s*=\s*\{(.*?)\};').Groups[1].Value
 if(-not $publicMethods -or $publicMethods -match 'BinaryStore'){throw 'Private store leaked into public scripting method catalog'}

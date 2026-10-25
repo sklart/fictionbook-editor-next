@@ -133,6 +133,7 @@ struct Edit {
     FB::Doc* owner;
     MSHTML::IHTMLDocument2Ptr document;
     LoadedObject before, after;
+    std::shared_ptr<FbeBinary::BinaryPayloadStore::RetainedPayload> beforePayload, afterPayload;
     bool existed, remains;
     std::unique_ptr<Position> binary;
     References references;
@@ -170,25 +171,31 @@ struct Edit {
         CComDispatchDriver script(document->Script);
         const bool attach = undo ? existed : remains;
         LoadedObject& target = undo ? before : after;
+        const auto lease = undo ? beforePayload : afterPayload;
+        const auto payload = lease ? lease->Get() : nullptr;
+        if (attach && !payload) CheckError(CO_E_OBJNOTCONNECTED);
+        unsigned long long payloadRevision = owner->m_binaryStore.payloads.Revision();
         if (!binary && attach) {
             FbeImage::ImageInsertionResult result;
-            Bytes bytes(after.data.parray);
+            Bytes bytes(payload->parray);
             CheckError(FbeImage::AddImportedBinary(document->Script, bytes.data, after.size, after.id, after.mime, &result));
             // Retain the actual node before any further allocation can fail.
             after.element = result.createdBinary;
             binary = std::make_unique<Position>(MSHTML::IHTMLDOMNodePtr(after.element));
+            CheckError(owner->m_binaryStore.payloads.Assign(after.element, payload));
+            payloadRevision = owner->m_binaryStore.payloads.Revision();
             if (result.binaryId.vt != VT_BSTR || after.id != result.binaryId.bstrVal) CheckError(E_UNEXPECTED);
         }
         if (binary) {
             if (attach) {
                 binary->Attach();
                 if (existed && remains) {
-                    CComDispatchDriver element(binary->node);
-                    CheckError(element.PutPropertyByName(L"base64data", &target.data));
+                    CheckError(owner->m_binaryStore.payloads.Assign(IDispatchPtr(binary->node), payload));
+                    payloadRevision = owner->m_binaryStore.payloads.Revision();
                     CComVariant values[4] = {CComVariant(target.mime), CComVariant(target.id), CComVariant(L""), CComVariant(binary->node)};
                     // Borrow only for the synchronous Invoke; the edit retains
                     // ownership of the byte array throughout Undo/Redo.
-                    VARIANT args[5] = {target.data, values[0], values[1], values[2], values[3]};
+                    VARIANT args[5] = {*payload, values[0], values[1], values[2], values[3]};
                     CheckError(script.InvokeN(L"BuildBinaryControls", args, 5));
                 }
             } else binary->Detach();
@@ -202,6 +209,10 @@ struct Edit {
             metadata.width = target.width; metadata.height = target.height;
             metadata.dimensionsKnown = target.dimensionsKnown; metadata.dimensionsAttempted = target.dimensionsAttempted;
             owner->m_binaryStore.Register(metadata, binary ? IDispatchPtr(binary->node).GetInterfacePtr() : target.element.GetInterfacePtr());
+            // Validated metadata describes this exact assigned snapshot. Keep
+            // unrelated cached entries if no script callback wrote more data.
+            if (owner->m_binaryStore.payloads.Revision() == payloadRevision)
+                owner->m_binaryStore.AcceptPayloadRevision();
         } else owner->m_binaryStore.Remove(existed ? before.id : after.id);
         if (owner->m_binaryDuplicateIds) owner->m_binaryStore.Invalidate();
         if (!remains) {
@@ -286,6 +297,17 @@ inline void Mutate(FB::Doc* document, DISPID method, const std::vector<CComVaria
         result.bstrVal = edit->after.id.AllocSysString();
         if (!result.bstrVal) CheckError(E_OUTOFMEMORY);
     } else result = true;
+    if (edit->existed) {
+        const auto payload = document->m_binaryStore.payloads.Snapshot(edit->before.element);
+        if (!payload) CheckError(E_UNEXPECTED);
+        edit->beforePayload = document->m_binaryStore.payloads.Retain(payload);
+        CheckError(edit->before.data.Clear());
+    }
+    if (edit->remains) {
+        auto payload = std::make_shared<CComVariant>();
+        CheckError(payload->Attach(&edit->after.data));
+        edit->afterPayload = document->m_binaryStore.payloads.Retain(payload);
+    }
     CheckError(FbeImage::CommitBinaryEdit(edit->document->Script, manager, [edit](bool undo) { edit->Apply(undo); }));
     document->ReconcileBinaryStore();
 }
