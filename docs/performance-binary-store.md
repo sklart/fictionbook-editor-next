@@ -332,3 +332,70 @@ and mirrored to `out/tests/binary-store/acceptance-summary.json`. Earlier snapsh
 are preserved as historical reports. Failed disposable runtimes created by this
 continuation were archived and removed (twelve owned `fr-*` directories); the
 explicitly retained verifier probe artifacts remain available.
+## C2 automatic closure: current-revision OLE and FullValidation (2026-10-25)
+
+This entry supersedes the earlier automatic-gate status without rewriting the
+historical attempts above. The user authorized moving from the original C2
+commit `9597db31d5058c6568a2c59edb4cc408f77a0463` to the minimal infrastructure
+correction `3e44dc5f621819c5a4d50009ad367e24c8ac4fea`.
+
+```yaml
+FullValidation: PASS
+OLE receipt: current revision
+commit tested: 3e44dc5f621819c5a4d50009ad367e24c8ac4fea
+manual GUI smoke: PENDING
+```
+
+[GitHub-hosted Build 40178218204](https://github.com/sklart/fictionbook-editor-next/actions/runs/40178218204)
+completed successfully, including the real OLE Clipboard test under a disposable
+user logon. Its original `required-ci-runtime-3e44dc5f621819c5a4d50009ad367e24c8ac4fea`
+artifact was downloaded without editing the receipt. The production
+`Assert-CiOleRuntimeEvidence.ps1` authenticated the run, exact commit, command
+hash, repository and successful workflow status. Receipt SHA-256:
+`9AC39BA987EC942FB96DDF92DEAD1DA09468F1C25B9C203ABC4A4EDDD7295F5A`.
+The CI executable SHA-256 is
+`E94B7B1EAE3353E05B1AB558601CB6A4C77688891F5FB25712CA1A4FDD1111C7`;
+this is external CI evidence, separate from the local Release executable below.
+
+The exact local command was run without Skip parameters or relaxed checks:
+
+```powershell
+pwsh ./tools/build/verify-release.ps1 -Configuration Release -FullValidation
+```
+
+The completed attempt exited 0 and printed the successful release verification
+message for version 3.0.10. `out/tests/required-ci-runtime.json` reports all four
+mandatory suites PASS and `complete: true`; OLE execution is explicitly external
+CI, not local. Local Release FBE.exe remained SHA-256
+`23877BC1DFCF167EF104F4A9B6093FDD4F379F17E967CB81F0B739D63DDBC56B`.
+The full log is `out/tests/binary-store/closure-3e44dc5f/full-validation.log`,
+SHA-256 `24625F22B75F5A87EA76C7D67128EA8618AE85EAD22BFA8EDCC85B86134CDAF0`.
+
+Two infrastructure issues were classified and resolved without product changes:
+
+- The first Build for `9597db31...` failed before OLE because the SettingsTooltips
+  source contract still required NULL bounds after the earlier UBSan correction
+  introduced an initialized RECT. Commit `3e44dc5f...` updates only that test to
+  require the initialized RECT and its use. The affected contract passed; three
+  negative controls rejected uninitialized bounds, NULL bounds and a missing
+  tooltip style. No C2 or sanitizer suites were rerun separately for this fix.
+- The first local FULL attempt failed at Runtime provenance because shared
+  generated `out/editor-runtime` DLLs differed from the recorded Release hashes.
+  The displaced DLLs were preserved under `closure-3e44dc5f/displaced-editor-runtime`.
+  Exact Scintilla/Lexilla copies from the already verified `out/Release`, each
+  matching the existing provenance, restored the generated profile. Neither
+  manifest nor tracked dependency DLLs were changed. The complete original FULL
+  command was then rerun from the beginning and passed.
+
+No additional C2 product defects were found. The native/ABI, cache/runtime and
+46/46 legacy compatibility plus 6/6 bundled-script checks ran as mandatory parts
+of FullValidation, not as extra standalone evidence runs. ASan/UBSan were not
+rerun for infrastructure-only changes. Existing diagnostic-only direct-MSHTML
+and OLE-parent Split probes retained their documented FAIL observations;
+production SplitContainer Undo/Redo passed 16/16. Those diagnostic observations
+were not reclassified or hidden to obtain FULL PASS.
+
+The two automatic closure criteria are now PASS on the tested revision. The
+separate eleven-step real-book manual GUI checklist above remains pending.
+This documentation-only follow-up does not change product or test sources and
+does not claim an OLE receipt for its own subsequent documentation commit.
