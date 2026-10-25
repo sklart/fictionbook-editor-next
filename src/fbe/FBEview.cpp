@@ -802,6 +802,11 @@ BOOL CFBEView::PreTranslateMessage(MSG* pMsg)
 
 // editing commands
 LRESULT CFBEView::ExecCommand(int cmd) {
+  // Native and MSHTML-owned history may both change binary nodes/expandos.
+  struct BinaryHistoryInvalidation {
+    FB::Doc* doc;
+    ~BinaryHistoryInvalidation() { if (doc) doc->m_binaryStore.Invalidate(); }
+  } binaryHistory{(cmd == IDM_UNDO || cmd == IDM_REDO) ? m_ownerDocument : nullptr};
   IOleCommandTargetPtr	  ct(m_browser);
   if (!ct) return E_NOINTERFACE;
   if ((cmd != IDM_UNDO && cmd != IDM_REDO) || !m_ownerDocument)

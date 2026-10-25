@@ -13,6 +13,7 @@
 #include "document\\DocumentEditorHost.h"
 #include "FictionBookFileType.h"
 #include <vector>
+#include "binary/BinaryStore.h"
 
 namespace FB // put all FB2 related stuff into its own namespace
 {
@@ -20,6 +21,15 @@ namespace FB // put all FB2 related stuff into its own namespace
 class Doc
 {
 public:
+  FbeBinary::BinaryStore m_binaryStore;
+  void ReconcileBinaryStore();
+  CString BinaryInfo(const CString& id);
+  CString UniqueBinaryId(const CString& preferred);
+  void BinaryStoreNotification(const CString& action, IDispatch* element);
+  void TraceBinaryStore() const;
+  static Doc* BinaryOwner(const GUID& identity);
+  unsigned m_binaryLegacyDepth = 0;
+  bool m_binaryDuplicateIds = false;
   // document encoding
   CString		m_encoding;
 

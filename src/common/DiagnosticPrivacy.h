@@ -50,6 +50,7 @@ inline std::wstring Details(const wchar_t* text)
     // Preserve constant lifecycle labels used by existing log consumers.
     if(Allowed(L"|process started|process shutdown|FictionBook Editor diagnostic trace started|",input)) return input;
     const std::wstring keys = L"|hr|win32|error|result|number|line|column|count|duration|duration-ms|elapsed|elapsed-ms|bytes|size|PID|TID|present|loaded|elevated|process-arch|native-arch|acp|oemcp|system-lcid|ui-language|source-present|description-present|message-present|file-present|file-name-length|excep.source-length|excep.description-length|errorInfo.source-length|errorInfo.description-length|excep.wCode|excep.scode|excep.helpContext|";
+    const std::wstring binaryKeys = L"|binary_store_entries|binary_store_rebuilds|binary_store_reconciliations|binary_lookup_count|binary_lookup_misses|binary_size_calculations|binary_size_cache_hits|binary_dimensions_calculations|binary_dimensions_cache_hits|binary_legacy_invalidations|";
     size_t begin = 0;
     while (begin < input.size()) {
         const size_t end = input.find(L';', begin);
@@ -57,7 +58,7 @@ inline std::wstring Details(const wchar_t* text)
         const size_t equals = field.find(L'=');
         if (equals != std::wstring::npos) {
             const std::wstring key = Trim(field.substr(0, equals)), value = Trim(field.substr(equals + 1));
-            bool safe=keys.find(L"|"+key+L"|")!=std::wstring::npos && Number(value);
+            bool safe=(keys.find(L"|"+key+L"|")!=std::wstring::npos || binaryKeys.find(L"|"+key+L"|")!=std::wstring::npos) && Number(value);
             if(key==L"module") safe=Allowed(L"|FBE.exe|mshtml.dll|ieframe.dll|urlmon.dll|wininet.dll|jscript.dll|jscript9.dll|msxml6.dll|oleaut32.dll|Scintilla.dll|Lexilla.dll|",value);
             else if(key==L"fbe" || key==L"windows" || key==L"service-pack" || key==L"file-version") safe=Version(value) || value==L"not-loaded" || value==L"unavailable";
             else if(key==L"build-configuration") safe=Allowed(L"|Release|Debug|",value);

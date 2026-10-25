@@ -44,6 +44,8 @@ DISPID ScriptingMethodId(LPCWSTR name)
   if (ScriptingMethods[index] && _wcsicmp(name, ScriptingMethods[index]) == 0) return 100 + static_cast<DISPID>(index);
  if (_wcsicmp(name, L"_EnterScriptContext") == 0) return 1000;
  if (_wcsicmp(name, L"_LeaveScriptContext") == 0) return 1001;
+ if (_wcsicmp(name, L"_BinaryStoreChanged") == 0) return 1002;
+ if (_wcsicmp(name, L"_BinaryStoreUniqueId") == 0) return 1003;
  return DISPID_UNKNOWN;
 }
 }
@@ -262,7 +264,7 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 		return DISP_E_UNKNOWNINTERFACE;
 	if (argumentError)
 		*argumentError = UINT_MAX;
-	if ((dispid >= 100 && dispid < 100 + static_cast<DISPID>(_countof(ScriptingMethods))) || dispid == 1000 || dispid == 1001) {
+	if ((dispid >= 100 && dispid < 100 + static_cast<DISPID>(_countof(ScriptingMethods))) || (dispid >= 1000 && dispid <= 1003)) {
 		HRESULT result;
 		try { result = InvokeScriptingExtension(dispid, flags, parameters, resultValue, argumentError); }
 		catch (const _com_error& error) { result = error.Error(); }

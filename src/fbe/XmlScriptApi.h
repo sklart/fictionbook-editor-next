@@ -30,6 +30,7 @@ struct XmlScriptApiRequest
 	CString scriptPath, scriptUid, viewMode;
 	bool documentModified = false;
 	DISPID scriptingMethod = 0;
+    GUID binaryDocumentIdentity = GUID_NULL;
 	std::vector<CComVariant> arguments;
 	CComVariant returnValue;
 	HRESULT error = S_OK;

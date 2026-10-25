@@ -14,10 +14,13 @@ struct Object {
 struct LoadedObject : Object {
     CComVariant data;
     ULONG size = 0;
+    int width = 0, height = 0;
+    bool dimensionsKnown = false, dimensionsAttempted = false;
     LoadedObject() = default;
     LoadedObject(const LoadedObject&) = delete;
     LoadedObject& operator=(const LoadedObject&) = delete;
-    LoadedObject(LoadedObject&& other) : Object(std::move(other)), size(other.size) {
+    LoadedObject(LoadedObject&& other) : Object(std::move(other)), size(other.size), width(other.width), height(other.height),
+        dimensionsKnown(other.dimensionsKnown), dimensionsAttempted(other.dimensionsAttempted) {
         CheckError(data.Attach(&other.data));
     }
 };
@@ -67,16 +70,6 @@ inline void Load(const Object& object, LoadedObject& result)
     if (size < 0 || size > ULONG_MAX) CheckError(E_UNEXPECTED);
     result.size = static_cast<ULONG>(size);
 }
-inline CString UniqueId(const std::vector<Object>& objects, const CString& preferred)
-{
-    const CString base = FbeBinary::NormalizeXmlId(preferred);
-    CString result = base;
-    for (unsigned suffix = 0; ; ++suffix) {
-        if (std::none_of(objects.begin(), objects.end(), [&](const auto& object) { return object.id == result; })) return result;
-        if (suffix == UINT_MAX) CheckError(E_OUTOFMEMORY);
-        result.Format(L"%s_%u", static_cast<LPCWSTR>(base), suffix);
-    }
-}
 class Bytes {
     SAFEARRAY* m_array;
 public:
@@ -86,24 +79,6 @@ public:
     Bytes(const Bytes&) = delete;
     Bytes& operator=(const Bytes&) = delete;
 };
-inline CString Info(const LoadedObject& object)
-{
-    CString dimensions = L"\"width\":null,\"height\":null";
-    CString mime = object.mime; mime.MakeLower();
-    if (mime.Left(6) == L"image/" && object.size) {
-        CComPtr<IStream> stream; CheckError(::CreateStreamOnHGlobal(NULL, TRUE, &stream));
-        Bytes bytes(object.data.parray); ULONG written = 0;
-        CheckError(stream->Write(bytes.data, object.size, &written));
-        if (written != object.size) CheckError(STG_E_WRITEFAULT);
-        LARGE_INTEGER start = {}; CheckError(stream->Seek(start, STREAM_SEEK_SET, NULL));
-        CImage image;
-        if (SUCCEEDED(image.Load(stream))) dimensions.Format(L"\"width\":%d,\"height\":%d", image.GetWidth(), image.GetHeight());
-    }
-    CString json;
-    json.Format(L"{\"schemaVersion\":1,\"id\":\"%s\",\"mimeType\":\"%s\",\"size\":%lu,%s,\"referenceCount\":null}",
-        static_cast<LPCWSTR>(JsonEscape(object.id)), static_cast<LPCWSTR>(JsonEscape(object.mime)), object.size, static_cast<LPCWSTR>(dimensions));
-    return json;
-}
 inline CString ExportName(const CString& id, unsigned suffix)
 {
     CString name;
@@ -174,14 +149,13 @@ inline CString Export(const std::vector<Object>& objects, CString directory, con
     CString json; json.Format(L"{\"schemaVersion\":1,\"status\":\"%s\",\"saved\":%u,\"skipped\":%u,\"errors\":%u,\"objects\":[%s]}", errors ? L"error" : L"ok", saved, skipped, errors, static_cast<LPCWSTR>(rows));
     return json;
 }
-inline CComVariant Read(MSHTML::IHTMLDocument2Ptr document, DISPID method, const std::vector<CComVariant>& args)
+inline CComVariant Read(FB::Doc* owner, DISPID method, const std::vector<CComVariant>& args)
 {
-    const auto objects = Objects(document);
-    if (method == 148) return CComVariant(UniqueId(objects, args[0].bstrVal));
+    if (method == 148) return CComVariant(owner->UniqueBinaryId(args[0].bstrVal));
+    if (method == 147) return CComVariant(owner->BinaryInfo(args[0].bstrVal));
+    owner->ReconcileBinaryStore();
+    const auto objects = Objects(owner->m_body.Document());
     if (method == 152) return CComVariant(Export(objects, args[0].bstrVal, args.size() == 2 ? CString(args[1].bstrVal) : CString(L"skip")));
-    for (const auto& object : objects) if (object.id == args[0].bstrVal) {
-        LoadedObject payload; Load(object, payload); return CComVariant(Info(payload));
-    }
-    CheckError(HRESULT_FROM_WIN32(ERROR_NOT_FOUND)); return CComVariant();
+    CheckError(E_INVALIDARG); return CComVariant();
 }
 } }

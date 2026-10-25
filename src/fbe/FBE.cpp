@@ -482,6 +482,7 @@ IDispatchPtr  CFBEView::CreateHelper()
 	{
 		obj->SetDocumentFilePathSource(m_document_filename, m_document_namevalid);
 		obj->SetXmlScriptHost(m_frame);
+        if (m_ownerDocument) obj->SetBinaryDocumentIdentity(m_ownerDocument->ClipboardIdentity());
 	}
 	return obj;
 }

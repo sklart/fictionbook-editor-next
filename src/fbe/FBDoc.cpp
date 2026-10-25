@@ -21,6 +21,8 @@
 #include "settings\\EditorBackgrounds.h"
 #include "ElementDescMnr.h"
 #include "StartupTrace.h"
+#include "scripts/ScriptBinaryDocument.h"
+#include "binary/BinaryDocumentStore.inl"
 #include "BackupFileCommit.h"
 #include <new>
 #include <vector>
@@ -252,6 +254,7 @@ Doc   *Doc::LocateDocument(const wchar_t *id) {
 
 // initialize a new Doc
 Doc::Doc(HWND hWndFrame) :
+     m_binaryStore(StartupTrace::Enabled()),
      m_filename(_T("Untitled.fb2")), m_namevalid(false), m_file_type(FictionBookFileType::Fb2),
 //	     m_desc(hWndFrame,false),
 		 m_body(hWndFrame, true), m_editor(m_body),
@@ -273,6 +276,8 @@ Doc::Doc(HWND hWndFrame) :
 
 // destroy a Doc
 Doc::~Doc() {
+  TraceBinaryStore();
+  m_binaryStore.Clear();
   // destroy windows explicitly
 //  if (m_desc.IsWindow())
 //    m_desc.DestroyWindow();
@@ -319,6 +324,14 @@ void Doc::RestoreCleanIfBodyMatches() {
 
 bool  Doc::GetBinary(const wchar_t *id,_variant_t& vt) {
   if (id && *id==L'#') {
+      try {
+          ReconcileBinaryStore();
+          IDispatch* element = m_binaryStore.Element(id + 1);
+          if (element) {
+              CComDispatchDriver binary(element);
+              if (SUCCEEDED(binary.GetPropertyByName(L"base64data", &vt))) return true;
+          }
+      } catch (const _com_error&) { } catch (const std::bad_alloc&) { }
 	  CComDispatchDriver	    body(m_editor.Script());
     _variant_t	  vid(id+1);
     body.Invoke1(L"apiGetBinary",&vid,&vt);
@@ -637,6 +650,18 @@ void Doc::ShowDescription(bool Show)
 
 void Doc::RunScript(LPCOLESTR filePath)
 {
+    struct LegacyBinaryScope {
+        GUID identity;
+        explicit LegacyBinaryScope(Doc& doc) : identity(doc.ClipboardIdentity()) {
+            ++doc.m_binaryLegacyDepth; doc.m_binaryStore.Invalidate(true);
+        }
+        ~LegacyBinaryScope() {
+            // A reentrant command may replace the owning document.
+            if (Doc* doc = Doc::BinaryOwner(identity)) {
+                --doc->m_binaryLegacyDepth; doc->m_binaryStore.Invalidate(true);
+            }
+        }
+    } binaryScope(*this);
 	FbeScripts::ScriptExecutionScope executionContext(filePath);
 	StartupTrace::ScopedOperation operation(StartupTrace::Operation::Script);
 	TraceDocumentEvent(L"D300", L"script execution started", CString(filePath));
@@ -708,6 +733,7 @@ VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath)
 
 bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSource)
 {
+    m_binaryStore.Clear();
 	TraceDocumentEvent(L"D110", L"book load started", filename);
 	HRESULT	hr;
 	StartupTrace::AppendTestStartupBreadcrumb("mshtml-create-start");
@@ -2035,6 +2061,9 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 
   // fetch binaries
   markTableSerializationPhase(L"get-binaries-start");
+  // Bytes remain authoritative in MSHTML. A metadata reconciliation failure
+  // must not prevent the established production serialization fallback.
+  try { ReconcileBinaryStore(); } catch (...) { m_binaryStore.Invalidate(); }
   CheckError(body.Invoke1(L"GetBinaries",&args[2]));
   markTableSerializationPhase(L"get-binaries-complete");
 

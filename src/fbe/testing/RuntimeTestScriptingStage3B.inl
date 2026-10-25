@@ -71,8 +71,11 @@ if (IsFbeTestScenario(L"scripting-stage3b"))
                 }
             };
             const size_t count = FbeScripts::Binary::Objects(m_doc->m_body.Document()).size();
-            probe(L"probeIdBinary", 0); probe(L"probeInfoBinary", 1, L"png"); probe(L"probeMissingBinary", 0);
+            probe(L"probeIdBinary", 0); probe(L"probeInfoBinary", 0); probe(L"probeMissingBinary", 0);
             for (const auto name : {L"probeAddBinary", L"probeReplaceBinary", L"probeRemoveBinary"}) {
+                // Undo may conservatively invalidate the catalog. Warm the UI
+                // image metadata separately from the API payload-read assertion.
+                m_doc->BinaryInfo(L"png"); m_doc->BinaryInfo(L"jpeg");
                 probe(name, name == CString(L"probeAddBinary") ? 0U : 1U,
                     name == CString(L"probeRemoveBinary") ? L"CON" : L"png");
                 CheckError(static_cast<HRESULT>(m_doc->m_body.ExecCommand(IDM_UNDO)));
@@ -89,11 +92,14 @@ if (IsFbeTestScenario(L"scripting-stage3b"))
             CComDispatchDriver element(png->element);
             auto corrupt = [&](CComVariant& value) {
                 CheckError(element.PutPropertyByName(L"base64data", &value));
+                // This native corruption seam bypasses RunScript by design.
+                m_doc->m_binaryStore.Invalidate(true);
                 try {
                     probe(L"probeIdBinary", 0); probe(L"probeBrokenBinary", 1, L"png");
                     probe(L"probeSkipBinary", 0); probe(L"probeFailBinary", 0); probe(L"probePartialBinary", count);
                 } catch (...) { element.PutPropertyByName(L"base64data", &original.data); throw; }
                 CheckError(element.PutPropertyByName(L"base64data", &original.data));
+                m_doc->m_binaryStore.Invalidate(true);
             };
             CComVariant notArray(42L); corrupt(notArray);
             CComVariant matrix; matrix.vt = VT_ARRAY | VT_UI1;

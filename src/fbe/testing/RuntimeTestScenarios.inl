@@ -20,7 +20,21 @@ static PluginOptionsProbe::Palette EditorPluginProbePalette(HWND window) {
 
 #include "RuntimeTestIssue64.inl"
 
-LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
+#include "RuntimeTestBinaryStore.inl"
+#include "RuntimeTestBinaryScriptingCompatibility.inl"
+
+// Keep new script/COM probes outside the large legacy scenario stack frame.
+LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT message, WPARAM wparam, LPARAM lparam, BOOL& handled)
+{
+    if (RuntimeTests::IsScenario(L"binary-store") || RuntimeTests::IsScenario(L"binary-scripting-compatibility")) {
+        CAtlFile output;
+        if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS))) return 0;
+        return RuntimeTests::IsScenario(L"binary-store") ? RunBinaryStoreRuntime(output) : RunBinaryScriptingCompatibilityRuntime(output);
+    }
+    return RunLegacyRuntimeScenarios(message, wparam, lparam, handled);
+}
+
+__declspec(noinline) LRESULT CMainFrame::RunLegacyRuntimeScenarios(UINT, WPARAM, LPARAM, BOOL&)
 {
     PluginOptionsProbe::paletteForWindow = EditorPluginProbePalette;
 #include "RuntimeTestArchiveAndLifecycle.inl"

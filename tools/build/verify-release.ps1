@@ -449,6 +449,9 @@ if (-not $SkipEarlyRuntimeSuites) {
 
 if ($FullValidation) {
     Write-Host 'Running FULL GUI, production, stress and benchmark validation.'
+    & (Join-Path $repoRoot 'tools\tests\test-fbe-binary-store-contract.ps1')
+    & (Join-Path $repoRoot 'tools\tests\test-fbe-binary-store-runtime.ps1') -FbeExe (Join-Path $outputDir 'FBE.exe')
+    & (Join-Path $repoRoot 'tools\tests\test-binary-store-scripting-compatibility.ps1') -FbeExe (Join-Path $outputDir 'FBE.exe')
     if (-not $SkipEarlyRuntimeSuites) {
         $requiredCiRuntimeReport = Join-Path $outputDir '../tests/required-ci-runtime.json'
         & (Join-Path $repoRoot 'tools/tests/invoke-required-ci-runtime-suites.ps1') -FbeExe (Join-Path $outputDir 'FBE.exe') -ReportPath $requiredCiRuntimeReport

@@ -52,6 +52,7 @@ class ExternalHelper :
   const CString* m_document_filename;
   const bool* m_document_namevalid;
   HWND m_xmlScriptHost;
+  GUID m_binaryDocumentIdentity = GUID_NULL;
   XmlScriptApiRequest m_lastSourceDiagnostic;
   static __declspec(thread) bool s_traceScriptActive;
   static CComAutoCriticalSection s_embeddedTypeInfoLock;
@@ -79,6 +80,7 @@ public:
     m_document_namevalid = namevalid;
   }
   void SetXmlScriptHost(HWND host) { m_xmlScriptHost = host; }
+  void SetBinaryDocumentIdentity(const GUID& identity) { m_binaryDocumentIdentity = identity; }
   STDMETHOD(GetTypeInfoCount)(UINT* typeInfoCount);
   STDMETHOD(GetTypeInfo)(UINT typeInfo, LCID lcid, ITypeInfo** resultTypeInfo);
   STDMETHOD(GetIDsOfNames)(REFIID riid, LPOLESTR* names, UINT nameCount, LCID lcid, DISPID* dispids);

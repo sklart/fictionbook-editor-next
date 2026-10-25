@@ -710,6 +710,9 @@ public:
   LRESULT OnPostCreate(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT RunIssue64Runtime(CAtlFile& output);
+  LRESULT RunLegacyRuntimeScenarios(UINT, WPARAM, LPARAM, BOOL&);
+  LRESULT RunBinaryStoreRuntime(CAtlFile& output);
+  LRESULT RunBinaryScriptingCompatibilityRuntime(CAtlFile& output);
   LRESULT OnTimer(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnApplyXmlSourceTheme(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&);

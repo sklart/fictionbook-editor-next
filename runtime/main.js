@@ -162,6 +162,12 @@ function GetBinaryInput(binary, name)
 
 function BinaryIdExists(id, exceptBinary)
 {
+ try {
+  if(!exceptBinary && IsBinaryXmlId(id))
+  {
+   return window.external._BinaryStoreUniqueId(id, document.all.binobj) != id;
+  }
+ } catch(e) {}
  var binObjects=document.all.binobj.getElementsByTagName("DIV");
  for(var i=0; i<binObjects.length; ++i)
  {
@@ -300,11 +306,14 @@ function OnBinaryChange(inputOverride)
   }
   idInput.value=newId;
   if(oldId != newId) var selectedReferences=UpdateBinaryReferences(oldId, newId);
+  BinaryStoreChanged("rename", binary);
   idInput.setAttribute("oldId", newId);
  }
  else if(input == typeInput)
  {
-  BuildBinaryControls(binary, "", idInput.value, typeInput.value, binary.base64data);
+  var cached=CachedBinaryInfo(idInput.value);
+  BuildBinaryControls(binary, "", idInput.value, typeInput.value, binary.base64data, cached);
+  BinaryStoreChanged("register", binary);
  }
  RebuildImagesInfo();
  FillLists();
@@ -319,7 +328,8 @@ function RebuildImagesInfo()
  {
   var binary=binObjects[i];
   if(!IsImageBinaryType(binary.all.type.value)) continue;
-  var dims=window.external.GetImageDimsByData(binary.base64data);
+  var info=CachedBinaryInfo(binary.all.id.value);
+  var dims=info ? (info.width == null ? "" : info.width+"x"+info.height) : window.external.GetImageDimsByData(binary.base64data);
   if(dims == "") continue;
   var separator=dims.search("x");
   if(separator == -1) continue;
@@ -336,8 +346,21 @@ function RebuildImagesInfo()
 // Adds a binary object.
 // Don't forget to call FillCoverList() when you have finished adding objects!
 
+// Private native bridge, outside the immutable public scripting contract.
+// Legacy hosts/test doubles keep their original metadata path.
+function BinaryStoreChanged(action, element)
+{
+ try { window.external._BinaryStoreChanged(action, element); } catch(e) {}
+}
+
+function CachedBinaryInfo(id)
+{
+ try { return eval("("+window.external.GetBinaryInfo(id)+")"); } catch(e) { return null; }
+}
+
 function BuildBinaryControls(div, fullpath, id, type, data)
 {
+ var cached=arguments.length>5 ? arguments[5] : null;
  var html='<button id="del" ' +
                  'onmouseover="HighlightBorder(this.parentNode, true, \'solid\', \'2px\', \'#FF0000\');" ' +
                  'onmouseout="HighlightBorder(this.parentNode, false);" ' +
@@ -356,11 +379,11 @@ function BuildBinaryControls(div, fullpath, id, type, data)
  }
 
  html += '<label unselectable="on">ID:</label><input type="text" maxlength="256" id="id" style="width:20em;"><label unselectable="on">Type:</label><input type="text" style="width:8em;" maxlength="256" id="type" value="">';
- html += '<label unselectable="on">Size:</label><input type="text" disabled id="size" style="width:5em;" value="' + window.external.GetBinarySize(data) + '">';
+ html += '<label unselectable="on">Size:</label><input type="text" disabled id="size" style="width:5em;" value="' + (cached ? cached.size : window.external.GetBinarySize(data)) + '">';
 
  if(IsImageBinaryType(type))
  {
-  dims = fullpath != "" ? window.external.GetImageDimsByPath(fullpath) : "";
+  dims = cached && cached.width != null ? cached.width+"x"+cached.height : (fullpath != "" ? window.external.GetImageDimsByPath(fullpath) : "");
   if(dims == "") dims = window.external.GetImageDimsByData(data);
   if(dims != "") html += '<label unselectable="on">w*h:</label><input type="text" disabled id="dims" style="width:6em;" value="' + dims + '">';
  }
@@ -385,9 +408,11 @@ function apiAddBinary(fullpath, id, type, data)
 	// check if this id already exists
 	var idx = 0;
 	var curid = id;
-	var bo = document.all.binobj.getElementsByTagName("DIV");
+	var indexed=false;
+	try { if(IsBinaryXmlId(id)) { curid=window.external._BinaryStoreUniqueId(id, document.all.binobj); indexed=true; } } catch(e) {}
+	var bo = indexed ? null : document.all.binobj.getElementsByTagName("DIV");
 
-	for(;;)
+	for(; !indexed;)
 	{
 		var found = false;
 		for(var i = 0; i < bo.length; i++)
@@ -428,6 +453,7 @@ function apiAddBinary(fullpath, id, type, data)
 	div.base64data = data;
 
 	document.all.binobj.appendChild(div);
+	BinaryStoreChanged("register", div);
 
 	return curid;
 }
@@ -2086,6 +2112,7 @@ function Remove(obj)
  // delete
 
  var pn=obj.parentNode; obj.removeNode(true); PutSpacers(pn);
+ BinaryStoreChanged("remove", obj);
 
  // update images
 
@@ -2656,6 +2683,7 @@ function GetBinaries(doc)
 // load a list of binary objects from document
 function PutBinaries(doc)
 {
+ BinaryStoreChanged("reset", document.all.binobj);
  TraceScript("J600", "operation=PutBinaries");
  ImagesInfo.length=0;
  var failureCount=0; var success=0; var bl=doc.selectNodes("/fb:FictionBook/fb:binary");

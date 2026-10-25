@@ -8,6 +8,21 @@
 HRESULT ExternalHelper::InvokeScriptingExtension(DISPID dispid, WORD flags, DISPPARAMS* parameters,
     VARIANT* result, UINT* argumentError)
 {
+    if (dispid == 1002 || dispid == 1003) {
+        if (!(flags & DISPATCH_METHOD)) return DISP_E_MEMBERNOTFOUND;
+        if (!parameters || parameters->cArgs != 2 || parameters->cNamedArgs) return DISP_E_BADPARAMCOUNT;
+        if (!parameters->rgvarg) return E_POINTER;
+        XmlScriptApiRequest request(XmlScriptApiOperation::ScriptingDocumentOperation);
+        request.scriptingMethod = dispid; request.arguments.resize(2);
+        request.binaryDocumentIdentity = m_binaryDocumentIdentity;
+        for (UINT index = 0; index < 2; ++index)
+            CheckError(::VariantCopyInd(&request.arguments[index], &parameters->rgvarg[1 - index]));
+        if (request.arguments[0].vt != VT_BSTR) return DISP_E_TYPEMISMATCH;
+        if (request.arguments[1].vt != VT_DISPATCH && request.arguments[1].vt != VT_NULL && request.arguments[1].vt != VT_EMPTY) return DISP_E_TYPEMISMATCH;
+        if (!SendXmlScriptRequest(m_xmlScriptHost, request)) return E_UNEXPECTED;
+        if (FAILED(request.error)) return request.error;
+        return result ? request.returnValue.Detach(result) : S_OK;
+    }
     if (dispid >= 164 && dispid <= 168) return FbeScripts::InvokeStage3D(m_xmlScriptHost, dispid, flags, parameters, result, argumentError);
     if (dispid >= 153 && dispid <= 163) return FbeScripts::InvokeStage3C(m_xmlScriptHost, dispid, flags, parameters, result, argumentError);
     if (dispid >= 147 && dispid <= 152) return FbeScripts::InvokeBinary(m_xmlScriptHost, dispid, flags, parameters, result, argumentError);

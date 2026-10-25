@@ -14,7 +14,7 @@ if ($renameHandler -match 'var\s+elements\s*=\s*document\.getElementsByTagName\(
     throw 'Переименование binary не должно использовать неподдерживаемый MSHTML getElementsByTagName("*").'
 }
 $helpers = [regex]::Match($source, '(?s)function IsImageBinaryType\(type\).*?\r?\n}\r?\n\r?\n//--------------------------------------\r?\n// Adds a binary object').Value
-$controls = [regex]::Match($source, '(?s)function BuildBinaryControls\(div, fullpath, id, type, data\).*?\r?\n}\r?\n\r?\nfunction SaveBinary\(binary\).*?\r?\n}').Value
+$controls = [regex]::Match($source, '(?s)function BinaryStoreChanged\(action, element\).*?function BuildBinaryControls\(div, fullpath, id, type, data\).*?\r?\n}\r?\n\r?\nfunction SaveBinary\(binary\).*?\r?\n}').Value
 $addBinary = [regex]::Match($source, '(?s)function apiAddBinary\(fullpath, id, type, data\).*?\r?\n}\r?\n\r?\nfunction GetImageData').Value
 $remove = [regex]::Match($source, '(?s)function Remove\(obj\).*?\r?\n}\r?\n//-------------------').Value
 if($helpers.Length -eq 0 -or $controls.Length -eq 0 -or $addBinary.Length -eq 0 -or $remove.Length -eq 0) { throw 'Could not extract binary reliability handlers from canonical runtime/main.js.' }

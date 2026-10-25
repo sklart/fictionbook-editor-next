@@ -87,6 +87,7 @@
 #include "toolbars\\TableToolbarCommands.h"
 #include "testing\RuntimeTestScenarioMode.h"
 #include "undo/UndoFailureRecovery.h"
+#include "extras/SHA256.h"
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -1704,6 +1705,21 @@ LRESULT CMainFrame::OnXmlScriptApi(UINT, WPARAM, LPARAM data, BOOL&)
 {
 	XmlScriptApiRequest* request = reinterpret_cast<XmlScriptApiRequest*>(data);
 	if(request == NULL) return 0;
+    // PutBinaries runs before the new document is installed in the session.
+    // The helper carries its document GUID, never a borrowed owner pointer.
+    if (request->operation == XmlScriptApiOperation::ScriptingDocumentOperation && (request->scriptingMethod == 1002 || request->scriptingMethod == 1003)) {
+        try {
+            IDispatch* element = request->arguments[1].vt == VT_DISPATCH ? request->arguments[1].pdispVal : nullptr;
+            FB::Doc* owner = FB::Doc::BinaryOwner(request->binaryDocumentIdentity);
+            if (!owner) CheckError(E_UNEXPECTED);
+            if (request->scriptingMethod == 1003) request->returnValue = owner->UniqueBinaryId(request->arguments[0].bstrVal);
+            else owner->BinaryStoreNotification(request->arguments[0].bstrVal, element);
+            request->succeeded = true;
+        } catch (const _com_error& error) { request->error = error.Error(); }
+        catch (const std::bad_alloc&) { request->error = E_OUTOFMEMORY; }
+        catch (const CAtlException& error) { request->error = error.m_hr; }
+        return 1;
+    }
 	if (!m_document_session.HasDocument()) { request->error = E_UNEXPECTED; return 1; }
 	if (FbeScripts::extendedModalActive) { request->error = E_UNEXPECTED; return 1; }
 	if (request->operation == XmlScriptApiOperation::ValidateCurrentDocument) {
@@ -1737,7 +1753,7 @@ LRESULT CMainFrame::OnXmlScriptApi(UINT, WPARAM, LPARAM data, BOOL&)
                 if (IsSourceActive()) CheckError(E_NOTIMPL);
                 if (request->scriptingMethod >= 149 && request->scriptingMethod <= 151)
                     FbeScripts::Binary::Mutate(m_doc, request->scriptingMethod, request->arguments, request->returnValue);
-                else request->returnValue = FbeScripts::Binary::Read(m_doc->m_body.Document(), request->scriptingMethod, request->arguments);
+                else request->returnValue = FbeScripts::Binary::Read(m_doc, request->scriptingMethod, request->arguments);
                 request->succeeded = true;
             } catch (const _com_error& error) { request->error = error.Error(); }
             catch (const std::bad_alloc&) { request->error = E_OUTOFMEMORY; }

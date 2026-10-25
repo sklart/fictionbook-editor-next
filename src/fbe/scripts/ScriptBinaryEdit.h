@@ -2,6 +2,7 @@
 #include "ScriptBinaryDocument.h"
 #include "../image/ImageDocumentInserter.h"
 #include "../undo/UndoFailureRecovery.h"
+#include <exception>
 
 namespace FbeScripts { namespace Binary {
 struct Position {
@@ -123,6 +124,8 @@ inline void ReadFile(const CString& path, CString mime, LoadedObject& result)
         CheckError(image.Load(stream));
         if (image.GetWidth() <= 0 || image.GetHeight() <= 0 || image.GetWidth() > 16384 || image.GetHeight() > 16384 ||
             static_cast<ULONGLONG>(image.GetWidth()) * image.GetHeight() > 32000000) CheckError(E_INVALIDARG);
+        result.width = image.GetWidth(); result.height = image.GetHeight();
+        result.dimensionsKnown = result.dimensionsAttempted = true;
     } else if ((!detected.IsEmpty() && detected != mime) || (mime == L"application/pdf" && detected != mime)) CheckError(E_INVALIDARG);
     result.mime = mime;
 }
@@ -146,6 +149,13 @@ struct Edit {
     }
     void Apply(bool undo) {
         if (FB::Doc::m_active_doc != owner || owner->m_body.Document() != document) CheckError(E_UNEXPECTED);
+        // Includes OLE compensation after a partially failed edit.
+        struct InvalidateOnExit {
+            FB::Doc* doc;
+            int exceptions = std::uncaught_exceptions();
+            ~InvalidateOnExit() { if (std::uncaught_exceptions() > exceptions) doc->m_binaryStore.Invalidate(); }
+        } invalidate{owner};
+        owner->ReconcileBinaryStore();
         const auto live = owner->CaptureUndoSavepoints();
         // A save between edit and Undo establishes a new baseline. Remember
         // which side was saved instead of reinstating the obsolete save point.
@@ -185,6 +195,15 @@ struct Edit {
         } else if (after.element && !attach) {
             MSHTML::IHTMLDOMNodePtr node(after.element); if (node->parentNode) node->parentNode->removeChild(node);
         }
+        if (attach) {
+            FbeBinary::BinaryMetadata metadata;
+            metadata.id = target.id; metadata.contentType = target.mime; metadata.byteSize = target.size; metadata.sizeKnown = true;
+            CString mime(target.mime); mime.MakeLower(); metadata.image = mime.Left(6) == L"image/";
+            metadata.width = target.width; metadata.height = target.height;
+            metadata.dimensionsKnown = target.dimensionsKnown; metadata.dimensionsAttempted = target.dimensionsAttempted;
+            owner->m_binaryStore.Register(metadata, binary ? IDispatchPtr(binary->node).GetInterfacePtr() : target.element.GetInterfacePtr());
+        } else owner->m_binaryStore.Remove(existed ? before.id : after.id);
+        if (owner->m_binaryDuplicateIds) owner->m_binaryStore.Invalidate();
         if (!remains) {
             if (undo) { for (auto image = references.images.rbegin(); image != references.images.rend(); ++image) image->Attach(); }
             else for (const auto& image : references.images) image.Detach();
@@ -226,6 +245,7 @@ struct Edit {
 };
 inline void Mutate(FB::Doc* document, DISPID method, const std::vector<CComVariant>& args, CComVariant& result)
 {
+    document->ReconcileBinaryStore();
     if (HasDocumentUpdates()) CheckError(E_UNEXPECTED);
     CComPtr<IOleUndoManager> manager; IServiceProviderPtr services(document->m_body.Document());
     CheckError(services->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&manager)));
@@ -234,11 +254,15 @@ inline void Mutate(FB::Doc* document, DISPID method, const std::vector<CComVaria
     const auto objects = Objects(edit->document);
     if (method == 149) {
         ReadFile(args[0].bstrVal, args.size() == 3 ? CString(args[2].bstrVal) : CString(), edit->after);
-        edit->after.id = UniqueId(objects, CString(args[1].bstrVal).IsEmpty() ? CString(args[0].bstrVal) : CString(args[1].bstrVal));
+        edit->after.id = document->UniqueBinaryId(CString(args[1].bstrVal).IsEmpty() ? CString(args[0].bstrVal) : CString(args[1].bstrVal));
     } else {
         auto found = std::find_if(objects.begin(), objects.end(), [&](const auto& object) { return object.id == args[0].bstrVal; });
         if (found == objects.end()) CheckError(HRESULT_FROM_WIN32(ERROR_NOT_FOUND));
         Load(*found, edit->before); edit->existed = true;
+        if (const auto* metadata = document->m_binaryStore.Find(found->id)) {
+            edit->before.width = metadata->width; edit->before.height = metadata->height;
+            edit->before.dimensionsKnown = metadata->dimensionsKnown; edit->before.dimensionsAttempted = metadata->dimensionsAttempted;
+        }
         edit->binary = std::make_unique<Position>(MSHTML::IHTMLDOMNodePtr(found->element));
         edit->references = FindReferences(edit->document, found->id, edit->covers);
         if (method == 151) {
@@ -263,5 +287,6 @@ inline void Mutate(FB::Doc* document, DISPID method, const std::vector<CComVaria
         if (!result.bstrVal) CheckError(E_OUTOFMEMORY);
     } else result = true;
     CheckError(FbeImage::CommitBinaryEdit(edit->document->Script, manager, [edit](bool undo) { edit->Apply(undo); }));
+    document->ReconcileBinaryStore();
 }
 } }
