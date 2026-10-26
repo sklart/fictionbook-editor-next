@@ -17,6 +17,9 @@ $env:FBE_NEXT_TEST_REGISTRY_ROOT = $registryFixture
 $names = @('export-html','export-docx','import-epub','export-epub')
 $legacy = @('PluginSettings\ExportHTML','ExportDOCX','ImportEPUB','Plugins\ExportEPUB')
 $base = 'Software\FBETeam\FictionBook Editor Next\'
+$diagnosticRoot = Join-Path $objects ('diagnostics-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $diagnosticRoot | Out-Null
+$script:probeSequence = 0
 function Snapshot {
     $text = & reg.exe query 'HKCU\Software\FBETeam\FictionBook Editor Next' /s 2>&1
     if($LASTEXITCODE -eq 1) { return '<absent>' }
@@ -28,11 +31,19 @@ function Probe([string]$directory, [string]$mode, [string]$action) {
     $log = Join-Path $directory "settings-$mode-$action.log"
     $arguments = @("--$mode", $action)
     if($action -in @('dialogs','conversions') -or $action.StartsWith('ui-')) { $arguments += ('"' + (Join-Path $directory 'Plugins') + '"') }
+    $script:probeSequence++
+    $startedUtc = [DateTime]::UtcNow.ToString('o')
     $process = Start-Process $exe -ArgumentList $arguments -WorkingDirectory $directory -WindowStyle Hidden -PassThru -RedirectStandardOutput $log -RedirectStandardError ($log + '.stderr')
+    try {
     if(!$process.WaitForExit(30000)) { Stop-Process -Id $process.Id -Force; throw "Settings probe timeout: $log" }
     $process.WaitForExit(); $process.Refresh()
     if($process.ExitCode -ne 0) { throw "Settings probe failed ($($process.ExitCode)): $log`n$(Get-Content ($log + '.stderr') -Raw)" }
     Get-Content $log | Write-Host
+    } finally {
+        $prefix = Join-Path $diagnosticRoot ('{0:D2}-{1}-{2}' -f $script:probeSequence,$mode,$action)
+        foreach($file in @($log,($log + '.stderr'))) { if(Test-Path -LiteralPath $file) { Copy-Item -LiteralPath $file -Destination ($prefix + $(if($file.EndsWith('.stderr')){'.stderr'}else{'.stdout'})) } }
+        @{stage="$mode/$action";startUtc=$startedUtc;endUtc=[DateTime]::UtcNow.ToString('o');pid=$process.Id;runtime=$directory;timeoutMs=30000;nativeProgress=($prefix+'.stderr')} | ConvertTo-Json | Set-Content ($prefix+'.json') -Encoding utf8
+    }
 }
 function Profiles([string]$directory) {
     $result = @{}

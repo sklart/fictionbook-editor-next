@@ -46,6 +46,9 @@ inline HHOOK initializationHook = NULL;
 inline HHOOK keyboardHook = NULL;
 inline int keyboardStage = 0;
 inline bool keyboardInjected = false;
+#ifdef FBE_PLUGIN_OPTIONS_SYNCHRONIZED_KEYBOARD
+inline UINT keyboardBarrierMessage = 0;
+#endif
 inline std::vector<HWND> initializedDialogs;
 inline HWND ConfirmationButton(HWND window) {
     HWND button = ::GetDlgItem(window, IDOK);
@@ -71,13 +74,29 @@ inline LRESULT CALLBACK Initialized(int code, WPARAM wp, LPARAM lp) {
 }
 inline LRESULT CALLBACK KeyboardMessage(int code, WPARAM wp, LPARAM lp) {
     if(code >= 0 && wp == PM_REMOVE) {
+#ifdef FBE_PLUGIN_OPTIONS_SYNCHRONIZED_KEYBOARD
+        auto* message = reinterpret_cast<MSG*>(lp);
+        if(keyboardBarrierMessage && message->message == keyboardBarrierMessage) {
+            keyboardStage = static_cast<int>(message->wParam);
+            message->message = WM_NULL;
+        } else
+#else
         const auto* message = reinterpret_cast<const MSG*>(lp);
+#endif
         if(message->message == WM_KEYDOWN && message->wParam == VK_TAB && stage >= 10 && stage <= 13 &&
             dialog && ::IsChild(dialog, message->hwnd)) {
             BYTE keys[256]; memcpy(keys, savedKeys, sizeof(keys));
             keys[VK_CONTROL] = stage <= 11 ? 0x80 : 0;
             keys[VK_SHIFT] = stage == 11 || stage == 13 ? 0x80 : 0;
+#ifdef FBE_PLUGIN_OPTIONS_SYNCHRONIZED_KEYBOARD
+            ::SetKeyboardState(keys); keyboardInjected = true;
+            // A removed key has not yet passed through the dialog's keyboard
+            // loop. A later queue marker acknowledges that turn; Visit also
+            // waits for the expected control state before asserting it.
+            ::PostThreadMessageW(::GetCurrentThreadId(), keyboardBarrierMessage, static_cast<WPARAM>(stage), 0);
+#else
             ::SetKeyboardState(keys); keyboardStage = stage; keyboardInjected = true;
+#endif
         }
     }
     return ::CallNextHookEx(keyboardHook, code, wp, lp);
@@ -126,7 +145,13 @@ inline void Collect(HWND parent, std::map<HWND, std::wstring>& values) {
     }
 }
 inline std::map<HWND, std::wstring> Snapshot(HWND window) { std::map<HWND, std::wstring> values; Collect(window, values); return values; }
-inline bool Check(bool success, int line) { if(!success && !failedLine) failedLine = line; return success; }
+inline bool Check(bool success, int line) {
+#ifdef FBE_PLUGIN_OPTIONS_ASSERT_DIAGNOSTIC
+    FBE_PLUGIN_OPTIONS_ASSERT_DIAGNOSTIC(success, line);
+#endif
+    if(!success && !failedLine) failedLine = line;
+    return success;
+}
 #define FBE_OPTIONS_CHECK(value) PluginOptionsProbe::Check((value), __LINE__)
 
 inline bool Capture(HWND window, const std::wstring& name) {
@@ -401,6 +426,18 @@ inline BOOL CALLBACK Visit(HWND window, LPARAM) {
     } else if(window == dialog && stage >= 10) {
         if(keyboardStage != stage) return TRUE;
         HWND tab = Tab(window);
+#ifdef FBE_PLUGIN_OPTIONS_SYNCHRONIZED_KEYBOARD
+        HWND focus = ::GetFocus();
+        // Hidden standalone hosts may lose activation between queued keys.
+        // Reacquire an owned, visible target and wait for that state instead
+        // of posting to NULL (a thread message the keyboard hook cannot see).
+        if(!focus || !::IsChild(window, focus) || !::IsWindowVisible(focus)) {
+            ::SetActiveWindow(window); ::SetForegroundWindow(window); ::SetFocus(tab);
+            return TRUE;
+        }
+        if((stage == 10 && TabCtrl_GetCurSel(tab) != 0) ||
+            (stage == 11 && TabCtrl_GetCurSel(tab) != TabCtrl_GetItemCount(tab) - 1)) return TRUE;
+#endif
         if(stage == 10) {
             FBE_OPTIONS_CHECK(TabCtrl_GetCurSel(tab) == 0);
             BYTE keys[256]; memcpy(keys, savedKeys, sizeof(keys)); keys[VK_CONTROL] = keys[VK_SHIFT] = 0x80;
@@ -412,15 +449,27 @@ inline BOOL CALLBACK Visit(HWND window, LPARAM) {
         } else if(stage == 12) {
             FBE_OPTIONS_CHECK(::GetFocus() && ::IsWindowVisible(::GetFocus()));
             BYTE keys[256]; memcpy(keys, savedKeys, sizeof(keys)); keys[VK_CONTROL] = 0; keys[VK_SHIFT] = 0x80;
-            ::SetKeyboardState(keys); stage = 13; ::PostMessageW(::GetFocus(), WM_KEYDOWN, VK_TAB, 0);
+            ::SetKeyboardState(keys); stage = 13;
+#ifdef FBE_PLUGIN_OPTIONS_SYNCHRONIZED_KEYBOARD
+            ::PostMessageW(focus, WM_KEYDOWN, VK_TAB, 0);
+#else
+            ::PostMessageW(::GetFocus(), WM_KEYDOWN, VK_TAB, 0);
+#endif
         } else {
             FBE_OPTIONS_CHECK(::GetFocus() && ::IsWindowVisible(::GetFocus()));
             ::SetKeyboardState(savedKeys); stage = 1;
             const bool cancel = action == Action::EditCancel || action == Action::DefaultsCancel || PositionProbe() || failedLine;
             // Real queued key messages pass through the dialog keyboard loop.
+#ifdef FBE_PLUGIN_OPTIONS_SYNCHRONIZED_KEYBOARD
+            HWND target = cancel ? focus : ::GetDlgItem(window, IDOK);
+            if(!cancel) ::SetFocus(target);
+            if(action == Action::PositionMove) ::PostMessageW(window, WM_CLOSE, 0, 0);
+            else ::PostMessageW(target, WM_KEYDOWN, cancel ? VK_ESCAPE : VK_RETURN, 0);
+#else
             if(!cancel) ::SetFocus(::GetDlgItem(window, IDOK));
             if(action == Action::PositionMove) ::PostMessageW(window, WM_CLOSE, 0, 0);
             else ::PostMessageW(::GetFocus(), WM_KEYDOWN, cancel ? VK_ESCAPE : VK_RETURN, 0);
+#endif
         }
     } else if(window == dialog && stage == 1 && errorSeen && ::IsWindowEnabled(window) && !::IsWindow(errorDialog)) {
         FBE_OPTIONS_CHECK(Snapshot(window) == editedSnapshot);
@@ -436,6 +485,9 @@ inline void Start(int index, Action requested, const std::wstring& directory, co
     Stop(); initializedDialogs.clear();
     initializationHook = ::SetWindowsHookExW(WH_CALLWNDPROCRET, Initialized, NULL, ::GetCurrentThreadId());
     keyboardStage = 0;
+#ifdef FBE_PLUGIN_OPTIONS_SYNCHRONIZED_KEYBOARD
+    keyboardBarrierMessage = ::RegisterWindowMessageW(L"FBE.PluginOptionsProbe.KeyboardBarrier");
+#endif
     keyboardHook = ::SetWindowsHookExW(WH_GETMESSAGE, KeyboardMessage, NULL, ::GetCurrentThreadId());
     plugin = index; action = requested; captures = directory; prefix = name; profile = settingsPath;
     failedLine = stage = pages = 0; dialog = errorDialog = editedControl = NULL; errorSeen = false; originalAttributes = INVALID_FILE_ATTRIBUTES;

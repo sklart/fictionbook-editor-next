@@ -12,7 +12,48 @@ static BOOL WINAPI ControlledReplaceFile(LPCWSTR target, LPCWSTR replacement, LP
 #include "../../src/common/PluginSettingsStore.h"
 #undef ReplaceFileW
 #include <atlbase.h>
+#include <sstream>
+static int lastSuccessfulAssertion = 0;
+static void ObserveOptionsAssertion(bool success, int line) {
+    if(success) lastSuccessfulAssertion = line;
+    else std::wcerr << L"assertion-failed line=" << line << L" last-success=" << lastSuccessfulAssertion << std::endl;
+}
+#define FBE_PLUGIN_OPTIONS_ASSERT_DIAGNOSTIC ObserveOptionsAssertion
+#define FBE_PLUGIN_OPTIONS_SYNCHRONIZED_KEYBOARD 1
 #include "../../src/fbe/testing/PluginOptionsDialogProbe.h"
+#undef FBE_PLUGIN_OPTIONS_SYNCHRONIZED_KEYBOARD
+#undef FBE_PLUGIN_OPTIONS_ASSERT_DIAGNOSTIC
+
+static void ReportOptionsProgress(const wchar_t* event) {
+    using namespace PluginOptionsProbe;
+    wchar_t kind[128] = {}, title[512] = {};
+    ::GetClassNameW(dialog, kind, _countof(kind)); ::GetWindowTextW(dialog, title, _countof(title));
+    SYSTEMTIME now = {}; ::GetSystemTime(&now);
+    std::wostringstream progress;
+    progress << L"probe-progress event=" << event << L" utc=" << now.wYear << L'-' << now.wMonth << L'-' << now.wDay
+        << L'T' << now.wHour << L':' << now.wMinute << L':' << now.wSecond << L'.' << now.wMilliseconds
+        << L" pid=" << ::GetCurrentProcessId() << L" plugin=" << plugin << L" stage=" << stage << L" keyboard-stage=" << keyboardStage
+        << L" hwnd=" << dialog << L" class=" << kind << L" title=" << title << L" focus=" << ::GetFocus()
+        << L" last-success=" << lastSuccessfulAssertion << L" first-failure=" << failedLine << L'\n';
+    const auto text = progress.str();
+    const int length = ::WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), NULL, 0, NULL, NULL);
+    if(length > 0) {
+        std::string bytes(static_cast<size_t>(length), '\0');
+        ::WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), &bytes[0], length, NULL, NULL);
+        DWORD written = 0; ::WriteFile(::GetStdHandle(STD_ERROR_HANDLE), bytes.data(), static_cast<DWORD>(bytes.size()), &written, NULL);
+    }
+}
+static void CALLBACK SettingsProbeTimer(HWND hwnd, UINT message, UINT_PTR timer, DWORD time) {
+    static int previousStage = -1, previousKeyboardStage = -1, previousFailure = -1;
+    static HWND previousDialog = NULL, previousFocus = NULL;
+    PluginOptionsProbe::Timer(hwnd, message, timer, time);
+    if(previousStage != PluginOptionsProbe::stage || previousKeyboardStage != PluginOptionsProbe::keyboardStage ||
+        previousFailure != PluginOptionsProbe::failedLine || previousDialog != PluginOptionsProbe::dialog || previousFocus != ::GetFocus()) {
+        ReportOptionsProgress(L"state");
+        previousStage = PluginOptionsProbe::stage; previousKeyboardStage = PluginOptionsProbe::keyboardStage;
+        previousFailure = PluginOptionsProbe::failedLine; previousDialog = PluginOptionsProbe::dialog; previousFocus = ::GetFocus();
+    }
+}
 
 static int peerIndex = -1;
 static std::wstring peerDirectory;
@@ -70,7 +111,9 @@ static int Dialogs(const wchar_t* directory, const std::wstring& scenario = L"",
             PluginOptionsProbe::Start(index, action, L"", std::wstring(names[index]) + scenario, profile);
             PluginOptionsProbe::peerSave = scenario == L"ui-conflict" ? SavePeer : NULL;
         }
-        const UINT_PTR timer = ::SetTimer(NULL, 0, 80, PluginOptionsProbe::Timer);
+        lastSuccessfulAssertion = 0;
+        ReportOptionsProgress(L"start");
+        const UINT_PTR timer = ::SetTimer(NULL, 0, 80, SettingsProbeTimer);
         if(!timer) return 21;
         if(index == 2) {
             CComPtr<IFBEImportPlugin2> importer; hr = plugin->QueryInterface(IID_IFBEImportPlugin2, reinterpret_cast<void**>(&importer));
@@ -81,6 +124,7 @@ static int Dialogs(const wchar_t* directory, const std::wstring& scenario = L"",
             if(SUCCEEDED(hr)) hr = Call(exporter, host, snapshot);
         }
         ::KillTimer(NULL, timer);
+        ReportOptionsProgress(L"end");
         if(advanced) PluginOptionsProbe::Stop();
         if(advanced) {
             const bool cancelled = fileDialog || PluginOptionsProbe::PositionProbe() || action == PluginOptionsProbe::Action::EditCancel || action == PluginOptionsProbe::Action::DefaultsCancel ||
