@@ -2695,12 +2695,16 @@ function PutBinaries(doc)
  {
   if(bl[i].tagName!="binary") continue;
   TraceVerboseOperation("J611", "operation=binary; index=" + i);
-  bl[i].dataType="bin.base64";
-  var id=bl[i].getAttribute("id"); var dt;
+  var id=bl[i].getAttribute("id"); var dt; var decoder=null;
   try
   {
+   // Typing an existing text node makes MSXML intern its full base64 content.
+   // Set the type before assigning text on a detached, temporary decoder instead.
+   decoder=doc.createNode(1,"binary",fbNS);
+   decoder.dataType="bin.base64";
+   for(var part=bl[i].firstChild;part;part=part.nextSibling) decoder.appendChild(part.cloneNode(true));
    TraceVerboseOperation("J620", "operation=nodeTypedValue; index=" + i);
-   dt=bl[i].nodeTypedValue;
+   dt=decoder.nodeTypedValue;
    TraceVerboseOperation("J621", "operation=nodeTypedValue result; index=" + i);
   }
   catch(e)
@@ -2709,6 +2713,7 @@ function PutBinaries(doc)
    DiagError("J622", "nodeTypedValue", e);
    if(failureCount++<3) MsgBox("Invalid base64 data for "+id); continue;
   }
+  finally { decoder=null; }
   TraceVerboseOperation("J630", "operation=apiAddBinary; index=" + i);
   apiAddBinary("", id, bl[i].getAttribute("content-type"),dt);
   TraceVerboseOperation("J631", "operation=apiAddBinary result; index=" + i);
