@@ -34,6 +34,13 @@ sptr_t SourceEditorControl::Send(UINT message, uptr_t wParam, sptr_t lParam) con
 LRESULT CALLBACK SourceEditorControl::WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	SourceEditorControl* editor = reinterpret_cast<SourceEditorControl*>(::GetProp(window, L"FBE.Next.SourceEditorControl"));
+#ifdef FBE_SOURCE_MEMORY_BENCHMARK
+	if (editor != NULL && editor->m_benchmarkInputIsolated && IsSourceBenchmarkUserInput(message))
+	{
+		++editor->m_benchmarkDiscardedInput;
+		return 0;
+	}
+#endif
 	if(editor != NULL && message == WM_CONTEXTMENU) { editor->ShowContextMenu(lParam); return 0; }
 	const LRESULT result = editor != NULL && editor->m_previousWindowProc != NULL ?
 		::CallWindowProc(editor->m_previousWindowProc, window, message, wParam, lParam) :
@@ -102,7 +109,18 @@ void SourceEditorControl::ApplyConfiguration(const SourceEditorConfig& config)
 	Send(SCI_SETCODEPAGE, SC_CP_UTF8); Send(SCI_SETEOLMODE, SC_EOL_CRLF);
 	Send(SCI_SETVIEWEOL, config.showEol); Send(SCI_SETVIEWWS, config.showWhitespace);
 	Send(SCI_SETWRAPMODE, config.wrap ? SC_WRAP_WORD : SC_WRAP_NONE);
+#ifdef FBE_SOURCE_MEMORY_BENCHMARK
+	// Isolated Source benchmark only; normal configuration remains unchanged.
+	wchar_t benchmarkPolicy[16] = {};
+	::GetEnvironmentVariableW(L"FBE_C5_LAYOUT_CACHE", benchmarkPolicy, _countof(benchmarkPolicy));
+	int cache = SC_CACHE_DOCUMENT;
+	if (_wcsicmp(benchmarkPolicy, L"page") == 0) cache = SC_CACHE_PAGE;
+	else if (_wcsicmp(benchmarkPolicy, L"caret") == 0) cache = SC_CACHE_CARET;
+	else if (_wcsicmp(benchmarkPolicy, L"none") == 0) cache = SC_CACHE_NONE;
+	Send(SCI_SETLAYOUTCACHE, cache);
+#else
 	Send(SCI_SETLAYOUTCACHE, SC_CACHE_DOCUMENT);
+#endif
 	Send(SCI_SETXCARETPOLICY, CARET_SLOP | CARET_EVEN, 50); Send(SCI_SETYCARETPOLICY, CARET_SLOP | CARET_EVEN, 50);
 	ConfigureSpecialCharacterRepresentations(config);
 	Send(SCI_SETMARGINWIDTHN, 1, 0); Send(SCI_SETFOLDFLAGS, 16);

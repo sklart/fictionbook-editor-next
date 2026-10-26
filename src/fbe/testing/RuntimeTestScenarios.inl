@@ -23,6 +23,7 @@ static PluginOptionsProbe::Palette EditorPluginProbePalette(HWND window) {
 #include "RuntimeTestBinaryStore.inl"
 #include "RuntimeTestBinaryStoreC4.inl"
 #include "RuntimeTestBinaryStoreC41.inl"
+#include "RuntimeTestSourceMemoryC5.inl"
 #include "RuntimeTestBinaryScriptingCompatibility.inl"
 #include "XmlUndoLifetimeProbe.h"
 #include "RuntimeTestXmlScriptBackend.inl"
@@ -32,6 +33,9 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT message, WPARAM wparam, LPARAM 
 {
 #ifdef FBE_BINARY_STORE_DIAGNOSTICS
 #ifdef FBE_BINARY_STORE_MEMORY_ATTRIBUTION
+#ifdef FBE_SOURCE_MEMORY_BENCHMARK
+    if (RuntimeTests::IsScenario(L"source-memory-c5")) { static bool active=false; if(active) return 0; active=true; CAtlFile output; if(FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS))) return 0; return RunSourceMemoryC5(output); }
+#endif
     if (RuntimeTests::IsScenario(L"binary-store-c41")) { static bool active=false; if(active) return 0; active=true; CAtlFile output; if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS))) return 0; return RunBinaryStoreC41(output); }
 #endif
     if (RuntimeTests::IsScenario(L"binary-store-c4")) { static bool active=false; if(active) return 0; active=true; CAtlFile output; if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS))) return 0; return RunBinaryStoreC4(output); }

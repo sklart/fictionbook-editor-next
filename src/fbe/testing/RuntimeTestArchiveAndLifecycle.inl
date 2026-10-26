@@ -598,6 +598,16 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		m_doc->m_body.SetFocus();
 		MSHTML::IHTMLDocument3Ptr document(m_doc->m_body.Document());
 		MSHTML::IHTMLElementPtr body = document ? document->getElementById(L"fbw_body") : NULL;
+		MSHTML::IHTMLDocument2Ptr initialDocument(m_doc->m_body.Document());
+		MSHTML::IHTMLBodyElementPtr initialBody(initialDocument ? initialDocument->body : NULL);
+		MSHTML::IHTMLTxtRangePtr initialRange(initialBody ? initialBody->createTextRange() : NULL);
+		if (initialRange && body) {
+			initialRange->moveToElementText(body);
+			initialRange->collapse(VARIANT_TRUE);
+			initialRange->move(L"character", 1);
+			initialRange->select();
+		}
+		const bool selectionPrepared = initialRange && initialRange->compareEndPoints(L"StartToEnd", initialRange) == 0;
 		const _bstr_t before = body ? body->outerHTML : _bstr_t();
 		MSHTML::IDisplayServicesPtr display(m_doc->m_body.Document());
 		MSHTML::IHTMLCaretPtr caret;
@@ -640,18 +650,37 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		m_source.SetFocus();
 		OnViewShowTextCaret(0, ID_VIEW_SHOW_TEXT_CARET, NULL, handled);
 		const bool sourceIgnored = ::FindWindowExW(NULL, NULL, L"FBE.Next.CaretMarker", NULL) == NULL;
+		const bool sourceUnmodified = m_source.SendMessage(SCI_GETMODIFY) == 0;
 		ShowView(BODY);
+		::SetForegroundWindow(m_hWnd);
 		m_doc->m_body.SetFocus();
 		const bool focusRestored = ::GetFocus() == m_view.GetActiveWnd() ||
 			::IsChild(m_view.GetActiveWnd(), ::GetFocus());
+		// MSHTML restores caret geometry asynchronously after the view switch.
+		// Wait for the actual feature preconditions without forcing caret visibility.
+		bool returnCaretReady = false;
+		const auto caretDeadline = ::GetTickCount64() + 2000;
+		do {
+			MSG message = {};
+			while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); }
+			MSHTML::IDisplayServicesPtr returnedDisplay(m_doc->m_body.Document());
+			MSHTML::IHTMLCaretPtr returnedCaret;
+			long visible = 0; MSHTML::tagPOINT location = {};
+			if (returnedDisplay) returnedDisplay->GetCaret(&returnedCaret);
+			returnCaretReady = ::GetForegroundWindow() == m_hWnd && returnedCaret &&
+				SUCCEEDED(returnedCaret->IsVisible(&visible)) && visible != 0 &&
+				SUCCEEDED(returnedCaret->GetLocation(&location, true));
+			if (!returnCaretReady) ::MsgWaitForMultipleObjects(0, NULL, FALSE, 10, QS_ALLINPUT);
+		} while (!returnCaretReady && ::GetTickCount64() < caretDeadline);
 		OnViewShowTextCaret(0, ID_VIEW_SHOW_TEXT_CARET, NULL, handled);
 		const bool shownAfterReturn = ::FindWindowExW(NULL, NULL, L"FBE.Next.CaretMarker", NULL) != NULL;
 		CStringA report;
 		report.Format("located=%d\nshown=%d\nreused=%d\nunchanged=%d\nremoved=%d\nfocus_removed=%d\nscroll_removed=%d\nactivation_removed=%d\nswitch_removed=%d\nsource_ignored=%d\nfocus_restored=%d\nshown_after_return=%d\n",
 			located, shown, reused, unchanged, removed, focusRemoved, scrollRemoved, activationRemoved, switchRemoved,
 			sourceIgnored, focusRestored, shownAfterReturn);
+		report.AppendFormat("selection_prepared=%d\nsource_unmodified=%d\nreturn_caret_ready=%d\n", selectionPrepared, sourceUnmodified, returnCaretReady);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(located && shown && reused && unchanged && removed && focusRemoved && scrollRemoved &&
+		::PostQuitMessage(selectionPrepared && sourceUnmodified && returnCaretReady && located && shown && reused && unchanged && removed && focusRemoved && scrollRemoved &&
 			activationRemoved && switchRemoved && sourceIgnored && focusRestored && shownAfterReturn ? 0 : 1);
 		return 0;
 	}

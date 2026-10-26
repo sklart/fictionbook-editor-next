@@ -49,12 +49,19 @@ SourceTransitionResult SourceDocumentTransfer::PrepareSerializedSource(FB::Doc& 
 		serializedCache.documentType != documentType)
 	{
 		StartupTrace::CountSourceSerialization();
-		_bstr_t serialized(cachedXml->xml);
-		FBE_C41_POINT("source_serialization_bstr_live", static_cast<unsigned long long>(serialized.length()) * sizeof(wchar_t));
-		serializedCache.text = static_cast<const wchar_t*>(serialized);
-		serializedCache.text = FbeSetXmlDeclarationEncoding(
-			std::wstring(static_cast<const wchar_t*>(serializedCache.text)),
-			std::wstring(static_cast<const wchar_t*>(encoding))).c_str();
+		CString preparedText;
+		{
+			_bstr_t serialized(cachedXml->xml);
+			FBE_C41_POINT("source_serialization_bstr_live", static_cast<unsigned long long>(serialized.length()) * sizeof(wchar_t));
+			const std::wstring normalized = FbeSetXmlDeclarationEncoding(
+				std::wstring(serialized.length() ? static_cast<const wchar_t*>(serialized) : L"", serialized.length()),
+				std::wstring(static_cast<const wchar_t*>(encoding)));
+			if (normalized.size() > INT_MAX) return SourceTransitionResult::Failed;
+			// Normalize first: growing a raw-XML CString for the declaration retained
+			// about 50% spare capacity for the lifetime of this cached projection.
+			preparedText = CString(normalized.c_str(), static_cast<int>(normalized.size()));
+		}
+		serializedCache.text = preparedText;
 		serializedCache.xml = cachedXml;
 		serializedCache.encoding = encoding;
 		serializedCache.documentType = documentType;

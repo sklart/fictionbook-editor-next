@@ -718,6 +718,9 @@ public:
   LRESULT RunBinaryStoreC41(CAtlFile& output);
 #endif
 #endif
+#ifdef FBE_SOURCE_MEMORY_BENCHMARK
+  LRESULT RunSourceMemoryC5(CAtlFile& output);
+#endif
   LRESULT RunBinaryScriptingCompatibilityRuntime(CAtlFile& output);
   LRESULT RunXmlScriptBackendRuntime(CAtlFile& output);
   LRESULT OnTimer(UINT, WPARAM, LPARAM, BOOL&);

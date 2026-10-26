@@ -5,6 +5,19 @@
 #include "../../xmlMatchedTagsHighlighter.h"
 #include "SourceEditorConfig.h"
 
+#ifdef FBE_SOURCE_MEMORY_BENCHMARK
+inline bool IsSourceBenchmarkUserInput(UINT message)
+{
+	return (message >= WM_KEYFIRST && message <= WM_KEYLAST) ||
+		(message >= WM_MOUSEFIRST && message <= WM_MOUSELAST) ||
+		(message >= WM_IME_SETCONTEXT && message <= WM_IME_KEYUP) ||
+		message == WM_IME_STARTCOMPOSITION || message == WM_IME_ENDCOMPOSITION ||
+		message == WM_IME_COMPOSITION || message == WM_INPUT || message == WM_CONTEXTMENU ||
+		message == WM_PASTE || message == WM_CUT || message == WM_CLEAR || message == WM_UNDO ||
+		message == WM_DROPFILES;
+}
+#endif
+
 struct SourceEditorControlDiagnostics
 {
 	bool created = false;
@@ -46,7 +59,15 @@ public:
 	bool GotoMatchingTag();
 	void GotoWrongTag();
 	SourceEditorControlDiagnostics RunDiagnostics();
+#ifdef FBE_SOURCE_MEMORY_BENCHMARK
+	void IsolateBenchmarkInput() { m_benchmarkInputIsolated = true; }
+	unsigned long long BenchmarkDiscardedInputMessages() const { return m_benchmarkDiscardedInput; }
+#endif
 private:
+#ifdef FBE_SOURCE_MEMORY_BENCHMARK
+	bool m_benchmarkInputIsolated = false;
+	unsigned long long m_benchmarkDiscardedInput = 0;
+#endif
 	int m_lineNumberDigits = -1;
 	SourceEditorConfig m_config;
 	XmlMatchedTagsState m_tagMatchState;

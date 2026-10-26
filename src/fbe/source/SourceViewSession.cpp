@@ -60,6 +60,9 @@ EditorSourceOperationResult SourceViewSession::CommitSourceDocument()
 		return EditorSourceOperationResult::Failed;
 	m_documentChanged = m_lastApplyResult.documentChanged;
 	m_selectionMapper.MapSourceSelectionToBody(*m_document, m_savedXml, sourceDocument, m_selection);
+	// A replaced XML snapshot cannot hit the serialization cache on the next entry.
+	if (m_serializedSourceCache.xml != m_savedXml)
+		m_serializedSourceCache = SourceSerializedTextCache();
 	m_document->MarkDocCP();
 	return EditorSourceOperationResult::Success;
 }

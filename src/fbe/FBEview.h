@@ -814,6 +814,9 @@ public:
   bool	CheckSetCommand(WORD wID);
 
 	// Searching
+#ifdef FBE_SOURCE_MEMORY_BENCHMARK
+	void SetSourceBenchmarkQuery(const CString& pattern) { m_fo.ClearMatch(); m_fo.pattern = pattern; m_fo.fRegexp = false; m_fo.flags = 0; m_fo.scope = AU::Search::SearchScope::WholeDocument; }
+#endif
 	bool	CanFindNext()
 	{
 		return !m_fo.pattern.IsEmpty();

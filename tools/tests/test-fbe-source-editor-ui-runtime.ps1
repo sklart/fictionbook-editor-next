@@ -10,6 +10,7 @@ $isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'source-editor-ui'
 $directory = $isolation.DataPath
 $passed = $false
 try {
+    $null = New-IsolatedFbeSettingsSeed -Isolation $isolation -StartupScriptsDirectory (Join-Path $isolation.Root 'empty-scripts')
     $fixture = Join-Path $directory 'source.fb2'; $report = Join-Path $directory 'source.tsv'
     '<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>source</book-title><lang>en</lang></title-info><document-info><id>source-test</id><version>1.0</version></document-info></description><body><section><p>source</p></section></body></FictionBook>' | Set-Content -LiteralPath $fixture -Encoding utf8
     $oldMode, $oldScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
@@ -30,7 +31,14 @@ try {
 		if($designExitCode -ne 0 -or -not (Test-Path -LiteralPath $designReport)) { throw "Design caret scenario failed: exit $designExitCode." }
 	} finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario }
 	$designRows = @{}; foreach($line in Get-Content -LiteralPath $designReport) { $parts = $line -split "`t|="; if($parts.Count -eq 2) { $designRows[$parts[0]] = $parts[1] } }
-	foreach($key in @('located','shown','reused','unchanged','removed','focus_removed','scroll_removed','activation_removed','switch_removed','source_ignored','focus_restored','shown_after_return')) { if($designRows[$key] -ne '1') { throw "Design caret runtime check failed: $key (value '$($designRows[$key])')." } }
+	foreach($key in @('located','shown','reused','unchanged','removed','focus_removed','scroll_removed','activation_removed','switch_removed','source_ignored','focus_restored','shown_after_return','selection_prepared','source_unmodified','return_caret_ready')) { if($designRows[$key] -ne '1') { throw "Design caret runtime check failed: $key (value '$($designRows[$key])')." } }
+    $exeHash = (Get-FileHash -LiteralPath $isolation.Exe).Hash
+    $evidence = Join-Path $PSScriptRoot ('../../out/tests/source-editor-ui/' + $exeHash.Substring(0,12))
+    New-Item -ItemType Directory -Force $evidence | Out-Null
+    Copy-Item -LiteralPath $report -Destination (Join-Path $evidence 'source.tsv') -Force
+    Copy-Item -LiteralPath $designReport -Destination (Join-Path $evidence 'caret-design.tsv') -Force
+    @{status='PASS';executableSha256=$exeHash;mainJsSha256=(Get-FileHash (Join-Path $isolation.Root 'main.js')).Hash;source=$rows;design=$designRows} |
+        ConvertTo-Json -Depth 4 | Set-Content (Join-Path $evidence 'summary.json') -Encoding utf8
     $passed = $true
     Write-Host 'FBE SourceEditorControl runtime passed.'
 } finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed }
