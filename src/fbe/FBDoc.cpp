@@ -740,6 +740,7 @@ VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath)
 
 bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSource)
 {
+    FBE_BINARY_DIAG_SCOPE(DocumentLoad); FBE_BINARY_DIAG_BEGIN(DomCreation);
     m_binaryStore.Clear();
 	TraceDocumentEvent(L"D110", L"book load started", filename);
 	HRESULT	hr;
@@ -861,6 +862,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 		return false;
 	}
 	StartupTrace::Event(L"webbrowser", L"WB199", L"browser ready");
+    FBE_BINARY_DIAG_END(DomCreation);
 	TraceHtmlDocumentState(m_editor.Browser()->Document);
 	//FastMode();
 
@@ -933,7 +935,9 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 	ApplyConfChanges();
 	StartupTrace::Event(L"document", L"J100", L"apiLoadFB2 begin");
 	StartupTrace::AppendTestStartupBreadcrumb("document-script-load-start");
-	hr = InvokeFunc(L"apiLoadFB2", params, rawSource ? 3 : 2, res);
+	FBE_BINARY_DIAG_BEGIN(ScriptLoad);
+    hr = InvokeFunc(L"apiLoadFB2", params, rawSource ? 3 : 2, res);
+    FBE_BINARY_DIAG_END(ScriptLoad);
 	StartupTrace::HResult(L"document", L"J200", hr, L"apiLoadFB2");
 	if (FAILED(hr))
 	{
@@ -2098,6 +2102,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 
 MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compactBinaries)
 {
+    FBE_BINARY_DIAG_SCOPE(Serialization);
 	CString trace;
 	trace.Format(L"X100 CreateDOM started: encoding=%s, compact-binaries=%d",
 		(const wchar_t*)encoding, compactBinaries ? 1 : 0);
@@ -2177,6 +2182,7 @@ static CString CreateTemporaryFileName(const CString& directory, const wchar_t* 
 bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 		      int *errline,int *errcol,bool reportAccessDenied)
 {
+    FBE_BINARY_DIAG_SCOPE(Save);
 	StartupTrace::ScopedOperation operation(fValidateOnly ? StartupTrace::Operation::Validate : StartupTrace::Operation::None);
 	if (m_serialization_unsafe)
 	{

@@ -712,6 +712,12 @@ public:
   LRESULT RunIssue64Runtime(CAtlFile& output);
   LRESULT RunLegacyRuntimeScenarios(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT RunBinaryStoreRuntime(CAtlFile& output);
+#ifdef FBE_BINARY_STORE_DIAGNOSTICS
+  LRESULT RunBinaryStoreC4(CAtlFile& output);
+#ifdef FBE_BINARY_STORE_MEMORY_ATTRIBUTION
+  LRESULT RunBinaryStoreC41(CAtlFile& output);
+#endif
+#endif
   LRESULT RunBinaryScriptingCompatibilityRuntime(CAtlFile& output);
   LRESULT RunXmlScriptBackendRuntime(CAtlFile& output);
   LRESULT OnTimer(UINT, WPARAM, LPARAM, BOOL&);

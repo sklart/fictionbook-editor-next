@@ -48,6 +48,10 @@ public:
     void DimensionsCalculation();
     void DimensionsHit();
     const Counters& Statistics() const { return m_counters; }
+#ifdef FBE_BINARY_STORE_DIAGNOSTICS
+    unsigned long long DiagnosticEstimatedBytes() const;
+    PayloadDiagnosticStats DiagnosticCurrentPayloads() const;
+#endif
 private:
     struct Entry { BinaryMetadata metadata; CComPtr<IDispatch> element; };
     static std::wstring Key(const CString& id) { return std::wstring(id.GetString(), id.GetLength()); }

@@ -95,16 +95,16 @@ struct Controller {
             if (IsWindowVisible(child) && !wcscmp(name, L"Scintilla")) *reinterpret_cast<HWND*>(context) = child;
             return TRUE;
         }, reinterpret_cast<LPARAM>(&source));
-        if (!source) throw E_FAIL;
+        if (!source) { fputs("Source editor: no visible Scintilla window\n", stderr); throw E_FAIL; }
         DWORD_PTR result = 0;
         // SCI_DOCUMENTEND, then an ordinary typed space: valid trailing XML
         // whitespace forces the real Source Apply path without changing bytes.
-        if (!SendMessageTimeoutW(source, 2318, 0, 0, SMTO_ABORTIFHUNG, 30000, &result) ||
-            !SendMessageTimeoutW(source, WM_CHAR, L' ', 0, SMTO_ABORTIFHUNG, 30000, &result)) throw E_FAIL;
+        if (!SendMessageTimeoutW(source, 2318, 0, 0, SMTO_NORMAL, 180000, &result) ||
+            !SendMessageTimeoutW(source, WM_CHAR, L' ', 0, SMTO_NORMAL, 180000, &result)) { fprintf(stderr, "Source edit: SendMessageTimeout failed, Win32=%lu\n", GetLastError()); throw E_FAIL; }
     }
     void Timing(const char* name, double started) { output << "time\t" << name << "\t" << (Now() - started) << "\n"; output.flush(); }
     void Memory(const char* stage) {
-        SIZE_T ws = 0, priv = 0;
+        ULONGLONG ws = 0, priv = 0;
         for (int i = 0; i < 10; ++i) {
             Sleep(50); PROCESS_MEMORY_COUNTERS_EX counters = {};
             if (!GetProcessMemoryInfo(process, reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters), sizeof(counters))) throw E_FAIL;

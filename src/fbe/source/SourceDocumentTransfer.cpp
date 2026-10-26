@@ -7,6 +7,7 @@
 #include "../XmlDeclaration.h"
 #include <mlang.h>
 #include "BodySourceSelectionTransfer.h"
+#include "../binary/BinaryMemoryAttribution.h"
 
 SourceTransitionResult SourceDocumentTransfer::ReadSourceText(CWindow& source, SourceDocumentText& result)
 {
@@ -40,6 +41,7 @@ SourceTransitionResult SourceDocumentTransfer::PrepareSerializedSource(FB::Doc& 
 		MSXML2::IXMLDOMDocument2Ptr candidate = document.CreateDOM(encoding);
 		if(!(bool)candidate) return SourceTransitionResult::Failed;
 		cachedXml = candidate;
+		FBE_C41_POINT("source_cached_dom_created", 0);
 	}
 
 	const int documentType = static_cast<int>(document.GetDocumentFileType());
@@ -48,6 +50,7 @@ SourceTransitionResult SourceDocumentTransfer::PrepareSerializedSource(FB::Doc& 
 	{
 		StartupTrace::CountSourceSerialization();
 		_bstr_t serialized(cachedXml->xml);
+		FBE_C41_POINT("source_serialization_bstr_live", static_cast<unsigned long long>(serialized.length()) * sizeof(wchar_t));
 		serializedCache.text = static_cast<const wchar_t*>(serialized);
 		serializedCache.text = FbeSetXmlDeclarationEncoding(
 			std::wstring(static_cast<const wchar_t*>(serializedCache.text)),
@@ -56,6 +59,7 @@ SourceTransitionResult SourceDocumentTransfer::PrepareSerializedSource(FB::Doc& 
 		serializedCache.encoding = encoding;
 		serializedCache.documentType = documentType;
 	}
+	FBE_C41_POINT("source_serialization_bstr_released", 0);
 	sourceText = serializedCache.text;
 	return SourceTransitionResult::Success;
 }
@@ -122,6 +126,7 @@ SourceDocumentApplyResult SourceDocumentTransfer::ApplySourceDocument(FB::Doc& d
 	const CString encoding = ExtractXmlDeclarationEncoding(source.text);
 	if(!encoding.IsEmpty()) document.m_encoding = encoding;
 	cachedXml = candidate;
+		FBE_C41_POINT("source_cached_dom_created", 0);
 	result.result = SourceTransitionResult::Success;
 	result.documentChanged = true;
 	return result;

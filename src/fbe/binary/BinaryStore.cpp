@@ -50,3 +50,28 @@ void BinaryStore::SizeHit() { if (m_diagnostics) ++m_counters.sizeHits; }
 void BinaryStore::DimensionsCalculation() { if (m_diagnostics) ++m_counters.dimensionsCalculations; }
 void BinaryStore::DimensionsHit() { if (m_diagnostics) ++m_counters.dimensionsHits; }
 }
+#ifdef FBE_BINARY_STORE_DIAGNOSTICS
+namespace FbeBinary {
+unsigned long long BinaryStore::DiagnosticEstimatedBytes() const {
+    unsigned long long bytes=sizeof(*this)+static_cast<unsigned long long>(m_entries.bucket_count())*sizeof(void*);
+    for(const auto& entry:m_entries){bytes+=sizeof(entry)+2*sizeof(void*);
+        bytes+=static_cast<unsigned long long>(entry.first.capacity()+1)*sizeof(wchar_t);
+        bytes+=static_cast<unsigned long long>(entry.second.metadata.id.GetAllocLength()+1)*sizeof(wchar_t);
+        bytes+=static_cast<unsigned long long>(entry.second.metadata.contentType.GetAllocLength()+1)*sizeof(wchar_t);
+    }
+    return bytes; // Estimate excludes allocator headers and COM/MSHTML allocations.
+}
+}
+#endif
+#ifdef FBE_BINARY_STORE_DIAGNOSTICS
+namespace FbeBinary {
+PayloadDiagnosticStats BinaryStore::DiagnosticCurrentPayloads() const {
+    PayloadDiagnosticStats result;std::unordered_set<const void*> seen;
+    for(const auto& entry:m_entries){const auto value=payloads.Snapshot(entry.second.element);
+        if(!value||value->vt!=(VT_ARRAY|VT_UI1)||!value->parray||!value->parray->pvData)continue;
+        if(seen.insert(value->parray->pvData).second){result.canonicalBytes+=DiagnosticVariantBytes(*value);if(payloads.DiagnosticHistoryReferences(value.get()))result.historyReferencedBytes+=DiagnosticVariantBytes(*value);}
+    }
+    result.uniquePayloadBlocks=seen.size();return result;
+}
+}
+#endif

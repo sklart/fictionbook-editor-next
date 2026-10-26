@@ -21,6 +21,8 @@ static PluginOptionsProbe::Palette EditorPluginProbePalette(HWND window) {
 #include "RuntimeTestIssue64.inl"
 
 #include "RuntimeTestBinaryStore.inl"
+#include "RuntimeTestBinaryStoreC4.inl"
+#include "RuntimeTestBinaryStoreC41.inl"
 #include "RuntimeTestBinaryScriptingCompatibility.inl"
 #include "XmlUndoLifetimeProbe.h"
 #include "RuntimeTestXmlScriptBackend.inl"
@@ -28,6 +30,12 @@ static PluginOptionsProbe::Palette EditorPluginProbePalette(HWND window) {
 // Keep new script/COM probes outside the large legacy scenario stack frame.
 LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT message, WPARAM wparam, LPARAM lparam, BOOL& handled)
 {
+#ifdef FBE_BINARY_STORE_DIAGNOSTICS
+#ifdef FBE_BINARY_STORE_MEMORY_ATTRIBUTION
+    if (RuntimeTests::IsScenario(L"binary-store-c41")) { static bool active=false; if(active) return 0; active=true; CAtlFile output; if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS))) return 0; return RunBinaryStoreC41(output); }
+#endif
+    if (RuntimeTests::IsScenario(L"binary-store-c4")) { static bool active=false; if(active) return 0; active=true; CAtlFile output; if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS))) return 0; return RunBinaryStoreC4(output); }
+#endif
     if (RuntimeTests::IsScenario(L"binary-store") || RuntimeTests::IsScenario(L"binary-scripting-compatibility") || RuntimeTests::IsScenario(L"xml-script-backend-runtime")) {
         CAtlFile output;
         if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS))) return 0;

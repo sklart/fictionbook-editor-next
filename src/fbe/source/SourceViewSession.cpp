@@ -9,6 +9,7 @@
 #include "Scintilla.h"
 #include "../view/EditorSelectionState.h"
 #include <memory>
+#include "../binary/BinaryMemoryAttribution.h"
 
 SourceViewSession::SourceViewSession(SourceEditorControl& source, FB::Doc*& document,
 	EditorSelectionState& selection, IBodySourceSelectionMapper& selectionMapper) :
@@ -97,6 +98,7 @@ EditorSourceOperationResult SourceViewSession::PrepareSourceDocument(EditorView 
 		m_source.SendMessage(SCI_ALLOCATELINES, lineCount);
 		if(phaseProfiler) phaseProfiler->Mark("line count estimation and SCI_ALLOCATELINES");
 		std::vector<char> buffer(byteCount);
+		FBE_C41_POINT("source_utf8_vector_live", static_cast<unsigned long long>(buffer.size()));
 		if(!buffer.empty())
 		{
 			::WideCharToMultiByte(CP_UTF8, 0, sourceText, sourceText.GetLength(),
@@ -104,8 +106,10 @@ EditorSourceOperationResult SourceViewSession::PrepareSourceDocument(EditorView 
 			if(phaseProfiler) phaseProfiler->Mark("UTF-16 to UTF-8 conversion");
 			m_source.SendMessage(SCI_APPENDTEXT, byteCount, reinterpret_cast<LPARAM>(buffer.data()));
 			if(phaseProfiler) phaseProfiler->Mark("SCI_APPENDTEXT");
+			FBE_C41_POINT("source_scintilla_and_utf8_vector_live", static_cast<unsigned long long>(buffer.size()));
 		}
 	}
+	FBE_C41_POINT("source_utf8_vector_released", 0);
 	if (transferBodySelection)
 	{
 		m_selectionMapper.MapBodySelectionToSource(*m_document, m_savedXml, m_source,

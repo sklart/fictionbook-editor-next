@@ -40,6 +40,12 @@ public:
 	bool DocumentChanged() const;
 	const SourceDocumentApplyResult& LastApplyResult() const;
 	void ResetDocument();
+#ifdef FBE_BINARY_STORE_MEMORY_ATTRIBUTION
+    unsigned long long DiagnosticCachedTextBytes() const { return static_cast<unsigned long long>(m_serializedSourceCache.text.GetLength()) * sizeof(wchar_t); }
+    unsigned long long DiagnosticCachedTextCapacityBytes() const { return static_cast<unsigned long long>(m_serializedSourceCache.text.GetAllocLength()) * sizeof(wchar_t); }
+    bool DiagnosticSavedXmlLive() const { return static_cast<bool>(m_savedXml); }
+    bool DiagnosticSerializedXmlLive() const { return static_cast<bool>(m_serializedSourceCache.xml); }
+#endif
 
 private:
 	SourceEditorControl& m_source;

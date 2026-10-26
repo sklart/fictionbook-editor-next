@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "../binary/BinaryDiagnostics.h"
 #include "..\\..\\common\\DeploymentContext.h"
 
 #include <deque>
@@ -803,10 +804,15 @@ bool GetImageDimsByPath(const wchar_t* pszFileName, int* nWidth, int* nHeight)
 
 bool GetImageDimsByData(SAFEARRAY* data, ULONG /* unused: length */, int* nWidth, int* nHeight)
 {
+    FBE_BINARY_DIAG_SCOPE(ImageDecode);
 	CComPtr<IStream> stream;
 	if(FAILED(FbeImageData::CreateStream(data, &stream))) return false;
 	CImage image;
 	if(image.Load(stream) != S_OK) return false;
+#ifdef FBE_BINARY_STORE_DIAGNOSTICS
+    const auto pitch=static_cast<long long>(image.GetPitch());
+    FbeBinary::Diagnostics::ImageBitmap(static_cast<unsigned long long>(pitch<0?-pitch:pitch)*static_cast<unsigned long long>(image.GetHeight()));
+#endif
 	if(nWidth) *nWidth = image.GetWidth();
 	if(nHeight) *nHeight = image.GetHeight();
 	return true;

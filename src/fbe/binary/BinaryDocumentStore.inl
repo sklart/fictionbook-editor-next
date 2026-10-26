@@ -11,6 +11,7 @@ Doc* Doc::BinaryOwner(const GUID& identity)
 }
 void Doc::ReconcileBinaryStore()
 {
+    FBE_BINARY_DIAG_SCOPE(Reconcile); FBE_BINARY_DIAG_ADD(reconcileCalls, 1);
     // During arbitrary script execution a script may change an expando between
     // two native calls. Reconcile conservatively even if it replaced handlers.
     if (m_binaryLegacyDepth) m_binaryStore.Invalidate();
@@ -36,6 +37,7 @@ void Doc::ReconcileBinaryStore()
 
 CString Doc::UniqueBinaryId(const CString& preferred)
 {
+    FBE_BINARY_DIAG_SCOPE(Metadata);
     ReconcileBinaryStore();
     const CString base = FbeBinary::NormalizeXmlId(preferred);
     CString id(base);
@@ -48,6 +50,7 @@ CString Doc::UniqueBinaryId(const CString& preferred)
 
 CString Doc::BinaryInfo(const CString& id)
 {
+    FBE_BINARY_DIAG_SCOPE(Metadata);
     ReconcileBinaryStore();
     auto* metadata = m_binaryStore.Find(id);
     if (!metadata) CheckError(HRESULT_FROM_WIN32(ERROR_NOT_FOUND));

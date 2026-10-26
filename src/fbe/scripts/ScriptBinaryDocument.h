@@ -26,6 +26,7 @@ struct LoadedObject : Object {
 };
 inline std::vector<Object> Objects(MSHTML::IHTMLDocument2Ptr document)
 {
+    FBE_BINARY_DIAG_SCOPE(Discovery); FBE_BINARY_DIAG_ADD(enumerationCalls, 1);
     MSHTML::IHTMLDocument3Ptr dom(document);
     MSHTML::IHTMLElementPtr container(dom->getElementById(L"binobj"));
     if (!container) CheckError(E_UNEXPECTED);
@@ -40,6 +41,7 @@ inline std::vector<Object> Objects(MSHTML::IHTMLDocument2Ptr document)
             if (name == L"id") item.id = static_cast<LPCWSTR>(field->value);
             if (name == L"type") item.mime = static_cast<LPCWSTR>(field->value);
         }
+        FBE_BINARY_DIAG_ADD(enumeratedEntries, 1);
         objects.push_back(std::move(item));
     }
     return objects;

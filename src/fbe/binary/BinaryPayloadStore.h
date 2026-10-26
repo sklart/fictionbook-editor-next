@@ -3,6 +3,8 @@
 #include <atlcom.h>
 #include <memory>
 #include <unordered_map>
+#include "BinaryDiagnostics.h"
+#include "BinaryPayloadDiagnostics.h"
 
 namespace FbeBinary {
 // The document is the sole owner. Attached DOM behaviors have weak handles;
@@ -15,6 +17,9 @@ public:
         std::unordered_map<IUnknown*, unsigned long long> identities;
         std::unordered_map<unsigned long long, unsigned long long> revisions;
         unsigned long long next = 0, revision = 0;
+#ifdef FBE_BINARY_STORE_DIAGNOSTICS
+        std::unordered_map<unsigned long long, long> behaviorCookies;
+#endif
     };
     // Undo managers/DOM nodes can survive their editor window. History owns
     // only this lease; bytes remain owned by the live document state.
@@ -30,6 +35,12 @@ public:
         }
     };
     BinaryPayloadStore() : m_state(std::make_shared<State>()) {}
+#ifdef FBE_BINARY_STORE_DIAGNOSTICS
+    PayloadDiagnosticStats DiagnosticStatistics() const;
+    static size_t DiagnosticBehaviorObjectSize();
+    HRESULT DiagnosticDetach(IDispatch* element);
+    bool DiagnosticHistoryReferences(const CComVariant* value) const;
+#endif
     HRESULT Attach(IDispatch* element);
     HRESULT AdoptLegacy(IDispatch* element);
     std::shared_ptr<const CComVariant> Snapshot(IDispatch* element) const;
