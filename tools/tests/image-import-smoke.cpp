@@ -3,6 +3,7 @@
 #include "../../src/fbe/RuntimeLocalization.h"
 
 #include <fstream>
+#include <algorithm>
 #include <iostream>
 #include <cmath>
 #include <icm.h>
@@ -559,8 +560,114 @@ static bool TestFb2BinaryRoundTrip(const wchar_t* path)
 	return ok;
 }
 
+static HRESULT ImportHeifBytes(const std::vector<BYTE>& bytes, ImageImportResult& result, CString& error)
+{
+	wchar_t path[MAX_PATH] = {};
+	if (!GetTempPathW(_countof(path), path) || !GetTempFileNameW(path, L"fbe", 0, path)) return E_FAIL;
+	std::ofstream stream(path, std::ios::binary);
+	stream.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+	stream.close();
+	ImageImportOptions options;
+	const HRESULT hr = ImportImageForFb2(path, options, result, error);
+	DeleteFileW(path);
+	return hr;
+}
+
+static bool RejectedHeifBytes(const std::vector<BYTE>& bytes, const wchar_t* expectedError = NULL)
+{
+	ImageImportResult result; CString error;
+	const HRESULT hr = ImportHeifBytes(bytes, result, error);
+	return FAILED(hr) && !error.IsEmpty() && (!expectedError || error == expectedError) && result.data.empty();
+}
+
+static bool TestHeifProfileLimit(const std::vector<BYTE>& original)
+{
+	std::vector<BYTE> bytes(original);
+	auto boxOffset = [&](const char* type) -> size_t {
+		auto found = std::search(bytes.begin(), bytes.end(), type, type + 4);
+		return found == bytes.end() ? bytes.size() : static_cast<size_t>(found - bytes.begin()) - 4;
+	};
+	const size_t colr = boxOffset("colr");
+	if (colr >= bytes.size() || bytes.size() - colr < 12) return false;
+	auto readSize = [&](size_t at) { return (uint32_t(bytes[at]) << 24) | (uint32_t(bytes[at + 1]) << 16) | (uint32_t(bytes[at + 2]) << 8) | bytes[at + 3]; };
+	auto writeSize = [&](size_t at, uint32_t size) {
+		for (int i = 3; i >= 0; --i) { bytes[at + i] = static_cast<BYTE>(size); size >>= 8; }
+	};
+	const uint32_t oldSize = readSize(colr), profileSize = 4 * 1024 * 1024 + 1;
+	const uint32_t newSize = 12 + profileSize;
+	if (oldSize < 12 || oldSize > bytes.size() - colr) return false;
+	for (const char* parent : { "meta", "iprp", "ipco" }) {
+		const size_t at = boxOffset(parent);
+		if (at >= colr) return false;
+		writeSize(at, readSize(at) + newSize - oldSize);
+	}
+	bytes.erase(bytes.begin() + colr + 8, bytes.begin() + colr + oldSize);
+	bytes.insert(bytes.begin() + colr + 8, newSize - 8, 0);
+	writeSize(colr, newSize);
+	memcpy(bytes.data() + colr + 8, "prof", 4);
+	// Upstream defaults permit this profile. The importer must reject it while
+	// parsing, before reading ICC data or following the unchanged media offsets.
+	std::unique_ptr<heif_context, void(*)(heif_context*)> context(heif_context_alloc(), heif_context_free);
+	if (!context || heif_context_read_from_memory_without_copy(context.get(), bytes.data(), bytes.size(), NULL).code != heif_error_Ok) return false;
+	heif_image_handle* raw = NULL;
+	if (heif_context_get_primary_image_handle(context.get(), &raw).code != heif_error_Ok || !raw) return false;
+	std::unique_ptr<heif_image_handle, void(*)(const heif_image_handle*)> handle(raw, heif_image_handle_release);
+	return heif_image_handle_get_raw_color_profile_size(handle.get()) == profileSize &&
+		RejectedHeifBytes(bytes, L"Corrupt or unsupported AVIF/HEIF image.");
+}
+
+static bool TestHeifSecurity(const wchar_t* fixture)
+{
+	std::vector<BYTE> original;
+	if (!ReadFile(fixture, original)) return false;
+	if (!TestHeifProfileLimit(original)) return false;
+	// The existing marker test covers 90 degrees. Rotate the shared property
+	// on generated copies for 180/270, checking three asymmetric source pixels.
+	for (BYTE angle : { BYTE(2), BYTE(3) }) {
+		std::vector<BYTE> rotated(original);
+		const char irot[] = "irot";
+		auto property = std::search(rotated.begin(), rotated.end(), irot, irot + 4);
+		if (property == rotated.end() || rotated.end() - property < 5) return false;
+		property[4] = angle;
+		ImageImportResult result; CString error;
+		if (FAILED(ImportHeifBytes(rotated, result, error)) || result.width != (angle == 2 ? 512U : 256U) || result.height != (angle == 2 ? 256U : 512U)) return false;
+		const UINT sourceX[] = { 117, 210, 352 }, sourceY[] = { 105, 73, 104 };
+		for (size_t i = 0; i < _countof(sourceX); ++i) {
+			const UINT x = angle == 2 ? 511 - sourceX[i] : 255 - sourceY[i];
+			const UINT y = angle == 2 ? 255 - sourceY[i] : sourceX[i];
+			Gdiplus::Color pixel;
+			if (!OutputPixelAt(result.data, x, y, pixel) || pixel.GetRed() >= 96 || pixel.GetGreen() >= 96 || pixel.GetBlue() >= 96) return false;
+		}
+	}
+	// This valid fixture shares irot property 5 between *different* items.
+	// Replace item 1's colr association with a second irot association, without
+	// changing any box size or bitstream offset. This is forbidden by HEIF.
+	const BYTE associations[] = { 0, 1, 5, 1, 2, 0x83, 4, 0x85 };
+	std::vector<BYTE> duplicate(original);
+	auto association = std::search(duplicate.begin(), duplicate.end(), std::begin(associations), std::end(associations));
+	if (association == duplicate.end()) return false;
+	association[6] = 0x85;
+	if (!RejectedHeifBytes(duplicate)) return false;
+
+	// The container is still small; reject its huge declared extent before
+	// allocating/decompressing a raster. The source fixture remains untouched.
+	std::vector<BYTE> oversized(original);
+	const char ispe[] = "ispe";
+	auto dimensions = std::search(oversized.begin(), oversized.end(), ispe, ispe + 4);
+	if (dimensions == oversized.end() || oversized.end() - dimensions < 16) return false;
+	for (int offset : { 8, 12 }) {
+		dimensions[offset] = 0; dimensions[offset + 1] = 0;
+		dimensions[offset + 2] = 0x80; dimensions[offset + 3] = 0;
+	}
+	if (!RejectedHeifBytes(oversized)) return false;
+	std::cout << "HEIF 90/180/270 rotations, profile/extent limits and duplicate-irot rejection passed\n";
+	return true;
+}
+
 int wmain(int argc, wchar_t** argv)
 {
+	if (heif_get_version_number() != LIBHEIF_NUMERIC_VERSION) return 48;
+	std::cout << "Linked libheif: " << heif_get_version() << "\n";
 	if (argc == 3 && wcscmp(argv[1], L"--make-jp2") == 0)
 		return WriteJpeg2000Fixture(argv[2]) ? 0 : 42;
 	if ((argc == 4 || argc == 5) && wcscmp(argv[1], L"--export") == 0) {
@@ -664,6 +771,7 @@ int wmain(int argc, wchar_t** argv)
 	if (!TestHeif(argv[20], 451, 461, true)) return 37;
 	if (!TestHeif10Bit(argv[21])) return 38;
 	if (!TestTransformedHeif(argv[22])) return 39;
+	if (!TestHeifSecurity(argv[22])) return 49;
 	// Metadata is deliberately changed only in copies created by the runner:
 	// the regression still decodes real AVIF pixels while covering P3/NCLX,
 	// PQ, HLG and alpha without adding binary fixtures to the repository.
