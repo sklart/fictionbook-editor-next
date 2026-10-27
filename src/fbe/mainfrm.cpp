@@ -1257,6 +1257,7 @@ static bool HasOnlySourceEditorConfigurationChanged(const EditorConfigurationSna
 		before.editorBackgroundCustomPath == after.editorBackgroundCustomPath && before.editorBackgroundLayout == after.editorBackgroundLayout &&
 		before.customDictionary == after.customDictionary && before.nbsp == after.nbsp &&
 		before.customDictionaryCodepage == after.customDictionaryCodepage &&
+		before.descriptionLayout == after.descriptionLayout &&
 		before.fastMode == after.fastMode && before.useSpellChecker == after.useSpellChecker &&
 		before.highlightMisspells == after.highlightMisspells &&
 		before.checkRussianYoUsage == after.checkRussianYoUsage &&
@@ -7725,7 +7726,7 @@ void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 	m_source.UpdateTagHighlight({ config.tagHighlight, config.tagHighlightFullTag ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, config.tagHighlightAttributes, config.tagHighlightErrors });
 	UIEnable(ID_GOTO_MATCHTAG, m_source.HasMatchingTag());
 	// Перекраска XML-редактора не должна менять активный режим документа.
-	if(activeView == BODY && m_doc && m_document_session.HasDocument())
+	if((activeView == BODY || activeView == DESC) && m_doc && m_document_session.HasDocument())
 		m_view.ActivateWnd(m_doc->m_body);
     if (!m_document_session.HasDocument()) {
         if (m_Speller) m_Speller->DetachDocument();
@@ -7838,7 +7839,7 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles, bool saveSettings)
 		PresentClosedDocument();
 	}
 	// Rebuilding source-editor styles must not replace the active visual editor.
-	if(activeView == BODY && m_doc && m_document_session.HasDocument())
+	if((activeView == BODY || activeView == DESC) && m_doc && m_document_session.HasDocument())
 		m_view.ActivateWnd(m_doc->m_body);
 
 

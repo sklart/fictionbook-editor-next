@@ -333,3 +333,36 @@ div#fbw_desc.description-modern #binobj label { width: auto; margin-left: .4em; 
  div#fbw_desc.description-modern #binobj input { width: 40% !important; }
  div#fbw_desc.description-modern #binobj button { float: none; }
 }
+
+/* Keep labels and controls together in MSHTML without flex/grid. */
+div#fbw_desc .description-person .description-field {
+ display: inline-block; width: 31%; margin-right: 2%; vertical-align: top;
+}
+div#fbw_desc .description-field label,
+div#fbw_desc .description-date-field label {
+ display: block; width: auto !important; text-align: left; margin: .3em 0 .1em;
+}
+div#fbw_desc .description-person .description-field input {
+ width: 100%; max-width: 100%;
+}
+div#fbw_desc .description-action-break { clear: both; }
+div#fbw_desc .description-date-field {
+ display: inline-block; width: 46%; margin-right: 2%; vertical-align: top;
+}
+div#fbw_desc .description-date-field input { width: 100%; }
+div#fbw_desc.description-modern #tiCover {
+ float: none; width: auto; margin: .5em 0 1em;
+}
+div#fbw_desc.description-modern #tiCover select { width: 16em; max-width: 100%; }
+div#fbw_desc.description-modern #tiCover .description-cover-preview {
+ float: left; width: auto; max-width: 8em; max-height: 8em; margin: .3em 1em .3em 0;
+}
+div#fbw_desc.description-modern #tiCover .description-add-action { clear: both; }
+div#fbw_desc.description-modern #tiShowBtn { display: none; }
+@media screen and (max-width: 760px) {
+ div#fbw_desc .description-person .description-field { width: 47%; }
+ div#fbw_desc .description-date-field { display: block; width: 100%; margin-right: 0; }
+}
+@media screen and (max-width: 480px) {
+ div#fbw_desc .description-person .description-field { display: block; width: 100%; margin-right: 0; }
+}

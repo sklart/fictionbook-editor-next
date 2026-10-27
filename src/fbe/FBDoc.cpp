@@ -2446,6 +2446,7 @@ static void ApplyRuntimeBodyColors(MSHTML::IHTMLDocument2Ptr document)
 		descriptionText.GetString(), descriptionWindow.GetString(),
 		descriptionText.GetString(), descriptionWindow.GetString(), descriptionBorder.GetString(),
 		descriptionText.GetString(), descriptionControl.GetString(), descriptionBorder.GetString(), descriptionBorder.GetString());
+	css.AppendFormat(L"div#fbw_desc legend{color:%s;}", descriptionText.GetString());
 	css.AppendFormat(L"div#fbw_desc input:disabled,div#fbw_desc button:disabled{color:%s;}"
 		L"div#fbw_desc button:hover{background:%s;}"
 		L"div#fbw_desc input:focus,div#fbw_desc select:focus,div#fbw_desc textarea:focus,div#fbw_desc button:focus{outline-color:%s;}"

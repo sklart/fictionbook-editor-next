@@ -46,6 +46,9 @@ function checkTheme() {
   assert(color(form.currentStyle.backgroundColor)==color(expectedBackground),"Description theme background: "+form.currentStyle.backgroundColor+" / "+expectedBackground);
   assert(color(title.currentStyle.backgroundColor)==color(expectedBackground),"Input theme background: "+title.currentStyle.backgroundColor+" / "+expectedBackground);
   assert(color(title.currentStyle.color)==color(expectedForeground),"Input theme foreground: "+title.currentStyle.color+" / "+expectedForeground);
+  var legends=form.getElementsByTagName("LEGEND");
+  for(var legendIndex=0;legendIndex<legends.length;legendIndex++)
+   assert(color(legends[legendIndex].currentStyle.color)==color(expectedForeground),"Section title theme foreground");
  }
 }
 checkTheme();
@@ -87,12 +90,17 @@ if(fixtures[fixtureIndex]=="full") {
  assert(!BinaryIsReferenced(addedId),"Own thumbnail must not count as a metadata/body reference");
  Remove(addedRow);assert(rows.length==count,"Remove unreferenced binary with a visible thumbnail");
  assert(serialize()==serializedBefore,"Binary add/remove/rename restores original serialized data");
+ ShowFullImage("fbw-internal:#"+originalId);
+ assert(document.getElementById("fullImgPanel").style.visibility=="visible","Full attachment preview opens");
+ HideFullImage();
+ assert(document.getElementById("fullImgPanel").style.display=="none","Closing full preview removes it from document layout");
 }
 var id=document.getElementById("diID"), savedId=id.value;
-id.value="";var invalidBefore=snapshot();DescriptionValidate();
+id.value="";var invalidBefore=snapshot();id.fireEvent("onfocusout");
 assert(snapshot()==invalidBefore && id.value=="","Validation must not repair data");
 assert(id.className.indexOf("description-invalid")>=0,"Empty ID warning");
-id.value=savedId;DescriptionValidate();
+id.value=savedId;id.fireEvent("onfocusout");
+assert(id.className.indexOf("description-invalid")<0,"Leaving a repaired field clears advisory validation in legacy MSHTML");
 assert(snapshot()==before,"Validation preserves all other fields");
 timings.push(fixtures[fixtureIndex]+": load_ms="+loadMs+", switch_validation_serialization_ms="+((new Date()).getTime()-switchStart));
 }

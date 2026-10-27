@@ -156,7 +156,12 @@ function InitDescriptionUI(root)
  DescriptionStyleButtons(root);
  InitDescriptionActions(root);
  DescriptionValidate();
- if(!root._descriptionChangeHook) { root.attachEvent("onchange", DescriptionValidationChanged); root._descriptionChangeHook = true; }
+ if(!root._descriptionChangeHook) {
+  root.attachEvent("onchange", DescriptionValidationChanged);
+  // change does not bubble in the legacy MSHTML document mode; focusout does.
+  root.attachEvent("onfocusout", DescriptionValidationChanged);
+  root._descriptionChangeHook = true;
+ }
  TraceScript("J919", "operation=Description UI ready");
 }
 
@@ -207,6 +212,8 @@ function DescriptionRefreshAttachments()
  }
  var summary = document.getElementById("descriptionAttachmentSummary");
  if(summary) summary.innerText = rows.length + " / " + total + " B";
+ var add = document.getElementById("descriptionAddAttachment");
+ if(add && add.parentNode == section && add.nextSibling) section.appendChild(add);
 }
 
 function DescriptionAddRepeated(containerId)
@@ -220,7 +227,9 @@ function DescriptionAddRepeated(containerId)
  for(var i=0; i<inputs.length; i++) inputs[i].value = "";
  var spans = row.getElementsByTagName("SPAN");
  for(var i=0; i<spans.length; i++) if(spans[i].id == "id" || spans[i].className == "id") spans[i].setAttribute("value", "");
- container.appendChild(row);
+ var action = container.firstChild;
+ while(action && (action.nodeType != 1 || action.className != "description-add-action")) action = action.nextSibling;
+ container.insertBefore(row, action);
  PutSpacers(container);
  DescriptionStyleButtons(row);
  if(typeof DescriptionValidate == "function") DescriptionValidate();
@@ -234,6 +243,7 @@ function DescriptionAddAction(parent, text, handler)
  button.className = "description-add-action";
  button.innerText = text; button.onclick = handler;
  parent.appendChild(button);
+ return button;
 }
 
 
@@ -382,7 +392,7 @@ function InitDescriptionActions(root)
  var attachments = document.getElementById("binobj");
  var summary = document.createElement("P"); summary.id = "descriptionAttachmentSummary";
  attachments.insertBefore(summary, attachments.firstChild.nextSibling);
- DescriptionAddAction(attachments, DescriptionText("add_attachment", "Add attachment"), DescriptionAddAttachment);
+ DescriptionAddAction(attachments, DescriptionText("add_attachment", "Add attachment"), DescriptionAddAttachment).id = "descriptionAddAttachment";
  DescriptionRefreshAttachments();
 }
 
@@ -1552,6 +1562,7 @@ function ShowFullImage(source)
 	if (winHeight < imgHeight) winHeight = imgHeight;
 	fullImgPanel.style.height = (winHeight) + "px";
 
+	fullImgPanel.style.display = "block";
 	fullImgPanel.style.visibility = "visible";
 }
 
@@ -1566,6 +1577,8 @@ function HideFullImage()
 	fullImg.width = 0;
 	fullImg.height = 0;
 	fullImgPanel.style.visibility = "hidden";
+	// A hidden, viewport-sized panel can still enlarge the document scroll area.
+	fullImgPanel.style.display = "none";
 }
 
 

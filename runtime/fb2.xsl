@@ -359,10 +359,8 @@
 		<label unselectable="on" desc_extended="true"><xsl:value-of select="$IDS_KEYWORDS"/></label>
 		<input type="text" maxlength="256" id="tiKwd" class="wide" value="{$cur/f:keywords}"/><br/>
 	  </xsl:if>
-	  <label unselectable="on"><xsl:value-of select="$IDS_DATE_TEXT"/></label>
-	  <input type="text" maxlength="256" id="tiDate" data-fbe-date-present="{count($cur/f:date)}" value="{$cur/f:date}"/>
-	  <label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label>
-	  <input type="text" maxlength="256" id="tiDateVal" value="{$cur/f:date/@value}"/><br/>
+	  <span class="description-date-field"><label unselectable="on"><xsl:value-of select="$IDS_DATE_TEXT"/></label><input type="text" maxlength="256" id="tiDate" data-fbe-date-present="{count($cur/f:date)}" value="{$cur/f:date}"/></span>
+	  <span class="description-date-field"><label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label><input type="text" maxlength="256" id="tiDateVal" value="{$cur/f:date/@value}"/></span><br/>
       <fieldset id="tiCover" unselectable="on" class="kid">
 	<legend class="cover" unselectable="on"><xsl:value-of select="$IDS_COVERPAGE"/></legend>
 	<xsl:for-each select="$cur/f:coverpage/f:image">
@@ -467,10 +465,8 @@
 		<input type="text" maxlength="256" id="stiTitle" class="wide" value="{$cur/f:book-title}"/><br/>
 		<label unselectable="on"><xsl:value-of select="$IDS_KEYWORDS"/></label>
 		<input type="text" maxlength="256" id="stiKwd" class="wide" value="{$cur/f:keywords}"/><br/>
-		<label unselectable="on"><xsl:value-of select="$IDS_DATE_TEXT"/></label>
-		<input type="text" maxlength="256" id="stiDate" data-fbe-date-present="{count($cur/f:date)}" value="{$cur/f:date}"/>
-		<label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label>
-		<input type="text" maxlength="256" id="stiDateVal" value="{$cur/f:date/@value}"/><br/>
+		<span class="description-date-field"><label unselectable="on"><xsl:value-of select="$IDS_DATE_TEXT"/></label><input type="text" maxlength="256" id="stiDate" data-fbe-date-present="{count($cur/f:date)}" value="{$cur/f:date}"/></span>
+		<span class="description-date-field"><label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label><input type="text" maxlength="256" id="stiDateVal" value="{$cur/f:date/@value}"/></span><br/>
 	    <fieldset id="stiCover" unselectable="on" class="kid">
 			<legend class="cover" unselectable="on"><xsl:value-of select="$IDS_COVERPAGE"/></legend>
 			<xsl:for-each select="$cur/f:coverpage/f:image">
@@ -568,10 +564,8 @@
       <label unselectable="on"><xsl:value-of select="$IDS_TOOLS_USED"/></label>
       <input type="text" maxlength="256" id="diProgs" class="middle" value="{$cur/f:program-used}"/>
 			<br/>
-      <label unselectable="on"><xsl:value-of select="$IDS_DATE_TEXT"/></label>
-      <input type="text" maxlength="256" id="diDate" value="{$cur/f:date}"/>
-      <label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label>
-      <input type="text" maxlength="256" id="diDateVal" value="{$cur/f:date/@value}"/>
+      <span class="description-date-field"><label unselectable="on"><xsl:value-of select="$IDS_DATE_TEXT"/></label><input type="text" maxlength="256" id="diDate" value="{$cur/f:date}"/></span>
+      <span class="description-date-field"><label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label><input type="text" maxlength="256" id="diDateVal" value="{$cur/f:date/@value}"/></span>
 	  <br/>
       <label unselectable="on" style="width:6.7em"><xsl:value-of select="$IDS_SOURCE_OCR"/></label>
       <input type="text" maxlength="256" id="diOCR" class="wide" value="{$cur/f:src-ocr}"/><br/>
@@ -695,25 +689,17 @@
   <xsl:template name="author">
     <xsl:param name="item"/>
 
-    <div unselectable="on">
+    <div unselectable="on" class="description-person">
       <button id="del" onclick="Remove(this.parentNode)" unselectable="on">&#x72;</button>
-      <button onclick="Clone(this.parentNode)" unselectable="on">&#x32;</button>
-      <label unselectable="on"><xsl:value-of select="$IDS_FIRST"/></label>
-      <input type="text" maxlength="256" id="first" value="{$item/f:first-name}"/>
-      <label unselectable="on"><xsl:value-of select="$IDS_MIDLE"/></label>
-      <input type="text" maxlength="256" id="middle" value="{$item/f:middle-name}"/>
-      <label unselectable="on"><xsl:value-of select="$IDS_LAST"/></label>
-      <input type="text" maxlength="256" id="last" value="{$item/f:last-name}"/>
+      <button onclick="Clone(this.parentNode)" unselectable="on">&#x32;</button><br class="description-action-break"/><span class="description-field"><label unselectable="on"><xsl:value-of select="$IDS_FIRST"/></label><input type="text" maxlength="256" id="first" value="{$item/f:first-name}"/></span>
+      <span class="description-field"><label unselectable="on"><xsl:value-of select="$IDS_MIDLE"/></label><input type="text" maxlength="256" id="middle" value="{$item/f:middle-name}"/></span>
+      <span class="description-field"><label unselectable="on"><xsl:value-of select="$IDS_LAST"/></label><input type="text" maxlength="256" id="last" value="{$item/f:last-name}"/></span>
       <span id = "ti_nic_mail_web" block="true">
 		<br/>
-		<button onclick="ShowElement(this.parentNode.id, false)" unselectable="on" style="font-family : Tahoma;">-</button>
-	    <label unselectable="on"><xsl:value-of select="$IDS_NICKNAME"/></label>
-		<input type="text" maxlength="256" id="nick" value="{$item/f:nickname}"/>
-		<label unselectable="on"><xsl:value-of select="$IDS_EMAIL"/></label>
-		<input type="text" maxlength="256" id="email" value="{$item/f:email}"/>
-		<label unselectable="on"><xsl:value-of select="$IDS_WEBSITE"/></label>
-		<SPAN class = "id" block="true" value="{$item/f:id}"></SPAN>
-		<input type="text" maxlength="256" id="home" value="{$item/f:home-page}"/>		
+		<button onclick="ShowElement(this.parentNode.id, false)" unselectable="on" style="font-family : Tahoma;">-</button><br class="description-action-break"/><span class="description-field"><label unselectable="on"><xsl:value-of select="$IDS_NICKNAME"/></label><input type="text" maxlength="256" id="nick" value="{$item/f:nickname}"/></span>
+		<span class="description-field"><label unselectable="on"><xsl:value-of select="$IDS_EMAIL"/></label><input type="text" maxlength="256" id="email" value="{$item/f:email}"/></span>
+		<span class="description-field"><label unselectable="on"><xsl:value-of select="$IDS_WEBSITE"/></label><SPAN class = "id" block="true" value="{$item/f:id}"></SPAN>
+		<input type="text" maxlength="256" id="home" value="{$item/f:home-page}"/></span>
 	  </span>
     </div>
   </xsl:template>
@@ -722,24 +708,16 @@
   <xsl:template name="author_main">
     <xsl:param name="item"/>
 
-    <div unselectable="on">
+    <div unselectable="on" class="description-person">
       <button id="del" onclick="Remove(this.parentNode)" unselectable="on">&#x72;</button>
-      <button onclick="Clone(this.parentNode)" unselectable="on">&#x32;</button>
-      <label unselectable="on" class="h"><xsl:value-of select="$IDS_FIRST"/></label>
-      <input type="text" maxlength="256" id="first" value="{$item/f:first-name}"/>
-      <label unselectable="on"><xsl:value-of select="$IDS_MIDLE"/></label>
-      <input type="text" maxlength="256" id="middle" value="{$item/f:middle-name}"/>
-      <label unselectable="on" class="h"><xsl:value-of select="$IDS_LAST"/></label>
-      <input type="text" maxlength="256" id="last" value="{$item/f:last-name}"/>      
+      <button onclick="Clone(this.parentNode)" unselectable="on">&#x32;</button><br class="description-action-break"/><span class="description-field"><label unselectable="on" class="h"><xsl:value-of select="$IDS_FIRST"/></label><input type="text" maxlength="256" id="first" value="{$item/f:first-name}"/></span>
+      <span class="description-field"><label unselectable="on"><xsl:value-of select="$IDS_MIDLE"/></label><input type="text" maxlength="256" id="middle" value="{$item/f:middle-name}"/></span>
+      <span class="description-field"><label unselectable="on" class="h"><xsl:value-of select="$IDS_LAST"/></label><input type="text" maxlength="256" id="last" value="{$item/f:last-name}"/></span>
 	  <span id = "ti_nic_mail_web" block="true">
 			<br/>
-			<button onclick="ShowElement(this.parentNode.id, false)" unselectable="on" style="font-family : Tahoma;">-</button>
-		    <label unselectable="on"><xsl:value-of select="$IDS_NICKNAME"/></label>
-		    <input type="text" maxlength="256" id="nick" value="{$item/f:nickname}"/>
-		    <label unselectable="on"><xsl:value-of select="$IDS_EMAIL"/></label>
-		    <input type="text" maxlength="256" id="email" value="{$item/f:email}"/>
-		    <label unselectable="on"><xsl:value-of select="$IDS_WEBSITE"/></label>
-		    <input type="text" maxlength="256" id="home" value="{$item/f:home-page}"/>
+			<button onclick="ShowElement(this.parentNode.id, false)" unselectable="on" style="font-family : Tahoma;">-</button><br class="description-action-break"/><span class="description-field"><label unselectable="on"><xsl:value-of select="$IDS_NICKNAME"/></label><input type="text" maxlength="256" id="nick" value="{$item/f:nickname}"/></span>
+		    <span class="description-field"><label unselectable="on"><xsl:value-of select="$IDS_EMAIL"/></label><input type="text" maxlength="256" id="email" value="{$item/f:email}"/></span>
+		    <span class="description-field"><label unselectable="on"><xsl:value-of select="$IDS_WEBSITE"/></label><input type="text" maxlength="256" id="home" value="{$item/f:home-page}"/></span>
 			<SPAN id = "id" block="true" value="{$item/f:id}"></SPAN>
 			<br/>
 	  </span>

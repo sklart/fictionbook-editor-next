@@ -1,6 +1,6 @@
 # Описание документа: Modern и Classic
 
-Дата проверки: 27 октября 2026 года. Итог приёмки: **PARTIAL**: визуальный desktop/DPI smoke не выполнен. FAST-контур покрыт поэтапно, с одним нестабильным capture меню и успешным контрольным повтором.
+Дата проверки: 27 октября 2026 года. Итог приёмки: **PARTIAL**: визуальный desktop smoke выполнен через computer use, матрица DPI ещё не выполнена. FAST-контур покрыт поэтапно, с одним нестабильным capture меню и успешным контрольным повтором.
 
 ## Реализация
 
@@ -61,7 +61,7 @@ Validation предупреждает о пустых обязательных �
 | Classic → Modern | PASS — повторные циклы без дублирования секций |
 | FB2 round-trip | PASS — шесть корректных fixtures, два Save/reopen в каждом layout; независимое сравнение XML metadata, stylesheet и binary bytes |
 | Binary | PASS — production add/rename/remove, payloads, references; non-image Save handler; native store/ABI и JS behavior |
-| Cover | PASS — rename references, сохранение ссылки, preview URL; визуальный просмотр остаётся в desktop smoke |
+| Cover | PASS — rename references, сохранение ссылки, миниатюра и полный просмотр через GUI |
 | Light theme | PASS — вычисленные MSHTML цвета формы/полей и сохранность данных |
 | Dark theme | PASS — Light → Dark → Light для обоих layouts |
 | Native Settings | PASS — новая/прежняя конфигурация, modern/classic/неизвестное значение, сохранение и повторная загрузка |
@@ -70,7 +70,7 @@ Validation предупреждает о пустых обязательных �
 | Release Win32 `/W4 /WX` | PASS — affected FBE после migration helper; лог `out/description-strict-build.log` |
 | Existing affected regression suite | PASS — Settings lifecycle, BinaryStore/ABI, binary JS behavior/serialization, themes/idle, New Document safety и FBD round-trip; binary scripting 46/46 и bundled corpus 6/6 |
 | Release FAST | PASS поэтапно — пройденные runtime-наборы переиспользованы; UI menu capture потребовал контрольного повтора; заключительные PE/version/manifest проверки PASS. Единого непрерывного зелёного запуска нет |
-| Визуальный desktop smoke | NOT RUN — computer-use kernel не инициализируется |
+| Визуальный desktop smoke | PASS в описанном ниже контуре — Modern/Classic, Light/Dark, редактирование, импорт/экспорт вложения, Save/reopen |
 
 `test-description-layout-runtime.ps1` запускает реальный изолированный FBE, применяет Light/Dark/Light и проверяет оба layout на A–G fixtures плюс 100/500 binary и 30 авторах. Это не mock браузера. Сравниваются значения INPUT/SELECT/TEXTAREA, identity полей, количество секций, результат общей сериализации, validation и binary операции.
 
@@ -101,13 +101,32 @@ Source-safety выявил смешанные окончания строк в 1
 
 Логи: `out/description-release-gate.log`, `out/description-release-gate-resumed.log`, `out/description-ui-defects-retry.log`, `out/description-release-gate-remaining.log`, `out/description-shell-preparation.log`, `out/description-release-gate-final.log`. Временные runners: `out/description-fast-remaining.ps1`, `out/description-fast-final.ps1`.
 
+### Визуальный smoke через computer use
+
+После перезапуска Codex native computer use заработал. Проверялось окно именно `out/Release/FBE.exe`; путь запущенного процесса подтверждён отдельно через CIM. Использована disposable-копия `out/manual-description-smoke/description-full-20261027-074918.fb2`, исходные fixtures не редактировались.
+
+Через интерфейс выполнены:
+
+- Modern → Classic → Modern и смена Light/Dark при открытом Description; данные автора, названия и выбранной обложки сохранились, перекрытия формой Source после применения Settings нет;
+- редактирование названия в Modern, добавление и заполнение автора, редактирование имени в Classic; Save, закрытие и повторное открытие книги, независимое чтение сохранённого XML;
+- импорт тестового BMP 160×220 штатной командой: FBE преобразовал его в JPEG `visual-smoke-cover.jpg`, показал размеры/миниатюру и обновил число вложений до трёх; прежние `cover.png` и `blob.dat` сохранились;
+- выбор нового JPEG обложкой, полный просмотр и закрытие просмотрщика кликом по изображению; после закрытия лишняя горизонтальная полоса исчезает;
+- сохранение JPEG из списка вложений; экспортированный `out/manual-description-smoke/visual-smoke-cover.jpg` побайтно совпал с decoded binary книги (2530 байт);
+- добавление пустого автора вызывает предупреждение; ввод имени и уход из поля снимают его. Кнопка добавления остаётся после последней строки. Итоговый Save через toolbar завершился сообщением «Документ сохранён. Ошибки не обнаружены.»
+
+Визуальная проверка выявила и привела к исправлениям: переносы и разъезд подписей автора/даты, расположение cover controls, нечитаемые тёмные LEGEND, неверная обработка изменения layout как Source-only, перекрытие Description редактором Source после Settings, зависшее advisory validation, положение кнопок добавления после вставки строки и лишняя полоса прокрутки после полного preview. Общая DOM-модель и сериализация сохранены. Поля автора и даты получили общие обёртки в XSL; CSS одинаково обновлён в обычном и Fast Mode stylesheet.
+
+Осмотрены обычное и максимизированное окно; в очень узком окне поля остаются доступны, но сохраняется горизонтальная прокрутка. Полный проход всех секций в узком окне и матрица DPI не заявляются PASS. Удаление автора/жанра/binary в GUI в этот smoke не входило; соответствующие production behavior tests прошли отдельно.
+
+После исправлений прошли affected Release `/W4 /WX`, штатная Release-сборка, MSXML/XSL contracts, JS reliability/binary behavior, XML Source themes, production MSHTML behavior и round-trip шести fixtures в обоих layouts. Новые regression assertions проверяют цвет LEGEND, validation через настоящий `focusout` и закрытие полного preview. Логи: `out/description-smoke-strict-final.log`, `out/description-smoke-build-final.log`, `out/description-smoke-build-assets.log`, `out/description-smoke-runtime-preview.log`, `out/description-smoke-roundtrip.log`. Полный release gate повторно не запускался.
+
 ## Оставшиеся gates и технические долги
 
-Нужен визуальный smoke на Windows: открыть Description, проверить поля и действия, добавить/удалить автора и жанр, выбрать/просмотреть/сохранить вложение и обложку, сохранить и открыть книгу, переключить оба layouts и темы. Проверить узкое/обычное/максимизированное окно при 100%, 125%, 150% и по возможности 200% DPI.
+Остаётся ручная матрица узкое/обычное/максимизированное окно при 100%, 125%, 150% и по возможности 200% DPI. Дополнительный GUI-контур удаления автора/жанра/вложения также остаётся вне выполненного smoke.
 
 Нестабильный capture меню в общем UI-defects runtime требует отдельного наблюдения: один FAIL между двумя PASS. Тест и его assertions не ослаблялись; изменение меню не включено в scope модернизации Description.
 
-Computer-use дважды завершился до запуска kernel с `failed to write kernel assets: ... (os error 3)`, включая попытку после reset. Поэтому визуальная оценка, screenshot evidence и ручной DPI smoke не объявляются PASS. Settings layout/runtime проверки имеют отдельный scope.
+Предыдущий блокер computer-use (`failed to write kernel assets: ... (os error 3)`) снят после перезапуска Codex; он больше не препятствует desktop smoke. DPI-проверки не подменяются ни этим осмотром, ни Settings/runtime тестами.
 
 Состояние раскрытия секций пока не сохраняется между запусками. Legacy `document.all` и существующие повторяющиеся ID оставлены в общей модели. `main.js` остаётся монолитным намеренно. Полная schema-driven генерация и отдельный валидатор не вводились.
 
