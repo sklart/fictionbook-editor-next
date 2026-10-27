@@ -46,6 +46,7 @@ DISPID ScriptingMethodId(LPCWSTR name)
  if (_wcsicmp(name, L"_LeaveScriptContext") == 0) return 1001;
  if (_wcsicmp(name, L"_BinaryStoreChanged") == 0) return 1002;
  if (_wcsicmp(name, L"_BinaryStoreUniqueId") == 0) return 1003;
+ if (_wcsicmp(name, L"_DescriptionAddAttachment") == 0) return 1004;
  return DISPID_UNKNOWN;
 }
 }
@@ -264,6 +265,12 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 		return DISP_E_UNKNOWNINTERFACE;
 	if (argumentError)
 		*argumentError = UINT_MAX;
+	if (dispid == 1004) {
+		if (!(flags & DISPATCH_METHOD)) return DISP_E_MEMBERNOTFOUND;
+		if (parameters && parameters->cArgs != 0) return DISP_E_BADPARAMCOUNT;
+		if (!::IsWindow(m_xmlScriptHost)) return E_UNEXPECTED;
+		return ::PostMessageW(m_xmlScriptHost, WM_COMMAND, ID_EDIT_ADDBINARY, 0) ? S_OK : E_FAIL;
+	}
 	if ((dispid >= 100 && dispid < 100 + static_cast<DISPID>(_countof(ScriptingMethods))) || (dispid >= 1000 && dispid <= 1003)) {
 		HRESULT result;
 		try { result = InvokeScriptingExtension(dispid, flags, parameters, resultValue, argumentError); }

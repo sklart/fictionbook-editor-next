@@ -284,3 +284,37 @@ strong {
 	font-weight: bold;
 	color: #660066;
 }
+
+/* Modern uses the same controls and serializes through the Classic contract. */
+div#fbw_desc .description-section-toggle { float: none; margin-right: .5em; min-width: 2em; }
+div#fbw_desc.description-classic .description-section-toggle { display: none; }
+div#fbw_desc.description-modern .description-section { padding: 1em; margin-bottom: 1em; }
+div#fbw_desc.description-modern .description-collapsed > * { display: none !important; }
+div#fbw_desc.description-modern .description-collapsed > legend { display: block !important; }
+div#fbw_desc.description-modern #tiAuthor > div,
+div#fbw_desc.description-modern #tiTrans > div,
+div#fbw_desc.description-modern #diAuthor > div,
+div#fbw_desc.description-modern #stiAuthor > div { padding: .6em 0; margin: .3em 0; border-bottom: 1px solid ThreeDShadow; }
+div#fbw_desc.description-modern #tiCover { float: left; width: 12em; margin-right: 1em; }
+div#fbw_desc.description-modern #tiCover input, div#fbw_desc.description-modern #tiCover select { width: 100%; }
+div#fbw_desc .description-cover-preview { display: none; max-width: 100%; max-height: 14em; margin: .5em auto; }
+div#fbw_desc.description-classic .description-cover-preview { display: none !important; }
+div#fbw_desc #diID { width: 70% !important; }
+@media screen and (max-width: 760px) {
+ div#fbw_desc.description-modern #tiCover { float: none; width: auto; margin-right: 0; }
+}
+
+div#fbw_desc .description-add-action { float: none; }
+div#fbw_desc.description-classic .description-add-action { display: none; }
+div#fbw_desc .description-validation { white-space: pre-line; padding: .6em; border: 1px solid; }
+div#fbw_desc .description-invalid { border: 1px solid; }
+div#fbw_desc .description-binary-thumbnail { display: none; }
+div#fbw_desc.description-modern .description-binary { padding: .5em 0; border-bottom: 1px solid ThreeDShadow; }
+div#fbw_desc.description-modern .description-binary-thumbnail { display: inline-block; width: 3em; height: auto; max-height: 4em; vertical-align: middle; margin-right: .5em; }
+div#fbw_desc.description-modern #binobj input { width: 18% !important; }
+div#fbw_desc.description-modern #binobj input:disabled { width: 6em !important; }
+div#fbw_desc.description-modern #binobj label { width: auto; margin-left: .4em; }
+@media screen and (max-width: 760px) {
+ div#fbw_desc.description-modern #binobj input { width: 40% !important; }
+ div#fbw_desc.description-modern #binobj button { float: none; }
+}

@@ -1153,6 +1153,7 @@ struct EditorConfigurationSnapshot
 	bool sourceShowWhitespace;
 	bool sourceShowSpecialChars;
 	DWORD sourceSpecialCharsStyle;
+	CString descriptionLayout;
 	bool sourceShowLineNumbers;
 	bool fastMode;
 	bool useSpellChecker;
@@ -1177,6 +1178,7 @@ struct EditorConfigurationSnapshot
 			checkRussianYoUsage == other.checkRussianYoUsage && sourceShowEol == other.sourceShowEol &&
 			sourceShowWhitespace == other.sourceShowWhitespace && sourceShowSpecialChars == other.sourceShowSpecialChars &&
 			sourceSpecialCharsStyle == other.sourceSpecialCharsStyle &&
+			descriptionLayout == other.descriptionLayout &&
 			sourceShowLineNumbers == other.sourceShowLineNumbers &&
 			fastMode == other.fastMode && useSpellChecker == other.useSpellChecker &&
 			highlightMisspells == other.highlightMisspells;
@@ -1214,6 +1216,7 @@ static EditorConfigurationSnapshot CaptureEditorConfigurationSnapshot()
 	snapshot.sourceShowWhitespace = _Settings.XmlSrcShowSpace();
 	snapshot.sourceShowSpecialChars = _Settings.XmlSrcShowSpecialChars();
 	snapshot.sourceSpecialCharsStyle = _Settings.XmlSrcSpecialCharsStyle();
+	snapshot.descriptionLayout = _Settings.GetDescriptionLayout();
 	snapshot.sourceShowLineNumbers = _Settings.XMLSrcShowLineNumbers();
 	snapshot.fastMode = _Settings.FastMode();
 	snapshot.useSpellChecker = _Settings.GetUseSpellChecker();
@@ -1228,7 +1231,7 @@ static bool HasDocumentStyleConfigurationChanged(const EditorConfigurationSnapsh
 		before.foreground != after.foreground || before.background != after.background ||
 		before.editorBackgroundKind != after.editorBackgroundKind || before.editorBackgroundId != after.editorBackgroundId ||
 		before.editorBackgroundCustomPath != after.editorBackgroundCustomPath || before.editorBackgroundLayout != after.editorBackgroundLayout ||
-		before.fastMode != after.fastMode;
+		before.fastMode != after.fastMode || before.descriptionLayout != after.descriptionLayout;
 }
 static bool HasOnlyEditorBackgroundConfigurationChanged(const EditorConfigurationSnapshot& before,
 	const EditorConfigurationSnapshot& after)

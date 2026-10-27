@@ -20,9 +20,322 @@ function apiSetDescriptionLayout(value)
 {
  descriptionLayout = value == "classic" ? "classic" : "modern";
  var desc = document.getElementById("fbw_desc");
- if(desc) desc.className = "description-" + descriptionLayout;
+ if(desc) { desc.className = "description-" + descriptionLayout; DescriptionApplyPresentation(desc); }
  return true;
 }
+
+// Presentation state belongs to the current form. No metadata is cloned or
+// reparsed when switching layouts, so in-progress values and binary handles stay.
+function DescriptionTopFieldset(control, root)
+{
+ var result = null;
+ while(control && control != root)
+ {
+  if(control.tagName == "FIELDSET") result = control;
+  control = control.parentNode;
+ }
+ return result;
+}
+
+function DescriptionToggleSection(button)
+{
+ var section = button.parentNode.parentNode;
+ section._descriptionClosed = !section._descriptionClosed;
+ DescriptionShowSection(section);
+}
+
+function DescriptionShowSection(section)
+{
+ var closed = descriptionLayout == "modern" && section._descriptionClosed;
+ section.className = "description-section" + (closed ? " description-collapsed" : "");
+ var button = section.getElementsByTagName("LEGEND")[0].getElementsByTagName("BUTTON")[0];
+ if(button) { button.innerText = closed ? "+" : "\u2212"; button.setAttribute("aria-expanded", closed ? "false" : "true"); }
+ if(section.id == "binobj" && typeof DescriptionRefreshAttachments == "function") DescriptionRefreshAttachments();
+}
+
+function DescriptionMoveForModern(root, node, before)
+{
+ if(!node || !before) return;
+ // MSHTML's legacy document mode cannot create DOM comment nodes reliably.
+ var marker = document.createElement("SPAN");
+ marker.className = "description-position";
+ marker.style.display = "none";
+ node.parentNode.insertBefore(marker, node);
+ root._descriptionMoved.push({node:node, marker:marker});
+ before.parentNode.insertBefore(node, before);
+}
+
+function DescriptionUpdateCover()
+{
+ var preview = document.getElementById("descriptionCoverPreview");
+ var cover = document.getElementById("tiCover");
+ if(!preview || !cover) return;
+ var selects = cover.getElementsByTagName("SELECT");
+ var href = selects.length ? String(selects[0].value) : "";
+ if(href) { preview.src = "fbw-internal:" + href; preview.style.display = "block"; }
+ else { preview.removeAttribute("src"); preview.style.display = "none"; }
+}
+
+function DescriptionApplyPresentation(root)
+{
+ if(!root._descriptionSections || root._descriptionApplied == descriptionLayout) return;
+ root._descriptionApplied = descriptionLayout;
+ root.className = "description-" + descriptionLayout;
+ if(descriptionLayout == "classic")
+ {
+  for(var i=root._descriptionMoved.length-1; i>=0; i--)
+  {
+   var moved = root._descriptionMoved[i];
+   moved.marker.parentNode.insertBefore(moved.node, moved.marker);
+   moved.marker.parentNode.removeChild(moved.marker);
+  }
+  root._descriptionMoved = [];
+  var optional = root._descriptionOptional;
+  for(var i=0; i<optional.length; i++) optional[i].node.style.display = optional[i].display;
+ }
+ else
+ {
+  var title = document.getElementById("tiTitle");
+  var label = title ? title.previousSibling : null;
+  while(label && label.nodeType != 1) label = label.previousSibling;
+  var genres = document.getElementById("tiGenre");
+  DescriptionMoveForModern(root, label, genres);
+  DescriptionMoveForModern(root, title, genres);
+  DescriptionMoveForModern(root, document.getElementById("tiAuthor"), genres);
+  var line = title ? title.nextSibling : null;
+  if(line && line.tagName == "BR") DescriptionMoveForModern(root, line, genres);
+  // Move the existing cover controls; there is still only one cover model.
+  DescriptionMoveForModern(root, document.getElementById("tiCover"), label);
+  var optional = root._descriptionOptional;
+  for(var i=0; i<optional.length; i++) { optional[i].display = optional[i].node.style.display; optional[i].node.style.display = "block"; }
+ }
+ for(var i=0; i<root._descriptionSections.length; i++) DescriptionShowSection(root._descriptionSections[i]);
+ DescriptionUpdateCover();
+}
+
+function InitDescriptionUI(root)
+{
+ TraceScript("J910", "operation=Description UI initialize");
+ root._descriptionSections = [];
+ root._descriptionMoved = [];
+ root._descriptionOptional = [];
+ root._descriptionApplied = "";
+ var controls = ["tiTitle","stiTitle","diID","piName","ci","binobj","stylesheetId"];
+ for(var i=0; i<controls.length; i++)
+ {
+  var section = DescriptionTopFieldset(document.getElementById(controls[i]), root);
+  if(!section) continue;
+  section._descriptionClosed = i != 0 && i != 2;
+  var legend = section.getElementsByTagName("LEGEND")[0];
+  var button = document.createElement("BUTTON");
+  button.className = "description-section-toggle";
+  button.title = legend.innerText;
+  button.onclick = function() { DescriptionToggleSection(this); };
+  legend.insertBefore(button, legend.firstChild);
+  root._descriptionSections.push(section);
+ }
+ TraceScript("J911", "operation=Description sections initialized");
+ var spans = root.getElementsByTagName("SPAN");
+ for(var i=0; i<spans.length; i++)
+ {
+  // Modern exposes supported optional fields without changing saved view prefs.
+  if(spans[i].id && spans[i].id != "id" && spans[i].className != "id")
+   root._descriptionOptional.push({node:spans[i], display:spans[i].style.display});
+ }
+ var cover = document.getElementById("tiCover");
+ if(cover)
+ {
+  var preview = document.createElement("IMG");
+  preview.id = "descriptionCoverPreview";
+  preview.className = "description-cover-preview";
+  preview.alt = cover.getElementsByTagName("LEGEND")[0].innerText;
+  cover.insertBefore(preview, cover.firstChild.nextSibling);
+ }
+ TraceScript("J912", "operation=Description presentation");
+ DescriptionApplyPresentation(root);
+ DescriptionStyleButtons(root);
+ InitDescriptionActions(root);
+ DescriptionValidate();
+ if(!root._descriptionChangeHook) { root.attachEvent("onchange", DescriptionValidationChanged); root._descriptionChangeHook = true; }
+ TraceScript("J919", "operation=Description UI ready");
+}
+
+
+//// == DESCRIPTION BINARY UI ===============================
+function DescriptionAddAttachment()
+{
+ window.external._DescriptionAddAttachment();
+}
+
+function DescriptionLoadThumbnail(row)
+{
+ var images = row.getElementsByTagName("IMG");
+ var id = GetBinaryInput(row, "id");
+ if(images.length && id && images[0].getAttribute("src") != "fbw-internal:#" + id.value) images[0].src = "fbw-internal:#" + id.value;
+}
+
+function DescriptionStyleBinary(row)
+{
+ row.className = "description-binary";
+ DescriptionStyleButtons(row);
+ var type = GetBinaryInput(row, "type");
+ if(type && IsImageBinaryType(type.value))
+ {
+  var preview = document.createElement("IMG");
+  preview.className = "description-binary-thumbnail";
+  preview.setAttribute("data-description-preview", "true");
+  preview.alt = "";
+  row.insertBefore(preview, row.firstChild);
+  row.onmouseover = function() { DescriptionLoadThumbnail(this); };
+ }
+}
+
+function DescriptionRefreshAttachments()
+{
+ var root = document.getElementById("fbw_desc");
+ if(!root || !root._descriptionSections) return;
+ var section = document.getElementById("binobj");
+ var rows = section.getElementsByTagName("DIV"), total = 0;
+ for(var i=0; i<rows.length; i++)
+ {
+  var images = rows[i].getElementsByTagName("IMG");
+  if(images.length && images[0].getAttribute("src")) DescriptionLoadThumbnail(rows[i]);
+  var size = GetBinaryInput(rows[i], "size");
+  if(size) total += Number(size.value) || 0;
+  // Bound eager decoding. Other thumbnails load when their row is hovered.
+  if(i<30 && descriptionLayout == "modern" && !section._descriptionClosed) DescriptionLoadThumbnail(rows[i]);
+ }
+ var summary = document.getElementById("descriptionAttachmentSummary");
+ if(summary) summary.innerText = rows.length + " / " + total + " B";
+}
+
+function DescriptionAddRepeated(containerId)
+{
+ var container = document.getElementById(containerId);
+ if(!container) return;
+ var rows = container.getElementsByTagName("DIV");
+ if(!rows.length) return;
+ var row = dClone(rows[rows.length-1]);
+ var inputs = row.getElementsByTagName("INPUT");
+ for(var i=0; i<inputs.length; i++) inputs[i].value = "";
+ var spans = row.getElementsByTagName("SPAN");
+ for(var i=0; i<spans.length; i++) if(spans[i].id == "id" || spans[i].className == "id") spans[i].setAttribute("value", "");
+ container.appendChild(row);
+ PutSpacers(container);
+ DescriptionStyleButtons(row);
+ if(typeof DescriptionValidate == "function") DescriptionValidate();
+ var first = row.getElementsByTagName("INPUT")[0];
+ if(first && !first.disabled) first.focus();
+}
+
+function DescriptionAddAction(parent, text, handler)
+{
+ var button = document.createElement("BUTTON");
+ button.className = "description-add-action";
+ button.innerText = text; button.onclick = handler;
+ parent.appendChild(button);
+}
+
+
+//// == DESCRIPTION VALIDATION ==============================
+// Advisory only: never write a form value, create a UUID, or repair metadata.
+function DescriptionValidationChanged()
+{
+ DescriptionUpdateCover();
+ DescriptionValidate();
+}
+
+function DescriptionValidate()
+{
+ var root = document.getElementById("fbw_desc");
+ if(!root || !root._descriptionSections) return;
+ var previous = root._descriptionInvalid || [];
+ for(var i=0; i<previous.length; i++)
+ {
+  previous[i].className = previous[i].className.replace(/\s*description-invalid/g, "");
+  previous[i].title = previous[i]._descriptionValidationTitle || "";
+ }
+ var marked = [], messages = [];
+ function warn(control, key, fallback)
+ {
+  var text = DescriptionText(key, fallback);
+  if(control)
+  {
+   if(control.className.indexOf("description-invalid") < 0)
+   {
+    control._descriptionValidationTitle = control.title;
+    control.className += " description-invalid";
+    marked.push(control);
+   }
+   control.title = text;
+  }
+  for(var m=0; m<messages.length; m++) if(messages[m] == text) return;
+  messages.push(text);
+ }
+ function empty(value) { return !String(value || "").replace(/\s/g, ""); }
+ var required = ["tiTitle", "diID", "diDate"];
+ for(var i=0; i<required.length; i++)
+ {
+  var field = document.getElementById(required[i]);
+  if(field && empty(field.value)) warn(field, "required", "A required value is empty.");
+ }
+ var authors = ["tiAuthor", "diAuthor"];
+ for(var i=0; i<authors.length; i++)
+ {
+  var authorRoot = document.getElementById(authors[i]);
+  if(!authorRoot) continue;
+  var rows = authorRoot.getElementsByTagName("DIV");
+  for(var j=0; j<rows.length; j++)
+  {
+   var filled = false, names = ["first", "middle", "last", "nick"];
+   for(var k=0; k<names.length; k++) if(rows[j].all[names[k]] && !empty(rows[j].all[names[k]].value)) filled = true;
+   if(!filled) warn(rows[j], "author_empty", "A required author is empty.");
+  }
+ }
+ var inputs = root.getElementsByTagName("INPUT");
+ for(var i=0; i<inputs.length; i++)
+ {
+  var field = inputs[i], value = String(field.value);
+  if(field.id == "match" && value && (!/^\d+$/.test(value) || Number(value) > 100))
+   warn(field, "match_invalid", "Genre match must be an integer from 0 to 100.");
+  if(field.id == "number" && value && !/^-?\d+$/.test(value))
+   warn(field, "number_invalid", "Sequence number must be an integer.");
+ }
+ var binaries = document.getElementById("binobj"), ids = {};
+ if(binaries)
+ {
+  var rows = binaries.getElementsByTagName("DIV");
+  for(var i=0; i<rows.length; i++)
+  {
+   var input = GetBinaryInput(rows[i], "id");
+   if(!input) continue;
+   var key = "$" + input.value;
+   if(ids[key]) { warn(ids[key], "binary_duplicate", "Duplicate attachment ID."); warn(input, "binary_duplicate", "Duplicate attachment ID."); }
+   else ids[key] = input;
+  }
+ }
+ var covers = ["tiCover", "stiCover"];
+ for(var i=0; i<covers.length; i++)
+ {
+  var cover = document.getElementById(covers[i]);
+  if(!cover) continue;
+  var selects = cover.getElementsByTagName("SELECT");
+  for(var j=0; j<selects.length; j++)
+   if(selects[j].value && !ids["$" + String(selects[j].value).replace(/^#/, "")])
+    warn(selects[j], "cover_missing", "The cover refers to a missing attachment.");
+ }
+ root._descriptionInvalid = marked;
+ var summary = document.getElementById("descriptionValidation");
+ if(!summary)
+ {
+  summary = document.createElement("P"); summary.id = "descriptionValidation";
+  summary.className = "description-validation"; summary.setAttribute("role", "status");
+  root.insertBefore(summary, root.firstChild);
+ }
+ summary.innerText = messages.join("\n");
+ summary.style.display = messages.length ? "block" : "none";
+}
+
 
 function DescriptionText(key, fallback)
 {
@@ -46,6 +359,24 @@ function DescriptionStyleButtons(root)
   else if(text == "\u00cd") { key = "save"; fallback = "Save"; }
   if(key) { button.innerText = DescriptionText(key, fallback); button.title = button.innerText; }
  }
+}
+
+function InitDescriptionActions(root)
+{
+ var cover = document.getElementById("tiCover");
+ DescriptionAddAction(cover, DescriptionText("change_cover", "Change cover"), function() {
+  var select = cover.getElementsByTagName("SELECT")[0];
+  if(select) { select.size = select.size > 1 ? 1 : Math.min(8, Math.max(2, select.options.length)); select.focus(); }
+ });
+ var author = document.getElementById("tiAuthor");
+ DescriptionAddAction(author, DescriptionText("add_author", "Add author"), function() { DescriptionAddRepeated("tiAuthor"); });
+ var genre = document.getElementById("tiGenre");
+ DescriptionAddAction(genre, DescriptionText("add_genre", "Add genre"), function() { DescriptionAddRepeated("tiGenre"); });
+ var attachments = document.getElementById("binobj");
+ var summary = document.createElement("P"); summary.id = "descriptionAttachmentSummary";
+ attachments.insertBefore(summary, attachments.firstChild.nextSibling);
+ DescriptionAddAction(attachments, DescriptionText("add_attachment", "Add attachment"), DescriptionAddAttachment);
+ DescriptionRefreshAttachments();
 }
 
 var prevImageShowTimer = null;
@@ -270,6 +601,7 @@ function UpdateBinaryReferences(oldId, newId)
  {
   var element=elements[i];
   if(!element) continue;
+  if(element.getAttribute && element.getAttribute("data-description-preview") == "true") continue;
   var href=element.getAttribute ? element.getAttribute("href") : null;
   if(href == null && element.href) href=element.href;
   if(IsBinaryReferenceValue(href, oldId))
@@ -386,6 +718,7 @@ function RebuildImagesInfo()
 function BinaryStoreChanged(action, element)
 {
  try { window.external._BinaryStoreChanged(action, element); } catch(e) {}
+ if(typeof DescriptionRefreshAttachments == "function") DescriptionRefreshAttachments();
 }
 
 function CachedBinaryInfo(id)
@@ -400,6 +733,7 @@ function BuildBinaryControls(div, fullpath, id, type, data)
                  'onmouseover="HighlightBorder(this.parentNode, true, \'solid\', \'2px\', \'#FF0000\');" ' +
                  'onmouseout="HighlightBorder(this.parentNode, false);" ' +
                  'onclick="Remove(this.parentNode);" unselectable="on">&#x72;</button>';
+ html += '<button id="save" onclick="SaveBinary(this.parentNode);" unselectable="on">&#xcd;</button>';
  var dims="";
  if(IsImageBinaryType(type))
  {
@@ -408,9 +742,7 @@ function BuildBinaryControls(div, fullpath, id, type, data)
   'onmouseout="HidePrevImage();"' +
   'onclick="ShowImageOfBin(this.parentNode,\'full\');"' +
   'unselectable="on">&#x4e;</button>';
-  html += '<button id="save"' +
-  'onclick="SaveBinary(this.parentNode);"' +
-  'unselectable="on">&#xcd;</button>';
+
  }
 
  html += '<label unselectable="on">ID:</label><input type="text" maxlength="256" id="id" style="width:20em;"><label unselectable="on">Type:</label><input type="text" style="width:8em;" maxlength="256" id="type" value="">';
@@ -429,6 +761,7 @@ function BuildBinaryControls(div, fullpath, id, type, data)
  div.all.id.setAttribute("oldId",id);
  div.all.id.onchange=OnBinaryChange;
  div.all.type.onchange=OnBinaryChange;
+ DescriptionStyleBinary(div);
  return dims;
 }
 
@@ -1344,6 +1677,7 @@ function TransformXML(xslt, dom)
 	proc.transform();
 	TraceScript("J532", "operation=description output");
 	TraceScript("J540", "operation=desc.innerHTML");
+	desc._descriptionSections = null;
 	desc.innerHTML=proc.output;
 	TraceScript("J550", "operation=PutBinaries");
 	PutBinaries(dom);
@@ -1410,6 +1744,7 @@ function LoadFromDOM(dom, lang)
 	if(!ret) return false;
 	TraceScript("J350", "operation=ShowDescElements");
 	if(!ShowDescElements()) return false;
+	InitDescriptionUI(document.getElementById("fbw_desc"));
 	TraceScript("J351", "operation=ShowDescElements result");
 	TraceScript("J399", "operation=LoadFromDOM success");
 	return true;
@@ -1858,6 +2193,7 @@ function FillImageList(list, bin_objects)
 
 			list.appendChild(newopt);
 		}
+		if(cover && list.value != cover) { var missing=document.createElement("OPTION"); missing.value=cover; missing.innerText=cover; list.appendChild(missing); list.value=cover; }
 	}
 }
 
