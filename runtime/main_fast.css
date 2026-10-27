@@ -302,10 +302,8 @@ strong {
 
 /* Modern uses the same controls and serializes through the Classic contract. */
 div#fbw_desc .description-section-toggle { float: none; margin-right: .5em; min-width: 2em; }
-div#fbw_desc.description-classic .description-section-toggle { display: none; }
+div#fbw_desc fieldset.description-section-body { border: 0; padding: 0; margin: 0; }
 div#fbw_desc.description-modern .description-section { padding: 1em; margin-bottom: 1em; }
-div#fbw_desc.description-modern .description-collapsed > * { display: none !important; }
-div#fbw_desc.description-modern .description-collapsed > legend { display: block !important; }
 div#fbw_desc.description-modern #tiAuthor > div,
 div#fbw_desc.description-modern #tiTrans > div,
 div#fbw_desc.description-modern #diAuthor > div,
@@ -434,3 +432,32 @@ div#fbw_desc.description-narrow .description-person .description-field input { w
 div#fbw_desc.description-narrow .description-date-field { width: 94%; }
 div#fbw_desc.description-narrow .description-date-field input { width: 94%; }
 div#fbw_desc.description-compact .description-person .description-field { width: 94%; }
+div#fbw_desc #descriptionCommands { padding: 0; margin: 0; }
+div#fbw_desc #tiGenre label, div#fbw_desc #stiGenre label { width: auto; margin: .1em .25em; white-space: nowrap; }
+div#fbw_desc.description-modern #tiGenre span#ti_genre_match { display: inline !important; }
+div#fbw_desc #tiGenre input#genre, div#fbw_desc #stiGenre input#genre { width: 12em; }
+div#fbw_desc #tiGenre input#match, div#fbw_desc #stiGenre input#match { width: 3em; }
+div#fbw_desc #descriptionAttachmentSummary { font-size: .9em; font-weight: normal; margin-left: 1em; }
+div#fbw_desc .binary-size-display, div#fbw_desc .binary-dims-display { display: inline-block; min-width: 5em; margin: 0 .3em; }
+div#fbw_desc.description-modern .description-binary #id { width: 18em !important; }
+div#fbw_desc.description-modern .description-binary #type { width: 8em !important; }
+div#fbw_desc.description-modern .description-binary-thumbnail { max-width: 2.5em; max-height: 2.5em; }
+div#fbw_desc #prevImg { border: 1px solid ThreeDShadow; padding: .2em; background: Window; }
+div#fbw_desc .description-binary button.description-icon-action img { width: 1.2em; height: 1.2em; vertical-align: middle; cursor: pointer; }
+div#fbw_desc .description-person span button, div#fbw_desc #tiGenre span button { float: none; }
+div#fbw_desc label.description-keywords-label { width: 9em; white-space: nowrap; }
+div#fbw_desc.description-modern #tiCover { float: left; width: 8.5em; margin: 0 .7em .3em 0; }
+div#fbw_desc.description-modern #tiCover select { width: 7em; }
+div#fbw_desc.description-modern #tiCover .description-add-action { width: 100%; max-width: 100%; white-space: normal; word-wrap: break-word; }
+div#fbw_desc.description-modern #tiCover .description-cover-preview { max-width: 6em; max-height: 8em; }
+div#fbw_desc.description-modern #tiAuthor { overflow: hidden; }
+div#fbw_desc.description-modern #tiAuthor div { clear: none; }
+div#fbw_desc.description-modern #tiGenre { clear: both; }
+div#fbw_desc.description-narrow #tiCover { float: none; width: auto; margin-right: 0; }
+/* Reserve the same action width on both author rows so the columns line up. */
+div#fbw_desc .description-person span#ti_nic_mail_web > button {
+ width: 1.9em; margin-right: 2em; padding: 0;
+}
+div#fbw_desc label { width: 9em; }
+div#fbw_desc .description-date-field label { width: 9em !important; }
+div#fbw_desc.description-narrow .description-date-field label { width: auto !important; }

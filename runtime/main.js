@@ -22,7 +22,7 @@ function DescriptionResize()
  if(!root) return;
  // MSHTML document mode 7 has no CSS media queries. Use the containing
  // viewport, not scrollWidth: a long LEGEND can extend beyond it in this mode.
- var width = root.parentNode.clientWidth;
+ var width = root.parentNode == document.body && document.documentElement.clientWidth ? document.documentElement.clientWidth : root.parentNode.clientWidth;
  root.className = "description-" + descriptionLayout + (width <= 760 ? " description-narrow" : "") + (width <= 480 ? " description-compact" : "");
 }
 function apiSetDescriptionLayout(value)
@@ -48,16 +48,27 @@ function DescriptionTopFieldset(control, root)
 
 function DescriptionToggleSection(button)
 {
- var section = button.parentNode.parentNode;
- section._descriptionClosed = !section._descriptionClosed;
- DescriptionShowSection(section);
+ var section = button._descriptionSection;
+ var id = section ? section._descriptionSectionId : "unknown";
+ TraceScript("J920", "toggle begin; section=" + id + "; layout=" + descriptionLayout);
+ try {
+  if(!section || !section._descriptionBody) throw new Error("Section body is missing");
+  TraceScript("J921", "target resolved; section=" + id + "; tag=" + section._descriptionBody.tagName + "; old display=" + section._descriptionBody.style.display);
+  if(descriptionLayout == "classic") section._descriptionClassicClosed = !section._descriptionClassicClosed;
+  else section._descriptionClosed = !section._descriptionClosed;
+  DescriptionShowSection(section);
+  TraceScript("J922", "toggle complete; section=" + id + "; new display=" + section._descriptionBody.style.display);
+ } catch(error) {
+  TraceScript("J929", "toggle failed; section=" + id + "; tag=" + (section && section._descriptionBody ? section._descriptionBody.tagName : "missing") + "; layout=" + descriptionLayout + "; error=" + String(error.number || "") + " " + String(error.message || error));
+ }
 }
 
 function DescriptionShowSection(section)
 {
- var closed = descriptionLayout == "modern" && section._descriptionClosed;
+ var closed = descriptionLayout == "modern" ? section._descriptionClosed : section._descriptionClassicClosed;
  section.className = "description-section" + (closed ? " description-collapsed" : "");
- var button = section.getElementsByTagName("LEGEND")[0].getElementsByTagName("BUTTON")[0];
+ section._descriptionBody.style.display = closed ? "none" : "block";
+ var button = section._descriptionButton;
  if(button) { button.innerText = closed ? "+" : "\u2212"; button.setAttribute("aria-expanded", closed ? "false" : "true"); }
  if(section.id == "binobj" && typeof DescriptionRefreshAttachments == "function") DescriptionRefreshAttachments();
 }
@@ -136,10 +147,28 @@ function InitDescriptionUI(root)
   var section = DescriptionTopFieldset(document.getElementById(controls[i]), root);
   if(!section) continue;
   section._descriptionClosed = i != 0 && i != 2;
+  section._descriptionClassicClosed = false;
+  section._descriptionSectionId = controls[i];
   var legend = section.getElementsByTagName("LEGEND")[0];
+  // A FIELDSET keeps block children valid in IE7 mode without introducing an
+  // extra DIV into the legacy binary-row enumeration used by scripts.
+  var body = document.createElement("FIELDSET");
+  body.id = "description-section-body-" + controls[i];
+  body.className = "description-section-body";
+  body.style.display = "block";
+  var child = section.firstChild;
+  while(child) {
+   var next = child.nextSibling;
+   if(child != legend) body.appendChild(child);
+   child = next;
+  }
+  section.appendChild(body);
+  section._descriptionBody = body;
   var button = document.createElement("BUTTON");
   button.className = "description-section-toggle";
   button.title = legend.innerText;
+  button._descriptionSection = section;
+  section._descriptionButton = button;
   button.onclick = function() { DescriptionToggleSection(this); };
   legend.insertBefore(button, legend.firstChild);
   root._descriptionSections.push(section);
@@ -149,7 +178,8 @@ function InitDescriptionUI(root)
  for(var i=0; i<spans.length; i++)
  {
   // Modern exposes supported optional fields without changing saved view prefs.
-  if(spans[i].id && spans[i].id != "id" && spans[i].className != "id")
+  if(spans[i].id == "sti_all" || spans[i].id == "ci_all") { spans[i].style.display = "block"; continue; }
+  if(spans[i].id && spans[i].id != "id" && spans[i].className != "id" && spans[i].className != "description-section-body")
    root._descriptionOptional.push({node:spans[i], display:spans[i].style.display});
  }
  var cover = document.getElementById("tiCover");
@@ -190,7 +220,7 @@ function DescriptionLoadThumbnail(row)
 {
  var images = row.getElementsByTagName("IMG");
  var id = GetBinaryInput(row, "id");
- if(images.length && id && images[0].getAttribute("src") != "fbw-internal:#" + id.value) images[0].src = "fbw-internal:#" + id.value;
+ if(images.length && images[0].getAttribute("data-description-preview") == "true" && id && images[0].getAttribute("src") != "fbw-internal:#" + id.value) images[0].src = "fbw-internal:#" + id.value;
 }
 
 function DescriptionStyleBinary(row)
@@ -207,6 +237,44 @@ function DescriptionStyleBinary(row)
   row.insertBefore(preview, row.firstChild);
   row.onmouseover = function() { DescriptionLoadThumbnail(this); };
  }
+ var size = GetBinaryInput(row, "size"), dims = GetBinaryInput(row, "dims");
+ if(size) {
+  if(size.previousSibling && size.previousSibling.tagName == "LABEL") size.previousSibling.style.display = "none";
+  size.style.display = "none";
+  var displaySize = document.createElement("SPAN"); displaySize.className = "binary-size-display";
+  displaySize.innerText = DescriptionBinarySize(size.value);
+  size.parentNode.insertBefore(displaySize, size.nextSibling);
+ }
+ if(dims) {
+  if(dims.previousSibling && dims.previousSibling.tagName == "LABEL") dims.previousSibling.style.display = "none";
+  dims.style.display = "none";
+  var displayDims = document.createElement("SPAN"); displayDims.className = "binary-dims-display";
+  displayDims.innerText = String(dims.value).replace("x", " \u00d7 ");
+  dims.parentNode.insertBefore(displayDims, dims.nextSibling);
+ }
+ // Buttons remain direct children of the binary row for legacy handlers.
+ var actionIds = ["show", "save", "del"];
+ for(var i=0; i<actionIds.length; i++) {
+  var action = GetBinaryInput(row, actionIds[i]);
+  if(action) {
+   var iconName = actionIds[i] == "show" ? "view" : actionIds[i] == "del" ? "delete" : "save";
+   var label = actionIds[i] == "save" ? DescriptionText("save_attachment", "Save attachment") : actionIds[i] == "del" ? DescriptionText("remove_attachment", "Remove attachment") : DescriptionText("view", "View");
+   action.innerHTML = '<img src="DescriptionIcons/' + iconName + '.png" alt="" />';
+   action.title = label; action.setAttribute("aria-label", label);
+   row.appendChild(action);
+  }
+ }
+}
+
+var descriptionBinaryUnits = null;
+function DescriptionBinarySize(value)
+{
+ if(!descriptionBinaryUnits) descriptionBinaryUnits = DescriptionText("binary_units", "B|KB|MB|GB|.").split("|");
+ var units = descriptionBinaryUnits;
+ var number = Number(value) || 0, unit = 0;
+ while(number >= 1024 && unit < 3) { number /= 1024; unit++; }
+ var text = unit ? (Math.round(number * 10) / 10).toFixed(1) : String(Math.round(number));
+ return text.replace(".", units[4] || ".") + " " + (units[unit] || ["B","KB","MB","GB"][unit]);
 }
 
 function DescriptionRefreshAttachments()
@@ -218,16 +286,16 @@ function DescriptionRefreshAttachments()
  for(var i=0; i<rows.length; i++)
  {
   var images = rows[i].getElementsByTagName("IMG");
-  if(images.length && images[0].getAttribute("src")) DescriptionLoadThumbnail(rows[i]);
+  if(images.length && images[0].getAttribute("data-description-preview") == "true" && images[0].getAttribute("src")) DescriptionLoadThumbnail(rows[i]);
   var size = GetBinaryInput(rows[i], "size");
   if(size) total += Number(size.value) || 0;
   // Bound eager decoding. Other thumbnails load when their row is hovered.
   if(i<30 && descriptionLayout == "modern" && !section._descriptionClosed) DescriptionLoadThumbnail(rows[i]);
  }
  var summary = document.getElementById("descriptionAttachmentSummary");
- if(summary) summary.innerText = rows.length + " / " + total + " B";
+ if(summary) summary.innerText = rows.length + " " + DescriptionText("binary_files", "files") + " \u00b7 " + DescriptionBinarySize(total);
  var add = document.getElementById("descriptionAddAttachment");
- if(add && add.parentNode == section && add.nextSibling) section.appendChild(add);
+ if(add && add.parentNode == section._descriptionBody && add.nextSibling) section._descriptionBody.appendChild(add);
 }
 
 function DescriptionAddRepeated(containerId)
@@ -408,9 +476,9 @@ function InitDescriptionActions(root)
  var genre = document.getElementById("tiGenre");
  DescriptionAddAction(genre, DescriptionText("add_genre", "Add genre"), function() { DescriptionAddRepeated("tiGenre"); });
  var attachments = document.getElementById("binobj");
- var summary = document.createElement("P"); summary.id = "descriptionAttachmentSummary";
- attachments.insertBefore(summary, attachments.firstChild.nextSibling);
- DescriptionAddAction(attachments, DescriptionText("add_attachment", "Add attachment"), DescriptionAddAttachment).id = "descriptionAddAttachment";
+ var summary = document.createElement("SPAN"); summary.id = "descriptionAttachmentSummary";
+ attachments.getElementsByTagName("LEGEND")[0].appendChild(summary);
+ DescriptionAddAction(attachments._descriptionBody, DescriptionText("add_attachment", "Add attachment"), DescriptionAddAttachment).id = "descriptionAddAttachment";
  DescriptionRefreshAttachments();
 }
 
@@ -678,7 +746,8 @@ function BinaryIsReferenced(id)
   if(!element) continue;
   // A thumbnail is presentation owned by this same row, not an FB2 reference.
   if(element.getAttribute && String(element.getAttribute("data-description-preview")) == "true" &&
-     element.parentNode && element.parentNode.parentNode == document.all.binobj) continue;
+     element.parentNode && (element.parentNode.parentNode == document.all.binobj ||
+     element.parentNode.parentNode == document.all.binobj._descriptionBody)) continue;
   var href=element.getAttribute ? element.getAttribute("href") : null;
   var src=element.getAttribute ? element.getAttribute("src") : null;
   if(href == null && element.href) href=element.href;
@@ -752,10 +821,11 @@ function RebuildImagesInfo()
 
 // Private native bridge, outside the immutable public scripting contract.
 // Legacy hosts/test doubles keep their original metadata path.
+var descriptionBinaryBatch = 0;
 function BinaryStoreChanged(action, element)
 {
  try { window.external._BinaryStoreChanged(action, element); } catch(e) {}
- if(typeof DescriptionRefreshAttachments == "function") DescriptionRefreshAttachments();
+ if(typeof DescriptionRefreshAttachments == "function" && (typeof descriptionBinaryBatch == "undefined" || !descriptionBinaryBatch)) DescriptionRefreshAttachments();
 }
 
 function CachedBinaryInfo(id)
@@ -860,7 +930,7 @@ function apiAddBinary(fullpath, id, type, data)
 	window.external._BinaryStoreChanged("attach", div);
 	div.base64data = data;
 
-	document.all.binobj.appendChild(div);
+	(document.all.binobj._descriptionBody || document.all.binobj).appendChild(div);
 	BinaryStoreChanged("register", div);
 
 	return curid;
@@ -3097,6 +3167,8 @@ function PutBinaries(doc)
  ImagesInfo.length=0;
  var failureCount=0; var success=0; var bl=doc.selectNodes("/fb:FictionBook/fb:binary");
  TraceScript("J610", "operation=binary count; count=" + bl.length);
+ descriptionBinaryBatch++;
+ try {
  for(var i=0; i<bl.length; i++)
  {
   if(bl[i].tagName!="binary") continue;
@@ -3124,6 +3196,10 @@ function PutBinaries(doc)
   apiAddBinary("", id, bl[i].getAttribute("content-type"),dt);
   TraceVerboseOperation("J631", "operation=apiAddBinary result; index=" + i);
   success++;
+ }
+ } finally {
+  descriptionBinaryBatch--;
+  if(!descriptionBinaryBatch) DescriptionRefreshAttachments();
  }
  var additionalFailureCount = failureCount > 3 ? failureCount - 3 : 0;
  if(additionalFailureCount) MsgBox(additionalFailureCount+" more invalid images ignored");

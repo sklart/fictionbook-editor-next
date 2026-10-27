@@ -351,12 +351,12 @@
 	  <xsl:if test="not($cur/f:keywords)">
 		  <span id = "ti_kw" unselectable="on">
 				<!--<button id="kwCollapse" onclick="ShowElement(this.parentNode.id, false)" unselectable="on" style="font-family : Tahoma;">-</button>-->
-				<label unselectable="on" desc_extended="true"><xsl:value-of select="$IDS_KEYWORDS"/></label>
+				<label unselectable="on" class="description-keywords-label" desc_extended="true"><xsl:value-of select="$IDS_KEYWORDS"/></label>
 				<input type="text" maxlength="256" id="tiKwd" class="wide" value="{$cur/f:keywords}"/><br/>
 		  </span>
 	  </xsl:if>
 	  <xsl:if test="$cur/f:keywords">
-		<label unselectable="on" desc_extended="true"><xsl:value-of select="$IDS_KEYWORDS"/></label>
+		<label unselectable="on" class="description-keywords-label" desc_extended="true"><xsl:value-of select="$IDS_KEYWORDS"/></label>
 		<input type="text" maxlength="256" id="tiKwd" class="wide" value="{$cur/f:keywords}"/><br/>
 	  </xsl:if>
 	  <span class="description-date-field"><label unselectable="on"><xsl:value-of select="$IDS_DATE_TEXT"/></label><input type="text" maxlength="256" id="tiDate" data-fbe-date-present="{count($cur/f:date)}" value="{$cur/f:date}"/></span>
@@ -432,7 +432,7 @@
     <xsl:param name="cur"/>
 
 	<fieldset unselectable="on">
-	    <legend unselectable="on" class="top"><xsl:value-of select="$IDS_STI"/><xsl:if test="not($cur)"><button onclick="ShowElement(this.parentNode.parentNode.parentNode.id, false)" unselectable="on" style="font-family : Tahoma; float:none">-</button></xsl:if></legend>
+	    <legend unselectable="on" class="top"><xsl:value-of select="$IDS_STI"/></legend>
 	    <fieldset id="stiGenre" unselectable="on" class="kid">
 			<legend unselectable="on"><xsl:value-of select="$IDS_GENRES"/></legend>
 			<xsl:for-each select="$cur/f:genre">
@@ -463,7 +463,7 @@
 		<br/><br/><br/>
 		<label unselectable="on" class="hl"><xsl:value-of select="$IDS_TITLE"/></label>
 		<input type="text" maxlength="256" id="stiTitle" class="wide" value="{$cur/f:book-title}"/><br/>
-		<label unselectable="on"><xsl:value-of select="$IDS_KEYWORDS"/></label>
+		<label unselectable="on" class="description-keywords-label"><xsl:value-of select="$IDS_KEYWORDS"/></label>
 		<input type="text" maxlength="256" id="stiKwd" class="wide" value="{$cur/f:keywords}"/><br/>
 		<span class="description-date-field"><label unselectable="on"><xsl:value-of select="$IDS_DATE_TEXT"/></label><input type="text" maxlength="256" id="stiDate" data-fbe-date-present="{count($cur/f:date)}" value="{$cur/f:date}"/></span>
 		<span class="description-date-field"><label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label><input type="text" maxlength="256" id="stiDateVal" value="{$cur/f:date/@value}"/></span><br/>
@@ -628,7 +628,7 @@
   <xsl:template name="custom-info">
     <xsl:param name="items"/>
 	<fieldset id="ci" unselectable="on">
-      <legend unselectable="on" class="top"><xsl:value-of select="$IDS_CUSTOM_INFO"/><xsl:if test="not($items)"><button onclick="ShowElement(this.parentNode.parentNode.parentNode.id, false)" unselectable="on" style="font-family : Tahoma; float:none">-</button></xsl:if></legend>
+      <legend unselectable="on" class="top"><xsl:value-of select="$IDS_CUSTOM_INFO"/></legend>
 	  <xsl:for-each select="$items">
 	<div unselectable="on">
 	  <button id="del" onclick="Remove(this.parentNode)" unselectable="on">&#x72;</button>
@@ -636,7 +636,7 @@
 	  <label unselectable="on"><xsl:value-of select="$IDS_TYPE"/></label>
 	  <input type="text" maxlength="256" id="type" value="{@info-type}"/><br/>
 	  <span class="top" unselectable="on"><label unselectable="on"><xsl:value-of select="$IDS_VALUE"/></label></span>
-	  <textarea rows="6" id="val"><xsl:value-of select="."/></textarea>
+	  <textarea rows="3" id="val"><xsl:value-of select="."/></textarea>
 	</div>
       </xsl:for-each>
       <xsl:if test="not($items)">
@@ -646,7 +646,7 @@
 	  <label unselectable="on"><xsl:value-of select="$IDS_TYPE"/></label>
 	  <input type="text" maxlength="256" id="type" value=""/><br/>
 	  <span class="top" unselectable="on"><label unselectable="on"><xsl:value-of select="$IDS_VALUE"/></label></span>
-	  <textarea rows="6" id="val"/>
+	  <textarea rows="3" id="val"/>
 	</div>
       </xsl:if>	  
     </fieldset>

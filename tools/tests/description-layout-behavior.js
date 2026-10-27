@@ -53,6 +53,29 @@ function checkTheme() {
 }
 checkTheme();
 var serializedBefore=serialize();
+if(fixtures[fixtureIndex]=="full" || fixtures[fixtureIndex]=="missing-optional" || fixtures[fixtureIndex]=="minimal") {
+ var toggleLayouts=["modern","classic"];
+ for(var tl=0;tl<toggleLayouts.length;tl++) {
+  apiSetDescriptionLayout(toggleLayouts[tl]);
+  for(var ts=0;ts<form._descriptionSections.length;ts++) {
+   var toggleSection=form._descriptionSections[ts], toggleButton=toggleSection._descriptionButton;
+   assert(toggleButton && toggleSection._descriptionBody && toggleButton._descriptionSection==toggleSection,"Section has stable toggle target");
+   if(toggleSection._descriptionBody.style.display!="none") toggleButton.click();
+   for(var tt=0;tt<4;tt++) {
+    toggleButton.click();
+    assert(toggleSection._descriptionBody.style.display==(tt%2==0 ? "block" : "none"),"Section toggle display in "+toggleLayouts[tl]+": "+toggleSection._descriptionSectionId);
+    assert(snapshot()==before && serialize()==serializedBefore,"Toggle preserves metadata and binary payloads");
+   }
+   toggleButton.click();
+  }
+ }
+ apiSetDescriptionLayout("modern");
+ for(var reset=0;reset<form._descriptionSections.length;reset++) {
+  form._descriptionSections[reset]._descriptionClosed=reset!=0 && reset!=2;
+  form._descriptionSections[reset]._descriptionClassicClosed=false;
+  DescriptionShowSection(form._descriptionSections[reset]);
+ }
+}
 if(fixtures[fixtureIndex]=="full") {
  var actionButtons=form.getElementsByTagName("BUTTON"), iconActions=0;
  for(var actionIndex=0;actionIndex<actionButtons.length;actionIndex++) {
@@ -88,6 +111,20 @@ if(fixtures[fixtureIndex]=="full") {
     var fieldLabel=firstField[fieldIndex].getElementsByTagName("LABEL")[0], fieldInput=firstField[fieldIndex].getElementsByTagName("INPUT")[0];
     var labelRect=fieldLabel.getBoundingClientRect(), inputRect=fieldInput.getBoundingClientRect();
     assert(labelRect.bottom>inputRect.top && inputRect.bottom>labelRect.top,"Wide author label and input share a row");
+    var person=document.getElementById("tiAuthor").getElementsByTagName("DIV")[0];
+    var firstRect=person.all.first.getBoundingClientRect(), nickRect=person.all.nick.getBoundingClientRect();
+    assert(Math.abs(firstRect.left-nickRect.left)<=4,"Author and contact rows align in "+layouts[layoutIndex]+" fast="+fast+": "+firstRect.left+"/"+nickRect.left);
+    assert(Math.abs(person.all.middle.getBoundingClientRect().left-person.all.email.getBoundingClientRect().left)<=4,"Middle name and email columns align");
+    assert(Math.abs(person.all.last.getBoundingClientRect().left-person.all.home.getBoundingClientRect().left)<=4,"Last name and website columns align");
+    if(layouts[layoutIndex]=="classic") {
+     var keywordLeft=document.getElementById("tiKwd").getBoundingClientRect().left;
+     var dateLeft=document.getElementById("tiDate").getBoundingClientRect().left;
+     assert(Math.abs(title.getBoundingClientRect().left-keywordLeft)<=5 && Math.abs(keywordLeft-dateLeft)<=5,"Classic title, keywords and date fields align");
+    } else {
+     var coverBox=document.getElementById("tiCover"), coverButtons=coverBox.getElementsByTagName("BUTTON"), coverAction=null;
+     for(var cb=0;cb<coverButtons.length;cb++)if(coverButtons[cb].className=="description-add-action")coverAction=coverButtons[cb];
+     assert(coverAction && coverAction.getBoundingClientRect().right<=coverBox.getBoundingClientRect().right+1,"Cover action stays inside its column");
+    }
    }
    var edge=viewport.getBoundingClientRect().right, overflow=[], descendants=form.getElementsByTagName("*");
    for(var narrowIndex=0;narrowIndex<descendants.length;narrowIndex++) {
@@ -124,6 +161,22 @@ assert(toggles==7,"Switching must not duplicate section controls");
 if(fixtures[fixtureIndex]=="full") {
  var binaries=document.getElementById("binobj"), rows=binaries.getElementsByTagName("DIV");
  var originalRow=rows[0], originalId=GetBinaryInput(originalRow,"id").value;
+ var rawSize=GetBinaryInput(originalRow,"size"), rawDims=GetBinaryInput(originalRow,"dims");
+ assert(rawSize && /^\d+$/.test(rawSize.value),"Legacy size.value remains raw bytes");
+ assert(!rawDims || /^\d+x\d+$/.test(rawDims.value),"Legacy dims.value remains unchanged");
+ assert(originalRow.all.size.value==rawSize.value && parseInt(originalRow.all.size.value,10)==Number(rawSize.value),"Bundled statistics/image-quality size access remains numeric");
+ assert(!rawDims || originalRow.all.dims.value==rawDims.value,"Bundled statistics/image-quality dimensions access remains unchanged");
+ var binarySpans=originalRow.getElementsByTagName("SPAN"), foundSize=false;
+ for(var bs=0;bs<binarySpans.length;bs++)if(binarySpans[bs].className=="binary-size-display")foundSize=binarySpans[bs].innerText==DescriptionBinarySize(rawSize.value);
+ assert(foundSize && rawSize.style.display=="none","Human-readable size is presentation only");
+ assert(DescriptionBinarySize(73386).indexOf("71.7")>=0 || DescriptionBinarySize(73386).indexOf("71,7")>=0,"Binary size uses 1024-byte units");
+ var binaryButtons=originalRow.getElementsByTagName("BUTTON"), binaryOrder=[];
+ for(var bi=0;bi<binaryButtons.length;bi++) {
+  binaryOrder.push(binaryButtons[bi].id);
+  assert(binaryButtons[bi].getElementsByTagName("IMG").length==1 && binaryButtons[bi].title,"Binary action has image and tooltip");
+ }
+ assert(binaryOrder.join(",")=="show,save,del","Binary actions are view, save, remove");
+ assert(document.getElementById("descriptionAttachmentSummary").parentNode.tagName=="LEGEND","Summary remains in section header when collapsed");
  var idInput=GetBinaryInput(originalRow,"id");
  idInput.value="description-renamed-cover.png";idInput.fireEvent("onchange");
  assert(document.getElementById("tiCover").getElementsByTagName("SELECT")[0].value=="#description-renamed-cover.png","Rename updates cover reference");
