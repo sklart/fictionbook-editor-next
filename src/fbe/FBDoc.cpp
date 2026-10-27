@@ -2434,6 +2434,25 @@ static void ApplyRuntimeBodyColors(MSHTML::IHTMLDocument2Ptr document)
 	else
 		css.Format(L"body{color:%s;background-color:%s;}",
 			static_cast<LPCWSTR>(foreground), static_cast<LPCWSTR>(background));
+	// Description follows the existing interface palette, independently of BODY.
+	const CString descriptionText = CssColor(ThemeManager::TextColor());
+	const CString descriptionWindow = CssColor(ThemeManager::WindowColor());
+	const CString descriptionControl = CssColor(ThemeManager::ControlColor());
+	const CString descriptionBorder = CssColor(ThemeManager::BorderColor());
+	css.AppendFormat(L"#fbw_desc{color:%s;background:%s;}"
+		L"#fbw_desc input,#fbw_desc textarea,#fbw_desc select,#fbw_desc div.float{color:%s;background:%s;border-color:%s;}"
+		L"#fbw_desc button,#fbw_desc .description-section-toggle{color:%s;background:%s;border-color:%s;}"
+		L"#fbw_desc fieldset{border-color:%s;}",
+		descriptionText.GetString(), descriptionWindow.GetString(),
+		descriptionText.GetString(), descriptionWindow.GetString(), descriptionBorder.GetString(),
+		descriptionText.GetString(), descriptionControl.GetString(), descriptionBorder.GetString(), descriptionBorder.GetString());
+	css.AppendFormat(L"#fbw_desc input:disabled,#fbw_desc button:disabled{color:%s;}"
+		L"#fbw_desc button:hover{background:%s;}"
+		L"#fbw_desc input:focus,#fbw_desc select:focus,#fbw_desc textarea:focus,#fbw_desc button:focus{outline-color:%s;}"
+		L"#fbw_desc .description-invalid{border-color:%s;}#fbw_desc .description-validation{color:%s;}",
+		CssColor(ThemeManager::DisabledTextColor()).GetString(), CssColor(ThemeManager::HoverColor()).GetString(),
+		CssColor(ThemeManager::FocusColor()).GetString(), CssColor(ThemeManager::WarningColor()).GetString(),
+		CssColor(ThemeManager::WarningColor()).GetString());
 	sheet->cssText = static_cast<LPCWSTR>(css);
 }
 

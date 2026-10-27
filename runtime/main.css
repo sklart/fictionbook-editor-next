@@ -6,137 +6,62 @@ body {
 }
 
 div#fbw_desc {
-	text-align: left;
-	font-size: 8pt;
-	font-family: Tahoma, sans-serif;
-	background-color: #DCDCDC;
-	padding: 0.4em;
+ text-align: left;
+ font: 10pt "Segoe UI", Tahoma, sans-serif;
+ color: WindowText;
+ background: Window;
+ padding: 1em;
 }
-
 div#fbw_desc fieldset {
-	width: 61.5em;
-	margin: 0.1em;
-	padding-left: 0.5em;
-	padding-right: 0.5em;
-	padding-bottom: 0.5em;
-	padding-top: 0.5em;
-	border: 1px solid #C0C0C0;
+ min-width: 0;
+ width: auto;
+ margin: 0 0 .8em;
+ padding: .8em;
+ border: 1px solid ThreeDShadow;
 }
-
-div#fbw_desc legend {
-	padding-left: 0.5em;
-	padding-right: 0.5em;
-}
-
-div#fbw_desc br {
-	height: 0.5em;
-}
-
-div#fbw_desc div {
-	border: none;
-	white-space: nowrap;
-	clear: both;
-}
-
+div#fbw_desc legend { padding: 0 .4em; }
+div#fbw_desc br { line-height: .6em; }
+div#fbw_desc div { border: none; white-space: normal; clear: both; }
 div#fbw_desc div.float {
-	visibility: hidden;
-	position: absolute;
-	z-index: 1;
-	top: 0;
-	left: 0;
-	background: white;
+ visibility: hidden; position: absolute; z-index: 20;
+ top: 0; left: 0; background: Window;
 }
-
 div#fbw_desc button {
-	font-family: "Webdings";
-	font-size: 8pt;
-	color: Black;
-	float: right;
-	cursor: pointer;
+ font: inherit; color: ButtonText; background: ButtonFace;
+ border: 1px solid ThreeDShadow; padding: .25em .55em;
+ margin: .15em; min-height: 1.8em; float: right; cursor: pointer;
 }
-
-div#fbw_desc button.popup_btn {
-	float: none;
+div#fbw_desc button.popup_btn { float: none; }
+div#fbw_desc button:hover { border-color: Highlight; }
+div#fbw_desc input, div#fbw_desc textarea, div#fbw_desc select {
+ font: inherit; color: WindowText; background: Window;
+ border: 1px solid ThreeDShadow; padding: .25em;
+ margin: .2em 0; max-width: 100%; box-sizing: border-box;
 }
-
-div#fbw_desc input {
-	font-family: "Tahoma",sans-serif;
-	font-size: 8pt;
-	border: 1px solid #7F9DB8;
-	margin-top: 2px;
-	margin-bottom: 2px;
-}
-
-div#fbw_desc input.short {
-	width: 2em;
-}
-
-div#fbw_desc input.middle {
-	width: 35em;
-}
-
-div#fbw_desc input.wide {
-	width: 48em;
-}
-
-div#fbw_desc input.url {
-	width: 53.4em;
-	margin-left: 0.3em;
-	margin-top: 0.3em;
-	margin-bottom: 0.1em;
-}
-
-div#fbw_desc textarea#val {
-	width: 48em;
-	font-family: "Tahoma",sans-serif;
-	font-size: 8pt;
-	border: 1px solid Black;
-}
-
+div#fbw_desc input { width: 22%; }
+div#fbw_desc input.short { width: 4em; }
+div#fbw_desc input.middle { width: 58%; }
+div#fbw_desc input.wide, div#fbw_desc textarea#val { width: 78%; }
+div#fbw_desc input.url { width: 90%; margin-left: .3em; }
+div#fbw_desc input:focus, div#fbw_desc textarea:focus,
+div#fbw_desc select:focus, div#fbw_desc button:focus { outline: 2px solid Highlight; }
+div#fbw_desc input:disabled, div#fbw_desc button:disabled { color: GrayText; cursor: default; }
 div#fbw_desc label {
-	width: 6.5em;
-	text-align: right;
-	margin-top: 0.3em;
-	padding-left: 0.4em;
-	padding-right: 0.3em;
-	vertical-align: 20%;
-	color: black;
+ display: inline-block; width: 7em; text-align: right;
+ margin: .3em .4em .3em 0; vertical-align: middle;
 }
-
-div#fbw_desc label.hl {
-	color: #EE0000;
-	font-weight: bold;
-}
-
-div#fbw_desc label.short {
-	width: 4em;
-}
-
-div#fbw_desc fieldset label {
-	width: 6.9em;
-}
-div#fbw_desc fieldset.kid {
-	width: 60em;
-	border: solid 1px #B0B0B0;
-}
-
-div#fbw_desc fieldset.kid label {
-	width: 6.5em;
-}
-
-div#fbw_desc legend.top {
-	font-size: 10pt;
-	color: #0000AA;
-	font-weight: bold;
-	margin-top: 1.7em;
-	margin-bottom: 0.4em;
-}
-
-div#fbw_desc textarea#stylesheetId {
-	width: 60em;
-	font-family: "Tahoma",sans-serif;
-	font-size: 10pt;
-	border: 1px solid Black;
+div#fbw_desc label.hl { color: inherit; font-weight: 600; }
+div#fbw_desc label.short { width: 4em; }
+div#fbw_desc fieldset.kid { width: auto; padding: .6em; }
+div#fbw_desc legend.top { font-size: 1.15em; font-weight: 600; }
+div#fbw_desc textarea#stylesheetId { width: 100%; min-height: 12em; font-family: Consolas, monospace; }
+div#fbw_desc #binobj input { max-width: 90%; }
+@media screen and (max-width: 760px) {
+ div#fbw_desc { padding: .5em; }
+ div#fbw_desc label, div#fbw_desc fieldset label { text-align: left; }
+ div#fbw_desc input.wide, div#fbw_desc input.middle,
+ div#fbw_desc input.url, div#fbw_desc textarea#val { width: 100%; }
+ div#fbw_desc input { width: 35%; }
 }
 
 span.top {

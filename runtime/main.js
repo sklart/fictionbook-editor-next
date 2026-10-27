@@ -24,6 +24,30 @@ function apiSetDescriptionLayout(value)
  return true;
 }
 
+function DescriptionText(key, fallback)
+{
+ return GetLocalizedStringOrDefault("fbe.description." + key, fallback);
+}
+
+function DescriptionStyleButtons(root)
+{
+ var buttons = root.getElementsByTagName("BUTTON");
+ for(var i=0; i<buttons.length; i++)
+ {
+  var button = buttons[i];
+  if(button.tagName != "BUTTON") continue;
+  // The shared XSL still owns the handlers; only their captions change.
+  var text = button.innerText;
+  var key = "", fallback = "";
+  if(text == "r") { key = "remove"; fallback = "Remove"; }
+  else if(text == "2") { key = "duplicate"; fallback = "Duplicate"; }
+  else if(text == "4") { key = "choose"; fallback = "Choose"; }
+  else if(text == "N") { key = "view"; fallback = "View"; }
+  else if(text == "\u00cd") { key = "save"; fallback = "Save"; }
+  if(key) { button.innerText = DescriptionText(key, fallback); button.title = button.innerText; }
+ }
+}
+
 var prevImageShowTimer = null;
 // The note preview lives outside fbw_body, so showing it never changes the
 // editable book DOM (and consequently does not create an Undo entry).
@@ -2039,6 +2063,7 @@ function SetupDescription(desc)
 	InitFieldsets();
 	TraceScript("J760", "operation=SelectLanguages");
 	SelectLanguages();
+	DescriptionStyleButtons(desc);
 	TraceScript("J799", "operation=SetupDescription success");
 }//-----------------------------------------------
 
