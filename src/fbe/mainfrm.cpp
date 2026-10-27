@@ -6975,7 +6975,6 @@ EditorSourceOperationResult CMainFrame::CommitSourceDocument()
 		}
 		return sessionResult;
 	}
-	if (m_source_view_session.DocumentChanged()) ClearSelection();
 	if (_Settings.ViewDocumentTree()) m_document_tree.GetDocumentStructure(m_doc->m_body.Document());
 	return EditorSourceOperationResult::Success;
 
@@ -7062,6 +7061,8 @@ void CMainFrame::ApplyEditorViewCommandUi(EditorView prev, EditorView vt)
 	UISetCheck(ID_VIEW_TREE, vt == BODY && _Settings.ViewDocumentTree());
 	UISetCheck(ID_VIEW_BODY, vt == BODY); UISetCheck(ID_VIEW_DESC, vt == DESC); UISetCheck(ID_VIEW_SOURCE, vt == SOURCE);
 	UIEnable(ID_VIEW_SHOW_TEXT_CARET, vt != SOURCE);
+	if (vt == BODY && prev == SOURCE && m_editor_selection_state.BodySource().sourceToBodyTransferred && _Settings.ViewDocumentTree())
+		m_document_tree.HighlightItemAtPos(m_doc->m_body.SelectionContainer());
 	if (vt == BODY) { m_sel_changed = true; if (m_Speller && _Settings.GetUseSpellChecker()) m_Speller->SetDocumentLanguage(); }
 	InvalidateUi(UiDirtyView | UiDirtySelection | UiDirtyToolbar | UiDirtyStatus);
 	if (vt == DESC) {

@@ -1,8 +1,9 @@
-#include <cstdlib>
+﻿#include <cstdlib>
 #include <iostream>
 #include <string>
 
 #include "BodySourceSelectionTransfer.h"
+#include "source/XmlSelectionPosition.h"
 
 using FBEBodySourceTransfer::FindVisibleXmlTextRange;
 using FBEBodySourceTransfer::FindXmlNodeTextPosition;
@@ -35,6 +36,32 @@ static XmlTextRange Match(const std::wstring& xml, const std::wstring& text,
 
 int main()
 {
+ {
+ const std::wstring structural = L"<?xml version='1.0'?><FictionBook><!--comment--><body><section><p a='>'>same &amp; <strong>bold</strong> tail</p><p>same</p><p><![CDATA[x<y]]>&#x1F600;</p><empty-line/></section></body><body name='notes'><section><p>same</p></section></body></FictionBook>";
+ const FBEBodySourceTransfer::XmlSelectionPosition positions(structural);
+ Need(positions.Valid(), "quote/comment/CDATA aware XML index");
+ const int first = positions.ByPath({0,0,0}), repeated = positions.ByPath({0,0,1}), notes = positions.ByPath({1,0,0});
+ Need(first >= 0 && repeated >= 0 && notes >= 0 && first != notes, "distinct structural scopes");
+ Need(positions.Position(first, 5) == At(structural,L"&amp;"), "entity start boundary");
+ Need(positions.Position(first, 6) == At(structural,L"&amp;")+5, "entity end boundary");
+ Need(positions.Position(first, 7) == At(structural,L"<strong>"), "inline boundary");
+ Need(positions.Position(first, 11) == At(structural,L"bold")+4, "inline end boundary");
+ Need(positions.Position(repeated, 0) == static_cast<int>(structural.find(L"same",structural.find(L"</p>")+4)), "duplicate paragraph identity");
+ Need(positions.Position(notes,0) > positions.Position(repeated,0), "notes identity");
+ const int cdata = positions.ByPath({0,0,2});
+ Need(positions.Position(cdata,1) == At(structural,L"x<y")+1, "CDATA offset");
+ Need(positions.Position(cdata,4) == -1, "cannot split surrogate entity");
+ Need(positions.Position(cdata,5) == At(structural,L"&#x1F600;")+9, "surrogate UTF16 length");
+ int offset=-1; bool exact=false;
+ Need(positions.TextOffset(first,positions.Position(first,12),offset,exact) && offset==12 && exact, "bidirectional offset");
+ Need(positions.TextOffset(first,positions.At(first).start+2,offset,exact) && offset==0 && !exact, "markup is explicit approximation");
+ Need(positions.ByPath({8}) == -1 && positions.AtPosition(-1) == -1, "invalid positions fail closed");
+ Need(!FBEBodySourceTransfer::XmlSelectionPosition(L"<a><b></a>").Valid(), "malformed XML rejected");
+ const std::wstring literalEmoji=L"<p>A\xD83D\xDE00" L"B</p>";
+ const FBEBodySourceTransfer::XmlSelectionPosition emojiPositions(literalEmoji);
+ Need(emojiPositions.Position(0,2)==-1 && emojiPositions.Position(0,3)==6, "literal surrogate boundary cannot split");
+ }
+
 	const std::wstring xml =
 		L"<FictionBook><body name='main'><section id='one'><title><p>Repeated phrase</p></title>"
 		L"<p>Repeated <emphasis>phrase</emphasis> A</p><poem><stanza><v>line one</v><v>line two</v></stanza></poem>"

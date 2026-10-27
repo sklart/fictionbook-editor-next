@@ -1,5 +1,5 @@
 ﻿[CmdletBinding()]
-param()
+param([switch]$Runtime, [string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'))
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -36,57 +36,33 @@ function Assert-Contains {
     }
 }
 
-Assert-Contains $source 'document.m_body.GetSelectionInfo(' `
-	'переход Body → Source должен получать live selection через editor adapter'
-Assert-Contains $source 'FbeDom::SelectionRangeMapper::SetSelection(document.m_body.Document()' `
-	'переход Source → Body должен восстанавливать диапазон через DOM mapper'
-Assert-Contains $source 'SCI_SETSELECTIONSTART, beginByte' `
-    'переход Body → Source должен устанавливать начало выделения в Scintilla'
-Assert-Contains $source 'SCI_SETSELECTIONEND, endByte' `
-    'переход Body → Source должен устанавливать конец выделения в Scintilla'
+Assert-Contains $source 'XmlSelectionPosition positions' `
+    'позиции должны вычисляться по структуре сериализованного XML'
+Assert-Contains $source 'getElementById(L"fbw_body")' `
+    'HTML-корень должен находиться по явному ID'
+Assert-Contains $source 'XmlForHtml(document, root' `
+    'HTML-элемент должен сопоставляться с соответствующей XML-областью'
+Assert-Contains $source 'HtmlForXml(document, root' `
+    'XML-элемент должен сопоставляться с соответствующей HTML-областью'
 Assert-Contains $source 'selection.BodySource().bodyToSourceTransferred = true;' `
-    'переход Body → Source должен сохранять результат сопоставления диапазона'
-Assert-Contains $source 'm_context.view.ActivateWnd(m_context.source);' `
-    'переход Body → Source должен активировать окно Scintilla'
-Assert-Contains $source 'SCI_SETSEL, m_context.selection.BodySource().sourceStart' `
-    'после активации Source должно восстанавливаться начало перенесённого выделения'
-Assert-Contains $source 'm_context.selection.BodySource().sourceEnd' `
-    'после активации Source должно восстанавливаться конец перенесённого выделения'
-Assert-Contains $source 'SCI_SETSEL, m_context.selection.BodySource().sourceStart' `
-    'после установки фокуса Source должен повторно применяться весь диапазон выделения'
-Assert-Contains $source 'PostMessage(m_context.source, SCI_SCROLLCARET' `
-    'после завершения смены режима Source должен отложенно прокручиваться к выделению'
-Assert-Contains $source 'SourceDocumentTransfer::FindVisibleXmlTextRange(serialized, selectedText' `
-    'переход Body → Source должен сначала сопоставлять фактически выделенный текст'
-Assert-Contains $source 'SourceDocumentTransfer::FindXmlBodyRangeByIndex(serialized, selectedBodyIndex, bodyRange)' `
-    'переход Body → Source при отказе DomPath должен ограничить fallback соответствующим XML body'
-Assert-Contains $source 'bodyRange.start, bodyRange.end, expectedBegin, visible' `
-    'переход Body → Source должен применять безопасный text fallback в границах body'
-
-Assert-Contains $source 'ReadSourceText' `
-    'переход Source → Body должен читать начало выделения Scintilla'
-Assert-Contains $source 'ReadSourceText' `
-    'переход Source → Body должен читать конец выделения Scintilla'
-Assert-Contains $source 'bool pathAvailable = beginPath.CreatePathFromText' `
-    'переход Source → Body должен проверять преобразование позиции в DOM-путь'
-Assert-Contains $source 'selection.BodySource().sourceToBodyTransferred = (bool)selection.BodyRange();' `
-    'переход Source → Body должен фиксировать успешное создание HTML-выделения'
-Assert-Contains $source 'm_context.selection.BodyRange()->select();' `
-	'после активации Body должно восстанавливаться перенесённое выделение'
-Assert-Contains $source 'ExtractVisibleXmlText(selectedXml)' `
-    'при переходе Source → Body выделение должно преобразовываться в отображаемый текст'
-Assert-Contains $source 'SourceDocumentTransfer::FindBodyTextRange(' `
-	'при отказе DOM-пути Source → Body должен искать текстовый диапазон в Body'
-Assert-Contains $source 'FindXmlBodyIndexAtPosition(source.text, begin)' `
-	'при отказе DomPath Source → Body должен определять соответствующий XML body по позиции Source'
-Assert-Contains $source 'int bodyIndex = selectedBodyIndex >= 0 ? selectedBodyIndex : 0;' `
-	'fallback Source → Body должен иметь безопасный основной body даже без DomPath'
-Assert-Contains $source 'scope = element;' `
-	'соответствующий HTML body должен быть базовой областью поиска fallback'
-Assert-Contains $source 'MSHTML::IHTMLElementPtr refined' `
-	'DomPath может только уточнять область поиска fallback, а не отключать её'
+    'успешный перенос должен фиксироваться после проверки обоих концов диапазона'
+Assert-Contains $source 'source.SendMessage(SCI_SETSELECTIONSTART, beginByte)' `
+    'Scintilla должна получать UTF-8 смещение начала'
+Assert-Contains $source 'source.SendMessage(SCI_SETSELECTIONEND, endByte)' `
+    'Scintilla должна получать UTF-8 смещение конца'
+Assert-Contains $source 'sourceToBodyApproximate' `
+    'приближённая граница разметки должна отличаться от точного переноса'
+Assert-Contains $source 'Unavailable(L"BS201")' `
+    'неудача Body -> Source должна диагностироваться'
+Assert-Contains $source 'Unavailable(L"BS202")' `
+    'неудача Source -> Body должна диагностироваться'
+if($source.Contains('beginPath.GetNodeFromText(') -or $source.Contains('int bodyIndex = selectedBodyIndex >= 0 ? selectedBodyIndex : 0;')) {
+    throw 'Нельзя возвращать ошибку DomPath как нулевую позицию или выбирать первый body при отказе сопоставления.'
+}
 Assert-Contains $source 'target == BODY && previous == SOURCE && m_context.selection.BodySource().sourceToBodyTransferred' `
-	'после окончательной установки фокуса Body должно применяться только подтверждённое перенесённое выделение'
+    'после установки фокуса Body должно восстанавливаться подтверждённое выделение'
+Assert-Contains $source 'm_document_tree.HighlightItemAtPos(m_doc->m_body.SelectionContainer());' `
+    'маркер дерева должен следовать восстановленному диапазону'
 
 Assert-Contains $trace 'FBE_NEXT_TRACE' `
 	'диагностический журнал должен включаться переменной окружения'
@@ -132,3 +108,8 @@ Assert-Contains $source 'virtual-key=%u' `
 	'запись горячей клавиши должна содержать её сочетание и назначенную команду'
 
 Write-Host 'Двусторонний перенос выделения между Body и Source закреплён проверкой.'
+
+if($Runtime) {
+    & (Join-Path $PSScriptRoot 'test-fbe-body-source-selection-transfer-behavior.ps1')
+    & (Join-Path $PSScriptRoot 'test-fbe-community-selection-runtime.ps1') -FbeExe $FbeExe
+}

@@ -1,4 +1,4 @@
-<# Guards ownership of BODY/SOURCE selection mapping. #>
+﻿<# Guards ownership of BODY/SOURCE selection mapping. #>
 [CmdletBinding()]
 param()
 
@@ -13,7 +13,7 @@ $mapperSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\dom\Sele
 $view = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBEview.cpp')
 $unit = $header + $source
 
-foreach($required in @('class\s+BodySourceSelectionCoordinator', 'IBodySourceSelectionMapper', 'EditorSelectionState', 'SourceDocumentTransfer', 'U::DomPath', 'MapSourceSelectionToBody', 'MapBodySelectionToSource')) {
+foreach($required in @('class\s+BodySourceSelectionCoordinator', 'IBodySourceSelectionMapper', 'EditorSelectionState', 'SourceDocumentTransfer', 'XmlSelectionPosition', 'MapSourceSelectionToBody', 'MapBodySelectionToSource')) {
     if($unit -notmatch $required) { throw "Selection coordinator is missing: $required" }
 }
 foreach($forbidden in @('mainfrm\.h', 'CMainFrame', 'DocumentSession', 'DocumentSave', 'Recovery', 'RecentDocuments', 'PluginExecution', 'PluginUi')) {
@@ -33,8 +33,8 @@ if($mapperSource -match 'selection->createRange\s*\(') {
 foreach($legacy in @('CFBEView::GetRangePos', 'CFBEView::SetSelection', 'CFBEView::GetRelationalCharPos', 'CFBEView::GetRealCharPos', 'CFBEView::CountNodeChars')) {
     if($view -match [regex]::Escape($legacy)) { throw "CFBEView still owns selection range mapping: $legacy" }
 }
-if($source -notmatch 'document\.m_body\.GetSelectionInfo\(' -or $source -notmatch 'FbeDom::SelectionRangeMapper::SetSelection') {
-    throw 'BodySourceSelectionCoordinator must read live selection through CFBEView and use the mapper only for explicit ranges.'
+if($source -notmatch 'BodyEndpoint\(document, xml->documentElement, positions, selection\.BodyRange\(\)' -or $source -notmatch 'SourceEndpoint\(' -or $source -notmatch 'endpoint->moveToElementText') {
+    throw 'BodySourceSelectionCoordinator must map the saved explicit native range, including inline descendant text, through the structural XML index.'
 }
 if($view -notmatch 'Document\(\)->selection->createRange\(' -or $view -notmatch 'SelectionRangeMapper::GetSelectionInfo\(textRange' -or $view -notmatch 'SelectionRangeMapper::GetSelectionInfo\(controlRange') {
     throw 'CFBEView must acquire the live selection and delegate TextRange or ControlRange to SelectionRangeMapper.'

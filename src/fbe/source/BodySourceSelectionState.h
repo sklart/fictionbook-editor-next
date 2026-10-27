@@ -7,6 +7,7 @@ struct BodySourceSelectionState
 {
 	bool bodyToSourceTransferred = false;
 	bool sourceToBodyTransferred = false;
+	bool sourceToBodyApproximate = false;
 	int sourceStart = 0;
 	int sourceEnd = 0;
 
@@ -14,6 +15,7 @@ struct BodySourceSelectionState
 	{
 		bodyToSourceTransferred = false;
 		sourceToBodyTransferred = false;
+		sourceToBodyApproximate = false;
 		sourceStart = 0;
 		sourceEnd = 0;
 	}

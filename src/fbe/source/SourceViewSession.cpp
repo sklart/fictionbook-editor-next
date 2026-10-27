@@ -59,6 +59,9 @@ EditorSourceOperationResult SourceViewSession::CommitSourceDocument()
 	if(m_lastApplyResult.result != SourceTransitionResult::Success)
 		return EditorSourceOperationResult::Failed;
 	m_documentChanged = m_lastApplyResult.documentChanged;
+	// Clear ranges of the replaced HTML before mapping the new DOM. Clearing
+	// them in the frame afterwards discards the freshly restored Source caret.
+	if (m_documentChanged) m_selection.ClearHtmlRanges();
 	m_selectionMapper.MapSourceSelectionToBody(*m_document, m_savedXml, sourceDocument, m_selection);
 	// A replaced XML snapshot cannot hit the serialization cache on the next entry.
 	if (m_serializedSourceCache.xml != m_savedXml)
