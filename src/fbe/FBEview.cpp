@@ -329,6 +329,23 @@ struct DeferredHtmlPaste {
     DWORD clipboardSequence = 0;
     explicit DeferredHtmlPaste(CFBEView& view) {
         const DWORD sequence = ::GetClipboardSequenceNumber();
+        // Deterministic STA reentrancy probe: delayed clipboard rendering / COM
+        // may dispatch our already posted message while capturing another event.
+        // Never pump messages on the normal editor path.
+        wchar_t testMode[2]={}, testCase[64]={}, scenario[64]={};
+        if(::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE",testMode,_countof(testMode))==1 && testMode[0]==L'1' &&
+           ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO",scenario,_countof(scenario))>0 && wcscmp(scenario,L"html-paste-runtime")==0 &&
+           ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_HTML_PASTE_CASE",testCase,_countof(testCase))>0 &&
+           (wcscmp(testCase,L"queue-reentrant")==0 || wcscmp(testCase,L"queue-reentrant-post-failure")==0)) {
+            MSG message={};
+            if(::PeekMessage(&message,view,AU::WM_FINALIZE_HTML_PASTE,AU::WM_FINALIZE_HTML_PASTE,PM_REMOVE)) {
+                ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_PASTE_REENTERED",L"1");
+                StartupTrace::Event(L"clipboard",L"CP298",L"count=1");
+                ::DispatchMessage(&message);
+                if(wcscmp(testCase,L"queue-reentrant-post-failure")==0)
+                    ::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE",L"paste-post");
+            }
+        }
         selection = view.Document()->selection->createRange();
         hasHtml = ::IsClipboardFormatAvailable(::RegisterClipboardFormat(L"HTML Format")) != FALSE;
         readableHtml = hasHtml && FbeClipboard::HtmlPasteSanitizer::ReadClipboardFragment(view, fragment);
@@ -4968,8 +4985,15 @@ BOOL CFBEView::OnIdle()
 {
     // Posting may fail (for example, a full thread message queue). The WTL
     // idle handler is registered before the browser can emit paste events;
-    // it needs no second PostMessage and only removes canceled native events.
-    if (m_pendingHtmlPaste && !m_pendingHtmlPaste->posted) {
+    // it can recover canceled events or replay requests after a reentrant post.
+    if (m_pendingHtmlPaste && !m_pendingHtmlPaste->posted && m_htmlPasteCallbackDepth == 0) {
+        // A message consumed by a reentrant COM/clipboard pump still owns its
+        // accepted requests. Replay them at idle if reposting was unavailable.
+        if (!m_pendingHtmlPaste->requests.empty()) {
+            BOOL handled=FALSE;
+            OnDeferredHtmlPaste(0,m_pendingHtmlPaste->generation,0,handled);
+            return FALSE;
+        }
         auto pending = std::move(m_pendingHtmlPaste);
         const HRESULT result = pending->Finish(m_ownerDocument);
         if (FAILED(result)) StartupTrace::HResult(L"clipboard", L"CP101", result, L"Canceled paste recovery");
@@ -4980,6 +5004,12 @@ BOOL CFBEView::OnIdle()
 LRESULT CFBEView::OnDeferredHtmlPaste(UINT, WPARAM generation, LPARAM, BOOL&)
 {
     if (!m_pendingHtmlPaste || generation != m_pendingHtmlPaste->generation) return 0;
+    if (m_htmlPasteCallbackDepth > 0) {
+        // Posted messages can be dispatched by STA calls made inside onpaste.
+        // The native canceled event has not closed its Undo parent yet.
+        m_pendingHtmlPaste->posted=false;
+        return 0;
+    }
     auto pending = std::move(m_pendingHtmlPaste);
     try {
         CheckError(pending->Finish(m_ownerDocument));
@@ -4992,13 +5022,23 @@ LRESULT CFBEView::OnDeferredHtmlPaste(UINT, WPARAM generation, LPARAM, BOOL&)
             OnPaste(0, ID_EDIT_PASTE, 0, handled);
             m_activeHtmlPaste.reset();
         }
-    } catch (const _com_error& error) { StartupTrace::HResult(L"clipboard", L"CP202", error.Error(), L"deferred paste recovery or replay"); U::ReportError(error.Error()); }
+    } catch (const _com_error& error) {
+        const wchar_t* route=pending->requests.empty() ? L"CP401" : (pending->requests.front()->internal ? L"CP402" : L"CP403");
+        CString diagnostic;diagnostic.Format(L"stage=CP314; operation-stage=%s",route);
+        StartupTrace::HResult(L"clipboard", L"CP202", error.Error(), diagnostic); U::ReportError(error.Error());
+    }
     catch (const std::bad_alloc&) { _com_error error(E_OUTOFMEMORY); U::ReportError(error); }
     return 0;
 }
 
 VARIANT_BOOL  CFBEView::OnRealPaste(IDispatch* evt)
 {
+    // Outlive all event COM references as their Release may pump STA messages.
+    struct CallbackScope {
+        int& depth;
+        explicit CallbackScope(int& value):depth(value){++depth;}
+        ~CallbackScope(){--depth;}
+    } callback(m_htmlPasteCallbackDepth);
 	MSHTML::IHTMLEventObjPtr oe(evt);
 	oe->cancelBubble = VARIANT_TRUE;
 	if(!m_enable_paste)
@@ -5014,25 +5054,25 @@ VARIANT_BOOL  CFBEView::OnRealPaste(IDispatch* evt)
                     m_pendingHtmlPaste = std::make_shared<PendingHtmlPaste>(manager, m_ownerDocument);
                     m_pendingHtmlPaste->generation = ++m_htmlPasteGeneration;
                 }
-                auto& pending = *m_pendingHtmlPaste;
-                ++pending.events;
+                auto pending = m_pendingHtmlPaste;
+                ++pending->events;
                 auto request = std::make_shared<DeferredHtmlPaste>(*this);
-                if (!pending.requests.empty()) {
-                    auto previous = pending.requests.back()->selection;
+                if (!pending->requests.empty()) {
+                    auto previous = pending->requests.back()->selection;
                     request->continueAtCaret = previous && request->selection &&
                         previous->compareEndPoints(L"StartToStart", request->selection) == 0 &&
                         previous->compareEndPoints(L"EndToEnd", request->selection) == 0;
                 }
-                pending.requests.push_back(request);
-                if (!pending.posted) {
+                pending->requests.push_back(request);
+                if (!pending->posted) {
                     const bool posted = SUCCEEDED(FbeUndo::Inject(L"paste-post")) &&
-                        PostMessage(AU::WM_FINALIZE_HTML_PASTE, pending.generation, 0);
+                        PostMessage(AU::WM_FINALIZE_HTML_PASTE, pending->generation, 0);
                     if (!posted) {
-                        pending.requests.pop_back(); // no insertion for the rejected event
+                        pending->requests.pop_back(); // no insertion for the rejected event
                         StartupTrace::Event(L"clipboard", L"CP100", L"Deferred paste queue rejected; idle recovery scheduled");
                         return VARIANT_TRUE;
                     }
-                    pending.posted = true;
+                    pending->posted = true;
                 }
             } else if (!PostMessage(WM_COMMAND, MAKELONG(ID_EDIT_PASTE, 0), 0)) {
                 StartupTrace::Event(L"clipboard", L"CP100", L"Deferred form paste queue rejected");

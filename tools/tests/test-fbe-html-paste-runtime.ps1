@@ -2,7 +2,7 @@
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [ValidateRange(20, 120)][int]$TimeoutSeconds = 60,
-    [string[]]$Cases = @('word', 'title', 'plain', 'plain-single', 'plain-middle', 'internal', 'internal-dirty', 'internal-history', 'internal-history-middle', 'internal-end', 'internal-missing-link', 'internal-missing-image', 'legacy-unmarked', 'queue-post-failure', 'queue-post-clean-failure', 'queue-failure-retry', 'queue-two', 'queue-three', 'queue-plain-two'),
+    [string[]]$Cases = @('word', 'title', 'plain', 'plain-single', 'plain-middle', 'internal', 'internal-dirty', 'internal-history', 'internal-history-middle', 'internal-end', 'internal-missing-link', 'internal-missing-image', 'legacy-unmarked', 'queue-post-failure', 'queue-post-clean-failure', 'queue-failure-retry', 'queue-two', 'queue-three', 'queue-reentrant', 'queue-reentrant-post-failure', 'queue-plain-two'),
     [switch]$KeepArtifacts,
     [switch]$RealPaste
 )

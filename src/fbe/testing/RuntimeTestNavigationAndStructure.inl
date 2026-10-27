@@ -901,7 +901,7 @@
                     CStringA trace; trace.Format("queue-failure: posted=%d restored=%d\r\n", !notPosted, restored);
                     if (!valid) output.Write(trace, static_cast<DWORD>(trace.GetLength()), &written);
                 }
-                const int count = wcscmp(caseName, L"queue-three") == 0 ? 3 : (wcscmp(caseName, L"queue-two") == 0 || wcscmp(caseName, L"queue-plain-two") == 0) ? 2 :
+                const int count = (wcscmp(caseName, L"queue-three") == 0 || wcscmp(caseName,L"queue-reentrant")==0) ? 3 : (wcscmp(caseName, L"queue-two") == 0 || wcscmp(caseName, L"queue-plain-two") == 0) ? 2 :
                     (wcscmp(caseName, L"queue-post-failure") == 0 || cleanQueueFailure) ? 0 : 1;
                 std::vector<CString> htmls{baselineHtml}, carets{baselineCaret};
                 std::vector<unsigned long long> states{baseline};
@@ -921,10 +921,17 @@
                     if (!valid) traceQueue("sequential-undo");
                 }
                 valid = undoHistory() == previousUndo && valid;
-                for (int i = 1; i <= count; ++i) { setInput(i); event(); }
+                ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_PASTE_REENTERED",NULL);
+                const bool reentrantPostFailure=wcscmp(caseName,L"queue-reentrant-post-failure")==0;
+                for (int i = 1; i <= count+(reentrantPostFailure ? 1 : 0); ++i) { setInput(i); event(); }
+                if(wcscmp(caseName,L"queue-reentrant")==0 || reentrantPostFailure) {
+                    wchar_t reentered[2]={};
+                    valid=::GetEnvironmentVariableW(L"FBE_NEXT_TEST_PASTE_REENTERED",reentered,_countof(reentered))==1 && reentered[0]==L'1' && valid;
+                }
                 setInput(9); // queued requests must not read this newer clipboard
                 const DWORD queuedClipboard = ::GetClipboardSequenceNumber();
-                valid = drain() == (count ? 1 : 0) && valid;
+                valid = drain() == (reentrantPostFailure ? 0 : (count ? 1 : 0)) && valid;
+                if(reentrantPostFailure) _Module.GetMessageLoop()->OnIdle(0); // replay the first accepted request
                 valid = FbeUndo::DocumentState(document) == states.back() && selectionState() == carets.back() &&
                     undoHistory().size() == previousUndo.size() + count && ::GetClipboardSequenceNumber() == queuedClipboard && valid;
                 if (!valid) traceQueue("burst");

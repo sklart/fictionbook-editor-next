@@ -110,10 +110,21 @@ if (IsFbeTestScenario(L"community-native-copy-paste"))
 	} catch (const _com_error& error) { report.AppendFormat("hresult=0x%08lX\n", static_cast<unsigned long>(error.Error())); passed = false; }
 	catch (const std::bad_alloc&) { report += "hresult=0x8007000E\n"; passed = false; }
 	if (restoreClipboard) {
-		const HRESULT restored = ::OleSetClipboard(previousClipboard);
-		check("clipboard_restored", SUCCEEDED(restored) && SUCCEEDED(::OleFlushClipboard()));
+		HRESULT restored=E_FAIL,flushed=S_OK;
+		for(int attempt=0;attempt<10;++attempt) {
+			restored=::OleSetClipboard(previousClipboard);
+			if(SUCCEEDED(restored)) break;
+			pump(20);
+		}
+		if(SUCCEEDED(restored) && previousClipboard) {
+			for(int attempt=0;attempt<10;++attempt) {
+				flushed=::OleFlushClipboard();if(SUCCEEDED(flushed)) break;pump(20);
+			}
+		}
+		if(FAILED(restored) || FAILED(flushed)) report.AppendFormat("clipboard_restore_hresult=0x%08lX\nclipboard_flush_hresult=0x%08lX\n",static_cast<unsigned long>(restored),static_cast<unsigned long>(flushed));
+		check("clipboard_restored", SUCCEEDED(restored) && SUCCEEDED(flushed));
 	}
 	report.AppendFormat("result=%s\n", passed ? "PASS" : "FAIL");
-	DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+	DWORD written = 0; output.Seek(0,FILE_BEGIN); output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 	::PostQuitMessage(passed ? 0 : 1); return 0;
 }

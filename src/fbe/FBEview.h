@@ -414,6 +414,7 @@ protected:
   std::shared_ptr<PendingHtmlPaste> m_pendingHtmlPaste;
   std::shared_ptr<DeferredHtmlPaste> m_activeHtmlPaste;
   UINT_PTR m_htmlPasteGeneration = 0;
+  int m_htmlPasteCallbackDepth = 0;
   CMessageLoop* m_pasteIdleLoop = nullptr;
 	MSHTML::IHTMLDOMNodePtr m_pending_drop_normalization_scope;
 	CString m_drop_source_html, m_drop_target_html;
