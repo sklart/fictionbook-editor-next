@@ -49,6 +49,7 @@
 #include "FictionBookFileType.h"
 #include "Fb2QualityChecker.h"
 #include "SearchReplace.h"
+#include "search/SearchViewportPosition.h"
 #include "document\\ArchiveRecentDocuments.h"
 #include "document\\recent\\RecentDocumentsStore.h"
 #include "document\\recent\\RecentDocumentsManager.h"
@@ -5041,6 +5042,34 @@ static bool PrepareScintillaRegexReplaceTarget(CWindow source, const CString& se
   return readyToReplace;
 }
 
+// Keep Source matches visible without changing the Scintilla selection or focus.
+static void MoveSourceSearchDialogAway(HWND dialog, CWindow source)
+{
+	if (!::IsWindow(dialog) || !::IsWindowVisible(dialog) || !::IsWindow(source)) return;
+	const sptr_t start = source.SendMessage(SCI_GETSELECTIONSTART);
+	const sptr_t end = source.SendMessage(SCI_GETSELECTIONEND);
+	const int startX = static_cast<int>(source.SendMessage(SCI_POINTXFROMPOSITION, 0, start));
+	const int startY = static_cast<int>(source.SendMessage(SCI_POINTYFROMPOSITION, 0, start));
+	const int endX = static_cast<int>(source.SendMessage(SCI_POINTXFROMPOSITION, 0, end));
+	const int endY = static_cast<int>(source.SendMessage(SCI_POINTYFROMPOSITION, 0, end));
+	const int line = static_cast<int>(source.SendMessage(SCI_LINEFROMPOSITION, start));
+	const int height = static_cast<int>(source.SendMessage(SCI_TEXTHEIGHT, line));
+	if (startX < 0 || startY < 0 || endX < 0 || endY < 0 || height <= 0) return;
+	RECT client = {}, window = {}, match = {}, clipped = {};
+	if (!::GetClientRect(source, &client) || !::GetWindowRect(dialog, &window)) return;
+	if (startY == endY) { match = { (std::min)(startX, endX), startY, (std::max)(startX + 1, endX), startY + height }; }
+	else { match = { client.left, (std::min)(startY, endY), client.right, (std::max)(startY, endY) + height }; }
+	if (!::IntersectRect(&clipped, &match, &client)) return;
+	::MapWindowPoints(source, nullptr, reinterpret_cast<POINT*>(&client), 2);
+	::MapWindowPoints(source, nullptr, reinterpret_cast<POINT*>(&clipped), 2);
+	MONITORINFO monitor = {}; monitor.cbSize = sizeof(monitor);
+	if (!::GetMonitorInfo(::MonitorFromWindow(source, MONITOR_DEFAULTTONEAREST), &monitor)) return;
+	const auto rect = [](const RECT& value) { return FBESearchViewport::Rect{ value.left, value.top, value.right, value.bottom }; };
+	FBESearchViewport::Rect result = {};
+	if (FBESearchViewport::DialogPositionForMatch(rect(window), rect(client), rect(monitor.rcWork), rect(clipped), result))
+		::SetWindowPos(dialog, nullptr, result.left, result.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
 class CSciFindDlg : public CFindDlgBase {
 public:
   CWindow	m_source;
@@ -5059,6 +5088,7 @@ public:
   virtual void	DoFind() {
     GetData();
     if (m_view->SciFindNext(m_source,false,true)) {
+      MoveSourceSearchDialogAway(CModelessDialogImpl<CFindDlgBase>::m_hWnd, m_source);
       SaveString();
       SaveHistory();
     }
@@ -5099,6 +5129,7 @@ public:
         U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
     }
     else {
+      MoveSourceSearchDialogAway(CModelessDialogImpl<CReplaceDlgBase>::m_hWnd, m_source);
       SaveString();
       SaveHistory();
       m_selvalid=true;
@@ -8152,7 +8183,7 @@ public:
 	std::size_t Length() const { return static_cast<std::size_t>(::SendMessage(m_source, SCI_GETLENGTH, 0, 0)); }
 	void Read(std::size_t position, std::size_t length, std::string& text) const
 	{
-		text.assign(length, '\0');
+		text.assign(length + 1, '\0');
 		Sci_TextRange range = {};
 		range.chrg.cpMin = static_cast<sptr_t>(position);
 		range.chrg.cpMax = static_cast<sptr_t>(position + length);

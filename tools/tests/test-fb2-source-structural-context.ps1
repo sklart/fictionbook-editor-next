@@ -16,10 +16,10 @@ try {
 #include <string>
 #include "Fb2SourceStructuralContext.h"
 struct Reader : Fb2SourceTextReader {
- std::string text; size_t chunk, calls, bytes;
- Reader(const std::string& v, size_t c) : text(v), chunk(c), calls(0), bytes(0) {}
- size_t Length() const { return text.size(); }
- void Read(size_t p, size_t n, std::string& out) const { Reader* self=const_cast<Reader*>(this); n=std::min(n, text.size()-p); out.assign(text, p, n); ++self->calls; self->bytes+=n; }
+ std::string text; size_t chunk, calls, bytes; mutable size_t lengthCalls;
+ Reader(const std::string& v, size_t c) : text(v), chunk(c), calls(0), bytes(0), lengthCalls(0) {}
+ size_t Length() const { ++lengthCalls; return text.size(); }
+ void Read(size_t p, size_t n, std::string& out) const { Reader* self=const_cast<Reader*>(this); if (p > text.size() || n > text.size()-p) { out.clear(); ++self->calls; return; } out.assign(text, p, n); ++self->calls; self->bytes+=n; }
 };
 static void Need(bool value, const char* message) { if(!value) { std::cerr << message << std::endl; std::exit(1); } }
 static Fb2SourceStructuralContext Resolve(const std::string& text, int ch, size_t chunk) { Reader r(text,chunk); Fb2SourceStructuralContextResolver x(chunk); return x.Resolve(r,text.size(),ch); }
@@ -37,8 +37,9 @@ int main() {
  Need(Resolve("<section title='1 > 0'>" + deep + "</", '/', 13).closingElement == "section", "single quote greater-than");
 	 Fb2SourceStructuralContext breadcrumb = Resolve("<FictionBook><body><section><title>Text", 0, 17); Need(breadcrumb.breadcrumb.size() == 4 && breadcrumb.breadcrumb[0] == "FictionBook" && breadcrumb.breadcrumb[3] == "title", "breadcrumb");
 	 Need(Resolve("<FictionBook><body><section></section>", 0, 17).breadcrumb.size() == 2, "breadcrumb after close");
+ Reader shortDocument("<FictionBook><body><section>Text", 32*1024); Fb2SourceStructuralContextResolver shortResolver(32*1024); Need(shortResolver.Resolve(shortDocument, shortDocument.text.size(), 0).breadcrumb.size() == 3, "short document breadcrumb"); Need(shortDocument.calls == 1, "short document should be read once within bounds");
  Reader near(std::string(4*1024*1024, 'x') + "<section><", 31); Fb2SourceStructuralContextResolver resolver(32*1024); Need(resolver.Resolve(near, near.text.size(), '<').parentElement == "section", "near fixture parent"); Need(near.bytes < near.text.size(), "near context read whole document");
- Reader budget(std::string(8*1024*1024, 'x') + "<section><title>Text", 31); Fb2SourceStructuralContextResolver limited(32*1024); Fb2SourceStructuralContext result=limited.Resolve(budget,budget.text.size(),0); Need(result.breadcrumbTruncated && result.breadcrumb.size() == 2 && result.breadcrumb[0] == "section", "breadcrumb budget result"); Need(budget.bytes <= 512*1024, "breadcrumb read budget");
+ Reader budget(std::string(8*1024*1024, 'x') + "<section><title>Text", 31); Fb2SourceStructuralContextResolver limited(32*1024); Fb2SourceStructuralContext result=limited.Resolve(budget,budget.text.size(),0); Need(result.breadcrumbTruncated && result.breadcrumb.size() == 2 && result.breadcrumb[0] == "section", "breadcrumb budget result"); Need(budget.bytes <= 512*1024, "breadcrumb read budget"); Need(budget.lengthCalls <= 2, "breadcrumb repeatedly queried document length");
  return 0;
 }
 '@ | Set-Content -LiteralPath $sourcePath -Encoding utf8

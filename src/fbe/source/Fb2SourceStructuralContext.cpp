@@ -7,14 +7,15 @@ const std::size_t kReadChunkSize = 32 * 1024;
 class BackwardReader
 {
 public:
-	BackwardReader(const Fb2SourceTextReader& reader, std::size_t chunkSize) : m_reader(reader), m_chunkSize(chunkSize), m_blockStart(0) {}
+	BackwardReader(const Fb2SourceTextReader& reader, std::size_t chunkSize, std::size_t length) : m_reader(reader), m_chunkSize(chunkSize), m_length(length), m_blockStart(0) {}
 	bool ByteAt(std::size_t position, char& value)
 	{
-		if(position >= m_reader.Length()) return false;
+		if(position >= m_length) return false;
 		if(m_block.empty() || position < m_blockStart || position >= m_blockStart + m_block.size())
 		{
 			m_blockStart = position >= m_chunkSize - 1 ? position - (m_chunkSize - 1) : 0;
-			m_reader.Read(m_blockStart, m_chunkSize, m_block);
+			const std::size_t available = m_length - m_blockStart;
+			m_reader.Read(m_blockStart, available < m_chunkSize ? available : m_chunkSize, m_block);
 		}
 		if(position < m_blockStart || position >= m_blockStart + m_block.size()) return false;
 		value = m_block[position - m_blockStart];
@@ -44,6 +45,7 @@ public:
 private:
 	const Fb2SourceTextReader& m_reader;
 	std::size_t m_chunkSize;
+	std::size_t m_length;
 	std::size_t m_blockStart;
 	std::string m_block;
 };
@@ -145,8 +147,8 @@ Fb2SourceStructuralContextResolver::Fb2SourceStructuralContextResolver(std::size
 
 Fb2SourceStructuralContext Fb2SourceStructuralContextResolver::Resolve(const Fb2SourceTextReader& source, std::size_t caret, int character) const
 {
-	Fb2SourceStructuralContext context; if(caret > source.Length()) caret = source.Length();
-	BackwardReader reader(source, m_chunkSize);
+	Fb2SourceStructuralContext context; const std::size_t length = source.Length(); if(caret > length) caret = length;
+	BackwardReader reader(source, m_chunkSize, length);
 	context.localBeforeCaret = LocalBeforeCaret(reader, caret);
 	if(character == 0) {
 		const std::size_t kBreadcrumbBudget = 256 * 1024;
