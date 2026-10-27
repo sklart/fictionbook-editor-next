@@ -34,10 +34,20 @@ bool Save(CSettings& settings, CString& error)
     return false;
 }
 
+int LoadFile(CSettings& settings, const CString& path)
+{
+	CXMLSerializer serializer(path, L"FBE", true);
+	settings.SetDefaults();
+	// A successfully loaded pre-layout configuration keeps the familiar view.
+	// An explicit XML value overrides this fallback through SetPropertyValue.
+	settings.SetDescriptionLayout(L"classic");
+	const int loaded = serializer.Deserialize(&settings, &settings);
+	if(loaded <= 0) settings.SetDescriptionLayout(L"modern");
+	return loaded;
+}
 void Load(CSettings& settings)
 {
-	CXMLSerializer serializer(FbeSettings::SettingsFilePath(), L"FBE", true);
-	settings.SetDefaults();
-	if(!serializer.Deserialize(&settings, &settings)) { CString error; Save(settings, error); }
+	const int loaded = LoadFile(settings, FbeSettings::SettingsFilePath());
+	if(!loaded) { CString error; Save(settings, error); }
 }
 } }

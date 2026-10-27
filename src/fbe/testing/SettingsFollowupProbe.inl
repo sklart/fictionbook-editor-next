@@ -1,4 +1,5 @@
 #include "../XmlSourceThemes.h"
+#include "../settings/SettingsStore.h"
 #include <array>
 // Called only by the isolated settings runtime scenario.
 namespace {
@@ -63,9 +64,23 @@ bool CSettingsDlg::ProbeFollowup()
     // value. This file belongs only to the disposable runtime fixture.
     {
         CSettings candidate;
+        CStringA descriptionReport;
+        auto descriptionCheck = [&](bool ok, const char* label, int loaded = 0) {
+            descriptionReport.AppendFormat("%s=%d;loaded=%d;layout=%s\n", label, ok ? 1 : 0, loaded,
+                static_cast<LPCSTR>(CW2A(candidate.GetDescriptionLayout(), CP_UTF8)));
+            passed = ok && passed;
+        };
         candidate.SetDefaults();
-        passed = candidate.GetDescriptionLayout() == L"modern" && passed;
+        descriptionCheck(candidate.GetDescriptionLayout() == L"modern", "default");
         const CString layoutFile = fixture + L"\\description-settings.xml";
+        int descriptionLoaded = FbeSettings::Store::LoadFile(candidate, layoutFile);
+        descriptionCheck(descriptionLoaded == 0 && candidate.GetDescriptionLayout() == L"modern", "new", descriptionLoaded);
+        passed = FollowupWrite(layoutFile, "<?xml version=\"1.0\" encoding=\"utf-8\"?><FBE><Settings ID=\"0\"><FontSize>12</FontSize></Settings></FBE>") && passed;
+        descriptionLoaded = FbeSettings::Store::LoadFile(candidate, layoutFile);
+        descriptionCheck(descriptionLoaded > 0 && candidate.GetDescriptionLayout() == L"classic", "legacy", descriptionLoaded);
+        passed = FollowupWrite(layoutFile, "<?xml version=\"1.0\" encoding=\"utf-8\"?><FBE><Settings ID=\"0\"><DescriptionLayout>unknown</DescriptionLayout></Settings></FBE>") && passed;
+        descriptionLoaded = FbeSettings::Store::LoadFile(candidate, layoutFile);
+        descriptionCheck(descriptionLoaded > 0 && candidate.GetDescriptionLayout() == L"modern", "unknown", descriptionLoaded);
         for(LPCWSTR value : { L"modern", L"classic", L"unknown" }) {
             CProperty property(L"DescriptionLayout", value);
             const CString expected = wcscmp(value, L"classic") == 0 ? L"classic" : L"modern";
@@ -74,13 +89,14 @@ bool CSettingsDlg::ProbeFollowup()
             CXMLSerializer writer(layoutFile, L"FBE", false);
             passed = writer.Serialize(&candidate) && passed;
             candidate.SetDescriptionLayout(expected == L"modern" ? L"classic" : L"modern");
-            CXMLSerializer reader(layoutFile, L"FBE", true);
-            passed = reader.Deserialize(&candidate, &candidate) > 0 &&
-                candidate.GetDescriptionLayout() == expected && passed;
+            descriptionLoaded = FbeSettings::Store::LoadFile(candidate, layoutFile);
+            descriptionCheck(descriptionLoaded > 0 && candidate.GetDescriptionLayout() == expected, "reload", descriptionLoaded);
         }
+        FollowupWrite(U::GetSettingsDir() + L"description-layout-probe.txt", descriptionReport);
         ::DeleteFileW(layoutFile);
         ThemeManager::SetSelectedTheme(_Settings.GetInterfaceTheme());
     }
+    checkpoint(101);
     const CString prefix = CString(::PathFindFileNameW(fixture)) + L"-dictionary.dic";
     const CString source = fixture + L"\\" + prefix;
     const CString target = U::ResolveUserDataFile(prefix);
