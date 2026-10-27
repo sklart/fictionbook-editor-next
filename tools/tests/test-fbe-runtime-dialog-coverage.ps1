@@ -93,6 +93,23 @@ foreach ($legacy in $replacedDialogKeys.Keys) {
     } finally { $replacement.translations.'ru-RU' = $originalTranslation }
     if (-not $rejected) { throw 'A retained key accepted an untranslated replacement.' }
 }
+function Test-DescriptionRuntimeKey([string]$Key, [string]$ConsumerText) {
+    if (-not $Key.StartsWith('fbe.description.')) { return $false }
+    if (-not $ConsumerText.Contains('GetLocalizedStringOrDefault("fbe.description." + key, fallback)')) { return $false }
+    $suffix = [regex]::Escape($Key.Substring('fbe.description.'.Length))
+    # Description actions, advisory warnings and legacy button captions all
+    # pass a literal suffix through the same production localization helper.
+    return $ConsumerText -match ('DescriptionText\("' + $suffix + '"') -or
+        $ConsumerText -match ('warn\([^;\r\n]*,\s*"' + $suffix + '"') -or
+        $ConsumerText -match ('key\s*=\s*"' + $suffix + '"')
+}
+$descriptionConsumer = $consumers['runtime/main.js'].Text
+if (-not (Test-DescriptionRuntimeKey 'fbe.description.add_source' $descriptionConsumer) -or
+    (Test-DescriptionRuntimeKey 'fbe.description.fixture_unbound' $descriptionConsumer) -or
+    (Test-DescriptionRuntimeKey 'fbe.description.add_source' $descriptionConsumer.Replace('"add_source"', '"fixture.removed.binding"')) -or
+    (Test-DescriptionRuntimeKey 'fbe.description.add_source' $descriptionConsumer.Replace('"fbe.description." + key', '"fixture.removed.prefix" + key'))) {
+    throw 'Description localization binding must reject missing suffixes and a missing namespace bridge.'
+}
 foreach ($entry in $catalog.strings.PSObject.Properties) {
     $key = $entry.Name
     $value = $entry.Value
@@ -127,9 +144,11 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
         $consumerText.Contains('request.overwritePrompt = true') -and
         $consumerText.Contains('FDEOR_DEFAULT')
     $retainedReplacement = Test-ReplacedDialogKey $key
+    $dynamicDescriptionKey = $value.resource -eq 'runtime/main.js' -and
+        (Test-DescriptionRuntimeKey $key $consumerText)
     if (-not $genericBinding -and -not $manifestDrivenBackgroundPreset -and -not $dynamicSearchPresetKey -and
         -not $dynamicQualityRuleKey -and -not $dynamicQualityHelpKey -and -not $nativeOverwritePrompt -and
-        -not $retainedReplacement -and -not $consumerText.Contains($key)) {
+        -not $retainedReplacement -and -not $dynamicDescriptionKey -and -not $consumerText.Contains($key)) {
         throw "JSON dialog key has no binding in its concrete runtime consumer: $key ($($value.resource))."
     }
 }
