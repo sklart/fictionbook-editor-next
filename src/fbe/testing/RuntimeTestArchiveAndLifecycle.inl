@@ -496,6 +496,34 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		selectBodyRange(L"body-source-unicode", L"UNICODE_BEGIN", L"UNICODE_END", false);
 		ShowView(SOURCE);
 		const bool bodyToSourceTransfersSelection = m_editor_selection_state.BodySource().bodyToSourceTransferred;
+		// Preserve the slow fallback when a target is hidden by folding. An
+		// already visible target must not require expanding the document.
+		m_source.SendMessage(SCI_COLOURISE, 0, -1);
+		const sptr_t foldSelectionStart = m_source.SendMessage(SCI_GETSELECTIONSTART);
+		const sptr_t foldSelectionEnd = m_source.SendMessage(SCI_GETSELECTIONEND);
+		const int foldTarget = static_cast<int>(m_source.SendMessage(SCI_LINEFROMPOSITION, foldSelectionStart));
+		int foldParent = static_cast<int>(m_source.SendMessage(SCI_GETFOLDPARENT, foldTarget));
+		// A portable profile may disable the XML lexer. Construct the same
+		// native fold state explicitly so the fallback test has a hidden line.
+		if (foldParent < 0 && foldTarget > 0) {
+			foldParent = foldTarget - 1;
+			m_source.SendMessage(SCI_SETFOLDLEVEL, foldParent, SC_FOLDLEVELBASE | SC_FOLDLEVELHEADERFLAG);
+			m_source.SendMessage(SCI_SETFOLDLEVEL, foldTarget, SC_FOLDLEVELBASE + 1);
+		}
+		if (foldParent >= 0) {
+			m_source.SendMessage(SCI_SETFOLDEXPANDED, foldParent, 0);
+			m_source.SendMessage(SCI_HIDELINES, foldParent + 1, foldTarget);
+		}
+		const bool targetWasFolded = foldParent >= 0 && !m_source.SendMessage(SCI_GETLINEVISIBLE, foldTarget);
+		// Re-present the cached Source selection through the production host,
+		// keeping text and fold state intact rather than reloading the buffer.
+		ShowView(SOURCE);
+		const sptr_t foldRestoredStart = m_source.SendMessage(SCI_GETSELECTIONSTART);
+		const sptr_t foldRestoredEnd = m_source.SendMessage(SCI_GETSELECTIONEND);
+		const bool foldedSelectionRestored = targetWasFolded &&
+			m_source.SendMessage(SCI_GETLINEVISIBLE, foldTarget) && m_source.SendMessage(SCI_GETFOLDEXPANDED, foldParent) &&
+			foldRestoredStart == foldSelectionStart && foldRestoredEnd == foldSelectionEnd;
+
 		ShowView(DESC);
 		ShowView(SOURCE);
 		const bool descriptionToSourceSkipsSelection = IsSourceActive() &&
@@ -560,9 +588,10 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		CStringA report;
 		report.Format("source_active=%d\nsource_current=%d\nbody_without_change=%d\nvalid_edit=%d\nedited_source=%d\ncycles=%d\ninvalid_rejected=%d\ninvalid_preserved=%d\nselection_saved=%d\ntitle_selection=%d\ntitle_caret_selection=%d\nannotation_selection=%d\nunicode_inline_selection=%d\ninline_selection=%d\nrepeated_text_selection=%d\ntag_boundary_selection=%d\nparagraph_pair_selection=%d\nnested_section_selection=%d\ncollapsed_caret_selection=%d\nbody_to_source_selection=%d\ndescription_to_source_no_selection=%d\nselection_diagnostics=%s\n", sourceActive, sourceCurrent, bodyWithoutChange, validEditApplied, editedSourceCurrent, cycles, invalidRejected, invalidPreserved, preservedSelectionStart >= 0 && preservedSelectionEnd >= 0, titleSelection, titleCaretSelection, annotationSelection, unicodeInlineSelection, inlineSelection, repeatedTextSelection, tagBoundarySelection, paragraphPairSelection, nestedSectionSelection, collapsedCaretSelection, bodyToSourceTransfersSelection, descriptionToSourceSkipsSelection, static_cast<LPCSTR>(selectionRoundTripDiagnostics));
 		report.AppendFormat("source_checkpoint_current=%d\ncheckpoint_reused=%d\ncheckpoint_forced=%d\nbody_checkpoint_current=%d\n", sourceCheckpointCurrent, checkpointReused, checkpointForced, bodyCheckpointCurrent);
-		report.AppendFormat("body_browser_fits=%d\n", bodyBrowserFits ? 1 : 0);
+		report.AppendFormat("body_browser_fits=%d\nfolded_selection_restored=%d\n", bodyBrowserFits ? 1 : 0, foldedSelectionRestored ? 1 : 0);
+		report.AppendFormat("fold_setup=%d/%d/%d;selection=%Id/%Id->%Id/%Id\n", foldParent, foldTarget, targetWasFolded ? 1 : 0, foldSelectionStart, foldSelectionEnd, foldRestoredStart, foldRestoredEnd);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidRejected && invalidPreserved && titleSelection && titleCaretSelection && annotationSelection && unicodeInlineSelection && inlineSelection && repeatedTextSelection && tagBoundarySelection && paragraphPairSelection && nestedSectionSelection && collapsedCaretSelection && bodyToSourceTransfersSelection && descriptionToSourceSkipsSelection && sourceCheckpointCurrent && checkpointReused && checkpointForced && bodyCheckpointCurrent && bodyBrowserFits ? 0 : 1);
+		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidRejected && invalidPreserved && titleSelection && titleCaretSelection && annotationSelection && unicodeInlineSelection && inlineSelection && repeatedTextSelection && tagBoundarySelection && paragraphPairSelection && nestedSectionSelection && collapsedCaretSelection && bodyToSourceTransfersSelection && descriptionToSourceSkipsSelection && sourceCheckpointCurrent && checkpointReused && checkpointForced && bodyCheckpointCurrent && bodyBrowserFits && foldedSelectionRestored ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"source-xml-declaration-encoding-runtime"))

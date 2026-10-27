@@ -66,11 +66,13 @@ void EditorViewPresentationHost::CompleteEditorViewPresentation(EditorView previ
 	if (target != SOURCE || !m_context.selection.BodySource().bodyToSourceTransferred) return;
 	m_context.source.SendMessage(SCI_SETSEL, m_context.selection.BodySource().sourceStart, m_context.selection.BodySource().sourceEnd);
 	const int sourceLine = m_context.source.SendMessage(SCI_LINEFROMPOSITION, m_context.selection.BodySource().sourceStart);
-	m_context.source.SendMessage(SCI_ENSUREVISIBLEENFORCEPOLICY, sourceLine);
+	// Expanding a folded line can wrap the entire document. For an already
+	// unfolded target, the caret scrolling below is sufficient.
+	if (!m_context.source.SendMessage(SCI_GETLINEVISIBLE, sourceLine))
+		m_context.source.SendMessage(SCI_ENSUREVISIBLEENFORCEPOLICY, sourceLine);
 	m_context.source.SendMessage(SCI_GOTOPOS, m_context.selection.BodySource().sourceStart);
 	m_context.source.SendMessage(SCI_SETSEL, m_context.selection.BodySource().sourceStart, m_context.selection.BodySource().sourceEnd);
 	m_context.source.SendMessage(SCI_SCROLLCARET);
-	::PostMessage(m_context.source, SCI_ENSUREVISIBLEENFORCEPOLICY, sourceLine, 0);
 	::PostMessage(m_context.source, SCI_GOTOPOS, m_context.selection.BodySource().sourceStart, 0);
 	::PostMessage(m_context.source, SCI_SETSEL, m_context.selection.BodySource().sourceStart, m_context.selection.BodySource().sourceEnd);
 	::PostMessage(m_context.source, SCI_SCROLLCARET, 0, 0);

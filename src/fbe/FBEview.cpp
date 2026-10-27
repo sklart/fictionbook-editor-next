@@ -1239,9 +1239,6 @@ restart:
 			goto restart;
 		}
 
-		CString text;
-		if (curelem != NULL)
-			text.SetString(curelem->outerHTML);
 
 		if (U::scmp(name,L"P") && U::scmp(name,L"STRONG") && 
 			U::scmp(name,L"STRIKE") && U::scmp(name,L"SUP") && U::scmp(name,L"SUB") && 
