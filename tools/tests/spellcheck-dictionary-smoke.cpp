@@ -11,6 +11,7 @@
 #include <initializer_list>
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -156,6 +157,49 @@ static bool ProductionKoi8rRoundTrip(Hunhandle* dict) {
     return ok && found;
 }
 
+static bool CustomWordRoundTrip(Hunhandle* dict, const std::string& base, UINT cp, const wchar_t* source) {
+    const CString word(source);
+    const CStringA raw = FbeEncodeDictionaryWord(FbePrepareDictionaryWord(word), cp);
+    const CStringA checked = FbeEncodeDictionaryWord(FbePrepareDictionaryWord(word), cp);
+    const int before = Hunspell_spell(dict, checked), added = Hunspell_add(dict, raw), after = Hunspell_spell(dict, checked);
+    if (before || added != 0 || !after) { std::cerr << "custom add failed: " << Encode(source, CP_UTF8) << " before=" << before << " add=" << added << " after=" << after << "\n"; return false; }
+    wchar_t directory[MAX_PATH], path[MAX_PATH];
+    if (!GetTempPathW(_countof(directory), directory) || !GetTempFileNameW(directory, L"fbe", 0, path)) return false;
+    DeleteFileW(path);
+    CSimpleArray<CString> words, restored;
+    words.Add(word);
+    const bool saved = FbeSaveCustomDictionary(path, CP_UTF8, words);
+    words.Add(word + L"extra");
+    const bool replaced = saved && FbeSaveCustomDictionary(path, CP_UTF8, words);
+    FbeLoadCustomDictionary(path, CP_UTF8, restored);
+    DeleteFileW(path);
+    std::unique_ptr<Hunhandle, decltype(&Hunspell_destroy)> restarted(Hunspell_create((base + ".aff").c_str(), (base + ".dic").c_str()), Hunspell_destroy);
+    const bool fresh = restarted && !Hunspell_spell(restarted.get(), checked);
+    Hunspell_remove(dict, raw);
+    // After restart CSpeller checks this persisted list when Hunspell rejects.
+    const bool loaded = restored.GetSize() == 2 && FbeCustomDictionaryContains(restored, word) && FbeCustomDictionaryContains(restored, word + L"extra");
+    if (!saved || !replaced || !fresh || !loaded) std::cerr << "custom roundtrip failed: " << Encode(source, CP_UTF8) << " saved=" << saved << " replaced=" << replaced << " fresh=" << fresh << " loaded=" << loaded << "\n";
+    return saved && replaced && fresh && loaded;
+}
+
+static bool IconvAddRemoveSmoke() {
+    char directory[MAX_PATH], path[MAX_PATH];
+    if (!GetTempPathA(_countof(directory), directory) || !GetTempFileNameA(directory, "fbe", 0, path)) return false;
+    DeleteFileA(path);
+    const std::string aff = std::string(path) + ".aff", dic = std::string(path) + ".dic";
+    { std::ofstream file(aff, std::ios::binary); file << "SET UTF-8\nICONV 2\nICONV a b\nICONV b c\nSFX S Y 1\nSFX S 0 s .\n"; }
+    { std::ofstream file(dic, std::ios::binary); file << "1\nroot/S\n"; }
+    std::unique_ptr<Hunhandle, decltype(&Hunspell_destroy)> dict(Hunspell_create(aff.c_str(), dic.c_str()), Hunspell_destroy);
+    bool ok = dict && !Hunspell_spell(dict.get(), "aqq") && Hunspell_add(dict.get(), "aqq") == 0 &&
+        Hunspell_spell(dict.get(), "aqq") && !Hunspell_spell(dict.get(), "bqq") &&
+        Hunspell_remove(dict.get(), "aqq") == 0 && !Hunspell_spell(dict.get(), "aqq") &&
+        Hunspell_add_with_affix(dict.get(), "aqq", "root") == 0 && Hunspell_spell(dict.get(), "aqqs") &&
+        Hunspell_remove(dict.get(), "aqq") == 0 && !Hunspell_spell(dict.get(), "aqqs");
+    dict.reset(); DeleteFileA(aff.c_str()); DeleteFileA(dic.c_str());
+    if (!ok) std::cerr << "ICONV add/remove/add_with_affix must convert exactly once\n";
+    return ok;
+}
+
 static bool TestDictionary(const std::string& directory, const char* name, const char* encoding, UINT cp) {
     const std::string base = directory + "\\" + name;
     const auto started = std::chrono::steady_clock::now();
@@ -198,6 +242,14 @@ static bool TestDictionary(const std::string& directory, const char* name, const
     } else {
         ok = false;
     }
+    if (std::string(name) == "en_US") {
+        for (const wchar_t* word : { L"fbe'uniquelexeme", L"fbe’uniquelexeme", L"fbeʼuniquelexeme" }) {
+            ok &= CustomWordRoundTrip(dict, base, cp, word);
+        }
+    } else if (std::string(name) == "uk_UA") {
+        for (const wchar_t* word : { L"фбе'унікальнеслово", L"фбе’унікальнеслово", L"фбеʼунікальнеслово" }) ok &= CustomWordRoundTrip(dict, base, cp, word);
+    } else if (std::string(name) == "ru_RU") ok &= CustomWordRoundTrip(dict, base, cp, L"фбетестуникальный");
+    else if (std::string(name) == "de_DE") ok &= CustomWordRoundTrip(dict, base, cp, L"FbeÜberunikum");
     const auto completed = std::chrono::steady_clock::now();
     std::cout << name << " loadMs="
               << std::chrono::duration_cast<std::chrono::milliseconds>(loaded - started).count()
@@ -209,7 +261,7 @@ static bool TestDictionary(const std::string& directory, const char* name, const
 
 int main(int argc, char** argv) {
     if (argc != 2) return 2;
-    bool ok = ProductionTokenizerSmoke() && ProductionApostropheRestoreSmoke() && ProductionCustomDictionarySmoke();
+    bool ok = ProductionTokenizerSmoke() && ProductionApostropheRestoreSmoke() && ProductionCustomDictionarySmoke() && IconvAddRemoveSmoke();
     ok &= TestDictionary(argv[1], "en_US", "UTF-8", CP_UTF8);
     ok &= TestDictionary(argv[1], "ru_RU", "KOI8-R", 20866);
     ok &= TestDictionary(argv[1], "uk_UA", "UTF-8", CP_UTF8);

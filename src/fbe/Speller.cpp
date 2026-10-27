@@ -604,7 +604,8 @@ void CSpeller::AddToDictionary()
 	{
 		Hunhandle* currDict = GetDictionary(word);
 		// add to Hunspell's runtime dictionary
-		CStringA str = FbeEncodeDictionaryWord(word, m_codePage);
+		// Match spell/suggest apostrophe preparation; Hunspell applies ICONV itself.
+		CStringA str = FbeEncodeDictionaryWord(FbePrepareDictionaryWord(word), m_codePage);
 		Hunspell_add(currDict, str);
 		// add to custom dictionary
 		m_CustomDict.Add(word);
@@ -623,7 +624,8 @@ void CSpeller::AddToDictionary(CString word)
 {
 	Hunhandle* currDict = GetDictionary(word);
 	// add to Hunspell's runtime dictionary
-	CStringA str = FbeEncodeDictionaryWord(word, m_codePage);
+	// Keep the original spelling in the persisted list, but add the checked form.
+	CStringA str = FbeEncodeDictionaryWord(FbePrepareDictionaryWord(word), m_codePage);
 	Hunspell_add(currDict, str);
 	// add to custom dictionary
 	m_CustomDict.Add(word);
