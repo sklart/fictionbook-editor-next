@@ -8,7 +8,7 @@ for(var pluralIndex=0;pluralIndex<pluralCounts.length;pluralIndex++)
 assert(IsDescriptionNewTemplate(window.external.GetStylePath()+"\\blank.fb2"),"Actual New template is recognized");
 assert(!IsDescriptionNewTemplate(window.external.GetStylePath()+"\\books\\blank.fb2"),"Ordinary book named blank.fb2 is preserved");
 assert(!IsDescriptionNewTemplate(window.external.GetStylePath()+"\\books\\my-blank.fb2"),"Template detection does not use a filename substring");
-var fixtures=["minimal","full","multiple","binary","missing-optional","unicode","invalid-ish","stress-100","stress-500"], timings=[];
+var fixtures=["minimal","full","multiple","binary","binary-geometry","missing-optional","unicode","invalid-ish","stress-100","stress-500"], timings=[];
 for(var fixtureIndex=0; fixtureIndex<fixtures.length; fixtureIndex++) {
 var input=new ActiveXObject("Msxml2.DOMDocument.6.0");input.async=false;
 assert(input.load(window.external.GetStylePath()+"\\description-fixtures\\"+fixtures[fixtureIndex]+".fb2"),"Load fixture");
@@ -16,6 +16,13 @@ var loadStart=(new Date()).getTime();
 assert(LoadFromDOM(input,"english"),"Production fixture load");
 var loadMs=(new Date()).getTime()-loadStart;
 var form=document.getElementById("fbw_desc");
+if(fixtures[fixtureIndex]=="binary-geometry") {
+ var geometryRows=document.getElementById("binobj").getElementsByTagName("DIV");
+ assert(geometryRows.length==5,"Binary geometry fixture has five distinct rows");
+ assert(GetBinaryInput(geometryRows[2],"type").value=="image/jpeg","JPEG fixture");
+ assert(GetBinaryInput(geometryRows[3],"type").value=="image/png","Long-ID PNG fixture");
+ assert(!GetBinaryInput(geometryRows[4],"dims"),"Image without readable dimensions");
+}
 if(fixtures[fixtureIndex]=="unicode") {
  assert(document.getElementById("tiLang").value=="zh-Hant","Extended book language survives catalog population");
  assert(document.getElementById("tiSrcLang").value=="de-DE","Extended source language survives catalog population");
@@ -48,6 +55,8 @@ function checkTheme() {
  assert(expectedBackground && expectedForeground,"Native theme fixture must be installed");
  if(expectedBackground) {
   assert(color(form.currentStyle.backgroundColor)==color(expectedBackground),"Description theme background: "+form.currentStyle.backgroundColor+" / "+expectedBackground);
+  var binaryHeader=byClass(form,"description-binary-header");
+  assert(binaryHeader && color(binaryHeader.currentStyle.backgroundColor)==color(expectedBackground),"Binary header theme background: "+(binaryHeader && binaryHeader.currentStyle.backgroundColor)+" / "+expectedBackground);
   assert(color(title.currentStyle.backgroundColor)==color(form.getAttribute("data-description-theme-input-background")),"Input theme background: "+title.currentStyle.backgroundColor);
   assert(color(title.currentStyle.color)==color(expectedForeground),"Input theme foreground: "+title.currentStyle.color+" / "+expectedForeground);
   var legends=form.getElementsByTagName("LEGEND");
@@ -80,7 +89,12 @@ if(fixtures[fixtureIndex]=="full" || fixtures[fixtureIndex]=="missing-optional" 
   DescriptionShowSection(form._descriptionSections[reset]);
  }
 }
-if(fixtures[fixtureIndex]=="full") {
+if(fixtures[fixtureIndex]=="full" || fixtures[fixtureIndex]=="binary-geometry") {
+ var bookSection=form._descriptionSections[0], bookLegend=bookSection.getElementsByTagName("LEGEND")[0], bookClosed=bookSection._descriptionClosed;
+ bookLegend.click(); assert(bookSection._descriptionClosed!=bookClosed,"Modern section title toggles its section");
+ bookLegend.click(); assert(bookSection._descriptionClosed==bookClosed,"Second title click restores section");
+ var childAction=document.createElement("BUTTON"); childAction.innerText="x"; bookLegend.appendChild(childAction); childAction.click();
+ assert(bookSection._descriptionClosed==bookClosed,"Nested header action does not toggle section"); bookLegend.removeChild(childAction);
  var languages=["tiLang","tiSrcLang","stiLang","stiSrcLang"];
  for(var languageIndex=0;languageIndex<languages.length;languageIndex++) {
   var language=document.getElementById(languages[languageIndex]);
@@ -143,9 +157,18 @@ if(fixtures[fixtureIndex]=="full") {
      assert(coverAction && coverAction.getBoundingClientRect().right<=coverBox.getBoundingClientRect().right+1,"Cover action stays inside its column");
      var binaryRows=document.getElementById("binobj").getElementsByTagName("DIV");
      if(binaryRows.length>=2) {
-      var columns=["id","type","save","del"];
-      for(var ci=0;ci<columns.length;ci++)
-       assert(Math.abs(GetBinaryInput(binaryRows[0],columns[ci]).getBoundingClientRect().left-GetBinaryInput(binaryRows[1],columns[ci]).getBoundingClientRect().left)<=3,"Binary column alignment: "+columns[ci]);
+      function byClass(row,name) {var spans=row.getElementsByTagName("SPAN");for(var n=0;n<spans.length;n++)if(spans[n].className==name)return spans[n];return null;}
+      function cell(row,name) {return name=="size"?byClass(row,"binary-size-display"):name=="dims"?byClass(row,"binary-dims-display"):name=="show"?(GetBinaryInput(row,name)||byClass(row,"description-binary-action-placeholder")):GetBinaryInput(row,name);}
+      var columns=["id","type","size","dims","show","save","del"];
+      for(var rowIndex=1;rowIndex<binaryRows.length;rowIndex++)for(var ci=0;ci<columns.length;ci++) {
+       var firstCell=cell(binaryRows[0],columns[ci]), nextCell=cell(binaryRows[rowIndex],columns[ci]);
+       assert(firstCell && nextCell && Math.abs(firstCell.getBoundingClientRect().left-nextCell.getBoundingClientRect().left)<=3,"Binary column alignment row "+rowIndex+": "+columns[ci]);
+      }
+      var headers=byClass(document.getElementById("binobj"),"description-binary-header");
+      assert(headers && headers.currentStyle.display!="none","Modern binary header visible");
+      var headerSpans=headers.getElementsByTagName("SPAN"), headerColumns=["id","type","size","dims","show"];
+      for(var hi=0;hi<headerColumns.length;hi++)
+       assert(Math.abs(headerSpans[hi+1].getBoundingClientRect().left-cell(binaryRows[0],headerColumns[hi]).getBoundingClientRect().left)<=8,"Binary header alignment: "+headerColumns[hi]);
      }
     }
    }

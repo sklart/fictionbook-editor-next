@@ -2453,9 +2453,10 @@ static void ApplyRuntimeBodyColors(MSHTML::IHTMLDocument2Ptr document)
 		descriptionText.GetString(), descriptionWindow.GetString(), descriptionBorder.GetString(),
 		descriptionText.GetString(), descriptionControl.GetString(), descriptionBorder.GetString(), descriptionBorder.GetString());
 	css.AppendFormat(L"div#fbw_desc legend{color:%s;}", descriptionText.GetString());
-	css.AppendFormat(L"div#fbw_desc .description-section{background:%s;}"
+	css.AppendFormat(L"div#fbw_desc .description-binary-header{background:%s;}"
+		L"div#fbw_desc .description-section{background:%s;}"
 		L"div#fbw_desc input[readonly],div#fbw_desc select option{color:%s;background:%s;}",
-		descriptionWindow.GetString(), descriptionText.GetString(), descriptionWindow.GetString());
+		descriptionControl.GetString(), descriptionWindow.GetString(), descriptionText.GetString(), descriptionWindow.GetString());
 	css.AppendFormat(L"div#fbw_desc .description-cover-preview,div#fbw_desc .description-binary-thumbnail,div#fbw_desc #fullImg,div#fbw_desc #prevImg{border-color:%s;background:%s;}", descriptionBorder.GetString(), descriptionWindow.GetString());
 	css.AppendFormat(L"div#fbw_desc input:disabled,div#fbw_desc button:disabled{color:%s;}"
 		L"div#fbw_desc button:hover{background:%s;}"
@@ -2464,6 +2465,11 @@ static void ApplyRuntimeBodyColors(MSHTML::IHTMLDocument2Ptr document)
 		CssColor(ThemeManager::DisabledTextColor()).GetString(), CssColor(ThemeManager::HoverColor()).GetString(),
 		CssColor(ThemeManager::FocusColor()).GetString(), CssColor(ThemeManager::WarningColor()).GetString(),
 		CssColor(ThemeManager::WarningColor()).GetString());
+	// The same alpha artwork has a neutral variant for each interface palette.
+	const wchar_t* iconFolder = ThemeManager::IsDark() && !IsHighContrastEnabled() ? L"DescriptionIcons/dark/" : L"DescriptionIcons/";
+	css.AppendFormat(L"div#fbw_desc .description-binary button#show{background-image:url('%sview.png');}"
+		L"div#fbw_desc .description-binary button#save{background-image:url('%ssave.png');}"
+		L"div#fbw_desc .description-binary button#del{background-image:url('%sdelete.png');}", iconFolder, iconFolder, iconFolder);
 	sheet->cssText = static_cast<LPCWSTR>(css);
 }
 

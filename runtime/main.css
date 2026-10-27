@@ -466,9 +466,45 @@ div#fbw_desc.description-modern #binobj .description-binary { max-width: 68em; w
 div#fbw_desc.description-modern #binobj .description-binary > label { display: inline-block; width: 2.7em; margin: 0 .2em; }
 div#fbw_desc.description-modern #binobj .description-binary #id { width: 16em !important; }
 div#fbw_desc.description-modern #binobj .description-binary #type { width: 7em !important; }
-div#fbw_desc.description-modern .description-binary-thumbnail, div#fbw_desc.description-modern .description-binary-placeholder { display: inline-block; width: 2.5em; height: 2.5em; margin: 0 .5em 0 0; padding: 0; vertical-align: middle; }
 div#fbw_desc.description-modern .binary-size-display, div#fbw_desc.description-modern .binary-dims-display { display: inline-block; width: 5.5em; min-width: 5.5em; margin: 0 .3em; vertical-align: middle; }
 div#fbw_desc.description-modern .description-binary-action-placeholder { display: inline-block; width: 2em; }
 div#fbw_desc.description-narrow #binobj .description-binary { white-space: normal; }
 div#fbw_desc.description-narrow #binobj .description-binary #id { max-width: 55% !important; }
-div#fbw_desc.description-narrow .description-binary-placeholder, div#fbw_desc.description-narrow .description-binary-action-placeholder { display: none; }
+
+/* DESCRIPTION BINARY TABLE BEGIN: shared with main_fast.css */
+div#fbw_desc .description-binary-header { display: none; }
+div#fbw_desc.description-modern .description-binary-header { display: block; max-width: 54em; padding: .2em 0; white-space: nowrap; }
+div#fbw_desc.description-modern .description-binary-header span { display: inline-block; vertical-align: middle; overflow: hidden; white-space: nowrap; }
+div#fbw_desc.description-modern .description-binary-header-0 { width: 3em; }
+div#fbw_desc.description-modern .description-binary-header-1 { width: 16.5em; }
+div#fbw_desc.description-modern .description-binary-header-2 { width: 7.5em; }
+div#fbw_desc.description-modern .description-binary-header-3, div#fbw_desc.description-modern .description-binary-header-4 { width: 6.1em; }
+div#fbw_desc.description-modern #binobj .description-binary > label { display: none; }
+div#fbw_desc.description-modern #binobj .description-binary #id { width: 16em !important; margin: 0; }
+div#fbw_desc.description-modern #binobj .description-binary #type { width: 7em !important; margin: 0; }
+div#fbw_desc .description-binary-thumb-slot { display: none; }
+div#fbw_desc.description-modern .description-binary-thumb-slot { display: inline-block; width: 2.5em; height: 2.5em; margin-right: .5em; vertical-align: middle; text-align: center; }
+div#fbw_desc.description-modern .description-binary-thumb-slot .description-binary-thumbnail { display: inline; width: auto; height: auto; max-width: 2.4em; max-height: 2.4em; margin: 0; padding: 0; vertical-align: middle; }
+div#fbw_desc.description-modern .binary-size-display, div#fbw_desc.description-modern .binary-dims-display { width: 5.5em; min-width: 5.5em; margin: 0 .3em; }
+div#fbw_desc.description-modern .description-binary-action-placeholder { display: inline-block; width: 2em; vertical-align: middle; }
+div#fbw_desc .description-binary button.description-icon-action { background-position: center center; background-repeat: no-repeat; }
+div#fbw_desc .description-binary button#show { background-image: url('DescriptionIcons/view.png'); }
+div#fbw_desc .description-binary button#save { background-image: url('DescriptionIcons/save.png'); }
+div#fbw_desc .description-binary button#del { background-image: url('DescriptionIcons/delete.png'); }
+div#fbw_desc .description-binary button.description-icon-action img { visibility: hidden; }
+div#fbw_desc.description-narrow .description-binary-header { display: none; }
+div#fbw_desc.description-narrow #binobj .description-binary > label { display: inline-block; width: auto; }
+div#fbw_desc.description-narrow .description-binary-action-placeholder { display: inline-block; }
+div#fbw_desc.description-modern #tiCover { width: 13em; }
+div#fbw_desc.description-modern #tiCover .description-add-action { white-space: nowrap; }
+div#fbw_desc.description-narrow #tiCover { width: auto; }
+div#fbw_desc.description-narrow #tiCover select, div#fbw_desc.description-narrow #stiCover select { width: 90% !important; }
+div#fbw_desc.description-narrow #tiCover .description-add-action { white-space: normal; }
+div#fbw_desc #descriptionCommands { min-height: 0; }
+div#fbw_desc #tiShowBtn { float: none !important; margin: 0 0 .15em; }
+div#fbw_desc label { white-space: nowrap; }
+div#fbw_desc label.description-long-label { width: auto !important; }
+div#fbw_desc select + label.description-long-label { margin-left: .6em; }
+div#fbw_desc.description-narrow select + label.description-long-label { margin-left: 0; }
+div#fbw_desc.description-narrow label { white-space: normal; }
+/* DESCRIPTION BINARY TABLE END */

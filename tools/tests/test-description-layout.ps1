@@ -2,6 +2,14 @@
 param()
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$cssBlocks=@()
+foreach($cssName in @('main.css','main_fast.css')) {
+    $css=Get-Content (Join-Path $root "runtime/$cssName") -Raw
+    $match=[regex]::Match($css,'(?s)/\* DESCRIPTION BINARY TABLE BEGIN:.*?/\* DESCRIPTION BINARY TABLE END \*/')
+    if(-not $match.Success){throw "Missing Description binary CSS block: $cssName"}
+    $cssBlocks+=($match.Value -replace "`r`n","`n")
+}
+if($cssBlocks[0] -cne $cssBlocks[1]){throw 'Description binary CSS differs between normal and Fast mode.'}
 $xsl = New-Object -ComObject Msxml2.FreeThreadedDOMDocument.6.0
 $xsl.async = $false
 $xsl.setProperty('ResolveExternals', $true)

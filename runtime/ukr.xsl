@@ -4,7 +4,7 @@
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 	xmlns:l="http://www.w3.org/1999/xlink">
 
-	<xsl:variable name="IDS_VIEW_BTN" select="'Показати'"/>
+	<xsl:variable name="IDS_VIEW_BTN" select="'Додаткові поля…'"/>
 	<xsl:variable name="IDS_BINARY_OBJ" select="'Двійкові файли'"/>
 	<xsl:variable name="IDS_BOOK" select="'Книга'"/>
 	<xsl:variable name="IDS_GENRES" select="'Жанри'"/>

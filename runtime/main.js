@@ -233,18 +233,16 @@ function DescriptionStyleBinary(row)
  row.className = "description-binary";
  DescriptionStyleButtons(row);
  var type = GetBinaryInput(row, "type");
+ var thumbSlot = document.createElement("SPAN"); thumbSlot.className = "description-binary-thumb-slot";
+ row.insertBefore(thumbSlot, row.firstChild);
  if(type && IsImageBinaryType(type.value))
  {
   var preview = document.createElement("IMG");
   preview.className = "description-binary-thumbnail";
   preview.setAttribute("data-description-preview", "true");
   preview.alt = "";
-  row.insertBefore(preview, row.firstChild);
+  thumbSlot.appendChild(preview);
   row.onmouseover = function() { DescriptionLoadThumbnail(this); };
- }
- else {
-  var placeholder = document.createElement("SPAN"); placeholder.className = "description-binary-placeholder";
-  row.insertBefore(placeholder, row.firstChild);
  }
  var size = GetBinaryInput(row, "size"), dims = GetBinaryInput(row, "dims");
  if(size) {
@@ -503,6 +501,14 @@ function InitDescriptionActions(root)
  var attachments = document.getElementById("binobj");
  var summary = document.createElement("SPAN"); summary.id = "descriptionAttachmentSummary";
  attachments.getElementsByTagName("LEGEND")[0].appendChild(summary);
+ var header=document.createElement("SPAN"); header.className="description-binary-header";
+ var headerKeys=["binary_thumb","binary_id","binary_type","binary_size","binary_dimensions","binary_actions"];
+ var headerDefaults=["", "ID", "Type", "Size", "Dimensions", "Actions"];
+ for(var h=0;h<headerKeys.length;h++) {
+  var cell=document.createElement("SPAN"); cell.className="description-binary-header-"+h;
+  cell.innerText=DescriptionText(headerKeys[h],headerDefaults[h]); header.appendChild(cell);
+ }
+ attachments._descriptionBody.insertBefore(header,attachments._descriptionBody.firstChild);
  DescriptionAddAction(attachments._descriptionBody, DescriptionText("add_attachment", "Add attachment"), DescriptionAddAttachment).id = "descriptionAddAttachment";
  DescriptionRefreshAttachments();
 }
@@ -771,8 +777,10 @@ function BinaryIsReferenced(id)
   if(!element) continue;
   // A thumbnail is presentation owned by this same row, not an FB2 reference.
   if(element.getAttribute && String(element.getAttribute("data-description-preview")) == "true" &&
-     element.parentNode && (element.parentNode.parentNode == document.all.binobj ||
-     element.parentNode.parentNode == document.all.binobj._descriptionBody)) continue;
+     element.parentNode && element.parentNode.className == "description-binary-thumb-slot" &&
+     element.parentNode.parentNode && element.parentNode.parentNode.className == "description-binary" &&
+     (element.parentNode.parentNode.parentNode == document.all.binobj ||
+      element.parentNode.parentNode.parentNode == document.all.binobj._descriptionBody)) continue;
   var href=element.getAttribute ? element.getAttribute("href") : null;
   var src=element.getAttribute ? element.getAttribute("src") : null;
   if(href == null && element.href) href=element.href;

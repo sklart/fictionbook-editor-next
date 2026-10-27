@@ -105,6 +105,7 @@ function CompatResult(){return compatResult;}
     Add-Case @{name='new-again';command='new';id='image1.png';absent='true'}
     Add-Case @{name='open-A-again';command='open';open='book-a.fb2';id='image1.png';expected=$data.A.file}
     $corpus=@(
+        @('10_Статистика/07_Общая статистика.js','general statistics'),
         @('10_Статистика/03_Статистика документа.js','binary size/statistics'),
         @('05_Иллюстрации/04_Сохранить вложения на накопитель.js','legacy SaveBinary bytes'),
         @('05_Иллюстрации/03_Обновить иллюстрации.js','image refresh/shared references'),

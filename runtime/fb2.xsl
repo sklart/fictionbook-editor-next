@@ -34,7 +34,7 @@
 				<xsl:value-of select="$IDS_VIEW_BTN"/>
 			</button>
 		</fieldset>
-		<br/>
+
 
 	<!-- title-info -->
 	<xsl:call-template name="ti">
@@ -393,7 +393,7 @@
 		</xsl:call-template>
       </select>
 
-      <label unselectable="on" style="width: 10em"><xsl:value-of select="$IDS_SOURCE_LANG"/></label>
+      <label unselectable="on" class="description-long-label" style="width: 10em"><xsl:value-of select="$IDS_SOURCE_LANG"/></label>
       
       <select id="tiSrcLang" title="Original language">
 		<xsl:call-template name="fill_languages_combo">
@@ -499,7 +499,7 @@
 			</xsl:call-template>
 	    </select>
 
-	    <label unselectable="on" style="width: 10em"><xsl:value-of select="$IDS_SOURCE_LANG"/></label>
+	    <label unselectable="on" class="description-long-label" style="width: 10em"><xsl:value-of select="$IDS_SOURCE_LANG"/></label>
 	    <!--input type="text" maxlength="2" id="tiSrcLang" class="short" value="{$cur/f:src-lang}"/-->
 
 	    <select id="stiSrcLang" title="Original language">
@@ -561,13 +561,13 @@
 				</xsl:call-template>
 			</fieldset>
       <br/><br/>
-      <label unselectable="on"><xsl:value-of select="$IDS_TOOLS_USED"/></label>
+      <label unselectable="on" class="description-long-label"><xsl:value-of select="$IDS_TOOLS_USED"/></label>
       <input type="text" maxlength="256" id="diProgs" class="middle" value="{$cur/f:program-used}"/>
 			<br/>
       <span class="description-date-field"><label unselectable="on"><xsl:value-of select="$IDS_DATE_TEXT"/></label><input type="text" maxlength="256" id="diDate" value="{$cur/f:date}"/></span>
       <span class="description-date-field description-date-value"><label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label><input type="text" maxlength="256" id="diDateVal" value="{$cur/f:date/@value}"/></span>
 	  <br/>
-      <label unselectable="on" style="width:6.7em"><xsl:value-of select="$IDS_SOURCE_OCR"/></label>
+      <label unselectable="on" class="description-long-label" style="width:6.7em"><xsl:value-of select="$IDS_SOURCE_OCR"/></label>
       <input type="text" maxlength="256" id="diOCR" class="wide" value="{$cur/f:src-ocr}"/><br/>
       <fieldset id="diURL" unselectable="on" class="kid">
 	<legend unselectable="on"><xsl:value-of select="$IDS_SOURCE_URL"/></legend>
