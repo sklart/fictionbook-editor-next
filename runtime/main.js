@@ -56,7 +56,7 @@ function DescriptionShowSection(section)
 function DescriptionMoveForModern(root, node, before)
 {
  if(!node || !before) return;
- // MSHTML's legacy document mode cannot create DOM comment nodes reliably.
+ // Keep a hidden marker for restoring the Classic node position.
  var marker = document.createElement("SPAN");
  marker.className = "description-position";
  marker.style.display = "none";
@@ -1901,7 +1901,7 @@ function apiLoadFB2(path, lang, logicalPath)
 	var id=desc.all.diID;
 	if(!id) { TraceScript("J183", "operation=diID element missing"); failControlled(); }
 	if(id)
-	if(displayPath.indexOf("blank.fb2") != -1)
+	if(IsDescriptionNewTemplate(displayPath))
 	{
 		InitializeNewDescription(desc);
 		TraceScript("J190", "operation=GetUUID");
@@ -2225,62 +2225,33 @@ function FillLists()
 	}
 }
 
+function SelectDescriptionLanguage(list)
+{
+ if(!list) return;
+ var selected=list.value, options=list.getElementsByTagName("OPTION");
+ var original=null, known=null;
+ for(var i=0;i<options.length;i++)
+ {
+  if(options[i].innerHTML=="-org-") original=options[i];
+  else if(options[i].value==selected) known=options[i];
+ }
+ if(known)
+ {
+  if(original) original.removeNode(true);
+  known.selected=true;
+ }
+ else if(original)
+ {
+  // The catalog is a convenience, not a whitelist of valid FB2 language tags.
+  original.innerText=selected;
+  original.selected=true;
+ }
+}
+
 function SelectLanguages()
 {
-
-	var list=document.getElementById("tiLang");
-	var sel=list.value;
-
-	var opts=list.getElementsByTagName("option");
-
-	for(var i=0; i<opts.length; i++)
-	{
-		if(opts[i].innerHTML=="-org-")
-			opts[i].removeNode(true);
-		else if(opts[i].value==sel)
-			opts[i].selected=true;
-	}
-
-
-	var list=document.getElementById("tiSrcLang");
-	var sel=list.value;
-
-	var opts=list.getElementsByTagName("option");
-
-	for(var i=0; i<opts.length; i++)
-	{
-		if(opts[i].innerHTML=="-org-")
-			opts[i].removeNode(true);
-		else if(opts[i].value==sel)
-			opts[i].selected=true;
-	}
-
-	var list=document.getElementById("stiLang");
-	var sel=list.value;
-
-	var opts=list.getElementsByTagName("option");
-
-	for(var i=0; i<opts.length; i++)
-	{
-		if(opts[i].innerHTML=="-org-")
-			opts[i].removeNode(true);
-		else if(opts[i].value==sel)
-			opts[i].selected=true;
-	}
-
-
-	var list=document.getElementById("stiSrcLang");
-	var sel=list.value;
-
-	var opts=list.getElementsByTagName("option");
-
-	for(var i=0; i<opts.length; i++)
-	{
-		if(opts[i].innerHTML=="-org-")
-			opts[i].removeNode(true);
-		else if(opts[i].value==sel)
-			opts[i].selected=true;
-	}
+ var ids=["tiLang","tiSrcLang","stiLang","stiSrcLang"];
+ for(var i=0;i<ids.length;i++) SelectDescriptionLanguage(document.getElementById(ids[i]));
 }
 //-----------------------------------------------
 // Generates new ID and puts it into the field
@@ -2390,6 +2361,16 @@ function SetCurrentDate(desc)
 }
 
 
+
+function IsDescriptionNewTemplate(path)
+{
+ var normalized=String(path || "").replace(/[\\\/]+/g,"\\").toLowerCase();
+ if(!/(^|\\)blank\.fb2$/.test(normalized)) return false;
+ var template;
+ try { template=String(window.external.GetStylePath()).replace(/[\\\/]+$/,"")+"\\blank.fb2"; }
+ catch(ignore) { return false; }
+ return normalized==template.replace(/[\\\/]+/g,"\\").toLowerCase();
+}
 
 function InitializeNewDescription(desc)
 {

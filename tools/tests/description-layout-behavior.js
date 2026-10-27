@@ -1,6 +1,9 @@
 (function() {
 try {
 function assert(value, message) { if(!value) throw new Error(message); }
+assert(IsDescriptionNewTemplate(window.external.GetStylePath()+"\\blank.fb2"),"Actual New template is recognized");
+assert(!IsDescriptionNewTemplate(window.external.GetStylePath()+"\\books\\blank.fb2"),"Ordinary book named blank.fb2 is preserved");
+assert(!IsDescriptionNewTemplate(window.external.GetStylePath()+"\\books\\my-blank.fb2"),"Template detection does not use a filename substring");
 var fixtures=["minimal","full","multiple","binary","missing-optional","unicode","invalid-ish","stress-100","stress-500"], timings=[];
 for(var fixtureIndex=0; fixtureIndex<fixtures.length; fixtureIndex++) {
 var input=new ActiveXObject("Msxml2.DOMDocument.6.0");input.async=false;
@@ -9,6 +12,10 @@ var loadStart=(new Date()).getTime();
 assert(LoadFromDOM(input,"english"),"Production fixture load");
 var loadMs=(new Date()).getTime()-loadStart;
 var form=document.getElementById("fbw_desc");
+if(fixtures[fixtureIndex]=="unicode") {
+ assert(document.getElementById("tiLang").value=="zh-Hant","Extended book language survives catalog population");
+ assert(document.getElementById("tiSrcLang").value=="de-DE","Extended source language survives catalog population");
+}
 document.getElementById("tiTitle").value="Edited metadata";
 document.getElementById("diID").value="unchanged-document-id";
 document.getElementById("stylesheetId").value="p { color: green; }";

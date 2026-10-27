@@ -1,5 +1,7 @@
 [CmdletBinding()]
-param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'))
+param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
+ [ValidateSet('minimal','full','multiple','binary','missing-optional','unicode')]
+ [string[]]$Fixtures=@('minimal','full','multiple','binary','missing-optional','unicode'))
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 function Get-SemanticXml([Xml.XmlNode]$Node) {
@@ -24,8 +26,11 @@ foreach($layout in @('modern','classic')) {
  try {
   $settings=New-IsolatedFbeSettingsSeed $iso -StartupScriptsDirectory (Join-Path $iso.Root 'ProbeScripts')
   [xml]$seed=Get-Content $settings -Raw;$node=$seed.CreateElement('DescriptionLayout');$node.InnerText=$layout;$null=$seed.FBE.Settings.AppendChild($node);$seed.Save($settings)
-  foreach($fixture in @('minimal','full','multiple','binary','missing-optional','unicode')) {
-   $path=Join-Path $iso.Root "$fixture.fb2";Copy-Item (Join-Path $PSScriptRoot "fixtures/description/$fixture.fb2") $path
+  $books=Join-Path $iso.Root 'books';New-Item -ItemType Directory -Path $books|Out-Null
+  foreach($fixture in $Fixtures) {
+   # A normal book whose name contains blank.fb2 must not become a New template.
+   $fileName=if($fixture -eq 'minimal'){'blank.fb2'}else{"$fixture.fb2"}
+   $path=Join-Path $books $fileName;Copy-Item (Join-Path $PSScriptRoot "fixtures/description/$fixture.fb2") $path
    [xml]$before=Get-Content $path -Raw
    $expected=Get-SemanticXml $before.DocumentElement.description
    foreach($iteration in @(1,2)) {
@@ -44,6 +49,6 @@ foreach($layout in @('modern','classic')) {
     }
    }
   }
-  $passed=$true;Write-Host "Description $layout production Save -> reopen -> Save PASS (six fixtures)."
+  $passed=$true;Write-Host "Description $layout production Save -> reopen -> Save PASS ($($Fixtures.Count) fixtures)."
  }finally{Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed}
 }
