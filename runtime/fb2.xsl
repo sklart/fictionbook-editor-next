@@ -315,7 +315,7 @@
 					<div unselectable="on">
 						<button id="del" onclick="Remove(this.parentNode)" unselectable="on">&#x72;</button>
 						<button onclick="Clone(this.parentNode)" unselectable="on">&#x32;</button>
-						<label unselectable="on" class="hl"><xsl:value-of select="$IDS_GENRE"/></label><input type="text" maxlength="25" id="genre" value="{.}" disabled="1"/>
+						<label unselectable="on" class="hl"><xsl:value-of select="$IDS_GENRE"/></label><input type="text" maxlength="25" id="genre" value="{.}" readonly="readonly"/>
 						<button class="popup_btn" onclick="GetGenre(this)" unselectable="on">&#x34;</button>
 						<xsl:if test="not(@match)">
 							<span id = "ti_genre_match" unselectable="on">
@@ -333,7 +333,7 @@
 						<button id="del" onclick="Remove(this.parentNode)" unselectable="on">&#x72;</button>
 						<button onclick="Clone(this.parentNode)" unselectable="on">&#x32;</button>
 						<label unselectable="on" class="hl"><xsl:value-of select="$IDS_GENRE"/></label>
-						<input type="text" maxlength="25" id="genre" value="" disabled="1"/>
+						<input type="text" maxlength="25" id="genre" value="" readonly="readonly"/>
 						<button onclick="GetGenre(this)" unselectable="on">&#x34;</button>			
 					</div>
 				</xsl:if>
@@ -360,7 +360,7 @@
 		<input type="text" maxlength="256" id="tiKwd" class="wide" value="{$cur/f:keywords}"/><br/>
 	  </xsl:if>
 	  <span class="description-date-field"><label unselectable="on"><xsl:value-of select="$IDS_DATE_TEXT"/></label><input type="text" maxlength="256" id="tiDate" data-fbe-date-present="{count($cur/f:date)}" value="{$cur/f:date}"/></span>
-	  <span class="description-date-field"><label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label><input type="text" maxlength="256" id="tiDateVal" value="{$cur/f:date/@value}"/></span><br/>
+	  <span class="description-date-field description-date-value"><label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label><input type="text" maxlength="256" id="tiDateVal" value="{$cur/f:date/@value}"/></span><br/>
       <fieldset id="tiCover" unselectable="on" class="kid">
 	<legend class="cover" unselectable="on"><xsl:value-of select="$IDS_COVERPAGE"/></legend>
 	<xsl:for-each select="$cur/f:coverpage/f:image">
@@ -439,7 +439,7 @@
 				<div unselectable="on">
 					<button id="del" onclick="Remove(this.parentNode)" unselectable="on">&#x72;</button>
 					<button onclick="Clone(this.parentNode)" unselectable="on">&#x32;</button>
-					<label unselectable="on" class="hl"><xsl:value-of select="$IDS_GENRE"/></label><input type="text" maxlength="25" id="genre" value="{.}" disabled="1"/>
+					<label unselectable="on" class="hl"><xsl:value-of select="$IDS_GENRE"/></label><input type="text" maxlength="25" id="genre" value="{.}" readonly="readonly"/>
 					<button class="popup_btn" onclick="GetGenre(this)" unselectable="on">&#x34;</button>	
 					<label unselectable="on"><xsl:value-of select="$IDS_MATCH"/></label><input type="text" maxlength="3" id="match" value="{@match}" class="short"/>
 				</div>
@@ -448,7 +448,7 @@
 				<div unselectable="on">
 					<button id="del" onclick="Remove(this.parentNode)" unselectable="on">&#x72;</button>
 					<button onclick="Clone(this.parentNode)" unselectable="on">&#x32;</button>
-					<label unselectable="on" class="hl"><xsl:value-of select="$IDS_GENRE"/></label><input type="text" maxlength="25" id="genre" value="" disabled="1"/>
+					<label unselectable="on" class="hl"><xsl:value-of select="$IDS_GENRE"/></label><input type="text" maxlength="25" id="genre" value="" readonly="readonly"/>
 					<button class="popup_btn" onclick="GetGenre(this)" unselectable="on">&#x34;</button>
 					<label unselectable="on"><xsl:value-of select="$IDS_MATCH"/></label><input type="text" maxlength="3" id="match" value="" class="short"/>
 				</div>
@@ -466,7 +466,7 @@
 		<label unselectable="on" class="description-keywords-label"><xsl:value-of select="$IDS_KEYWORDS"/></label>
 		<input type="text" maxlength="256" id="stiKwd" class="wide" value="{$cur/f:keywords}"/><br/>
 		<span class="description-date-field"><label unselectable="on"><xsl:value-of select="$IDS_DATE_TEXT"/></label><input type="text" maxlength="256" id="stiDate" data-fbe-date-present="{count($cur/f:date)}" value="{$cur/f:date}"/></span>
-		<span class="description-date-field"><label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label><input type="text" maxlength="256" id="stiDateVal" value="{$cur/f:date/@value}"/></span><br/>
+		<span class="description-date-field description-date-value"><label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label><input type="text" maxlength="256" id="stiDateVal" value="{$cur/f:date/@value}"/></span><br/>
 	    <fieldset id="stiCover" unselectable="on" class="kid">
 			<legend class="cover" unselectable="on"><xsl:value-of select="$IDS_COVERPAGE"/></legend>
 			<xsl:for-each select="$cur/f:coverpage/f:image">
@@ -552,7 +552,7 @@
 					<label unselectable="on" class="hl" style="width:4em;">
 						<xsl:value-of select="$IDS_ID"/>
 					</label>
-					<input type="text" maxlength="256" id="diID" style="width:40em;" disabled="1" value="{$cur/f:id}"/>
+					<input type="text" maxlength="256" id="diID" style="width:40em;" readonly="readonly" value="{$cur/f:id}"/>
 				</span>
 				<br/>
 				<legend unselectable="on"><xsl:value-of select="$IDS_AUTHORS"/></legend>
@@ -565,7 +565,7 @@
       <input type="text" maxlength="256" id="diProgs" class="middle" value="{$cur/f:program-used}"/>
 			<br/>
       <span class="description-date-field"><label unselectable="on"><xsl:value-of select="$IDS_DATE_TEXT"/></label><input type="text" maxlength="256" id="diDate" value="{$cur/f:date}"/></span>
-      <span class="description-date-field"><label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label><input type="text" maxlength="256" id="diDateVal" value="{$cur/f:date/@value}"/></span>
+      <span class="description-date-field description-date-value"><label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label><input type="text" maxlength="256" id="diDateVal" value="{$cur/f:date/@value}"/></span>
 	  <br/>
       <label unselectable="on" style="width:6.7em"><xsl:value-of select="$IDS_SOURCE_OCR"/></label>
       <input type="text" maxlength="256" id="diOCR" class="wide" value="{$cur/f:src-ocr}"/><br/>

@@ -2443,10 +2443,13 @@ static void ApplyRuntimeBodyColors(MSHTML::IHTMLDocument2Ptr document)
 		L"div#fbw_desc input,div#fbw_desc textarea,div#fbw_desc select,div#fbw_desc div.float{color:%s;background:%s;border-color:%s;}"
 		L"div#fbw_desc button,div#fbw_desc .description-section-toggle{color:%s;background:%s;border-color:%s;}"
 		L"div#fbw_desc fieldset{border-color:%s;}",
-		descriptionText.GetString(), descriptionWindow.GetString(),
+		descriptionText.GetString(), descriptionControl.GetString(),
 		descriptionText.GetString(), descriptionWindow.GetString(), descriptionBorder.GetString(),
 		descriptionText.GetString(), descriptionControl.GetString(), descriptionBorder.GetString(), descriptionBorder.GetString());
 	css.AppendFormat(L"div#fbw_desc legend{color:%s;}", descriptionText.GetString());
+	css.AppendFormat(L"div#fbw_desc .description-section{background:%s;}"
+		L"div#fbw_desc input[readonly],div#fbw_desc select option{color:%s;background:%s;}",
+		descriptionWindow.GetString(), descriptionText.GetString(), descriptionWindow.GetString());
 	css.AppendFormat(L"div#fbw_desc .description-cover-preview,div#fbw_desc .description-binary-thumbnail,div#fbw_desc #fullImg,div#fbw_desc #prevImg{border-color:%s;background:%s;}", descriptionBorder.GetString(), descriptionWindow.GetString());
 	css.AppendFormat(L"div#fbw_desc input:disabled,div#fbw_desc button:disabled{color:%s;}"
 		L"div#fbw_desc button:hover{background:%s;}"

@@ -111,6 +111,22 @@
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
+	if (IsFbeTestScenario(L"description-settings-caret"))
+	{
+		bool passed = false;
+		try {
+			ShowView(DESC);
+			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+			CheckError(document->parentWindow->execScript(L"document.getElementById('tiTitle').focus();", L"JScript"));
+			_Settings.SetNBSPChar(_Settings.GetNBSPChar() == L"\u25A1" ? L"\u25AB" : L"\u25A1");
+			_Settings.SetDescriptionLayout(L"modern");
+			ApplyConfChanges(true, false);
+			passed = m_editor_view_state.Current() == DESC;
+		} catch (const _com_error&) { passed = false; }
+		const CStringA report(passed ? "description-settings-caret=pass\r\n" : "description-settings-caret=fail\r\n");
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"prerelease-serialization"))
 	{
 		wchar_t marker[8] = {};

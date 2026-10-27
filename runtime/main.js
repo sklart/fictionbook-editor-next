@@ -69,7 +69,7 @@ function DescriptionShowSection(section)
  section.className = "description-section" + (closed ? " description-collapsed" : "");
  section._descriptionBody.style.display = closed ? "none" : "block";
  var button = section._descriptionButton;
- if(button) { button.innerText = closed ? "+" : "\u2212"; button.setAttribute("aria-expanded", closed ? "false" : "true"); }
+ if(button) { button.innerText = closed ? "\u25b8" : "\u25be"; button.setAttribute("aria-expanded", closed ? "false" : "true"); }
  if(section.id == "binobj" && typeof DescriptionRefreshAttachments == "function") DescriptionRefreshAttachments();
 }
 
@@ -171,6 +171,11 @@ function InitDescriptionUI(root)
   section._descriptionButton = button;
   button.onclick = function() { DescriptionToggleSection(this); };
   legend.insertBefore(button, legend.firstChild);
+  legend._descriptionSection = section;
+  legend.onclick = function() {
+   var source = window.event ? window.event.srcElement : null;
+   if(descriptionLayout == "modern" && source == this) DescriptionToggleSection(this._descriptionSection._descriptionButton);
+  };
   root._descriptionSections.push(section);
  }
  TraceScript("J911", "operation=Description sections initialized");
@@ -237,6 +242,10 @@ function DescriptionStyleBinary(row)
   row.insertBefore(preview, row.firstChild);
   row.onmouseover = function() { DescriptionLoadThumbnail(this); };
  }
+ else {
+  var placeholder = document.createElement("SPAN"); placeholder.className = "description-binary-placeholder";
+  row.insertBefore(placeholder, row.firstChild);
+ }
  var size = GetBinaryInput(row, "size"), dims = GetBinaryInput(row, "dims");
  if(size) {
   if(size.previousSibling && size.previousSibling.tagName == "LABEL") size.previousSibling.style.display = "none";
@@ -252,8 +261,10 @@ function DescriptionStyleBinary(row)
   displayDims.innerText = String(dims.value).replace("x", " \u00d7 ");
   dims.parentNode.insertBefore(displayDims, dims.nextSibling);
  }
+ else { var displayDims = document.createElement("SPAN"); displayDims.className = "binary-dims-display"; row.appendChild(displayDims); }
  // Buttons remain direct children of the binary row for legacy handlers.
  var actionIds = ["show", "save", "del"];
+ if(!GetBinaryInput(row, "show")) { var missingView = document.createElement("SPAN"); missingView.className = "description-binary-action-placeholder"; row.appendChild(missingView); }
  for(var i=0; i<actionIds.length; i++) {
   var action = GetBinaryInput(row, actionIds[i]);
   if(action) {
@@ -267,6 +278,20 @@ function DescriptionStyleBinary(row)
 }
 
 var descriptionBinaryUnits = null;
+function DescriptionFileCount(count, testForms)
+{
+ var forms = (testForms || DescriptionText("binary_file_forms", "file|files|files|one")).split("|");
+ var rule = forms[3], index = 2;
+ if(rule == "slavic") {
+  var last = count % 10, lastTwo = count % 100;
+  index = last == 1 && lastTwo != 11 ? 0 : last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? 1 : 2;
+ } else if(rule == "polish") {
+  var last = count % 10, lastTwo = count % 100;
+  index = count == 1 ? 0 : last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? 1 : 2;
+ } else if(rule == "czech") index = count == 1 ? 0 : count >= 2 && count <= 4 ? 1 : 2;
+ else if(rule == "one") index = count == 1 ? 0 : 2;
+ return count + " " + (forms[index] || forms[2] || "files");
+}
 function DescriptionBinarySize(value)
 {
  if(!descriptionBinaryUnits) descriptionBinaryUnits = DescriptionText("binary_units", "B|KB|MB|GB|.").split("|");
@@ -293,7 +318,7 @@ function DescriptionRefreshAttachments()
   if(i<30 && descriptionLayout == "modern" && !section._descriptionClosed) DescriptionLoadThumbnail(rows[i]);
  }
  var summary = document.getElementById("descriptionAttachmentSummary");
- if(summary) summary.innerText = rows.length + " " + DescriptionText("binary_files", "files") + " \u00b7 " + DescriptionBinarySize(total);
+ if(summary) summary.innerText = DescriptionFileCount(rows.length) + " \u00b7 " + DescriptionBinarySize(total);
  var add = document.getElementById("descriptionAddAttachment");
  if(add && add.parentNode == section._descriptionBody && add.nextSibling) section._descriptionBody.appendChild(add);
 }
@@ -469,7 +494,7 @@ function InitDescriptionActions(root)
  var cover = document.getElementById("tiCover");
  DescriptionAddAction(cover, DescriptionText("change_cover", "Change cover"), function() {
   var select = cover.getElementsByTagName("SELECT")[0];
-  if(select) { select.size = select.size > 1 ? 1 : Math.min(8, Math.max(2, select.options.length)); select.focus(); }
+  if(select) { select.size = 1; select.focus(); }
  });
  var author = document.getElementById("tiAuthor");
  DescriptionAddAction(author, DescriptionText("add_author", "Add author"), function() { DescriptionAddRepeated("tiAuthor"); });
@@ -837,8 +862,6 @@ function BuildBinaryControls(div, fullpath, id, type, data)
 {
  var cached=arguments.length>5 ? arguments[5] : null;
  var html='<button id="del" ' +
-                 'onmouseover="HighlightBorder(this.parentNode, true, \'solid\', \'2px\', \'#FF0000\');" ' +
-                 'onmouseout="HighlightBorder(this.parentNode, false);" ' +
                  'onclick="Remove(this.parentNode);" unselectable="on">&#x72;</button>';
  html += '<button id="save" onclick="SaveBinary(this.parentNode);" unselectable="on">&#xcd;</button>';
  var dims="";
@@ -2330,7 +2353,16 @@ function FillLists()
 function SelectDescriptionLanguage(list)
 {
  if(!list) return;
- var selected=list.value, options=list.getElementsByTagName("OPTION");
+ var selected=list.value;
+ // IE7 document mode can paint an OPTGROUP selection as permanently active
+ // in the collapsed native SELECT. Keep the same OPTION nodes and order.
+ var groups=list.getElementsByTagName("OPTGROUP");
+ while(groups.length) {
+  var group=groups[0];
+  while(group.firstChild) list.insertBefore(group.firstChild,group);
+  group.removeNode(true);
+ }
+ var options=list.getElementsByTagName("OPTION");
  var original=null, known=null;
  for(var i=0;i<options.length;i++)
  {
@@ -2340,14 +2372,17 @@ function SelectDescriptionLanguage(list)
  if(known)
  {
   if(original) original.removeNode(true);
-  known.selected=true;
+  // Set the SELECT value rather than selecting an OPTION directly: MSHTML
+  // can otherwise keep painting the programmatic option selection as active.
+  list.value=selected;
  }
  else if(original)
  {
   // The catalog is a convenience, not a whitelist of valid FB2 language tags.
   original.innerText=selected;
-  original.selected=true;
+  list.value=selected;
  }
+ if(document.activeElement == list) list.blur();
 }
 
 function SelectLanguages()

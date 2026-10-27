@@ -21,6 +21,11 @@ function Get-SemanticXml([Xml.XmlNode]$Node) {
  Append-Node $Node $text
  return $text.ToString()
 }
+$oldTestMode=[Environment]::GetEnvironmentVariable('FBE_NEXT_TEST_MODE','Process')
+$oldScenario=[Environment]::GetEnvironmentVariable('FBE_NEXT_TEST_SCENARIO','Process')
+try {
+$env:FBE_NEXT_TEST_MODE='1'
+$env:FBE_NEXT_TEST_SCENARIO='binary-roundtrip'
 foreach($layout in @('modern','classic')) {
  $iso=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name "description-roundtrip-$layout";$passed=$false
  try {
@@ -37,7 +42,7 @@ foreach($layout in @('modern','classic')) {
     $report=Join-Path $iso.Root "$fixture-$iteration.txt"
     $process=Start-Process $iso.Exe -WorkingDirectory $iso.Root -ArgumentList @('--portable','-s','-b',$report,$path) -WindowStyle Hidden -PassThru
     $code=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario description-roundtrip -Report $report -TimeoutSeconds 45
-    if($code -ne 0 -or -not(Test-Path $report)){throw "Production Save failed: $layout / $fixture"}
+    if($code -ne 0 -or -not(Test-Path $report) -or -not (Select-String -LiteralPath $report -Pattern '^save-complete\s' -Quiet)){throw "Production Save failed: $layout / $fixture"}
     [xml]$after=Get-Content $path -Raw
     if((Get-SemanticXml $after.DocumentElement.description) -cne $expected){throw "Description metadata changed: $layout / $fixture / save $iteration"}
     if((Get-SemanticXml $after.DocumentElement.SelectSingleNode('*[local-name()="stylesheet"]')) -cne (Get-SemanticXml $before.DocumentElement.SelectSingleNode('*[local-name()="stylesheet"]'))){throw "Stylesheet changed: $fixture"}
@@ -51,4 +56,8 @@ foreach($layout in @('modern','classic')) {
   }
   $passed=$true;Write-Host "Description $layout production Save -> reopen -> Save PASS ($($Fixtures.Count) fixtures)."
  }finally{Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed}
+}
+} finally {
+ [Environment]::SetEnvironmentVariable('FBE_NEXT_TEST_MODE',$oldTestMode,'Process')
+ [Environment]::SetEnvironmentVariable('FBE_NEXT_TEST_SCENARIO',$oldScenario,'Process')
 }

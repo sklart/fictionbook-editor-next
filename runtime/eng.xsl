@@ -14,7 +14,7 @@
   <xsl:variable name="IDS_TITLE" select="'Title:'"/>
   <xsl:variable name="IDS_KEYWORDS" select="'Keywords:'"/>
   <xsl:variable name="IDS_DATE_TEXT" select="'Date text:'"/>
-  <xsl:variable name="IDS_DATE_VALUE" select="'Date value:'"/>
+  <xsl:variable name="IDS_DATE_VALUE" select="'Date (YYYY-MM-DD):'"/>
   <xsl:variable name="IDS_COVERPAGE" select="'Coverpage'"/>
   <xsl:variable name="IDS_IMAGE" select="'Image:'"/>
   <xsl:variable name="IDS_LANGUAGE" select="'Language:'"/>

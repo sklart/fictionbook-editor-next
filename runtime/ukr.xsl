@@ -14,7 +14,7 @@
 	<xsl:variable name="IDS_TITLE" select="'Назва:'"/>
 	<xsl:variable name="IDS_KEYWORDS" select="'Ключові слова:'"/>
 	<xsl:variable name="IDS_DATE_TEXT" select="'Дата написання:'"/>
-	<xsl:variable name="IDS_DATE_VALUE" select="'Значення дати:'"/>
+	<xsl:variable name="IDS_DATE_VALUE" select="'Дата (РРРР-ММ-ДД):'"/>
 	<xsl:variable name="IDS_COVERPAGE" select="'Обкладинка'"/>
 	<xsl:variable name="IDS_IMAGE" select="'Зображення:'"/>
 	<xsl:variable name="IDS_LANGUAGE" select="'Мова:'"/>

@@ -7817,14 +7817,16 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles, bool saveSettings)
 		// save caret position
 		MSHTML::IDisplayServicesPtr ids (MSHTML::IDisplayServicesPtr(m_doc->m_body.Document()));
 		MSHTML::IHTMLCaretPtr caret = 0;
-		MSHTML::tagPOINT *point = new MSHTML::tagPOINT();
-		if (ids)
+		MSHTML::tagPOINT point = {};
+		// The caret belongs to the active MSHTML view. A Description caret is
+		// not a valid position in fbw_body and moveToPoint can throw E_UNEXPECTED.
+		if (ids && activeView == BODY)
 		{
 			ids->GetCaret(&caret);
 			if (caret)
 			{
 				caret->IsVisible(&visible);
-				if (visible) caret->GetLocation(point, true);
+				if (visible && FAILED(caret->GetLocation(&point, true))) visible = false;
 			}
 		}
 
@@ -7854,12 +7856,18 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles, bool saveSettings)
 		m_doc->AdvanceDocVersion(numChanges);
 
 		// restore caret position
-		if (caret && visible)
+		if (caret && visible && activeView == BODY)
 		{
-			MSHTML::IDisplayPointerPtr disptr;
-			ids->CreateDisplayPointer(&disptr);
-			disptr->moveToPoint(*point, MSHTML::COORD_SYSTEM_GLOBAL, fbwBody, 0, 0);
-			caret->MoveCaretToPointer(disptr, true, MSHTML::CARET_DIRECTION_SAME);
+			try {
+				MSHTML::IDisplayPointerPtr disptr;
+				ids->CreateDisplayPointer(&disptr);
+				if(disptr) {
+					disptr->moveToPoint(point, MSHTML::COORD_SYSTEM_GLOBAL, fbwBody, 0, 0);
+					caret->MoveCaretToPointer(disptr, true, MSHTML::CARET_DIRECTION_SAME);
+				}
+			} catch(const _com_error&) {
+				// The old screen point can become invalid when styles are reapplied.
+			}
 		}
 	}
 

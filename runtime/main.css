@@ -261,7 +261,6 @@ img {
 	padding: 0;
 	border: none;
 	position: relative;
-	cursor: move;
 }
 
 div#fbw_body div.hider {
@@ -446,3 +445,30 @@ div#fbw_desc .description-person span#ti_nic_mail_web > button {
 div#fbw_desc label { width: 9em; }
 div#fbw_desc .description-date-field label { width: 9em !important; }
 div#fbw_desc.description-narrow .description-date-field label { width: auto !important; }
+
+/* Final Description polish; IE7-compatible inline columns. */
+div#fbw_body img { cursor: move; }
+div#fbw_desc img { cursor: default; }
+div#fbw_desc select option { color: WindowText; background: Window; }
+div#fbw_desc input[readonly] { color: WindowText; background: ButtonFace; cursor: default; }
+div#fbw_desc .description-section-toggle { border-color: transparent; background: transparent; }
+div#fbw_desc.description-modern .description-section > .description-section-body > fieldset.kid { border-color: transparent; }
+div#fbw_desc.description-modern #tiCover { width: 12em; }
+div#fbw_desc.description-modern #tiCover select { width: 100%; }
+div#fbw_desc.description-narrow #tiCover { width: auto; }
+div#fbw_desc .description-date-field label { width: 9em !important; white-space: nowrap; }
+div#fbw_desc .description-date-value label { width: auto !important; }
+div#fbw_desc .description-date-field input { width: 35%; }
+div#fbw_desc.description-narrow .description-date-field label { width: auto !important; white-space: normal; }
+div#fbw_desc.description-narrow .description-date-field input { width: 94%; }
+div#fbw_desc #tiGenre button, div#fbw_desc #stiGenre button, div#fbw_desc #tiGenre input, div#fbw_desc #stiGenre input, div#fbw_desc #tiGenre label, div#fbw_desc #stiGenre label { vertical-align: middle; }
+div#fbw_desc.description-modern #binobj .description-binary { max-width: 68em; white-space: nowrap; }
+div#fbw_desc.description-modern #binobj .description-binary > label { display: inline-block; width: 2.7em; margin: 0 .2em; }
+div#fbw_desc.description-modern #binobj .description-binary #id { width: 16em !important; }
+div#fbw_desc.description-modern #binobj .description-binary #type { width: 7em !important; }
+div#fbw_desc.description-modern .description-binary-thumbnail, div#fbw_desc.description-modern .description-binary-placeholder { display: inline-block; width: 2.5em; height: 2.5em; margin: 0 .5em 0 0; padding: 0; vertical-align: middle; }
+div#fbw_desc.description-modern .binary-size-display, div#fbw_desc.description-modern .binary-dims-display { display: inline-block; width: 5.5em; min-width: 5.5em; margin: 0 .3em; vertical-align: middle; }
+div#fbw_desc.description-modern .description-binary-action-placeholder { display: inline-block; width: 2em; }
+div#fbw_desc.description-narrow #binobj .description-binary { white-space: normal; }
+div#fbw_desc.description-narrow #binobj .description-binary #id { max-width: 55% !important; }
+div#fbw_desc.description-narrow .description-binary-placeholder, div#fbw_desc.description-narrow .description-binary-action-placeholder { display: none; }

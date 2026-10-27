@@ -93,11 +93,13 @@ __declspec(noinline) LRESULT CMainFrame::RunBinaryScriptingCompatibilityRuntime(
                 ThemeManager::SetSelectedTheme(descriptionTheme == L"dark" ? INTERFACE_THEME_DARK : INTERFACE_THEME_LIGHT);
                 m_doc->ApplyThemeAppearance();
                 MSHTML::IHTMLElementPtr description = MSHTML::IHTMLDocument3Ptr(m_doc->m_body.Document())->getElementById(L"fbw_desc");
-                const COLORREF background = ThemeManager::WindowColor(), foreground = ThemeManager::TextColor();
-                CString cssBackground, cssForeground;
+                const COLORREF background = ThemeManager::ControlColor(), inputBackground = ThemeManager::WindowColor(), foreground = ThemeManager::TextColor();
+                CString cssBackground, cssInputBackground, cssForeground;
                 cssBackground.Format(L"rgb(%d,%d,%d)", GetRValue(background), GetGValue(background), GetBValue(background));
+                cssInputBackground.Format(L"rgb(%d,%d,%d)", GetRValue(inputBackground), GetGValue(inputBackground), GetBValue(inputBackground));
                 cssForeground.Format(L"rgb(%d,%d,%d)", GetRValue(foreground), GetGValue(foreground), GetBValue(foreground));
                 description->setAttribute(L"data-description-theme-background", _variant_t(cssBackground), 0);
+                description->setAttribute(L"data-description-theme-input-background", _variant_t(cssInputBackground), 0);
                 description->setAttribute(L"data-description-theme-foreground", _variant_t(cssForeground), 0);
             }
             const CString label = attr(L"name"), command = attr(L"command"), id = attr(L"id"), script = attr(L"script");

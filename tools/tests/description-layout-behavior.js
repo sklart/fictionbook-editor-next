@@ -1,6 +1,10 @@
 (function() {
 try {
 function assert(value, message) { if(!value) throw new Error(message); }
+var pluralCounts=[1,2,3,4,5,11,12,14,21,22,25,101,102,111,112];
+var pluralExpected=["файл","файла","файла","файла","файлов","файлов","файлов","файлов","файл","файла","файлов","файл","файла","файлов","файлов"];
+for(var pluralIndex=0;pluralIndex<pluralCounts.length;pluralIndex++)
+ assert(DescriptionFileCount(pluralCounts[pluralIndex],"файл|файла|файлов|slavic")==pluralCounts[pluralIndex]+" "+pluralExpected[pluralIndex],"Russian attachment plural "+pluralCounts[pluralIndex]);
 assert(IsDescriptionNewTemplate(window.external.GetStylePath()+"\\blank.fb2"),"Actual New template is recognized");
 assert(!IsDescriptionNewTemplate(window.external.GetStylePath()+"\\books\\blank.fb2"),"Ordinary book named blank.fb2 is preserved");
 assert(!IsDescriptionNewTemplate(window.external.GetStylePath()+"\\books\\my-blank.fb2"),"Template detection does not use a filename substring");
@@ -44,7 +48,7 @@ function checkTheme() {
  assert(expectedBackground && expectedForeground,"Native theme fixture must be installed");
  if(expectedBackground) {
   assert(color(form.currentStyle.backgroundColor)==color(expectedBackground),"Description theme background: "+form.currentStyle.backgroundColor+" / "+expectedBackground);
-  assert(color(title.currentStyle.backgroundColor)==color(expectedBackground),"Input theme background: "+title.currentStyle.backgroundColor+" / "+expectedBackground);
+  assert(color(title.currentStyle.backgroundColor)==color(form.getAttribute("data-description-theme-input-background")),"Input theme background: "+title.currentStyle.backgroundColor);
   assert(color(title.currentStyle.color)==color(expectedForeground),"Input theme foreground: "+title.currentStyle.color+" / "+expectedForeground);
   var legends=form.getElementsByTagName("LEGEND");
   for(var legendIndex=0;legendIndex<legends.length;legendIndex++)
@@ -77,6 +81,18 @@ if(fixtures[fixtureIndex]=="full" || fixtures[fixtureIndex]=="missing-optional" 
  }
 }
 if(fixtures[fixtureIndex]=="full") {
+ var languages=["tiLang","tiSrcLang","stiLang","stiSrcLang"];
+ for(var languageIndex=0;languageIndex<languages.length;languageIndex++) {
+  var language=document.getElementById(languages[languageIndex]);
+  assert(language && language.getElementsByTagName("OPTION").length>50,"Language selector retains catalog: "+languages[languageIndex]);
+  assert(language.getElementsByTagName("OPTGROUP").length==0,"MSHTML language options do not retain grouped selection painting");
+  var previousLanguage=language.value; language.value="en";
+  assert(ReadLanguageValue(languages[languageIndex])=="en","Language selector preserves value: "+languages[languageIndex]);
+  language.value=previousLanguage;
+ }
+ assert(document.getElementById("diID").readOnly && !document.getElementById("diID").disabled,"Document ID is readable information");
+ assert(document.getElementById("tiGenre").getElementsByTagName("INPUT")[0].readOnly,"Genre is a read-only selector");
+ assert(document.getElementById("tiCover")==form.all.tiCover,"Modern uses one cover control");
  var actionButtons=form.getElementsByTagName("BUTTON"), iconActions=0;
  for(var actionIndex=0;actionIndex<actionButtons.length;actionIndex++) {
   var actionButton=actionButtons[actionIndex];
@@ -111,6 +127,7 @@ if(fixtures[fixtureIndex]=="full") {
     var fieldLabel=firstField[fieldIndex].getElementsByTagName("LABEL")[0], fieldInput=firstField[fieldIndex].getElementsByTagName("INPUT")[0];
     var labelRect=fieldLabel.getBoundingClientRect(), inputRect=fieldInput.getBoundingClientRect();
     assert(labelRect.bottom>inputRect.top && inputRect.bottom>labelRect.top,"Wide author label and input share a row");
+    assert(Math.abs(document.getElementById("tiDate").getBoundingClientRect().top-document.getElementById("tiDateVal").getBoundingClientRect().top)<=4,"Book date values share a row");
     var person=document.getElementById("tiAuthor").getElementsByTagName("DIV")[0];
     var firstRect=person.all.first.getBoundingClientRect(), nickRect=person.all.nick.getBoundingClientRect();
     assert(Math.abs(firstRect.left-nickRect.left)<=4,"Author and contact rows align in "+layouts[layoutIndex]+" fast="+fast+": "+firstRect.left+"/"+nickRect.left);
@@ -124,6 +141,12 @@ if(fixtures[fixtureIndex]=="full") {
      var coverBox=document.getElementById("tiCover"), coverButtons=coverBox.getElementsByTagName("BUTTON"), coverAction=null;
      for(var cb=0;cb<coverButtons.length;cb++)if(coverButtons[cb].className=="description-add-action")coverAction=coverButtons[cb];
      assert(coverAction && coverAction.getBoundingClientRect().right<=coverBox.getBoundingClientRect().right+1,"Cover action stays inside its column");
+     var binaryRows=document.getElementById("binobj").getElementsByTagName("DIV");
+     if(binaryRows.length>=2) {
+      var columns=["id","type","save","del"];
+      for(var ci=0;ci<columns.length;ci++)
+       assert(Math.abs(GetBinaryInput(binaryRows[0],columns[ci]).getBoundingClientRect().left-GetBinaryInput(binaryRows[1],columns[ci]).getBoundingClientRect().left)<=3,"Binary column alignment: "+columns[ci]);
+     }
     }
    }
    var edge=viewport.getBoundingClientRect().right, overflow=[], descendants=form.getElementsByTagName("*");
@@ -161,6 +184,7 @@ assert(toggles==7,"Switching must not duplicate section controls");
 if(fixtures[fixtureIndex]=="full") {
  var binaries=document.getElementById("binobj"), rows=binaries.getElementsByTagName("DIV");
  var originalRow=rows[0], originalId=GetBinaryInput(originalRow,"id").value;
+ assert(originalRow.getElementsByTagName("IMG")[0].currentStyle.cursor!="move","Thumbnail is not a draggable body image");
  var rawSize=GetBinaryInput(originalRow,"size"), rawDims=GetBinaryInput(originalRow,"dims");
  assert(rawSize && /^\d+$/.test(rawSize.value),"Legacy size.value remains raw bytes");
  assert(!rawDims || /^\d+x\d+$/.test(rawDims.value),"Legacy dims.value remains unchanged");
