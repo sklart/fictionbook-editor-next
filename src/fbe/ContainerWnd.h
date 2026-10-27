@@ -26,17 +26,22 @@ public:
     REFLECT_NOTIFICATIONS()
   END_MSG_MAP()
 
-  static BOOL CALLBACK SizeProc(HWND hWnd,LPARAM lParam) {
-    RECT  *rc=(RECT*)lParam;
-    ::MoveWindow(hWnd,0,0,rc->right-rc->left,rc->bottom-rc->top,
-      TRUE);
-    return TRUE;
+  void FitPane(HWND hWnd) {
+    if (hWnd == NULL || ::GetParent(hWnd) != m_hWnd)
+      return;
+    RECT client = {}, bounds = {};
+    GetClientRect(&client);
+    ::GetWindowRect(hWnd, &bounds);
+    ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&bounds), 2);
+    if (!::EqualRect(&client, &bounds))
+      ::MoveWindow(hWnd, client.left, client.top,
+        client.right-client.left, client.bottom-client.top, TRUE);
   }
 
   LRESULT OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL&) {
-    RECT  rc;
-    GetClientRect(&rc);
-    ::EnumChildWindows(*this,SizeProc,(LPARAM)&rc);
+    // Hidden panes keep their layout cache; embedded controls own the sizes
+    // of their descendants. Fit a hidden pane when it is activated instead.
+    FitPane(GetActiveWnd());
     return 0;
   }
 
@@ -76,6 +81,7 @@ public:
     HWND  hActive=GetActiveWnd();
     if (hActive!=hWnd && hActive!=NULL)
       ::ShowWindow(hActive,SW_HIDE);
+    FitPane(hWnd);
     ::ShowWindow(hWnd,SW_SHOW);
   }
 

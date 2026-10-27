@@ -408,6 +408,15 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 	if (IsFbeTestScenario(L"body-source-transition-runtime"))
 	{
 		FB::Doc* const originalDocument = m_doc;
+		ShowView(BODY);
+		RECT browserHost = {}; ::GetClientRect(m_doc->m_body, &browserHost);
+		::MoveWindow(m_doc->m_body, 0, 0, browserHost.right + 17, browserHost.bottom + 13, FALSE);
+		HWND browserChild = ::GetWindow(m_doc->m_body, GW_CHILD);
+		RECT childBounds = {}, resizedClient = {};
+		::GetClientRect(m_doc->m_body, &resizedClient);
+		if (browserChild) { ::GetWindowRect(browserChild, &childBounds); ::MapWindowPoints(NULL, m_doc->m_body, reinterpret_cast<POINT*>(&childBounds), 2); }
+		const bool bodyBrowserFits = browserChild && ::EqualRect(&childBounds, &resizedClient);
+		m_view.FitPane(m_doc->m_body);
 		const wchar_t* const unicodeMarker = L"\x0413\x0420\x0410\x041D\x042C_UNICODE";
 		// Exercise the actual MSHTML selection -> Scintilla selection -> MSHTML
 		// selection path before the legacy source-edit checks below.  The fixture
@@ -516,8 +525,31 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		std::vector<char> editedSource(static_cast<size_t>(editedLength) + 1);
 		m_source.SendMessage(SCI_GETTEXT, editedLength + 1, reinterpret_cast<LPARAM>(editedSource.data()));
 		const bool editedSourceCurrent = strstr(editedSource.data(), "BODY_SOURCE_EDITED") != NULL;
+		const auto sourceCheckpoint = m_doc->CaptureUndoSavepoints();
+		const bool sourceCheckpointCurrent = sourceCheckpoint.hasRecovery && sourceCheckpoint.recoveryClean &&
+			sourceCheckpoint.recoveryHtml.Find(L"BODY_SOURCE_EDITED") >= 0;
+		m_doc->MarkDocCPIfChanged();
+		const auto unchangedCheckpoint = m_doc->CaptureUndoSavepoints();
+		const bool checkpointReused = unchangedCheckpoint.hasRecovery && unchangedCheckpoint.recoveryClean &&
+			unchangedCheckpoint.recoveryHtml.GetString() == sourceCheckpoint.recoveryHtml.GetString();
+		m_doc->MarkDocCPIfChanged(true);
+		const auto forcedCheckpoint = m_doc->CaptureUndoSavepoints();
+		const bool checkpointForced = forcedCheckpoint.hasRecovery && forcedCheckpoint.recoveryClean &&
+			forcedCheckpoint.recoveryHtml == unchangedCheckpoint.recoveryHtml &&
+			forcedCheckpoint.recoveryHtml.GetString() != unchangedCheckpoint.recoveryHtml.GetString();
 		bool cycles = true;
 		for(int cycle = 0; cycle < 3; ++cycle) { ShowView(BODY); cycles = cycles && !IsSourceActive(); ShowView(SOURCE); cycles = cycles && IsSourceActive(); }
+		ShowView(BODY);
+		MSHTML::IHTMLDocument2Ptr checkpointDocument(m_doc->m_body.Document());
+		MSHTML::IHTMLElementPtr editable(checkpointDocument->all->item(L"fbw_body"));
+		MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"P"));
+		MSHTML::IHTMLElementPtr lastParagraph(paragraphs->item(paragraphs->length - 1));
+		MSHTML::IHTMLTxtRangePtr editRange(MSHTML::IHTMLBodyElementPtr(checkpointDocument->body)->createTextRange());
+		editRange->moveToElementText(lastParagraph); editRange->collapse(VARIANT_FALSE); editRange->pasteHTML(L" checkpoint body edit");
+		ShowView(SOURCE);
+		const auto bodyCheckpoint = m_doc->CaptureUndoSavepoints();
+		const bool bodyCheckpointCurrent = bodyCheckpoint.hasRecovery && bodyCheckpoint.recoveryClean &&
+			bodyCheckpoint.recoveryHtml.Find(L"checkpoint body edit") >= 0 && bodyCheckpoint.recoveryHtml != unchangedCheckpoint.recoveryHtml;
 		const sptr_t preservedSelectionStart = m_source.SendMessage(SCI_GETSELECTIONSTART);
 		const sptr_t preservedSelectionEnd = m_source.SendMessage(SCI_GETSELECTIONEND);
 		m_source.SendMessage(SCI_SELECTALL);
@@ -527,8 +559,10 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 			m_source.SendMessage(SCI_GETLENGTH) > 0 && m_source.SendMessage(SCI_GETSELECTIONSTART) >= 0 && m_source.SendMessage(SCI_GETSELECTIONEND) >= 0;
 		CStringA report;
 		report.Format("source_active=%d\nsource_current=%d\nbody_without_change=%d\nvalid_edit=%d\nedited_source=%d\ncycles=%d\ninvalid_rejected=%d\ninvalid_preserved=%d\nselection_saved=%d\ntitle_selection=%d\ntitle_caret_selection=%d\nannotation_selection=%d\nunicode_inline_selection=%d\ninline_selection=%d\nrepeated_text_selection=%d\ntag_boundary_selection=%d\nparagraph_pair_selection=%d\nnested_section_selection=%d\ncollapsed_caret_selection=%d\nbody_to_source_selection=%d\ndescription_to_source_no_selection=%d\nselection_diagnostics=%s\n", sourceActive, sourceCurrent, bodyWithoutChange, validEditApplied, editedSourceCurrent, cycles, invalidRejected, invalidPreserved, preservedSelectionStart >= 0 && preservedSelectionEnd >= 0, titleSelection, titleCaretSelection, annotationSelection, unicodeInlineSelection, inlineSelection, repeatedTextSelection, tagBoundarySelection, paragraphPairSelection, nestedSectionSelection, collapsedCaretSelection, bodyToSourceTransfersSelection, descriptionToSourceSkipsSelection, static_cast<LPCSTR>(selectionRoundTripDiagnostics));
+		report.AppendFormat("source_checkpoint_current=%d\ncheckpoint_reused=%d\ncheckpoint_forced=%d\nbody_checkpoint_current=%d\n", sourceCheckpointCurrent, checkpointReused, checkpointForced, bodyCheckpointCurrent);
+		report.AppendFormat("body_browser_fits=%d\n", bodyBrowserFits ? 1 : 0);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidPreserved && titleSelection && titleCaretSelection && annotationSelection && unicodeInlineSelection && inlineSelection && repeatedTextSelection && tagBoundarySelection && paragraphPairSelection && nestedSectionSelection && collapsedCaretSelection && bodyToSourceTransfersSelection && descriptionToSourceSkipsSelection ? 0 : 1);
+		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidRejected && invalidPreserved && titleSelection && titleCaretSelection && annotationSelection && unicodeInlineSelection && inlineSelection && repeatedTextSelection && tagBoundarySelection && paragraphPairSelection && nestedSectionSelection && collapsedCaretSelection && bodyToSourceTransfersSelection && descriptionToSourceSkipsSelection && sourceCheckpointCurrent && checkpointReused && checkpointForced && bodyCheckpointCurrent && bodyBrowserFits ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"source-xml-declaration-encoding-runtime"))

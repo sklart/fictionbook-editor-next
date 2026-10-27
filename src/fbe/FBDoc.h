@@ -134,6 +134,7 @@ public:
   void	  ResetSavePoint() { m_body_ver=-1; m_reconcilePasteHistoryClean = false; }
 
 	void MarkDocCP();
+	void MarkDocCPIfChanged(bool force = false);
 	void RestoreCleanIfBodyMatches();
   bool	  DocRelChanged() { 
 	  return m_body_cp!=m_editor.GetVersionNumber() ||

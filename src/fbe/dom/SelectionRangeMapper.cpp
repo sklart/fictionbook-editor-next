@@ -62,7 +62,6 @@ bool SelectionRangeMapper::GetSelectionInfo(MSHTML::IHTMLTxtRangePtr range, MSHT
 	if(!range) return false;
 	int b = 0;
 	int e = 0;
-	bstr_t text = range->text;
 	MSHTML::IHTMLTxtRangePtr tr(range->duplicate());
 	tr->collapse(VARIANT_TRUE);
 	*begin = tr->parentElement();

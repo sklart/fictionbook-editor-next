@@ -675,13 +675,16 @@ CFBEView::~CFBEView()
 	::SendMessage(m_frame, AU::WM_DETACH_FIND_RESULTS_PANE, reinterpret_cast<WPARAM>(this), 0);
 }
 
-LRESULT CFBEView::OnSize(UINT, WPARAM, LPARAM, BOOL&)
+LRESULT CFBEView::OnSize(UINT message, WPARAM wParam, LPARAM lParam, BOOL&)
 {
+	// Let the ActiveX host lay out its browser children before positioning
+	// the overlay. The outer pane container must not resize those descendants.
+	const LRESULT result = DefWindowProc(message, wParam, lParam);
 	// The highlight overlay is a separate non-activating owner popup so it is
 	// not a layered child window (unsupported by Windows 7).  Resize events are
 	// enough to reposition it without a permanent UI polling timer.
 	RefreshSearchHighlights();
-	return 0;
+	return result;
 }
 
 // Search highlighting is deliberately a native overlay.  Styling ranges through

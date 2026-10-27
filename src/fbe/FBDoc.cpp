@@ -309,6 +309,12 @@ void Doc::MarkDocCP() {
 	m_editor.ResetFormCP();
 }
 
+void Doc::MarkDocCPIfChanged(bool force) {
+	// An unchanged version already has the recovery HTML snapshot. A replaced
+	// Source document must refresh it even if MSHTML reused a version number.
+	if (force || !m_hasRecoveryBodyHtml || DocRelChanged()) MarkDocCP();
+}
+
 void Doc::RestoreCleanIfBodyMatches() {
 	if (!m_reconcilePasteHistoryClean) return;
 	CString current;

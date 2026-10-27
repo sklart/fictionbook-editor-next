@@ -119,10 +119,10 @@ void BodySourceSelectionCoordinator::MapBodySelectionToSource(FB::Doc& document,
 	MSHTML::IHTMLElementPtr beginElement, endElement;
 	document.m_body.GetSelectionInfo((MSHTML::IHTMLElementPtr*)(&beginElement),
 		(MSHTML::IHTMLElementPtr*)(&endElement), &beginCharacter, &endCharacter, 0);
-	if(beginElement == endElement && selection.BodyRange())
+	const CString selectedText(selection.BodyRange() ? static_cast<const wchar_t*>(selection.BodyRange()->text) : L"");
+	if(beginElement == endElement && !selectedText.IsEmpty())
 	{
-		const CString text((const wchar_t*)selection.BodyRange()->text);
-		if(!text.IsEmpty()) endCharacter = beginCharacter + text.GetLength();
+		endCharacter = beginCharacter + selectedText.GetLength();
 	}
 	if(profiler) profiler->Mark("Body selection extraction");
 	U::DomPath beginPath, endPath;
@@ -153,7 +153,6 @@ void BodySourceSelectionCoordinator::MapBodySelectionToSource(FB::Doc& document,
 	bool hasSelectionText = false;
 	if(selection.BodyRange())
 	{
-		const CString selectedText((const wchar_t*)selection.BodyRange()->text);
 		hasSelectionText = !selectedText.IsEmpty();
 		if(!selectedText.IsEmpty())
 		{

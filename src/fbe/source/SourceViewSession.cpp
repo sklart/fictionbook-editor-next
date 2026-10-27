@@ -63,7 +63,7 @@ EditorSourceOperationResult SourceViewSession::CommitSourceDocument()
 	// A replaced XML snapshot cannot hit the serialization cache on the next entry.
 	if (m_serializedSourceCache.xml != m_savedXml)
 		m_serializedSourceCache = SourceSerializedTextCache();
-	m_document->MarkDocCP();
+	m_document->MarkDocCPIfChanged(m_documentChanged);
 	return EditorSourceOperationResult::Success;
 }
 
@@ -120,6 +120,6 @@ EditorSourceOperationResult SourceViewSession::PrepareSourceDocument(EditorView 
 	}
 	m_source.SendMessage(SCI_EMPTYUNDOBUFFER);
 	if(phaseProfiler) phaseProfiler->Mark("SCI_EMPTYUNDOBUFFER");
-	m_document->MarkDocCP();
+	m_document->MarkDocCPIfChanged();
 	return EditorSourceOperationResult::Success;
 }
