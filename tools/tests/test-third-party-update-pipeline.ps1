@@ -24,7 +24,7 @@ function Get-DependencyEntry([string]$Name) {
 }
 function Get-DependencyUpdateInfo($Dependency) {
     [pscustomobject]@{Status=$env:FBE_PIPE_STATUS; LocalVersion='1.0.0'; RemoteVersion='1.0.1';
-        LocalCommit=('1' * 40); RemoteCommit=('2' * 40); RemoteTag='v1.0.1'; RemoteSource='synthetic'}
+        LocalCommit=$(if ($env:FBE_PIPE_STATUS -eq 'UpToDate') { '2' * 40 } else { '1' * 40 }); RemoteCommit=('2' * 40); RemoteTag='v1.0.1'; RemoteSource='synthetic'}
 }
 function Invoke-GitCapture([string]$WorkingDirectory, [string[]]$Arguments) {
     Add-Content -LiteralPath $env:FBE_PIPE_LOG -Value ("git|$WorkingDirectory|" + ($Arguments -join ' '))
@@ -33,6 +33,7 @@ function Invoke-GitCapture([string]$WorkingDirectory, [string[]]$Arguments) {
         'rev-parse' { if ($script:updatedHead) { $script:updatedHead } else { $env:FBE_PIPE_HEAD } }
         'checkout' { $script:updatedHead = '2' * 40 }
         'fetch' { }
+        'add' { }
         default { throw "Unexpected Git operation: $Arguments" }
     }
 }
@@ -47,12 +48,14 @@ param($Configuration, $PlatformToolset)
 Add-Content -LiteralPath $env:FBE_PIPE_LOG -Value "test|$Configuration|$PlatformToolset"
 exit ([int]$env:FBE_PIPE_TEST_EXIT)
 '@ | Set-Content -LiteralPath (Join-Path $tests 'test-image-import-native.ps1') -Encoding utf8
+Copy-Item -LiteralPath (Join-Path $buildScripts 'build-libheif.ps1') -Destination (Join-Path $buildScripts 'build-hunspell.ps1')
+Copy-Item -LiteralPath (Join-Path $tests 'test-image-import-native.ps1') -Destination (Join-Path $tests 'test-spellcheck-dictionaries.ps1')
 $variables = @('FBE_PIPE_LOG', 'FBE_PIPE_STATUS', 'FBE_PIPE_HEAD', 'FBE_PIPE_DIRTY', 'FBE_PIPE_BUILD_EXIT', 'FBE_PIPE_TEST_EXIT')
 $saved = @{}
 foreach ($name in $variables) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
 $passed = 0
 try {
-    foreach ($dependency in 'libheif', 'aom') {
+    foreach ($dependency in 'libheif', 'aom', 'hunspell') {
         $directory = Join-Path $testRoot "third_party/$dependency"
         New-Item -ItemType Directory -Force -Path $directory | Out-Null
         Set-Content -LiteralPath (Join-Path $directory '.git') -Value 'synthetic marker'
@@ -62,6 +65,13 @@ try {
         @{Name='aom shared route'; Script='apply-third-party-update-and-test.ps1'; Dependency='aom'; Builds=1; Checkout=1},
         @{Name='SkipApply'; Script='apply-third-party-update-and-test.ps1'; Extra='-SkipApply'; Builds=1; Checkout=0},
         @{Name='WhatIf'; Script='apply-third-party-update-and-test.ps1'; Extra='-WhatIf'; Builds=0; Checkout=0},
+        @{Name='hunspell route'; Script='apply-third-party-update-and-test.ps1'; Dependency='hunspell'; Builds=1; Checkout=1; Hunspell=$true},
+        @{Name='stage already updated HEAD'; Script='apply-third-party-update.ps1'; Head=('2' * 40); Extra='-Stage'; Builds=0; Checkout=0; Adds=1},
+        @{Name='repeat clean application'; Script='apply-third-party-update.ps1'; Status='UpToDate'; Head=('2' * 40); Builds=0; Checkout=0},
+        @{Name='current dirty source'; Script='apply-third-party-update.ps1'; Status='UpToDate'; Head=('2' * 40); Dirty='1'; Exit=1; Builds=0; Checkout=0},
+        @{Name='current unexpected HEAD'; Script='apply-third-party-update.ps1'; Status='UpToDate'; Head=('3' * 40); Exit=1; Builds=0; Checkout=0},
+        @{Name='current build unexpected HEAD'; Script='update-third-party-dependency.ps1'; Status='UpToDate'; Head=('3' * 40); Extra='-AllowCurrentVersion'; Exit=1; Builds=0; Checkout=0},
+        @{Name='current build dirty source'; Script='update-third-party-dependency.ps1'; Status='UpToDate'; Head=('2' * 40); Dirty='1'; Extra='-AllowCurrentVersion'; Exit=1; Builds=0; Checkout=0},
         @{Name='already updated HEAD'; Script='apply-third-party-update-and-test.ps1'; Head=('2' * 40); Builds=1; Checkout=0},
         @{Name='dirty source'; Script='apply-third-party-update-and-test.ps1'; Dirty='1'; Exit=1; Builds=0; Checkout=0},
         @{Name='unindexed local commit'; Script='apply-third-party-update-and-test.ps1'; Head=('3' * 40); Exit=1; Builds=0; Checkout=0},
@@ -73,7 +83,7 @@ try {
         @{Name='test failure'; Script='apply-third-party-update-and-test.ps1'; Extra='-SkipApply'; TestExit='29'; Exit=29; Builds=1; Checkout=0},
         @{Name='full libheif route'; Script='update-third-party-dependency.ps1'; Builds=1; Checkout=1},
         @{Name='full WhatIf'; Script='update-third-party-dependency.ps1'; Extra='-WhatIf'; Builds=0; Checkout=0},
-        @{Name='current build only'; Script='update-third-party-dependency.ps1'; Status='UpToDate'; Extra='-AllowCurrentVersion'; Builds=1; Checkout=0},
+        @{Name='current build only'; Script='update-third-party-dependency.ps1'; Status='UpToDate'; Head=('2' * 40); Extra='-AllowCurrentVersion'; Builds=1; Checkout=0},
         @{Name='current no-op'; Script='update-third-party-dependency.ps1'; Status='UpToDate'; Builds=0; Checkout=0}
     )) {
         $env:FBE_PIPE_LOG = Join-Path $testRoot 'calls.log'
@@ -84,20 +94,24 @@ try {
         $env:FBE_PIPE_BUILD_EXIT = if ($case.BuildExit) { $case.BuildExit } else { '0' }
         $env:FBE_PIPE_TEST_EXIT = if ($case.TestExit) { $case.TestExit } else { '0' }
         $dependency = if ($case.Dependency) { $case.Dependency } else { 'libheif' }
-        $command = "& '$(Join-Path $buildScripts $case.Script)' -Dependency $dependency -Configuration Release -Confirm:`$false $($case.Extra); exit `$LASTEXITCODE"
+        $configurationArg = if ($case.Script -eq 'apply-third-party-update.ps1') { '' } else { '-Configuration Release' }
+        $command = "try { & '$(Join-Path $buildScripts $case.Script)' -Dependency $dependency $configurationArg -Confirm:`$false $($case.Extra); exit `$LASTEXITCODE } catch { Write-Error `$_; exit 1 }"
         & $hostPath -NoProfile -Command $command *> (Join-Path $testRoot 'output.log')
         $actualExit = $LASTEXITCODE
         $expectedExit = if ($case.Exit) { $case.Exit } else { 0 }
         $calls = @(Get-Content -LiteralPath $env:FBE_PIPE_LOG)
         $expectedTests = if ($case.ContainsKey('Tests')) { $case.Tests } else { $case.Builds }
+        $expectedAdds = if ($case.Adds) { $case.Adds } else { 0 }
+        $testCall = if ($case.Hunspell) { 'test|Release|' } else { 'test|Release|v143' }
         if ($actualExit -ne $expectedExit -or @($calls | Where-Object { $_ -eq 'build|Release|v143' }).Count -ne $case.Builds -or
-            @($calls | Where-Object { $_ -eq 'test|Release|v143' }).Count -ne $expectedTests -or
+            @($calls | Where-Object { $_ -eq $testCall }).Count -ne $expectedTests -or
             @($calls | Where-Object { $_ -like '*|checkout *' }).Count -ne $case.Checkout -or
-            @($calls | Where-Object { $_ -like '*|submodule update*' }).Count) {
+            @($calls | Where-Object { $_ -like '*|submodule update*' }).Count -or
+            @($calls | Where-Object { $_ -like '*|add -- *' }).Count -ne $expectedAdds) {
             Get-Content -LiteralPath (Join-Path $testRoot 'output.log') | Write-Host
             throw "Pipeline regression: $($case.Name); exit=$actualExit; calls=$($calls -join ', ')"
         }
-        if (@($calls | Where-Object { $_ -like 'git|*' -and $_ -notlike "git|*third_party*$dependency|*" }).Count) {
+        if (@($calls | Where-Object { $_ -like 'git|*' -and $_ -notlike "git|*third_party*$dependency|*" -and $_ -notlike "git|*|add -- third_party/$dependency" }).Count) {
             throw "Unexpected dependency mutation in $($case.Name)"
         }
         $passed++

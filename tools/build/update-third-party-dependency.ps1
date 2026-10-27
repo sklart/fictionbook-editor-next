@@ -163,6 +163,22 @@ if ($dependencyEntry.UpdateMode -ne 'GitSubmodule') {
     }
 }
 
+# The indexed gitlink is the intended source when rebuilding the current version.
+# A checked-out submodule can differ from it even when the version report says UpToDate.
+if ($dependencyEntry.UpdateMode -eq 'GitSubmodule' -and $updateInfo.Status -eq 'UpToDate' -and $AllowCurrentVersion -and -not $ForceApply) {
+    $path = $dependencyEntry.LocalPath
+    if (-not (Test-Path -LiteralPath (Join-Path $path '.git'))) {
+        throw "Submodule is not initialized: $($dependencyEntry.RelativePath)."
+    }
+    $dirty = @(Invoke-GitCapture -WorkingDirectory $path -Arguments @('status','--porcelain'))
+    if ($dirty.Count -gt 0) { throw "Submodule contains local changes: $($dependencyEntry.RelativePath)." }
+    $actual = ([string](Invoke-GitCapture -WorkingDirectory $path -Arguments @('rev-parse','HEAD') | Select-Object -First 1)).Trim()
+    if (-not $updateInfo.LocalCommit -or -not $updateInfo.RemoteCommit -or
+        $actual -ne $updateInfo.LocalCommit -or $actual -ne $updateInfo.RemoteCommit) {
+        throw "Submodule HEAD must match both the indexed gitlink and target commit: $($dependencyEntry.RelativePath)."
+    }
+}
+
 if ($script:IsWhatIfMode) {
     Write-Host ""
     if ($dependencyEntry.UpdateMode -eq 'GitSubmodule') {

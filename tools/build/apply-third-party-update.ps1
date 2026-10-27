@@ -39,10 +39,6 @@ function Apply-GitSubmoduleUpdate {
     param([Parameter(Mandatory)]$DependencyEntry)
 
     $info = Get-DependencyUpdateInfo -Dependency $DependencyEntry
-    if ($info.Status -eq 'UpToDate' -and -not $Force) {
-        Write-Host ("{0} is already current ({1})." -f $DependencyEntry.DisplayName,$info.RemoteVersion)
-        return
-    }
     if ($info.Status -notin @('UpToDate', 'UpdateAvailable', 'NotInstalled') -and -not $Force) {
         throw "Dependency status '$($info.Status)' requires review before applying $($DependencyEntry.DisplayName)."
     }
@@ -67,6 +63,9 @@ function Apply-GitSubmoduleUpdate {
 
     $previousCommit = ([string](Invoke-GitCapture -WorkingDirectory $localPath -Arguments @('rev-parse','HEAD') | Select-Object -First 1)).Trim().ToLowerInvariant()
     if ($previousCommit -eq $info.RemoteCommit -and -not $Force) {
+        if ($Stage) {
+            Invoke-GitCapture -WorkingDirectory $repoRoot -Arguments @('add','--',$relativePath) | Out-Null
+        }
         Write-Host "$relativePath is already at the requested upstream commit; no checkout repeated."
         return
     }

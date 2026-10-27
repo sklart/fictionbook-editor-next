@@ -30,6 +30,8 @@ if (-not $SkipLocalizationPreflight) {
     & (Join-Path $repoRoot 'tools\tests\test-localization-preflight.ps1')
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
+& (Join-Path $repoRoot 'tools\tests\test-third-party-update-pipeline.ps1')
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 . (Join-Path $PSScriptRoot 'editor-runtime-helpers.ps1')
 $trackedEditorRuntimeSnapshot = Get-TrackedEditorRuntimeDllSnapshot -RepositoryRoot $repoRoot
 $outputDir = Join-Path $repoRoot "out\$Configuration"
