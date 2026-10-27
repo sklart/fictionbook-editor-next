@@ -960,6 +960,23 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
         DWORD written=0; output.Write(report,static_cast<DWORD>(report.GetLength()),&written); output.Flush(); output.Close();
         ::PostQuitMessage(passed ? 0 : 1); return 0;
     }
+    if (IsFbeTestScenario(L"diagnostic-crash-retention")) {
+        // Controlled real process termination; never reachable without both
+        // the batch runtime scenario and FBE_NEXT_TEST_MODE guard.
+        StartupTrace::HResult(L"clipboard",L"CP297",E_UNEXPECTED,L"stage=CP314; operation-stage=CP402");
+        ::SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+        ::RaiseException(EXCEPTION_ACCESS_VIOLATION,EXCEPTION_NONCONTINUABLE,0,NULL);
+        ::PostQuitMessage(1);return 0;
+    }
+    if (IsFbeTestScenario(L"diagnostic-trace-preference")) {
+        wchar_t expected[2]={},toggle[2]={};
+        ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_TRACE_EXPECTED",expected,_countof(expected));
+        ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_TRACE_TOGGLE",toggle,_countof(toggle));
+        DiagnosticDialog dialog(m_diagnostic_commands,&m_ui_watchdog);
+        const bool passed=dialog.RunTracePreferenceTest(m_hWnd,expected[0]==L'1',toggle[0]==L'1');
+        const CStringA report=dialog.TracePreferenceDetails();DWORD written=0;
+        output.Write(report,static_cast<DWORD>(report.GetLength()),&written);output.Close();::PostQuitMessage(passed ? 0 : 1);return 0;
+    }
 	if (IsFbeTestScenario(L"diagnostic-dialog-runtime"))
 	{
 		DiagnosticDialog dialog(m_diagnostic_commands,&m_ui_watchdog);

@@ -3,6 +3,8 @@
     bool damagedReview=false;
     std::shared_ptr<const StartupTrace::DiagnosticPackageSnapshot> testSnapshot;
     bool testMode=false, testPassed=true;
+    bool tracePreferenceTest=false, tracePreferenceDone=false, traceExpected=false, traceToggle=false;
+    bool traceCurrent=false, traceStored=false, traceUnchanged=false, traceControl=false;
     unsigned int testPhase=0, heartbeat=0;
     bool cancelledReady=false, closeDeferred=false;
     std::shared_ptr<std::atomic_bool> testReviewGate;
@@ -68,6 +70,18 @@
     void TestTick()
     {
         if(!testMode) return;
+        if(tracePreferenceTest) {
+            if(job) return;
+            traceCurrent=StartupTrace::Enabled()==traceExpected;
+            const CString expectedLabel=Text(traceExpected ? L"extended" : L"normal_mode",traceExpected ? L"Extended trace" : L"Normal");
+            wchar_t displayed[2048]={};::GetDlgItemText(window,State,displayed,_countof(displayed));
+            traceControl=CString(displayed).Find(expectedLabel)>=0;
+            if(traceToggle) ::SendMessage(window,WM_COMMAND,MAKEWPARAM(Toggle,BN_CLICKED),reinterpret_cast<LPARAM>(::GetDlgItem(window,Toggle)));
+            traceStored=StartupTrace::IsEnabledByStoredNextLaunchPreference()==(traceToggle ? !traceExpected : traceExpected);
+            traceUnchanged=StartupTrace::Enabled()==traceExpected;
+            tracePreferenceDone=traceCurrent && traceStored && traceUnchanged && traceControl;
+            ::SendMessage(window,WM_CLOSE,0,0);return;
+        }
         if(testPhase==0 && job && job->work==Work::ReviewPreview) {
             ++reviewHeartbeat;
             if(reviewHeartbeat==3) {
@@ -141,6 +155,13 @@
 public:
     CStringA RuntimeTestDetails() const {
         CStringA result(CW2A(testFailure,CP_UTF8)), state; state.Format("\ndamaged_review=%d\nautomatic_review=%d\nreview_worker_thread=%d\nreview_stale_rejected=%d\nreview_write_failed=%d\nphase=%u\nheartbeat=%u\ncancel_ready=%d\nclose_deferred=%d\n",damagedReview,automaticReview,reviewWorkerThread,staleRejected,reviewWriteFailed,testPhase,heartbeat,cancelledReady,closeDeferred); return result+state;
+    }
+    CStringA TracePreferenceDetails() const {
+        CStringA result;result.Format("current_mode=%d\nstored_preference=%d\nunchanged_until_restart=%d\nmode_control=%d\nresult=%s\n",traceCurrent,traceStored,traceUnchanged,traceControl,tracePreferenceDone ? "PASS" : "FAIL");return result;
+    }
+    bool RunTracePreferenceTest(HWND owner,bool expected,bool toggle) {
+        wchar_t guard[2]={};if(::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE",guard,2)!=1 || guard[0]!=L'1') return false;
+        testMode=true;tracePreferenceTest=true;traceExpected=expected;traceToggle=toggle;Show(owner);return tracePreferenceDone;
     }
     bool RunRuntimeTest(HWND owner)
     {
