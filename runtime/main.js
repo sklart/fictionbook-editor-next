@@ -649,7 +649,8 @@ function BinaryIsReferenced(id)
   var element=elements[i];
   if(!element) continue;
   // A thumbnail is presentation owned by this same row, not an FB2 reference.
-  if(element.getAttribute && String(element.getAttribute("data-description-preview")) == "true") continue;
+  if(element.getAttribute && String(element.getAttribute("data-description-preview")) == "true" &&
+     element.parentNode && element.parentNode.parentNode == document.all.binobj) continue;
   var href=element.getAttribute ? element.getAttribute("href") : null;
   var src=element.getAttribute ? element.getAttribute("src") : null;
   if(href == null && element.href) href=element.href;

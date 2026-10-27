@@ -73,6 +73,10 @@ if(fixtures[fixtureIndex]=="full") {
  binaries._descriptionClosed=false;DescriptionShowSection(binaries);
  var addedRow=rows[rows.length-1];
  assert(addedRow.getElementsByTagName("IMG")[0].getAttribute("src"),"Attachment thumbnail populated");
+ var bodyReference=document.createElement("IMG");bodyReference.src="fbw-internal:#"+addedId;
+ bodyReference.setAttribute("data-description-preview","true");document.getElementById("fbw_body").appendChild(bodyReference);
+ assert(BinaryIsReferenced(addedId),"Body references must remain protected even with a preview-like attribute");
+ bodyReference.removeNode(true);
  assert(!BinaryIsReferenced(addedId),"Own thumbnail must not count as a metadata/body reference");
  Remove(addedRow);assert(rows.length==count,"Remove unreferenced binary with a visible thumbnail");
  assert(serialize()==serializedBefore,"Binary add/remove/rename restores original serialized data");
