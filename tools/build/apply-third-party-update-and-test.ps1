@@ -6,7 +6,7 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High")]
 param(
     [Parameter(Mandatory)]
-    [ValidateSet("scintilla", "lexilla", "pcre2", "hunspell", "aom", "wtl")]
+    [ValidateSet("scintilla", "lexilla", "pcre2", "hunspell", "aom", "libheif", "wtl")]
     [string]$Dependency,
 
     [string]$SourcePath,
@@ -133,7 +133,7 @@ function Invoke-HunspellPipeline {
     }
 
     Invoke-ScriptStep -Label (Get-ThirdPartyText -Base64 "0J/QtdGA0LXRgdCx0L7RgNC60LAgSHVuc3BlbGw=") -Action {
-        & (Join-Path $PSScriptRoot "build-hunspell.ps1") -Configuration $Configuration
+        & (Join-Path $PSScriptRoot "build-hunspell.ps1") -Configuration $Configuration -PlatformToolset v143
         if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
         }
@@ -147,8 +147,8 @@ function Invoke-HunspellPipeline {
     }
 }
 
-function Invoke-AomPipeline {
-    Invoke-ScriptStep -Label "Раскладка обновления libaom" -Action { Invoke-ApplyStep }
+function Invoke-HeifPipeline {
+    Invoke-ScriptStep -Label "Раскладка обновления $Dependency" -Action { Invoke-ApplyStep }
 
     if ($script:IsWhatIfMode) {
         Write-Host "WhatIf активен: сборка libheif и native smoke пропущены."
@@ -163,7 +163,7 @@ function Invoke-AomPipeline {
     }
 
     Invoke-ScriptStep -Label "Native smoke ImageImport" -Action {
-        & (Join-Path $repoRoot "tools\tests\test-image-import-native.ps1") -Configuration $Configuration
+        & (Join-Path $repoRoot "tools\tests\test-image-import-native.ps1") -Configuration $Configuration -PlatformToolset v143
         if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
         }
@@ -198,7 +198,8 @@ switch ($Dependency) {
     "lexilla" { Invoke-ScintillaPipeline }
     "pcre2" { Invoke-Pcre2Pipeline }
     "hunspell" { Invoke-HunspellPipeline }
-    "aom" { Invoke-AomPipeline }
+    "aom" { Invoke-HeifPipeline }
+    "libheif" { Invoke-HeifPipeline }
     "wtl" { Invoke-WtlPipeline }
     default { throw (Format-ThirdPartyText "0J3QtdC40LfQstC10YHRgtC90YvQuSBvcmNoZXN0cmF0b3Ig0LTQu9GPINC30LDQstC40YHQuNC80L7RgdGC0LggezB9" $Dependency) }
 }

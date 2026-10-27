@@ -39,9 +39,8 @@ function Apply-GitSubmoduleUpdate {
     param([Parameter(Mandatory)]$DependencyEntry)
 
     $info = Get-DependencyUpdateInfo -Dependency $DependencyEntry
-    if ($info.Status -eq 'UpToDate' -and -not $Force) {
-        Write-Host ("{0} is already current ({1})." -f $DependencyEntry.DisplayName,$info.RemoteVersion)
-        return
+    if ($info.Status -notin @('UpToDate', 'UpdateAvailable', 'NotInstalled') -and -not $Force) {
+        throw "Dependency status '$($info.Status)' requires review before applying $($DependencyEntry.DisplayName)."
     }
     if (-not $info.RemoteCommit) { throw "No tagged upstream commit resolved for $($DependencyEntry.DisplayName)." }
 
@@ -50,7 +49,11 @@ function Apply-GitSubmoduleUpdate {
     $operation = "checkout $($info.RemoteTag) ($($info.RemoteCommit)) in submodule $relativePath"
     if (-not $PSCmdlet.ShouldProcess($relativePath,$operation)) { return }
 
-    Invoke-GitCapture -WorkingDirectory $repoRoot -Arguments @('submodule','update','--init','--',$relativePath) | Out-Null
+    # Never run submodule update on an initialized checkout: it would first
+    # reset a locally advanced HEAD to the indexed gitlink, before dirty checks.
+    if (-not (Test-Path -LiteralPath (Join-Path $localPath '.git'))) {
+        Invoke-GitCapture -WorkingDirectory $repoRoot -Arguments @('submodule','update','--init','--',$relativePath) | Out-Null
+    }
     if (-not (Test-Path -LiteralPath $localPath)) { throw "Submodule directory was not initialized: $localPath" }
 
     $dirty = @(Invoke-GitCapture -WorkingDirectory $localPath -Arguments @('status','--porcelain'))
@@ -59,7 +62,17 @@ function Apply-GitSubmoduleUpdate {
     }
 
     $previousCommit = ([string](Invoke-GitCapture -WorkingDirectory $localPath -Arguments @('rev-parse','HEAD') | Select-Object -First 1)).Trim().ToLowerInvariant()
-    Invoke-GitCapture -WorkingDirectory $localPath -Arguments @('fetch','--tags','--force','origin') | Out-Null
+    if ($previousCommit -eq $info.RemoteCommit -and -not $Force) {
+        if ($Stage) {
+            Invoke-GitCapture -WorkingDirectory $repoRoot -Arguments @('add','--',$relativePath) | Out-Null
+        }
+        Write-Host "$relativePath is already at the requested upstream commit; no checkout repeated."
+        return
+    }
+    if ($previousCommit -ne $info.LocalCommit -and -not $Force) {
+        throw "Submodule HEAD differs from the indexed gitlink: $relativePath. Review the local commit before applying an update."
+    }
+    Invoke-GitCapture -WorkingDirectory $localPath -Arguments @('fetch','--tags','origin') | Out-Null
     Invoke-GitCapture -WorkingDirectory $localPath -Arguments @('checkout','--detach',$info.RemoteCommit) | Out-Null
     $actual = ([string](Invoke-GitCapture -WorkingDirectory $localPath -Arguments @('rev-parse','HEAD') | Select-Object -First 1)).Trim().ToLowerInvariant()
     if ($actual -ne $info.RemoteCommit.ToLowerInvariant()) {

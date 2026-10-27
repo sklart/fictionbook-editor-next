@@ -3,7 +3,7 @@
 > Отдельная справка о служебных сценариях. Базовые команды сборки находятся в [building.md](../building.md).
 
 Для контроля upstream-обновлений исходников `Scintilla`, `Lexilla`, `PCRE2`
-и `Hunspell`
+и `Hunspell`, а также `libheif` и `libaom`
 добавлены отдельные сервисные сценарии:
 
 ```powershell
@@ -13,6 +13,7 @@
 .\tools\build\apply-third-party-update-and-test.ps1 -Dependency pcre2
 .\tools\build\build-hunspell.ps1
 .\tools\build\update-third-party-dependency.ps1 -Dependency aom
+.\tools\build\update-third-party-dependency.ps1 -Dependency libheif
 ```
 
 Первый сценарий показывает локальную и удалённую версии и сообщает, где
@@ -44,7 +45,17 @@
 - `scintilla` / `lexilla` -> `build-scintilla.ps1` + `test-scintilla.ps1`;
 - `pcre2` -> `build-pcre2.ps1` + `test-pcre2.ps1` +
   `test-pcre2-wrapper.ps1` + `test-pcre2-replace.ps1`;
-- `hunspell` -> `build-hunspell.ps1` + `test-spellcheck-dictionaries.ps1`.
+- `hunspell` -> `build-hunspell.ps1` + `test-spellcheck-dictionaries.ps1`;
+- `libheif` / `aom` -> общий `build-libheif.ps1` + `test-image-import-native.ps1`
+  (Release Win32, v143 / VC Tools 14.44).
+
+Для `libheif` меняется только gitlink `third_party/libheif`: существующие libaom
+и libde265 пересобираются как зависимости, но их версии не обновляются.
+Git-подмодули обновляются по официальным тегам без распаковки ZIP и подмены
+vendor-деревьев. Для уже применённого обновления можно использовать
+`apply-third-party-update-and-test.ps1 -Dependency libheif -SkipApply`.
+Dirty-файлы и неиндексированный локальный HEAD требуют отдельного рассмотрения;
+инициализированный подмодуль не возвращается к старому gitlink перед проверкой.
 
 Для безопасной dry-run проверки orchestration-потока также можно использовать
 `-WhatIf`.
@@ -57,6 +68,7 @@ test`, используйте:
 .\tools\build\update-third-party-dependency.ps1 -Dependency lexilla
 .\tools\build\update-third-party-dependency.ps1 -Dependency pcre2
 .\tools\build\update-third-party-dependency.ps1 -Dependency hunspell
+.\tools\build\update-third-party-dependency.ps1 -Dependency libheif
 ```
 
 Этот сценарий сам:
@@ -72,6 +84,12 @@ test`, используйте:
 - `-ForceDownload` — перескачать архив заново;
 - `-ForceApply` — разрешить повторную раскладку даже для той же версии;
 - `-WhatIf` — безопасно посмотреть, что именно сценарий собирается сделать.
+
+Изолированные тесты orchestration без сети и настоящих build/apply операций:
+
+```powershell
+.\tools\tests\test-third-party-update-pipeline.ps1
+```
 
 
 ## Ограничения
