@@ -360,7 +360,7 @@
 		<input type="text" maxlength="256" id="tiKwd" class="wide" value="{$cur/f:keywords}"/><br/>
 	  </xsl:if>
 	  <label unselectable="on"><xsl:value-of select="$IDS_DATE_TEXT"/></label>
-	  <input type="text" maxlength="256" id="tiDate" value="{$cur/f:date}"/>
+	  <input type="text" maxlength="256" id="tiDate" data-fbe-date-present="{count($cur/f:date)}" value="{$cur/f:date}"/>
 	  <label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label>
 	  <input type="text" maxlength="256" id="tiDateVal" value="{$cur/f:date/@value}"/><br/>
       <fieldset id="tiCover" unselectable="on" class="kid">
@@ -468,7 +468,7 @@
 		<label unselectable="on"><xsl:value-of select="$IDS_KEYWORDS"/></label>
 		<input type="text" maxlength="256" id="stiKwd" class="wide" value="{$cur/f:keywords}"/><br/>
 		<label unselectable="on"><xsl:value-of select="$IDS_DATE_TEXT"/></label>
-		<input type="text" maxlength="256" id="stiDate" value="{$cur/f:date}"/>
+		<input type="text" maxlength="256" id="stiDate" data-fbe-date-present="{count($cur/f:date)}" value="{$cur/f:date}"/>
 		<label unselectable="on" style="width:6.4em"><xsl:value-of select="$IDS_DATE_VALUE"/></label>
 		<input type="text" maxlength="256" id="stiDateVal" value="{$cur/f:date/@value}"/><br/>
 	    <fieldset id="stiCover" unselectable="on" class="kid">

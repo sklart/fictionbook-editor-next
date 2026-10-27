@@ -2439,17 +2439,17 @@ static void ApplyRuntimeBodyColors(MSHTML::IHTMLDocument2Ptr document)
 	const CString descriptionWindow = CssColor(ThemeManager::WindowColor());
 	const CString descriptionControl = CssColor(ThemeManager::ControlColor());
 	const CString descriptionBorder = CssColor(ThemeManager::BorderColor());
-	css.AppendFormat(L"#fbw_desc{color:%s;background:%s;}"
-		L"#fbw_desc input,#fbw_desc textarea,#fbw_desc select,#fbw_desc div.float{color:%s;background:%s;border-color:%s;}"
-		L"#fbw_desc button,#fbw_desc .description-section-toggle{color:%s;background:%s;border-color:%s;}"
-		L"#fbw_desc fieldset{border-color:%s;}",
+	css.AppendFormat(L"div#fbw_desc{color:%s;background:%s;}"
+		L"div#fbw_desc input,div#fbw_desc textarea,div#fbw_desc select,div#fbw_desc div.float{color:%s;background:%s;border-color:%s;}"
+		L"div#fbw_desc button,div#fbw_desc .description-section-toggle{color:%s;background:%s;border-color:%s;}"
+		L"div#fbw_desc fieldset{border-color:%s;}",
 		descriptionText.GetString(), descriptionWindow.GetString(),
 		descriptionText.GetString(), descriptionWindow.GetString(), descriptionBorder.GetString(),
 		descriptionText.GetString(), descriptionControl.GetString(), descriptionBorder.GetString(), descriptionBorder.GetString());
-	css.AppendFormat(L"#fbw_desc input:disabled,#fbw_desc button:disabled{color:%s;}"
-		L"#fbw_desc button:hover{background:%s;}"
-		L"#fbw_desc input:focus,#fbw_desc select:focus,#fbw_desc textarea:focus,#fbw_desc button:focus{outline-color:%s;}"
-		L"#fbw_desc .description-invalid{border-color:%s;}#fbw_desc .description-validation{color:%s;}",
+	css.AppendFormat(L"div#fbw_desc input:disabled,div#fbw_desc button:disabled{color:%s;}"
+		L"div#fbw_desc button:hover{background:%s;}"
+		L"div#fbw_desc input:focus,div#fbw_desc select:focus,div#fbw_desc textarea:focus,div#fbw_desc button:focus{outline-color:%s;}"
+		L"div#fbw_desc .description-invalid{border-color:%s;}div#fbw_desc .description-validation{color:%s;}",
 		CssColor(ThemeManager::DisabledTextColor()).GetString(), CssColor(ThemeManager::HoverColor()).GetString(),
 		CssColor(ThemeManager::FocusColor()).GetString(), CssColor(ThemeManager::WarningColor()).GetString(),
 		CssColor(ThemeManager::WarningColor()).GetString());

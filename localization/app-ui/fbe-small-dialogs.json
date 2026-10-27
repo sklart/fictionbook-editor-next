@@ -42,6 +42,8 @@
   ],
   "resourceType": "DIALOGEX",
   "strings": {
+    "fbe.description.add_source": {"resource":"IDD_SETTINGS_GENERAL","kind":"VALUE","targetId":"","translations":{"en-US":"Add source work","ru-RU":"Добавить исходное произведение","uk-UA":"Додати вихідний твір","de-DE":"Originalwerk hinzufügen","fr-FR":"Ajouter l’œuvre source","es-ES":"Añadir obra original","it-IT":"Aggiungi opera originale","pl-PL":"Dodaj utwór źródłowy","pt-PT":"Adicionar obra original","nl-NL":"Bronwerk toevoegen","cs-CZ":"Přidat původní dílo","bg-BG":"Добави оригинално произведение"}},
+
     "fbe.description.change_cover": {"resource":"IDD_SETTINGS_GENERAL","kind":"VALUE","targetId":"","translations":{"en-US":"Change cover","ru-RU":"Изменить обложку","uk-UA":"Змінити обкладинку","de-DE":"Cover ändern","fr-FR":"Changer la couverture","es-ES":"Cambiar portada","it-IT":"Cambia copertina","pl-PL":"Zmień okładkę","pt-PT":"Alterar capa","nl-NL":"Omslag wijzigen","cs-CZ":"Změnit obálku","bg-BG":"Промени корицата"}},
 
     "fbe.description.add_author": {"resource":"IDD_SETTINGS_GENERAL","kind":"VALUE","targetId":"","translations":{"en-US":"Add author","ru-RU":"Добавить автора","uk-UA":"Додати автора","de-DE":"Autor hinzufügen","fr-FR":"Ajouter un auteur","es-ES":"Añadir autor","it-IT":"Aggiungi autore","pl-PL":"Dodaj autora","pt-PT":"Adicionar autor","nl-NL":"Auteur toevoegen","cs-CZ":"Přidat autora","bg-BG":"Добави автор"}},

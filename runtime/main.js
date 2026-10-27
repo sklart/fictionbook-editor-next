@@ -296,9 +296,10 @@ function DescriptionValidate()
  for(var i=0; i<inputs.length; i++)
  {
   var field = inputs[i], value = String(field.value);
-  if(field.id == "match" && value && (!/^\d+$/.test(value) || Number(value) > 100))
+  var numericValue = value.replace(/^\s+|\s+$/g, "");
+  if(field.id == "match" && value && (!/^[+-]?\d+$/.test(numericValue) || Number(numericValue) < 0 || Number(numericValue) > 100))
    warn(field, "match_invalid", "Genre match must be an integer from 0 to 100.");
-  if(field.id == "number" && value && !/^-?\d+$/.test(value))
+  if(field.id == "number" && value && !/^[+-]?\d+$/.test(numericValue))
    warn(field, "number_invalid", "Sequence number must be an integer.");
  }
  var binaries = document.getElementById("binobj"), ids = {};
@@ -363,6 +364,12 @@ function DescriptionStyleButtons(root)
 
 function InitDescriptionActions(root)
 {
+ if(document.getElementById("sti_all")) {
+  var sourceSection=DescriptionTopFieldset(document.getElementById("stiTitle"), root);
+  DescriptionAddAction(sourceSection.getElementsByTagName("LEGEND")[0], DescriptionText("add_source", "Add source work"), function() {
+   sourceSection._descriptionClosed=false; DescriptionShowSection(sourceSection); document.getElementById("stiTitle").focus();
+  });
+ }
  var cover = document.getElementById("tiCover");
  DescriptionAddAction(cover, DescriptionText("change_cover", "Change cover"), function() {
   var select = cover.getElementsByTagName("SELECT")[0];
@@ -601,7 +608,6 @@ function UpdateBinaryReferences(oldId, newId)
  {
   var element=elements[i];
   if(!element) continue;
-  if(element.getAttribute && element.getAttribute("data-description-preview") == "true") continue;
   var href=element.getAttribute ? element.getAttribute("href") : null;
   if(href == null && element.href) href=element.href;
   if(IsBinaryReferenceValue(href, oldId))
@@ -642,6 +648,8 @@ function BinaryIsReferenced(id)
  {
   var element=elements[i];
   if(!element) continue;
+  // A thumbnail is presentation owned by this same row, not an FB2 reference.
+  if(element.getAttribute && String(element.getAttribute("data-description-preview")) == "true") continue;
   var href=element.getAttribute ? element.getAttribute("href") : null;
   var src=element.getAttribute ? element.getAttribute("src") : null;
   if(href == null && element.href) href=element.href;
@@ -1894,8 +1902,10 @@ function apiLoadFB2(path, lang, logicalPath)
 	if(id)
 	if(displayPath.indexOf("blank.fb2") != -1)
 	{
+		InitializeNewDescription(desc);
 		TraceScript("J190", "operation=GetUUID");
 		id.value=window.external.GetUUID();
+		DescriptionValidate();
 		TraceScript("J191", "operation=GetUUID result");
 	}
 	else id.value=id.value;
@@ -2380,21 +2390,21 @@ function SetCurrentDate(desc)
 
 
 
-function SetupDescription(desc)
+function InitializeNewDescription(desc)
 {
-	TraceScript("J700", "operation=SetupDescription");
 	TraceScript("J710", "operation=SetDocumentVersion");
 	SetDocumentVersion(desc);
 	TraceScript("J720", "operation=GetProgramVersion");
 	SetProgramUsed(desc);
 	TraceScript("J730", "operation=SetCurrentDate");
-	SetCurrentDate(desc)
-	var DocumentID=desc.all.diID;
-	if(DocumentID && DocumentID.value=="")
-	{
-		TraceScript("J740", "operation=GetUUID");
-		DocumentID.value=window.external.GetUUID();
-	}
+	SetCurrentDate(desc);
+}
+
+function SetupDescription(desc)
+{
+	// Existing metadata is user data, including empty optional fields. Defaults
+	// belong only to the new-document path, never to display or validation.
+	TraceScript("J700", "operation=SetupDescription");
 	TraceScript("J750", "operation=InitFieldsets");
 	InitFieldsets();
 	TraceScript("J760", "operation=SelectLanguages");
@@ -2570,12 +2580,15 @@ function MakeAuthor(node,name,dv,force,indent)
   added=MakeText(au,"first-name",dv.all.first.value,true,indent+1) || added;
   added=MakeText(au,"middle-name",dv.all.middle.value,false,indent+1) || added;
   added=MakeText(au,"last-name",dv.all.last.value,true,indent+1) || added;
-  if(dv.all.id)
-	added=MakeText(au,"id",dv.all.id.value,false,indent+1) || added;
  }
  added=MakeText(au,"nickname",dv.all.nick.value,false,indent+1) || added;
  added=MakeText(au,"home-page",dv.all.home.value,false,indent+1) || added;
  added=MakeText(au,"email",dv.all.email.value,false,indent+1) || added;
+ // id follows the contact fields in FB2, also for nickname-only authors.
+ var authorSpans=dv.getElementsByTagName("SPAN");
+ for(var authorIndex=0;authorIndex<authorSpans.length;authorIndex++)
+  if(authorSpans[authorIndex].id=="id" || authorSpans[authorIndex].className=="id")
+  { added=MakeText(au,"id",String(authorSpans[authorIndex].getAttribute("value") || ""),false,indent+1) || added; break; }
 
  if(added || force)
  {
@@ -2585,8 +2598,9 @@ function MakeAuthor(node,name,dv,force,indent)
  return added;
 }
 
-function MakeDate(node,d,v,indent)
+function MakeDate(node,d,v,indent,force)
 {
+ if(!d.length && !v.length && !force) return false;
  var dt=node.ownerDocument.createNode(1,"date",fbNS);
  var added=false;
  if(v.length>0){ added=true; SetAttr(dt,"value",v); }
@@ -2596,6 +2610,12 @@ function MakeDate(node,d,v,indent)
  Indent(node,indent);
  node.appendChild(dt);
  return added;
+}
+
+function DescriptionDateWasPresent(id)
+{
+ var field=DescriptionControls().all[id];
+ return field && field.getAttribute("data-fbe-date-present")=="1";
 }
 
 function MakeSeq2(xn,hn,indent)
@@ -2704,7 +2724,7 @@ function MakeTitleInfo(doc,desc,ann,indent)
  if(!IsEmpty(ann)){ Indent(ti,indent+1); ti.appendChild(ann); }
 
  MakeText(ti,"keywords",DescriptionControls().all.tiKwd.value,false,indent+1);
- MakeDate(ti,DescriptionControls().all.tiDate.value,DescriptionControls().all.tiDateVal.value,indent+1);
+ MakeDate(ti,DescriptionControls().all.tiDate.value,DescriptionControls().all.tiDateVal.value,indent+1,DescriptionDateWasPresent("tiDate"));
 
  // coverpage images
  list=DescriptionControls().all.tiCover.getElementsByTagName("DIV");
@@ -2884,7 +2904,7 @@ function MakeSourceTitleInfo(doc,desc,ann,indent)
 
 		MakeText(sti,"book-title",DescriptionControls().all.stiTitle.value,true,indent+1);
 		MakeText(sti,"keywords",DescriptionControls().all.stiKwd.value,false,indent+1);
-		MakeDate(sti,DescriptionControls().all.stiDate.value,DescriptionControls().all.stiDateVal.value,indent+1);
+		MakeDate(sti,DescriptionControls().all.stiDate.value,DescriptionControls().all.stiDateVal.value,indent+1,DescriptionDateWasPresent("stiDate"));
 
 		// coverpage images
 		list=DescriptionControls().all.stiCover.getElementsByTagName("DIV");
@@ -2931,7 +2951,7 @@ function MakeDocInfo(doc,desc,hist,indent)
  if(!added && list.length>0) MakeAuthor(di,"author",list.item(0),true,indent+1);
 
  added=MakeText(di,"program-used",DescriptionControls().all.diProgs.value,false,indent+1) || added;
- added=MakeDate(di,DescriptionControls().all.diDate.value,DescriptionControls().all.diDateVal.value,indent+1) || added;
+ added=MakeDate(di,DescriptionControls().all.diDate.value,DescriptionControls().all.diDateVal.value,indent+1,true) || added;
 
  // src-url
  list=DescriptionControls().all.diURL.getElementsByTagName("INPUT");
@@ -3004,7 +3024,6 @@ function MakeStylesheets(doc,indent)
  SetAttr(styles, "type", "text/css");
  Indent(doc.documentElement,1);
  doc.documentElement.appendChild(styles);
- Indent(styles,1);
  styles.appendChild(doc.createTextNode(s));
 }
 
