@@ -6,7 +6,7 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High")]
 param(
     [Parameter(Mandatory)]
-    [ValidateSet("scintilla", "lexilla", "pcre2", "hunspell", "aom", "wtl")]
+    [ValidateSet("scintilla", "lexilla", "pcre2", "hunspell", "aom", "libheif", "wtl")]
     [string]$Dependency,
 
     [ValidateSet("Debug", "Release")]
@@ -143,6 +143,10 @@ function Invoke-ApplyAndTestStep {
 }
 
 $updateInfo = Invoke-Step -Label (Get-ThirdPartyText -Base64 "0J/RgNC+0LLQtdGA0LrQsCDQtNC+0YHRgtGD0L/QvdC+0YHRgtC4IHVwc3RyZWFtLdC+0LHQvdC+0LLQu9C10L3QuNGP") -Action { Invoke-CheckStep }
+if ($dependencyEntry.UpdateMode -eq 'GitSubmodule' -and
+    $updateInfo.Status -notin @('UpToDate', 'UpdateAvailable', 'NotInstalled') -and -not $ForceApply) {
+    throw "Dependency status '$($updateInfo.Status)' requires review before updating $Dependency."
+}
 
 if (($updateInfo.Status -eq "UpToDate") -and (-not $AllowCurrentVersion) -and (-not $ForceDownload)) {
     Write-Host ""
