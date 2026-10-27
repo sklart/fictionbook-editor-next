@@ -105,6 +105,7 @@ const wchar_t SCRIPTS_TOOLBAR_CUSTOMIZE_PLACEMENT_KEY[] = L"ScriptsToolbarCustom
 const wchar_t RESTORE_FILE_POS_KEY[]	= L"RestoreFilePosition";
 const wchar_t INTERFACE_LANG_KEY[]		= L"IntefaceLangID";
 const wchar_t INTERFACE_THEME_KEY[] = L"InterfaceTheme";
+const wchar_t DESCRIPTION_LAYOUT_KEY[] = L"DescriptionLayout";
 const wchar_t GENRE_CATALOG_KEY[]       = L"GenreCatalog";
 const wchar_t SCRIPTS_FOLDER_KEY[]		= L"ScriptsFolder";
 const wchar_t CHECK_SCRIPTS_ON_STARTUP_KEY[] = L"CheckScriptsOnStartup";
@@ -193,6 +194,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(RESTORE_FILE_POS_KEY);
 	properties.push_back(INTERFACE_LANG_KEY);
 	properties.push_back(INTERFACE_THEME_KEY);
+	properties.push_back(DESCRIPTION_LAYOUT_KEY);
 	properties.push_back(GENRE_CATALOG_KEY);
 	properties.push_back(SCRIPTS_FOLDER_KEY);
 	properties.push_back(CHECK_SCRIPTS_ON_STARTUP_KEY);
@@ -423,6 +425,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == INTERFACE_LANG_KEY)
 	{
 		property = GetStringedProperty(&m_interface_lang_id, KEY_INT);
+		return true;
+	}
+	else if(sProperty == DESCRIPTION_LAYOUT_KEY)
+	{
+		property = m_description_layout;
 		return true;
 	}
 	else if(sProperty == INTERFACE_THEME_KEY)
@@ -819,7 +826,12 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	}
 	else if(sProperty == INTERFACE_LANG_KEY)
 	{
-	m_interface_lang_id = FbeSettings::NormalizeInterfaceLanguageID(StrToInt(sValue.GetStringValue()));
+		m_interface_lang_id = FbeSettings::NormalizeInterfaceLanguageID(StrToInt(sValue.GetStringValue()));
+		return true;
+	}
+	else if(sProperty == DESCRIPTION_LAYOUT_KEY)
+	{
+		SetDescriptionLayout(sValue.GetStringValue());
 		return true;
 	}
 	else if(sProperty == INTERFACE_THEME_KEY)

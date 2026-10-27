@@ -13,6 +13,17 @@ var IDNO     = 7;
 
 window.onerror = errorHandler; // document.lvl=0;
 var ImagesInfo = new Array();
+
+//// == DESCRIPTION UI ======================================
+var descriptionLayout = "modern";
+function apiSetDescriptionLayout(value)
+{
+ descriptionLayout = value == "classic" ? "classic" : "modern";
+ var desc = document.getElementById("fbw_desc");
+ if(desc) desc.className = "description-" + descriptionLayout;
+ return true;
+}
+
 var prevImageShowTimer = null;
 // The note preview lives outside fbw_body, so showing it never changes the
 // editable book DOM (and consequently does not create an Undo entry).
@@ -1302,6 +1313,7 @@ function TransformXML(xslt, dom)
 	var proc=xslt.createProcessor();
 	TraceScript("J521", "operation=input assignment");
 	proc.input=dom;
+	proc.addParameter("descriptionLayout", descriptionLayout);
 	TraceScript("J530", "operation=description mode");
 	proc.setStartMode("description");
 	TraceScript("J531", "operation=description transform");

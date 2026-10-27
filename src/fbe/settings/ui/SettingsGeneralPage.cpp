@@ -48,6 +48,11 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_interfaceTheme = GetDlgItem(IDC_INTERFACE_THEME);
 	m_scriptIconSize = GetDlgItem(IDC_SCRIPT_ICON_SIZE);
 	m_genreCatalog = GetDlgItem(IDC_GENRE_CATALOG);
+	m_descriptionLayout = GetDlgItem(IDC_DESCRIPTION_LAYOUT);
+	SetText(m_hWnd, IDC_DESCRIPTION_LAYOUT_LABEL, L"fbe.description.layout", L"Description layout:");
+	m_descriptionLayout.AddString(FbeLoadRuntimeStringByKey(L"fbe.description.modern", L"Modern"));
+	m_descriptionLayout.AddString(FbeLoadRuntimeStringByKey(L"fbe.description.classic", L"Classic"));
+	m_descriptionLayout.SetCurSel(_Settings.GetDescriptionLayout() == L"classic" ? 1 : 0);
 	m_defaultEncoding = GetDlgItem(IDC_DEFAULT_ENC);
 	m_keepEncoding = GetDlgItem(IDC_KEEP);
 	m_restorePosition = GetDlgItem(IDC_RESTORE_POS);
@@ -218,11 +223,11 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	};
 	shift(IDC_OPTIONS_INTERFACE_GROUP, { IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG,
 		IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME,
-		IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE });
+		IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
 	const CRect interfaceGroup = bounds(IDC_OPTIONS_INTERFACE_GROUP);
 	int comboLeft = bounds(IDC_LANG).left;
 	for(int id : { IDC_OPTIONS_LANGUAGE_LABEL, IDC_OPTIONS_GENRE_CATALOG_LABEL,
-		IDC_INTERFACE_THEME_LABEL, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SETTINGS_OTHER_ENCODING, IDC_UPDATE_CHANNEL_LABEL })
+		IDC_INTERFACE_THEME_LABEL, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_SETTINGS_OTHER_ENCODING, IDC_UPDATE_CHANNEL_LABEL })
 		comboLeft = max(comboLeft, bounds(id).left + measure(id, 10000, false).cx + gap);
 	comboLeft = min(comboLeft, interfaceGroup.right - margin - UiMetrics::ScaleForDpi(130, dpi));
 	const int interfaceComboRight = interfaceGroup.right - margin;
@@ -230,14 +235,16 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	fitLabelCombo(IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, comboLeft, interfaceComboRight);
 	fitLabelCombo(IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME, comboLeft, interfaceComboRight);
 	fitLabelCombo(IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, comboLeft, interfaceComboRight);
+	fitLabelCombo(IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT, comboLeft, interfaceComboRight);
 	separateRows(IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG, IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG);
 	separateRows(IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME);
 	separateRows(IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE);
-	grow(IDC_OPTIONS_INTERFACE_GROUP, { IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE });
+	separateRows(IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT);
+	grow(IDC_OPTIONS_INTERFACE_GROUP, { IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
 	if(!m_darkThemeSupported) {
 		CRect note = bounds(IDC_INTERFACE_THEME_NOTE);
 		note.left = interfaceGroup.left + margin; note.right = interfaceGroup.right - margin;
-		note.top = max(bounds(IDC_SCRIPT_ICON_SIZE_LABEL).bottom, bounds(IDC_SCRIPT_ICON_SIZE).bottom) + rowGap;
+		note.top = max(bounds(IDC_DESCRIPTION_LAYOUT_LABEL).bottom, bounds(IDC_DESCRIPTION_LAYOUT).bottom) + rowGap;
 		note.bottom = note.top + max(minimumTextHeight, measure(IDC_INTERFACE_THEME_NOTE, note.Width(), true).cy + padding);
 		place(IDC_INTERFACE_THEME_NOTE, note);
 		grow(IDC_OPTIONS_INTERFACE_GROUP, {IDC_INTERFACE_THEME_NOTE});
@@ -340,6 +347,7 @@ void CSettingsGeneralPage::Commit()
 	_Settings.SetCreateBackupFile(IsDlgButtonChecked(IDC_CREATE_BACKUP_FILE) == BST_CHECKED);
 	_Settings.SetShowFullPathInWindowTitle(IsDlgButtonChecked(IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE) == BST_CHECKED);
 	_Settings.SetUpdateChannel(m_updateChannel.GetCurSel() == 1 ? UpdateChannel::Prerelease : UpdateChannel::Stable);
+	_Settings.SetDescriptionLayout(m_descriptionLayout.GetCurSel() == 1 ? L"classic" : L"modern");
 	_Settings.SetGenreCatalog(m_genreCatalog.GetCurSel() == 1 ? GenreCatalog::Librusec : GenreCatalog::Standard);
 	const int language = m_language.GetCurSel();
 	if(language >= 0)

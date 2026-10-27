@@ -366,6 +366,8 @@ void Doc::TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr do
   MSXML2::IXSLProcessorPtr	proc(tp->createProcessor());
   proc->input=_variant_t(doc.GetInterfacePtr());
 
+  proc->addParameter(L"descriptionLayout", _Settings.GetDescriptionLayout().GetString(), _bstr_t());
+
   // add parameters
   CString	  fss(_Settings.GetFont());
   if (!fss.IsEmpty())
@@ -933,6 +935,9 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 	}
 	ApplyDiagnosticFaultInjection(m_editor.Browser()->Document);
 	ApplyConfChanges();
+	CComVariant descriptionLayout(_Settings.GetDescriptionLayout());
+	CComVariant descriptionResult;
+	InvokeFunc(L"apiSetDescriptionLayout", &descriptionLayout, 1, descriptionResult, true);
 	StartupTrace::Event(L"document", L"J100", L"apiLoadFB2 begin");
 	StartupTrace::AppendTestStartupBreadcrumb("document-script-load-start");
 	FBE_BINARY_DIAG_BEGIN(ScriptLoad);
@@ -2709,6 +2714,9 @@ void Doc::ApplyThemeAppearance()
 	const bool checkpointBefore = m_body_cp == versionBefore && !m_editor.IsFormCP();
 	try
 	{
+		CComVariant layout(_Settings.GetDescriptionLayout());
+		CComVariant layoutResult;
+		InvokeFunc(L"apiSetDescriptionLayout", &layout, 1, layoutResult, true);
 		ApplyRuntimeBodyColors(m_editor.Document());
 		ApplyRuntimeTableTheme(m_editor.Document());
 		ApplyRuntimeScrollbarTheme(m_editor.Document());

@@ -12,6 +12,7 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	CComboBox m_interfaceTheme;
 	CComboBox m_scriptIconSize;
 	CComboBox m_genreCatalog;
+	CComboBox m_descriptionLayout;
 	CComboBox m_defaultEncoding;
 	CButton m_keepEncoding;
 	CButton m_restorePosition;

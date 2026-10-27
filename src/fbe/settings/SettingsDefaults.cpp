@@ -56,6 +56,7 @@ void CSettings::SetDefaults()
 	m_restore_file_position	= false;
 	m_interface_lang_id		= FBE_INTERFACE_LANGUAGE_AUTO;
 	m_interface_theme = INTERFACE_THEME_AUTOMATIC;
+	m_description_layout = L"modern";
 	ThemeManager::SetSelectedTheme(m_interface_theme);
 	m_genre_catalog			= GenreCatalog::Standard;
 	m_scripts_folder		= GetDefaultScriptsFolderStored();

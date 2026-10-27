@@ -12,6 +12,7 @@
 	<xsl:param name="dlgFG"/>
 	<xsl:param name="dlgBG"/>
 	<xsl:param name="descscript"/>
+	<xsl:param name="descriptionLayout" select="'modern'"/>
 
 	<!-- colors and fonts -->
 	<xsl:param name="font" select="'Trebuchet MS'"/>
@@ -28,7 +29,7 @@
 			<img id="fullImg" onclick="HideFullImage()"/>
 		</div>
 
-		<fieldset style="border:none">
+		<fieldset id="descriptionCommands" class="description-commands" data-layout="{$descriptionLayout}" style="border:none">
 			<button id="tiShowBtn" onclick="ShowElementsMenu(this)" unselectable="on" style="font-family: Tahoma; float: left;">
 				<xsl:value-of select="$IDS_VIEW_BTN"/>
 			</button>
