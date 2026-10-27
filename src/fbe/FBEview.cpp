@@ -2794,7 +2794,16 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 		}
 		CString insertHtml;
 		bool preparedHtml = false;
-        const bool nativeText = captured && !captured->hasHtml && captured->hasText;
+        CString nativePlainText(captured ? captured->plainText : CString());
+        bool nativeText = captured && !captured->hasHtml && captured->hasText;
+        // The direct command must use the same recorded native text insertion
+        // as deferred events. MSHTML's IDM_PASTE may otherwise mutate the DOM
+        // without adding an undo unit while a previous redo is available.
+        if (!captured && m_normalize && command != ID_EDIT_PASTE_TEXT &&
+            !::IsClipboardFormatAvailable(::RegisterClipboardFormat(L"HTML Format")) &&
+            !::IsClipboardFormatAvailable(CF_BITMAP) && !::IsClipboardFormatAvailable(CF_DIB) &&
+            !::IsClipboardFormatAvailable(CF_DIBV5))
+            nativeText = FbeClipboard::HtmlPasteSanitizer::ReadPlainText(m_hWnd, nativePlainText);
 		bool htmlClipboardDetected = false;
 		if (m_normalize && command == ID_EDIT_PASTE_TEXT)
 		{
@@ -2955,7 +2964,7 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
                     // TextRange uses MSHTML's text insertion rules (including
                     // merging the first/last line into the current paragraph),
                     // while reading the immutable event-time clipboard value.
-                    CString text(captured->plainText);
+                    CString text(nativePlainText);
                     text.Replace(L"\u00a0", options.nbspReplacement);
                     pasteRange->text = _bstr_t(text);
                     pasteRange->collapse(VARIANT_FALSE); pasteRange->select();

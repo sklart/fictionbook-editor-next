@@ -854,7 +854,7 @@
                     if (!textSet && t) ::GlobalFree(t);
                     ::CloseClipboard(); CheckError((textOnly || htmlSet) && textSet ? S_OK : E_FAIL);
                 };
-                auto event = [&]() { document->execCommand(L"Paste", VARIANT_FALSE, _variant_t()); };
+                auto event = [&]() { m_doc->m_body.SetFocus(); MSHTML::IHTMLTxtRangePtr current(document->selection->createRange()); current->select(); document->execCommand(L"Paste", VARIANT_FALSE, _variant_t()); };
                 auto drain = [&]() {
                     int count = 0; MSG message = {};
                     while (::PeekMessage(&message, m_doc->m_body, AU::WM_FINALIZE_HTML_PASTE, AU::WM_FINALIZE_HTML_PASTE, PM_REMOVE)) {
