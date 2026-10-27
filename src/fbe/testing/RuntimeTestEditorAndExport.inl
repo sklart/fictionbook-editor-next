@@ -1,3 +1,4 @@
+#include "RuntimeTestCommunityClipboard.inl"
 #include "RuntimeTestScriptingStage2.inl"
 #include "RuntimeTestScriptingStage3A.inl"
 #include "RuntimeTestScriptingStage3B.inl"

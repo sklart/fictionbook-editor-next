@@ -80,8 +80,8 @@ static void WarnUnsupportedHtmlPaste(HWND owner)
 {
 	wchar_t testMode[4] = {}, scenario[64] = {};
 	const bool unattendedPasteTest = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 &&
-		testMode[0] == L'1' && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario)) == wcslen(L"html-paste-runtime") &&
-		wcscmp(scenario, L"html-paste-runtime") == 0;
+		testMode[0] == L'1' && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario)) > 0 &&
+		(wcscmp(scenario, L"html-paste-runtime") == 0 || wcscmp(scenario, L"community-native-copy-paste") == 0);
 	if (!unattendedPasteTest) U::MessageBox(owner, FbeLoadRuntimeStringByKey(L"fbe.paste.unsupported_html",
 		L"This HTML cannot be pasted safely without losing content. The document was not changed."),
 		L"FictionBook Editor", MB_OK | MB_ICONWARNING);
@@ -358,7 +358,12 @@ struct PendingHtmlPaste {
         try {
             if (FbeUndo::DocumentState(document) != state) return E_UNEXPECTED;
             DWORD open = 0;
-            if (manager->GetOpenParentState(&open) != S_FALSE) return E_UNEXPECTED;
+            const HRESULT parentState = manager->GetOpenParentState(&open);
+            if (parentState != S_FALSE) {
+                CString diagnostic; diagnostic.Format(L"result=0x%08lX; number=0x%08lX", static_cast<unsigned long>(parentState), static_cast<unsigned long>(open));
+                StartupTrace::HResult(L"clipboard", L"CP205", FAILED(parentState) ? parentState : E_UNEXPECTED, diagnostic);
+                return E_UNEXPECTED;
+            }
             const auto units = history.AddedUndoUnits(manager, events);
             for (auto unit = units.rbegin(); unit != units.rend(); ++unit) {
                 const HRESULT undone = manager->UndoTo(*unit);
@@ -2662,11 +2667,11 @@ HRESULT CFBEView::NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom)
           if (parentStatus == S_FALSE) static_cast<DropUndoUnit*>(liveParent.p)->PrepareRollback(liveManager);
           HRESULT liveResult = S_OK;
           try {
-            FbeDom::MarkupUndoUnitScope native(m_mk_srv, L"Normalize DOM");
+                FbeDom::MarkupUndoUnitScope native(m_mk_srv, L"Normalize DOM");
             RemoveUnk(transform, Document()); MergeEqualHTMLElements(transform, Document());
             FbeVisualDom::NormalizeStructure(Document(), transform); FixupLinks(transform);
             CheckError(FbeUndo::Inject(L"normalize-live"));
-            native.Close();
+                native.Close();
             CheckError(FbeUndo::Inject(L"normalize-close"));
             CheckError(FbeUndo::Inject(L"normalize-add"));
           } catch (const _com_error& error) { liveResult = error.Error(); }
@@ -2739,12 +2744,15 @@ LRESULT CFBEView::OnCut(WORD, WORD, HWND, BOOL&)
 
 LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 {
+	const wchar_t* pasteStage = L"CP301";
+	const wchar_t* pasteRoute = L"CP401";
 	try
 	{
         if (m_pendingHtmlPaste) {
             BOOL handled = FALSE;
             OnDeferredHtmlPaste(0, m_pendingHtmlPaste->generation, 0, handled);
         }
+        pasteStage = L"CP302";
         auto captured = std::move(m_activeHtmlPaste);
 		PasteEnableScope pasteEnabled(m_enable_paste);
 
@@ -2754,6 +2762,7 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 			? FbeClipboard::ClipboardBitmapOutput::Png
 			: FbeClipboard::ClipboardBitmapOutput::Jpeg;
 		options.jpegQuality = _Settings.GetJpegQuality();
+		pasteStage = L"CP303";
 		MSHTML::IHTMLTxtRangePtr pasteRange;
 		if (m_normalize)
 			pasteRange = MSHTML::IHTMLTxtRangePtr(Document()->selection->createRange());
@@ -2781,9 +2790,11 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 		}
 		else if (m_normalize && command != ID_EDIT_PASTE_TEXT)
 		{
-			GUID clipboardOrigin = GUID_NULL;
+			pasteStage = L"CP304";
+            GUID clipboardOrigin = GUID_NULL;
             if (captured) clipboardOrigin = captured->origin;
 			const bool internalPaste = captured ? captured->internal : FbeClipboard::HtmlPasteSanitizer::GetInternalCopyOrigin(m_hWnd, clipboardOrigin);
+			pasteRoute = internalPaste ? L"CP402" : L"CP403";
 			const bool sameDocument = internalPaste && m_ownerDocument &&
 				::IsEqualGUID(clipboardOrigin, m_ownerDocument->ClipboardIdentity());
 			CString fragment(captured ? captured->fragment : CString());
@@ -2852,6 +2863,7 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 
 		// MSHTML moves the live selection while pasting. Keep the pre-paste
 		// endpoints so a cross-owner insertion cannot be normalized too narrowly.
+		pasteStage = L"CP305";
 		MSHTML::IHTMLDOMNodePtr normalizationScope;
 		if (m_normalize)
 			normalizationScope = ResolveNormalizationScope();
@@ -2911,13 +2923,17 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
             // their nodes with snapshot clones breaks earlier native history.
             CComPtr<IOleUndoManager> pasteManager;
             CComPtr<IOleParentUndoUnit> pasteParent;
+            pasteStage = L"CP306";
             OpenDropUndoGroup(pasteManager, pasteParent);
             auto transaction = static_cast<DropUndoUnit*>(pasteParent.p);
             HRESULT result = S_OK;
             try {
                 transaction->SetPaste();
+                pasteStage = L"CP307";
                 transaction->PrepareRollback(pasteManager);
+                pasteStage = L"CP308";
                 FbeDom::MarkupUndoUnitScope native(m_mk_srv, L"Paste HTML");
+                pasteStage = L"CP309";
                 if (nativeText) {
                     // TextRange uses MSHTML's text insertion rules (including
                     // merging the first/last line into the current paragraph),
@@ -2950,17 +2966,24 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
                     }
                 }
                 CaptureClipboardTitlePasteDomForTest(Document());
+                pasteStage = L"CP310";
                 native.Close();
                 pasteEnabled.Close();
+                pasteStage = L"CP311";
                 NormalizeScope(normalizationScope);
+                pasteStage = L"CP312";
                 transaction->FinishPaste();
-            } catch (const _com_error& error) { result = error.Error(); }
+            } catch (const _com_error& error) { result = error.Error(); CString diagnostic; diagnostic.Format(L"stage=%s; operation-stage=%s", pasteStage, pasteRoute); StartupTrace::HResult(L"clipboard", L"CP200", result, diagnostic); }
             catch (const std::bad_alloc&) { result = E_OUTOFMEMORY; }
             catch (...) { result = E_UNEXPECTED; }
+            pasteStage = L"CP313";
             const HRESULT closed = CloseDropUndoGroup(pasteManager, pasteParent, true);
-            if (FAILED(closed)) CheckError(E_ABORT);
+            if (FAILED(closed)) { StartupTrace::HResult(L"clipboard", L"CP203", closed, L"close parent undo group"); CheckError(E_ABORT); }
             if (FAILED(result)) {
-                if (!transaction->Empty() && FAILED(transaction->RollbackRecorded(pasteManager))) CheckError(E_ABORT);
+                if (!transaction->Empty()) {
+                    const HRESULT rollback = transaction->RollbackRecorded(pasteManager);
+                    if (FAILED(rollback)) { StartupTrace::HResult(L"clipboard", L"CP204", rollback, L"paste rollback"); CheckError(E_ABORT); }
+                }
                 CheckError(result);
             }
 			return 0;
@@ -2979,6 +3002,8 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 	}
 	catch(_com_error& err)
 	{
+		CString diagnostic; diagnostic.Format(L"stage=%s; operation-stage=%s", pasteStage, pasteRoute);
+		StartupTrace::HResult(L"clipboard", L"CP201", err.Error(), diagnostic);
 		U::ReportError(err);
 	}
 
@@ -4967,7 +4992,7 @@ LRESULT CFBEView::OnDeferredHtmlPaste(UINT, WPARAM generation, LPARAM, BOOL&)
             OnPaste(0, ID_EDIT_PASTE, 0, handled);
             m_activeHtmlPaste.reset();
         }
-    } catch (const _com_error& error) { U::ReportError(error.Error()); }
+    } catch (const _com_error& error) { StartupTrace::HResult(L"clipboard", L"CP202", error.Error(), L"deferred paste recovery or replay"); U::ReportError(error.Error()); }
     catch (const std::bad_alloc&) { _com_error error(E_OUTOFMEMORY); U::ReportError(error); }
     return 0;
 }
