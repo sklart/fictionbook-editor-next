@@ -87,6 +87,19 @@ __declspec(noinline) LRESULT CMainFrame::RunBinaryScriptingCompatibilityRuntime(
         for (long index = 0; index < steps->length; ++index) {
             MSXML2::IXMLDOMElementPtr step(steps->item[index]);
             auto attr = [&](LPCWSTR name) { const _variant_t value(step->getAttribute(name)); return value.vt == VT_BSTR ? CString(value.bstrVal) : CString(); };
+            const CString descriptionTheme = attr(L"descriptionTheme");
+            if(!descriptionTheme.IsEmpty()) {
+                require(descriptionTheme == L"light" || descriptionTheme == L"dark", "description theme fixture");
+                ThemeManager::SetSelectedTheme(descriptionTheme == L"dark" ? INTERFACE_THEME_DARK : INTERFACE_THEME_LIGHT);
+                m_doc->ApplyThemeAppearance();
+                MSHTML::IHTMLElementPtr description = MSHTML::IHTMLDocument3Ptr(m_doc->m_body.Document())->getElementById(L"fbw_desc");
+                const COLORREF background = ThemeManager::WindowColor(), foreground = ThemeManager::TextColor();
+                CString cssBackground, cssForeground;
+                cssBackground.Format(L"rgb(%d,%d,%d)", GetRValue(background), GetGValue(background), GetBValue(background));
+                cssForeground.Format(L"rgb(%d,%d,%d)", GetRValue(foreground), GetGValue(foreground), GetBValue(foreground));
+                description->setAttribute(L"data-description-theme-background", _variant_t(cssBackground), 0);
+                description->setAttribute(L"data-description-theme-foreground", _variant_t(cssForeground), 0);
+            }
             const CString label = attr(L"name"), command = attr(L"command"), id = attr(L"id"), script = attr(L"script");
             details = CW2A(label, CP_UTF8);
             { CAtlFile progress; CheckError(progress.Create(root + L"\\progress.txt", GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS)); CheckError(progress.Write(details, static_cast<DWORD>(details.GetLength()))); }

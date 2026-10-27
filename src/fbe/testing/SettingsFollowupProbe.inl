@@ -59,6 +59,28 @@ bool CSettingsDlg::ProbeFollowup()
     if(fixture.IsEmpty()) return false;
     ::DeleteFileW(fixture);
     if(!::CreateDirectoryW(fixture, NULL)) return false;
+    // Exercise the production property and XML paths, including an unknown key
+    // value. This file belongs only to the disposable runtime fixture.
+    {
+        CSettings candidate;
+        candidate.SetDefaults();
+        passed = candidate.GetDescriptionLayout() == L"modern" && passed;
+        const CString layoutFile = fixture + L"\\description-settings.xml";
+        for(LPCWSTR value : { L"modern", L"classic", L"unknown" }) {
+            CProperty property(L"DescriptionLayout", value);
+            const CString expected = wcscmp(value, L"classic") == 0 ? L"classic" : L"modern";
+            passed = candidate.SetPropertyValue(L"DescriptionLayout", property) &&
+                candidate.GetDescriptionLayout() == expected && passed;
+            CXMLSerializer writer(layoutFile, L"FBE", false);
+            passed = writer.Serialize(&candidate) && passed;
+            candidate.SetDescriptionLayout(expected == L"modern" ? L"classic" : L"modern");
+            CXMLSerializer reader(layoutFile, L"FBE", true);
+            passed = reader.Deserialize(&candidate, &candidate) > 0 &&
+                candidate.GetDescriptionLayout() == expected && passed;
+        }
+        ::DeleteFileW(layoutFile);
+        ThemeManager::SetSelectedTheme(_Settings.GetInterfaceTheme());
+    }
     const CString prefix = CString(::PathFindFileNameW(fixture)) + L"-dictionary.dic";
     const CString source = fixture + L"\\" + prefix;
     const CString target = U::ResolveUserDataFile(prefix);

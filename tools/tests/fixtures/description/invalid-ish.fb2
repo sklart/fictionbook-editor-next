@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+<stylesheet type="text/css">p { font-style: italic; }</stylesheet>
+<description>
+<title-info><genre match="999">prose</genre><author><first-name>Анна</first-name><middle-name>Maria</middle-name><last-name>Müller</last-name><nickname>李</nickname><home-page>https://example.org/author</home-page><email>a@example.org</email><id>author-one</id></author><book-title>Книга — Größe — 日本語 — é</book-title><annotation><p>Annotation</p></annotation><keywords>ключ, keyword</keywords><date value="2020-02-29">29 February 2020</date><coverpage><image l:href="#missing.png"/></coverpage><lang>ru</lang><src-lang>de</src-lang><translator><nickname>Translator</nickname></translator><sequence name="Series" number="2"><sequence name="Nested" number="3"/></sequence></title-info>
+<src-title-info><genre match="75">prose</genre><author><nickname>Original author</nickname></author><book-title>Original</book-title><keywords>original keywords</keywords><date value="2019-01-01">2019</date><coverpage><image l:href="#cover.png"/></coverpage><lang>de</lang><src-lang>en</src-lang><translator><nickname>Original translator</nickname></translator><sequence name="Original series" number="4"/></src-title-info>
+<document-info><author><nickname>Editor</nickname></author><program-used>Fixture program</program-used><date value="2026-10-27">2026-10-27</date><src-url>https://example.org/source</src-url><src-ocr>OCR source</src-ocr><id></id><version>1.2</version><history><p>History</p></history></document-info>
+<publish-info><book-name>Printed title</book-name><publisher>Publisher</publisher><city>Berlin</city><year>2020</year><isbn>978-0-00-000000-0</isbn><sequence name="Printed series" number="5"/></publish-info>
+<custom-info info-type="Unicode">Русский / English / Größe / 日本語 / é</custom-info><custom-info info-type="Other">Second value</custom-info>
+</description><body><section><p>Body with <image l:href="#cover.png"/></p></section></body>
+<binary id="cover.png" content-type="image/png">iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jBqkAAAAASUVORK5CYII=</binary>
+<binary id="cover.png" content-type="application/octet-stream">AAECA/8=</binary>
+</FictionBook>

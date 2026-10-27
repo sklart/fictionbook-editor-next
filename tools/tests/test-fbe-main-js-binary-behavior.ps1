@@ -29,6 +29,8 @@ var messages=[]; var ImagesInfo=[]; var rebuilds=0; var fills=0; var saved='';
 function MsgBox(text){messages.push(text);}
 function SaveImage(source){saved=source;}
 function PutSpacers(){}
+function DescriptionStyleBinary(row){} // Presentation is covered by the production Description test.
+function DescriptionRefreshAttachments(){}
 function assert(condition, text){if(!condition){WScript.Echo('FAIL: '+text); WScript.Quit(1);}}
 function Input(value){this.value=value; this.attrs={}; this.setAttribute=function(name,val){this.attrs[name]=val;}; this.getAttribute=function(name){return this.attrs[name];};}
 var binaries=[]; var references=[]; var covers=[]; var allElements=[];
@@ -85,7 +87,7 @@ beforeFills=fills; var beforeMessages=messages.length;
 Remove(other); assert(binaries.length==2 && ImagesInfo.length==2 && fills==beforeFills && messages.length==beforeMessages+1 && messages[messages.length-1]=='check failed', 'failed reference check must reject deletion without modifying document');
 allElements.length=0; for(var restore=0;restore<savedElements.length;restore++)allElements.push(savedElements[restore]);
 first.all.type.value='application/octet-stream'; window.event={srcElement:first.all.type}; OnBinaryChange();
-assert(first.innerHTML.indexOf('id="show"')==-1 && first.innerHTML.indexOf('id="save"')==-1 && first.innerHTML.indexOf('id="dims"')==-1 && first.all.id.onchange==OnBinaryChange && first.all.type.onchange==OnBinaryChange && ImagesInfo.length==1 && ImagesInfo[0].id=='other.jpg', 'image to non-image must remove image controls and retain handlers');
+assert(first.innerHTML.indexOf('id="show"')==-1 && first.innerHTML.indexOf('id="save"')!=-1 && first.innerHTML.indexOf('id="dims"')==-1 && first.all.id.onchange==OnBinaryChange && first.all.type.onchange==OnBinaryChange && ImagesInfo.length==1 && ImagesInfo[0].id=='other.jpg', 'image to non-image must retain Save for arbitrary attachments, remove image-only controls and retain handlers');
 first.all.type.value='image/png'; window.event={srcElement:first.all.type}; OnBinaryChange();
 assert(first.innerHTML.indexOf('id="show"')!=-1 && first.innerHTML.indexOf('id="save"')!=-1 && first.innerHTML.split('id="dims"').length-1==1 && first.all.id.onchange==OnBinaryChange && first.all.type.onchange==OnBinaryChange && ImagesInfo.length==2 && ImagesInfo[0].id=='renamed.jpg', 'non-image to image must restore image controls, dimensions and handlers');
 binaries.length=0; binaries.push(Binary('second-document.png','image/png')); RebuildImagesInfo();

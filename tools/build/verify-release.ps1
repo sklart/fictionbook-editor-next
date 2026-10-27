@@ -132,6 +132,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-mainframe-idle-profiler-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-spellcheck-scroll-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-description-idle-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-description-layout.ps1")
 & (Join-Path $repoRoot "tools\tests\test-xml-tag-matcher.ps1")
 & (Join-Path $repoRoot "tools\tests\test-xml-source-cache-performance.ps1")
 & (Join-Path $repoRoot "tools\tests\test-xml-source-cache-runtime.ps1")
@@ -465,6 +466,8 @@ if ($FullValidation) {
     & (Join-Path $repoRoot "tools\tests\test-words-ownerdata-stress.ps1")
     & (Join-Path $repoRoot "tools\tests\test-fbe-selection-container-control-range.ps1")
     & (Join-Path $repoRoot "tools\tests\test-fbe-binary-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+    & (Join-Path $repoRoot "tools\tests\test-description-layout-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -TimeoutSeconds 90
+    & (Join-Path $repoRoot "tools\tests\test-description-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-fbe-large-binary-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-fbe-many-binaries-production-stress.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-fbe-image-import-generated-id-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
