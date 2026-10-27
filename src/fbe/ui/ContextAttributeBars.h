@@ -22,7 +22,7 @@ struct TableAttributeAvailability { bool tableId; bool tableStyle; bool cellId; 
 enum class LinkAttributeField { Id, Href, Section, ImageTitle };
 enum class TableAttributeField { TableId, TableStyle, CellId, CellStyle, Colspan, Rowspan, RowAlign, Align, VAlign };
 enum class ContextAttributeFieldWidth { Short, Medium, Long, Dropdown };
-struct ContextAttributeBarsDiagnostics { bool controls; bool ids; bool catalogs; bool state; bool availability; bool layout; };
+struct ContextAttributeBarsDiagnostics { bool controls; bool ids; bool catalogs; bool state; bool availability; bool layout; bool hrefCaret; bool hrefCatalogSelection; };
 
 // Owns Win32/WTL presentation state only. CMainFrame stays the notification
 // parent and the owner of document commands.

@@ -432,7 +432,7 @@ void ContextAttributeBars::UpdateLocalization()
 	rebuild(m_tableBar2, m_table2Tooltips, table2, _countof(table2));
 }
 
-void ContextAttributeBars::SetLinkState(const LinkAttributeState& s) { m_id.SetWindowText(s.id); m_href.SetWindowText(s.href); m_section.SetWindowText(s.section); m_imageTitle.SetWindowText(s.imageTitle); }
+void ContextAttributeBars::SetLinkState(const LinkAttributeState& s) { m_id.SetWindowText(s.id); if (TextOf(m_href) != s.href) m_href.SetWindowText(s.href); m_section.SetWindowText(s.section); m_imageTitle.SetWindowText(s.imageTitle); }
 LinkAttributeState ContextAttributeBars::GetLinkState() const { LinkAttributeState s; s.id = TextOf(m_id); s.href = TextOf(m_href); s.section = TextOf(m_section); s.imageTitle = TextOf(m_imageTitle); return s; }
 void ContextAttributeBars::SetTableState(const TableAttributeState& s)
 {
@@ -468,7 +468,13 @@ void ContextAttributeBars::ApplySelectionState(const LinkAttributeState& linkSta
 }
 void ContextAttributeBars::ClearLinkState() { SetLinkState(LinkAttributeState()); }
 void ContextAttributeBars::ClearTableState() { SetTableState(TableAttributeState()); }
-void ContextAttributeBars::BeginHrefCatalogUpdate() { const CString text = TextOf(m_href); m_hrefBox.ResetContent(); m_href.SetWindowText(text); m_href.SetSel(0, text.GetLength() + 1); }
+void ContextAttributeBars::BeginHrefCatalogUpdate()
+{
+	const CString text = TextOf(m_href);
+	int start = 0, end = 0; m_href.GetSel(start, end);
+	m_hrefBox.ResetContent(); m_href.SetWindowText(text);
+	m_href.SetSel(start, end, FALSE);
+}
 void ContextAttributeBars::FocusLinkField(LinkAttributeField field, bool selectAll) { switch(field) { case LinkAttributeField::Id: FocusEdit(m_id,selectAll); break; case LinkAttributeField::Href: FocusEdit(m_href,selectAll); break; case LinkAttributeField::Section: FocusEdit(m_section,selectAll); break; case LinkAttributeField::ImageTitle: FocusEdit(m_imageTitle,selectAll); break; } }
 void ContextAttributeBars::FocusTableField(TableAttributeField field) { switch(field) { case TableAttributeField::TableId: FocusEdit(m_tableId,false); break; case TableAttributeField::TableStyle: FocusEdit(m_tableStyle,false); break; case TableAttributeField::CellId: FocusEdit(m_cellId,false); break; case TableAttributeField::CellStyle: FocusEdit(m_cellStyle,false); break; case TableAttributeField::Colspan: FocusEdit(m_colspan,false); break; case TableAttributeField::Rowspan: FocusEdit(m_rowspan,false); break; case TableAttributeField::RowAlign: FocusEdit(m_rowAlign,false); break; case TableAttributeField::Align: FocusEdit(m_align,false); break; case TableAttributeField::VAlign: FocusEdit(m_valign,false); break; } }
 bool ContextAttributeBars::ContainsFocus(HWND window) const { return window == m_id.m_hWnd || window == m_href.m_hWnd || window == m_section.m_hWnd || window == m_imageTitle.m_hWnd || window == m_tableId.m_hWnd || window == m_tableStyle.m_hWnd || window == m_cellId.m_hWnd || window == m_cellStyle.m_hWnd || window == m_colspan.m_hWnd || window == m_rowspan.m_hWnd || window == m_rowAlign.m_hWnd || window == m_align.m_hWnd || window == m_valign.m_hWnd || ::IsChild(m_linksBar, window) || ::IsChild(m_tableBar, window) || ::IsChild(m_tableBar2, window); }
@@ -490,5 +496,21 @@ ContextAttributeBarsDiagnostics ContextAttributeBars::RunDiagnostics()
 	result.ids=::GetDlgCtrlID(m_hrefBox)==IDC_HREF && ::GetDlgCtrlID(m_tableIdBox)==IDC_IDT && ::GetDlgCtrlID(m_valignBox)==IDC_VALIGN;
 	result.catalogs=m_alignBox.GetCount()==4 && m_rowAlignBox.GetCount()==4 && m_valignBox.GetCount()==4;
 	result.state=readLink.id==link.id && readLink.href==link.href && readLink.section==link.section && readLink.imageTitle==link.imageTitle && readTable.tableId==table.tableId && readTable.tableStyle==table.tableStyle && readTable.id==table.id && readTable.style==table.style && readTable.colspan==table.colspan && readTable.rowspan==table.rowspan && readTable.rowAlign==table.rowAlign && readTable.align==table.align && readTable.valign==table.valign;
+	// Exercise native edit selection through the same idle refresh/catalog paths.
+	SetLinkAvailability(LinkAttributeAvailability{ true, true, true, true });
+	m_href.SetFocus();
+	SetLinkState(link);
+	result.hrefCaret = true;
+	for (int start = 0; start <= link.href.GetLength(); ++start) {
+		const int end = (std::min)(start + 2, link.href.GetLength());
+		m_href.SetSel(start, end, FALSE);
+		ApplySelectionState(link, LinkAttributeAvailability{ true, true, true, true }, table, TableAttributeAvailability{});
+		int actualStart = -1, actualEnd = -1; m_href.GetSel(actualStart, actualEnd);
+		result.hrefCaret = result.hrefCaret && actualStart == start && actualEnd == end && TextOf(m_href) == link.href;
+	}
+	m_href.SetSel(2, 5, FALSE);
+	BeginHrefCatalogUpdate();
+	int catalogStart = -1, catalogEnd = -1; m_href.GetSel(catalogStart, catalogEnd);
+	result.hrefCatalogSelection = catalogStart == 2 && catalogEnd == 5 && TextOf(m_href) == link.href;
 	return result;
 }

@@ -1,4 +1,4 @@
-﻿// MainFrm.cpp : implmentation of the CMainFrame class
+// MainFrm.cpp : implmentation of the CMainFrame class
 //
 /////////////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
@@ -6291,9 +6291,11 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
     return 0;
 
   const bool tableAttributeChange = wID == IDC_COLSPAN || wID == IDC_ROWSPAN || wID == IDC_ALIGNTR || wID == IDC_ALIGN || wID == IDC_VALIGN;
-  const bool tableUndoStarted = tableAttributeChange && m_doc;
-  if (tableUndoStarted)
-    m_doc->m_body.BeginUndoUnit(L"change table attribute");
+  const bool attributeUndoStarted = (tableAttributeChange || wID == IDC_HREF) && m_doc;
+  if (attributeUndoStarted) {
+    if (wID == IDC_HREF) m_doc->m_body.BeginUndoUnit(L"change link attribute");
+    else m_doc->m_body.BeginUndoUnit(L"change table attribute");
+  }
 
   try {
 	RebuildSelectionContext();
@@ -6451,7 +6453,7 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 	}
   }
   catch (_com_error&) { }
-  if (tableUndoStarted)
+  if (attributeUndoStarted)
     m_doc->m_body.EndUndoUnit();
 	// Attribute edits mutate DOM.  Do not let a following command reuse any
 	// element captured before the mutation.
