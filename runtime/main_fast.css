@@ -366,3 +366,71 @@ div#fbw_desc.description-modern #tiShowBtn { display: none; }
 @media screen and (max-width: 480px) {
  div#fbw_desc .description-person .description-field { display: block; width: 100%; margin-right: 0; }
 }
+/* IE7-mode counterpart of the media queries: driven by the actual pane width. */
+div#fbw_desc.description-narrow { padding: .5em; }
+div#fbw_desc.description-narrow legend {
+ width: 90%; white-space: normal; word-wrap: break-word;
+}
+div#fbw_desc.description-narrow label {
+ display: block; width: auto !important; text-align: left;
+}
+div#fbw_desc.description-narrow button { float: none; max-width: 95%; }
+div#fbw_desc.description-narrow input,
+div#fbw_desc.description-narrow select,
+div#fbw_desc.description-narrow textarea { max-width: 95% !important; }
+div#fbw_desc.description-narrow input.wide,
+div#fbw_desc.description-narrow input.middle,
+div#fbw_desc.description-narrow input.url,
+div#fbw_desc.description-narrow textarea#val { width: 94%; margin-left: 0; }
+div#fbw_desc.description-narrow .description-person .description-field { width: 47%; }
+div#fbw_desc.description-narrow .description-date-field { display: block; width: 94%; margin-right: 0; }
+div#fbw_desc.description-narrow input#diID { width: 90% !important; }
+div#fbw_desc.description-narrow input#name { width: 90% !important; }
+div#fbw_desc.description-narrow #binobj input { width: 40% !important; }
+div#fbw_desc.description-compact .description-person .description-field {
+ display: block; width: 94%; margin-right: 0;
+}
+/* Compact desktop layout, shared by both representations of the metadata. */
+div#fbw_desc { padding: .35em .5em; }
+div#fbw_desc fieldset { margin: 0 0 .35em; padding: .3em .45em; }
+div#fbw_desc fieldset.kid { padding: .3em .45em; }
+div#fbw_desc legend { padding: 0 .2em; }
+div#fbw_desc legend.top { font-size: 1em; }
+div#fbw_desc input, div#fbw_desc select, div#fbw_desc textarea {
+ padding: .12em .2em; margin: .08em 0;
+}
+div#fbw_desc button { padding: .12em .35em; margin: .05em; min-height: 1.6em; }
+div#fbw_desc button.description-icon-action {
+ font-family: "Segoe UI Symbol", "Segoe UI", sans-serif; width: 1.9em;
+ height: 1.8em; padding: 0; vertical-align: middle; float: none;
+}
+div#fbw_desc button.description-icon-action:active { border-style: inset; }
+div#fbw_desc .description-section-toggle { min-width: 1.8em; margin-right: .25em; }
+div#fbw_desc.description-modern .description-section { padding: .3em .45em; margin-bottom: .35em; }
+div#fbw_desc.description-modern #tiAuthor > div,
+div#fbw_desc.description-modern #tiTrans > div,
+div#fbw_desc.description-modern #diAuthor > div,
+div#fbw_desc.description-modern #stiAuthor > div,
+div#fbw_desc.description-modern .description-binary { padding: .1em 0; margin: .1em 0; }
+div#fbw_desc .description-person .description-field {
+ width: 29%; margin-right: 1%; vertical-align: middle;
+}
+div#fbw_desc .description-field label {
+ display: inline-block; width: 31% !important; text-align: left; margin: .1em .2em .1em 0;
+}
+div#fbw_desc .description-person .description-field input { width: 63%; }
+div#fbw_desc .description-date-field { width: 45%; margin-right: 1%; }
+div#fbw_desc .description-date-field label { display: inline-block; width: auto !important; margin: .1em .25em .1em 0; }
+div#fbw_desc .description-date-field input { width: 55%; }
+div#fbw_desc .description-action-break { display: none; }
+div#fbw_desc.description-modern #tiCover { margin: .2em 0 .35em; }
+div#fbw_desc.description-modern #tiCover .description-cover-preview { max-height: 8em; margin: .1em .5em .1em 0; }
+div#fbw_desc .description-cover-preview,
+div#fbw_desc .description-binary-thumbnail,
+div#fbw_desc #fullImg { border: 1px solid ThreeDShadow; padding: .2em; background: Window; }
+div#fbw_desc.description-narrow .description-person .description-field { width: 47%; }
+div#fbw_desc.description-narrow .description-field label { display: block; width: auto !important; }
+div#fbw_desc.description-narrow .description-person .description-field input { width: 95%; }
+div#fbw_desc.description-narrow .description-date-field { width: 94%; }
+div#fbw_desc.description-narrow .description-date-field input { width: 94%; }
+div#fbw_desc.description-compact .description-person .description-field { width: 94%; }

@@ -53,6 +53,57 @@ function checkTheme() {
 }
 checkTheme();
 var serializedBefore=serialize();
+if(fixtures[fixtureIndex]=="full") {
+ var actionButtons=form.getElementsByTagName("BUTTON"), iconActions=0;
+ for(var actionIndex=0;actionIndex<actionButtons.length;actionIndex++) {
+  var actionButton=actionButtons[actionIndex];
+  if(actionButton.className.indexOf("description-icon-action")>=0) {
+   assert(actionButton.title && actionButton.getAttribute("aria-label")==actionButton.title,"Icon actions have localized tooltip and accessible name");
+   assert(actionButton.innerText.length<=2,"Repeated action is a compact icon");
+   iconActions++;
+  }
+ }
+ assert(iconActions>5,"Full fixture includes compact repeated actions");
+ assert(document.getElementById("descriptionCoverPreview").currentStyle.borderTopStyle!="none","Cover preview has a border");
+ assert(document.getElementById("fullImg").currentStyle.borderTopStyle!="none","Full preview has a border");
+ var originalParent=form.parentNode, originalNext=form.nextSibling, originalDisplay=form.style.display;
+ var viewport=document.createElement("DIV");originalParent.appendChild(viewport);viewport.appendChild(form);form.style.display="block";
+ var narrowLegend=form._descriptionSections[1].getElementsByTagName("LEGEND")[0], longHeading=document.createTextNode(" Source title information (fill in using the original language of the book)");narrowLegend.appendChild(longHeading);
+ var closedSections=[];
+ for(var sectionIndex=0;sectionIndex<form._descriptionSections.length;sectionIndex++) {
+  closedSections.push(form._descriptionSections[sectionIndex]._descriptionClosed);
+  form._descriptionSections[sectionIndex]._descriptionClosed=false;
+ }
+ var widths=[320,480,640,960], layouts=["classic","modern"];
+ for(var fast=0;fast<2;fast++) {
+ apiSetFastMode(fast!=0);
+ for(var layoutIndex=0;layoutIndex<layouts.length;layoutIndex++) {
+  apiSetDescriptionLayout(layouts[layoutIndex]);
+  for(var widthIndex=0;widthIndex<widths.length;widthIndex++) {
+   viewport.style.width=widths[widthIndex]+"px";DescriptionResize();
+   assert(title.offsetWidth>0,"Narrow geometry must use a visible rendered form");
+   if(widths[widthIndex]==960) {
+    var firstField=form.getElementsByTagName("SPAN");
+    for(var fieldIndex=0;fieldIndex<firstField.length;fieldIndex++)if(firstField[fieldIndex].className=="description-field")break;
+    var fieldLabel=firstField[fieldIndex].getElementsByTagName("LABEL")[0], fieldInput=firstField[fieldIndex].getElementsByTagName("INPUT")[0];
+    var labelRect=fieldLabel.getBoundingClientRect(), inputRect=fieldInput.getBoundingClientRect();
+    assert(labelRect.bottom>inputRect.top && inputRect.bottom>labelRect.top,"Wide author label and input share a row");
+   }
+   var edge=viewport.getBoundingClientRect().right, overflow=[], descendants=form.getElementsByTagName("*");
+   for(var narrowIndex=0;narrowIndex<descendants.length;narrowIndex++) {
+    var element=descendants[narrowIndex], rect=element.getBoundingClientRect();
+    if(rect.right>edge+1 && rect.bottom>rect.top && element.currentStyle.visibility!="hidden")overflow.push(element.tagName+"#"+element.id+":"+Math.round(rect.right-edge));
+   }
+   // IE7 does not include overflowing LEGENDs in scrollWidth: check both.
+   assert(!overflow.length && viewport.scrollWidth<=viewport.clientWidth+1,"Description overflow "+layouts[layoutIndex]+" width="+widths[widthIndex]+" fast="+fast+": "+overflow.slice(0,12).join(", "));
+   assert(snapshot()==before && serialize()==serializedBefore,"Resizing preserves fields and serialization");
+  }
+ }
+ }
+ apiSetFastMode(false);narrowLegend.removeChild(longHeading);
+ for(var sectionIndex=0;sectionIndex<form._descriptionSections.length;sectionIndex++)form._descriptionSections[sectionIndex]._descriptionClosed=closedSections[sectionIndex];
+ originalParent.insertBefore(form,originalNext);originalParent.removeChild(viewport);form.style.display=originalDisplay;apiSetDescriptionLayout("modern");
+}
 assert(form._descriptionSections.length==7,"Seven Modern sections");
 assert(form._descriptionSections[0]._descriptionClosed===false,"Book expanded");
 assert(form._descriptionSections[2]._descriptionClosed===false,"Document expanded");

@@ -16,11 +16,20 @@ var ImagesInfo = new Array();
 
 //// == DESCRIPTION UI ======================================
 var descriptionLayout = "modern";
+function DescriptionResize()
+{
+ var root = document.getElementById("fbw_desc");
+ if(!root) return;
+ // MSHTML document mode 7 has no CSS media queries. Use the containing
+ // viewport, not scrollWidth: a long LEGEND can extend beyond it in this mode.
+ var width = root.parentNode.clientWidth;
+ root.className = "description-" + descriptionLayout + (width <= 760 ? " description-narrow" : "") + (width <= 480 ? " description-compact" : "");
+}
 function apiSetDescriptionLayout(value)
 {
  descriptionLayout = value == "classic" ? "classic" : "modern";
  var desc = document.getElementById("fbw_desc");
- if(desc) { desc.className = "description-" + descriptionLayout; DescriptionApplyPresentation(desc); }
+ if(desc) { DescriptionApplyPresentation(desc); DescriptionResize(); }
  return true;
 }
 
@@ -111,6 +120,7 @@ function DescriptionApplyPresentation(root)
  }
  for(var i=0; i<root._descriptionSections.length; i++) DescriptionShowSection(root._descriptionSections[i]);
  DescriptionUpdateCover();
+ DescriptionResize();
 }
 
 function InitDescriptionUI(root)
@@ -156,6 +166,10 @@ function InitDescriptionUI(root)
  DescriptionStyleButtons(root);
  InitDescriptionActions(root);
  DescriptionValidate();
+ if(!window._descriptionResizeHook) {
+  window.attachEvent("onresize", DescriptionResize);
+  window._descriptionResizeHook = true;
+ }
  if(!root._descriptionChangeHook) {
   root.attachEvent("onchange", DescriptionValidationChanged);
   // change does not bubble in the legacy MSHTML document mode; focusout does.
@@ -362,13 +376,17 @@ function DescriptionStyleButtons(root)
   if(button.tagName != "BUTTON") continue;
   // The shared XSL still owns the handlers; only their captions change.
   var text = button.innerText;
-  var key = "", fallback = "";
-  if(text == "r") { key = "remove"; fallback = "Remove"; }
-  else if(text == "2") { key = "duplicate"; fallback = "Duplicate"; }
-  else if(text == "4") { key = "choose"; fallback = "Choose"; }
-  else if(text == "N") { key = "view"; fallback = "View"; }
-  else if(text == "\u00cd") { key = "save"; fallback = "Save"; }
-  if(key) { button.innerText = DescriptionText(key, fallback); button.title = button.innerText; }
+  var key = "", fallback = "", icon = "";
+  if(text == "r") { key = "remove"; fallback = "Remove"; icon = "\u00d7"; }
+  else if(text == "2") { key = "duplicate"; fallback = "Duplicate"; icon = "\u29c9"; }
+  else if(text == "4") { key = "choose"; fallback = "Choose"; icon = "\u2026"; }
+  else if(text == "N") { key = "view"; fallback = "View"; icon = "\u2315"; }
+  else if(text == "\u00cd") { key = "save"; fallback = "Save"; icon = "\u2193"; }
+  if(key) {
+   var label = DescriptionText(key, fallback);
+   button.innerText = icon; button.title = label; button.setAttribute("aria-label", label);
+   button.className += (button.className ? " " : "") + "description-icon-action";
+  }
  }
 }
 
@@ -1988,6 +2006,7 @@ function apiShowDesc(state)
 		desc.style.display="block";
 		document.body.scrollTop=0;
 		body.style.display="none";
+		DescriptionResize();
 	}
 	else
 	{

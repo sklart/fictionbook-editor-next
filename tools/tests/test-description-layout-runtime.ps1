@@ -10,7 +10,7 @@ $old=@{};foreach($name in $names){$old[$name]=[Environment]::GetEnvironmentVaria
 try {
  $null=New-IsolatedFbeSettingsSeed $iso -StartupScriptsDirectory (Join-Path $iso.Root 'ProbeScripts')
  # Exercise current source assets with the compiled native bridge.
- foreach($name in @('main.js','main.css','fb2.xsl')) { Copy-Item (Join-Path $repoRoot "runtime/$name") (Join-Path $iso.Root $name) -Force }
+ foreach($name in @('main.js','main.css','main_fast.css','fb2.xsl')) { Copy-Item (Join-Path $repoRoot "runtime/$name") (Join-Path $iso.Root $name) -Force }
  Copy-Item (Join-Path $repoRoot 'runtime/blank.fb2') (Join-Path $iso.Root 'fixture.fb2')
  Copy-Item (Join-Path $PSScriptRoot 'fixtures/description') (Join-Path $iso.Root 'description-fixtures') -Recurse
  foreach($count in @(100,500)) {
