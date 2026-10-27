@@ -272,23 +272,35 @@ def evaluate_benchmark(
     unique_correct = list(dict.fromkeys(case["correct"] for case in cases))
     benchmark_words = list(dict.fromkeys([*unique_wrong, *unique_correct]))
     suggestion_words = unique_wrong[:suggestion_limit] if suggestion_limit >= 0 else unique_wrong
+    evaluated_words = set(suggestion_words)
+    evaluated_cases = sum(case["wrong"] in evaluated_words for case in cases)
     all_suggestions: dict[str, dict[str, list[str]]] = {}
     benchmark_misspelled: dict[str, set[str]] = {}
     for name, path in dictionaries:
         benchmark_misspelled[name] = list_misspelled(hunspell_exe, path, benchmark_words)
         all_suggestions[name] = suggestions(hunspell_exe, path, suggestion_words)
 
-    summary: dict[str, Any] = {"cases": len(cases), "dictionaries": {}}
+    summary: dict[str, Any] = {
+        "cases": len(cases),
+        "suggestion_limit": suggestion_limit,
+        "suggestion_unique_words_evaluated": len(evaluated_words),
+        "suggestion_cases_evaluated": evaluated_cases,
+        "dictionaries": {},
+    }
     detailed: list[dict[str, Any]] = []
     for name, _ in dictionaries:
         misspelled = benchmark_misspelled[name]
-        stats = Counter()
+        stats = Counter({key: 0 for key in (
+            "wrong_rejected", "wrong_accepted", "correct_accepted", "correct_rejected",
+            "suggest_top1", "suggest_top3", "suggest_top5", "suggest_top8", "suggest_any", "suggest_mrr",
+        )})
         for case in cases:
             wrong = case["wrong"]
             correct = case["correct"]
             wrong_rejected = wrong in misspelled
             correct_accepted = correct not in misspelled
-            proposed = all_suggestions[name].get(wrong, [])
+            suggestion_evaluated = wrong in evaluated_words
+            proposed = all_suggestions[name].get(wrong, []) if suggestion_evaluated else []
             correct_fold = correct.casefold()
             ranks = [index + 1 for index, item in enumerate(proposed) if item.casefold() == correct_fold]
             rank = ranks[0] if ranks else None
@@ -296,25 +308,32 @@ def evaluate_benchmark(
             stats["wrong_accepted"] += int(not wrong_rejected)
             stats["correct_accepted"] += int(correct_accepted)
             stats["correct_rejected"] += int(not correct_accepted)
-            stats["suggest_top1"] += int(rank == 1)
-            stats["suggest_top3"] += int(rank is not None and rank <= 3)
-            stats["suggest_top5"] += int(rank is not None and rank <= 5)
-            stats["suggest_top8"] += int(rank is not None and rank <= 8)
-            stats["suggest_any"] += int(rank is not None)
-            stats["suggest_mrr"] += (1.0 / rank) if rank is not None else 0.0
+            if suggestion_evaluated:
+                stats["suggest_top1"] += int(rank == 1)
+                stats["suggest_top3"] += int(rank is not None and rank <= 3)
+                stats["suggest_top5"] += int(rank is not None and rank <= 5)
+                stats["suggest_top8"] += int(rank is not None and rank <= 8)
+                stats["suggest_any"] += int(rank is not None)
+                stats["suggest_mrr"] += (1.0 / rank) if rank is not None else 0.0
             detailed.append(
                 {
                     **case,
                     "dictionary": name,
                     "wrong_rejected": wrong_rejected,
                     "correct_accepted": correct_accepted,
+                    "suggestion_evaluated": suggestion_evaluated,
                     "suggestion_rank": rank,
                     "suggestions": proposed[:10],
                 }
             )
         values = dict(stats)
-        # MRR is the mean reciprocal rank across all annotated typo cases.
-        values["suggest_mrr"] = float(values.get("suggest_mrr", 0.0)) / len(cases) if cases else 0.0
+        values["suggestion_unique_words_evaluated"] = len(evaluated_words)
+        values["suggestion_cases_evaluated"] = evaluated_cases
+        # Unqueried cases are excluded; a queried word with no suggestions is a miss.
+        values["suggest_mrr"] = float(values.get("suggest_mrr", 0.0)) / evaluated_cases if evaluated_cases else None
+        if not evaluated_cases:
+            for metric in ("suggest_top1", "suggest_top3", "suggest_top5", "suggest_top8", "suggest_any"):
+                values[metric] = None
         summary["dictionaries"][name] = values
     return summary, detailed
 
@@ -364,6 +383,9 @@ def summarize_benchmark_delta(
             if baseline["correct_accepted"] and not candidate["correct_accepted"]:
                 result["new_false_rejects"] += 1
 
+            if not (baseline.get("suggestion_evaluated", False) and candidate.get("suggestion_evaluated", False)):
+                continue
+            result["suggestion_cases_compared"] += 1
             before = baseline.get("suggestion_rank")
             after = candidate.get("suggestion_rank")
             if before is None and after is not None:
@@ -413,6 +435,7 @@ def write_benchmark_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         "correct",
         "wrong_rejected",
         "correct_accepted",
+        "suggestion_evaluated",
         "suggestion_rank",
         "domain",
         "suggestions",
@@ -508,7 +531,7 @@ def generate_report(
                 "",
                 "| Корпус / класс | Словоупотреблений | Уникальных слов | "
                 + " | ".join(
-                    f"Не принято `{name}` | Доля `{name}`" for name in names
+                    f"Не принято `{name}` (tokens / unique) | Доля `{name}` (tokens / unique)" for name in names
                 )
                 + " |",
                 "|---|---:|---:|" + "---:|---:|" * len(names),
@@ -540,7 +563,10 @@ def generate_report(
                     d = class_stats.get("dictionaries", {}).get(name, {})
                     rejected = int(d.get("rejected_tokens", 0))
                     rate = float(d.get("rejection_rate", 0.0))
-                    cells.extend([f"{rejected:,}", f"{rate:.2%}"])
+                    cells.extend([
+                        f"{rejected:,} / {int(d.get('rejected_unique', 0)):,}",
+                        f"{rate:.2%} / {float(d.get('unique_rejection_rate', 0.0)):.2%}",
+                    ])
                 lines.append("| " + " | ".join(cells) + " |")
 
         lines.extend(
@@ -549,7 +575,7 @@ def generate_report(
                 "### Разбивка размеченных корпусов по частям речи",
                 "",
                 "| Корпус / POS | Словоупотреблений | Уникальных слов | "
-                + " | ".join(f"Не принято `{name}` | Доля `{name}`" for name in names)
+                + " | ".join(f"Не принято `{name}` (tokens / unique) | Доля `{name}` (tokens / unique)" for name in names)
                 + " |",
                 "|---|---:|---:|" + "---:|---:|" * len(names),
             ]
@@ -571,8 +597,8 @@ def generate_report(
                     d = pos_stats.get("dictionaries", {}).get(name, {})
                     cells.extend(
                         [
-                            f"{int(d.get('rejected_tokens', 0)):,}",
-                            f"{float(d.get('rejection_rate', 0.0)):.2%}",
+                            f"{int(d.get('rejected_tokens', 0)):,} / {int(d.get('rejected_unique', 0)):,}",
+                            f"{float(d.get('rejection_rate', 0.0)):.2%} / {float(d.get('unique_rejection_rate', 0.0)):.2%}",
                         ]
                     )
                 lines.append("| " + " | ".join(cells) + " |")
@@ -587,7 +613,7 @@ def generate_report(
                 "для СинТагРус — каталогам годов/коллекций.",
                 "",
                 "| Корпус / группа | Словоупотреблений | Уникальных слов | "
-                + " | ".join(f"Не принято `{name}` | Доля `{name}`" for name in names)
+                + " | ".join(f"Не принято `{name}` (tokens / unique) | Доля `{name}` (tokens / unique)" for name in names)
                 + " |",
                 "|---|---:|---:|" + "---:|---:|" * len(names),
             ]
@@ -609,8 +635,8 @@ def generate_report(
                     d = group_stats.get("dictionaries", {}).get(name, {})
                     cells.extend(
                         [
-                            f"{int(d.get('rejected_tokens', 0)):,}",
-                            f"{float(d.get('rejection_rate', 0.0)):.2%}",
+                            f"{int(d.get('rejected_tokens', 0)):,} / {int(d.get('rejected_unique', 0)):,}",
+                            f"{float(d.get('rejection_rate', 0.0)):.2%} / {float(d.get('unique_rejection_rate', 0.0)):.2%}",
                         ]
                     )
                 lines.append("| " + " | ".join(cells) + " |")
@@ -618,6 +644,13 @@ def generate_report(
     lines.extend(["", "## Размеченные опечатки", ""])
     total_cases = int(benchmark.get("cases", 0))
     lines.append(f"Однословных пар «ошибка → исправление»: **{total_cases:,}**.")
+    lines.append(
+        f"SuggestionLimit: **{benchmark.get('suggestion_limit', 'не указан')}**; "
+        f"проверено уникальных ошибочных форм: **{benchmark.get('suggestion_unique_words_evaluated', 0):,}**; "
+        f"случаев с оценкой подсказок: **{benchmark.get('suggestion_cases_evaluated', 0):,}**."
+    )
+    lines.append("Acceptance считается по всем парам; Top-N/Any — число попаданий среди проверенных случаев, "
+                 "знаменатель MRR — suggestion_cases_evaluated. N/A означает отсутствие оценки.")
     lines.append("")
     lines.append("| Словарь | Ошибка обнаружена | Ошибка пропущена | Исправленное слово принято | Исправленное слово отклонено | Top-1 | Top-3 | Top-5 | Top-8 | Any | MRR |")
     lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
@@ -632,12 +665,9 @@ def generate_report(
                     str(stats.get("wrong_accepted", 0)),
                     str(stats.get("correct_accepted", 0)),
                     str(stats.get("correct_rejected", 0)),
-                    str(stats.get("suggest_top1", 0)),
-                    str(stats.get("suggest_top3", 0)),
-                    str(stats.get("suggest_top5", 0)),
-                    str(stats.get("suggest_top8", 0)),
-                    str(stats.get("suggest_any", 0)),
-                    f"{float(stats.get('suggest_mrr', 0.0)):.6f}",
+                    *[str(stats[key]) if stats.get(key) is not None else "N/A"
+                      for key in ("suggest_top1", "suggest_top3", "suggest_top5", "suggest_top8", "suggest_any")],
+                    f"{stats['suggest_mrr']:.6f}" if stats.get('suggest_mrr') is not None else "N/A",
                 ]
             )
             + " |"
@@ -657,6 +687,7 @@ def generate_report(
             ])
         if benchmark_delta:
             labels = (
+                ("suggestion_cases_compared", "Случаев с оценкой подсказок у обоих словарей"),
                 ("fixed_false_accepts", "Исправленные ложные принятия"),
                 ("new_false_accepts", "Новые ложные принятия"),
                 ("fixed_false_rejects", "Исправленные ложные отклонения"),

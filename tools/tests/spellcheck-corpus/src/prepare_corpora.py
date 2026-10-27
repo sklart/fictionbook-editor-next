@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import importlib.metadata
 import json
 import os
+import platform
 import random
 import sys
 import time
@@ -10,7 +13,7 @@ from collections import Counter
 from collections.abc import Iterable, Iterator
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 from urllib.parse import quote
 
@@ -808,10 +811,47 @@ def generate_sources_markdown(manifest: dict[str, Any], results: list[dict[str, 
     output.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
 
 
+def describe_environment(manifest: Path) -> dict[str, Any]:
+    """Record small reproducibility inputs without host names or local paths."""
+    harness = Path(__file__).resolve().parents[1]
+    packages: dict[str, str | None] = {}
+    for name in ("datasets", "huggingface_hub", "pyarrow", "requests"):
+        try:
+            packages[name] = importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:
+            packages[name] = None
+    return {
+        "python_version": platform.python_version(),
+        "packages": packages,
+        "sha256": {
+            name: hashlib.sha256(path.read_bytes()).hexdigest().upper()
+            for name, path in (
+                ("corpora.json", manifest),
+                ("requirements.txt", harness / "requirements.txt"),
+                ("prepare_corpora.py", Path(__file__)),
+            )
+        },
+    }
+
+
+def lock_corpus_result(result: dict[str, Any], prepared: Path) -> dict[str, Any]:
+    """Serialize outputs relative to prepared; never expose absolute local sources."""
+    item = {**result, "output": Path(result["output"]).relative_to(prepared).as_posix()}
+    source = str(item.get("local_source", ""))
+    # Custom manifests can supply an absolute source instead of relative_path.
+    # The corpus id and aggregate counts still identify it without that path.
+    if PureWindowsPath(source).anchor or ".." in PureWindowsPath(source).parts:
+        item.pop("local_source", None)
+    return item
+
+
 def main() -> int:
+    harness = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description="Download and prepare spellcheck corpora for FBE Next")
-    parser.add_argument("--manifest", type=Path, default=Path(__file__).resolve().parents[1] / "corpora.json")
-    parser.add_argument("--output", type=Path, default=Path(__file__).resolve().parents[1] / "data" / "prepared")
+    parser.add_argument("--manifest", type=Path, default=harness / "corpora.json",
+                        help="Manifest path; relative paths are based on the harness directory")
+    parser.add_argument("--output", type=Path, default=harness / "data" / "prepared",
+                        help="Prepared directory; relative paths are based on the harness directory")
     parser.add_argument("--profile", choices=("smoke", "standard", "full"), default="smoke")
     parser.add_argument("--only", action="append", help="Corpus id; may be specified multiple times")
     parser.add_argument(
@@ -821,6 +861,8 @@ def main() -> int:
     )
     parser.add_argument("--seed", type=int, default=51)
     args = parser.parse_args()
+    args.manifest = (harness / args.manifest.expanduser()).resolve()
+    args.output = (harness / args.output.expanduser()).resolve()
 
     manifest = read_json(args.manifest)
     selected = set(args.only or [])
@@ -862,11 +904,16 @@ def main() -> int:
         print(json.dumps(result, ensure_ascii=False, indent=2))
 
     lock = {
-        "schema_version": 2,
+        "schema_version": 3,
+        "environment": describe_environment(args.manifest),
         "profile": args.profile,
         "seed": args.seed,
         "rnc_enabled": rnc_root is not None,
-        "corpora": results,
+        # Prepared outputs are relative to the lock, never to a user's home.
+        "corpora": [
+            lock_corpus_result(result, args.output)
+            for result in results
+        ],
     }
     write_json(args.output / "SOURCES.lock.json", lock)
     generate_sources_markdown(manifest, results, args.output / "SOURCES.generated.md")

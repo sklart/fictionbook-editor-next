@@ -24,11 +24,23 @@ if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
         $systemPython = Get-Command python -ErrorAction Stop
         & $systemPython.Source -m venv $venv
     }
+    if ($LASTEXITCODE -ne 0) {
+        throw "Cannot create corpus virtual environment (exit code $LASTEXITCODE)."
+    }
+}
+if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
+    throw "Python is missing from the corpus virtual environment: $python"
 }
 
 if (-not $SkipInstall) {
     & $python -m pip install --upgrade pip
+    if ($LASTEXITCODE -ne 0) {
+        throw "Cannot upgrade pip in corpus virtual environment (exit code $LASTEXITCODE)."
+    }
     & $python -m pip install -r (Join-Path $PSScriptRoot "requirements.txt")
+    if ($LASTEXITCODE -ne 0) {
+        throw "Cannot install corpus requirements (exit code $LASTEXITCODE)."
+    }
 }
 
 $arguments = @(

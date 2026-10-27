@@ -16,9 +16,11 @@ $projectPath = Join-Path $projectDir "hunspell-probe.vcxproj"
 $outputDir = Join-Path $repoRoot "out\tools"
 $solutionDir = $repoRoot.TrimEnd("\") + "\"
 
+# Always let MSBuild validate the dependency inputs and toolset incrementally.
+& (Join-Path $repoRoot "tools\build\build-hunspell.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if (-not (Test-Path -LiteralPath $libPath -PathType Leaf)) {
-    & (Join-Path $repoRoot "tools\build\build-hunspell.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    throw "Hunspell build did not produce the expected library: $libPath"
 }
 
 New-Item -ItemType Directory -Path $projectDir -Force | Out-Null
@@ -62,7 +64,9 @@ $project = @'
 </Project>
 '@
 $project = $project.Replace("__TOOLSET__", $PlatformToolset).Replace("__SOURCE__", $sourcePath)
-$project | Set-Content -LiteralPath $projectPath -Encoding utf8
+if (-not (Test-Path -LiteralPath $projectPath) -or [IO.File]::ReadAllText($projectPath) -ne $project) {
+    [IO.File]::WriteAllText($projectPath, $project, [Text.UTF8Encoding]::new($false))
+}
 
 $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
 if (-not (Test-Path -LiteralPath $vswhere)) { throw "vswhere.exe not found." }

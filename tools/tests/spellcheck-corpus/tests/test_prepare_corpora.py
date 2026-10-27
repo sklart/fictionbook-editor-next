@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import importlib.metadata
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -14,6 +17,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from prepare_corpora import (
     _hf_dataset_file_url,
     _request_json,
+    describe_environment,
+    lock_corpus_result,
     main,
     process_benchmark,
     stream_hf_text_documents,
@@ -115,6 +120,103 @@ class PrepareCorporaTests(unittest.TestCase):
                 self.assertEqual(main(), 0)
             self.assertTrue((output / "SOURCES.lock.json").is_file())
             self.assertTrue((output / "SOURCES.generated.md").is_file())
+            lock = json.loads((output / "SOURCES.lock.json").read_text(encoding="utf-8"))
+            self.assertEqual(lock["schema_version"], 3)
+            self.assertEqual(lock["environment"]["sha256"]["corpora.json"],
+                             hashlib.sha256(manifest.read_bytes()).hexdigest().upper())
+            self.assertNotIn(str(root), json.dumps(lock).replace("\\\\", "\\"))
+
+    def test_environment_records_versions_hashes_and_no_local_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = Path(tmp) / "private-corpora.json"
+            manifest.write_text('{"corpora": []}', encoding="utf-8")
+            def version(name):
+                if name == "datasets":
+                    raise importlib.metadata.PackageNotFoundError(name)
+                return "1.2.3"
+            with patch("prepare_corpora.importlib.metadata.version", side_effect=version):
+                environment = describe_environment(manifest)
+            self.assertIsNone(environment["packages"]["datasets"])
+            self.assertEqual(environment["packages"]["requests"], "1.2.3")
+            self.assertRegex(environment["python_version"], r"^3\.\d+\.")
+            for name, path in (("corpora.json", manifest), ("requirements.txt", ROOT / "requirements.txt"),
+                               ("prepare_corpora.py", ROOT / "src" / "prepare_corpora.py")):
+                self.assertEqual(environment["sha256"][name], hashlib.sha256(path.read_bytes()).hexdigest().upper())
+            self.assertNotIn(str(Path(tmp)), json.dumps(environment).replace("\\\\", "\\"))
+
+    def test_lock_uses_relative_prepared_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = root / "corpora.json"
+            output = root / "prepared"
+            manifest.write_text(json.dumps({"corpora": [{
+                "id": "synthetic", "name": "synthetic", "loader": "benchmark_files",
+                "purpose": "test", "source_url": "https://example.test", "license": "synthetic",
+            }]}), encoding="utf-8")
+            with patch.object(sys, "argv", ["prepare", "--manifest", str(manifest), "--output", str(output)]), patch(
+                "prepare_corpora.process_benchmark", return_value={
+                    "id": "synthetic", "output": str(output / "benchmarks" / "synthetic.jsonl"), "pairs": 1,
+                },
+            ):
+                self.assertEqual(main(), 0)
+            lock = json.loads((output / "SOURCES.lock.json").read_text(encoding="utf-8"))
+            self.assertEqual(lock["corpora"][0]["output"], "benchmarks/synthetic.jsonl")
+            self.assertNotIn(str(root), json.dumps(lock).replace("\\\\", "\\"))
+
+    def test_relative_paths_and_lock_are_independent_of_cwd(self) -> None:
+        # Keep both paths on the harness drive so Windows relpath is defined.
+        with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+            root = Path(tmp).resolve()
+            manifest = root / "corpora.json"
+            prepared = root / "prepared"
+            private_rnc = root / "private-rnc"
+            private_rnc.mkdir()
+            manifest.write_text(json.dumps({"corpora": [{
+                "id": "synthetic_rnc", "name": "synthetic", "loader": "rnc_syntagrus",
+                "purpose": "test", "source_url": "https://example.test", "license": "synthetic",
+                "relative_path": str(private_rnc),
+            }]}), encoding="utf-8")
+            argv = ["prepare", "--manifest", os.path.relpath(manifest, ROOT),
+                    "--output", os.path.relpath(prepared, ROOT), "--rnc-root", str(private_rnc)]
+            locks = []
+            previous = Path.cwd()
+            try:
+                for directory in (root / "cwd-one", root / "cwd-two"):
+                    directory.mkdir()
+                    os.chdir(directory)
+                    with patch.object(sys, "argv", argv), patch(
+                        "prepare_corpora.process_rnc_annotated", return_value={
+                            "id": "synthetic_rnc", "kind": "annotated", "tokens": 7,
+                            "output": str(prepared / "annotated" / "synthetic.jsonl"),
+                            "local_source": str(private_rnc),
+                        },
+                    ) as process:
+                        self.assertEqual(main(), 0)
+                        self.assertEqual(process.call_args.args[2], prepared)
+                    locks.append((prepared / "SOURCES.lock.json").read_bytes())
+            finally:
+                os.chdir(previous)
+            self.assertEqual(locks[0], locks[1])
+            lock = json.loads(locks[0])
+            self.assertEqual(lock["schema_version"], 3)
+            self.assertTrue(lock["rnc_enabled"])
+            self.assertEqual(lock["corpora"][0]["output"], "annotated/synthetic.jsonl")
+            self.assertEqual(lock["corpora"][0]["tokens"], 7)
+            self.assertNotIn("local_source", lock["corpora"][0])
+            text = locks[0].decode().replace("\\\\", "\\")
+            for private in (str(root), str(Path.home()), str(private_rnc)):
+                self.assertNotIn(private, text)
+
+    def test_lock_keeps_only_safe_relative_local_source(self) -> None:
+        prepared = Path(tempfile.gettempdir()).resolve() / "prepared"
+        for source, safe in (("collection/year", True), ("../private", False),
+                             ("C:\\Users\\synthetic\\rnc", False), ("/private/rnc", False),
+                             ("\\\\server\\private\\rnc", False)):
+            with self.subTest(source=source):
+                item = lock_corpus_result({"id": "synthetic", "local_source": source,
+                                          "output": str(prepared / "clean" / "synthetic.jsonl")}, prepared)
+                self.assertEqual("local_source" in item, safe)
+                self.assertEqual(item["id"], "synthetic")
 
     def test_hf_file_url_pins_revision_and_file(self) -> None:
         url = _hf_dataset_file_url(

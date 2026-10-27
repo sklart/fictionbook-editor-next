@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -15,10 +16,13 @@ from compare_dictionaries import (
     describe_dictionary,
     describe_file,
     evaluate_annotated_corpora,
+    evaluate_benchmark,
     generate_report,
     summarize_benchmark_delta,
     summarize_vocabulary_delta,
+    write_benchmark_csv,
 )
+from corpus_common import write_json
 
 
 class CompareDictionariesAnnotatedTests(unittest.TestCase):
@@ -131,6 +135,21 @@ class CompareDictionariesAnnotatedTests(unittest.TestCase):
         self.assertEqual(fiction["tokens"], 4)
         self.assertEqual(fiction["unique_words"], 2)
         self.assertEqual(fiction["dictionaries"]["current"]["rejected_tokens"], 2)
+        with tempfile.TemporaryDirectory() as tmp:
+            report = Path(tmp) / "report.md"
+            generate_report(report, [(name, Path(name)) for name in misspelled], {}, {},
+                            misspelled, {}, annotated=summary)
+            content = report.read_text(encoding="utf-8")
+        for group, tokens, rejected, rate in (
+            ("strict_clean", 4, 2, "50.00%"),
+            ("S", 5, 3, "60.00%"),
+            ("fiction", 4, 2, "50.00%"),
+        ):
+            self.assertIn(
+                f"| rnc_morphological_standard / {group} | {tokens} | 2 | {rejected} / 1 | {rate} / 50.00% |",
+                content,
+            )
+        self.assertIn("(tokens / unique)", content)
 
 
     def test_report_includes_all_suggestion_metrics_and_delta(self) -> None:
@@ -174,6 +193,8 @@ class CompareDictionariesAnnotatedTests(unittest.TestCase):
             {"dictionary": "old", "wrong": "корета", "correct": "карета", "source": "x", "correction": "", "domain": "", "wrong_rejected": True, "correct_accepted": True, "suggestion_rank": 2},
             {"dictionary": "new", "wrong": "корета", "correct": "карета", "source": "x", "correction": "", "domain": "", "wrong_rejected": False, "correct_accepted": False, "suggestion_rank": None},
         ]
+        for row in rows:
+            row["suggestion_evaluated"] = True
         delta = summarize_benchmark_delta(rows, "old", "new")
         self.assertEqual(delta["fixed_false_accepts"], 1)
         self.assertEqual(delta["new_false_accepts"], 1)
@@ -181,6 +202,88 @@ class CompareDictionariesAnnotatedTests(unittest.TestCase):
         self.assertEqual(delta["new_false_rejects"], 1)
         self.assertEqual(delta["correct_suggestion_appeared"], 1)
         self.assertEqual(delta["correct_suggestion_disappeared"], 1)
+
+    def test_benchmark_delta_excludes_unqueried_suggestions_only(self) -> None:
+        for before, after in ((False, True), (True, False), (False, False)):
+            with self.subTest(before=before, after=after):
+                rows = [
+                    {"dictionary": "old", "wrong": "ошбка", "correct": "ошибка",
+                     "wrong_rejected": False, "correct_accepted": False,
+                     "suggestion_evaluated": before, "suggestion_rank": None},
+                    {"dictionary": "new", "wrong": "ошбка", "correct": "ошибка",
+                     "wrong_rejected": True, "correct_accepted": True,
+                     "suggestion_evaluated": after, "suggestion_rank": 1},
+                ]
+                delta = summarize_benchmark_delta(rows, "old", "new")
+                self.assertEqual(delta["fixed_false_accepts"], 1)
+                self.assertEqual(delta["fixed_false_rejects"], 1)
+                self.assertEqual(delta.get("correct_suggestion_appeared", 0), 0)
+                self.assertEqual(delta.get("suggestion_cases_compared", 0), 0)
+
+    def check_suggestion_limit(self, limit, unique_count, case_count, mrr, top1, top3):
+        cases = [
+            {"wrong": "ашибка", "correct": "ошибка"},
+            {"wrong": "малако", "correct": "молоко"},
+            {"wrong": "ашибка", "correct": "ошибки"},
+            {"wrong": "сабака", "correct": "собака"},
+        ]
+        proposed = {"ашибка": ["ошибка", "ошибки"], "малако": [], "сабака": ["собака"]}
+        dictionaries = [("old", Path("old")), ("new", Path("new"))]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "cases.jsonl").write_text(json.dumps({"typo_cases": cases}), encoding="utf-8")
+            with patch("compare_dictionaries.list_misspelled", return_value={"ашибка", "малако", "сабака"}), patch(
+                "compare_dictionaries.suggestions",
+                side_effect=lambda exe, dic, words: {word: proposed[word] for word in words},
+            ) as query:
+                summary, rows = evaluate_benchmark(root, Path("probe"), dictionaries, limit)
+            self.assertEqual(query.call_args.args[2], list(proposed)[:unique_count])
+            self.assertEqual(summary["cases"], 4)
+            self.assertEqual(summary["suggestion_limit"], limit)
+            self.assertEqual(summary["suggestion_unique_words_evaluated"], unique_count)
+            self.assertEqual(summary["suggestion_cases_evaluated"], case_count)
+            write_json(root / "results.json", {"benchmark": summary})
+            def reject_nonfinite(value):
+                self.fail(f"Non-standard JSON number: {value}")
+            serialized = json.loads((root / "results.json").read_text(encoding="utf-8"),
+                                    parse_constant=reject_nonfinite)["benchmark"]
+            if not case_count:
+                for stats in serialized["dictionaries"].values():
+                    for key in ("suggest_top1", "suggest_top3", "suggest_top5", "suggest_top8",
+                                "suggest_any", "suggest_mrr"):
+                        self.assertIsNone(stats[key])
+                    self.assertEqual(stats["wrong_rejected"] + stats["wrong_accepted"], len(cases))
+                    self.assertEqual(stats["correct_accepted"] + stats["correct_rejected"], len(cases))
+            for stats in summary["dictionaries"].values():
+                self.assertEqual([stats[key] for key in (
+                    "wrong_rejected", "wrong_accepted", "correct_accepted", "correct_rejected"
+                )], [4, 0, 4, 0])
+                self.assertEqual(stats["suggestion_cases_evaluated"], case_count)
+                self.assertEqual(stats["suggest_mrr"], mrr)
+                self.assertEqual(stats["suggest_top1"], top1)
+                for key in ("suggest_top3", "suggest_top5", "suggest_top8", "suggest_any"):
+                    self.assertEqual(stats[key], top3)
+            self.assertEqual(sum(row["suggestion_evaluated"] for row in rows), case_count * 2)
+            write_benchmark_csv(root / "detail.csv", rows)
+            self.assertIn("suggestion_evaluated", (root / "detail.csv").read_text(encoding="utf-8-sig"))
+            generate_report(root / "report.md", dictionaries, {}, {}, {"old": set(), "new": set()}, summary)
+            report = (root / "report.md").read_text(encoding="utf-8")
+            self.assertIn(f"случаев с оценкой подсказок: **{case_count}**", report)
+            self.assertIn("suggestion_cases_evaluated", report)
+            if not case_count:
+                self.assertIn("| N/A | N/A | N/A | N/A | N/A | N/A |", report)
+
+    def test_suggestion_limit_counts_repeated_wrong_cases_and_mrr(self):
+        self.check_suggestion_limit(1, 1, 2, 0.75, 1, 2)
+
+    def test_suggestion_limit_all_includes_queried_misses(self):
+        self.check_suggestion_limit(-1, 3, 4, 0.625, 2, 3)
+
+    def test_suggestion_limit_zero_is_not_evaluated(self):
+        self.check_suggestion_limit(0, 0, 0, None, None, None)
+
+    def test_suggestion_limit_above_vocabulary_checks_all(self):
+        self.check_suggestion_limit(100, 3, 4, 0.625, 2, 3)
 
 
 if __name__ == "__main__":

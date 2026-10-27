@@ -13,6 +13,8 @@
 
 namespace {
 
+const char* const Usage = "Usage: hunspell-probe -d DICTIONARY_BASE (-l FILE | -a | --benchmark FILE | --suggest-file FILE)\n";
+
 UINT DictionaryCodePage(const char* encoding) {
     if (!encoding || !*encoding) {
         return CP_UTF8;
@@ -89,6 +91,11 @@ public:
     explicit Dictionary(const std::string& base) {
         const std::string aff = base + ".aff";
         const std::string dic = base + ".dic";
+        // Hunspell_create may return a handle even when its files cannot be opened.
+        // Keep the check aligned with Hunspell's narrow Windows file APIs.
+        if (!std::ifstream(aff, std::ios::binary) || !std::ifstream(dic, std::ios::binary)) {
+            throw std::runtime_error("Cannot open dictionary pair (paths must be representable in the Windows ANSI code page): " + base);
+        }
         handle_ = Hunspell_create(aff.c_str(), dic.c_str());
         if (!handle_) throw std::runtime_error("Cannot load dictionary: " + base);
         codePage_ = DictionaryCodePage(Hunspell_get_dic_encoding(handle_));
@@ -217,7 +224,7 @@ int main(int argc, char** argv) {
         SetConsoleOutputCP(CP_UTF8);
         const std::string base = FindArgument(argc, argv, "-d");
         if (base.empty()) {
-            std::cerr << "Usage: hunspell-probe -i UTF-8 -d DICTIONARY_BASE (-l FILE | -a)\n";
+            std::cerr << Usage;
             return 2;
         }
         const auto loadStarted = std::chrono::steady_clock::now();
@@ -235,7 +242,7 @@ int main(int argc, char** argv) {
         if (HasArgument(argc, argv, "--suggest-file")) {
             return SuggestFileMode(dictionary, FindArgument(argc, argv, "--suggest-file"));
         }
-        std::cerr << "Specify -l FILE or -a\n";
+        std::cerr << Usage;
         return 2;
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
