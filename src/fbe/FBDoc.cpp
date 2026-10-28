@@ -1355,8 +1355,10 @@ static MSXML2::IXMLDOMNodePtr	  ProcessP(MSHTML::IHTMLElement *p,
 
   MSHTML::IHTMLDOMNodePtr   hp(p);
 
-  // check if it is an empty-line
-  if(U::scmp(cls, L"td") && U::scmp(cls, L"th"))
+  // FB2 empty-line cannot carry an ID. Preserve an empty paragraph with an
+  // anchor as a paragraph so internal bookmarks survive Save/Reopen.
+  _bstr_t anchorId(p->id);
+  if(anchorId.length() == 0 && U::scmp(cls, L"td") && U::scmp(cls, L"th"))
   {
 	if	(hp->hasChildNodes()==VARIANT_FALSE ||
 		(!(bool)hp->firstChild->nextSibling && hp->firstChild->nodeType==3 &&
