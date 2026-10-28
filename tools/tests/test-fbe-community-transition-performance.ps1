@@ -12,7 +12,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot RuntimeTestIsolation.ps1)
 $evidence=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EvidenceDirectory)
 New-Item -ItemType Directory -Path $evidence -Force | Out-Null
-$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TRACE','FBE_NEXT_TEST_PERF_LEGACY','FBE_NEXT_TEST_PERF_AFFINITY');$saved=@{};foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name)}
+$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TRACE','FBE_NEXT_TEST_PERF_LEGACY','FBE_NEXT_TEST_PERF_AFFINITY','FBE_NEXT_TEST_PERF_KIND');$saved=@{};foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name)}
 $utf8=[Text.UTF8Encoding]::new($false)
 $summary=[Collections.Generic.List[object]]::new()
 [ordered]@{cpu=(Get-CimInstance Win32_Processor).Name;logicalCpus=[Environment]::ProcessorCount;os=[Environment]::OSVersion.VersionString;affinityMask=$AffinityMask;affinityScope='UI thread';priority='Normal';priorityBoost=$false;warmups=1;measuredRepeats=5} | ConvertTo-Json | Set-Content (Join-Path $evidence environment.json)
@@ -33,11 +33,15 @@ try {
   try{if(!$validation.load($fixture)){throw "Invalid performance FB2: $($validation.parseError.reason)"}}finally{[void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($validation);[void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($schema)}
   Get-FileHash -LiteralPath $fixture | ConvertTo-Json | Set-Content (Join-Path $evidence "fixture-$size-hash.json")
   foreach($entry in @(@{Name='baseline';Exe=$BaselineExe},@{Name='candidate';Exe=$CandidateExe}) | Where-Object { $_.Name -in $Builds }) {
+   # Separate 50 MiB caret/range processes retain the same per-process timeout
+   # and avoid carrying a preceding scenario's heap high-water mark forward.
+   foreach($scenarioKind in $(if($size -ge 50){@('caret','range')}else{@('both')})) {
    $iso=New-IsolatedFbeRuntime -FbeExe $entry.Exe -Name transition-perf;$passed=$false
    try {
     $null=New-IsolatedFbeSettingsSeed -Isolation $iso -StartupScriptsDirectory (Join-Path $iso.Root empty-scripts)
-    $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='community-transition-performance';$env:FBE_NEXT_TRACE='0';$env:FBE_NEXT_TEST_PERF_AFFINITY=$AffinityMask.ToString();$env:FBE_NEXT_TEST_PERF_LEGACY=if($entry.Name -eq 'baseline'){'1'}else{'0'}
-    $report=Join-Path $evidence ("{0}-{1}.tsv" -f $entry.Name,$size)
+    $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='community-transition-performance';$env:FBE_NEXT_TRACE='0';$env:FBE_NEXT_TEST_PERF_AFFINITY=$AffinityMask.ToString();$env:FBE_NEXT_TEST_PERF_KIND=$scenarioKind;$env:FBE_NEXT_TEST_PERF_LEGACY=if($entry.Name -eq 'baseline'){'1'}else{'0'}
+    $reportName=if($scenarioKind -eq 'both'){"{0}-{1}.tsv" -f $entry.Name,$size}else{"{0}-{1}-{2}.tsv" -f $entry.Name,$size,$scenarioKind}
+    $report=Join-Path $evidence $reportName
     $process=Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -ArgumentList @('--portable','-b',$report,$fixture) -WindowStyle Hidden -PassThru
     $process.PriorityClass=[Diagnostics.ProcessPriorityClass]::Normal
     $process.PriorityBoostEnabled=$false
@@ -45,8 +49,8 @@ try {
     Get-FileHash -LiteralPath $entry.Exe | ConvertTo-Json | Set-Content (Join-Path $evidence ($entry.Name+'-exe.json'))
     if($exitCode -ne 0){throw "Performance process failed: $($entry.Name), $size MiB, exit=$exitCode"}
     $rows=@(Import-Csv -LiteralPath $report -Delimiter "`t" | Where-Object { [int]$_.repeat -ge 0 })
-    if($rows.Count -ne 10){throw "Expected five measured caret and range repeats: $report"}
-    foreach($kind in 'caret','range') {
+    if($rows.Count -ne $(if($scenarioKind -eq 'both'){10}else{5})){throw "Expected five measured caret and range repeats: $report"}
+    foreach($kind in $(if($scenarioKind -eq 'both'){@('caret','range')}else{@($scenarioKind)})) {
      $samples=@($rows | Where-Object kind -eq $kind)
      foreach($metric in @('body_source_ms','source_body_ms','index_ms','map_body_ms','map_source_ms','private_bytes','peak_private_bytes','index_live_delta','heartbeat_max_ms','heartbeat_timeouts')) {
       $values=@($samples | ForEach-Object { [double]::Parse($_.$metric,[Globalization.CultureInfo]::InvariantCulture) } | Sort-Object)
@@ -57,4 +61,5 @@ try {
    } finally {Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed;$summary | Export-Csv -LiteralPath (Join-Path $evidence summary.csv) -NoTypeInformation}
   }
  }
+}
 } finally {foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name])}}

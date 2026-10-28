@@ -8,7 +8,9 @@ if(IsFbeTestScenario(L"community-transition-performance")) {
   wchar_t affinity[32]={};::GetEnvironmentVariableW(L"FBE_NEXT_TEST_PERF_AFFINITY",affinity,_countof(affinity));
   const DWORD_PTR mask=static_cast<DWORD_PTR>(_wcstoui64(affinity,nullptr,10));
   if(mask && !::SetThreadAffinityMask(::GetCurrentThread(),mask))CheckError(HRESULT_FROM_WIN32(::GetLastError()));
-  for(int selected=0;selected<2;++selected) for(int repeat=-1;repeat<5;++repeat) {
+  wchar_t kind[16]={};::GetEnvironmentVariableW(L"FBE_NEXT_TEST_PERF_KIND",kind,_countof(kind));
+  const int first=wcscmp(kind,L"range")==0 ? 1:0, limit=wcscmp(kind,L"caret")==0 ? 1:2;
+  for(int selected=first;selected<limit;++selected) for(int repeat=-1;repeat<5;++repeat) {
    ShowView(BODY);
    MSHTML::IHTMLDocument2Ptr html(m_doc->m_body.Document());
    MSHTML::IHTMLElementPtr target(MSHTML::IHTMLDocument3Ptr(html)->getElementById(L"perf-last"));
