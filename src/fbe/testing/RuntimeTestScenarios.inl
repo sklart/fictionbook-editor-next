@@ -52,9 +52,44 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT message, WPARAM wparam, LPARAM 
 __declspec(noinline) LRESULT CMainFrame::RunLegacyRuntimeScenarios(UINT, WPARAM, LPARAM, BOOL&)
 {
     PluginOptionsProbe::paletteForWindow = EditorPluginProbePalette;
+    CAtlFile output;
+    if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS))) return 0;
+    bool handled = true;
+    LRESULT result = RunRuntimeArchiveScenarios(output, handled);
+    if (handled) return result;
+    result = RunRuntimeUndoScenarios(output, handled);
+    if (handled) return result;
+    result = RunRuntimeNavigationScenarios(output, handled);
+    if (handled) return result;
+    return RunRuntimeEditorScenarios(output);
+}
+
+__declspec(noinline) LRESULT CMainFrame::RunRuntimeArchiveScenarios(CAtlFile& output, bool& scenarioHandled)
+{
+    scenarioHandled = true;
 #include "RuntimeTestArchiveAndLifecycle.inl"
+    scenarioHandled = false;
+    return 0;
+}
+
+__declspec(noinline) LRESULT CMainFrame::RunRuntimeUndoScenarios(CAtlFile& output, bool& scenarioHandled)
+{
+    scenarioHandled = true;
 #include "RuntimeTestUndoAndContainers.inl"
+    scenarioHandled = false;
+    return 0;
+}
+
+__declspec(noinline) LRESULT CMainFrame::RunRuntimeNavigationScenarios(CAtlFile& output, bool& scenarioHandled)
+{
+    scenarioHandled = true;
 #include "RuntimeTestNavigationAndStructure.inl"
+    scenarioHandled = false;
+    return 0;
+}
+
+__declspec(noinline) LRESULT CMainFrame::RunRuntimeEditorScenarios(CAtlFile& output)
+{
 #include "RuntimeTestEditorAndExport.inl"
 
 #undef IsFbeTestScenario
