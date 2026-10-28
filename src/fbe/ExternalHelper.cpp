@@ -10,6 +10,7 @@
 #include <map>
 #include <vector>
 #include <new>
+#include "scripts/VariantDiscriminator.h"
 #include "scripts/ScriptExecutionContext.h"
 #include "scripts/ScriptJson.h"
 #include "scripts/ScriptModalState.h"
@@ -314,7 +315,11 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 		if (!argumentError || *argumentError == UINT_MAX) argumentText = L"none";
 		else argumentText.Format(L"%u", *argumentError);
 		CString details;
-		details.Format(L"dispid=%ld; method=%s; result-type=VT_%u; argument-error=%s; excep.wCode=%u; excep.scode=0x%08lX; excep.helpContext=%lu", static_cast<long>(dispid), ExternalHelperMethodName(dispid), resultValue ? static_cast<unsigned int>(V_VT(resultValue)) : VT_EMPTY, (LPCWSTR)argumentText, exceptionInfo ? exceptionInfo->wCode : 0, static_cast<unsigned long>(exceptionInfo ? exceptionInfo->scode : S_OK), exceptionInfo ? exceptionInfo->dwHelpContext : 0);
+		// MSHTML can supply a VARIANT aligned to the x86 COM ABI's four-byte
+		// boundary. Copy the discriminator as bytes instead of dereferencing a
+		// pointer that clang requires to be aligned to alignof(VARIANT).
+		const VARTYPE resultType = ReadVariantDiscriminator(resultValue);
+		details.Format(L"dispid=%ld; method=%s; result-type=VT_%u; argument-error=%s; excep.wCode=%u; excep.scode=0x%08lX; excep.helpContext=%lu", static_cast<long>(dispid), ExternalHelperMethodName(dispid), static_cast<unsigned int>(resultType), (LPCWSTR)argumentText, exceptionInfo ? exceptionInfo->wCode : 0, static_cast<unsigned long>(exceptionInfo ? exceptionInfo->scode : S_OK), exceptionInfo ? exceptionInfo->dwHelpContext : 0);
 		details += StartupTrace::FormatComExceptionMetadata(exceptionInfo, errorInfo);
 				RecordLogged(g_loggedInvokes, dispid);
 		StartupTrace::DispatchResult(L"external", FAILED(result) ? L"XH140" : L"XH131", result, details);

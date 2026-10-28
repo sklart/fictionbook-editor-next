@@ -43,10 +43,16 @@ function Invoke-SanitizerCase {
     if($Sanitizer -eq 'Address' -and 3 -in $ExpectedChildExitCodes) { throw 'Exit 3 is reserved for ASan abort and cannot be an expected application exit.' }
     New-Item -ItemType Directory -Force $Directory | Out-Null
     $directoryPath=(Resolve-Path -LiteralPath $Directory).Path
-    $dump=Join-Path $directoryPath ('asan-'+[guid]::NewGuid().ToString('N')+'.dmp')
+    # VCAsan 14.44 truncates long dump paths before creating the file. Use a
+    # short unique temporary name, then preserve the completed dump with the
+    # case artifacts after the monitored job has exited.
+    $dumpPrefix='fbe-asan-'+[guid]::NewGuid().ToString('N')
+    $dumpRoot=Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Temp'
+    $dump=Join-Path $dumpRoot ($dumpPrefix+'.dmp')
     $saved=@{}
     foreach($key in @('ASAN_OPTIONS','ASAN_SAVE_DUMPS','UBSAN_OPTIONS')) { $saved[$key]=[Environment]::GetEnvironmentVariable($key) }
     if($Sanitizer -eq 'Address') {
+        if (-not (Test-Path -LiteralPath $dumpRoot -PathType Container) -or $dump.Length -gt 110) { throw "A short ASan dump path is unavailable: $dumpRoot" }
         $env:ASAN_SAVE_DUMPS=$dump
         $logPrefix=(Join-Path $directoryPath 'asan').Replace('\','/')
         $symbolize=if($OfflineSymbolization) {0} else {1}
@@ -90,6 +96,11 @@ function Invoke-SanitizerCase {
         $pattern=if($Sanitizer -eq 'Address') {'ERROR:\s*(AddressSanitizer|LeakSanitizer)|AddressSanitizer:|AddressSanitizer failed|ASan runtime|Sanitizer CHECK failed|Shadow memory range interleaves'} else {'runtime error:|UndefinedBehaviorSanitizer|(?m)^\s*ubsan\b|Sanitizer CHECK failed'}
         $diagnostics=@($logs | Where-Object { Select-String -LiteralPath $_.FullName -Pattern $pattern -Quiet })
         $completedStacks=if($Sanitizer -eq 'Address') {@(Complete-SanitizerStack -Logs @($diagnostics | ForEach-Object FullName) -Executable $Executable -Force:$OfflineSymbolization)} else {@()}
+        if ($Sanitizer -eq 'Address') {
+            Get-ChildItem -LiteralPath $dumpRoot -File -Filter ($dumpPrefix+'*.dmp') | ForEach-Object {
+                Move-Item -LiteralPath $_.FullName -Destination (Join-Path $directoryPath $_.Name)
+            }
+        }
         $dumps=@(Get-ChildItem -LiteralPath $directoryPath -File -Filter '*.dmp')
         $failure=($null -ne $monitor.ObservationError) -or $timedOut -or $workerExit -ne 0 -or $childFailures.Count -gt 0 -or $diagnostics.Count -gt 0 -or $dumps.Count -gt 0 -or $uninstrumented.Count -gt 0
         $result=[ordered]@{name=$Name;executable=$Executable;commit=(& git -C (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path rev-parse HEAD).Trim();sanitizer=$Sanitizer;status=$(if($failure){'FAIL'}else{'PASS'});exitCode=$workerExit;workerId=$workerId;allProcesses=$trace;timedOut=$timedOut;stdout=$stdout;stderr=$stderr;observationError=$monitor.ObservationError;stackTraceFiles=@($diagnostics | ForEach-Object FullName);dumpPaths=@($dumps | ForEach-Object FullName);childFailures=$childFailures;processes=$children}

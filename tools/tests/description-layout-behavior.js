@@ -196,6 +196,11 @@ if(fixtures[fixtureIndex]=="full" || fixtures[fixtureIndex]=="binary-geometry") 
       var headers=byClass(document.getElementById("binobj"),"description-binary-header");
       assert(headers && headers.currentStyle.display!="none","Modern binary header visible");
       var headerSpans=headers.getElementsByTagName("SPAN"), headerColumns=["id","type","size","dims","show"];
+      var headerKeys=["binary_thumb","binary_id","binary_type","binary_size","binary_dimensions","binary_actions"];
+      var headerDefaults=["","ID","Type","Size","Dimensions","Actions"];
+      assert(headerSpans.length==headerKeys.length,"All attachment headers are present");
+      for(var hk=0;hk<headerKeys.length;hk++)
+       assert(headerSpans[hk].innerText==DescriptionText(headerKeys[hk],headerDefaults[hk]),"Localized attachment header "+headerKeys[hk]);
       for(var hi=0;hi<headerColumns.length;hi++)
        assert(Math.abs(headerSpans[hi+1].getBoundingClientRect().left-cell(binaryRows[0],headerColumns[hi]).getBoundingClientRect().left)<=8,"Binary header alignment: "+headerColumns[hi]);
      }

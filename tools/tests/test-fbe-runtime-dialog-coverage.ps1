@@ -1,4 +1,4 @@
-﻿<# Ensures every catalog text is either bound by the generic dialog layer or
+<# Ensures every catalog text is either bound by the generic dialog layer or
    consumed by an existing explicit runtime-localization implementation. #>
 [CmdletBinding()]
 param()
@@ -64,6 +64,7 @@ $replacedDialogKeys = @{
     'fbe.settings.spelling.write_failed' = 'fbe.settings.save_failed'
     'fbe.theme.delete.confirm_inactive' = 'fbe.theme.delete.staged'
     'fbe.theme.delete.confirm_active' = 'fbe.theme.delete.staged'
+    'fbe.description.binary_files' = 'fbe.description.binary_file_forms'
 }
 function Test-ReplacedDialogKey([string]$Key) {
     if (-not $replacedDialogKeys.ContainsKey($Key)) { return $false }
@@ -74,7 +75,27 @@ function Test-ReplacedDialogKey([string]$Key) {
     foreach ($language in $catalog.targetLanguages) {
         if ([string]::IsNullOrWhiteSpace($replacement.translations.$language)) { throw "Replacement lacks $language translation: $replacementKey" }
     }
+    if ($replacement.resource -eq 'runtime/main.js') { return Test-DescriptionRuntimeKey $replacementKey $consumers[$replacement.resource].Text }
     return $consumers[$replacement.resource].Text.Contains($replacementKey)
+}
+function Test-DescriptionRuntimeKey([string]$Key, [string]$ConsumerText) {
+    if (-not $Key.StartsWith('fbe.description.')) { return $false }
+    if (-not $ConsumerText.Contains('GetLocalizedStringOrDefault("fbe.description." + key, fallback)')) { return $false }
+    $suffix = [regex]::Escape($Key.Substring('fbe.description.'.Length))
+    # Only accept a literal-only array whose indexed elements are passed to
+    # DescriptionText in a loop bounded by that same array's length.
+    $arrayPattern = 'var\s+(?<array>[A-Za-z_$][\w$]*)\s*=\s*\[(?<items>\s*"[\w]+"\s*(?:,\s*"[\w]+"\s*)*)\]\s*;'
+    foreach ($array in [regex]::Matches($ConsumerText, $arrayPattern)) {
+        if ($array.Groups['items'].Value -notmatch ('(?:^|,)\s*"' + $suffix + '"\s*(?:,|$)')) { continue }
+        $name = [regex]::Escape($array.Groups['array'].Value)
+        $loop = 'for\s*\(\s*var\s+(?<index>[A-Za-z_$][\w$]*)\s*=\s*0\s*;\s*\k<index>\s*<\s*' + $name + '\.length\s*;\s*\k<index>\+\+\s*\)\s*\{[^{}]*DescriptionText\s*\(\s*' + $name + '\s*\[\s*\k<index>\s*\]'
+        if ($ConsumerText -match $loop) { return $true }
+    }
+    # Description actions, advisory warnings and legacy button captions all
+    # pass a literal suffix through the same production localization helper.
+    return $ConsumerText -match ('DescriptionText\("' + $suffix + '"') -or
+        $ConsumerText -match ('warn\([^;\r\n]*,\s*"' + $suffix + '"') -or
+        $ConsumerText -match ('key\s*=\s*"' + $suffix + '"')
 }
 foreach ($legacy in $replacedDialogKeys.Keys) {
     $replacementKey = $replacedDialogKeys[$legacy]
@@ -82,7 +103,9 @@ foreach ($legacy in $replacedDialogKeys.Keys) {
     $consumer = $consumers[$replacement.resource]
     $originalText = $consumer.Text
     try {
-        $consumer.Text = $originalText.Replace($replacementKey, 'fixture.removed.binding')
+        if ($replacement.resource -eq 'runtime/main.js') {
+            $consumer.Text = $originalText.Replace('"' + $replacementKey.Substring('fbe.description.'.Length) + '"', '"fixture.removed.binding"')
+        } else { $consumer.Text = $originalText.Replace($replacementKey, 'fixture.removed.binding') }
         if (Test-ReplacedDialogKey $legacy) { throw 'A retained key accepted a missing runtime replacement binding.' }
     } finally { $consumer.Text = $originalText }
     $originalTranslation = $replacement.translations.'ru-RU'
@@ -93,17 +116,38 @@ foreach ($legacy in $replacedDialogKeys.Keys) {
     } finally { $replacement.translations.'ru-RU' = $originalTranslation }
     if (-not $rejected) { throw 'A retained key accepted an untranslated replacement.' }
 }
-function Test-DescriptionRuntimeKey([string]$Key, [string]$ConsumerText) {
-    if (-not $Key.StartsWith('fbe.description.')) { return $false }
-    if (-not $ConsumerText.Contains('GetLocalizedStringOrDefault("fbe.description." + key, fallback)')) { return $false }
-    $suffix = [regex]::Escape($Key.Substring('fbe.description.'.Length))
-    # Description actions, advisory warnings and legacy button captions all
-    # pass a literal suffix through the same production localization helper.
-    return $ConsumerText -match ('DescriptionText\("' + $suffix + '"') -or
-        $ConsumerText -match ('warn\([^;\r\n]*,\s*"' + $suffix + '"') -or
-        $ConsumerText -match ('key\s*=\s*"' + $suffix + '"')
-}
 $descriptionConsumer = $consumers['runtime/main.js'].Text
+function Test-DescriptionHeaderTranslations($Entry) {
+    if ($null -eq $Entry -or $Entry.resource -ne 'runtime/main.js') { return $false }
+    foreach ($language in $catalog.targetLanguages) {
+        if ([string]::IsNullOrWhiteSpace($Entry.translations.$language)) { return $false }
+    }
+    return $true
+}
+$headerSuffixes = @('binary_thumb', 'binary_id', 'binary_type', 'binary_size', 'binary_dimensions', 'binary_actions')
+foreach ($suffix in $headerSuffixes) {
+    $key = 'fbe.description.' + $suffix
+    $entry = $catalog.strings.PSObject.Properties[$key]
+    # The thumbnail column intentionally has an empty fallback and no label.
+    if ($suffix -ne 'binary_thumb') {
+        if ($null -eq $entry -or -not (Test-DescriptionHeaderTranslations $entry.Value)) { throw "Missing description header entry or translation: $key" }
+        $originalTranslation = $entry.Value.translations.'ru-RU'
+        try {
+            $entry.Value.translations.'ru-RU' = ''
+            if (Test-DescriptionHeaderTranslations $entry.Value) { throw "Missing translation was accepted: $key" }
+        } finally {
+            $entry.Value.translations.'ru-RU' = $originalTranslation
+        }
+    } elseif ($descriptionConsumer -notmatch 'var\s+headerDefaults\s*=\s*\[\s*""') {
+        throw 'The thumbnail header must retain its intentionally empty fallback.'
+    }
+    if (-not (Test-DescriptionRuntimeKey $key $descriptionConsumer) -or
+        (Test-DescriptionRuntimeKey $key $descriptionConsumer.Replace('"' + $suffix + '"', '"fixture_removed"')) -or
+        (Test-DescriptionRuntimeKey $key $descriptionConsumer.Replace('DescriptionText(headerKeys[h]', 'DescriptionText(fixtureRemoved[h]')) -or
+        (Test-DescriptionRuntimeKey $key $descriptionConsumer.Replace('"fbe.description." + key', '"fixture.removed.prefix" + key'))) {
+        throw "Description header binding must reject a missing array member, indexed call or namespace bridge: $key"
+    }
+}
 if (-not (Test-DescriptionRuntimeKey 'fbe.description.add_source' $descriptionConsumer) -or
     (Test-DescriptionRuntimeKey 'fbe.description.fixture_unbound' $descriptionConsumer) -or
     (Test-DescriptionRuntimeKey 'fbe.description.add_source' $descriptionConsumer.Replace('"add_source"', '"fixture.removed.binding"')) -or
