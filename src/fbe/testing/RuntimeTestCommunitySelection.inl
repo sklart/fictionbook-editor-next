@@ -64,6 +64,7 @@ if (IsFbeTestScenario(L"community-selection-positions"))
     output.Seek(0,FILE_BEGIN);output.Seek(0,FILE_BEGIN); output.Write(report,static_cast<DWORD>(report.GetLength()),&progressWritten);output.Flush();
    }
   }
+#include "RuntimeTestCommunitySelectionRanges.inl"
   check("matrix_complete",true);
   if(passed) {
   // Select a source position independently of the outgoing Body selection.
@@ -137,6 +138,7 @@ if (IsFbeTestScenario(L"community-selection-positions"))
    check("source_edit_position",expected->compareEndPoints(L"StartToStart",actual)==0 && expected->compareEndPoints(L"EndToEnd",actual)==0);
    ShowView(SOURCE);pump();ShowView(BODY);pump();
    actual=m_doc->m_body.Document()->selection->createRange();
+   runExactRanges();
    check("source_edit_cycle",expected->compareEndPoints(L"StartToStart",actual)==0 && expected->compareEndPoints(L"EndToEnd",actual)==0 && m_doc->DocChanged());
   }
   MSHTML::IHTMLElementPtr editedRoot(MSHTML::IHTMLDocument3Ptr(m_doc->m_body.Document())->getElementById(L"fbw_body"));
