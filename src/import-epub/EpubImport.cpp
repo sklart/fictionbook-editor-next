@@ -97,7 +97,7 @@ namespace
         std::map<std::wstring, CStringW> noteRoots;
         CStringW warnings;
         int noteReferences = 0, importedNoteReferences = 0, lostNoteReferences = 0;
-        int skippedServiceLinks = 0;
+        int skippedServiceLinks = 0, missingSourceResources = 0, missingSourceAnchors = 0, missingGeneratedTargets = 0;
         int imageReferences = 0, importedImages = 0, skippedImages = 0;
         unsigned indexedElements = 0, structuralLookups = 0;
         unsigned residualFragments = 0, recoveredFragments = 0;
@@ -3107,6 +3107,7 @@ namespace
 
         }
 
+        ++g_content.missingSourceAnchors;
         g_content.warnings += L"Unresolved internal fragment: " + ctx.currentXhtmlPath + L"#" + rawFragment + L"\r\n";
         return rawFragment;
     }
@@ -3142,6 +3143,9 @@ namespace
                     }
                 }
                 if (pathPart.IsEmpty()) return L"#" + ResolveFb2HrefFragment(ctx, fragment);
+                const CStringW unresolvedPath = CombineAndCanonicalizePath(ctx.currentXhtmlDir, pathPart);
+                if (FileExists(unresolvedPath)) ++g_content.missingSourceAnchors;
+                else ++g_content.missingSourceResources;
                 g_content.warnings += L"Unresolved internal link: " + ctx.currentXhtmlPath + L" -> " + href + L"\r\n";
                 return href;
             }
@@ -5342,7 +5346,10 @@ namespace
                 {
                     CStringW id = xml.Mid(valueStart, valueEnd - valueStart);
                     if (allIds.find(std::wstring(id.GetString())) == allIds.end())
+                    {
+                        ++g_content.missingGeneratedTargets;
                         warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_INTERNAL_LINK_MISSING_ID, L"Internal link points to a missing id: ") + id + L"\r\n";
+                    }
                 }
             }
             internalHrefPos += 9;
@@ -5891,6 +5898,8 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         if (cover) usedImageIds.emplace(cover->id.GetString());
     }
     log.AddFormatInt(L"Links to excluded service documents preserved as text: %d", g_content.skippedServiceLinks);
+    log.AddFormatInt(L"Links to missing EPUB resources: %d", g_content.missingSourceResources);
+    log.AddFormatInt(L"Links to missing EPUB anchors: %d", g_content.missingSourceAnchors);
     log.AddFormatInt(L"Imported sections: %d", importedSections);
     log.AddFormatInt(L"Images used: %d", static_cast<int>(usedImageIds.size()));
 
@@ -5924,8 +5933,13 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     if (options.addDiagnosticSection && !warning.IsEmpty())
     {
         outFb2Xml += L"    <section>\r\n";
-        outFb2Xml += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_IMPORT_WARNINGS_TITLE, L"      <title><p>EPUB import warnings</p></title>\r\n");
-        outFb2Xml += L"      <p>" + XmlEscape(warning) + L"</p>\r\n";
+        CStringW warningTitle = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_IMPORT_WARNINGS_TITLE, L"      <title><p>EPUB import warnings</p></title>\r\n");
+        warningTitle.Replace(L"\\r\\n", L"\r\n");
+        outFb2Xml += warningTitle;
+        CStringW summary;
+        summary.Format(L"Service links preserved as text: %d; missing EPUB resources: %d; missing EPUB anchors: %d.",
+            g_content.skippedServiceLinks, g_content.missingSourceResources, g_content.missingSourceAnchors);
+        outFb2Xml += L"      <p>" + XmlEscape(summary) + L"</p>\r\n";
         outFb2Xml += L"    </section>\r\n";
     }
     outFb2Xml += body;
@@ -5940,6 +5954,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     {
         CStringW validationWarning;
         const bool valid = ValidateGeneratedFb2Xml(outFb2Xml, validationWarning, package, anchorIdMap);
+        log.AddFormatInt(L"Generated FB2 links with missing targets: %d", g_content.missingGeneratedTargets);
         if (!validationWarning.IsEmpty())
         {
             warning += validationWarning;

@@ -386,12 +386,31 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 if not skipped:
                     self.assertTrue(any((a.get(HREF) or '').startswith('#') for a in root.findall('.//f:a', NS)))
 
+    def test_missing_source_resource_remains_diagnosable(self):
+        root = self.convert('<h1>Chapter</h1><p><a href="missing.xhtml#gone">Broken reference</a></p>')
+        self.assertIn('Unresolved internal link', self.diagnostics)
+        self.assertIn('Links to missing EPUB resources: 1', self.diagnostics)
+        links = [a.get(HREF) for a in root.findall('.//f:a', NS)]
+        self.assertIn('missing.xhtml#gone', links)
+
+    def test_diagnostic_section_is_bounded_and_excludes_paths(self):
+        links = ''.join(f'<a href="missing{i}.xhtml#target">Link{i}</a>' for i in range(20))
+        root = self.convert('<h1>Chapter</h1><p>' + links + '</p>', options=['--diagnostic-section'])
+        section = root.find('f:body/f:section', NS)
+        text = self.text(section)
+        self.assertIn('missing EPUB resources: 20', text)
+        self.assertNotIn('missing0.xhtml', text)
+        self.assertNotIn(str(self.last_folder), text)
+        self.assertLess(len(text), 500)
+        self.assertIn('Links to missing EPUB resources: 20', self.diagnostics)
+
     def test_unresolved_local_fragment_fails_even_without_xsd(self):
         for options in ([], ['--no-validate']):
             with self.subTest(options=options):
                 self.convert('<h1>Chapter</h1><p><a href="#missing-anchor">Broken</a></p>',
                              fail=True, options=options)
                 self.assertIn('missing-anchor', self.diagnostics)
+                self.assertIn('Generated FB2 links with missing targets: 1', self.diagnostics)
 
     def test_section_with_only_epigraphs_is_valid_and_keeps_text(self):
         root = self.convert('<p class="epigraph">First quotation</p><p class="epigraph">Second quotation</p>')
