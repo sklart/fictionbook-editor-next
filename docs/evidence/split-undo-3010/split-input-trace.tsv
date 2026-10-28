@@ -1,0 +1,170 @@
+timestamp	operation	backend	case	phase	event	hresult	details
+2026-10-28T10:16:59.588Z	split	extracted	split-input	split-enter	before	NA	""
+2026-10-28T10:16:59.590Z	split	extracted	split-input	split-enter	after	NA	completed
+2026-10-28T10:16:59.591Z	split	extracted	split-input	selection-create	before	NA	""
+2026-10-28T10:16:59.591Z	split	extracted	split-input	selection-create	after	NA	completed
+2026-10-28T10:16:59.592Z	split	extracted	split-input	parent-resolved	before	NA	""
+2026-10-28T10:16:59.592Z	split	extracted	split-input	parent-resolved	after	NA	completed
+2026-10-28T10:16:59.592Z	split	extracted	split-input	container-range-create	before	NA	""
+2026-10-28T10:16:59.592Z	split	extracted	split-input	container-range-create	after	NA	completed
+2026-10-28T10:16:59.592Z	split	extracted	split-input	container-range-move	before	NA	""
+2026-10-28T10:16:59.593Z	split	extracted	split-input	container-range-move	after	NA	completed
+2026-10-28T10:16:59.593Z	split	extracted	split-input	range-start-validated	before	NA	""
+2026-10-28T10:16:59.593Z	split	extracted	split-input	range-start-validated	after	NA	completed
+2026-10-28T10:16:59.594Z	split	extracted	split-input	range-start-create	before	NA	""
+2026-10-28T10:16:59.594Z	split	extracted	split-input	range-start-create	after	NA	completed
+2026-10-28T10:16:59.594Z	split	extracted	split-input	range-end-create	before	NA	""
+2026-10-28T10:16:59.594Z	split	extracted	split-input	range-end-create	after	NA	completed
+2026-10-28T10:16:59.595Z	split	extracted	split-input	range-end-validated	before	NA	""
+2026-10-28T10:16:59.595Z	split	extracted	split-input	range-end-validated	after	NA	completed
+2026-10-28T10:16:59.596Z	split	extracted	split-input	preflight-complete	after	NA	completed
+2026-10-28T10:16:59.596Z	split	extracted	split-input	split-check-success	after	NA	completed
+2026-10-28T10:16:59.596Z	split	extracted	split-input	split-enter	before	NA	""
+2026-10-28T10:16:59.597Z	split	extracted	split-input	split-enter	after	NA	completed
+2026-10-28T10:16:59.597Z	split	extracted	split-input	selection-create	before	NA	""
+2026-10-28T10:16:59.597Z	split	extracted	split-input	selection-create	after	NA	completed
+2026-10-28T10:16:59.597Z	split	extracted	split-input	parent-resolved	before	NA	""
+2026-10-28T10:16:59.597Z	split	extracted	split-input	parent-resolved	after	NA	completed
+2026-10-28T10:16:59.597Z	split	extracted	split-input	container-range-create	before	NA	""
+2026-10-28T10:16:59.597Z	split	extracted	split-input	container-range-create	after	NA	completed
+2026-10-28T10:16:59.599Z	split	extracted	split-input	container-range-move	before	NA	""
+2026-10-28T10:16:59.599Z	split	extracted	split-input	container-range-move	after	NA	completed
+2026-10-28T10:16:59.599Z	split	extracted	split-input	range-start-validated	before	NA	""
+2026-10-28T10:16:59.599Z	split	extracted	split-input	range-start-validated	after	NA	completed
+2026-10-28T10:16:59.600Z	split	extracted	split-input	range-start-create	before	NA	""
+2026-10-28T10:16:59.600Z	split	extracted	split-input	range-start-create	after	NA	completed
+2026-10-28T10:16:59.600Z	split	extracted	split-input	range-end-create	before	NA	""
+2026-10-28T10:16:59.600Z	split	extracted	split-input	range-end-create	after	NA	completed
+2026-10-28T10:16:59.601Z	split	extracted	split-input	range-end-validated	before	NA	""
+2026-10-28T10:16:59.601Z	split	extracted	split-input	range-end-validated	after	NA	completed
+2026-10-28T10:16:59.601Z	split	extracted	split-input	preflight-complete	after	NA	completed
+2026-10-28T10:16:59.601Z	split	extracted	split-input	new-container-create	before	NA	""
+2026-10-28T10:16:59.602Z	split	extracted	split-input	new-container-create	after	NA	completed
+2026-10-28T10:16:59.602Z	split	extracted	split-input	title-prototype-create	before	NA	""
+2026-10-28T10:16:59.602Z	split	extracted	split-input	title-prototype-create	after	NA	completed
+2026-10-28T10:16:59.602Z	split	extracted	split-input	selection-start-pointer-create	before	NA	""
+2026-10-28T10:16:59.603Z	split	extracted	split-input	selection-start-pointer-create	after	0x00000000	""
+2026-10-28T10:16:59.603Z	split	extracted	split-input	selection-end-pointer-create	before	NA	""
+2026-10-28T10:16:59.603Z	split	extracted	split-input	selection-end-pointer-create	after	0x00000000	""
+2026-10-28T10:16:59.604Z	split	extracted	split-input	element-start-pointer-create	before	NA	""
+2026-10-28T10:16:59.604Z	split	extracted	split-input	element-start-pointer-create	after	0x00000000	""
+2026-10-28T10:16:59.604Z	split	extracted	split-input	element-end-pointer-create	before	NA	""
+2026-10-28T10:16:59.604Z	split	extracted	split-input	element-end-pointer-create	after	0x00000000	""
+2026-10-28T10:16:59.605Z	split	extracted	split-input	title-range-create	before	NA	""
+2026-10-28T10:16:59.605Z	split	extracted	split-input	title-range-create	after	NA	completed
+2026-10-28T10:16:59.605Z	split	extracted	split-input	selection-pointers-move	before	NA	""
+2026-10-28T10:16:59.605Z	split	extracted	split-input	selection-pointers-move	after	0x00000000	""
+2026-10-28T10:16:59.606Z	split	extracted	split-input	pre-range-create	before	NA	""
+2026-10-28T10:16:59.606Z	split	extracted	split-input	pre-range-create	after	NA	completed
+2026-10-28T10:16:59.607Z	split	extracted	split-input	element-start-pointer-move	before	NA	""
+2026-10-28T10:16:59.607Z	split	extracted	split-input	element-start-pointer-move	after	0x00000000	""
+2026-10-28T10:16:59.607Z	split	extracted	split-input	pre-range-move	before	NA	""
+2026-10-28T10:16:59.607Z	split	extracted	split-input	pre-range-move	after	0x00000000	""
+2026-10-28T10:16:59.608Z	split	extracted	split-input	post-range-create	before	NA	""
+2026-10-28T10:16:59.608Z	split	extracted	split-input	post-range-create	after	NA	completed
+2026-10-28T10:16:59.608Z	split	extracted	split-input	element-end-pointer-move	before	NA	""
+2026-10-28T10:16:59.609Z	split	extracted	split-input	element-end-pointer-move	after	0x00000000	""
+2026-10-28T10:16:59.609Z	split	extracted	split-input	post-range-move	before	NA	""
+2026-10-28T10:16:59.609Z	split	extracted	split-input	post-range-move	after	0x00000000	""
+2026-10-28T10:16:59.610Z	split	extracted	split-input	new-container-content	before	NA	""
+2026-10-28T10:16:59.610Z	split	extracted	split-input	new-container-content	after	NA	completed
+2026-10-28T10:16:59.610Z	split	extracted	split-input	undo-begin	before	NA	""
+2026-10-28T10:16:59.611Z	split	extracted	split-input	undo-begin	after	NA	completed
+2026-10-28T10:16:59.611Z	split	extracted	split-input	source-cleanup	before	NA	""
+2026-10-28T10:16:59.617Z	split	extracted	split-input	source-cleanup	after	NA	completed
+2026-10-28T10:16:59.617Z	split	extracted	split-input	next-dom-after-cleanup	after	NA	completed: <P>iddle</P>  <P>Last</P>
+2026-10-28T10:16:59.617Z	split	extracted	split-input	insert-container	before	NA	""
+2026-10-28T10:16:59.618Z	split	extracted	split-input	insert-container	after	NA	completed
+2026-10-28T10:16:59.618Z	split	extracted	split-input	new-container-id	after	NA	completed: target-section-middle
+2026-10-28T10:16:59.619Z	split	extracted	split-input	new-container-id-after-cleanup	after	NA	completed: target-section-middle
+2026-10-28T10:16:59.620Z	split	extracted	split-input	undo-end	before	NA	""
+2026-10-28T10:16:59.620Z	split	extracted	split-input	undo-end	after	NA	completed
+2026-10-28T10:16:59.620Z	split	extracted	split-input	selection-update	before	NA	""
+2026-10-28T10:16:59.620Z	split	extracted	split-input	selection-pointer-create	before	NA	""
+2026-10-28T10:16:59.621Z	split	extracted	split-input	selection-pointer-create	after	0x00000000	""
+2026-10-28T10:16:59.621Z	split	extracted	split-input	selection-pointer-move	before	NA	""
+2026-10-28T10:16:59.622Z	split	extracted	split-input	selection-pointer-move	after	0x00000000	""
+2026-10-28T10:16:59.622Z	split	extracted	split-input	selection-range-move	before	NA	""
+2026-10-28T10:16:59.623Z	split	extracted	split-input	selection-range-move	after	0x00000000	""
+2026-10-28T10:16:59.631Z	split	extracted	split-input	selection-update	after	NA	completed
+2026-10-28T10:16:59.631Z	split	extracted	split-input	split-success	after	NA	completed
+2026-10-28T10:16:59.632Z	split	extracted	split-input	split-content	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:16:59.632Z	split	extracted	split-input	timeline-original	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>
+2026-10-28T10:16:59.632Z	split	extracted	split-input	timeline-split	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:16:59.633Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=1; redo=0
+2026-10-28T10:16:59.633Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:16:59.637Z	split	extracted	split-input	timeline-input	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>Xiddle</P>  <P>Last</P></DIV>
+2026-10-28T10:16:59.637Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=2; redo=0
+2026-10-28T10:16:59.637Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:16:59.686Z	split	extracted	split-input	timeline-undo-1	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:16:59.686Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=1; redo=1
+2026-10-28T10:16:59.687Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:16:59.736Z	split	extracted	split-input	timeline-undo-2	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:16:59.736Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=0; redo=2
+2026-10-28T10:16:59.737Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:16:59.778Z	split	extracted	split-input	timeline-undo-3	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:16:59.778Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=0; redo=2
+2026-10-28T10:16:59.778Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:16:59.823Z	split	extracted	split-input	timeline-undo-4	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:16:59.823Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=0; redo=2
+2026-10-28T10:16:59.824Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:16:59.869Z	split	extracted	split-input	timeline-undo-5	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:16:59.869Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=0; redo=2
+2026-10-28T10:16:59.870Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:16:59.913Z	split	extracted	split-input	timeline-undo-6	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:16:59.914Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=0; redo=2
+2026-10-28T10:16:59.914Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:16:59.960Z	split	extracted	split-input	timeline-undo-7	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:16:59.960Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=0; redo=2
+2026-10-28T10:16:59.960Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.007Z	split	extracted	split-input	timeline-undo-8	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.008Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=0; redo=2
+2026-10-28T10:17:00.008Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.057Z	split	extracted	split-input	timeline-undo-9	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.057Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=0; redo=2
+2026-10-28T10:17:00.057Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.102Z	split	extracted	split-input	timeline-undo-10	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.102Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=0; redo=2
+2026-10-28T10:17:00.103Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.150Z	split	extracted	split-input	timeline-undo-11	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.150Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=0; redo=2
+2026-10-28T10:17:00.150Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.198Z	split	extracted	split-input	timeline-undo-12	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.198Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=0; redo=2
+2026-10-28T10:17:00.198Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.201Z	split	extracted	split-input	timeline-redo-1	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.202Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=1; redo=1
+2026-10-28T10:17:00.202Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.204Z	split	extracted	split-input	timeline-redo-2	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>Xiddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.204Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=2; redo=0
+2026-10-28T10:17:00.206Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.206Z	split	extracted	split-input	timeline-redo-3	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>Xiddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.206Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=2; redo=0
+2026-10-28T10:17:00.206Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.206Z	split	extracted	split-input	timeline-redo-4	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>Xiddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.206Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=2; redo=0
+2026-10-28T10:17:00.206Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.208Z	split	extracted	split-input	timeline-redo-5	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>Xiddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.208Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=2; redo=0
+2026-10-28T10:17:00.208Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.208Z	split	extracted	split-input	timeline-redo-6	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>Xiddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.209Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=2; redo=0
+2026-10-28T10:17:00.209Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.209Z	split	extracted	split-input	timeline-redo-7	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>Xiddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.209Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=2; redo=0
+2026-10-28T10:17:00.209Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.210Z	split	extracted	split-input	timeline-redo-8	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>Xiddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.210Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=2; redo=0
+2026-10-28T10:17:00.210Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.211Z	split	extracted	split-input	timeline-redo-9	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>Xiddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.211Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=2; redo=0
+2026-10-28T10:17:00.211Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.212Z	split	extracted	split-input	timeline-redo-10	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>Xiddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.212Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=2; redo=0
+2026-10-28T10:17:00.213Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.213Z	split	extracted	split-input	timeline-redo-11	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>Xiddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.214Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=2; redo=0
+2026-10-28T10:17:00.214Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T10:17:00.214Z	split	extracted	split-input	timeline-redo-12	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>Xiddle</P>  <P>Last</P></DIV>
+2026-10-28T10:17:00.214Z	split	extracted	split-input	timeline-state	after	NA	completed: dirty=1; undo=2; redo=0
+2026-10-28T10:17:00.214Z	split	extracted	split-input	timeline-selection	after	NA	completed: parent=P; selected=(null)

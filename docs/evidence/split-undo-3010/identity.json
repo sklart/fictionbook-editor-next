@@ -1,0 +1,9 @@
+{
+  "source_master": "9cb126e5eeae26fb802d6a91c3dcd3c890f6461e",
+  "clean_fbe_sha256": "3DF11D6450A00E0EC903F2C4AA62AE584DA7351D6BAC822C51537A78B4C04FF4",
+  "baseline_commit": "fc60a33abdeea75915ab158d1ba5505feb7d92e0",
+  "baseline_fbe_sha256": "0F5FA8F0EAA1C0A47D11959D77EE1E347B15D760307BF47FEB9A87ECAEE1F22F",
+  "timeline_fbe_sha256": "99E177F9B4CA0A8AD794D94AF3A7E34F3364CD730086AD5F96BBF5C2B1C835EC",
+  "timeline_scope": "test-only timeline instrumentation plus empty-anchor save fix",
+  "redacted": "synthetic runtime directory only"
+}
