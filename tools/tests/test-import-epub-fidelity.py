@@ -55,7 +55,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for folder in cls.folders:
                 folder.cleanup()
 
-    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False):
+    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, book_title='Fixture', xhtml_title='Fixture'):
         extra = extra or {}
         temp = tempfile.TemporaryDirectory(prefix='epub-fidelity-')
         self.folders.append(temp)
@@ -90,7 +90,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         def xhtml(content, ident):
             return ('<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml" '
                     'xmlns:epub="http://www.idpf.org/2007/ops" xmlns:xlink="http://www.w3.org/1999/xlink">'
-                    '<head><title>Fixture</title></head><body' + (f' id="body-{ident}"' if body_ids else '') + '>' + content + '</body></html>')
+                    f'<head><title>{xhtml_title}</title></head><body' + (f' id="body-{ident}"' if body_ids else '') + '>' + content + '</body></html>')
         with zipfile.ZipFile(epub, 'w') as z:
             z.writestr('mimetype', 'application/epub+zip')
             z.writestr('META-INF/container.xml', '<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0"><rootfiles><rootfile full-path="OEBPS/book.opf" media-type="application/oebps-package+xml"/></rootfiles></container>')
@@ -101,7 +101,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 z.writestr('OEBPS/' + path, xhtml(content, ident) if mime == 'application/xhtml+xml' else content)
             modified = '<meta property="dcterms:modified">2026-10-21T00:00:00Z</meta>' if version.startswith('3') else ''
             toc = '' if version.startswith('3') or navigation is False else ' toc="fixture-ncx"'
-            z.writestr('OEBPS/book.opf', f'<package xmlns="http://www.idpf.org/2007/opf" version="{version}" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">fixture</dc:identifier><dc:title>Fixture</dc:title><dc:language>ru</dc:language><dc:creator>Tester</dc:creator>' + modified + '</metadata><manifest>' + ''.join(manifest) + ''.join(manifest_extra) + f'</manifest><spine{toc}>' + ''.join(f'<itemref idref="{ident}"/>' for ident in (spine or ['chapter'])) + '</spine>' + guide + '</package>')
+            z.writestr('OEBPS/book.opf', f'<package xmlns="http://www.idpf.org/2007/opf" version="{version}" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">fixture</dc:identifier><dc:title>{book_title}</dc:title><dc:language>ru</dc:language><dc:creator>Tester</dc:creator>' + modified + '</metadata><manifest>' + ''.join(manifest) + ''.join(manifest_extra) + f'</manifest><spine{toc}>' + ''.join(f'<itemref idref="{ident}"/>' for ident in (spine or ['chapter'])) + '</spine>' + guide + '</package>')
             for path, content in (raw or {}).items():
                 z.writestr(path, content)
         output = folder / 'case.fb2'
@@ -436,6 +436,67 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertIn('First text', self.text(sections[0]))
         self.assertNotIn('First text', self.text(sections[1]))
         self.assertIn('Second text', self.text(sections[1]))
+
+    def test_direct_line_breaks_preserve_visible_lines_and_inline_markup(self):
+        root = self.convert('<p id="bookmark">First <strong>bold</strong><br/>Second <em>italic</em></p>'
+                            '<p class="newspaper_subtitle">Headline<br/>Next line</p>'
+                            '<p><a href="#bookmark">Jump</a></p>')
+        body = root.find('f:body', NS)
+        paragraphs = body.findall('.//f:p', NS)
+        self.assertTrue(any('First' in self.text(p) and p.find('f:strong', NS) is not None for p in paragraphs))
+        self.assertTrue(any('Second' in self.text(p) and p.find('f:emphasis', NS) is not None for p in paragraphs))
+        self.assertFalse(any('First' in self.text(p) and 'Second' in self.text(p) for p in paragraphs))
+        subtitles = [self.text(e) for e in body.findall('.//f:subtitle', NS)]
+        self.assertIn('Headline', subtitles)
+        self.assertIn('Next line', subtitles)
+        self.assertTrue(any(p.get('id') == 'bookmark' for p in paragraphs))
+        self.assertTrue(any(a.get(HREF) == '#bookmark' for a in body.findall('.//f:a', NS)))
+
+    def test_consecutive_breaks_keep_blank_line_and_anchor(self):
+        root = self.convert('<p id="target">First<br/><br/><strong>Second</strong></p>'
+                            '<p><a href="#target">Jump</a></p>')
+        body = root.find('f:body', NS)
+        self.assertEqual(len(body.findall('.//f:empty-line', NS)), 1)
+        self.assertTrue(any(p.get('id') == 'target' and self.text(p) == 'First' for p in body.findall('.//f:p', NS)))
+        self.assertTrue(any(self.text(p) == 'Second' and p.find('f:strong', NS) is not None for p in body.findall('.//f:p', NS)))
+        self.assertTrue(any(a.get(HREF) == '#target' for a in body.findall('.//f:a', NS)))
+
+    def test_continuation_does_not_repeat_generic_book_title(self):
+        root = self.convert('<h1>Main chapter</h1><p>Opening text</p>',
+                            {'Text/chapter_split_001.xhtml': ('continued', 'application/xhtml+xml', '<p>Continuation text</p>')},
+                            spine=['chapter', 'continued'], navigation=False, body_ids=True)
+        section = root.find('.//f:section[@id="body-continued"]', NS)
+        self.assertIsNotNone(section)
+        self.assertIn('Continuation text', self.text(section))
+        self.assertIsNone(section.find('f:title', NS))
+
+    def test_navigation_target_does_not_repeat_generic_book_title(self):
+        root = self.convert('<p>Front matter text</p>',
+                            {'Text/other.xhtml': ('other', 'application/xhtml+xml', '<p>Other text</p>')},
+                            spine=['chapter', 'other'], body_ids=True,
+                            navigation=[('Front matter', 'Text/chapter.xhtml#body-chapter', [])])
+        section = root.find('.//f:section[@id="body-chapter"]', NS)
+        self.assertIsNotNone(section)
+        self.assertIn('Front matter text', self.text(section))
+        self.assertIsNone(section.find('f:title', NS))
+
+    def test_repeated_non_book_document_title_is_not_discarded(self):
+        root = self.convert('<p>First content</p>',
+                            {'Text/other.xhtml': ('other', 'application/xhtml+xml', '<p>Second content</p>')},
+                            spine=['chapter', 'other'], navigation=False, body_ids=True,
+                            book_title='Different book title')
+        section = root.find('.//f:section[@id="body-other"]', NS)
+        self.assertIsNotNone(section)
+        self.assertEqual(self.text(section.find('f:title', NS)), 'Fixture')
+
+    def test_short_repeated_document_title_is_not_guessed_to_be_book_title(self):
+        root = self.convert('<p>First content</p>',
+                            {'Text/other.xhtml': ('other', 'application/xhtml+xml', '<p>Second content</p>')},
+                            spine=['chapter', 'other'], navigation=False, body_ids=True,
+                            book_title='A longer book title', xhtml_title='A')
+        section = root.find('.//f:section[@id="body-other"]', NS)
+        self.assertIsNotNone(section)
+        self.assertEqual(self.text(section.find('f:title', NS)), 'A')
 
     def test_ncx_hierarchy_across_split_continuation(self):
         extra = {'Text/part_split_000.xhtml': ('part', 'application/xhtml+xml', '<p>Part introduction</p>'),

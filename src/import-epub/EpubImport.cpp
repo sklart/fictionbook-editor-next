@@ -93,6 +93,8 @@ namespace
         std::set<std::wstring> reservedIds, emittedIds, noteTargets, requestedNotes;
         std::set<std::wstring> mainDocuments, noteContentAnchors, noteRootDocuments, residualDocuments;
         std::set<std::wstring> excludedServiceDocuments;
+        std::map<std::wstring, unsigned> spineDocumentTitleCounts;
+        unsigned spineXhtmlDocuments = 0;
         std::map<std::wstring, CStringW> noteLinks;
         std::map<std::wstring, CStringW> noteRoots;
         CStringW warnings;
@@ -3312,6 +3314,46 @@ namespace
             lines.push_back(current);
     }
 
+    // A direct XHTML br is a visible line boundary. FB2 has no inline br,
+    // so represent each line as a separate paragraph or subtitle.
+    bool AppendDirectBreakLines(const MSXML2::IXMLDOMNodePtr& node, CStringW& out,
+        const ConvertContext& ctx, bool subtitle)
+    {
+        const auto children = MsxmlGetChildNodes(node);
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        bool hasBreak = false;
+        for (long i = 0; i < count; ++i)
+        {
+            const auto child = MsxmlGetNodeListItem(children, i);
+            if (MsxmlGetNodeType(child) == MSXML2::NODE_ELEMENT && LocalName(child).CompareNoCase(L"br") == 0)
+                hasBreak = true;
+        }
+        if (!hasBreak) return false;
+        std::vector<CStringW> lines;
+        CStringW current;
+        for (long i = 0; i < count; ++i)
+        {
+            const auto child = MsxmlGetNodeListItem(children, i);
+            if (MsxmlGetNodeType(child) == MSXML2::NODE_ELEMENT && LocalName(child).CompareNoCase(L"br") == 0)
+            {
+                current.Trim(); lines.push_back(current); current.Empty();
+            }
+            else current += InlineToFb2(child, ctx);
+        }
+        current.Trim(); if (!current.IsEmpty()) lines.push_back(current);
+        CStringW markers;
+        CStringW id = OptionalIdAttributeAndExtraMarkersIncludingDescendant(node, ctx, markers);
+        out += markers;
+        const CStringW tag = subtitle ? L"subtitle" : L"p";
+        for (const auto& line : lines)
+        {
+            if (line.IsEmpty() && id.IsEmpty()) out += L"      <empty-line/>\r\n";
+            else out += L"      <" + tag + id + L">" + line + L"</" + tag + L">\r\n";
+            id.Empty();
+        }
+        return true;
+    }
+
     CStringW EscapePreLinePreservingIndent(const CStringW& line)
     {
         CStringW expanded;
@@ -4034,6 +4076,7 @@ namespace
 
         if (g_options.importSubtitles && LooksLikeSubtitle(node))
         {
+            if (AppendDirectBreakLines(node, out, ctx, true)) return;
             CStringW subtitle = ChildrenInlineToFb2(node, ctx);
             subtitle.Trim();
             if (!subtitle.IsEmpty())
@@ -4072,6 +4115,7 @@ namespace
 
         if (name.CompareNoCase(L"p") == 0)
         {
+            if (AppendDirectBreakLines(node, out, ctx, false)) return;
             CStringW paragraph = ChildrenInlineToFb2(node, ctx);
             paragraph.Trim();
             AppendParagraphNode(out, node, paragraph, ctx);
@@ -4305,6 +4349,13 @@ namespace
             documents.emplace(entry.first, doc);
             ConvertContext ctx = {};ctx.currentXhtmlPath = item.absPath;ctx.anchorIdMap = &anchors;
             const auto root = MsxmlGetDocumentElement(doc);
+            if (spinePaths.count(LowerMapKey(item.absPath).GetString()))
+            {
+                ++g_content.spineXhtmlDocuments;
+                const auto title = FindFirstElementByLocalName(root, L"title");
+                const CStringW titleKey = title ? LowerMapKey(NodeText(title)) : CStringW();
+                if (!titleKey.IsEmpty()) ++g_content.spineDocumentTitleCounts[std::wstring(titleKey.GetString())];
+            }
             IndexSourceNodes(root, item.absPath, nodes);
             // Reserve all document anchors before rendering any forward links.
             for (const auto& raw : CollectRawAnchorIds(root))
@@ -4809,15 +4860,25 @@ namespace
             AppendBlockNode(child, content, ctx);
         }
 
+        bool suppressGenericTitle = false;
         if (sectionTitle.IsEmpty())
         {
             std::vector<MSXML2::IXMLDOMNodePtr> titles;
             CollectElementsByLocalName(MsxmlGetDocumentElement(doc), L"title", titles);
             if (!titles.empty())
-                sectionTitle = XmlEscape(NodeText(titles[0]));
+            {
+                const CStringW documentTitle = TrimString(NodeText(titles[0]));
+                const auto repeated = g_content.spineDocumentTitleCounts.find(std::wstring(LowerMapKey(documentTitle)));
+                suppressGenericTitle = ctx.package && !documentTitle.IsEmpty() &&
+                    repeated != g_content.spineDocumentTitleCounts.end() && repeated->second > 1 &&
+                    repeated->second * 2 >= g_content.spineXhtmlDocuments &&
+                    (documentTitle.GetLength() >= 4 || documentTitle.CompareNoCase(ctx.package->title) == 0) &&
+                    ContainsNoCase(ctx.package->title, documentTitle);
+                if (!suppressGenericTitle) sectionTitle = XmlEscape(documentTitle);
+            }
         }
 
-        if (sectionTitle.IsEmpty())
+        if (sectionTitle.IsEmpty() && !suppressGenericTitle)
             sectionTitle = XmlEscape(fallbackTitle);
 
         AppendFb2Section(outSection, sectionTitle, content, sectionIdAttr);
