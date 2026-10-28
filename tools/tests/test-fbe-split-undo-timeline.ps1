@@ -13,7 +13,7 @@ $names = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SPLIT_PO
 $old = @{}; foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name) }
 try {
     if ($IncludePrior -and $RangeCases) { throw 'IncludePrior and RangeCases are separate diagnostics.' }
-    foreach ($mode in $(if ($RangeCases) { @('after-split','after-undo','after-redo','restore-range','restore-pointer') } elseif ($IncludePrior) { @('split-prior-input') } else { @('split','split-input') })) {
+    foreach ($mode in $(if ($RangeCases) { @('after-split','after-undo','after-redo','restore-range','restore-pointer','undo-restore-range','undo-restore-pointer','undo-fresh') } elseif ($IncludePrior) { @('split-prior-input') } else { @('split','split-input') })) {
         $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name split-timeline; $passed = $false
         try {
             $null = New-IsolatedFbeSettingsSeed -Isolation $iso -StartupScriptsDirectory (Join-Path $iso.Root empty-scripts)

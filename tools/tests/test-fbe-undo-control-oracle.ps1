@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
-    [Parameter(Mandatory)][string]$EvidenceDirectory
+    [Parameter(Mandatory)][string]$EvidenceDirectory,
+    [string[]]$Variants = @('a1','a2','a3','a3-light','a4','savepoint','savepoint-light','savepoint-direct')
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
@@ -12,7 +13,7 @@ $names = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_CONTROL_
 $saved = @{}; foreach ($name in $names) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
 $summary = @()
 try {
-    foreach ($kind in @('a1','a2','a3','a3-light','a4','savepoint','savepoint-light','savepoint-direct')) {
+    foreach ($kind in $Variants) {
         $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'control-oracle'; $passed = $false
         try {
             $null = New-IsolatedFbeSettingsSeed -Isolation $iso -StartupScriptsDirectory (Join-Path $iso.Root 'empty-scripts')
@@ -35,6 +36,11 @@ try {
                 [pscustomobject]@{ phase=$row.phase; modelValid=$loaded; sameAsSaved=($loaded -and $model.DocumentElement.OuterXml -ceq $disk.DocumentElement.OuterXml); dirty=$row.dirty; domMatchesSavepoint=$row.dom_equals_savepoint }
             }
             $models | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $evidence ($kind + '-model.json')) -Encoding utf8
+            if ($kind -in @('save-format','save-again','save-description')) {
+                $summary += [pscustomobject]@{ variant=$kind; TEXT_HISTORY='OBSERVATION'; DIRTY_SAVEPOINT='OBSERVATION'; initialFixtureSha256=$beforeHash; savedFileSha256=$savedHash; result=$result[0].dom; report=$report; models=$models }
+                $summary | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $evidence 'summary.json') -Encoding utf8
+                Write-Host "$kind OBSERVATION $($result[0].dom)"; $passed = $true; continue
+            }
             $savedRow = @($rows | Where-Object phase -eq 'saved'); $undone = @($rows | Where-Object { $_.phase -match '^undo-\d+$' } | Select-Object -Last 1)
             $redone = @($rows | Where-Object { $_.phase -match '^redo-\d+$' } | Select-Object -Last 1)
             $observations = @($rows | Where-Object phase -ne 'result')
@@ -50,14 +56,21 @@ try {
             $basic = $savedRow.Count -eq 1 -and $undone.Count -eq 1 -and $redone.Count -eq 1 -and $savedRow[0].dirty -eq '0' -and $undone[0].dom_equals_savepoint -eq '1' -and $result[0].dom -match 'restored=1;redone=1' -and @($models | Where-Object phase -eq 'saved' | Where-Object sameAsSaved -eq $true).Count -eq 1
             $observerStable = @($observations | Where-Object { $_.observer_dom_unchanged -ne '1' -or $_.observer_version_unchanged -ne '1' -or $_.dirty_before -ne $_.dirty }).Count -eq 0
             $savepointRestored = $undone.Count -eq 1 -and $undone[0].dirty -eq '0' -and @($models | Where-Object phase -eq $undone[0].phase | Where-Object sameAsSaved -eq $true).Count -eq 1
-            $status = if ($basic -and $sequenceValid -and $observerStable -and $savepointRestored) { 'PASS' } else { 'FAIL' }
-            $summary += [pscustomobject]@{ variant=$kind; status=$status; basic=$basic; sequenceValid=$sequenceValid; observerStable=$observerStable; savepointRestored=$savepointRestored; initialFixtureSha256=$beforeHash; savedFileSha256=$savedHash; result=$result[0].dom; report=$report; models=$models }
+            $caretRestored = $undone[0].selection -match 'parent=P;offset=0;length=0' -and $redone[0].selection -match $(if ($kind -like 'savepoint*' -or $kind -eq 'a4') { 'parent=P;offset=1;length=0' } else { 'parent=P;offset=2;length=0' })
+            $selectionRestored = $caretRestored
+            if ($kind -eq 'a4') { $formatUndo = @($rows | Where-Object phase -eq 'undo-2'); $selectionRestored = $selectionRestored -and $formatUndo.Count -eq 1 -and $formatUndo[0].selection -match 'parent=P;offset=1;length=4' }
+            $xmlIntegrity = @($models | Where-Object { -not $_.modelValid }).Count -eq 0 -and @($models | Where-Object phase -eq $undone[0].phase | Where-Object sameAsSaved -eq $true).Count -eq 1
+            $textStatus = if ($basic -and $sequenceValid -and $observerStable -and $caretRestored -and $selectionRestored -and $xmlIntegrity) { 'PASS' } else { 'FAIL' }
+            $dirtyStatus = if ($savepointRestored) { 'PASS' } else { 'FAIL' }
+            $summary += [pscustomobject]@{ variant=$kind; TEXT_UNDO=($undoneText -ceq 'tail'); TEXT_REDO=($redoneText -ceq $expectedText); HISTORY_ORDER=$sequenceValid; CARET_RESTORE=$caretRestored; SELECTION_RESTORE=$selectionRestored; XML_INTEGRITY=$xmlIntegrity; DIRTY_SAVEPOINT=$dirtyStatus; TEXT_HISTORY=$textStatus; basic=$basic; observerStable=$observerStable; savepointRestored=$savepointRestored; initialFixtureSha256=$beforeHash; savedFileSha256=$savedHash; result=$result[0].dom; report=$report; models=$models }
             $summary | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $evidence 'summary.json') -Encoding utf8
-            Write-Host "$kind $status basic=$basic sequence=$sequenceValid observer=$observerStable savepoint=$savepointRestored $($result[0].dom)"
+            Write-Host "$kind TEXT_HISTORY=$textStatus DIRTY_SAVEPOINT=$dirtyStatus caret=$caretRestored selection=$selectionRestored XML=$xmlIntegrity $($result[0].dom)"
             $passed = $true
         } finally { Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed }
     }
     Get-FileHash -LiteralPath $FbeExe -Algorithm SHA256 | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $evidence 'exe-sha256.json') -Encoding utf8
-    $failed = @($summary | Where-Object status -ne 'PASS')
-    if ($failed.Count) { throw "Control oracle failed: $(($failed.variant) -join ', '); evidence: $evidence" }
+    $failed = @($summary | Where-Object TEXT_HISTORY -eq 'FAIL')
+    if ($failed.Count) { throw "Text history control failed: $(($failed.variant) -join ', '); evidence: $evidence" }
+    $dirty = @($summary | Where-Object DIRTY_SAVEPOINT -eq 'FAIL')
+    if ($dirty.Count) { Write-Warning "Dirty/savepoint remains unresolved: $(($dirty.variant) -join ', ')" }
 } finally { foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) } }

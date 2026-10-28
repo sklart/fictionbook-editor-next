@@ -709,7 +709,8 @@
 				if (missingLink) sourceOwner->insertAdjacentHTML(L"beforeEnd", L"<p><a class='note' href='#absent-note'>Missing note</a></p>");
 				if (missingImage) sourceOwner->insertAdjacentHTML(L"beforeEnd", L"<p><span class='image' href='#absent-image'><img src='fbw-internal:#absent-image'></span></p>");
 			}
-			m_doc->MarkSavePoint();
+			if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_PASTE_SAVE_FIRST", nullptr, 0)) { if (!m_doc->Save()) CheckError(E_FAIL); }
+			else m_doc->MarkSavePoint();
 			m_doc->MarkDocCP();
 			const long initialVersion = m_doc->m_body.GetVersionNumber();
 			if (m_doc->DocChanged() || m_doc->DocRelChanged()) throw _com_error(E_FAIL);

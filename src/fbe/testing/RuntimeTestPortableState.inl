@@ -30,20 +30,45 @@ private:
 class CSplitTransactionMarker : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit {
 public:
 	BEGIN_COM_MAP(CSplitTransactionMarker) COM_INTERFACE_ENTRY(IOleUndoUnit) END_COM_MAP()
-	void Initialize(MSHTML::IHTMLElementPtr target, bool mutate, bool addFirst) { m_target = target; m_mutate = mutate; m_addFirst = addFirst; }
-	void InitializeStructural(MSHTML::IHTMLElementPtr target, bool addFirst, const CString& original, const CString& first, const CString& next) { m_target = target; m_structural = true; m_addFirst = addFirst; m_original = original; m_first = first; m_next = next; }
+	void Initialize(MSHTML::IHTMLElementPtr target, bool mutate, bool addFirst, CAtlFile* report = nullptr) { m_target = target; m_mutate = mutate; m_addFirst = addFirst; m_report = report; }
+	void InitializeStructural(MSHTML::IHTMLElementPtr target, bool addFirst, const CString& original, const CString& first, const CString& next, CAtlFile* report) { m_target = target; m_structural = true; m_addFirst = addFirst; m_original = original; m_first = first; m_next = next; m_report = report; }
+	void InitializeText(MSHTML::IHTMLElementPtr target, const CString& original, CAtlFile* report, bool nodeValue = false) { m_target = target; m_text = true; m_nodeValue = nodeValue; m_original = original; m_report = report; }
+	void InitializeSelection(MSHTML::IHTMLElementPtr target, CAtlFile* report) { m_target = target; m_selection = true; m_report = report; }
+	void DetachReport() { m_report = nullptr; m_observedUnits.clear(); }
+	void TraceUnits(const wchar_t* phase, IOleUndoManager* manager) {
+		if (!m_report || !manager) return;
+		for (int side = 0; side != 2; ++side) {
+			CComPtr<IEnumOleUndoUnits> list;
+			const HRESULT enumerated = side ? manager->EnumRedoable(&list) : manager->EnumUndoable(&list);
+			if (FAILED(enumerated) || !list) { CStringA row; row.Format("unit-map\t%S\t%s\tunavailable\t0x%08lX\r\n", phase, side ? "redo" : "undo", static_cast<unsigned long>(enumerated)); DWORD n = 0; m_report->Write(row, static_cast<DWORD>(row.GetLength()), &n); continue; }
+			for (unsigned position = 0; position < 256; ++position) {
+				CComPtr<IOleUndoUnit> unit; const HRESULT next = list->Next(1, &unit, nullptr); if (next != S_OK || !unit) break;
+				CComPtr<IUnknown> identity; unit->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&identity));
+				const bool own = unit.p == static_cast<IOleUndoUnit*>(this);
+				unsigned number = 0; if (!own && identity) { for (size_t i = 0; i < m_observedUnits.size(); ++i) if (m_observedUnits[i].p == identity.p) { number = static_cast<unsigned>(i + 1); break; } if (!number) { m_observedUnits.push_back(identity); number = static_cast<unsigned>(m_observedUnits.size()); } }
+				CLSID clsid = {}; LONG type = 0; wchar_t guid[40] = {}; BSTR description = nullptr; const HRESULT typeHr = unit->GetUnitType(&clsid, &type); const HRESULT descriptionHr = unit->GetDescription(&description); if (SUCCEEDED(typeHr)) ::StringFromGUID2(clsid, guid, _countof(guid)); CString desc(description ? description : L""); ::SysFreeString(description); desc.Replace(L"\t", L" "); desc.Replace(L"\r", L" "); desc.Replace(L"\n", L" "); CStringA desc8(CW2A(desc, CP_UTF8));
+				CStringA row; row.Format("unit-map\t%S\t%s\t%u\t%s%u\t%p\t%S:%ld\t%s\t0x%08lX\t0x%08lX\r\n", phase, side ? "redo" : "undo", position, own ? "custom-" : "held-", number, identity.p, guid, type, desc8.GetString(), static_cast<unsigned long>(typeHr), static_cast<unsigned long>(descriptionHr)); DWORD n = 0; m_report->Write(row, static_cast<DWORD>(row.GetLength()), &n);
+			}
+		}
+		m_report->Flush();
+	}
 	unsigned calls = 0;
 	HRESULT lastAdd = E_PENDING;
 	STDMETHOD(Do)(IOleUndoManager* manager) {
 		if (!manager) return E_POINTER;
+		if (m_doing) return E_UNEXPECTED;
+		m_doing = true;
 		++calls;
 		try {
-			if (m_addFirst) { lastAdd = manager->Add(this); if (FAILED(lastAdd)) return lastAdd; }
+			Trace(L"do-enter", manager, S_OK);
+			TraceUnits(L"do-enter", manager);
+			if (m_addFirst) { lastAdd = manager->Add(this); if (FAILED(lastAdd)) { m_doing = false; return lastAdd; } }
+			TraceUnits(L"before-mutation", manager);
 			if (m_structural) {
-				if (!m_target || !m_target->parentElement) return E_UNEXPECTED;
+				if (!m_target || !m_target->parentElement) { m_doing = false; return E_UNEXPECTED; }
 				if (m_after) {
 					MSHTML::IHTMLElementPtr next(MSHTML::IHTMLDOMNodePtr(m_target)->nextSibling);
-					if (!next || U::scmp(next->id, L"probe-marker")) return E_UNEXPECTED;
+					if (!next || U::scmp(next->id, L"probe-marker")) { m_doing = false; return E_UNEXPECTED; }
 					MSHTML::IHTMLDOMNodePtr(next)->removeNode(VARIANT_TRUE);
 					m_target->id = L"probe-marker"; m_target->innerHTML = m_original.AllocSysString();
 				} else {
@@ -51,18 +76,45 @@ public:
 					m_target->insertAdjacentHTML(L"afterEnd", m_next.AllocSysString());
 				}
 				m_after = !m_after;
-			} else if (m_mutate) { if (!m_target || !m_target->parentElement) return E_UNEXPECTED; m_target->title = m_after ? L"before" : L"after"; m_after = !m_after; }
+			} else if (m_text) {
+				MSHTML::IHTMLElementCollectionPtr children(m_target ? MSHTML::IHTMLElementCollectionPtr(m_target->children) : MSHTML::IHTMLElementCollectionPtr());
+				MSHTML::IHTMLElementPtr paragraph(children ? MSHTML::IHTMLElementPtr(children->item(0)) : MSHTML::IHTMLElementPtr());
+				if (!paragraph || !paragraph->parentElement) { m_doing = false; return E_UNEXPECTED; }
+				if (m_nodeValue) { MSHTML::IHTMLDOMNodePtr node(MSHTML::IHTMLDOMNodePtr(paragraph)->firstChild); if (!node) { m_doing = false; return E_UNEXPECTED; } node->nodeValue = _variant_t(m_original); }
+				else paragraph->innerHTML = m_original.AllocSysString();
+			} else if (m_selection) {
+				MSHTML::IHTMLDocument2Ptr document(m_target->document); MSHTML::IHTMLTxtRangePtr range(document->selection->createRange()); if (!range) { m_doing = false; return E_UNEXPECTED; } range->move(L"character", 1); range->select(); range->move(L"character", -1); range->select();
+			} else if (m_mutate) { if (!m_target || !m_target->parentElement) { m_doing = false; return E_UNEXPECTED; } m_target->title = m_after ? L"before" : L"after"; m_after = !m_after; }
+			Trace(L"do-after-mutation", manager, S_OK);
+			TraceUnits(L"after-mutation-before-add", manager);
 			if (!m_addFirst) lastAdd = manager->Add(this);
+			Trace(L"do-after-add", manager, lastAdd);
+			TraceUnits(L"after-add", manager);
+			m_doing = false;
 			return lastAdd;
-		} catch (const _com_error& error) { return error.Error(); }
+		} catch (const _com_error& error) { m_doing = false; return error.Error(); }
 	}
 	STDMETHOD(GetDescription)(BSTR* value) { if (!value) return E_POINTER; *value = ::SysAllocString(L"split transaction marker probe"); return *value ? S_OK : E_OUTOFMEMORY; }
 	STDMETHOD(GetUnitType)(CLSID* clsid, LONG* id) { if (!clsid || !id) return E_POINTER; *clsid = CLSID_NULL; *id = 0; return S_OK; }
-	STDMETHOD(OnNextAdd)() { return S_OK; }
+	STDMETHOD(OnNextAdd)() { ++nextAdds; Trace(L"on-next-add", nullptr, S_OK); return S_OK; }
+	unsigned nextAdds = 0;
 private:
+	void Trace(const wchar_t* phase, IOleUndoManager* manager, HRESULT hr) {
+		if (!m_report) return;
+		try {
+			MSHTML::IHTMLElementCollectionPtr children(m_target ? MSHTML::IHTMLElementCollectionPtr(m_target->children) : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr paragraph(children ? MSHTML::IHTMLElementPtr(children->item(0)) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLDOMNodePtr node(paragraph ? MSHTML::IHTMLDOMNodePtr(paragraph)->firstChild : MSHTML::IHTMLDOMNodePtr()); CComPtr<IUnknown> identity; if (node) node->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&identity));
+			DWORD state = 0; const HRESULT stateHr = manager ? manager->GetOpenParentState(&state) : E_POINTER; MSHTML::IHTMLElementPtr root(m_target ? MSHTML::IHTMLElementPtr(m_target->parentElement) : MSHTML::IHTMLElementPtr()); CString markup(root ? static_cast<const wchar_t*>(root->innerHTML) : L""); markup.Replace(L"\r", L""); markup.Replace(L"\n", L""); markup.Replace(L"\t", L" ");
+			CString caret(L"unavailable"); try { MSHTML::IHTMLDocument2Ptr document(m_target->document); MSHTML::IHTMLTxtRangePtr selected(document->selection->createRange()); if (selected && paragraph) { MSHTML::IHTMLElementPtr parent(selected->parentElement()), active(document->activeElement); MSHTML::IHTMLTxtRangePtr prefix(selected->duplicate()); prefix->moveToElementText(paragraph); prefix->setEndPoint(L"EndToStart", selected); _bstr_t before(prefix->text), text(selected->text); caret.Format(L"parent=%s;active=%s;offset=%ld;length=%ld", parent ? static_cast<const wchar_t*>(parent->tagName) : L"", active ? static_cast<const wchar_t*>(active->tagName) : L"", static_cast<long>(before.length()), static_cast<long>(text.length())); } } catch (const _com_error&) { }
+			CStringA row; row.Format("%S\t%S\tNA\tNA\tNA\tNA\tNA\tNA\t%S;text_identity=%p;depth=%d;parent_hr=0x%08lX;parent_state=0x%08lX;next_adds=%u\t0x%08lX\r\n", phase, static_cast<LPCWSTR>(markup), static_cast<LPCWSTR>(caret), identity.p, m_doing ? 1 : 0, static_cast<unsigned long>(stateHr), static_cast<unsigned long>(state), nextAdds, static_cast<unsigned long>(hr)); DWORD written = 0; m_report->Write(row, static_cast<DWORD>(row.GetLength()), &written); m_report->Flush();
+		} catch (const _com_error&) { }
+	}
 	MSHTML::IHTMLElementPtr m_target;
 	CString m_original, m_first, m_next;
-	bool m_mutate = false, m_structural = false, m_addFirst = false, m_after = true;
+	CAtlFile* m_report = nullptr;
+	std::vector<CComPtr<IUnknown>> m_observedUnits;
+	bool m_mutate = false, m_structural = false, m_text = false, m_nodeValue = false, m_selection = false, m_doing = false, m_addFirst = false, m_after = true;
 };
 
 class CUndoManagerEnableScope {

@@ -4,7 +4,8 @@ param(
     [ValidateRange(20, 120)][int]$TimeoutSeconds = 60,
     [string[]]$Cases = @('word', 'title', 'plain', 'plain-single', 'plain-middle', 'internal', 'internal-dirty', 'internal-history', 'internal-history-middle', 'internal-end', 'internal-missing-link', 'internal-missing-image', 'legacy-unmarked', 'queue-reload', 'queue-reload-idle', 'queue-moved-selection', 'queue-capture-after-post', 'queue-capture-notice', 'queue-close-retry', 'queue-post-idle', 'queue-post-failure', 'queue-post-clean-failure', 'queue-failure-retry', 'queue-two', 'queue-three', 'queue-reentrant', 'queue-reentrant-post-failure', 'queue-plain-two'),
     [switch]$KeepArtifacts,
-    [switch]$RealPaste
+    [switch]$RealPaste,
+    [switch]$SaveBeforePaste
 )
 
 $ErrorActionPreference = 'Stop'
@@ -12,6 +13,7 @@ if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "FBE.exe not fo
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-html-paste-' + [guid]::NewGuid().ToString('N'))
 $fixture = Join-Path $directory 'html-paste.fb2'
 $oldRoute = $env:FBE_NEXT_TEST_HTML_REAL_PASTE
+$oldSaveFirst = [Environment]::GetEnvironmentVariable('FBE_NEXT_TEST_PASTE_SAVE_FIRST')
 $oldMode, $oldScenario, $oldCase = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_HTML_PASTE_CASE
 try {
     New-Item -ItemType Directory -Path $directory | Out-Null
@@ -19,6 +21,7 @@ try {
     $env:FBE_NEXT_TEST_MODE = '1'
     $env:FBE_NEXT_TEST_SCENARIO = 'html-paste-runtime'
     $env:FBE_NEXT_TEST_HTML_REAL_PASTE = if ($RealPaste) { '1' } else { $null }
+    $env:FBE_NEXT_TEST_PASTE_SAVE_FIRST = if ($SaveBeforePaste) { '1' } else { $null }
     foreach($case in $Cases) {
         [IO.File]::WriteAllText($fixture, $xml, [Text.UTF8Encoding]::new($false))
         $report = Join-Path $directory "$case.tsv"
@@ -54,6 +57,8 @@ try {
     Write-Host "HTML paste runtime passed: $($Cases -join ', '); FB2 parse."
 }
 finally {
+    if ($null -eq $oldSaveFirst) { Remove-Item -LiteralPath 'Env:FBE_NEXT_TEST_PASTE_SAVE_FIRST' -ErrorAction SilentlyContinue }
+    else { [Environment]::SetEnvironmentVariable('FBE_NEXT_TEST_PASTE_SAVE_FIRST', $oldSaveFirst) }
     $env:FBE_NEXT_TEST_HTML_REAL_PASTE = $oldRoute
     $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_HTML_PASTE_CASE = $oldMode, $oldScenario, $oldCase
     if($KeepArtifacts) { Write-Host "Artifacts: $directory" }
