@@ -292,7 +292,6 @@ div#fbw_desc.description-modern #tiAuthor > div,
 div#fbw_desc.description-modern #tiTrans > div,
 div#fbw_desc.description-modern #diAuthor > div,
 div#fbw_desc.description-modern #stiAuthor > div { padding: .6em 0; margin: .3em 0; border-bottom: 1px solid ThreeDShadow; }
-div#fbw_desc.description-modern #tiCover { float: left; width: 12em; margin-right: 1em; }
 div#fbw_desc.description-modern #tiCover input, div#fbw_desc.description-modern #tiCover select { width: 100%; }
 div#fbw_desc .description-cover-preview { display: none; max-width: 100%; max-height: 14em; margin: .5em auto; }
 div#fbw_desc.description-classic .description-cover-preview { display: none !important; }
@@ -332,9 +331,6 @@ div#fbw_desc .description-date-field {
  display: inline-block; width: 46%; margin-right: 2%; vertical-align: top;
 }
 div#fbw_desc .description-date-field input { width: 100%; }
-div#fbw_desc.description-modern #tiCover {
- float: none; width: auto; margin: .5em 0 1em;
-}
 div#fbw_desc.description-modern #tiCover select { width: 16em; max-width: 100%; }
 div#fbw_desc.description-modern #tiCover .description-cover-preview {
  float: left; width: auto; max-width: 8em; max-height: 8em; margin: .3em 1em .3em 0;
@@ -405,7 +401,6 @@ div#fbw_desc .description-date-field { width: 45%; margin-right: 1%; }
 div#fbw_desc .description-date-field label { display: inline-block; width: auto !important; margin: .1em .25em .1em 0; }
 div#fbw_desc .description-date-field input { width: 55%; }
 div#fbw_desc .description-action-break { display: none; }
-div#fbw_desc.description-modern #tiCover { margin: .2em 0 .35em; }
 div#fbw_desc.description-modern #tiCover .description-cover-preview { max-height: 8em; margin: .1em .5em .1em 0; }
 div#fbw_desc .description-cover-preview,
 div#fbw_desc .description-binary-thumbnail,
@@ -431,7 +426,6 @@ div#fbw_desc .description-binary button.description-icon-action img { width: 1.2
 div#fbw_desc .description-person span button, div#fbw_desc #tiGenre span button { float: none; }
 div#fbw_desc label.description-keywords-label { width: 9em; white-space: nowrap; }
 div#fbw_desc.description-modern #tiCover { float: left; width: 8.5em; margin: 0 .7em .3em 0; }
-div#fbw_desc.description-modern #tiCover select { width: 7em; }
 div#fbw_desc.description-modern #tiCover .description-add-action { width: 100%; max-width: 100%; white-space: normal; word-wrap: break-word; }
 div#fbw_desc.description-modern #tiCover .description-cover-preview { max-width: 6em; max-height: 8em; }
 div#fbw_desc.description-modern #tiAuthor { overflow: hidden; }
@@ -453,7 +447,6 @@ div#fbw_desc select option { color: WindowText; background: Window; }
 div#fbw_desc input[readonly] { color: WindowText; background: ButtonFace; cursor: default; }
 div#fbw_desc .description-section-toggle { border-color: transparent; background: transparent; }
 div#fbw_desc.description-modern .description-section > .description-section-body > fieldset.kid { border-color: transparent; }
-div#fbw_desc.description-modern #tiCover { width: 12em; }
 div#fbw_desc.description-modern #tiCover select { width: 100%; }
 div#fbw_desc.description-narrow #tiCover { width: auto; }
 div#fbw_desc .description-date-field label { width: 9em !important; white-space: nowrap; }
@@ -508,3 +501,25 @@ div#fbw_desc select + label.description-long-label { margin-left: .6em; }
 div#fbw_desc.description-narrow select + label.description-long-label { margin-left: 0; }
 div#fbw_desc.description-narrow label { white-space: normal; }
 /* DESCRIPTION BINARY TABLE END */
+
+/* DESCRIPTION MODERN NAVIGATION BEGIN: shared with main_fast.css */
+div#fbw_desc.description-modern { position: relative; padding-left: 16em; }
+div#fbw_desc .description-navigation { display: none; }
+div#fbw_desc.description-modern .description-navigation { display: block; position: absolute; left: 1em; top: 1em; width: 14em; padding: .3em; }
+div#fbw_desc.description-modern .description-navigation-item { display: block; float: none; width: 100%; height: auto; min-height: 2.4em; margin: 0 0 .2em; padding: .35em .5em; text-align: left; white-space: normal; cursor: pointer; border: 1px solid transparent; }
+div#fbw_desc.description-modern .description-navigation-text { display: block; white-space: normal; word-wrap: break-word; }
+div#fbw_desc.description-modern .description-navigation-active { font-weight: bold; border-left: .3em solid ThreeDShadow; }
+div#fbw_desc.description-modern .description-person .description-field { width: 27%; }
+div#fbw_desc.description-narrow.description-modern .description-person .description-field { width: 47%; }
+div#fbw_desc.description-compact.description-modern .description-person .description-field { width: 94%; }
+div#fbw_desc.description-modern #di_id button { float: none; vertical-align: middle; }
+div#fbw_desc.description-modern #di_id #diID { width: 55% !important; }
+div#fbw_desc.description-modern #tiCover .description-cover-preview { max-width: 9em; max-height: 12em; }
+div#fbw_desc.description-narrow.description-modern { padding-left: .5em; }
+div#fbw_desc.description-narrow .description-navigation { display: none; }
+div#fbw_desc.description-modern.description-navigation-compact .description-section > legend { max-width: 90%; white-space: normal; }
+div#fbw_desc.description-modern.description-navigation-compact .description-binary-header-1 { width: 11.5em; }
+div#fbw_desc.description-modern.description-navigation-compact .description-binary-header-2 { width: 6.5em; }
+div#fbw_desc.description-modern.description-navigation-compact #binobj .description-binary #id { width: 11em !important; }
+div#fbw_desc.description-modern.description-navigation-compact #binobj .description-binary #type { width: 6em !important; }
+/* DESCRIPTION MODERN NAVIGATION END */

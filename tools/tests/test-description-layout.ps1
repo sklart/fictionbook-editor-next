@@ -10,6 +10,14 @@ foreach($cssName in @('main.css','main_fast.css')) {
     $cssBlocks+=($match.Value -replace "`r`n","`n")
 }
 if($cssBlocks[0] -cne $cssBlocks[1]){throw 'Description binary CSS differs between normal and Fast mode.'}
+$navBlocks=@()
+foreach($cssName in @('main.css','main_fast.css')) {
+    $css=Get-Content (Join-Path $root "runtime/$cssName") -Raw
+    $match=[regex]::Match($css,'(?s)/\* DESCRIPTION MODERN NAVIGATION BEGIN:.*?/\* DESCRIPTION MODERN NAVIGATION END \*/')
+    if(-not $match.Success){throw "Missing Description navigation CSS block: $cssName"}
+    $navBlocks+=($match.Value -replace "`r`n","`n")
+}
+if($navBlocks[0] -cne $navBlocks[1]){throw 'Description navigation CSS differs between normal and Fast mode.'}
 $xsl = New-Object -ComObject Msxml2.FreeThreadedDOMDocument.6.0
 $xsl.async = $false
 $xsl.setProperty('ResolveExternals', $true)

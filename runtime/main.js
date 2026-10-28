@@ -23,7 +23,7 @@ function DescriptionResize()
  // MSHTML document mode 7 has no CSS media queries. Use the containing
  // viewport, not scrollWidth: a long LEGEND can extend beyond it in this mode.
  var width = root.parentNode == document.body && document.documentElement.clientWidth ? document.documentElement.clientWidth : root.parentNode.clientWidth;
- root.className = "description-" + descriptionLayout + (width <= 760 ? " description-narrow" : "") + (width <= 480 ? " description-compact" : "");
+ root.className = "description-" + descriptionLayout + (width <= 760 ? " description-narrow" : "") + (width <= 480 ? " description-compact" : "") + (width > 760 && width <= 1100 ? " description-navigation-compact" : "");
 }
 function apiSetDescriptionLayout(value)
 {
@@ -73,6 +73,85 @@ function DescriptionShowSection(section)
  if(section.id == "binobj" && typeof DescriptionRefreshAttachments == "function") DescriptionRefreshAttachments();
 }
 
+//// == DESCRIPTION MODERN NAVIGATION ========================
+function DescriptionSetActiveNavigation(root, index)
+{
+ if(!root || !root._descriptionNavigationItems) return;
+ root._descriptionNavigationActive = index;
+ for(var i=0; i<root._descriptionNavigationItems.length; i++) {
+  var item = root._descriptionNavigationItems[i];
+  item.className = "description-navigation-item" + (i == index ? " description-navigation-active" : "");
+  item.setAttribute("aria-current", i == index ? "true" : "false");
+ }
+}
+
+function DescriptionNavigateToSection(item)
+{
+ var root = item._descriptionRoot, section = item._descriptionSection;
+ if(!root || !section || descriptionLayout != "modern") return;
+ section._descriptionClosed = false;
+ DescriptionShowSection(section);
+ DescriptionSetActiveNavigation(root, item._descriptionIndex);
+ root._descriptionNavigationPending = true;
+ section.scrollIntoView(true);
+ window.setTimeout(function() { root._descriptionNavigationPending = false; }, 500);
+}
+
+function DescriptionBuildNavigation(root)
+{
+ var navigation = document.createElement("DIV");
+ navigation.className = "description-navigation";
+ navigation.id = "descriptionNavigation";
+ root._descriptionNavigationItems = [];
+ for(var i=0; i<root._descriptionSections.length; i++) {
+  var section = root._descriptionSections[i], item = document.createElement("BUTTON");
+  var text = document.createElement("SPAN");
+  text.className = "description-navigation-text";
+  var caption = section._descriptionTitle.replace(/\s*\([^)]*\)\s*$/, "");
+  var split = caption.length > 22 ? caption.lastIndexOf(" ", 20) : -1;
+  if(split > 0) {
+   text.appendChild(document.createTextNode(caption.substring(0, split)));
+   text.appendChild(document.createElement("BR"));
+   text.appendChild(document.createTextNode(caption.substring(split + 1)));
+   item.style.height = "3.8em";
+  } else text.innerText = caption;
+  item.appendChild(text);
+  item.title = section._descriptionTitle;
+  item._descriptionRoot = root;
+  item._descriptionSection = section;
+  item._descriptionIndex = i;
+  item.onclick = function() { DescriptionNavigateToSection(this); return false; };
+  navigation.appendChild(item);
+  root._descriptionNavigationItems.push(item);
+ }
+ root.insertBefore(navigation, root.firstChild);
+ root._descriptionNavigation = navigation;
+ DescriptionSetActiveNavigation(root, 0);
+}
+
+function DescriptionSyncNavigation()
+{
+ var root = document.getElementById("fbw_desc");
+ if(!root || descriptionLayout != "modern" || !root._descriptionNavigation || root.className.indexOf("description-narrow") >= 0) return;
+ var top = root.getBoundingClientRect().top;
+ root._descriptionNavigation.style.top = Math.max(0, -top + 8) + "px";
+ if(root._descriptionNavigationPending) return;
+ var active = 0;
+ for(var i=0; i<root._descriptionSections.length; i++) {
+  if(root._descriptionSections[i].getBoundingClientRect().top <= 30) active = i;
+ }
+ if(active != root._descriptionNavigationActive) DescriptionSetActiveNavigation(root, active);
+}
+
+function DescriptionScheduleNavigationSync()
+{
+ if(window._descriptionNavigationTimer) return;
+ window._descriptionNavigationTimer = window.setTimeout(function() {
+  window._descriptionNavigationTimer = null;
+  DescriptionSyncNavigation();
+ }, 80);
+}
+
 function DescriptionMoveForModern(root, node, before)
 {
  if(!node || !before) return;
@@ -83,6 +162,17 @@ function DescriptionMoveForModern(root, node, before)
  node.parentNode.insertBefore(marker, node);
  root._descriptionMoved.push({node:node, marker:marker});
  before.parentNode.insertBefore(node, before);
+}
+
+function DescriptionMoveAfterForModern(root, node, after)
+{
+ if(!node || !after || !after.parentNode) return;
+ var marker = document.createElement("SPAN");
+ marker.className = "description-position";
+ marker.style.display = "none";
+ node.parentNode.insertBefore(marker, node);
+ root._descriptionMoved.push({node:node, marker:marker});
+ after.parentNode.insertBefore(node, after.nextSibling);
 }
 
 function DescriptionUpdateCover()
@@ -126,6 +216,28 @@ function DescriptionApplyPresentation(root)
   if(line && line.tagName == "BR") DescriptionMoveForModern(root, line, genres);
   // Move the existing cover controls; there is still only one cover model.
   DescriptionMoveForModern(root, document.getElementById("tiCover"), label);
+  // Keep the existing ID action beside the read-only field in Modern.
+  var documentId = document.getElementById("diID");
+  var idGroup = document.getElementById("di_id");
+  if(documentId && idGroup) {
+   var idButtons = idGroup.getElementsByTagName("BUTTON");
+   if(idButtons.length) DescriptionMoveAfterForModern(root, idButtons[0], documentId);
+  }
+  // Keep the real keyword controls after the series, including the optional wrapper.
+  var keywords = document.getElementById("tiKwd"), series = document.getElementById("tiSeq");
+  if(keywords && series) {
+   var keywordAnchor = series;
+   if(keywords.parentNode.id == "ti_kw") DescriptionMoveAfterForModern(root, keywords.parentNode, keywordAnchor);
+   else {
+    var keywordLabel = keywords.previousSibling;
+    while(keywordLabel && keywordLabel.nodeType != 1) keywordLabel = keywordLabel.previousSibling;
+    var keywordBreak = keywords.nextSibling;
+    while(keywordBreak && keywordBreak.nodeType != 1) keywordBreak = keywordBreak.nextSibling;
+    if(keywordLabel && keywordLabel.tagName == "LABEL") { DescriptionMoveAfterForModern(root, keywordLabel, keywordAnchor); keywordAnchor = keywordLabel; }
+    DescriptionMoveAfterForModern(root, keywords, keywordAnchor);
+    if(keywordBreak && keywordBreak.tagName == "BR") DescriptionMoveAfterForModern(root, keywordBreak, keywords);
+   }
+  }
   var optional = root._descriptionOptional;
   for(var i=0; i<optional.length; i++) { optional[i].display = optional[i].node.style.display; optional[i].node.style.display = "block"; }
  }
@@ -150,6 +262,7 @@ function InitDescriptionUI(root)
   section._descriptionClassicClosed = false;
   section._descriptionSectionId = controls[i];
   var legend = section.getElementsByTagName("LEGEND")[0];
+  section._descriptionTitle = legend.innerText;
   // A FIELDSET keeps block children valid in IE7 mode without introducing an
   // extra DIV into the legacy binary-row enumeration used by scripts.
   var body = document.createElement("FIELDSET");
@@ -179,6 +292,7 @@ function InitDescriptionUI(root)
   root._descriptionSections.push(section);
  }
  TraceScript("J911", "operation=Description sections initialized");
+ DescriptionBuildNavigation(root);
  var spans = root.getElementsByTagName("SPAN");
  for(var i=0; i<spans.length; i++)
  {
@@ -203,6 +317,7 @@ function InitDescriptionUI(root)
  DescriptionValidate();
  if(!window._descriptionResizeHook) {
   window.attachEvent("onresize", DescriptionResize);
+  window.attachEvent("onscroll", DescriptionScheduleNavigationSync);
   window._descriptionResizeHook = true;
  }
  if(!root._descriptionChangeHook) {

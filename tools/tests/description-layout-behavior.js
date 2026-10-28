@@ -66,6 +66,35 @@ function checkTheme() {
 }
 checkTheme();
 var serializedBefore=serialize();
+if(fixtures[fixtureIndex]=="full") {
+ apiSetDescriptionLayout("modern");
+ var nav=form._descriptionNavigation, navItems=form._descriptionNavigationItems;
+ assert(nav && navItems.length==7,"Modern navigation has seven items");
+ assert(document.getElementById("tiTitle").sourceIndex < document.getElementById("tiAuthor").sourceIndex && document.getElementById("tiAuthor").sourceIndex < document.getElementById("tiGenre").sourceIndex,"Modern title, author and genre tab order");
+ assert(document.getElementById("tiLang").sourceIndex < document.getElementById("tiSeq").sourceIndex && document.getElementById("tiSeq").sourceIndex < document.getElementById("tiKwd").sourceIndex,"Modern language, series and keywords tab order");
+ var idField=document.getElementById("diID"), idActions=document.getElementById("di_id").getElementsByTagName("BUTTON");
+ assert(idActions.length && idActions[idActions.length-1].sourceIndex>idField.sourceIndex,"Document ID action follows ID field");
+ for(var ni=0;ni<navItems.length;ni++) {
+  var target=form._descriptionSections[ni];
+  assert(navItems[ni]._descriptionSection===target,"Navigation targets section "+ni);
+  target._descriptionClosed=true; DescriptionShowSection(target);
+  navItems[ni].click();
+  assert(!target._descriptionClosed && target._descriptionBody.style.display!="none","Navigation expands section "+ni);
+  assert(form._descriptionNavigationActive==ni && navItems[ni].className.indexOf("description-navigation-active")>=0,"Navigation activates section "+ni);
+  assert(snapshot()==before && serialize()==serializedBefore,"Navigation preserves metadata and binary payloads");
+  navItems[ni].click(); assert(!target._descriptionClosed,"Navigation does not collapse an open section");
+ }
+ for(var ns=0;ns<10;ns++) {
+  apiSetDescriptionLayout("classic"); assert(nav.currentStyle.display=="none","Classic hides navigation");
+  apiSetDescriptionLayout("modern");
+  assert(document.getElementById("descriptionNavigation")===nav && form._descriptionNavigationItems.length==7,"No duplicated navigation after switch");
+  assert(snapshot()==before && serialize()==serializedBefore,"Repeated switches preserve document");
+ }
+ for(var nr=0;nr<form._descriptionSections.length;nr++) {
+  form._descriptionSections[nr]._descriptionClosed=nr!=0 && nr!=2;
+  DescriptionShowSection(form._descriptionSections[nr]);
+ }
+}
 if(fixtures[fixtureIndex]=="full" || fixtures[fixtureIndex]=="missing-optional" || fixtures[fixtureIndex]=="minimal") {
  var toggleLayouts=["modern","classic"];
  for(var tl=0;tl<toggleLayouts.length;tl++) {
@@ -146,7 +175,7 @@ if(fixtures[fixtureIndex]=="full" || fixtures[fixtureIndex]=="binary-geometry") 
     var firstRect=person.all.first.getBoundingClientRect(), nickRect=person.all.nick.getBoundingClientRect();
     assert(Math.abs(firstRect.left-nickRect.left)<=4,"Author and contact rows align in "+layouts[layoutIndex]+" fast="+fast+": "+firstRect.left+"/"+nickRect.left);
     assert(Math.abs(person.all.middle.getBoundingClientRect().left-person.all.email.getBoundingClientRect().left)<=4,"Middle name and email columns align");
-    assert(Math.abs(person.all.last.getBoundingClientRect().left-person.all.home.getBoundingClientRect().left)<=4,"Last name and website columns align");
+    assert(Math.abs(person.all.last.getBoundingClientRect().left-person.all.home.getBoundingClientRect().left)<=4,"Last name and website columns align "+layouts[layoutIndex]+" fast="+fast+": "+person.all.last.getBoundingClientRect().left+"/"+person.all.home.getBoundingClientRect().left);
     if(layouts[layoutIndex]=="classic") {
      var keywordLeft=document.getElementById("tiKwd").getBoundingClientRect().left;
      var dateLeft=document.getElementById("tiDate").getBoundingClientRect().left;
