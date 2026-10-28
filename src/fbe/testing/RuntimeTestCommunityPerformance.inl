@@ -21,7 +21,7 @@ if(IsFbeTestScenario(L"community-transition-performance")) {
    MSG message={};while(::PeekMessage(&message,NULL,0,0,PM_REMOVE)){::TranslateMessage(&message);::DispatchMessage(&message);}heartbeat.join();
    const auto transitionMemory=memory();
    ShowView(SOURCE);SourceDocumentText text;CheckError(SourceDocumentTransfer::ReadSourceText(m_source,text)==SourceTransitionResult::Success ? S_OK:E_FAIL);
-   auto xml=m_doc->CreateDOM(L"utf-8");const auto before=memory();SIZE_T indexDelta=0;double indexMs=-1;
+   auto xml=m_source_view_session.DiagnosticSelectionSnapshot();if(!xml)CheckError(E_FAIL);const auto before=memory();SIZE_T indexDelta=0;double indexMs=-1;
    wchar_t legacy[2]={};::GetEnvironmentVariableW(L"FBE_NEXT_TEST_PERF_LEGACY",legacy,_countof(legacy));
    if(legacy[0]!=L'1') {
     const double indexStart=now();FBEBodySourceTransfer::XmlSelectionPosition index(std::wstring_view(text.text,text.text.GetLength()));indexMs=now()-indexStart;

@@ -38,6 +38,8 @@ public:
 	void SetSourceEncoding(const CString& encoding);
 	void SetMemoryProfilingEnabled(bool enabled);
 	bool DocumentChanged() const;
+	// Read-only snapshot reuse for the native performance probe; no XML clone.
+	MSXML2::IXMLDOMDocumentPtr DiagnosticSelectionSnapshot() const { return m_savedXml; }
 	const SourceDocumentApplyResult& LastApplyResult() const;
 	void ResetDocument();
 #ifdef FBE_BINARY_STORE_MEMORY_ATTRIBUTION
