@@ -92,10 +92,12 @@ namespace
         std::map<std::wstring, ManifestItem> extraImages;
         std::set<std::wstring> reservedIds, emittedIds, noteTargets, requestedNotes;
         std::set<std::wstring> mainDocuments, noteContentAnchors, noteRootDocuments, residualDocuments;
+        std::set<std::wstring> excludedServiceDocuments;
         std::map<std::wstring, CStringW> noteLinks;
         std::map<std::wstring, CStringW> noteRoots;
         CStringW warnings;
         int noteReferences = 0, importedNoteReferences = 0, lostNoteReferences = 0;
+        int skippedServiceLinks = 0, missingSourceResources = 0, missingSourceAnchors = 0, missingGeneratedTargets = 0;
         int imageReferences = 0, importedImages = 0, skippedImages = 0;
         unsigned indexedElements = 0, structuralLookups = 0;
         unsigned residualFragments = 0, recoveredFragments = 0;
@@ -2725,6 +2727,7 @@ namespace
         return out;
     }
 
+    CStringW LowerMapKey(CStringW value);
     CStringW ResolveFb2HrefFragment(const ConvertContext& ctx, const CStringW& rawFragment);
     CStringW ResolveFb2Href(const ConvertContext& ctx, const CStringW& rawHref);
     CStringW PathAnchorMapKey(const CStringW& absPath, const CStringW& rawId);
@@ -2834,6 +2837,14 @@ namespace
 
             if (!href.IsEmpty() && g_options.preserveLinks)
             {
+                // Only explicitly filtered service documents lose their links;
+                // unresolved ordinary targets remain visible to strict validation.
+                if (!IsExternalHref(href) && !href.Left(href.Find(L'#') >= 0 ? href.Find(L'#') : href.GetLength()).IsEmpty() &&
+                    g_content.excludedServiceDocuments.count(LowerMapKey(targetPath).GetString()))
+                {
+                    ++g_content.skippedServiceLinks;
+                    return text;
+                }
                 CStringW normalizedHref = ResolveFb2Href(ctx, href);
                 return L"<a l:href=\"" + XmlEscape(normalizedHref) + L"\">" + text + L"</a>";
             }
@@ -3096,6 +3107,7 @@ namespace
 
         }
 
+        ++g_content.missingSourceAnchors;
         g_content.warnings += L"Unresolved internal fragment: " + ctx.currentXhtmlPath + L"#" + rawFragment + L"\r\n";
         return rawFragment;
     }
@@ -3131,6 +3143,9 @@ namespace
                     }
                 }
                 if (pathPart.IsEmpty()) return L"#" + ResolveFb2HrefFragment(ctx, fragment);
+                const CStringW unresolvedPath = CombineAndCanonicalizePath(ctx.currentXhtmlDir, pathPart);
+                if (FileExists(unresolvedPath)) ++g_content.missingSourceAnchors;
+                else ++g_content.missingSourceResources;
                 g_content.warnings += L"Unresolved internal link: " + ctx.currentXhtmlPath + L" -> " + href + L"\r\n";
                 return href;
             }
@@ -4749,13 +4764,15 @@ namespace
             return false;
         }
 
-        if (TryConvertBodyToSplitSections(body, fallbackTitle, ctx, outSection))
+        CStringW splitSections;
+        if (TryConvertBodyToSplitSections(body, fallbackTitle, ctx, splitSections))
         {
             const CStringW bodyId = OptionalIdAttribute(body, ctx);
             if (!bodyId.IsEmpty())
             {
-                CStringW wrapped;AppendFb2Section(wrapped, CStringW(), outSection, bodyId);outSection = wrapped;
+                CStringW wrapped;AppendFb2Section(wrapped, CStringW(), splitSections, bodyId);splitSections = wrapped;
             }
+            outSection += splitSections;
             return true;
         }
 
@@ -5329,7 +5346,10 @@ namespace
                 {
                     CStringW id = xml.Mid(valueStart, valueEnd - valueStart);
                     if (allIds.find(std::wstring(id.GetString())) == allIds.end())
+                    {
+                        ++g_content.missingGeneratedTargets;
                         warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_INTERNAL_LINK_MISSING_ID, L"Internal link points to a missing id: ") + id + L"\r\n";
+                    }
                 }
             }
             internalHrefPos += 9;
@@ -5386,6 +5406,39 @@ namespace
             if (anchor == anchors.end()) continue;
             const auto target = targets.find(anchor->second);
             if (target != targets.end()) mapped[i] = target->second;
+        }
+        // A split continuation is part of the same source document. Move it
+        // only across an immediate reading-order boundary, and never if it
+        // contains an independently mapped navigation target.
+        for (size_t i = 0; i < mapped.size(); ++i)
+        {
+            const auto& entry = package.navigation[i];
+            const auto parent = mapped[i];
+            if (!parent || entry.spineIndex < 0 ||
+                static_cast<size_t>(entry.spineIndex + 1) >= package.spine.size()) continue;
+            CStringW continuationPath(entry.path);
+            if (continuationPath.Replace(L"_split_000.", L"_split_001.") != 1) continue;
+            const auto nextItem = package.manifest.find(std::wstring(package.spine[static_cast<size_t>(entry.spineIndex + 1)]));
+            if (nextItem == package.manifest.end() || LowerMapKey(nextItem->second.absPath) != LowerMapKey(continuationPath)) continue;
+            const auto anchor = anchors.find(std::wstring(LowerMapKey(continuationPath)));
+            if (anchor == anchors.end()) continue;
+            const auto found = targets.find(anchor->second);
+            if (found == targets.end()) continue;
+            auto continuation = found->second;
+            const auto container = ParentNode(parent);
+            while (continuation && ParentNode(continuation) != container)
+                continuation = ParentNode(continuation);
+            if (!continuation || continuation == parent || LocalName(continuation) != L"section") continue;
+            IXMLDOMNode* raw = nullptr; continuation->get_previousSibling(&raw);
+            MSXML2::IXMLDOMNodePtr previous(raw, false);
+            while (previous && MsxmlGetNodeType(previous) != MSXML2::NODE_ELEMENT)
+            {raw = nullptr;previous->get_previousSibling(&raw);previous.Attach(raw);}
+            if (previous != parent) continue;
+            bool mappedInside = false;
+            for (const auto& target : mapped)
+                for (auto ancestor = target; ancestor; ancestor = ParentNode(ancestor))
+                    if (ancestor == continuation) {mappedInside = true;break;}
+            if (!mappedInside) AppendDomChild(parent, continuation);
         }
         for (size_t i = 0; i < mapped.size(); ++i)
         {
@@ -5447,6 +5500,35 @@ namespace
                 if (LocalName(child) == L"title") title = child;
                 else content = content || LocalName(child) != L"p" || !TrimString(NodeText(child)).IsEmpty() ||
                     FindFirstElementByLocalName(child, L"image") != nullptr;
+            }
+            // FB2 requires a content block after section metadata.  If the
+            // source consists only of epigraphs, represent the last one as a
+            // cite, retaining its children and their reading order.
+            bool hasBody = false;
+            MSXML2::IXMLDOMNodePtr lastEpigraph;
+            for (const auto& child : children)
+            {
+                const CStringW name = LocalName(child);
+                if (name == L"epigraph") lastEpigraph = child;
+                else if (name != L"title" && name != L"image" && name != L"annotation") hasBody = true;
+            }
+            if (!hasBody && lastEpigraph)
+            {
+                IXMLDOMNode* created = nullptr;
+                CheckError(dom->createNode(CComVariant(static_cast<long>(MSXML2::NODE_ELEMENT)), CComBSTR(L"cite"),
+                    CComBSTR(L"http://www.gribuser.ru/xml/fictionbook/2.0"), &created));
+                MSXML2::IXMLDOMNodePtr cite(created, false);
+                for (;;)
+                {
+                    IXMLDOMNode* raw = nullptr; lastEpigraph->get_firstChild(&raw);
+                    MSXML2::IXMLDOMNodePtr first(raw, false); if (!first) break;
+                    AppendDomChild(cite, first);
+                }
+                IXMLDOMNode* replaced = nullptr;
+                CheckError(node->replaceChild(cite, lastEpigraph, &replaced));
+                if (replaced) replaced->Release();
+                warning += L"Epigraph-only section: final epigraph preserved as cite.\r\n";
+                content = true;
             }
             if (title && !content)
             {
@@ -5655,6 +5737,14 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     int importedSections = 0;
 
     PrepareContentInventory(package, anchorIdMap);
+    // Inventory retains all spine documents for note discovery and forward links.
+    // Record explicit service exclusions separately before rendering any chapter.
+    for (const auto& id : package.spine)
+    {
+        const auto item = package.manifest.find(std::wstring(id));
+        if (item != package.manifest.end() && IsLikelyCoverSpineItem(item->second, package))
+            g_content.excludedServiceDocuments.emplace(LowerMapKey(item->second.absPath).GetString());
+    }
 
     if (options.importNotes)
     {
@@ -5807,6 +5897,9 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         const auto cover = ResolveCoverImageItem(package);
         if (cover) usedImageIds.emplace(cover->id.GetString());
     }
+    log.AddFormatInt(L"Links to excluded service documents preserved as text: %d", g_content.skippedServiceLinks);
+    log.AddFormatInt(L"Links to missing EPUB resources: %d", g_content.missingSourceResources);
+    log.AddFormatInt(L"Links to missing EPUB anchors: %d", g_content.missingSourceAnchors);
     log.AddFormatInt(L"Imported sections: %d", importedSections);
     log.AddFormatInt(L"Images used: %d", static_cast<int>(usedImageIds.size()));
 
@@ -5840,8 +5933,13 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     if (options.addDiagnosticSection && !warning.IsEmpty())
     {
         outFb2Xml += L"    <section>\r\n";
-        outFb2Xml += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_IMPORT_WARNINGS_TITLE, L"      <title><p>EPUB import warnings</p></title>\r\n");
-        outFb2Xml += L"      <p>" + XmlEscape(warning) + L"</p>\r\n";
+        CStringW warningTitle = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_IMPORT_WARNINGS_TITLE, L"      <title><p>EPUB import warnings</p></title>\r\n");
+        warningTitle.Replace(L"\\r\\n", L"\r\n");
+        outFb2Xml += warningTitle;
+        CStringW summary;
+        summary.Format(L"Service links preserved as text: %d; missing EPUB resources: %d; missing EPUB anchors: %d.",
+            g_content.skippedServiceLinks, g_content.missingSourceResources, g_content.missingSourceAnchors);
+        outFb2Xml += L"      <p>" + XmlEscape(summary) + L"</p>\r\n";
         outFb2Xml += L"    </section>\r\n";
     }
     outFb2Xml += body;
@@ -5856,6 +5954,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     {
         CStringW validationWarning;
         const bool valid = ValidateGeneratedFb2Xml(outFb2Xml, validationWarning, package, anchorIdMap);
+        log.AddFormatInt(L"Generated FB2 links with missing targets: %d", g_content.missingGeneratedTargets);
         if (!validationWarning.IsEmpty())
         {
             warning += validationWarning;
@@ -5868,7 +5967,10 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
                 const CStringW recovery = ChangeExtension(epubPath, L".failed-import.fb2");
                 if (WriteUtf8TextFile(recovery, outFb2Xml)) log.AddFormat(L"Saved intermediate FB2 for diagnostics: %s", recovery);
             }
-            errorText = inventory + warning;log.SaveIfRequested(epubPath, options.writeLogOnWarnings);return false;
+            CStringW summary;
+            summary.Format(L"FB2 validation failed; missing generated link targets: %d. Detailed diagnostics are available in the import log if it could be written.\r\n", g_content.missingGeneratedTargets);
+            errorText = inventory + summary;
+            log.SaveIfRequested(epubPath, true);return false;
         }
     }
 
@@ -5890,7 +5992,8 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
             log.AddFormat(L"Failed to save FB2 copy: %s", fb2CopyPath);
     }
 
-    if (!warning.IsEmpty()) errorText = inventory + warning;
+    if (!warning.IsEmpty())
+        errorText = inventory + L"Import completed with warnings. Detailed diagnostics are available in the import log when enabled.\r\n";
     log.Add(warning.IsEmpty() ? L"Import completed." : L"Import completed with warnings.");
     log.SaveIfRequested(epubPath, options.writeLogOnWarnings && !warning.IsEmpty());
     return true;
