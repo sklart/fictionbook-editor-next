@@ -5,6 +5,9 @@ if(IsFbeTestScenario(L"community-transition-performance")) {
  auto now=[&](){LARGE_INTEGER value={};::QueryPerformanceCounter(&value);return value.QuadPart*1000.0/frequency.QuadPart;};
  auto memory=[](){PROCESS_MEMORY_COUNTERS_EX value={};value.cb=sizeof(value);::GetProcessMemoryInfo(::GetCurrentProcess(),reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&value),sizeof(value));return value;};
  try {
+  wchar_t affinity[32]={};::GetEnvironmentVariableW(L"FBE_NEXT_TEST_PERF_AFFINITY",affinity,_countof(affinity));
+  const DWORD_PTR mask=static_cast<DWORD_PTR>(_wcstoui64(affinity,nullptr,10));
+  if(mask && !::SetThreadAffinityMask(::GetCurrentThread(),mask))CheckError(HRESULT_FROM_WIN32(::GetLastError()));
   for(int selected=0;selected<2;++selected) for(int repeat=-1;repeat<5;++repeat) {
    ShowView(BODY);
    MSHTML::IHTMLDocument2Ptr html(m_doc->m_body.Document());

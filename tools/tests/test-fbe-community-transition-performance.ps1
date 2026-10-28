@@ -12,10 +12,10 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot RuntimeTestIsolation.ps1)
 $evidence=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EvidenceDirectory)
 New-Item -ItemType Directory -Path $evidence -Force | Out-Null
-$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TRACE','FBE_NEXT_TEST_PERF_LEGACY');$saved=@{};foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name)}
+$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TRACE','FBE_NEXT_TEST_PERF_LEGACY','FBE_NEXT_TEST_PERF_AFFINITY');$saved=@{};foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name)}
 $utf8=[Text.UTF8Encoding]::new($false)
 $summary=[Collections.Generic.List[object]]::new()
-[ordered]@{cpu=(Get-CimInstance Win32_Processor).Name;logicalCpus=[Environment]::ProcessorCount;os=[Environment]::OSVersion.VersionString;affinityMask=$AffinityMask;priority='Normal';priorityBoost=$false;warmups=1;measuredRepeats=5} | ConvertTo-Json | Set-Content (Join-Path $evidence environment.json)
+[ordered]@{cpu=(Get-CimInstance Win32_Processor).Name;logicalCpus=[Environment]::ProcessorCount;os=[Environment]::OSVersion.VersionString;affinityMask=$AffinityMask;affinityScope='UI thread';priority='Normal';priorityBoost=$false;warmups=1;measuredRepeats=5} | ConvertTo-Json | Set-Content (Join-Path $evidence environment.json)
 try {
  foreach($size in $SizesMiB) {
   $fixture=Join-Path $evidence "fixture-$size.fb2"
@@ -36,10 +36,9 @@ try {
    $iso=New-IsolatedFbeRuntime -FbeExe $entry.Exe -Name transition-perf;$passed=$false
    try {
     $null=New-IsolatedFbeSettingsSeed -Isolation $iso -StartupScriptsDirectory (Join-Path $iso.Root empty-scripts)
-    $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='community-transition-performance';$env:FBE_NEXT_TRACE='0';$env:FBE_NEXT_TEST_PERF_LEGACY=if($entry.Name -eq 'baseline'){'1'}else{'0'}
+    $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='community-transition-performance';$env:FBE_NEXT_TRACE='0';$env:FBE_NEXT_TEST_PERF_AFFINITY=$AffinityMask.ToString();$env:FBE_NEXT_TEST_PERF_LEGACY=if($entry.Name -eq 'baseline'){'1'}else{'0'}
     $report=Join-Path $evidence ("{0}-{1}.tsv" -f $entry.Name,$size)
     $process=Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -ArgumentList @('--portable','-b',$report,$fixture) -WindowStyle Hidden -PassThru
-    $process.ProcessorAffinity=[IntPtr]$AffinityMask
     $process.PriorityClass=[Diagnostics.ProcessPriorityClass]::Normal
     $process.PriorityBoostEnabled=$false
     $exitCode=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds $TimeoutSeconds
