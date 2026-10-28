@@ -27,6 +27,47 @@ private:
 // Test-only experiment: distinguish OLE's inverse registration from an
 // MSHTML mutation performed inside IOleUndoUnit::Do. The target is a live,
 // never-removed fixture element, not a retained pointer to a split node.
+class CBlockingUndoProbe : public CComObjectRootEx<CComSingleThreadModel>, public IOleParentUndoUnit {
+public:
+	BEGIN_COM_MAP(CBlockingUndoProbe) COM_INTERFACE_ENTRY(IOleUndoUnit) COM_INTERFACE_ENTRY(IOleParentUndoUnit) END_COM_MAP()
+	STDMETHOD(Do)(IOleUndoManager*) { return E_UNEXPECTED; }
+	STDMETHOD(GetDescription)(BSTR* value) { if (!value) return E_POINTER; *value = ::SysAllocString(L"test blocking scope"); return *value ? S_OK : E_OUTOFMEMORY; }
+	STDMETHOD(GetUnitType)(CLSID* clsid, LONG* id) { if (!clsid || !id) return E_POINTER; *clsid = CLSID_NULL; *id = 0; return S_OK; }
+	STDMETHOD(OnNextAdd)() { return S_OK; }
+	STDMETHOD(Open)(IOleParentUndoUnit*) { ++opens; return S_OK; }
+	STDMETHOD(Close)(IOleParentUndoUnit* unit, BOOL) { return unit == static_cast<IOleParentUndoUnit*>(this) ? S_FALSE : S_OK; }
+	STDMETHOD(Add)(IOleUndoUnit* unit) { ++discarded; if (report) { CComPtr<IUnknown> id; if (unit) unit->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&id)); CStringA row; row.Format("blocking-discard\tunit=%p\tcount=%u\r\n", id.p, discarded); DWORD n = 0; report->Write(row, static_cast<DWORD>(row.GetLength()), &n); report->Flush(); } return S_OK; }
+	STDMETHOD(FindUnit)(IOleUndoUnit*) { return S_FALSE; }
+	STDMETHOD(GetParentState)(DWORD* state) { if (!state) return E_POINTER; *state = UAS_BLOCKED; return S_OK; }
+	unsigned discarded = 0, opens = 0; CAtlFile* report = nullptr;
+};
+
+class CBlockingUndoScope {
+public:
+	CBlockingUndoScope(IOleUndoManager* manager, CAtlFile* report) : m_manager(manager), m_report(report) {}
+	~CBlockingUndoScope() { if (m_open) Close(); }
+	HRESULT Open() {
+		DWORD before = 0; HRESULT hr = m_manager->GetOpenParentState(&before); Log("before", hr, before);
+		if (FAILED(hr) || (hr == S_OK && (before & (UAS_BLOCKED | UAS_NOPARENTENABLE)))) return E_UNEXPECTED;
+		m_beforeHr = hr; m_before = before;
+		CComObject<CBlockingUndoProbe>* raw = nullptr; hr = CComObject<CBlockingUndoProbe>::CreateInstance(&raw); if (FAILED(hr)) return hr; m_parent = raw; raw->report = m_report; m_raw = raw;
+		hr = m_manager->Open(m_parent); Log("open", hr, 0); if (FAILED(hr)) return hr; m_open = true;
+		DWORD state = 0; hr = m_manager->GetOpenParentState(&state); Log("blocked", hr, state);
+		if (hr != S_OK || (state & UAS_BLOCKED) == 0) return E_UNEXPECTED;
+		return S_OK;
+	}
+	HRESULT Close() {
+		if (!m_open) return E_UNEXPECTED;
+		const HRESULT closeHr = m_manager->Close(m_parent, FALSE); m_open = FAILED(closeHr); Log("close", closeHr, m_raw ? m_raw->discarded : 0);
+		DWORD state = 0; const HRESULT stateHr = m_manager->GetOpenParentState(&state); Log("restored", stateHr, state);
+		if (FAILED(closeHr) || stateHr != m_beforeHr || (stateHr == S_OK && (state & UAS_MASK) != (m_before & UAS_MASK))) return E_UNEXPECTED;
+		return S_OK;
+	}
+private:
+	void Log(const char* phase, HRESULT hr, DWORD value) { if (!m_report) return; CStringA row; row.Format("blocking\t%s\thr=0x%08lX\tvalue=0x%08lX\r\n", phase, static_cast<unsigned long>(hr), static_cast<unsigned long>(value)); DWORD n = 0; m_report->Write(row, static_cast<DWORD>(row.GetLength()), &n); m_report->Flush(); }
+	IOleUndoManager* m_manager; CAtlFile* m_report; CComPtr<IOleParentUndoUnit> m_parent; CBlockingUndoProbe* m_raw = nullptr; bool m_open = false; HRESULT m_beforeHr = E_PENDING; DWORD m_before = 0;
+};
+
 class CSplitTransactionMarker : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit {
 public:
 	BEGIN_COM_MAP(CSplitTransactionMarker) COM_INTERFACE_ENTRY(IOleUndoUnit) END_COM_MAP()
@@ -34,7 +75,7 @@ public:
 	void InitializeStructural(MSHTML::IHTMLElementPtr target, bool addFirst, const CString& original, const CString& first, const CString& next, CAtlFile* report) { m_target = target; m_structural = true; m_addFirst = addFirst; m_original = original; m_first = first; m_next = next; m_report = report; }
 	void InitializeText(MSHTML::IHTMLElementPtr target, const CString& original, CAtlFile* report, bool nodeValue = false) { m_target = target; m_text = true; m_nodeValue = nodeValue; m_original = original; m_report = report; }
 	void InitializeSelection(MSHTML::IHTMLElementPtr target, CAtlFile* report) { m_target = target; m_selection = true; m_report = report; }
-	void InitializeMutation(MSHTML::IHTMLElementPtr target, int mode, CAtlFile* report) { m_target = target; m_probeMode = mode; m_report = report; }
+	void InitializeMutation(MSHTML::IHTMLElementPtr target, int mode, CAtlFile* report, bool blocking = false) { m_target = target; m_probeMode = mode; m_report = report; m_blocking = blocking; }
 	void TraceNodes(const wchar_t* phase) {
 		if (!m_report || !m_target) return;
 		MSHTML::IHTMLElementCollectionPtr children(m_target->children); MSHTML::IHTMLElementPtr p(children ? MSHTML::IHTMLElementPtr(children->item(0)) : MSHTML::IHTMLElementPtr()); if (!p) return;
@@ -76,6 +117,7 @@ public:
 			TraceUnits(L"before-mutation", manager);
 			if (m_probeMode) {
 				TraceNodes(L"do-before");
+				CBlockingUndoScope scope(manager, m_report); if (m_blocking) { const HRESULT hr = scope.Open(); if (FAILED(hr)) { m_doing = false; return hr; } }
 				if (m_probeMode == 1) m_probeState = !m_probeState;
 				else {
 					MSHTML::IHTMLElementCollectionPtr children(m_target->children); MSHTML::IHTMLElementPtr p(children ? MSHTML::IHTMLElementPtr(children->item(0)) : MSHTML::IHTMLElementPtr()); if (!p) { m_doing = false; return E_UNEXPECTED; }
@@ -84,7 +126,7 @@ public:
 					if (m_probeMode == 4) p->innerHTML = m_after ? L"Qtail" : L"Rtail";
 					else { MSHTML::IHTMLDOMNodePtr n(MSHTML::IHTMLDOMNodePtr(p)->firstChild); if (!n || n->nodeType != 3 || CString(static_cast<const wchar_t*>(_bstr_t(n->nodeValue))) != (m_after ? L"R" : L"Q")) { m_doing = false; return E_UNEXPECTED; } if (m_probeMode == 2) n->nodeValue = _variant_t(replacement); else { MSHTML::IHTMLDOMTextNode2Ptr text(n); if (!text) { m_doing = false; return E_NOINTERFACE; } text->replaceData(0, 1, _bstr_t(replacement)); } }
 				}
-				m_after = !m_after; TraceNodes(L"do-after");
+				TraceNodes(L"do-after"); if (m_blocking) { const HRESULT hr = scope.Close(); if (FAILED(hr)) { m_doing = false; return hr; } } m_after = !m_after;
 			} else if (m_structural) {
 				if (!m_target || !m_target->parentElement) { m_doing = false; return E_UNEXPECTED; }
 				if (m_after) {
@@ -137,6 +179,7 @@ private:
 	std::vector<CComPtr<IUnknown>> m_observedUnits;
 	std::vector<CComPtr<IUnknown>> m_observedNodes;
 	int m_probeMode = 0;
+	bool m_blocking = false;
 	bool m_probeState = true;
 	bool m_mutate = false, m_structural = false, m_text = false, m_nodeValue = false, m_selection = false, m_doing = false, m_addFirst = false, m_after = true;
 };

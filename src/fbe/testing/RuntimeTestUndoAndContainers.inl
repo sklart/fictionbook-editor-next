@@ -126,7 +126,7 @@
 				target->id = L"probe-left"; target->innerHTML = leftHtml.AllocSysString();
 				target->insertAdjacentHTML(L"afterEnd", rightHtml.AllocSysString());
 			} else if (probeMode) {
-				raw->InitializeMutation(target, probeMode, &output);
+				raw->InitializeMutation(target, probeMode, &output, ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_BLOCKED_PARENT", nullptr, 0) > 0);
 				if (probeMode != 1) {
 					MSHTML::IHTMLDOMNodePtr n(MSHTML::IHTMLDOMNodePtr(first)->firstChild); if (!n || n->nodeType != 3 || n->nextSibling || CString(static_cast<const wchar_t*>(_bstr_t(n->nodeValue))) != L"Qtail" || CString(static_cast<const wchar_t*>(first->innerText)) != L"Qtail") CheckError(E_UNEXPECTED);
 					if (probeMode == 4) first->innerHTML = L"Rtail"; else if (probeMode == 2) n->nodeValue = _variant_t(L"Rtail"); else { MSHTML::IHTMLDOMTextNode2Ptr text(n); if (!text) CheckError(E_NOINTERFACE); text->replaceData(0, 1, _bstr_t(L"R")); }
@@ -146,6 +146,17 @@
 			raw->TraceNodes(L"after-X");
 			raw->TraceUnits(L"after-input-X", manager); BOOL handled = FALSE; HRESULT hr = static_cast<HRESULT>(m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled)); const bool undoInput = snapshot() == afterMarker; observe("undo-X", hr); raw->TraceUnits(L"after-undo-X", manager);
 			hr = static_cast<HRESULT>(m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled)); const bool undoMarker = snapshot() == prior; observe("undo-marker", hr); raw->TraceUnits(L"after-undo-marker", manager); raw->TraceNodes(L"after-undo-marker");
+			if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_BLOCKED_CYCLE", nullptr, 0)) {
+				hr = static_cast<HRESULT>(m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled)); const bool undoQ = snapshot() == initial; observe("cycle-undo-Q", hr); raw->TraceUnits(L"cycle-undo-Q", manager);
+				hr = static_cast<HRESULT>(m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled)); const bool redoQ = snapshot() == prior; observe("cycle-redo-Q", hr); raw->TraceUnits(L"cycle-redo-Q", manager);
+				hr = static_cast<HRESULT>(m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled)); const bool redoCustom = snapshot() == afterMarker; observe("cycle-redo-marker", hr); raw->TraceUnits(L"cycle-redo-marker", manager);
+				hr = static_cast<HRESULT>(m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled)); const bool redoX = snapshot() == afterInput; observe("cycle-redo-X", hr); raw->TraceUnits(L"cycle-redo-X", manager);
+				hr = static_cast<HRESULT>(m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled)); const bool finalX = snapshot() == afterMarker; observe("cycle-final-undo-X", hr);
+				hr = static_cast<HRESULT>(m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled)); const bool finalCustom = snapshot() == prior; observe("cycle-final-undo-marker", hr);
+				hr = static_cast<HRESULT>(m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled)); const bool finalQ = snapshot() == initial; observe("cycle-final-undo-Q", hr); raw->TraceUnits(L"cycle-final-undo-Q", manager);
+				const bool passed = undoInput && undoMarker && undoQ && redoQ && redoCustom && redoX && finalX && finalCustom && finalQ;
+				CStringA row; row.Format("result\t%s\tundoX=%d;undoMarker=%d;undoQ=%d;redoQ=%d;redoMarker=%d;redoX=%d;finalX=%d;finalMarker=%d;finalQ=%d\r\n", passed ? "PASS" : "FAIL", undoInput, undoMarker, undoQ, redoQ, redoCustom, redoX, finalX, finalCustom, finalQ); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); raw->DetachReport(); output.Close(); ::PostQuitMessage(0); return 0;
+			}
 			hr = static_cast<HRESULT>(m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled)); const bool redoMarker = snapshot() == afterMarker; observe("redo-marker", hr); raw->TraceUnits(L"after-redo-marker", manager); raw->TraceNodes(L"after-redo-marker");
 			if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SPLIT_MARKER_FRESH", nullptr, 0)) {
 				MSHTML::IHTMLElementPtr current(document->all->item(L"probe-marker")); MSHTML::IHTMLElementCollectionPtr currentChildren(current ? MSHTML::IHTMLElementCollectionPtr(current->children) : MSHTML::IHTMLElementCollectionPtr());

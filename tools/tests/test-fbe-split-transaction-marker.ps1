@@ -5,14 +5,16 @@ param(
     [string[]]$Variants = @('native-only','no-dom','dom-add-first','dom-add-last','structure-add-first','structure-add-last'),
     [switch]$TextFixture,
     [switch]$SeparateDirty,
-    [switch]$FreshCaret
+    [switch]$FreshCaret,
+    [switch]$BlockedParent,
+    [switch]$ExtendedCycle
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $evidence = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EvidenceDirectory)
 if (Test-Path -LiteralPath $evidence) { throw "Evidence directory already exists: $evidence" }
 New-Item -ItemType Directory -Path $evidence | Out-Null
-$names = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SPLIT_MARKER_KIND','FBE_NEXT_TEST_SPLIT_MARKER_TAIL','FBE_NEXT_TEST_SPLIT_MARKER_FRESH')
+$names = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SPLIT_MARKER_KIND','FBE_NEXT_TEST_SPLIT_MARKER_TAIL','FBE_NEXT_TEST_SPLIT_MARKER_FRESH','FBE_NEXT_TEST_BLOCKED_PARENT','FBE_NEXT_TEST_BLOCKED_CYCLE')
 $saved = @{}; foreach ($name in $names) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
 $failures = @()
 try {
@@ -28,6 +30,8 @@ try {
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'split-transaction-marker'; $env:FBE_NEXT_TEST_SPLIT_MARKER_KIND = $kind
             $env:FBE_NEXT_TEST_SPLIT_MARKER_TAIL = if ($TextFixture) { '1' } else { $null }
             $env:FBE_NEXT_TEST_SPLIT_MARKER_FRESH = if ($FreshCaret) { '1' } else { $null }
+            $env:FBE_NEXT_TEST_BLOCKED_PARENT = if ($BlockedParent) { '1' } else { $null }
+            $env:FBE_NEXT_TEST_BLOCKED_CYCLE = if ($ExtendedCycle) { '1' } else { $null }
             $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -WindowStyle Hidden -ArgumentList @('--portable','-b',$report,$fixture) -PassThru
             $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario "split-marker-$kind" -Report $report -TimeoutSeconds 120
             if ($code -ne 0 -or !(Test-Path -LiteralPath $report)) { throw "Marker probe failed to execute: $kind, exit=$code" }
