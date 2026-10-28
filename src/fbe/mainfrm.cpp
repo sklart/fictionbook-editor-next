@@ -94,6 +94,7 @@
 #include <algorithm>
 #include <map>
 #include <psapi.h>
+#include "source/XmlSelectionPosition.h"
 #include <commoncontrols.h>
 
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
