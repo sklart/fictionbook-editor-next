@@ -15,10 +15,10 @@ if(IsFbeTestScenario(L"community-transition-performance")) {
    m_doc->m_body.SetFocus();range->select();
    std::atomic_bool stop(false);double heartbeatMax=0;int timeouts=0;
    std::thread heartbeat([&](){while(!stop.load()){const double start=now();DWORD_PTR result=0;const bool ok=::SendMessageTimeout(m_hWnd,WM_NULL,0,0,SMTO_BLOCK|SMTO_ABORTIFHUNG,10000,&result)!=0;heartbeatMax=(std::max)(heartbeatMax,now()-start);if(!ok)++timeouts;::Sleep(10);}});
-   const double start=now();ShowView(SOURCE);const double sourceAt=now();ShowView(BODY);const double bodyAt=now();
+   const double start=now();ShowView(SOURCE);const bool sourceActive=IsSourceActive();const double sourceAt=now();ShowView(BODY);const bool bodyActive=!IsSourceActive();const double bodyAt=now();
    stop.store(true);
    // Let an outstanding worker probe complete before joining the worker.
-   MSG message={};while(::PeekMessage(&message,NULL,0,0,PM_REMOVE)){::TranslateMessage(&message);::DispatchMessage(&message);}heartbeat.join();
+   MSG message={};while(::PeekMessage(&message,NULL,0,0,PM_REMOVE)){::TranslateMessage(&message);::DispatchMessage(&message);}heartbeat.join();CheckError(sourceActive && bodyActive ? S_OK:E_FAIL);
    const auto transitionMemory=memory();
    ShowView(SOURCE);SourceDocumentText text;CheckError(SourceDocumentTransfer::ReadSourceText(m_source,text)==SourceTransitionResult::Success ? S_OK:E_FAIL);
    auto xml=m_source_view_session.DiagnosticSelectionSnapshot();if(!xml)CheckError(E_FAIL);const auto before=memory();SIZE_T indexDelta=0;double indexMs=-1;

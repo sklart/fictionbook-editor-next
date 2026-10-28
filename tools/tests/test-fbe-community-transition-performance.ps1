@@ -20,10 +20,14 @@ try {
    $header='<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><nickname>Fixture</nickname></author><book-title>Followup performance</book-title><lang>ru</lang></title-info><document-info><author><nickname>Fixture</nickname></author><date value="2026-10-28">2026-10-28</date><id>followup-perf</id><version>1.0</version></document-info></description><body>'
    $tail='<section><p id="perf-last">Last Unicode '+[char]0x0416+' '+[char]0x00a0+' '+[char]0x03a9+' repeated text <strong>bold</strong> tail</p></section></body><body name="notes"><section id="note"><p>Note text</p></section></body></FictionBook>'
    $line='<p>Repeated identical phrase '+[char]0x0416+' '+[char]0x00a0+' '+[char]::ConvertFromUtf32(0x1F600)+' &amp; <strong>bold <emphasis>inline</emphasis></strong> <a l:href="#note" type="note">1</a> '+('ordinary prose ' * 20)+'</p>'
-   $chunk='<section><title><p>Repeated section</p></title>'+($line*8)+'<section><p>Nested repeated phrase</p></section></section>'
+   $chunk='<section><title><p>Repeated section</p></title><section>'+($line*8)+'</section><section><p>Nested repeated phrase</p></section></section>'
    $writer=[IO.StreamWriter]::new($fixture,$false,$utf8);$bytes=$utf8.GetByteCount($header)+$utf8.GetByteCount($tail);$chunkBytes=$utf8.GetByteCount($chunk)
    try{$writer.Write($header);while($bytes -lt $size*1MB){$writer.Write($chunk);$bytes+=$chunkBytes};$writer.Write($tail)}finally{$writer.Dispose()}
   }
+  $schema=New-Object -ComObject Msxml2.XMLSchemaCache.6.0
+  $schema.add('http://www.gribuser.ru/xml/fictionbook/2.0',(Join-Path $PSScriptRoot '../../runtime/FictionBook.xsd'))
+  $validation=New-Object -ComObject Msxml2.DOMDocument.6.0;$validation.async=$false;$validation.schemas=$schema
+  try{if(!$validation.load($fixture)){throw "Invalid performance FB2: $($validation.parseError.reason)"}}finally{[void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($validation);[void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($schema)}
   Get-FileHash -LiteralPath $fixture | ConvertTo-Json | Set-Content (Join-Path $evidence "fixture-$size-hash.json")
   foreach($entry in @(@{Name='baseline';Exe=$BaselineExe},@{Name='candidate';Exe=$CandidateExe})) {
    $iso=New-IsolatedFbeRuntime -FbeExe $entry.Exe -Name transition-perf;$passed=$false
