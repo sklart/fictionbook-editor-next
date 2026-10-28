@@ -5967,7 +5967,10 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
                 const CStringW recovery = ChangeExtension(epubPath, L".failed-import.fb2");
                 if (WriteUtf8TextFile(recovery, outFb2Xml)) log.AddFormat(L"Saved intermediate FB2 for diagnostics: %s", recovery);
             }
-            errorText = inventory + warning;log.SaveIfRequested(epubPath, options.writeLogOnWarnings);return false;
+            CStringW summary;
+            summary.Format(L"FB2 validation failed; missing generated link targets: %d. Detailed diagnostics are available in the import log if it could be written.\r\n", g_content.missingGeneratedTargets);
+            errorText = inventory + summary;
+            log.SaveIfRequested(epubPath, true);return false;
         }
     }
 
@@ -5989,7 +5992,8 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
             log.AddFormat(L"Failed to save FB2 copy: %s", fb2CopyPath);
     }
 
-    if (!warning.IsEmpty()) errorText = inventory + warning;
+    if (!warning.IsEmpty())
+        errorText = inventory + L"Import completed with warnings. Detailed diagnostics are available in the import log when enabled.\r\n";
     log.Add(warning.IsEmpty() ? L"Import completed." : L"Import completed with warnings.");
     log.SaveIfRequested(epubPath, options.writeLogOnWarnings && !warning.IsEmpty());
     return true;
