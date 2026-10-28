@@ -1,0 +1,110 @@
+timestamp	operation	backend	case	phase	event	hresult	details
+2026-10-28T17:14:55.277Z	split	extracted	split-prior-input	split-enter	before	NA	""
+2026-10-28T17:14:55.278Z	split	extracted	split-prior-input	split-enter	after	NA	completed
+2026-10-28T17:14:55.279Z	split	extracted	split-prior-input	selection-create	before	NA	""
+2026-10-28T17:14:55.282Z	split	extracted	split-prior-input	selection-create	after	NA	completed
+2026-10-28T17:14:55.283Z	split	extracted	split-prior-input	parent-resolved	before	NA	""
+2026-10-28T17:14:55.284Z	split	extracted	split-prior-input	parent-resolved	after	NA	completed
+2026-10-28T17:14:55.284Z	split	extracted	split-prior-input	container-range-create	before	NA	""
+2026-10-28T17:14:55.284Z	split	extracted	split-prior-input	container-range-create	after	NA	completed
+2026-10-28T17:14:55.284Z	split	extracted	split-prior-input	container-range-move	before	NA	""
+2026-10-28T17:14:55.285Z	split	extracted	split-prior-input	container-range-move	after	NA	completed
+2026-10-28T17:14:55.285Z	split	extracted	split-prior-input	range-start-validated	before	NA	""
+2026-10-28T17:14:55.285Z	split	extracted	split-prior-input	range-start-validated	after	NA	completed
+2026-10-28T17:14:55.286Z	split	extracted	split-prior-input	range-start-create	before	NA	""
+2026-10-28T17:14:55.287Z	split	extracted	split-prior-input	range-start-create	after	NA	completed
+2026-10-28T17:14:55.287Z	split	extracted	split-prior-input	range-end-create	before	NA	""
+2026-10-28T17:14:55.289Z	split	extracted	split-prior-input	range-end-create	after	NA	completed
+2026-10-28T17:14:55.290Z	split	extracted	split-prior-input	range-end-validated	before	NA	""
+2026-10-28T17:14:55.291Z	split	extracted	split-prior-input	range-end-validated	after	NA	completed
+2026-10-28T17:14:55.291Z	split	extracted	split-prior-input	preflight-complete	after	NA	completed
+2026-10-28T17:14:55.292Z	split	extracted	split-prior-input	split-check-success	after	NA	completed
+2026-10-28T17:14:55.294Z	split	extracted	split-prior-input	split-enter	before	NA	""
+2026-10-28T17:14:55.295Z	split	extracted	split-prior-input	split-enter	after	NA	completed
+2026-10-28T17:14:55.295Z	split	extracted	split-prior-input	selection-create	before	NA	""
+2026-10-28T17:14:55.296Z	split	extracted	split-prior-input	selection-create	after	NA	completed
+2026-10-28T17:14:55.296Z	split	extracted	split-prior-input	parent-resolved	before	NA	""
+2026-10-28T17:14:55.296Z	split	extracted	split-prior-input	parent-resolved	after	NA	completed
+2026-10-28T17:14:55.296Z	split	extracted	split-prior-input	container-range-create	before	NA	""
+2026-10-28T17:14:55.298Z	split	extracted	split-prior-input	container-range-create	after	NA	completed
+2026-10-28T17:14:55.300Z	split	extracted	split-prior-input	container-range-move	before	NA	""
+2026-10-28T17:14:55.302Z	split	extracted	split-prior-input	container-range-move	after	NA	completed
+2026-10-28T17:14:55.302Z	split	extracted	split-prior-input	range-start-validated	before	NA	""
+2026-10-28T17:14:55.303Z	split	extracted	split-prior-input	range-start-validated	after	NA	completed
+2026-10-28T17:14:55.303Z	split	extracted	split-prior-input	range-start-create	before	NA	""
+2026-10-28T17:14:55.304Z	split	extracted	split-prior-input	range-start-create	after	NA	completed
+2026-10-28T17:14:55.304Z	split	extracted	split-prior-input	range-end-create	before	NA	""
+2026-10-28T17:14:55.305Z	split	extracted	split-prior-input	range-end-create	after	NA	completed
+2026-10-28T17:14:55.305Z	split	extracted	split-prior-input	range-end-validated	before	NA	""
+2026-10-28T17:14:55.305Z	split	extracted	split-prior-input	range-end-validated	after	NA	completed
+2026-10-28T17:14:55.306Z	split	extracted	split-prior-input	preflight-complete	after	NA	completed
+2026-10-28T17:14:55.308Z	split	extracted	split-prior-input	new-container-create	before	NA	""
+2026-10-28T17:14:55.308Z	split	extracted	split-prior-input	new-container-create	after	NA	completed
+2026-10-28T17:14:55.310Z	split	extracted	split-prior-input	title-prototype-create	before	NA	""
+2026-10-28T17:14:55.310Z	split	extracted	split-prior-input	title-prototype-create	after	NA	completed
+2026-10-28T17:14:55.311Z	split	extracted	split-prior-input	selection-start-pointer-create	before	NA	""
+2026-10-28T17:14:55.313Z	split	extracted	split-prior-input	selection-start-pointer-create	after	0x00000000	""
+2026-10-28T17:14:55.313Z	split	extracted	split-prior-input	selection-end-pointer-create	before	NA	""
+2026-10-28T17:14:55.313Z	split	extracted	split-prior-input	selection-end-pointer-create	after	0x00000000	""
+2026-10-28T17:14:55.314Z	split	extracted	split-prior-input	element-start-pointer-create	before	NA	""
+2026-10-28T17:14:55.314Z	split	extracted	split-prior-input	element-start-pointer-create	after	0x00000000	""
+2026-10-28T17:14:55.316Z	split	extracted	split-prior-input	element-end-pointer-create	before	NA	""
+2026-10-28T17:14:55.316Z	split	extracted	split-prior-input	element-end-pointer-create	after	0x00000000	""
+2026-10-28T17:14:55.316Z	split	extracted	split-prior-input	title-range-create	before	NA	""
+2026-10-28T17:14:55.317Z	split	extracted	split-prior-input	title-range-create	after	NA	completed
+2026-10-28T17:14:55.317Z	split	extracted	split-prior-input	selection-pointers-move	before	NA	""
+2026-10-28T17:14:55.318Z	split	extracted	split-prior-input	selection-pointers-move	after	0x00000000	""
+2026-10-28T17:14:55.319Z	split	extracted	split-prior-input	pre-range-create	before	NA	""
+2026-10-28T17:14:55.319Z	split	extracted	split-prior-input	pre-range-create	after	NA	completed
+2026-10-28T17:14:55.320Z	split	extracted	split-prior-input	element-start-pointer-move	before	NA	""
+2026-10-28T17:14:55.320Z	split	extracted	split-prior-input	element-start-pointer-move	after	0x00000000	""
+2026-10-28T17:14:55.320Z	split	extracted	split-prior-input	pre-range-move	before	NA	""
+2026-10-28T17:14:55.320Z	split	extracted	split-prior-input	pre-range-move	after	0x00000000	""
+2026-10-28T17:14:55.321Z	split	extracted	split-prior-input	post-range-create	before	NA	""
+2026-10-28T17:14:55.322Z	split	extracted	split-prior-input	post-range-create	after	NA	completed
+2026-10-28T17:14:55.323Z	split	extracted	split-prior-input	element-end-pointer-move	before	NA	""
+2026-10-28T17:14:55.323Z	split	extracted	split-prior-input	element-end-pointer-move	after	0x00000000	""
+2026-10-28T17:14:55.324Z	split	extracted	split-prior-input	post-range-move	before	NA	""
+2026-10-28T17:14:55.325Z	split	extracted	split-prior-input	post-range-move	after	0x00000000	""
+2026-10-28T17:14:55.327Z	split	extracted	split-prior-input	new-container-content	before	NA	""
+2026-10-28T17:14:55.329Z	split	extracted	split-prior-input	new-container-content	after	NA	completed
+2026-10-28T17:14:55.330Z	split	extracted	split-prior-input	undo-begin	before	NA	""
+2026-10-28T17:14:55.331Z	split	extracted	split-prior-input	undo-begin	after	NA	completed
+2026-10-28T17:14:55.333Z	split	extracted	split-prior-input	source-cleanup	before	NA	""
+2026-10-28T17:14:55.340Z	split	extracted	split-prior-input	source-cleanup	after	NA	completed
+2026-10-28T17:14:55.341Z	split	extracted	split-prior-input	next-dom-after-cleanup	after	NA	completed: <P>iddle</P>  <P>Last</P>
+2026-10-28T17:14:55.341Z	split	extracted	split-prior-input	insert-container	before	NA	""
+2026-10-28T17:14:55.342Z	split	extracted	split-prior-input	insert-container	after	NA	completed
+2026-10-28T17:14:55.344Z	split	extracted	split-prior-input	new-container-id	after	NA	completed: target-section-middle
+2026-10-28T17:14:55.344Z	split	extracted	split-prior-input	new-container-id-after-cleanup	after	NA	completed: target-section-middle
+2026-10-28T17:14:55.345Z	split	extracted	split-prior-input	undo-end	before	NA	""
+2026-10-28T17:14:55.345Z	split	extracted	split-prior-input	undo-end	after	NA	completed
+2026-10-28T17:14:55.345Z	split	extracted	split-prior-input	selection-update	before	NA	""
+2026-10-28T17:14:55.346Z	split	extracted	split-prior-input	selection-pointer-create	before	NA	""
+2026-10-28T17:14:55.346Z	split	extracted	split-prior-input	selection-pointer-create	after	0x00000000	""
+2026-10-28T17:14:55.348Z	split	extracted	split-prior-input	selection-pointer-move	before	NA	""
+2026-10-28T17:14:55.349Z	split	extracted	split-prior-input	selection-pointer-move	after	0x00000000	""
+2026-10-28T17:14:55.349Z	split	extracted	split-prior-input	selection-range-move	before	NA	""
+2026-10-28T17:14:55.350Z	split	extracted	split-prior-input	selection-range-move	after	0x00000000	""
+2026-10-28T17:14:55.362Z	split	extracted	split-prior-input	selection-update	after	NA	completed
+2026-10-28T17:14:55.364Z	split	extracted	split-prior-input	split-success	after	NA	completed
+2026-10-28T17:14:55.364Z	split	extracted	split-prior-input	split-content	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>MQ</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T17:14:55.365Z	split	extracted	split-prior-input	timeline-original	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>MQiddle</P>  <P>Last</P></DIV>
+2026-10-28T17:14:55.365Z	split	extracted	split-prior-input	timeline-split	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>MQ</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T17:14:55.365Z	split	extracted	split-prior-input	timeline-state	after	NA	completed: dirty=1; undo=2; redo=0
+2026-10-28T17:14:55.366Z	split	extracted	split-prior-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T17:14:55.370Z	split	extracted	split-prior-input	timeline-input	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>MQ</P></DIV>  <DIV id=target-section-middle class=section>  <P>Xiddle</P>  <P>Last</P></DIV>
+2026-10-28T17:14:55.371Z	split	extracted	split-prior-input	timeline-state	after	NA	completed: dirty=1; undo=3; redo=0
+2026-10-28T17:14:55.371Z	split	extracted	split-prior-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T17:14:55.426Z	split	extracted	split-prior-input	prior-undo-input	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>MQ</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T17:14:55.426Z	split	extracted	split-prior-input	timeline-state	after	NA	completed: dirty=1; undo=2; redo=1
+2026-10-28T17:14:55.427Z	split	extracted	split-prior-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T17:14:55.479Z	split	extracted	split-prior-input	prior-undo-split	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>MQiddle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T17:14:55.480Z	split	extracted	split-prior-input	timeline-state	after	NA	completed: dirty=1; undo=1; redo=2
+2026-10-28T17:14:55.480Z	split	extracted	split-prior-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T17:14:55.482Z	split	extracted	split-prior-input	prior-redo-split	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>MQ</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T17:14:55.482Z	split	extracted	split-prior-input	timeline-state	after	NA	completed: dirty=1; undo=2; redo=1
+2026-10-28T17:14:55.484Z	split	extracted	split-prior-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-28T17:14:55.487Z	split	extracted	split-prior-input	prior-redo-input	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>MQ</P></DIV>  <DIV id=target-section-middle class=section>  <P>Xiddle</P>  <P>Last</P></DIV>
+2026-10-28T17:14:55.488Z	split	extracted	split-prior-input	timeline-state	after	NA	completed: dirty=1; undo=3; redo=0
+2026-10-28T17:14:55.488Z	split	extracted	split-prior-input	timeline-selection	after	NA	completed: parent=P; selected=(null)
