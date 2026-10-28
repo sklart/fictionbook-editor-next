@@ -20,7 +20,7 @@ if(IsFbeTestScenario(L"community-transition-performance")) {
    // Let an outstanding worker probe complete before joining the worker.
    MSG message={};while(::PeekMessage(&message,NULL,0,0,PM_REMOVE)){::TranslateMessage(&message);::DispatchMessage(&message);}heartbeat.join();CheckError(sourceActive && bodyActive ? S_OK:E_FAIL);
    const auto transitionMemory=memory();
-   ShowView(SOURCE);SourceDocumentText text;CheckError(SourceDocumentTransfer::ReadSourceText(m_source,text)==SourceTransitionResult::Success ? S_OK:E_FAIL);
+   SourceDocumentText text;CheckError(SourceDocumentTransfer::ReadSourceText(m_source,text)==SourceTransitionResult::Success ? S_OK:E_FAIL);
    auto xml=m_source_view_session.DiagnosticSelectionSnapshot();if(!xml)CheckError(E_FAIL);const auto before=memory();SIZE_T indexDelta=0;double indexMs=-1;
    wchar_t legacy[2]={};::GetEnvironmentVariableW(L"FBE_NEXT_TEST_PERF_LEGACY",legacy,_countof(legacy));
    if(legacy[0]!=L'1') {
