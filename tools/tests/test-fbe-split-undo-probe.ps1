@@ -1,7 +1,8 @@
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [int]$TimeoutSeconds = 45,
-    [switch]$KeepArtifacts
+    [switch]$KeepArtifacts,
+    [string[]]$Variants = @('insert-adjacent','insert-before','append-child','pastehtml-content','pastehtml-root','markup-after-end','markup-before-begin','markup-parse-copy','detached-subtree','whole-innerhtml','exec-insert-html')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -11,7 +12,7 @@ $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-split-undo-probe-' + [gu
 New-Item -ItemType Directory -Path $directory -Force | Out-Null
 $fixture = Join-Path $directory 'probe.fb2'
 @('<?xml version="1.0" encoding="utf-8"?>', '<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>probe</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>probe</id><version>1.0</version></document-info></description><body><section><p>seed</p></section></body></FictionBook>') | Set-Content -LiteralPath $fixture -Encoding utf8
-$variants = 'insert-adjacent','insert-before','append-child','pastehtml-content','pastehtml-root','markup-after-end','markup-before-begin','markup-parse-copy','detached-subtree','whole-innerhtml'
+$variants = $Variants
 $rows = @()
 try {
     foreach($variant in $variants) {
