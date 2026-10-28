@@ -78,7 +78,8 @@ namespace ThemeManager
 	UINT TrackPopupMenu(HMENU menu, UINT flags, int x, int y, HWND owner);
 	// Registers a bitmap whose lifetime is owned by the caller.  The bitmap is
 	// attached recursively immediately before an FBE native popup is shown.
-	void RegisterNativeMenuBitmap(UINT command, HBITMAP bitmap);
+	void RegisterNativeMenuBitmap(UINT command, HBITMAP bitmap, bool darkOnly = false);
+	HBITMAP NativeMenuBitmap(UINT command);
 	void UnregisterNativeMenuBitmap(UINT command);
 	// FBE-owned replacement for ordinary confirmation and error message boxes.
 	// Light and High Contrast deliberately keep the native system dialog.

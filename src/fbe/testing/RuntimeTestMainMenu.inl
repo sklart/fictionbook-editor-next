@@ -105,6 +105,12 @@
             probe.exitedAt>=probe.enteredAt?probe.exitedAt-probe.enteredAt:0,::GetForegroundWindow());
         check("menu_ready_observed",probe.readyEvents>0);
         check("commandbar_popup",probe.seen);probe.Dump("after");toolsMenu();
+        bool mappingsAlive=true;
+        for(int i=0;i<m_MenuBar.m_arrCommand.GetSize();++i) {
+            const HBITMAP bitmap=ThemeManager::NativeMenuBitmap(m_MenuBar.m_arrCommand[i]);
+            if(!bitmap||::GetObjectType(bitmap)!=OBJ_BITMAP){mappingsAlive=false;break;}
+        }
+        check("native_icon_mappings_after_route",mappingsAlive);
         const auto restored=metadata();
         check("commandbar_metadata_restored",restored.fType==original.fType&&restored.dwItemData==original.dwItemData&&restored.hbmpItem==original.hbmpItem);
         MSG pending={};while(::PeekMessage(&pending,NULL,WM_COMMAND,WM_COMMAND,PM_REMOVE))::DispatchMessage(&pending);

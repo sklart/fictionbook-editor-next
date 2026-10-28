@@ -5,6 +5,7 @@
 #include "scripts/ScriptExecutionContext.h"
 #include "scripts/ScriptSettingsStore.h"
 #include "scripts/ScriptDocumentResources.h"
+#include "scripts/ScriptMenuBitmap.h"
 #include <aclapi.h>
 #include "clipboard/HtmlPasteSanitizer.h"
 #include "scripts/ScriptCardBlock.h"
@@ -279,9 +280,12 @@ void RegisterOwnedNativeMenuBitmap(HINSTANCE module, UINT bitmapResourceId, UINT
 	HBITMAP bitmap = ToolbarFactory::CreateScaledAlphaBitmap(source, 16, UiMetrics::ScaleForDpi(16, dpi ? dpi : 96));
 	::DeleteObject(source);
 	if(bitmap == NULL) return;
+	const auto previous = g_ownedNativeMenuBitmaps.find(commandId);
+	HBITMAP old = previous == g_ownedNativeMenuBitmaps.end() ? NULL : previous->second;
 	g_ownedNativeMenuBitmaps[commandId] = bitmap;
 	g_ownedNativeMenuBitmapResources[commandId] = bitmapResourceId;
 	ThemeManager::RegisterNativeMenuBitmap(commandId, bitmap);
+	if(old != NULL) ::DeleteObject(old);
 }
 
 void ReleaseOwnedNativeMenuBitmaps()
@@ -300,6 +304,30 @@ void RebuildOwnedNativeMenuBitmaps(HINSTANCE module, UINT dpi)
 	ReleaseOwnedNativeMenuBitmaps();
 	for(std::map<UINT, UINT>::const_iterator it = resources.begin(); it != resources.end(); ++it)
 		RegisterOwnedNativeMenuBitmap(module, it->second, it->first, dpi);
+}
+
+// WTL uses this image list and its parallel command array for light menus.
+// Copy only non-script entries: script visuals keep their own lifetime and
+// refresh path. Existing explicit menu resources take precedence.
+void RegisterCommandBarNativeMenuBitmaps(CCommandBarCtrl& bar, UINT dpi)
+{
+	if(bar.m_hImageList == NULL) return;
+	const int count = (std::min)(bar.m_arrCommand.GetSize(), ::ImageList_GetImageCount(bar.m_hImageList));
+	const int size = UiMetrics::ScaleForDpi(16, dpi ? dpi : 96);
+	for(int index = 0; index < count; ++index)
+	{
+		const UINT command = bar.m_arrCommand[index];
+		if((command >= ID_SCRIPT_BASE && command <= ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT) ||
+			(command >= SCRIPT_FOLDER_MENU_ID_BASE && command <= SCRIPT_FOLDER_MENU_ID_BASE + SCRIPT_FOLDER_MENU_ID_COUNT) ||
+			g_ownedNativeMenuBitmaps.find(command) != g_ownedNativeMenuBitmaps.end()) continue;
+		HICON icon = ::ImageList_GetIcon(bar.m_hImageList, index, ILD_TRANSPARENT);
+		if(icon == NULL) continue;
+		HBITMAP bitmap = FbeScripts::Detail::CreateMenuBitmap(icon, size);
+		::DestroyIcon(icon);
+		if(bitmap == NULL) continue;
+		g_ownedNativeMenuBitmaps[command] = bitmap;
+		ThemeManager::RegisterNativeMenuBitmap(command, bitmap, true);
+	}
 }
 void ApplyMainRebarTheme(CReBarCtrl& rebar)
 {
@@ -3367,6 +3395,7 @@ void CMainFrame::InitializeExtensionUi()
 {
 	InitializeScripts();
 	InitializeBundledPlugins();
+	RegisterCommandBarNativeMenuBitmaps(m_MenuBar, UiMetrics::DpiForWindow(m_hWnd));
 	InitializeRecentDocumentsMenu();
 }
 
@@ -4711,6 +4740,7 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 	if(m_document_tree.IsWindow() && m_document_tree.m_tree.IsWindow())
 		m_document_tree.m_tree.UpdateDpiMetrics(newDpi);
 	RebuildOwnedNativeMenuBitmaps(ATL::_AtlBaseModule.GetModuleInstance(), newDpi);
+	RegisterCommandBarNativeMenuBitmaps(m_MenuBar, newDpi);
 	if (::IsWindow(m_MenuBar)) { ::SendMessage(m_MenuBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE); m_MenuBar.AutoSize(); }
 	if (::IsWindow(m_CmdToolbar)) { RebuildCommandToolbarImages(newDpi); SetDialogFontForToolbarRow(m_CmdToolbar); AutoSizeToolbar(m_CmdToolbar); }
 	if (::IsWindow(m_ScriptsToolbar)) UpdateScriptToolbarDpiMetrics(newDpi);

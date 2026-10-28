@@ -13,6 +13,18 @@ VisualResource VisualResources::Load(const CString& directory, const CString& ba
 	const DWORD bitmapAttributes = ::GetFileAttributes(bitmapPath);
 	if (bitmapAttributes != INVALID_FILE_ATTRIBUTES && (bitmapAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 		result.bitmap = static_cast<HBITMAP>(::LoadImage(NULL, bitmapPath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE));
+	if(result.bitmap != NULL)
+	{
+		// Match WTL AddBitmap's default mask and turn it into a native alpha
+		// bitmap; passing the original BMP to MIIM_BITMAP loses that mask.
+		HIMAGELIST images = ::ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 1, 1);
+		if(images != NULL) {
+			const int index = ::ImageList_AddMasked(images, result.bitmap, RGB(192, 192, 192));
+			HICON icon = index < 0 ? NULL : ::ImageList_GetIcon(images, index, ILD_TRANSPARENT);
+			if(icon != NULL) { result.menuBitmap = Detail::CreateMenuBitmap(icon); ::DestroyIcon(icon); }
+			::ImageList_Destroy(images);
+		}
+	}
 	if (result.bitmap == NULL)
 	{
 		const CString iconPath = base + L".ico";

@@ -62,6 +62,7 @@ void PluginManager::DiscoverBundledPlugins() {
 			ReadString(json, object, L"module", entry.module) && ReadString(json, object, L"clsid", entry.clsidText) &&
 			ReadString(json, object, L"menu", entry.menu) && ReadString(json, object, L"menuKey", entry.menuKey) &&
 			ReadString(json, object, L"activation", entry.activation);
+		ReadString(json, object, L"icon", entry.icon); // Optional; only explicitly supplied plug-in icons are used.
 		const bool validClsid = ::CLSIDFromString(const_cast<LPOLESTR>(static_cast<LPCWSTR>(entry.clsidText)), &entry.clsid) == S_OK;
 		bool duplicate = false;
 		for (size_t i = 0; validClsid && i < m_plugins.size(); ++i)

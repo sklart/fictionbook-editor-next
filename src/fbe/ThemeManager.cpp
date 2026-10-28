@@ -3,6 +3,7 @@
 #include "RuntimeLocalization.h"
 #include "resource.h"
 #include "UiMetrics.h"
+#include "scripts/ScriptMenuBitmap.h"
 #include "../common/ModernFileDialog.h"
 #include <map>
 #include <array>
@@ -19,6 +20,7 @@ HBRUSH g_windowBrush = NULL;
 HBRUSH g_controlBrush = NULL;
 HBRUSH g_brushes[THEME_COLOR_COUNT] = {};
 std::map<UINT, HBITMAP> g_nativeMenuBitmaps;
+std::set<UINT> g_darkOnlyNativeMenuBitmaps;
 ULONGLONG g_nativeMenuGeneration = 0;
 const wchar_t kAppliedThemeGenerationProperty[] = L"FBE.AppliedThemeGeneration";
 const wchar_t kNativeFileDialogProperty[] = L"FBE.NativeFileDialog";
@@ -72,35 +74,107 @@ void AdvanceThemeGeneration()
 	if(++g_paletteGeneration == 0) ++g_paletteGeneration;
 }
 
+// Keep coloured artwork intact. Only nearly monochrome, predominantly dark
+// glyphs need a lighter foreground on the native dark-menu surface.
+void AdaptNativeMenuGlyph(HBITMAP bitmap, UINT command)
+{
+	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast()) return;
+	DIBSECTION section = {};
+	if(::GetObject(bitmap, sizeof(section), &section) != sizeof(section) || !section.dsBm.bmBits || section.dsBm.bmBitsPixel != 32) return;
+	DWORD* pixels = static_cast<DWORD*>(section.dsBm.bmBits);
+	const int count = section.dsBm.bmWidth * abs(section.dsBmih.biHeight);
+	if(command == ID_STYLE_SUBTITLE) {
+		// This legacy glyph is a very dark green line. Preserve the hue while
+		// bringing its premultiplied channels above the dark menu surface.
+		for(int i = 0; i < count; ++i) {
+			const DWORD p = pixels[i], a = p >> 24;
+			const DWORD r = (std::min)(a, ((p >> 16) & 255) * 3), g = (std::min)(a, ((p >> 8) & 255) * 3), b = (std::min)(a, (p & 255) * 3);
+			pixels[i] = (a << 24) | (r << 16) | (g << 8) | b;
+		}
+		return;
+	}
+	int visible = 0, dark = 0; bool coloured = false; unsigned peak = 0, hueMask = 0;
+	for(int i = 0; i < count; ++i) {
+		const DWORD p = pixels[i], a = p >> 24;
+		if(!a) continue;
+		const unsigned r = ((p >> 16) & 255) * 255 / a, g = ((p >> 8) & 255) * 255 / a, b = (p & 255) * 255 / a;
+		const unsigned high = (std::max)({r,g,b}), low = (std::min)({r,g,b});
+		if(high - low > 12) {
+			coloured = true;
+			if(r == high) hueMask |= 1;
+			if(g == high) hueMask |= 2;
+			if(b == high) hueMask |= 4;
+		}
+		peak = (std::max)(peak, high);
+		++visible; if(high < 96) ++dark;
+	}
+	if(!visible || dark * 4 < visible * 3) return;
+	if(coloured) {
+		// A dark single-colour mark (for example the green subtitle glyph)
+		// is brightened without replacing its hue. Keep brighter artwork intact.
+		if(peak >= 128 || (hueMask & (hueMask - 1)) != 0) return;
+		for(int i = 0; i < count; ++i) {
+			const DWORD p = pixels[i], a = p >> 24;
+			const DWORD r = (std::min)(a, ((p >> 16) & 255) * 2), g = (std::min)(a, ((p >> 8) & 255) * 2), b = (std::min)(a, (p & 255) * 2);
+			pixels[i] = (a << 24) | (r << 16) | (g << 8) | b;
+		}
+		return;
+	}
+	const COLORREF foreground = ThemeManager::TextColor();
+	for(int i = 0; i < count; ++i) {
+		const DWORD a = pixels[i] >> 24;
+		pixels[i] = (a << 24) | ((GetRValue(foreground) * a / 255) << 16) |
+			((GetGValue(foreground) * a / 255) << 8) | (GetBValue(foreground) * a / 255);
+	}
+}
+
 // Native MIIM_BITMAP state must not escape into WTL's legacy MIIM_TYPE
 // owner-draw conversion (the editor deliberately disables Vista menus).
 class ScopedNativeMenuBitmaps
 {
-	struct Saved { HMENU menu; int position; UINT command; HBITMAP bitmap, applied; ULONGLONG generation; };
+	struct Saved { HMENU menu; UINT command; HBITMAP bitmap, applied; ULONGLONG generation; };
 	std::vector<Saved> m_saved;
 public:
-	void Apply(HMENU menu)
+	void Apply(HMENU menu, UINT dpi)
 	{
 		if(menu == NULL) return;
 		for(int index = 0; index < ::GetMenuItemCount(menu); ++index)
 		{
-			const UINT command = ::GetMenuItemID(menu, index);
+			// GetMenuItemID returns -1 for popup items even when MIIM_ID was
+			// assigned (script folders use exactly that representation).
+			MENUITEMINFO info = {}; info.cbSize = sizeof(info); info.fMask = MIIM_ID | MIIM_BITMAP | MIIM_FTYPE;
+			if(!::GetMenuItemInfo(menu, index, TRUE, &info)) continue;
+			const UINT command = info.wID;
 			const std::map<UINT, HBITMAP>::const_iterator bitmap = g_nativeMenuBitmaps.find(command);
-			if(bitmap != g_nativeMenuBitmaps.end())
+			const bool darkOnly = g_darkOnlyNativeMenuBitmaps.find(command) != g_darkOnlyNativeMenuBitmaps.end();
+			if(bitmap != g_nativeMenuBitmaps.end() && (!darkOnly || (ThemeManager::IsDark() && !ThemeManager::IsHighContrast())))
 			{
-				MENUITEMINFO info = {}; info.cbSize = sizeof(info); info.fMask = MIIM_BITMAP | MIIM_FTYPE;
-				if(::GetMenuItemInfo(menu, index, TRUE, &info) && !(info.fType & MFT_OWNERDRAW))
+				if(!(info.fType & MFT_OWNERDRAW))
 				{
 					// A script refresh can destroy the caller-owned source while a
 					// popup is running. Keep the displayed pixels alive independently.
-					CBitmap copy(static_cast<HBITMAP>(::CopyImage(bitmap->second, IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION)));
+					CBitmap copy;
+					DIBSECTION source = {};
+					const int targetSize = UiMetrics::ScaleForDpi(16, dpi ? dpi : 96);
+					if(ThemeManager::IsDark() && !ThemeManager::IsHighContrast() && ::GetObject(bitmap->second, sizeof(source), &source) == sizeof(source) &&
+						source.dsBm.bmBitsPixel == 32 && source.dsBm.bmWidth > 0 && source.dsBm.bmWidth <= 256 &&
+						source.dsBm.bmWidth == abs(source.dsBmih.biHeight) && source.dsBm.bmWidth != targetSize) {
+						const int width = source.dsBm.bmWidth;
+						std::vector<BYTE> mask(static_cast<size_t>(((width + 15) / 16) * 2) * width, 0);
+						CBitmap mono(::CreateBitmap(width, width, 1, 1, mask.data()));
+						ICONINFO iconInfo = {}; iconInfo.fIcon = TRUE; iconInfo.hbmColor = bitmap->second; iconInfo.hbmMask = mono;
+						HICON icon = mono.IsNull() ? NULL : ::CreateIconIndirect(&iconInfo);
+						if(icon) { copy.Attach(FbeScripts::Detail::CreateMenuBitmap(icon, targetSize)); ::DestroyIcon(icon); }
+					}
+					if(copy.IsNull()) copy.Attach(static_cast<HBITMAP>(::CopyImage(bitmap->second, IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION)));
 					if(copy.IsNull()) continue;
-					m_saved.push_back({menu, index, command, info.hbmpItem, copy, g_nativeMenuGeneration});
+					AdaptNativeMenuGlyph(copy, command);
+					m_saved.push_back({menu, command, info.hbmpItem, copy, g_nativeMenuGeneration});
 					info.fMask = MIIM_BITMAP; info.hbmpItem = copy.Detach();
 					::SetMenuItemInfo(menu, index, TRUE, &info);
 				}
 			}
-			Apply(::GetSubMenu(menu, index));
+			Apply(::GetSubMenu(menu, index), dpi);
 		}
 	}
 	~ScopedNativeMenuBitmaps()
@@ -109,14 +183,21 @@ public:
 		{
 			// A callback may rebuild a submenu or replace an item's bitmap.
 			MENUITEMINFO info = {}; info.cbSize = sizeof(info); info.fMask = MIIM_BITMAP | MIIM_ID;
-			if(::IsMenu(saved.menu) && ::GetMenuItemInfo(saved.menu, saved.position, TRUE, &info) &&
-				info.wID == saved.command && info.hbmpItem == saved.applied)
+			int position = -1;
+			if(::IsMenu(saved.menu)) {
+				const int count = ::GetMenuItemCount(saved.menu);
+				for(int index = 0; index < count; ++index) {
+					if(::GetMenuItemInfo(saved.menu, index, TRUE, &info) &&
+						info.wID == saved.command && info.hbmpItem == saved.applied) { position = index; break; }
+				}
+			}
+			if(position >= 0)
 			{
 				const INT_PTR value = reinterpret_cast<INT_PTR>(saved.bitmap);
 				const bool predefined = value >= -1 && value <= reinterpret_cast<INT_PTR>(HBMMENU_POPUP_MINIMIZE);
 				const bool alive = predefined || (saved.generation == g_nativeMenuGeneration && ::GetObjectType(saved.bitmap) == OBJ_BITMAP);
 				info.fMask = MIIM_BITMAP; info.hbmpItem = alive ? saved.bitmap : NULL;
-				::SetMenuItemInfo(saved.menu, saved.position, TRUE, &info);
+				::SetMenuItemInfo(saved.menu, position, TRUE, &info);
 			}
 			::DeleteObject(saved.applied);
 		}
@@ -1277,17 +1358,28 @@ UINT TrackPopupMenu(HMENU menu, UINT flags, int x, int y, HWND owner)
 {
 	if(menu == NULL || !::IsWindow(owner)) return 0;
 	ScopedNativeMenuBitmaps bitmaps;
-	bitmaps.Apply(menu);
+	bitmaps.Apply(menu, UiMetrics::DpiForWindow(owner));
 	return ::TrackPopupMenuEx(menu, flags | TPM_RETURNCMD, x, y, owner, NULL);
 }
 
-void RegisterNativeMenuBitmap(UINT command, HBITMAP bitmap)
+void RegisterNativeMenuBitmap(UINT command, HBITMAP bitmap, bool darkOnly)
 {
-	if(command != 0 && bitmap != NULL) { g_nativeMenuBitmaps[command] = bitmap; ++g_nativeMenuGeneration; }
+	if(command != 0 && bitmap != NULL) {
+		g_nativeMenuBitmaps[command] = bitmap;
+		if(darkOnly) g_darkOnlyNativeMenuBitmaps.insert(command); else g_darkOnlyNativeMenuBitmaps.erase(command);
+		++g_nativeMenuGeneration;
+	}
+}
+
+HBITMAP NativeMenuBitmap(UINT command)
+{
+	const auto entry = g_nativeMenuBitmaps.find(command);
+	return entry == g_nativeMenuBitmaps.end() ? NULL : entry->second;
 }
 
 void UnregisterNativeMenuBitmap(UINT command)
 {
+	g_darkOnlyNativeMenuBitmaps.erase(command);
 	if(g_nativeMenuBitmaps.erase(command)) ++g_nativeMenuGeneration;
 }
 
