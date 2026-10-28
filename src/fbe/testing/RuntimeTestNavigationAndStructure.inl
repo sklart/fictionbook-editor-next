@@ -882,14 +882,18 @@
                         static_cast<LPCWSTR>(selectionState()), static_cast<LPCWSTR>(editable->innerHTML));
                     output.Write(message, static_cast<DWORD>(message.GetLength()), &written);
                 };
-                if(wcscmp(caseName,L"queue-capture-notice")==0) {
+                if(wcscmp(caseName,L"queue-capture-notice")==0 || wcscmp(caseName,L"queue-capture-after-post")==0) {
+                    const bool olderRequest=wcscmp(caseName,L"queue-capture-after-post")==0;
+                    if(olderRequest){setInput(7);::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE",L"paste-post");event();}
                     setInput(1);::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE",L"paste-capture");event();
                     StartupTrace::CrashTraceSnapshot captured={};StartupTrace::TryGetCrashTraceSnapshot(captured);
                     valid=valid && wcsstr(captured.lastHResultFailure,L"CP206") && !wcsstr(captured.lastHResultFailure,L"U100");
                     valid=valid && drain()==0 && FbeUndo::DocumentState(document)==baseline;
                     _Module.GetMessageLoop()->OnIdle(0);
                     StartupTrace::CrashTraceSnapshot notified={};StartupTrace::TryGetCrashTraceSnapshot(notified);
-                    valid=valid && wcsstr(notified.lastHResultFailure,L"U100") && undoHistory()==previousUndo && redoHistory()==previousRedo && closed();
+                    valid=valid && wcsstr(notified.lastHResultFailure,L"U100") && closed();
+                    if(olderRequest){valid=valid && undoHistory().size()==previousUndo.size()+1 && CString(static_cast<LPCWSTR>(editable->innerHTML)).Find(L"Queue7")>=0;edit(ID_EDIT_UNDO);valid=valid && FbeUndo::DocumentState(document)==baseline && undoHistory()==previousUndo;}
+                    else valid=valid && undoHistory()==previousUndo && redoHistory()==previousRedo;
                     _Module.GetMessageLoop()->OnIdle(0);StartupTrace::CrashTraceSnapshot again={};StartupTrace::TryGetCrashTraceSnapshot(again);
                     valid=valid && wcscmp(notified.lastHResultFailure,again.lastHResultFailure)==0;
                 }

@@ -5004,11 +5004,11 @@ BOOL CFBEView::OnIdle()
         if (!m_pendingHtmlPaste->requests.empty()) {
             BOOL handled=FALSE;
             OnDeferredHtmlPaste(0,m_pendingHtmlPaste->generation,0,handled);
-            return FALSE;
+        } else {
+            auto pending = std::move(m_pendingHtmlPaste);
+            const HRESULT result = pending->Finish(m_ownerDocument);
+            if (FAILED(result)) StartupTrace::HResult(L"clipboard", L"CP101", result, L"Canceled paste recovery");
         }
-        auto pending = std::move(m_pendingHtmlPaste);
-        const HRESULT result = pending->Finish(m_ownerDocument);
-        if (FAILED(result)) StartupTrace::HResult(L"clipboard", L"CP101", result, L"Canceled paste recovery");
     }
     if(m_htmlPasteCallbackDepth==0 && FAILED(m_htmlPasteCallbackFailure)) {
         const HRESULT failure=m_htmlPasteCallbackFailure;m_htmlPasteCallbackFailure=S_OK;U::ReportError(failure);
