@@ -870,18 +870,29 @@
                 m_doc->m_body.MarkupServices()->EndUndoUnit();
                 edit(ID_EDIT_UNDO);
                 range->select();
+                if(cleanQueueFailure) { m_doc->MarkSavePoint(); m_doc->MarkDocCP(); }
                 const auto previousRedo = redoHistory();
                 const auto baseline = FbeUndo::DocumentState(document);
                 const CString baselineHtml(static_cast<LPCWSTR>(editable->innerHTML)), baselineCaret(selectionState());
                 const bool baselineDirty = m_doc->DocChanged(), baselineRecovery = m_doc->DocRelChanged();
-                const auto baselineSavepoints = m_doc->CaptureUndoSavepoints();
-                bool valid = !previousRedo.empty() && undoHistory() == previousUndo;
+                bool valid = !previousRedo.empty() && undoHistory() == previousUndo && (!cleanQueueFailure || (!baselineDirty && !baselineRecovery));
                 auto traceQueue = [&](LPCSTR stage) {
                     CStringA message; message.Format("queue-stage: %s valid=%d undo=%u redo=%u caret=%S html=%S\r\n", stage, valid,
                         static_cast<unsigned>(undoHistory().size()), static_cast<unsigned>(redoHistory().size()),
                         static_cast<LPCWSTR>(selectionState()), static_cast<LPCWSTR>(editable->innerHTML));
                     output.Write(message, static_cast<DWORD>(message.GetLength()), &written);
                 };
+                if(wcscmp(caseName,L"queue-capture-notice")==0) {
+                    setInput(1);::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE",L"paste-capture");event();
+                    StartupTrace::CrashTraceSnapshot captured={};StartupTrace::TryGetCrashTraceSnapshot(captured);
+                    valid=valid && wcsstr(captured.lastHResultFailure,L"CP206") && !wcsstr(captured.lastHResultFailure,L"U100");
+                    valid=valid && drain()==0 && FbeUndo::DocumentState(document)==baseline;
+                    _Module.GetMessageLoop()->OnIdle(0);
+                    StartupTrace::CrashTraceSnapshot notified={};StartupTrace::TryGetCrashTraceSnapshot(notified);
+                    valid=valid && wcsstr(notified.lastHResultFailure,L"U100") && undoHistory()==previousUndo && redoHistory()==previousRedo && closed();
+                    _Module.GetMessageLoop()->OnIdle(0);StartupTrace::CrashTraceSnapshot again={};StartupTrace::TryGetCrashTraceSnapshot(again);
+                    valid=valid && wcscmp(notified.lastHResultFailure,again.lastHResultFailure)==0;
+                }
                 const bool failPost = cleanQueueFailure || wcscmp(caseName, L"queue-post-failure") == 0 || wcscmp(caseName, L"queue-failure-retry") == 0;
                 if (failPost) {
                     setInput(7);
@@ -889,28 +900,29 @@
                     event();
                     const bool notPosted = drain() == 0;
                     _Module.GetMessageLoop()->OnIdle(0); // actual fallback, after the MSHTML event returned
-                    const bool restored = FbeUndo::DocumentState(document) == baseline &&
-                        selectionState() == baselineCaret && undoHistory() == previousUndo && redoHistory() == previousRedo &&
-                        m_doc->DocChanged() == baselineDirty && m_doc->DocRelChanged() == baselineRecovery && closed();
-                    const auto recovered = m_doc->CaptureUndoSavepoints();
-                    const bool savepoints = recovered.savedVersion == (baselineSavepoints.clean ? m_doc->m_body.GetVersionNumber() : baselineSavepoints.savedVersion) &&
-                        recovered.recoveryVersion == (baselineSavepoints.recoveryClean ? m_doc->m_body.GetVersionNumber() : baselineSavepoints.recoveryVersion) && recovered.savedHtml == baselineSavepoints.savedHtml &&
-                        recovered.recoveryHtml == baselineSavepoints.recoveryHtml && recovered.hasSaved == baselineSavepoints.hasSaved &&
-                        recovered.hasRecovery == baselineSavepoints.hasRecovery && recovered.reconcile == baselineSavepoints.reconcile;
-                    valid = valid && notPosted && restored && savepoints;
-                    CStringA trace; trace.Format("queue-failure: posted=%d restored=%d\r\n", !notPosted, restored);
-                    if (!valid) output.Write(trace, static_cast<DWORD>(trace.GetLength()), &written);
+                    const bool replayed = CString(static_cast<LPCWSTR>(editable->innerHTML)).Find(L"Queue7")>=0 &&
+                        undoHistory().size()==previousUndo.size()+1 && redoHistory().empty() && closed();
+                    const auto replayState=FbeUndo::DocumentState(document);
+                    _Module.GetMessageLoop()->OnIdle(0);
+                    const bool once=FbeUndo::DocumentState(document)==replayState && undoHistory().size()==previousUndo.size()+1;
+                    edit(ID_EDIT_UNDO);
+                    const bool restored=FbeUndo::DocumentState(document)==baseline && selectionState()==baselineCaret &&
+                        undoHistory()==previousUndo && m_doc->DocChanged()==baselineDirty && m_doc->DocRelChanged()==baselineRecovery && closed();
+                    valid=valid && notPosted && replayed && once && restored;
+                    CStringA trace;trace.Format("queue-failure: posted=%d replayed=%d once=%d restored=%d\r\n",!notPosted,replayed,once,restored);
+                    if (!valid) { trace.AppendFormat("restore-parts: dom=%d caret=%S/%S history=%d dirty=%d/%d recovery=%d/%d closed=%d\r\n",FbeUndo::DocumentState(document)==baseline,static_cast<LPCWSTR>(selectionState()),static_cast<LPCWSTR>(baselineCaret),undoHistory()==previousUndo,m_doc->DocChanged(),baselineDirty,m_doc->DocRelChanged(),baselineRecovery,closed()); output.Write(trace, static_cast<DWORD>(trace.GetLength()), &written); }
                 }
-                const int count = (wcscmp(caseName, L"queue-three") == 0 || wcscmp(caseName,L"queue-reentrant")==0) ? 3 : (wcscmp(caseName, L"queue-two") == 0 || wcscmp(caseName, L"queue-plain-two") == 0) ? 2 :
+                const int count = (wcscmp(caseName, L"queue-three") == 0 || wcscmp(caseName,L"queue-reentrant")==0) ? 3 : (wcscmp(caseName, L"queue-two") == 0 || wcscmp(caseName, L"queue-plain-two") == 0 || wcscmp(caseName,L"queue-reentrant-post-failure")==0 || wcscmp(caseName,L"queue-moved-selection")==0) ? 2 :
                     (wcscmp(caseName, L"queue-post-failure") == 0 || cleanQueueFailure) ? 0 : 1;
-                std::vector<CString> htmls{baselineHtml}, carets{baselineCaret};
+                std::vector<CString> htmls{baselineHtml}, carets{baselineCaret}, redoCarets{baselineCaret};
                 std::vector<unsigned long long> states{baseline};
                 // Sequential real events supply an independent ordering and
                 // caret oracle for the burst, with a different clipboard each time.
                 for (int i = 1; i <= count; ++i) {
+                    if(i==2 && wcscmp(caseName,L"queue-moved-selection")==0) { auto moved=range->duplicate();moved->moveToElementText(neighbor);moved->collapse(VARIANT_FALSE);moved->select();carets.back()=selectionState(); }
                     setInput(i); m_doc->m_body.OnPaste(0, ID_EDIT_PASTE, 0, handled);
                     htmls.push_back(CString(static_cast<LPCWSTR>(editable->innerHTML)));
-                    carets.push_back(selectionState()); states.push_back(FbeUndo::DocumentState(document));
+                    carets.push_back(selectionState()); redoCarets.push_back(selectionState()); states.push_back(FbeUndo::DocumentState(document));
                     CString marker; marker.Format(L"Queue%d", i);
                     valid = htmls.back().Find(marker) >= 0 && undoHistory().size() == previousUndo.size() + i && closed() && valid;
                     if (!valid) traceQueue("sequential");
@@ -923,22 +935,27 @@
                 valid = undoHistory() == previousUndo && valid;
                 ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_PASTE_REENTERED",NULL);
                 const bool reentrantPostFailure=wcscmp(caseName,L"queue-reentrant-post-failure")==0;
-                for (int i = 1; i <= count+(reentrantPostFailure ? 1 : 0); ++i) { setInput(i); event(); }
+                const bool idlePostFailure=wcscmp(caseName,L"queue-post-idle")==0;
+                for (int i = 1; i <= count; ++i) { if(i==2 && wcscmp(caseName,L"queue-moved-selection")==0) { auto moved=range->duplicate();moved->moveToElementText(neighbor);moved->collapse(VARIANT_FALSE);moved->select(); } setInput(i); if(idlePostFailure) ::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE",L"paste-post"); event(); }
                 if(wcscmp(caseName,L"queue-reentrant")==0 || reentrantPostFailure) {
                     wchar_t reentered[2]={};
                     valid=::GetEnvironmentVariableW(L"FBE_NEXT_TEST_PASTE_REENTERED",reentered,_countof(reentered))==1 && reentered[0]==L'1' && valid;
                 }
                 setInput(9); // queued requests must not read this newer clipboard
                 const DWORD queuedClipboard = ::GetClipboardSequenceNumber();
-                valid = drain() == (reentrantPostFailure ? 0 : (count ? 1 : 0)) && valid;
-                if(reentrantPostFailure) _Module.GetMessageLoop()->OnIdle(0); // replay the first accepted request
+                if(wcscmp(caseName,L"queue-close-retry")==0) ::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE",L"paste-parent-close");
+                valid = drain() == ((reentrantPostFailure || idlePostFailure) ? 0 : (count ? 1 : 0)) && valid;
+                if(reentrantPostFailure || idlePostFailure) _Module.GetMessageLoop()->OnIdle(0); // replay the first accepted request
                 valid = FbeUndo::DocumentState(document) == states.back() && selectionState() == carets.back() &&
                     undoHistory().size() == previousUndo.size() + count && ::GetClipboardSequenceNumber() == queuedClipboard && valid;
+                const auto replayState=FbeUndo::DocumentState(document); _Module.GetMessageLoop()->OnIdle(0);
+                valid=valid && replayState==FbeUndo::DocumentState(document) && undoHistory().size()==previousUndo.size()+count;
                 if (!valid) traceQueue("burst");
                 for (int i = count - 1; i >= 0; --i) {
                     edit(ID_EDIT_UNDO);
                     valid = FbeUndo::DocumentState(document) == states[i] && selectionState() == carets[i] &&
                         m_doc->DocChanged() == baselineDirty && m_doc->DocRelChanged() == baselineRecovery && valid;
+                    if(!valid) traceQueue("burst-undo");
                 }
                 valid = undoHistory() == previousUndo && valid;
                 if (count) {
@@ -946,11 +963,13 @@
                     valid = CString(static_cast<LPCWSTR>(editable->innerHTML)) == before && !m_doc->DocChanged() && !m_doc->DocRelChanged() && valid;
                     edit(ID_EDIT_REDO);
                     valid = FbeUndo::DocumentState(document) == baseline && valid;
+                    if(!valid) traceQueue("prior-history");
                 }
                 for (int i = 1; i <= count; ++i) {
                     edit(ID_EDIT_REDO);
-                    valid = FbeUndo::DocumentState(document) == states[i] && selectionState() == carets[i] &&
+                    valid = FbeUndo::DocumentState(document) == states[i] && selectionState() == redoCarets[i] &&
                         m_doc->DocChanged() && m_doc->DocRelChanged() && valid;
+                    if(!valid) traceQueue("burst-redo");
                 }
                 int line = 0, column = 0;
                 valid = closed() && safetyOk && valid;

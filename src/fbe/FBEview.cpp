@@ -328,6 +328,7 @@ struct DeferredHtmlPaste {
     MSHTML::IHTMLTxtRangePtr selection;
     DWORD clipboardSequence = 0;
     explicit DeferredHtmlPaste(CFBEView& view) {
+        CheckError(FbeUndo::Inject(L"paste-capture"));
         const DWORD sequence = ::GetClipboardSequenceNumber();
         // Deterministic STA reentrancy probe: delayed clipboard rendering / COM
         // may dispatch our already posted message while capturing another event.
@@ -2336,7 +2337,8 @@ HRESULT CFBEView::CloseDropUndoGroup(IOleUndoManager* manager, IOleParentUndoUni
 	if (!manager || !parent) return E_POINTER;
 	auto unit = static_cast<DropUndoUnit*>(parent);
 	StartupTrace::Event(L"undo", L"D418", unit->Empty() ? L"Close empty drop group" : L"Close recorded drop group");
-	HRESULT hr = manager->Close(parent, commit && !unit->Empty());
+	HRESULT hr = FbeUndo::Inject(L"paste-parent-close");
+    if(SUCCEEDED(hr)) hr = manager->Close(parent, commit && !unit->Empty());
 	if (FAILED(hr))
 	{
 		StartupTrace::HResult(L"undo", L"D410", hr, L"Close drop group failed; closing nested units before retry");
@@ -4162,6 +4164,7 @@ bool CFBEView::Init()
 {
 	m_pendingHtmlPaste.reset();
 	m_activeHtmlPaste.reset();
+    m_htmlPasteCallbackFailure=S_OK;
 	ResetPendingDrop();
   StartupTrace::Event(L"webbrowser", L"WB160", L"CFBEView::Init begin");
 	// A full MSHTML rebuild invalidates every DOM-scoped navigation origin.
@@ -5007,6 +5010,9 @@ BOOL CFBEView::OnIdle()
         const HRESULT result = pending->Finish(m_ownerDocument);
         if (FAILED(result)) StartupTrace::HResult(L"clipboard", L"CP101", result, L"Canceled paste recovery");
     }
+    if(m_htmlPasteCallbackDepth==0 && FAILED(m_htmlPasteCallbackFailure)) {
+        const HRESULT failure=m_htmlPasteCallbackFailure;m_htmlPasteCallbackFailure=S_OK;U::ReportError(failure);
+    }
     return FALSE;
 }
 
@@ -5074,11 +5080,16 @@ VARIANT_BOOL  CFBEView::OnRealPaste(IDispatch* evt)
                 }
                 pending->requests.push_back(request);
                 if (!pending->posted) {
-                    const bool posted = SUCCEEDED(FbeUndo::Inject(L"paste-post")) &&
-                        PostMessage(AU::WM_FINALIZE_HTML_PASTE, pending->generation, 0);
+                    const HRESULT injected = FbeUndo::Inject(L"paste-post");
+                    ::SetLastError(ERROR_SUCCESS);
+                    const bool posted = SUCCEEDED(injected) && PostMessage(AU::WM_FINALIZE_HTML_PASTE, pending->generation, 0);
                     if (!posted) {
-                        pending->requests.pop_back(); // no insertion for the rejected event
-                        StartupTrace::Event(L"clipboard", L"CP100", L"Deferred paste queue rejected; idle recovery scheduled");
+                        const DWORD error = ::GetLastError();
+                        const HRESULT failure = FAILED(injected) ? injected : HRESULT_FROM_WIN32(error ? error : ERROR_NOT_ENOUGH_QUOTA);
+                        // Own the immutable request until the existing idle handler
+                        // can finish the canceled native event and replay it once.
+                        CString diagnostic;diagnostic.Format(L"stage=CP315; operation-stage=%s",request->internal ? L"CP402" : L"CP403");
+                        StartupTrace::HResult(L"clipboard", L"CP100", failure, diagnostic);
                         return VARIANT_TRUE;
                     }
                     pending->posted = true;
@@ -5086,8 +5097,8 @@ VARIANT_BOOL  CFBEView::OnRealPaste(IDispatch* evt)
             } else if (!PostMessage(WM_COMMAND, MAKELONG(ID_EDIT_PASTE, 0), 0)) {
                 StartupTrace::Event(L"clipboard", L"CP100", L"Deferred form paste queue rejected");
             }
-        } catch (_com_error& error) { oe->returnValue = VARIANT_FALSE; U::ReportError(error); return VARIANT_TRUE; }
-        catch (const std::bad_alloc&) { oe->returnValue = VARIANT_FALSE; _com_error error(E_OUTOFMEMORY); U::ReportError(error); return VARIANT_TRUE; }
+        } catch (_com_error& error) { oe->returnValue = VARIANT_FALSE; m_htmlPasteCallbackFailure=error.Error(); StartupTrace::HResult(L"clipboard",L"CP206",error.Error(),L"stage=CP302; operation-stage=CP401"); return VARIANT_TRUE; }
+        catch (const std::bad_alloc&) { oe->returnValue = VARIANT_FALSE; m_htmlPasteCallbackFailure=E_OUTOFMEMORY; StartupTrace::HResult(L"clipboard",L"CP206",E_OUTOFMEMORY,L"stage=CP302; operation-stage=CP401"); return VARIANT_TRUE; }
 	}
 	else
 	{

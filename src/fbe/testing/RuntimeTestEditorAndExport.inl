@@ -1,3 +1,4 @@
+#include "RuntimeTestCommunityPasteLifecycle.inl"
 #include "RuntimeTestCommunityHref.inl"
 #include "RuntimeTestCommunitySelection.inl"
 #include "RuntimeTestCommunityClipboard.inl"

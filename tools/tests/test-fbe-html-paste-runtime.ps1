@@ -2,7 +2,7 @@
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [ValidateRange(20, 120)][int]$TimeoutSeconds = 60,
-    [string[]]$Cases = @('word', 'title', 'plain', 'plain-single', 'plain-middle', 'internal', 'internal-dirty', 'internal-history', 'internal-history-middle', 'internal-end', 'internal-missing-link', 'internal-missing-image', 'legacy-unmarked', 'queue-post-failure', 'queue-post-clean-failure', 'queue-failure-retry', 'queue-two', 'queue-three', 'queue-reentrant', 'queue-reentrant-post-failure', 'queue-plain-two'),
+    [string[]]$Cases = @('word', 'title', 'plain', 'plain-single', 'plain-middle', 'internal', 'internal-dirty', 'internal-history', 'internal-history-middle', 'internal-end', 'internal-missing-link', 'internal-missing-image', 'legacy-unmarked', 'queue-reload', 'queue-reload-idle', 'queue-moved-selection', 'queue-capture-notice', 'queue-close-retry', 'queue-post-idle', 'queue-post-failure', 'queue-post-clean-failure', 'queue-failure-retry', 'queue-two', 'queue-three', 'queue-reentrant', 'queue-reentrant-post-failure', 'queue-plain-two'),
     [switch]$KeepArtifacts,
     [switch]$RealPaste
 )
@@ -31,7 +31,7 @@ try {
         [xml]$saved = Get-Content -LiteralPath $fixture -Raw
         $savedXml = $saved.OuterXml
         if($case -like 'queue-*') {
-            if($case -notin @('queue-post-failure','queue-post-clean-failure') -and $savedXml -notmatch 'Queue1') { throw "Queued text missing after save: $case" }
+            if($case -notin @('queue-reload', 'queue-reload-idle', 'queue-moved-selection', 'queue-capture-notice', 'queue-close-retry', 'queue-post-idle', 'queue-post-failure','queue-post-clean-failure') -and $savedXml -notmatch 'Queue1') { throw "Queued text missing after save: $case" }
             if($savedXml -match 'Queue9|Queue7') { throw "Rejected or newer clipboard inserted: $case" }
         }
         elseif($case -in @('internal-missing-link', 'internal-missing-image')) {

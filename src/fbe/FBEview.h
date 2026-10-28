@@ -411,6 +411,7 @@ protected:
 
   int			    m_ignore_changes;
   int			    m_enable_paste;
+  HRESULT m_htmlPasteCallbackFailure=S_OK;
   std::shared_ptr<PendingHtmlPaste> m_pendingHtmlPaste;
   std::shared_ptr<DeferredHtmlPaste> m_activeHtmlPaste;
   UINT_PTR m_htmlPasteGeneration = 0;
