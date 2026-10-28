@@ -109,7 +109,8 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                                 capture_output=True, encoding='utf-8', errors='replace', timeout=45,
                                 env={**os.environ, 'TEMP': str(extraction_temp), 'TMP': str(extraction_temp)})
         logs = '\n'.join(p.read_text(encoding='utf-8-sig') for p in folder.glob('*.log'))
-        self.diagnostics = result.stdout + result.stderr + logs
+        self.public_diagnostics = result.stdout + result.stderr
+        self.diagnostics = self.public_diagnostics + logs
         if fail:
             self.assertNotEqual(result.returncode, 0, self.diagnostics)
             return None
@@ -403,6 +404,15 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertNotIn(str(self.last_folder), text)
         self.assertLess(len(text), 500)
         self.assertIn('Links to missing EPUB resources: 20', self.diagnostics)
+
+    def test_validation_failure_summarizes_ui_and_keeps_log(self):
+        links = ''.join(f'<a href="#missing{i}">Link{i}</a>' for i in range(20))
+        self.convert('<h1>Chapter</h1><p>' + links + '</p>', fail=True, options=['--no-log'])
+        self.assertIn('missing generated link targets: 20', self.public_diagnostics)
+        self.assertLess(len(self.public_diagnostics), 1000)
+        self.assertNotIn(str(self.last_folder), self.public_diagnostics)
+        self.assertIn('missing19', self.diagnostics)
+        self.assertTrue(list(self.last_folder.glob('*.log')))
 
     def test_unresolved_local_fragment_fails_even_without_xsd(self):
         for options in ([], ['--no-validate']):
