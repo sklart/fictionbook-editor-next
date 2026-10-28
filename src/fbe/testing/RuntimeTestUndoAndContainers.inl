@@ -94,6 +94,8 @@
 				else if (wcscmp(variant, L"pastehtml-content") == 0) { MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange()); range->moveToElementText(old); range->pasteHTML(L"<P>AAA</P></DIV><DIV id=probe-old class=section><DIV class=title><P>123</P></DIV><P>ZZZ</P>"); }
 				else if (wcscmp(variant, L"pastehtml-root") == 0) { MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange()); range->moveToElementText(root); range->pasteHTML(L"<DIV class=section><P>AAA</P></DIV><DIV id=probe-old class=section><DIV class=title><P>123</P></DIV><P>ZZZ</P></DIV>"); }
 				else if (wcscmp(variant, L"exec-insert-html") == 0) { MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange()); range->moveToElementText(root); range->select(); if (document->execCommand(L"InsertHTML", VARIANT_FALSE, _variant_t(L"<DIV class=section><P>AAA</P></DIV><DIV id=probe-old class=section><DIV class=title><P>123</P></DIV><P>ZZZ</P></DIV>")) != VARIANT_TRUE) operationHr = E_FAIL; }
+				else if (wcscmp(variant, L"markup-empty-after") == 0) { MSHTML::IMarkupServices2Ptr markup(m_doc->m_body.MarkupServices()); MSHTML::IMarkupPointerPtr start, finish; markup->CreateMarkupPointer(&start); markup->CreateMarkupPointer(&finish); start->MoveAdjacentToElement(old, MSHTML::ELEM_ADJ_AfterEnd); finish->MoveAdjacentToElement(old, MSHTML::ELEM_ADJ_AfterEnd); MSHTML::IHTMLElementPtr next(document->createElement(L"DIV")); operationHr = markup->InsertElement(next, start, finish); if (SUCCEEDED(operationHr)) { next->className = L"section"; next->id = L"probe-old"; next->innerHTML = L"<DIV class=title><P>123</P></DIV><P>ZZZ</P>"; old->id = L""; old->innerHTML = L"<P>AAA</P>"; } }
+				else if (wcscmp(variant, L"markup-paste-after") == 0) { MSHTML::IMarkupServices2Ptr markup(m_doc->m_body.MarkupServices()); MSHTML::IMarkupPointerPtr start, finish; markup->CreateMarkupPointer(&start); markup->CreateMarkupPointer(&finish); start->MoveAdjacentToElement(old, MSHTML::ELEM_ADJ_AfterEnd); finish->MoveAdjacentToElement(old, MSHTML::ELEM_ADJ_AfterEnd); MSHTML::IHTMLElementPtr next(document->createElement(L"DIV")); operationHr = markup->InsertElement(next, start, finish); if (SUCCEEDED(operationHr)) { next->className = L"section"; next->id = L"probe-old"; start->MoveAdjacentToElement(next, MSHTML::ELEM_ADJ_AfterBegin); finish->MoveAdjacentToElement(next, MSHTML::ELEM_ADJ_BeforeEnd); MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange()); operationHr = markup->MoveRangeToPointers(start, finish, range); if (SUCCEEDED(operationHr)) { range->pasteHTML(L"<DIV class=title><P>123</P></DIV><P>ZZZ</P>"); old->id = L""; old->innerHTML = L"<P>AAA</P>"; } } }
 				else if (wcscmp(variant, L"markup-after-end") == 0 || wcscmp(variant, L"markup-before-begin") == 0) { MSHTML::IMarkupServices2Ptr markup(m_doc->m_body.MarkupServices()); MSHTML::IMarkupPointerPtr start, finish; markup->CreateMarkupPointer(&start); markup->CreateMarkupPointer(&finish); const MSHTML::_ELEMENT_ADJACENCY edge = wcscmp(variant, L"markup-before-begin") == 0 ? MSHTML::ELEM_ADJ_BeforeBegin : MSHTML::ELEM_ADJ_AfterEnd; start->MoveAdjacentToElement(old, edge); finish->MoveAdjacentToElement(old, edge); MSHTML::IHTMLElementPtr next(makeNext()); operationHr = markup->InsertElement(next, start, finish); if (SUCCEEDED(operationHr)) { old->id = L""; old->innerHTML = L"<P>AAA</P>"; } }
 				else if (wcscmp(variant, L"markup-parse-copy") == 0) { MSHTML::IMarkupServices2Ptr markup(m_doc->m_body.MarkupServices()); MSHTML::IMarkupPointerPtr sourceStart, sourceFinish, targetStart, targetFinish; MSHTML::IMarkupContainerPtr parsed; markup->CreateMarkupPointer(&sourceStart); markup->CreateMarkupPointer(&sourceFinish); operationHr = markup->ParseString(L"<DIV class=section><P>AAA</P></DIV><DIV id=probe-old class=section><DIV class=title><P>123</P></DIV><P>ZZZ</P></DIV>", 0, &parsed, sourceStart, sourceFinish); if (SUCCEEDED(operationHr)) { markup->CreateMarkupPointer(&targetStart); markup->CreateMarkupPointer(&targetFinish); targetStart->MoveAdjacentToElement(old, MSHTML::ELEM_ADJ_BeforeBegin); targetFinish->MoveAdjacentToElement(old, MSHTML::ELEM_ADJ_AfterEnd); operationHr = markup->remove(targetStart, targetFinish); if (SUCCEEDED(operationHr)) operationHr = markup->Copy(sourceStart, sourceFinish, targetStart); } }
 				else if (wcscmp(variant, L"detached-subtree") == 0) { MSHTML::IHTMLElementPtr next(makeNext()); old->id = L""; MSHTML::IHTMLDOMNodePtr parent(old->parentElement), oldNode(old); parent->insertBefore(MSHTML::IHTMLDOMNodePtr(next), oldNode->nextSibling.GetInterfacePtr()); old->innerHTML = L"<P>AAA</P>"; }
@@ -214,6 +216,10 @@
 		}
 		m_doc->m_body.SetFocus();
 		range->select();
+		if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SPLIT_TIMELINE_PRIOR", nullptr, 0)) {
+			const HWND focus = ::GetFocus();
+			if (focus) ::SendMessage(focus, WM_CHAR, L'Q', 0);
+		}
 		MSHTML::IHTMLTxtRangePtr selectionBefore(document->selection->createRange());
 		const CString selectionTextBefore(selectionBefore ? static_cast<const wchar_t*>(selectionBefore->text) : L"");
 		MSHTML::IHTMLTxtRangePtr containerRange(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
@@ -265,6 +271,15 @@
 			trace.After(L"timeline-original", before); observe(L"timeline-split");
 			if (addInput) { m_doc->m_body.SetFocus(); const HWND focus = ::GetFocus(); if (focus) ::SendMessage(focus, WM_CHAR, L'X', 0); observe(L"timeline-input"); }
 			const CString expected(contentHtml()); int undoCount = 0; bool restored = false;
+			if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SPLIT_TIMELINE_PRIOR", nullptr, 0)) {
+				BOOL ignored = FALSE;
+				m_doc->m_body.OnUndo(0, 0, m_doc->m_body, ignored); const bool undoInput = contentHtml() == after; observe(L"prior-undo-input");
+				m_doc->m_body.OnUndo(0, 0, m_doc->m_body, ignored); const bool undoSplit = contentHtml() == before; observe(L"prior-undo-split");
+				m_doc->m_body.OnRedo(0, 0, m_doc->m_body, ignored); const bool redoSplit = contentHtml() == after; observe(L"prior-redo-split");
+				m_doc->m_body.OnRedo(0, 0, m_doc->m_body, ignored); const bool redoInput = contentHtml() == expected; observe(L"prior-redo-input");
+				CStringA row; row.Format("prior_input=Q\nundo_input=%d\nundo_split=%d\nredo_split=%d\nredo_input=%d\n", undoInput, undoSplit, redoSplit, redoInput);
+				output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(0); return 0;
+			}
 			for (int i = 1; i <= 12; ++i) { BOOL ignored = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, ignored); ++undoCount;
 				CString phase; phase.Format(L"timeline-undo-%d", i); observe(phase); if (contentHtml() == before) { restored = true; break; } }
 			for (int i = 1; i <= undoCount; ++i) { BOOL ignored = FALSE; m_doc->m_body.OnRedo(0, 0, m_doc->m_body, ignored);

@@ -3,7 +3,8 @@ param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [ValidateSet('portable','installed')][string]$Mode='portable',
     [ValidateSet('fb2','fbd')][string]$Kind='fb2',
     [ValidateSet('light','dark')][string]$Theme='light',
-    [ValidateSet('normal','zip','rar')][string]$Container='normal')
+    [ValidateSet('normal','zip','rar')][string]$Container='normal',
+    [ValidateRange(1,1800)][int]$TimeoutSeconds=120)
 $ErrorActionPreference='Stop'
 $catalog=Get-Content (Join-Path $PSScriptRoot '../../localization/app-ui/fbe-idr-mainframe-menu.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $close=$catalog.strings.'fbe.menu.idr_mainframe.file.close'
@@ -61,7 +62,7 @@ try {
     $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='file-close-runtime'
     $env:FBE_NEXT_TEST_CLOSE_SECOND=$second;$env:FBE_NEXT_TEST_SETTINGS_DIRECTORY=Join-Path $iso.DataPath 'Settings'
     $process=Start-Process $iso.Exe -WorkingDirectory $iso.Root -ArgumentList @("--$Mode",'-b',$report,$inputPath) -WindowStyle Hidden -PassThru
-    $code=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'file-close' -Report $report -TimeoutSeconds 120
+    $code=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'file-close' -Report $report -TimeoutSeconds $TimeoutSeconds
     $text=if(Test-Path $report){Get-Content $report -Raw}else{'missing report'}
     if($code -ne 0 -or $text -notmatch 'result=PASS'){throw "File Close failed (exit=$code): $text"}
     if((Get-FileHash $inputPath -Algorithm SHA256).Hash -ne $before){throw 'Opening/closing changed the initial file/container'}

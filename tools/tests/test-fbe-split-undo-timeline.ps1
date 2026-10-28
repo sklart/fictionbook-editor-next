@@ -1,16 +1,17 @@
 [CmdletBinding()]
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
-    [Parameter(Mandatory)][string]$EvidenceDirectory
+    [Parameter(Mandatory)][string]$EvidenceDirectory,
+    [switch]$IncludePrior
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $evidence = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EvidenceDirectory)
 New-Item -ItemType Directory -Path $evidence -Force | Out-Null
-$names = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SPLIT_POSITION','FBE_NEXT_TEST_SPLIT_CONTAINER_ID','FBE_NEXT_TEST_STRUCTURE_TRACE','FBE_NEXT_TEST_STRUCTURE_CASE','FBE_NEXT_TEST_SPLIT_TIMELINE','FBE_NEXT_TEST_SPLIT_TIMELINE_INPUT')
+$names = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SPLIT_POSITION','FBE_NEXT_TEST_SPLIT_CONTAINER_ID','FBE_NEXT_TEST_STRUCTURE_TRACE','FBE_NEXT_TEST_STRUCTURE_CASE','FBE_NEXT_TEST_SPLIT_TIMELINE','FBE_NEXT_TEST_SPLIT_TIMELINE_INPUT','FBE_NEXT_TEST_SPLIT_TIMELINE_PRIOR')
 $old = @{}; foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name) }
 try {
-    foreach ($mode in @('split','split-input')) {
+    foreach ($mode in $(if ($IncludePrior) { @('split-prior-input') } else { @('split','split-input') })) {
         $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name split-timeline; $passed = $false
         try {
             $null = New-IsolatedFbeSettingsSeed -Isolation $iso -StartupScriptsDirectory (Join-Path $iso.Root empty-scripts)
@@ -19,10 +20,17 @@ try {
             [IO.File]::WriteAllText($fixture, $xml, [Text.UTF8Encoding]::new($false))
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'split-container'; $env:FBE_NEXT_TEST_SPLIT_POSITION = 'middle'; $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID = 'target-section-middle'
             $env:FBE_NEXT_TEST_STRUCTURE_TRACE = $trace; $env:FBE_NEXT_TEST_STRUCTURE_CASE = $mode; $env:FBE_NEXT_TEST_SPLIT_TIMELINE = '1'
-            $env:FBE_NEXT_TEST_SPLIT_TIMELINE_INPUT = if ($mode -eq 'split-input') { '1' } else { $null }
+            $env:FBE_NEXT_TEST_SPLIT_TIMELINE_INPUT = if ($mode -in @('split-input','split-prior-input')) { '1' } else { $null }
+            $env:FBE_NEXT_TEST_SPLIT_TIMELINE_PRIOR = if ($mode -eq 'split-prior-input') { '1' } else { $null }
             $p = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -WindowStyle Hidden -ArgumentList @('--portable','-b',$report,$fixture) -PassThru
             $code = Wait-IsolatedFbeProcess -Process $p -Isolation $iso -Scenario 'split-undo-timeline' -Report $report -TimeoutSeconds 90
             if ($code -ne 0 -or !(Test-Path -LiteralPath $trace)) { throw "Timeline probe failed: $mode, exit=$code" }
+            if ($mode -eq 'split-prior-input') {
+                $result = Get-Content -LiteralPath $report -Raw
+                foreach ($field in @('undo_input','undo_split','redo_split','redo_input')) {
+                    if ($result -notmatch "(?m)^$field=1\r?$") { throw "Mixed Split history failed: $field; see $report and $trace" }
+                }
+            }
             $passed = $true
             Write-Host "Timeline observation: $mode; $(Get-Content -LiteralPath $report -Raw)"
         } finally { Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed }
