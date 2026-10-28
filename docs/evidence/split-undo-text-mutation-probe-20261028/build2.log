@@ -1,0 +1,15 @@
+Версия MSBuild 17.14.60+43b635718 для .NET Framework
+
+  Copying requisite resources...
+  Regex Help HTML generated: 24 pages.
+  Fluent Pin masks prepared: R:\build\generated\Win32\Release\pin-icons\FluentPinMasks.generated.h
+  mainfrm.cpp
+  buildstamp.c
+     Создается библиотека R:\out\text-mutation-probe\FBE\Release\FBE.lib и объект R:\out\text-mutation-probe\FBE\Release\FBE.exp
+  Создание кода
+  Создание кода завершено
+  FBE.vcxproj -> R:\out\text-mutation-probe\FBE\Release\FBE.exe
+  Runtime JSON-локализация экспортирована.
+    Каталог: R:\out\text-mutation-probe\FBE\Release\Lang
+    Языков: 12
+    Модулей: 6

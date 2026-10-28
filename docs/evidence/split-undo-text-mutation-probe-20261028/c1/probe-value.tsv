@@ -1,0 +1,7 @@
+phase	dom	fnv1a_utf16	dirty	undo	redo	undo_type	redo_type	selection	hresult
+initial	<DIV id=probe-marker class=section><P>tail</P></DIV>	121585BC744052E8	0	0	0	none	none	parent=BODY;active=BODY;offset=0;length=0	0x00000000
+prior-Q	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	9D69936880E79ADD	1	1	0	{00000000-0000-0000-0000-000000000000}:0:Ввод	none	parent=P;active=DIV;offset=1;length=0	0x00000000
+unit-map	after-Q-before-initial-mutation	undo	0	held-1	1219B080	{00000000-0000-0000-0000-000000000000}:0	Ввод	0x00000000	0x00000000
+node-map	after-Q	0	type=3	identity=1	value=Qtail
+node-summary	after-Q	count=1	text-count=1	text=Qtail	html=Qtail	state=1
+error	0x8000FFFF

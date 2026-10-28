@@ -1,0 +1,122 @@
+diff --git a/src/fbe/testing/RuntimeTestPortableState.inl b/src/fbe/testing/RuntimeTestPortableState.inl
+index 351cb59c..5021a0f5 100644
+--- a/src/fbe/testing/RuntimeTestPortableState.inl
++++ b/src/fbe/testing/RuntimeTestPortableState.inl
+@@ -34,7 +34,17 @@ public:
+ 	void InitializeStructural(MSHTML::IHTMLElementPtr target, bool addFirst, const CString& original, const CString& first, const CString& next, CAtlFile* report) { m_target = target; m_structural = true; m_addFirst = addFirst; m_original = original; m_first = first; m_next = next; m_report = report; }
+ 	void InitializeText(MSHTML::IHTMLElementPtr target, const CString& original, CAtlFile* report, bool nodeValue = false) { m_target = target; m_text = true; m_nodeValue = nodeValue; m_original = original; m_report = report; }
+ 	void InitializeSelection(MSHTML::IHTMLElementPtr target, CAtlFile* report) { m_target = target; m_selection = true; m_report = report; }
+-	void DetachReport() { m_report = nullptr; m_observedUnits.clear(); }
++	void InitializeMutation(MSHTML::IHTMLElementPtr target, int mode, CAtlFile* report) { m_target = target; m_probeMode = mode; m_report = report; }
++	void TraceNodes(const wchar_t* phase) {
++		if (!m_report || !m_target) return;
++		MSHTML::IHTMLElementCollectionPtr children(m_target->children); MSHTML::IHTMLElementPtr p(children ? MSHTML::IHTMLElementPtr(children->item(0)) : MSHTML::IHTMLElementPtr()); if (!p) return;
++		unsigned index = 0, textCount = 0; for (MSHTML::IHTMLDOMNodePtr n(MSHTML::IHTMLDOMNodePtr(p)->firstChild); n; n = n->nextSibling, ++index) {
++			CComPtr<IUnknown> id; n->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&id)); unsigned number = 0; for (size_t i = 0; i < m_observedNodes.size(); ++i) if (m_observedNodes[i].p == id.p) { number = static_cast<unsigned>(i + 1); break; } if (!number && id) { m_observedNodes.push_back(id); number = static_cast<unsigned>(m_observedNodes.size()); }
++			const long type = n->nodeType; if (type == 3) ++textCount; CString value; if (type == 3) value = static_cast<const wchar_t*>(_bstr_t(n->nodeValue)); CStringA value8(CW2A(value, CP_UTF8)); CStringA row; row.Format("node-map\t%S\t%u\ttype=%ld\tidentity=%u\tvalue=%s\r\n", phase, index, type, number, value8.GetString()); DWORD written = 0; m_report->Write(row, static_cast<DWORD>(row.GetLength()), &written);
++		}
++		CString text(static_cast<const wchar_t*>(p->innerText)), html(static_cast<const wchar_t*>(p->innerHTML)); CStringA t(CW2A(text, CP_UTF8)), h(CW2A(html, CP_UTF8)), row; row.Format("node-summary\t%S\tcount=%u\ttext-count=%u\ttext=%s\thtml=%s\tstate=%d\r\n", phase, index, textCount, t.GetString(), h.GetString(), m_probeState ? 1 : 0); DWORD written = 0; m_report->Write(row, static_cast<DWORD>(row.GetLength()), &written); m_report->Flush();
++	}
++	void DetachReport() { m_report = nullptr; m_observedUnits.clear(); m_observedNodes.clear(); }
+ 	void TraceUnits(const wchar_t* phase, IOleUndoManager* manager) {
+ 		if (!m_report || !manager) return;
+ 		for (int side = 0; side != 2; ++side) {
+@@ -64,7 +74,18 @@ public:
+ 			TraceUnits(L"do-enter", manager);
+ 			if (m_addFirst) { lastAdd = manager->Add(this); if (FAILED(lastAdd)) { m_doing = false; return lastAdd; } }
+ 			TraceUnits(L"before-mutation", manager);
+-			if (m_structural) {
++			if (m_probeMode) {
++				TraceNodes(L"do-before");
++				if (m_probeMode == 1) m_probeState = !m_probeState;
++				else {
++					MSHTML::IHTMLElementCollectionPtr children(m_target->children); MSHTML::IHTMLElementPtr p(children ? MSHTML::IHTMLElementPtr(children->item(0)) : MSHTML::IHTMLElementPtr()); if (!p) { m_doing = false; return E_UNEXPECTED; }
++					const wchar_t* expected = m_after ? L"Rtail" : L"Qtail"; const wchar_t* replacement = m_after ? L"Q" : L"R";
++					if (CString(static_cast<const wchar_t*>(p->innerText)) != expected) { m_doing = false; return E_UNEXPECTED; }
++					if (m_probeMode == 4) p->innerHTML = m_after ? L"Qtail" : L"Rtail";
++					else { MSHTML::IHTMLDOMNodePtr n(MSHTML::IHTMLDOMNodePtr(p)->firstChild); if (!n || n->nodeType != 3 || CString(static_cast<const wchar_t*>(_bstr_t(n->nodeValue))) != (m_after ? L"R" : L"Q")) { m_doing = false; return E_UNEXPECTED; } if (m_probeMode == 2) n->nodeValue = _variant_t(replacement); else { MSHTML::IHTMLDOMTextNode2Ptr text(n); if (!text) { m_doing = false; return E_NOINTERFACE; } text->replaceData(0, 1, _bstr_t(replacement)); } }
++				}
++				m_after = !m_after; TraceNodes(L"do-after");
++			} else if (m_structural) {
+ 				if (!m_target || !m_target->parentElement) { m_doing = false; return E_UNEXPECTED; }
+ 				if (m_after) {
+ 					MSHTML::IHTMLElementPtr next(MSHTML::IHTMLDOMNodePtr(m_target)->nextSibling);
+@@ -114,6 +135,9 @@ private:
+ 	CString m_original, m_first, m_next;
+ 	CAtlFile* m_report = nullptr;
+ 	std::vector<CComPtr<IUnknown>> m_observedUnits;
++	std::vector<CComPtr<IUnknown>> m_observedNodes;
++	int m_probeMode = 0;
++	bool m_probeState = true;
+ 	bool m_mutate = false, m_structural = false, m_text = false, m_nodeValue = false, m_selection = false, m_doing = false, m_addFirst = false, m_after = true;
+ };
+
+diff --git a/src/fbe/testing/RuntimeTestUndoAndContainers.inl b/src/fbe/testing/RuntimeTestUndoAndContainers.inl
+index 961ad179..6e0f6e4b 100644
+--- a/src/fbe/testing/RuntimeTestUndoAndContainers.inl
++++ b/src/fbe/testing/RuntimeTestUndoAndContainers.inl
+@@ -76,11 +76,12 @@
+ 			const bool nativeOnly = wcscmp(kind, L"native-only") == 0;
+ 			const bool structural = wcsncmp(kind, L"structure-", 10) == 0;
+ 			const bool nodeValue = wcscmp(kind, L"value-add-last") == 0;
++			const int probeMode = !wcscmp(kind, L"probe-state") ? 1 : !wcscmp(kind, L"probe-value") ? 2 : !wcscmp(kind, L"probe-replace") ? 3 : !wcscmp(kind, L"probe-html") ? 4 : 0;
+ 			const bool selectionOnly = wcscmp(kind, L"selection-only") == 0;
+ 			const bool textNode = wcscmp(kind, L"text-add-last") == 0 || nodeValue;
+-			const bool mutate = !nativeOnly && !structural && !textNode && !selectionOnly && wcscmp(kind, L"no-dom") != 0;
++			const bool mutate = !nativeOnly && !structural && !textNode && !selectionOnly && !probeMode && wcscmp(kind, L"no-dom") != 0;
+ 			const bool addFirst = wcscmp(kind, L"dom-add-first") == 0 || wcscmp(kind, L"structure-add-first") == 0;
+-			if (!nativeOnly && !textNode && !selectionOnly && wcscmp(kind, L"no-dom") && wcscmp(kind, L"dom-add-first") && wcscmp(kind, L"dom-add-last") && wcscmp(kind, L"structure-add-first") && wcscmp(kind, L"structure-add-last")) CheckError(E_INVALIDARG);
++			if (!nativeOnly && !textNode && !selectionOnly && !probeMode && wcscmp(kind, L"no-dom") && wcscmp(kind, L"dom-add-first") && wcscmp(kind, L"dom-add-last") && wcscmp(kind, L"structure-add-first") && wcscmp(kind, L"structure-add-last")) CheckError(E_INVALIDARG);
+ 			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+ 			MSHTML::IHTMLElementPtr target(document->all->item(L"probe-marker"));
+ 			if (!target) CheckError(E_FAIL);
+@@ -116,7 +117,7 @@
+ 			}
+ 			CComObject<CSplitTransactionMarker>* raw = nullptr; CheckError(CComObject<CSplitTransactionMarker>::CreateInstance(&raw)); CComPtr<IOleUndoUnit> marker(raw);
+ 			struct DetachMarkerReport { CSplitTransactionMarker* unit; ~DetachMarkerReport() { unit->DetachReport(); } } detachReport{raw};
+-			raw->Initialize(target, false, false, &output); raw->TraceUnits(L"after-Q-before-initial-mutation", manager);
++			raw->Initialize(target, false, false, &output); raw->TraceUnits(L"after-Q-before-initial-mutation", manager); raw->TraceNodes(L"after-Q");
+ 			if (structural) {
+ 				MSHTML::IHTMLElementCollectionPtr children(target->children); if (!children || children->length != 2) CheckError(E_UNEXPECTED);
+ 				MSHTML::IHTMLElementPtr left(children->item(0)), right(children->item(1)); if (!left || !right) CheckError(E_UNEXPECTED);
+@@ -124,6 +125,15 @@
+ 				raw->InitializeStructural(target, addFirst, CString(static_cast<const wchar_t*>(target->innerHTML)), leftHtml, rightHtml, &output);
+ 				target->id = L"probe-left"; target->innerHTML = leftHtml.AllocSysString();
+ 				target->insertAdjacentHTML(L"afterEnd", rightHtml.AllocSysString());
++			} else if (probeMode) {
++				raw->InitializeMutation(target, probeMode, &output);
++				if (probeMode != 1) {
++					MSHTML::IHTMLDOMNodePtr n(MSHTML::IHTMLDOMNodePtr(first)->firstChild); if (!n || n->nodeType != 3 || n->nextSibling || CString(static_cast<const wchar_t*>(_bstr_t(n->nodeValue))) != L"Qtail" || CString(static_cast<const wchar_t*>(first->innerText)) != L"Qtail") CheckError(E_UNEXPECTED);
++					if (probeMode == 4) first->innerHTML = L"Rtail"; else if (probeMode == 2) n->nodeValue = _variant_t(L"Rtail"); else { MSHTML::IHTMLDOMTextNode2Ptr text(n); if (!text) CheckError(E_NOINTERFACE); text->replaceData(0, 1, _bstr_t(L"R")); }
++					if (CString(static_cast<const wchar_t*>(first->innerText)) != L"Rtail") CheckError(E_UNEXPECTED);
++					m_doc->m_body.GoTo(first, false); range = document->selection->createRange(); range->move(L"character", 1); range->select();
++				}
++				raw->TraceNodes(L"after-initial-mutation");
+ 			} else if (textNode) {
+ 				const CString savedText(static_cast<const wchar_t*>(first->innerHTML)); raw->InitializeText(target, savedText, &output, nodeValue);
+ 				if (nodeValue) { MSHTML::IHTMLDOMNodePtr text(MSHTML::IHTMLDOMNodePtr(first)->firstChild); if (!text) CheckError(E_UNEXPECTED); text->nodeValue = _variant_t(savedText); } else first->innerHTML = savedText.AllocSysString(); m_doc->m_body.GoTo(first, false); range = document->selection->createRange(); range->move(L"character", 1); range->select();
+@@ -132,18 +142,19 @@
+ 			raw->TraceUnits(L"after-initial-mutation-before-add", manager); CheckError(manager->Add(marker)); raw->TraceUnits(L"after-initial-add", manager); const CString afterMarker(snapshot()); observe("marker", S_OK);
+ 			if (structural) { MSHTML::IHTMLElementPtr next(document->all->item(L"probe-marker")); if (!next) CheckError(E_FAIL); range->moveToElementText(next); range->collapse(VARIANT_FALSE); range->select(); }
+ 			focus = ::GetFocus(); if (!focus) CheckError(E_FAIL); ::SendMessage(focus, WM_CHAR, L'X', 0); const CString afterInput(snapshot()); observe("input-X", S_OK);
+-			if (tailFixture && !structural && CString(static_cast<const wchar_t*>(first->innerText)) != L"QXtail") CheckError(E_UNEXPECTED);
++			if (tailFixture && !structural && CString(static_cast<const wchar_t*>(first->innerText)) != (probeMode > 1 ? L"RXtail" : L"QXtail")) CheckError(E_UNEXPECTED);
++			raw->TraceNodes(L"after-X");
+ 			raw->TraceUnits(L"after-input-X", manager); BOOL handled = FALSE; HRESULT hr = static_cast<HRESULT>(m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled)); const bool undoInput = snapshot() == afterMarker; observe("undo-X", hr); raw->TraceUnits(L"after-undo-X", manager);
+-			hr = static_cast<HRESULT>(m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled)); const bool undoMarker = snapshot() == prior; observe("undo-marker", hr); raw->TraceUnits(L"after-undo-marker", manager);
+-			hr = static_cast<HRESULT>(m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled)); const bool redoMarker = snapshot() == afterMarker; observe("redo-marker", hr); raw->TraceUnits(L"after-redo-marker", manager);
++			hr = static_cast<HRESULT>(m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled)); const bool undoMarker = snapshot() == prior; observe("undo-marker", hr); raw->TraceUnits(L"after-undo-marker", manager); raw->TraceNodes(L"after-undo-marker");
++			hr = static_cast<HRESULT>(m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled)); const bool redoMarker = snapshot() == afterMarker; observe("redo-marker", hr); raw->TraceUnits(L"after-redo-marker", manager); raw->TraceNodes(L"after-redo-marker");
+ 			if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SPLIT_MARKER_FRESH", nullptr, 0)) {
+ 				MSHTML::IHTMLElementPtr current(document->all->item(L"probe-marker")); MSHTML::IHTMLElementCollectionPtr currentChildren(current ? MSHTML::IHTMLElementCollectionPtr(current->children) : MSHTML::IHTMLElementCollectionPtr());
+ 				MSHTML::IHTMLElementPtr currentParagraph(currentChildren ? MSHTML::IHTMLElementPtr(currentChildren->item(0)) : MSHTML::IHTMLElementPtr()); if (!currentParagraph) CheckError(E_UNEXPECTED);
+ 				m_doc->m_body.GoTo(currentParagraph, false); MSHTML::IHTMLTxtRangePtr fresh(document->selection->createRange()); if (!fresh) CheckError(E_UNEXPECTED);
+ 				const long expectedOffset = structural ? 5 : 1; if (fresh->move(L"character", expectedOffset) != expectedOffset) CheckError(E_UNEXPECTED); fresh->select(); observe("fresh-caret", S_OK);
+ 			}
+-			hr = static_cast<HRESULT>(m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled)); const bool redoInput = snapshot() == afterInput; observe("redo-X", hr); raw->TraceUnits(L"after-redo-X", manager);
+-			const bool typed = prior != initial && afterInput != afterMarker && prior.Find(L'Q') >= 0 && afterMarker.Find(L'Q') >= 0 && afterInput.Find(L'X') >= 0;
++			hr = static_cast<HRESULT>(m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled)); const bool redoInput = snapshot() == afterInput; observe("redo-X", hr); raw->TraceUnits(L"after-redo-X", manager); raw->TraceNodes(L"after-redo-X");
++			const bool typed = prior != initial && afterInput != afterMarker && prior.Find(L'Q') >= 0 && afterMarker.Find(probeMode > 1 ? L'R' : L'Q') >= 0 && afterInput.Find(L'X') >= 0;
+ 			const unsigned mixedCalls = raw->calls; const HRESULT mixedAdd = raw->lastAdd;
+ 			hr = static_cast<HRESULT>(m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled)); observe("second-undo-X", hr);
+ 			hr = static_cast<HRESULT>(m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled)); observe("second-undo-marker", hr);
