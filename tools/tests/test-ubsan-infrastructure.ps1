@@ -12,6 +12,7 @@ $source=Join-Path $out 'probe.cpp'; $exe=Join-Path $out 'ubsan-probe.exe'
 #include <climits>
 #include "__WINDOW_RECTANGLE_HEADER__"
 #include <windows.h>
+#include "__VARIANT_DISCRIMINATOR_HEADER__"
 volatile int sink;
 __declspec(noinline) bool __stdcall Callback(bool value) { return value; }
 typedef bool (__stdcall *CallbackType)(bool);
@@ -23,7 +24,14 @@ __declspec(noinline) int Load(int* value) { return *value; }
 int main(int argc, char** argv) {
     const char mode=argc>1 ? argv[1][0] : 'c';
     if(mode=='d') { ::Sleep(10000); return 0; }
-    if(mode=='c') { sink=Add(1); return sink==2 && callback(true) && WindowRectangle::Span(0, CW_USEDEFAULT)==CW_USEDEFAULT ? 0 : 2; }
+    if(mode=='c') {
+        alignas(8) unsigned char bytes[sizeof(VARIANT)+8]={};
+        const VARTYPE expected=VT_BSTR;
+        std::memcpy(bytes+4, &expected, sizeof(expected));
+        const VARIANT* unaligned=reinterpret_cast<const VARIANT*>(bytes+4);
+        sink=Add(1);
+        return sink==2 && callback(true) && WindowRectangle::Span(0, CW_USEDEFAULT)==CW_USEDEFAULT && ReadVariantDiscriminator(unaligned)==expected && ReadVariantDiscriminator(nullptr)==VT_EMPTY ? 0 : 2;
+    }
     if(mode=='o') sink=Add(INT_MAX);
     if(mode=='s') sink=Shift(32);
     if(mode=='a') { alignas(8) char bytes[16]={}; sink=Load(reinterpret_cast<int*>(bytes+1)); }
@@ -31,7 +39,7 @@ int main(int argc, char** argv) {
     if(mode=='f') { callback=reinterpret_cast<CallbackType>(WrongCallback); sink=callback(true); }
     return 0;
 }
-'@.Replace('__WINDOW_RECTANGLE_HEADER__', (Join-Path $root 'src/fbe/utils/WindowRectangle.h').Replace('\','/')) | Set-Content $source -Encoding utf8
+'@.Replace('__WINDOW_RECTANGLE_HEADER__', (Join-Path $root 'src/fbe/utils/WindowRectangle.h').Replace('\','/')).Replace('__VARIANT_DISCRIMINATOR_HEADER__', (Join-Path $root 'src/fbe/scripts/VariantDiscriminator.h').Replace('\','/')) | Set-Content $source -Encoding utf8
 $toolchain | Add-Member -NotePropertyName ignorelistPath -NotePropertyValue (Join-Path $root 'tools/msbuild/ubsan.ignorelist')
 $toolchain | Add-Member -NotePropertyName atlProbeSource -NotePropertyValue (Join-Path $PSScriptRoot 'ubsan-atl-default-test.cpp')
 $toolchain | Add-Member -NotePropertyName paneProbeSource -NotePropertyValue (Join-Path $PSScriptRoot 'pane-close-button-test.cpp')

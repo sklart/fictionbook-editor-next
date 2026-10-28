@@ -18,7 +18,7 @@ Invoke-Test 'test-search-document-adapter-mshtml.ps1'
 Invoke-Test 'test-search-preset-store.ps1' -TestArguments @{ PlatformToolset = $PlatformToolset }
 Invoke-Test 'test-search-preset-catalog.ps1' -TestArguments @{ Configuration = $Configuration; UsePreparedPcre2 = $true; PlatformToolset = $PlatformToolset }
 Invoke-Test 'test-search-preset-design-fixtures.ps1' -TestArguments @{ Configuration = $Configuration; PlatformToolset = $PlatformToolset }
-Invoke-Test 'test-search-preset-source-scintilla.ps1' -TestArguments @{ PlatformToolset = $PlatformToolset }
+Invoke-Test 'test-search-preset-source-scintilla.ps1' -TestArguments @{ PlatformToolset = $PlatformToolset; FbeExe = $FbeExe }
 Invoke-Test 'test-search-preset-preview.ps1'
 Invoke-Test 'test-search-preset-live-refresh.ps1'
 Invoke-Test 'test-search-templates-panel-contract.ps1'
