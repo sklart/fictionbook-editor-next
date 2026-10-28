@@ -684,9 +684,23 @@
 		bool twoPasteOk = true, safetyOk = true;
 		CStringA twoPasteTrace;
 		CComPtr<IDataObject> originalClipboard;
-		::OleGetClipboard(&originalClipboard);
+		        const HRESULT clipboardCaptured=::OleGetClipboard(&originalClipboard);
+        auto restoreClipboard=[&]() {
+            HRESULT restored=clipboardCaptured,flushed=S_OK;
+            if(SUCCEEDED(restored)) {
+                for(int attempt=0;attempt<10;++attempt){restored=::OleSetClipboard(originalClipboard);if(SUCCEEDED(restored))break;::Sleep(20);}
+                if(SUCCEEDED(restored) && originalClipboard)
+                    for(int attempt=0;attempt<10;++attempt){flushed=::OleFlushClipboard();if(SUCCEEDED(flushed))break;::Sleep(20);}
+            }
+            if(FAILED(restored) || FAILED(flushed)) {
+                CStringA diagnostic;diagnostic.Format("clipboard_restore_hresult=0x%08lX; flush_hresult=0x%08lX\r\n",static_cast<unsigned long>(restored),static_cast<unsigned long>(flushed));
+                output.Write(diagnostic,static_cast<DWORD>(diagnostic.GetLength()),&written);output.Flush();output.Close();::PostQuitMessage(1);return false;
+            }
+            return true;
+        };
 		try
 		{
+			CheckError(clipboardCaptured);
 			if (!body || !editable) throw _com_error(E_FAIL);
 			if (internal) {
 				MSHTML::IHTMLElementPtr sourceOwner(document->all->item(L"paste-target"));
@@ -982,7 +996,7 @@
                 CStringA row; row.Format("%S\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n",
                     caseName, valid, valid, valid, valid, valid, valid, valid, valid, valid, valid, validation, reopen, valid ? "pass" : "fail");
                 output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
-                if (originalClipboard) ::OleSetClipboard(originalClipboard);
+                if (!restoreClipboard()) return 0;
                 output.Flush(); output.Close(); ::PostQuitMessage(valid ? 0 : 1); return 0;
             }
 			CString middleLeft, middleRight;
@@ -1029,7 +1043,7 @@
 					caseName, pasted, firstUndo && secondUndo, firstRedo && secondRedo, secondUndo && secondRedo,
 					secondUndo && secondRedo, valid, valid, valid ? "pass" : "fail");
 				output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
-				if (originalClipboard) ::OleSetClipboard(originalClipboard);
+				if (!restoreClipboard()) return 0;
 				output.Flush(); output.Close(); ::PostQuitMessage(valid ? 0 : 1); return 0;
 			}
 			if (missingLink || missingImage) {
@@ -1158,7 +1172,7 @@
 			saved = validated && safetyOk && saveReopen();
 		}
 		catch (const _com_error&) {}
-		if (originalClipboard) ::OleSetClipboard(originalClipboard);
+		if (!restoreClipboard()) return 0;
 		if (!twoPasteOk) {
 			CStringA diagnostic("two-paste-check: " + twoPasteTrace + "\r\n");
 			output.Write(diagnostic, static_cast<DWORD>(diagnostic.GetLength()), &written);
