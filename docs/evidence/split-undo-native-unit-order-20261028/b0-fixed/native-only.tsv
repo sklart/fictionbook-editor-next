@@ -1,0 +1,9 @@
+phase	dom	fnv1a_utf16	dirty	undo	redo	undo_type	redo_type	selection	hresult
+initial	<DIV id=probe-marker class=section><P>tail</P></DIV>	121585BC744052E8	0	0	0	none	none	parent=BODY;active=BODY;offset=0;length=0	0x00000000
+prior-Q	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	9D69936880E79ADD	1	1	0	{00000000-0000-0000-0000-000000000000}:0:Ввод	none	parent=P;active=DIV;offset=1;length=0	0x00000000
+input-X	<DIV id=probe-marker class=section><P>QXtail</P></DIV>	60B6FB25B6EF4FD9	1	2	0	{00000000-0000-0000-0000-000000000000}:0:Ввод|{00000000-0000-0000-0000-000000000000}:0:Ввод	none	parent=P;active=DIV;offset=2;length=0	0x00000000
+undo-X	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	9D69936880E79ADD	1	1	1	{00000000-0000-0000-0000-000000000000}:0:Ввод	{00000000-0000-0000-0000-000000000000}:0:Ввод	parent=P;active=DIV;offset=1;length=0	0x00000000
+undo-Q	<DIV id=probe-marker class=section><P>tail</P></DIV>	121585BC744052E8	1	0	2	none	{00000000-0000-0000-0000-000000000000}:0:Ввод|{00000000-0000-0000-0000-000000000000}:0:Ввод	parent=P;active=DIV;offset=0;length=0	0x00000000
+redo-Q	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	9D69936880E79ADD	1	1	1	{00000000-0000-0000-0000-000000000000}:0:Ввод	{00000000-0000-0000-0000-000000000000}:0:Ввод	parent=P;active=DIV;offset=1;length=0	0x00000000
+redo-X	<DIV id=probe-marker class=section><P>QXtail</P></DIV>	60B6FB25B6EF4FD9	1	2	0	{00000000-0000-0000-0000-000000000000}:0:Ввод|{00000000-0000-0000-0000-000000000000}:0:Ввод	none	parent=P;active=DIV;offset=2;length=0	0x00000000
+result	FAIL	undoX=1;undoQ=1;redoQ=1;redoX=1;savepoint=0

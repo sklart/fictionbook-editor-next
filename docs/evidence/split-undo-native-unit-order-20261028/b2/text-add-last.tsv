@@ -1,0 +1,80 @@
+phase	dom	fnv1a_utf16	dirty	undo	redo	undo_type	redo_type	selection	hresult
+initial	<DIV id=probe-marker class=section><P>tail</P></DIV>	121585BC744052E8	0	0	0	none	none	parent=BODY;active=BODY;offset=0;length=0	0x00000000
+prior-Q	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	9D69936880E79ADD	1	1	0	{00000000-0000-0000-0000-000000000000}:0:Ввод	none	parent=P;active=DIV;offset=1;length=0	0x00000000
+unit-map	after-Q-before-initial-mutation	undo	0	held-1	127D9AA0	{00000000-0000-0000-0000-000000000000}:0	Ввод	0x00000000	0x00000000
+unit-map	after-initial-mutation-before-add	undo	0	held-1	127D9AA0	{00000000-0000-0000-0000-000000000000}:0	Ввод	0x00000000	0x00000000
+unit-map	after-initial-mutation-before-add	undo	1	held-2	1313B640	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	Действие с текстом	0x00000000	0x00000000
+unit-map	after-initial-add	undo	0	held-1	127D9AA0	{00000000-0000-0000-0000-000000000000}:0	Ввод	0x00000000	0x00000000
+unit-map	after-initial-add	undo	1	held-2	1313B640	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	Действие с текстом	0x00000000	0x00000000
+unit-map	after-initial-add	undo	2	custom-0	086EE198	{00000000-0000-0000-0000-000000000000}:0	split transaction marker probe	0x00000000	0x00000000
+marker	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	9D69936880E79ADD	1	3	0	{00000000-0000-0000-0000-000000000000}:0:Ввод|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом|{00000000-0000-0000-0000-000000000000}:0:split transaction marker probe	none	parent=P;active=DIV;offset=1;length=0	0x00000000
+on-next-add	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	NA	NA	NA	NA	NA	NA	parent=P;active=DIV;offset=1;length=0;text_identity=1313AD40;depth=0;parent_hr=0x80004003;parent_state=0x00000000;next_adds=1	0x00000000
+input-X	<DIV id=probe-marker class=section><P>QXtail</P></DIV>	60B6FB25B6EF4FD9	1	4	0	{00000000-0000-0000-0000-000000000000}:0:Ввод|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом|{00000000-0000-0000-0000-000000000000}:0:split transaction marker probe|{00000000-0000-0000-0000-000000000000}:0:Ввод	none	parent=P;active=DIV;offset=2;length=0	0x00000000
+unit-map	after-input-X	undo	0	held-1	127D9AA0	{00000000-0000-0000-0000-000000000000}:0	Ввод	0x00000000	0x00000000
+unit-map	after-input-X	undo	1	held-2	1313B640	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	Действие с текстом	0x00000000	0x00000000
+unit-map	after-input-X	undo	2	custom-0	086EE198	{00000000-0000-0000-0000-000000000000}:0	split transaction marker probe	0x00000000	0x00000000
+unit-map	after-input-X	undo	3	held-3	0D43CA50	{00000000-0000-0000-0000-000000000000}:0	Ввод	0x00000000	0x00000000
+undo-X	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	9D69936880E79ADD	1	3	1	{00000000-0000-0000-0000-000000000000}:0:Ввод|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом|{00000000-0000-0000-0000-000000000000}:0:split transaction marker probe	{00000000-0000-0000-0000-000000000000}:0:Ввод	parent=P;active=DIV;offset=1;length=0	0x00000000
+unit-map	after-undo-X	undo	0	held-1	127D9AA0	{00000000-0000-0000-0000-000000000000}:0	Ввод	0x00000000	0x00000000
+unit-map	after-undo-X	undo	1	held-2	1313B640	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	Действие с текстом	0x00000000	0x00000000
+unit-map	after-undo-X	undo	2	custom-0	086EE198	{00000000-0000-0000-0000-000000000000}:0	split transaction marker probe	0x00000000	0x00000000
+unit-map	after-undo-X	redo	0	held-3	0D43CA50	{00000000-0000-0000-0000-000000000000}:0	Ввод	0x00000000	0x00000000
+do-enter	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	NA	NA	NA	NA	NA	NA	parent=P;active=DIV;offset=1;length=0;text_identity=1313A440;depth=1;parent_hr=0x00000001;parent_state=0x00000000;next_adds=1	0x00000000
+unit-map	do-enter	undo	unavailable	0x8000FFFF
+unit-map	do-enter	redo	unavailable	0x8000FFFF
+unit-map	before-mutation	undo	unavailable	0x8000FFFF
+unit-map	before-mutation	redo	unavailable	0x8000FFFF
+do-after-mutation	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	NA	NA	NA	NA	NA	NA	parent=P;active=DIV;offset=5;length=0;text_identity=1313A200;depth=1;parent_hr=0x00000001;parent_state=0x00000000;next_adds=1	0x00000000
+unit-map	after-mutation-before-add	undo	unavailable	0x8000FFFF
+unit-map	after-mutation-before-add	redo	unavailable	0x8000FFFF
+do-after-add	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	NA	NA	NA	NA	NA	NA	parent=P;active=DIV;offset=5;length=0;text_identity=1313A1C0;depth=1;parent_hr=0x00000001;parent_state=0x00000000;next_adds=1	0x00000000
+unit-map	after-add	undo	unavailable	0x8000FFFF
+unit-map	after-add	redo	unavailable	0x8000FFFF
+undo-marker	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	9D69936880E79ADD	1	2	3	{00000000-0000-0000-0000-000000000000}:0:Ввод|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом	{00000000-0000-0000-0000-000000000000}:0:Ввод|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом|{00000000-0000-0000-0000-000000000000}:0:split transaction marker probe	parent=P;active=DIV;offset=5;length=0	0x00000000
+unit-map	after-undo-marker	undo	0	held-1	127D9AA0	{00000000-0000-0000-0000-000000000000}:0	Ввод	0x00000000	0x00000000
+unit-map	after-undo-marker	undo	1	held-2	1313B640	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	Действие с текстом	0x00000000	0x00000000
+unit-map	after-undo-marker	redo	0	held-3	0D43CA50	{00000000-0000-0000-0000-000000000000}:0	Ввод	0x00000000	0x00000000
+unit-map	after-undo-marker	redo	1	held-4	1313A400	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	Действие с текстом	0x00000000	0x00000000
+unit-map	after-undo-marker	redo	2	custom-0	086EE198	{00000000-0000-0000-0000-000000000000}:0	split transaction marker probe	0x00000000	0x00000000
+do-enter	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	NA	NA	NA	NA	NA	NA	parent=P;active=DIV;offset=5;length=0;text_identity=131F73C0;depth=1;parent_hr=0x00000001;parent_state=0x00000000;next_adds=1	0x00000000
+unit-map	do-enter	undo	unavailable	0x8000FFFF
+unit-map	do-enter	redo	unavailable	0x8000FFFF
+unit-map	before-mutation	undo	unavailable	0x8000FFFF
+unit-map	before-mutation	redo	unavailable	0x8000FFFF
+do-after-mutation	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	NA	NA	NA	NA	NA	NA	parent=P;active=DIV;offset=5;length=0;text_identity=131F7640;depth=1;parent_hr=0x00000001;parent_state=0x00000000;next_adds=1	0x00000000
+unit-map	after-mutation-before-add	undo	unavailable	0x8000FFFF
+unit-map	after-mutation-before-add	redo	unavailable	0x8000FFFF
+do-after-add	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	NA	NA	NA	NA	NA	NA	parent=P;active=DIV;offset=5;length=0;text_identity=131F7680;depth=1;parent_hr=0x00000001;parent_state=0x00000000;next_adds=1	0x00000000
+unit-map	after-add	undo	unavailable	0x8000FFFF
+unit-map	after-add	redo	unavailable	0x8000FFFF
+redo-marker	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	9D69936880E79ADD	1	4	2	{00000000-0000-0000-0000-000000000000}:0:Ввод|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом|{00000000-0000-0000-0000-000000000000}:0:split transaction marker probe	{00000000-0000-0000-0000-000000000000}:0:Ввод|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом	parent=P;active=DIV;offset=5;length=0	0x00000000
+unit-map	after-redo-marker	undo	0	held-1	127D9AA0	{00000000-0000-0000-0000-000000000000}:0	Ввод	0x00000000	0x00000000
+unit-map	after-redo-marker	undo	1	held-2	1313B640	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	Действие с текстом	0x00000000	0x00000000
+unit-map	after-redo-marker	undo	2	held-5	131F7400	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	Действие с текстом	0x00000000	0x00000000
+unit-map	after-redo-marker	undo	3	custom-0	086EE198	{00000000-0000-0000-0000-000000000000}:0	split transaction marker probe	0x00000000	0x00000000
+unit-map	after-redo-marker	redo	0	held-3	0D43CA50	{00000000-0000-0000-0000-000000000000}:0	Ввод	0x00000000	0x00000000
+unit-map	after-redo-marker	redo	1	held-4	1313A400	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	Действие с текстом	0x00000000	0x00000000
+on-next-add	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	NA	NA	NA	NA	NA	NA	parent=P;active=DIV;offset=5;length=0;text_identity=131F7700;depth=0;parent_hr=0x80004003;parent_state=0x00000000;next_adds=2	0x00000000
+redo-X	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	9D69936880E79ADD	1	5	1	{00000000-0000-0000-0000-000000000000}:0:Ввод|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом|{00000000-0000-0000-0000-000000000000}:0:split transaction marker probe|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом	{00000000-0000-0000-0000-000000000000}:0:Ввод	parent=P;active=DIV;offset=5;length=0	0x00000000
+unit-map	after-redo-X	undo	0	held-1	127D9AA0	{00000000-0000-0000-0000-000000000000}:0	Ввод	0x00000000	0x00000000
+unit-map	after-redo-X	undo	1	held-2	1313B640	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	Действие с текстом	0x00000000	0x00000000
+unit-map	after-redo-X	undo	2	held-5	131F7400	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	Действие с текстом	0x00000000	0x00000000
+unit-map	after-redo-X	undo	3	custom-0	086EE198	{00000000-0000-0000-0000-000000000000}:0	split transaction marker probe	0x00000000	0x00000000
+unit-map	after-redo-X	undo	4	held-4	1313A400	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	Действие с текстом	0x00000000	0x00000000
+unit-map	after-redo-X	redo	0	held-3	0D43CA50	{00000000-0000-0000-0000-000000000000}:0	Ввод	0x00000000	0x00000000
+second-undo-X	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	9D69936880E79ADD	1	4	2	{00000000-0000-0000-0000-000000000000}:0:Ввод|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом|{00000000-0000-0000-0000-000000000000}:0:split transaction marker probe	{00000000-0000-0000-0000-000000000000}:0:Ввод|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом	parent=P;active=DIV;offset=5;length=0	0x00000000
+do-enter	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	NA	NA	NA	NA	NA	NA	parent=P;active=DIV;offset=5;length=0;text_identity=131C29C0;depth=1;parent_hr=0x00000001;parent_state=0x00000000;next_adds=2	0x00000000
+unit-map	do-enter	undo	unavailable	0x8000FFFF
+unit-map	do-enter	redo	unavailable	0x8000FFFF
+unit-map	before-mutation	undo	unavailable	0x8000FFFF
+unit-map	before-mutation	redo	unavailable	0x8000FFFF
+do-after-mutation	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	NA	NA	NA	NA	NA	NA	parent=P;active=DIV;offset=5;length=0;text_identity=131C2C00;depth=1;parent_hr=0x00000001;parent_state=0x00000000;next_adds=2	0x00000000
+unit-map	after-mutation-before-add	undo	unavailable	0x8000FFFF
+unit-map	after-mutation-before-add	redo	unavailable	0x8000FFFF
+do-after-add	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	NA	NA	NA	NA	NA	NA	parent=P;active=DIV;offset=5;length=0;text_identity=131C2C40;depth=1;parent_hr=0x00000001;parent_state=0x00000000;next_adds=2	0x00000000
+unit-map	after-add	undo	unavailable	0x8000FFFF
+unit-map	after-add	redo	unavailable	0x8000FFFF
+second-undo-marker	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	9D69936880E79ADD	1	3	4	{00000000-0000-0000-0000-000000000000}:0:Ввод|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом	{00000000-0000-0000-0000-000000000000}:0:Ввод|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом|{00000000-0000-0000-0000-000000000000}:0:split transaction marker probe	parent=P;active=DIV;offset=5;length=0	0x00000000
+on-next-add	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	NA	NA	NA	NA	NA	NA	parent=P;active=DIV;offset=5;length=0;text_identity=12767440;depth=0;parent_hr=0x80004003;parent_state=0x00000000;next_adds=3	0x00000000
+undo-Q	<DIV id=probe-marker class=section><P>Qtail</P></DIV>	9D69936880E79ADD	1	2	5	{00000000-0000-0000-0000-000000000000}:0:Ввод|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом	{00000000-0000-0000-0000-000000000000}:0:Ввод|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом|{00000000-0000-0000-0000-000000000000}:0:split transaction marker probe|{25336920-03F9-11CF-8FD0-00AA00686F13}:2262:Действие с текстом	parent=P;active=DIV;offset=5;length=0	0x00000000
+result	FAIL	typed=1;undoX=1;undoMarker=1;redoMarker=1;redoX=0;undoQ=0;savepoint=0;calls=2;lastAdd=0x00000000

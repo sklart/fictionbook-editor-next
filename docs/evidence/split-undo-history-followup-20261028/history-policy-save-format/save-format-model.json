@@ -1,0 +1,37 @@
+[
+  {
+    "phase": "saved",
+    "modelValid": true,
+    "sameAsSaved": true,
+    "dirty": "0",
+    "domMatchesSavepoint": "1"
+  },
+  {
+    "phase": "ready",
+    "modelValid": true,
+    "sameAsSaved": true,
+    "dirty": "0",
+    "domMatchesSavepoint": "1"
+  },
+  {
+    "phase": "format",
+    "modelValid": true,
+    "sameAsSaved": false,
+    "dirty": "1",
+    "domMatchesSavepoint": "0"
+  },
+  {
+    "phase": "undo-1",
+    "modelValid": true,
+    "sameAsSaved": true,
+    "dirty": "1",
+    "domMatchesSavepoint": "1"
+  },
+  {
+    "phase": "redo-1",
+    "modelValid": true,
+    "sameAsSaved": false,
+    "dirty": "1",
+    "domMatchesSavepoint": "0"
+  }
+]

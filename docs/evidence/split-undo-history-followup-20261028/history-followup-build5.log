@@ -1,0 +1,197 @@
+VS toolchain: installation=C:\Program Files\Microsoft Visual Studio\2022\Enterprise; PlatformToolset=v143; cl.exe=C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\bin\HostX64\x86\cl.exe; VCToolsVersion=14.44.35207
+Используется только проверенный PCRE2 cache; остальные зависимости будут подготовлены отдельно.
+Подготовка generated Hunspell project/header...
+Hunspell generated project/header подготовлены; MSBuild пропущен.
+Используется проверенный cache image stack; CMake configure/build пропущены.
+
+Recreated MetadataPath
+--------- ------------
+    False R:\build\zlib\Release-v143\.fbe-cmake-fingerprint.json
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 6.1.
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: R:/build/zlib/Release-v143
+    False R:\build\zlib\Release-v143\.fbe-cmake-fingerprint.json
+Версия MSBuild 17.14.60+43b635718 для .NET Framework
+
+  zlibstatic.vcxproj -> R:\build\zlib\Release-v143\Release\zs.lib
+  1>
+  -- Install configuration: "Release"
+  -- Up-to-date: R:/build/zlib/install/Release/lib/zs.lib
+  -- Up-to-date: R:/build/zlib/install/Release/lib/cmake/zlib/ZLIB-static.cmake
+  -- Up-to-date: R:/build/zlib/install/Release/lib/cmake/zlib/ZLIB-static-release.cmake
+  -- Up-to-date: R:/build/zlib/install/Release/lib/cmake/zlib/ZLIBConfig.cmake
+  -- Up-to-date: R:/build/zlib/install/Release/lib/cmake/zlib/ZLIBConfigVersion.cmake
+  -- Up-to-date: R:/build/zlib/install/Release/include/zconf.h
+  -- Up-to-date: R:/build/zlib/install/Release/include/zlib.h
+  -- Up-to-date: R:/build/zlib/install/Release/share/man/man3/zlib.3
+  -- Up-to-date: R:/build/zlib/install/Release/share/doc/zlib/zlib/LICENSE
+  -- Up-to-date: R:/build/zlib/install/Release/share/doc/zlib/zlib/algorithm.txt
+  -- Up-to-date: R:/build/zlib/install/Release/share/doc/zlib/zlib/crc-doc.1.0.pdf
+  -- Up-to-date: R:/build/zlib/install/Release/share/doc/zlib/zlib/rfc1950.txt
+  -- Up-to-date: R:/build/zlib/install/Release/share/doc/zlib/zlib/rfc1951.txt
+  -- Up-to-date: R:/build/zlib/install/Release/share/doc/zlib/zlib/rfc1952.txt
+  -- Up-to-date: R:/build/zlib/install/Release/share/doc/zlib/zlib/txtvsbin.txt
+  -- Up-to-date: R:/build/zlib/install/Release/lib/pkgconfig/zlib.pc
+    False R:\build\libarchive\Release-v143\.fbe-cmake-fingerpri…
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 6.1.
+-- Could NOT find LIBB2 (missing: LIBB2_LIBRARY LIBB2_INCLUDE_DIR) 
+-- Could NOT find LIBGCC (missing: LIBGCC_LIBRARY) 
+-- Could NOT find PCREPOSIX (missing: PCREPOSIX_LIBRARY PCRE_INCLUDE_DIR) 
+CMake Warning (dev) at C:/Program Files/Microsoft Visual Studio/2022/Enterprise/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake:441 (message):
+  The package name passed to `find_package_handle_standard_args` (PCRE) does
+  not match the name of the calling package (PCREPOSIX).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  build/cmake/FindPCREPOSIX.cmake:23 (FIND_PACKAGE_HANDLE_STANDARD_ARGS)
+  CMakeLists.txt:1362 (FIND_PACKAGE)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Could NOT find PCRE (missing: PCRE_LIBRARY) 
+-- Could NOT find LIBGCC (missing: LIBGCC_LIBRARY) 
+-- Could NOT find PCRE2POSIX (missing: PCRE2POSIX_LIBRARY PCRE2_INCLUDE_DIR) 
+CMake Warning (dev) at C:/Program Files/Microsoft Visual Studio/2022/Enterprise/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake:441 (message):
+  The package name passed to `find_package_handle_standard_args` (PCRE2) does
+  not match the name of the calling package (PCRE2POSIX).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  build/cmake/FindPCRE2POSIX.cmake:23 (FIND_PACKAGE_HANDLE_STANDARD_ARGS)
+  CMakeLists.txt:1424 (FIND_PACKAGE)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Could NOT find PCRE2 (missing: PCRE2_LIBRARY) 
+-- Extended attributes support: none
+-- ACL support: none
+-- Configuring done (0.5s)
+-- Generating done (0.8s)
+-- Build files have been written to: R:/build/libarchive/Release-v143
+    False R:\build\libarchive\Release-v143\.fbe-cmake-fingerpri…
+Версия MSBuild 17.14.60+43b635718 для .NET Framework
+
+  archive_static.vcxproj -> R:\build\libarchive\Release-v143\libarchive\Release\archive.lib
+  1>
+  -- Install configuration: "Release"
+  -- Up-to-date: R:/build/libarchive/install/Release/lib/pkgconfig/libarchive.pc
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/pdf
+  -- Up-to-date: R:/build/libarchive/install/Release/lib/archive.lib
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_entry.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_entry_acl.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_entry_linkify.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_entry_misc.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_entry_paths.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_entry_perms.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_entry_stat.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_entry_time.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_read.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_read_add_passphrase.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_read_data.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_read_disk.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_read_extract.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_read_filter.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_read_format.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_read_free.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_read_header.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_read_new.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_read_open.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_read_set_options.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_util.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_write.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_write_blocksize.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_write_data.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_write_disk.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_write_filter.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_write_finish_entry.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_write_format.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_write_free.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_write_header.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_write_new.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_write_open.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_write_set_options.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/archive_write_set_passphrase.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man5/cpio.5
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/libarchive.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/libarchive_changes.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man3/libarchive_internals.3
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man5/libarchive-formats.5
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man5/mtree.5
+  -- Up-to-date: R:/build/libarchive/install/Release/share/man/man5/tar.5
+  -- Up-to-date: R:/build/libarchive/install/Release/include/archive.h
+  -- Up-to-date: R:/build/libarchive/install/Release/include/archive_entry.h
+Scintilla/Lexilla: используется vcvars_ver=14.44.
+Scintilla/Lexilla: validated universal editor runtime cache hit (toolset=v143).
+Runtime JSON-локализация экспортирована.
+  Каталог: R:\out\Release\Lang
+  Языков: 12
+  Модулей: 6
+Runtime-локализация подготовлена рядом с бинарниками: R:\out\Release\Lang
+Встроенные ресурсы подготовлены рядом с бинарниками: R:\out\Release\Resources
+Словари подготовлены рядом с бинарниками: R:\out\Release\Dict
+Фоны редактора подготовлены рядом с бинарниками: R:\out\Release\Backgrounds
+
+  libhunspell.vcxproj -> R:\build\hunspell\lib\Release\libhunspell.lib
+  FBV.vcxproj -> R:\out\Release\FBV.exe
+  Copying requisite resources...
+     Создается библиотека R:\out\Release\FBShell.lib и объект R:\out\Release\FBShell.exp
+     Создается библиотека R:\src\import-epub\..\..\out\Release\Plugins\ImportEPUB.lib и объект R:\src\import-epub\..\..\out\Release\Plugins\ImportEPUB.exp
+  Создание кода
+     Создается библиотека R:\out\Release\Plugins\ExportHTML.lib и объект R:\out\Release\Plugins\ExportHTML.exp
+  Создание кода
+  FBShell.vcxproj -> R:\out\Release\FBShell.dll
+     Создается библиотека R:\src\export-docx\..\..\out\Release\Plugins\ExportDOCX.lib и объект R:\src\export-docx\..\..\out\Release\Plugins\ExportDOCX.exp
+  Создание кода
+     Создается библиотека R:\out\Release\Plugins\ExportEPUB.lib и объект R:\out\Release\Plugins\ExportEPUB.exp
+  Создание кода
+  Создание кода завершено
+  Создание кода завершено
+  ExportHTML.vcxproj -> R:\out\Release\Plugins\ExportHTML.dll
+  Создание кода завершено
+  ExportDOCX.vcxproj -> R:\out\Release\Plugins\ExportDOCX.dll
+  Создание кода завершено
+  ExportEPUB.vcxproj -> R:\out\Release\Plugins\ExportEPUB.dll
+  Regex Help HTML generated: 24 pages.
+  ImportEPUB.vcxproj -> R:\out\Release\Plugins\ImportEPUB.dll
+  Fluent Pin masks prepared: R:\build\generated\Win32\Release\pin-icons\FluentPinMasks.generated.h
+  mainfrm.cpp
+  buildstamp.c
+     Создается библиотека R:\out\Release\FBE.lib и объект R:\out\Release\FBE.exp
+  Создание кода
+  Создание кода завершено
+  FBE.vcxproj -> R:\out\Release\FBE.exe
+  Runtime JSON-локализация экспортирована.
+    Каталог: R:\out\Release\Lang
+    Языков: 12
+    Модулей: 6
+Сборка релизного бинарника (Build): R:\src\import-epub\ImportEPUB.vcxproj
+
+  ImportEPUB.vcxproj -> R:\out\Release\Plugins\ImportEPUB.dll
+Сборка релизного бинарника (Build): R:\src\export-docx\ExportDOCXBatch.vcxproj
+
+  ExportDOCXBatch.vcxproj -> R:\out\Release\ExportDOCXBatch.exe
+Сборка релизного бинарника (Build): R:\src\export-epub\ExportEPUBBatch.vcxproj
+
+  ExportEPUBBatch.vcxproj -> R:\out\Release\ExportEPUBBatch.exe
+Сборка релизного бинарника (Build): R:\src\import-epub\ImportEPUBBatch.vcxproj
+
+  ImportEPUBBatch.vcxproj -> R:\out\Release\ImportEPUBBatch.exe
+Сборка релизного бинарника (Build): R:\third_party\lunasvg\plutovg.vcxproj
+
+  plutovg.vcxproj -> R:\build\lib\lunasvg\Win32\Release\plutovg.lib
+Сборка релизного бинарника (Build): R:\third_party\lunasvg\lunasvg.vcxproj
+
+  lunasvg.vcxproj -> R:\build\lib\lunasvg\Win32\Release\lunasvg.lib
+Сборка релизного бинарника (Build): R:\src\import-epub\ImportEPUBLunaSVG.vcxproj
+
+     Создается библиотека R:\src\import-epub\..\..\out\Release\Plugins\ImportEPUBLunaSVG.lib и объект R:\src\import-epub\..\..\out\Release\Plugins\ImportEPUBLunaSVG.exp
+  Создание кода
+  Создание кода завершено
+  ImportEPUBLunaSVG.vcxproj -> R:\out\Release\Plugins\ImportEPUBLunaSVG.dll
+Scintilla/Lexilla скопированы из R:\out\editor-runtime в R:\out\Release.
+Удалён лишний релизный артефакт: R:\out\Release\FBShell.exp
+Удалён лишний релизный артефакт: R:\out\Release\FBShell.lib
+Удалён лишний релизный артефакт: R:\out\Release\FBE.exe.manifest
+Build provenance written: R:\out\build-provenance\CommonCore-Release.json
+Tracked Scintilla/Lexilla runtime DLLs are unchanged by this invocation.
+Build provenance written: R:\out\build-provenance\Runtime-Release.json
+

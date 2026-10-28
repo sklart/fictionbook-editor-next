@@ -1,0 +1,53 @@
+{
+  "variant": "save-again",
+  "TEXT_HISTORY": "OBSERVATION",
+  "DIRTY_SAVEPOINT": "OBSERVATION",
+  "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+  "savedFileSha256": "871C843F69B023F80B78F606BA73D7D799FEBA9B583851A49FEDE5B292368C10",
+  "result": "restored=1;redone=1;undo_count=1;q_changed=1",
+  "report": "R:\\out\\integration-evidence\\history-policy-save-again\\save-again.tsv",
+  "models": [
+    {
+      "phase": "saved",
+      "modelValid": true,
+      "sameAsSaved": false,
+      "dirty": "0",
+      "domMatchesSavepoint": "1"
+    },
+    {
+      "phase": "ready",
+      "modelValid": true,
+      "sameAsSaved": false,
+      "dirty": "0",
+      "domMatchesSavepoint": "1"
+    },
+    {
+      "phase": "Q",
+      "modelValid": true,
+      "sameAsSaved": true,
+      "dirty": "1",
+      "domMatchesSavepoint": "0"
+    },
+    {
+      "phase": "saved-again",
+      "modelValid": true,
+      "sameAsSaved": true,
+      "dirty": "0",
+      "domMatchesSavepoint": "1"
+    },
+    {
+      "phase": "undo-1",
+      "modelValid": true,
+      "sameAsSaved": false,
+      "dirty": "1",
+      "domMatchesSavepoint": "0"
+    },
+    {
+      "phase": "redo-1",
+      "modelValid": true,
+      "sameAsSaved": true,
+      "dirty": "1",
+      "domMatchesSavepoint": "1"
+    }
+  ]
+}

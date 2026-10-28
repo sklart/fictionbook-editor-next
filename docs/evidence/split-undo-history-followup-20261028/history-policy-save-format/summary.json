@@ -1,0 +1,46 @@
+{
+  "variant": "save-format",
+  "TEXT_HISTORY": "OBSERVATION",
+  "DIRTY_SAVEPOINT": "OBSERVATION",
+  "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+  "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+  "result": "restored=1;redone=1;undo_count=1;format_changed=1",
+  "report": "R:\\out\\integration-evidence\\history-policy-save-format\\save-format.tsv",
+  "models": [
+    {
+      "phase": "saved",
+      "modelValid": true,
+      "sameAsSaved": true,
+      "dirty": "0",
+      "domMatchesSavepoint": "1"
+    },
+    {
+      "phase": "ready",
+      "modelValid": true,
+      "sameAsSaved": true,
+      "dirty": "0",
+      "domMatchesSavepoint": "1"
+    },
+    {
+      "phase": "format",
+      "modelValid": true,
+      "sameAsSaved": false,
+      "dirty": "1",
+      "domMatchesSavepoint": "0"
+    },
+    {
+      "phase": "undo-1",
+      "modelValid": true,
+      "sameAsSaved": true,
+      "dirty": "1",
+      "domMatchesSavepoint": "1"
+    },
+    {
+      "phase": "redo-1",
+      "modelValid": true,
+      "sameAsSaved": false,
+      "dirty": "1",
+      "domMatchesSavepoint": "0"
+    }
+  ]
+}

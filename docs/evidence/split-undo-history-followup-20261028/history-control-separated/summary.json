@@ -1,0 +1,568 @@
+[
+  {
+    "variant": "a1",
+    "TEXT_UNDO": true,
+    "TEXT_REDO": true,
+    "HISTORY_ORDER": true,
+    "CARET_RESTORE": true,
+    "SELECTION_RESTORE": true,
+    "XML_INTEGRITY": true,
+    "DIRTY_SAVEPOINT": "FAIL",
+    "TEXT_HISTORY": "PASS",
+    "basic": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=1;q_changed=1",
+    "report": "R:\\out\\integration-evidence\\history-control-separated\\a1.tsv",
+    "models": [
+      {
+        "phase": "saved",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "0",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "ready",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "0",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "Q",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "boundary",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "X",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "undo-1",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "1",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "redo-1",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      }
+    ]
+  },
+  {
+    "variant": "a2",
+    "TEXT_UNDO": true,
+    "TEXT_REDO": true,
+    "HISTORY_ORDER": true,
+    "CARET_RESTORE": true,
+    "SELECTION_RESTORE": true,
+    "XML_INTEGRITY": true,
+    "DIRTY_SAVEPOINT": "FAIL",
+    "TEXT_HISTORY": "PASS",
+    "basic": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=1;q_changed=1",
+    "report": "R:\\out\\integration-evidence\\history-control-separated\\a2.tsv",
+    "models": [
+      {
+        "phase": "saved",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "0",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "ready",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "0",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "Q",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "boundary",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "X",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "undo-1",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "1",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "redo-1",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      }
+    ]
+  },
+  {
+    "variant": "a3",
+    "TEXT_UNDO": true,
+    "TEXT_REDO": true,
+    "HISTORY_ORDER": true,
+    "CARET_RESTORE": true,
+    "SELECTION_RESTORE": true,
+    "XML_INTEGRITY": true,
+    "DIRTY_SAVEPOINT": "FAIL",
+    "TEXT_HISTORY": "PASS",
+    "basic": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=2;q_changed=1",
+    "report": "R:\\out\\integration-evidence\\history-control-separated\\a3.tsv",
+    "models": [
+      {
+        "phase": "saved",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "0",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "ready",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "0",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "Q",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "boundary",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "X",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "undo-1",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "undo-2",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "1",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "redo-1",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "redo-2",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      }
+    ]
+  },
+  {
+    "variant": "a3-light",
+    "TEXT_UNDO": true,
+    "TEXT_REDO": true,
+    "HISTORY_ORDER": true,
+    "CARET_RESTORE": true,
+    "SELECTION_RESTORE": true,
+    "XML_INTEGRITY": true,
+    "DIRTY_SAVEPOINT": "FAIL",
+    "TEXT_HISTORY": "PASS",
+    "basic": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=2;q_changed=1",
+    "report": "R:\\out\\integration-evidence\\history-control-separated\\a3-light.tsv",
+    "models": [
+      {
+        "phase": "saved",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "0",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "X",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "undo-1",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "undo-2",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "1",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "redo-1",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "redo-2",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      }
+    ]
+  },
+  {
+    "variant": "a4",
+    "TEXT_UNDO": true,
+    "TEXT_REDO": true,
+    "HISTORY_ORDER": true,
+    "CARET_RESTORE": true,
+    "SELECTION_RESTORE": true,
+    "XML_INTEGRITY": true,
+    "DIRTY_SAVEPOINT": "FAIL",
+    "TEXT_HISTORY": "PASS",
+    "basic": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=3;q_changed=1",
+    "report": "R:\\out\\integration-evidence\\history-control-separated\\a4.tsv",
+    "models": [
+      {
+        "phase": "saved",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "0",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "ready",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "0",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "Q",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "format",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "boundary",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "X",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "undo-1",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "undo-2",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "undo-3",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "1",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "redo-1",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "redo-2",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "redo-3",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      }
+    ]
+  },
+  {
+    "variant": "savepoint",
+    "TEXT_UNDO": true,
+    "TEXT_REDO": true,
+    "HISTORY_ORDER": true,
+    "CARET_RESTORE": true,
+    "SELECTION_RESTORE": true,
+    "XML_INTEGRITY": true,
+    "DIRTY_SAVEPOINT": "FAIL",
+    "TEXT_HISTORY": "PASS",
+    "basic": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=1;q_changed=1",
+    "report": "R:\\out\\integration-evidence\\history-control-separated\\savepoint.tsv",
+    "models": [
+      {
+        "phase": "saved",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "0",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "ready",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "0",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "Q",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "undo-1",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "1",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "redo-1",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "final-undo",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "1",
+        "domMatchesSavepoint": "1"
+      }
+    ]
+  },
+  {
+    "variant": "savepoint-light",
+    "TEXT_UNDO": true,
+    "TEXT_REDO": true,
+    "HISTORY_ORDER": true,
+    "CARET_RESTORE": true,
+    "SELECTION_RESTORE": true,
+    "XML_INTEGRITY": true,
+    "DIRTY_SAVEPOINT": "FAIL",
+    "TEXT_HISTORY": "PASS",
+    "basic": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=1;q_changed=1",
+    "report": "R:\\out\\integration-evidence\\history-control-separated\\savepoint-light.tsv",
+    "models": [
+      {
+        "phase": "saved",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "0",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "undo-1",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "1",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "redo-1",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "final-undo",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "1",
+        "domMatchesSavepoint": "1"
+      }
+    ]
+  },
+  {
+    "variant": "savepoint-direct",
+    "TEXT_UNDO": true,
+    "TEXT_REDO": true,
+    "HISTORY_ORDER": true,
+    "CARET_RESTORE": true,
+    "SELECTION_RESTORE": true,
+    "XML_INTEGRITY": true,
+    "DIRTY_SAVEPOINT": "FAIL",
+    "TEXT_HISTORY": "PASS",
+    "basic": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=1;q_changed=1",
+    "report": "R:\\out\\integration-evidence\\history-control-separated\\savepoint-direct.tsv",
+    "models": [
+      {
+        "phase": "saved",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "0",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "ready",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "0",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "Q",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "undo-1",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "1",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "reconcile-explicit",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "1",
+        "domMatchesSavepoint": "1"
+      },
+      {
+        "phase": "redo-1",
+        "modelValid": true,
+        "sameAsSaved": false,
+        "dirty": "1",
+        "domMatchesSavepoint": "0"
+      },
+      {
+        "phase": "final-undo",
+        "modelValid": true,
+        "sameAsSaved": true,
+        "dirty": "1",
+        "domMatchesSavepoint": "1"
+      }
+    ]
+  }
+]
