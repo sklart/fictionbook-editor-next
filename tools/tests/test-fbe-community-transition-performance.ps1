@@ -5,6 +5,7 @@ param(
  [Parameter(Mandatory)][string]$EvidenceDirectory,
  [int[]]$SizesMiB=@(1,20,50),
  [ValidateSet('baseline','candidate')][string[]]$Builds=@('baseline','candidate'),
+ [ValidateRange(1,2147483647)][long]$AffinityMask=1,
  [ValidateRange(1,600)][int]$TimeoutSeconds=600
 )
 $ErrorActionPreference='Stop'
@@ -14,6 +15,7 @@ New-Item -ItemType Directory -Path $evidence -Force | Out-Null
 $names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TRACE','FBE_NEXT_TEST_PERF_LEGACY');$saved=@{};foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name)}
 $utf8=[Text.UTF8Encoding]::new($false)
 $summary=[Collections.Generic.List[object]]::new()
+[ordered]@{cpu=(Get-CimInstance Win32_Processor).Name;logicalCpus=[Environment]::ProcessorCount;os=[Environment]::OSVersion.VersionString;affinityMask=$AffinityMask;priority='Normal';priorityBoost=$false;warmups=1;measuredRepeats=5} | ConvertTo-Json | Set-Content (Join-Path $evidence environment.json)
 try {
  foreach($size in $SizesMiB) {
   $fixture=Join-Path $evidence "fixture-$size.fb2"
@@ -37,6 +39,9 @@ try {
     $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='community-transition-performance';$env:FBE_NEXT_TRACE='0';$env:FBE_NEXT_TEST_PERF_LEGACY=if($entry.Name -eq 'baseline'){'1'}else{'0'}
     $report=Join-Path $evidence ("{0}-{1}.tsv" -f $entry.Name,$size)
     $process=Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -ArgumentList @('--portable','-b',$report,$fixture) -WindowStyle Hidden -PassThru
+    $process.ProcessorAffinity=[IntPtr]$AffinityMask
+    $process.PriorityClass=[Diagnostics.ProcessPriorityClass]::Normal
+    $process.PriorityBoostEnabled=$false
     $exitCode=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds $TimeoutSeconds
     Get-FileHash -LiteralPath $entry.Exe | ConvertTo-Json | Set-Content (Join-Path $evidence ($entry.Name+'-exe.json'))
     if($exitCode -ne 0){throw "Performance process failed: $($entry.Name), $size MiB, exit=$exitCode"}
