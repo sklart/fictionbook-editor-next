@@ -4,6 +4,7 @@ param(
  [Parameter(Mandatory)][string]$CandidateExe,
  [Parameter(Mandatory)][string]$EvidenceDirectory,
  [int[]]$SizesMiB=@(1,20,50),
+ [ValidateSet('baseline','candidate')][string[]]$Builds=@('baseline','candidate'),
  [ValidateRange(1,600)][int]$TimeoutSeconds=600
 )
 $ErrorActionPreference='Stop'
@@ -29,7 +30,7 @@ try {
   $validation=New-Object -ComObject Msxml2.DOMDocument.6.0;$validation.async=$false;$validation.schemas=$schema
   try{if(!$validation.load($fixture)){throw "Invalid performance FB2: $($validation.parseError.reason)"}}finally{[void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($validation);[void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($schema)}
   Get-FileHash -LiteralPath $fixture | ConvertTo-Json | Set-Content (Join-Path $evidence "fixture-$size-hash.json")
-  foreach($entry in @(@{Name='baseline';Exe=$BaselineExe},@{Name='candidate';Exe=$CandidateExe})) {
+  foreach($entry in @(@{Name='baseline';Exe=$BaselineExe},@{Name='candidate';Exe=$CandidateExe}) | Where-Object { $_.Name -in $Builds }) {
    $iso=New-IsolatedFbeRuntime -FbeExe $entry.Exe -Name transition-perf;$passed=$false
    try {
     $null=New-IsolatedFbeSettingsSeed -Isolation $iso -StartupScriptsDirectory (Join-Path $iso.Root empty-scripts)
