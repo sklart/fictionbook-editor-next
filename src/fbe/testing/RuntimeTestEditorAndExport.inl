@@ -13,6 +13,17 @@
 #include "RuntimeTestScriptingEnvironment.inl"
 #include "RuntimeTestDocumentTree.inl"
 #include "RuntimeTestPluginOptions.inl"
+	if (IsFbeTestScenario(L"epub-save-reopen-runtime"))
+	{
+		wchar_t path[32768] = {};
+		const DWORD length = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_EPUB_SAVE_PATH", path, _countof(path));
+		const bool saved = length && length < _countof(path) && m_doc->Save(path);
+		if (saved) { m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT); }
+		const bool reopened = saved && LoadFile(path) == OK && m_doc->m_body.Document() != NULL;
+		CStringA report; report.Format("saved=%d\nreopened=%d\n", saved, reopened);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(reopened ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"scripting-stage1"))
 	{
 		wchar_t root[32768] = {}; ::GetEnvironmentVariableW(L"FBE_NEXT_SCRIPT_API_ROOT", root, _countof(root));
