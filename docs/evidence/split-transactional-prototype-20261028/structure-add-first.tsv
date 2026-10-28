@@ -1,0 +1,13 @@
+phase	dom	fnv1a_utf16	dirty	undo	redo	undo_type	redo_type	selection	hresult
+initial	<DIV id=probe-marker class=section><P>seed</P><P>tail</P></DIV>	B7F98BEAE1AFA9DE	0	0	0	none	none	parent=BODY;text=(null)	0x00000000
+prior-Q	<DIV id=probe-marker class=section><P>seed</P><P>Qtail</P></DIV>	B2F8B8AFE934DBBF	1	1	0	{00000000-0000-0000-0000-000000000000}:0	none	parent=P;text=(null)	0x00000000
+marker	<DIV id=probe-left class=section><P>seed</P></DIV><DIV id=probe-marker class=section><P>Qtail</P></DIV>	BBA8F13C24A85622	1	4	0	{00000000-0000-0000-0000-000000000000}:0	none	parent=P;text=(null)	0x00000000
+input-X	<DIV id=probe-left class=section><P>seed</P></DIV><DIV id=probe-marker class=section><P>QtailX</P></DIV>	DFE5FA315716824C	1	5	0	{00000000-0000-0000-0000-000000000000}:0	none	parent=P;text=(null)	0x00000000
+undo-X	<DIV id=probe-left class=section><P>seed</P></DIV><DIV id=probe-marker class=section><P>Qtail</P></DIV>	BBA8F13C24A85622	1	4	1	{00000000-0000-0000-0000-000000000000}:0	{00000000-0000-0000-0000-000000000000}:0	parent=P;text=(null)	0x00000000
+undo-marker	<DIV id=probe-marker class=section><P>seed</P><P>Qtail</P></DIV>	B2F8B8AFE934DBBF	1	3	3	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	parent=DIV;text=(null)	0x00000000
+redo-marker	<DIV id=probe-marker class=section><P>seed</P></DIV>	1B1FB5B0DD828C47	1	4	2	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	{00000000-0000-0000-0000-000000000000}:0	parent=DIV;text=(null)	0x00000000
+redo-X	<DIV id=probe-left class=section><P>seed</P></DIV><DIV id=probe-marker class=section><P>Qtail</P></DIV>	BBA8F13C24A85622	1	7	1	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	{00000000-0000-0000-0000-000000000000}:0	parent=DIV;text=(null)	0x00000000
+second-undo-X	<DIV id=probe-left class=section><P>seed</P></DIV>	4A00A395E4367EF4	1	6	2	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	parent=DIV;text=(null)	0x00000000
+second-undo-marker	<DIV id=probe-left class=section><P>seed</P></DIV>	4A00A395E4367EF4	1	5	3	{00000000-0000-0000-0000-000000000000}:0	{25336920-03F9-11CF-8FD0-00AA00686F13}:2262	parent=DIV;text=(null)	0x00000000
+undo-Q	<DIV id=probe-left class=section><P>seed</P></DIV>	4A00A395E4367EF4	1	0	0	none	none	parent=DIV;text=(null)	0x80040104
+result	FAIL	typed=1;undoX=1;undoMarker=1;redoMarker=0;redoX=0;undoQ=0;savepoint=0;calls=2;lastAdd=0x00000000

@@ -1,0 +1,98 @@
+timestamp	operation	backend	case	phase	event	hresult	details
+2026-10-28T18:32:45.639Z	split	extracted	after-undo	split-enter	before	NA	""
+2026-10-28T18:32:45.640Z	split	extracted	after-undo	split-enter	after	NA	completed
+2026-10-28T18:32:45.641Z	split	extracted	after-undo	selection-create	before	NA	""
+2026-10-28T18:32:45.644Z	split	extracted	after-undo	selection-create	after	NA	completed
+2026-10-28T18:32:45.644Z	split	extracted	after-undo	parent-resolved	before	NA	""
+2026-10-28T18:32:45.645Z	split	extracted	after-undo	parent-resolved	after	NA	completed
+2026-10-28T18:32:45.645Z	split	extracted	after-undo	container-range-create	before	NA	""
+2026-10-28T18:32:45.646Z	split	extracted	after-undo	container-range-create	after	NA	completed
+2026-10-28T18:32:45.646Z	split	extracted	after-undo	container-range-move	before	NA	""
+2026-10-28T18:32:45.647Z	split	extracted	after-undo	container-range-move	after	NA	completed
+2026-10-28T18:32:45.647Z	split	extracted	after-undo	range-start-validated	before	NA	""
+2026-10-28T18:32:45.648Z	split	extracted	after-undo	range-start-validated	after	NA	completed
+2026-10-28T18:32:45.648Z	split	extracted	after-undo	range-start-create	before	NA	""
+2026-10-28T18:32:45.648Z	split	extracted	after-undo	range-start-create	after	NA	completed
+2026-10-28T18:32:45.649Z	split	extracted	after-undo	range-end-create	before	NA	""
+2026-10-28T18:32:45.649Z	split	extracted	after-undo	range-end-create	after	NA	completed
+2026-10-28T18:32:45.649Z	split	extracted	after-undo	range-end-validated	before	NA	""
+2026-10-28T18:32:45.650Z	split	extracted	after-undo	range-end-validated	after	NA	completed
+2026-10-28T18:32:45.650Z	split	extracted	after-undo	preflight-complete	after	NA	completed
+2026-10-28T18:32:45.652Z	split	extracted	after-undo	split-check-success	after	NA	completed
+2026-10-28T18:32:45.653Z	split	extracted	after-undo	split-enter	before	NA	""
+2026-10-28T18:32:45.653Z	split	extracted	after-undo	split-enter	after	NA	completed
+2026-10-28T18:32:45.654Z	split	extracted	after-undo	selection-create	before	NA	""
+2026-10-28T18:32:45.654Z	split	extracted	after-undo	selection-create	after	NA	completed
+2026-10-28T18:32:45.654Z	split	extracted	after-undo	parent-resolved	before	NA	""
+2026-10-28T18:32:45.655Z	split	extracted	after-undo	parent-resolved	after	NA	completed
+2026-10-28T18:32:45.656Z	split	extracted	after-undo	container-range-create	before	NA	""
+2026-10-28T18:32:45.656Z	split	extracted	after-undo	container-range-create	after	NA	completed
+2026-10-28T18:32:45.657Z	split	extracted	after-undo	container-range-move	before	NA	""
+2026-10-28T18:32:45.657Z	split	extracted	after-undo	container-range-move	after	NA	completed
+2026-10-28T18:32:45.658Z	split	extracted	after-undo	range-start-validated	before	NA	""
+2026-10-28T18:32:45.658Z	split	extracted	after-undo	range-start-validated	after	NA	completed
+2026-10-28T18:32:45.658Z	split	extracted	after-undo	range-start-create	before	NA	""
+2026-10-28T18:32:45.659Z	split	extracted	after-undo	range-start-create	after	NA	completed
+2026-10-28T18:32:45.659Z	split	extracted	after-undo	range-end-create	before	NA	""
+2026-10-28T18:32:45.660Z	split	extracted	after-undo	range-end-create	after	NA	completed
+2026-10-28T18:32:45.660Z	split	extracted	after-undo	range-end-validated	before	NA	""
+2026-10-28T18:32:45.660Z	split	extracted	after-undo	range-end-validated	after	NA	completed
+2026-10-28T18:32:45.662Z	split	extracted	after-undo	preflight-complete	after	NA	completed
+2026-10-28T18:32:45.662Z	split	extracted	after-undo	new-container-create	before	NA	""
+2026-10-28T18:32:45.663Z	split	extracted	after-undo	new-container-create	after	NA	completed
+2026-10-28T18:32:45.664Z	split	extracted	after-undo	title-prototype-create	before	NA	""
+2026-10-28T18:32:45.665Z	split	extracted	after-undo	title-prototype-create	after	NA	completed
+2026-10-28T18:32:45.665Z	split	extracted	after-undo	selection-start-pointer-create	before	NA	""
+2026-10-28T18:32:45.666Z	split	extracted	after-undo	selection-start-pointer-create	after	0x00000000	""
+2026-10-28T18:32:45.666Z	split	extracted	after-undo	selection-end-pointer-create	before	NA	""
+2026-10-28T18:32:45.667Z	split	extracted	after-undo	selection-end-pointer-create	after	0x00000000	""
+2026-10-28T18:32:45.668Z	split	extracted	after-undo	element-start-pointer-create	before	NA	""
+2026-10-28T18:32:45.669Z	split	extracted	after-undo	element-start-pointer-create	after	0x00000000	""
+2026-10-28T18:32:45.669Z	split	extracted	after-undo	element-end-pointer-create	before	NA	""
+2026-10-28T18:32:45.670Z	split	extracted	after-undo	element-end-pointer-create	after	0x00000000	""
+2026-10-28T18:32:45.671Z	split	extracted	after-undo	title-range-create	before	NA	""
+2026-10-28T18:32:45.671Z	split	extracted	after-undo	title-range-create	after	NA	completed
+2026-10-28T18:32:45.672Z	split	extracted	after-undo	selection-pointers-move	before	NA	""
+2026-10-28T18:32:45.672Z	split	extracted	after-undo	selection-pointers-move	after	0x00000000	""
+2026-10-28T18:32:45.672Z	split	extracted	after-undo	pre-range-create	before	NA	""
+2026-10-28T18:32:45.673Z	split	extracted	after-undo	pre-range-create	after	NA	completed
+2026-10-28T18:32:45.673Z	split	extracted	after-undo	element-start-pointer-move	before	NA	""
+2026-10-28T18:32:45.674Z	split	extracted	after-undo	element-start-pointer-move	after	0x00000000	""
+2026-10-28T18:32:45.674Z	split	extracted	after-undo	pre-range-move	before	NA	""
+2026-10-28T18:32:45.675Z	split	extracted	after-undo	pre-range-move	after	0x00000000	""
+2026-10-28T18:32:45.675Z	split	extracted	after-undo	post-range-create	before	NA	""
+2026-10-28T18:32:45.676Z	split	extracted	after-undo	post-range-create	after	NA	completed
+2026-10-28T18:32:45.676Z	split	extracted	after-undo	element-end-pointer-move	before	NA	""
+2026-10-28T18:32:45.677Z	split	extracted	after-undo	element-end-pointer-move	after	0x00000000	""
+2026-10-28T18:32:45.677Z	split	extracted	after-undo	post-range-move	before	NA	""
+2026-10-28T18:32:45.678Z	split	extracted	after-undo	post-range-move	after	0x00000000	""
+2026-10-28T18:32:45.679Z	split	extracted	after-undo	new-container-content	before	NA	""
+2026-10-28T18:32:45.679Z	split	extracted	after-undo	new-container-content	after	NA	completed
+2026-10-28T18:32:45.680Z	split	extracted	after-undo	undo-begin	before	NA	""
+2026-10-28T18:32:45.681Z	split	extracted	after-undo	undo-begin	after	NA	completed
+2026-10-28T18:32:45.681Z	split	extracted	after-undo	source-cleanup	before	NA	""
+2026-10-28T18:32:45.687Z	split	extracted	after-undo	source-cleanup	after	NA	completed
+2026-10-28T18:32:45.687Z	split	extracted	after-undo	next-dom-after-cleanup	after	NA	completed: <P>iddle</P>  <P>Last</P>
+2026-10-28T18:32:45.688Z	split	extracted	after-undo	insert-container	before	NA	""
+2026-10-28T18:32:45.688Z	split	extracted	after-undo	insert-container	after	NA	completed
+2026-10-28T18:32:45.691Z	split	extracted	after-undo	new-container-id	after	NA	completed: target-section-middle
+2026-10-28T18:32:45.692Z	split	extracted	after-undo	new-container-id-after-cleanup	after	NA	completed: target-section-middle
+2026-10-28T18:32:45.693Z	split	extracted	after-undo	undo-end	before	NA	""
+2026-10-28T18:32:45.693Z	split	extracted	after-undo	undo-end	after	NA	completed
+2026-10-28T18:32:45.694Z	split	extracted	after-undo	selection-update	before	NA	""
+2026-10-28T18:32:45.694Z	split	extracted	after-undo	selection-pointer-create	before	NA	""
+2026-10-28T18:32:45.695Z	split	extracted	after-undo	selection-pointer-create	after	0x00000000	""
+2026-10-28T18:32:45.696Z	split	extracted	after-undo	selection-pointer-move	before	NA	""
+2026-10-28T18:32:45.696Z	split	extracted	after-undo	selection-pointer-move	after	0x00000000	""
+2026-10-28T18:32:45.696Z	split	extracted	after-undo	selection-range-move	before	NA	""
+2026-10-28T18:32:45.697Z	split	extracted	after-undo	selection-range-move	after	0x00000000	""
+2026-10-28T18:32:45.708Z	split	extracted	after-undo	selection-update	after	NA	completed
+2026-10-28T18:32:45.709Z	split	extracted	after-undo	split-success	after	NA	completed
+2026-10-28T18:32:45.710Z	split	extracted	after-undo	split-content	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T18:32:45.710Z	split	extracted	after-undo	range-before-split	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>
+2026-10-28T18:32:45.711Z	split	extracted	after-undo	range-after-split	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T18:32:45.712Z	split	extracted	after-undo	range-state	after	NA	completed: active=DIV;parent=P;offset=0;length=0;savedParent=P;pointerHr=0x00000000;dirty=1
+2026-10-28T18:32:45.763Z	split	extracted	after-undo	range-after-undo	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T18:32:45.767Z	split	extracted	after-undo	range-state	after	NA	completed: active=DIV;parent=P;offset=0;length=0;savedParent=P;pointerHr=0x00000000;dirty=1
+2026-10-28T18:32:45.767Z	split	extracted	after-undo	range-after-input	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>Xiddle</P>  <P>Last</P></DIV>
+2026-10-28T18:32:45.768Z	split	extracted	after-undo	range-state	after	NA	completed: active=DIV;parent=P;offset=1;length=0;savedParent=P;pointerHr=0x00000000;dirty=1

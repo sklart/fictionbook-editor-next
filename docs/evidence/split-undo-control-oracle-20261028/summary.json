@@ -1,0 +1,90 @@
+[
+  {
+    "variant": "a1",
+    "status": "FAIL",
+    "basic": true,
+    "sequenceValid": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=1;q_changed=1"
+  },
+  {
+    "variant": "a2",
+    "status": "FAIL",
+    "basic": true,
+    "sequenceValid": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=1;q_changed=1"
+  },
+  {
+    "variant": "a3",
+    "status": "FAIL",
+    "basic": true,
+    "sequenceValid": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=2;q_changed=1"
+  },
+  {
+    "variant": "a3-light",
+    "status": "FAIL",
+    "basic": true,
+    "sequenceValid": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=2;q_changed=1"
+  },
+  {
+    "variant": "a4",
+    "status": "FAIL",
+    "basic": true,
+    "sequenceValid": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=3;q_changed=1"
+  },
+  {
+    "variant": "savepoint",
+    "status": "FAIL",
+    "basic": true,
+    "sequenceValid": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=1;q_changed=1"
+  },
+  {
+    "variant": "savepoint-light",
+    "status": "FAIL",
+    "basic": true,
+    "sequenceValid": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=1;q_changed=1"
+  },
+  {
+    "variant": "savepoint-direct",
+    "status": "FAIL",
+    "basic": true,
+    "sequenceValid": true,
+    "observerStable": true,
+    "savepointRestored": false,
+    "initialFixtureSha256": "97B24D5FF96DBCAC8DA5F6E9CCB1E57E39CBDCA7022114804F962DCB1CFBF810",
+    "savedFileSha256": "DEA09A40D675E1FC37151B0019171C6E3EC82A516C96FBE46A9DF1DD320CE46F",
+    "result": "restored=1;redone=1;undo_count=1;q_changed=1"
+  }
+]

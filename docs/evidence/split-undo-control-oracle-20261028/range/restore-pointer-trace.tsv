@@ -1,0 +1,102 @@
+timestamp	operation	backend	case	phase	event	hresult	details
+2026-10-28T18:33:03.754Z	split	extracted	restore-pointer	split-enter	before	NA	""
+2026-10-28T18:33:03.756Z	split	extracted	restore-pointer	split-enter	after	NA	completed
+2026-10-28T18:33:03.757Z	split	extracted	restore-pointer	selection-create	before	NA	""
+2026-10-28T18:33:03.767Z	split	extracted	restore-pointer	selection-create	after	NA	completed
+2026-10-28T18:33:03.768Z	split	extracted	restore-pointer	parent-resolved	before	NA	""
+2026-10-28T18:33:03.768Z	split	extracted	restore-pointer	parent-resolved	after	NA	completed
+2026-10-28T18:33:03.769Z	split	extracted	restore-pointer	container-range-create	before	NA	""
+2026-10-28T18:33:03.770Z	split	extracted	restore-pointer	container-range-create	after	NA	completed
+2026-10-28T18:33:03.770Z	split	extracted	restore-pointer	container-range-move	before	NA	""
+2026-10-28T18:33:03.771Z	split	extracted	restore-pointer	container-range-move	after	NA	completed
+2026-10-28T18:33:03.772Z	split	extracted	restore-pointer	range-start-validated	before	NA	""
+2026-10-28T18:33:03.774Z	split	extracted	restore-pointer	range-start-validated	after	NA	completed
+2026-10-28T18:33:03.774Z	split	extracted	restore-pointer	range-start-create	before	NA	""
+2026-10-28T18:33:03.775Z	split	extracted	restore-pointer	range-start-create	after	NA	completed
+2026-10-28T18:33:03.776Z	split	extracted	restore-pointer	range-end-create	before	NA	""
+2026-10-28T18:33:03.777Z	split	extracted	restore-pointer	range-end-create	after	NA	completed
+2026-10-28T18:33:03.777Z	split	extracted	restore-pointer	range-end-validated	before	NA	""
+2026-10-28T18:33:03.778Z	split	extracted	restore-pointer	range-end-validated	after	NA	completed
+2026-10-28T18:33:03.778Z	split	extracted	restore-pointer	preflight-complete	after	NA	completed
+2026-10-28T18:33:03.779Z	split	extracted	restore-pointer	split-check-success	after	NA	completed
+2026-10-28T18:33:03.780Z	split	extracted	restore-pointer	split-enter	before	NA	""
+2026-10-28T18:33:03.781Z	split	extracted	restore-pointer	split-enter	after	NA	completed
+2026-10-28T18:33:03.782Z	split	extracted	restore-pointer	selection-create	before	NA	""
+2026-10-28T18:33:03.783Z	split	extracted	restore-pointer	selection-create	after	NA	completed
+2026-10-28T18:33:03.784Z	split	extracted	restore-pointer	parent-resolved	before	NA	""
+2026-10-28T18:33:03.784Z	split	extracted	restore-pointer	parent-resolved	after	NA	completed
+2026-10-28T18:33:03.785Z	split	extracted	restore-pointer	container-range-create	before	NA	""
+2026-10-28T18:33:03.785Z	split	extracted	restore-pointer	container-range-create	after	NA	completed
+2026-10-28T18:33:03.786Z	split	extracted	restore-pointer	container-range-move	before	NA	""
+2026-10-28T18:33:03.786Z	split	extracted	restore-pointer	container-range-move	after	NA	completed
+2026-10-28T18:33:03.787Z	split	extracted	restore-pointer	range-start-validated	before	NA	""
+2026-10-28T18:33:03.787Z	split	extracted	restore-pointer	range-start-validated	after	NA	completed
+2026-10-28T18:33:03.789Z	split	extracted	restore-pointer	range-start-create	before	NA	""
+2026-10-28T18:33:03.790Z	split	extracted	restore-pointer	range-start-create	after	NA	completed
+2026-10-28T18:33:03.790Z	split	extracted	restore-pointer	range-end-create	before	NA	""
+2026-10-28T18:33:03.791Z	split	extracted	restore-pointer	range-end-create	after	NA	completed
+2026-10-28T18:33:03.792Z	split	extracted	restore-pointer	range-end-validated	before	NA	""
+2026-10-28T18:33:03.793Z	split	extracted	restore-pointer	range-end-validated	after	NA	completed
+2026-10-28T18:33:03.793Z	split	extracted	restore-pointer	preflight-complete	after	NA	completed
+2026-10-28T18:33:03.793Z	split	extracted	restore-pointer	new-container-create	before	NA	""
+2026-10-28T18:33:03.793Z	split	extracted	restore-pointer	new-container-create	after	NA	completed
+2026-10-28T18:33:03.795Z	split	extracted	restore-pointer	title-prototype-create	before	NA	""
+2026-10-28T18:33:03.795Z	split	extracted	restore-pointer	title-prototype-create	after	NA	completed
+2026-10-28T18:33:03.796Z	split	extracted	restore-pointer	selection-start-pointer-create	before	NA	""
+2026-10-28T18:33:03.797Z	split	extracted	restore-pointer	selection-start-pointer-create	after	0x00000000	""
+2026-10-28T18:33:03.797Z	split	extracted	restore-pointer	selection-end-pointer-create	before	NA	""
+2026-10-28T18:33:03.798Z	split	extracted	restore-pointer	selection-end-pointer-create	after	0x00000000	""
+2026-10-28T18:33:03.800Z	split	extracted	restore-pointer	element-start-pointer-create	before	NA	""
+2026-10-28T18:33:03.800Z	split	extracted	restore-pointer	element-start-pointer-create	after	0x00000000	""
+2026-10-28T18:33:03.801Z	split	extracted	restore-pointer	element-end-pointer-create	before	NA	""
+2026-10-28T18:33:03.802Z	split	extracted	restore-pointer	element-end-pointer-create	after	0x00000000	""
+2026-10-28T18:33:03.802Z	split	extracted	restore-pointer	title-range-create	before	NA	""
+2026-10-28T18:33:03.803Z	split	extracted	restore-pointer	title-range-create	after	NA	completed
+2026-10-28T18:33:03.804Z	split	extracted	restore-pointer	selection-pointers-move	before	NA	""
+2026-10-28T18:33:03.804Z	split	extracted	restore-pointer	selection-pointers-move	after	0x00000000	""
+2026-10-28T18:33:03.805Z	split	extracted	restore-pointer	pre-range-create	before	NA	""
+2026-10-28T18:33:03.806Z	split	extracted	restore-pointer	pre-range-create	after	NA	completed
+2026-10-28T18:33:03.807Z	split	extracted	restore-pointer	element-start-pointer-move	before	NA	""
+2026-10-28T18:33:03.807Z	split	extracted	restore-pointer	element-start-pointer-move	after	0x00000000	""
+2026-10-28T18:33:03.808Z	split	extracted	restore-pointer	pre-range-move	before	NA	""
+2026-10-28T18:33:03.809Z	split	extracted	restore-pointer	pre-range-move	after	0x00000000	""
+2026-10-28T18:33:03.810Z	split	extracted	restore-pointer	post-range-create	before	NA	""
+2026-10-28T18:33:03.811Z	split	extracted	restore-pointer	post-range-create	after	NA	completed
+2026-10-28T18:33:03.811Z	split	extracted	restore-pointer	element-end-pointer-move	before	NA	""
+2026-10-28T18:33:03.812Z	split	extracted	restore-pointer	element-end-pointer-move	after	0x00000000	""
+2026-10-28T18:33:03.813Z	split	extracted	restore-pointer	post-range-move	before	NA	""
+2026-10-28T18:33:03.813Z	split	extracted	restore-pointer	post-range-move	after	0x00000000	""
+2026-10-28T18:33:03.814Z	split	extracted	restore-pointer	new-container-content	before	NA	""
+2026-10-28T18:33:03.814Z	split	extracted	restore-pointer	new-container-content	after	NA	completed
+2026-10-28T18:33:03.815Z	split	extracted	restore-pointer	undo-begin	before	NA	""
+2026-10-28T18:33:03.816Z	split	extracted	restore-pointer	undo-begin	after	NA	completed
+2026-10-28T18:33:03.816Z	split	extracted	restore-pointer	source-cleanup	before	NA	""
+2026-10-28T18:33:03.823Z	split	extracted	restore-pointer	source-cleanup	after	NA	completed
+2026-10-28T18:33:03.824Z	split	extracted	restore-pointer	next-dom-after-cleanup	after	NA	completed: <P>iddle</P>  <P>Last</P>
+2026-10-28T18:33:03.824Z	split	extracted	restore-pointer	insert-container	before	NA	""
+2026-10-28T18:33:03.825Z	split	extracted	restore-pointer	insert-container	after	NA	completed
+2026-10-28T18:33:03.825Z	split	extracted	restore-pointer	new-container-id	after	NA	completed: target-section-middle
+2026-10-28T18:33:03.826Z	split	extracted	restore-pointer	new-container-id-after-cleanup	after	NA	completed: target-section-middle
+2026-10-28T18:33:03.827Z	split	extracted	restore-pointer	undo-end	before	NA	""
+2026-10-28T18:33:03.830Z	split	extracted	restore-pointer	undo-end	after	NA	completed
+2026-10-28T18:33:03.831Z	split	extracted	restore-pointer	selection-update	before	NA	""
+2026-10-28T18:33:03.831Z	split	extracted	restore-pointer	selection-pointer-create	before	NA	""
+2026-10-28T18:33:03.832Z	split	extracted	restore-pointer	selection-pointer-create	after	0x00000000	""
+2026-10-28T18:33:03.832Z	split	extracted	restore-pointer	selection-pointer-move	before	NA	""
+2026-10-28T18:33:03.833Z	split	extracted	restore-pointer	selection-pointer-move	after	0x00000000	""
+2026-10-28T18:33:03.834Z	split	extracted	restore-pointer	selection-range-move	before	NA	""
+2026-10-28T18:33:03.836Z	split	extracted	restore-pointer	selection-range-move	after	0x00000000	""
+2026-10-28T18:33:03.848Z	split	extracted	restore-pointer	selection-update	after	NA	completed
+2026-10-28T18:33:03.850Z	split	extracted	restore-pointer	split-success	after	NA	completed
+2026-10-28T18:33:03.851Z	split	extracted	restore-pointer	split-content	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T18:33:03.852Z	split	extracted	restore-pointer	range-before-split	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>
+2026-10-28T18:33:03.853Z	split	extracted	restore-pointer	range-after-split	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T18:33:03.854Z	split	extracted	restore-pointer	range-state	after	NA	completed: active=DIV;parent=P;offset=0;length=0;savedParent=P;pointerHr=0x00000000;dirty=1
+2026-10-28T18:33:03.904Z	split	extracted	restore-pointer	range-after-undo	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T18:33:03.905Z	split	extracted	restore-pointer	range-state	after	NA	completed: active=DIV;parent=P;offset=0;length=0;savedParent=P;pointerHr=0x00000000;dirty=1
+2026-10-28T18:33:03.907Z	split	extracted	restore-pointer	range-after-redo	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T18:33:03.909Z	split	extracted	restore-pointer	range-state	after	NA	completed: active=DIV;parent=P;offset=0;length=0;savedParent=P;pointerHr=0x00000000;dirty=1
+2026-10-28T18:33:03.913Z	split	extracted	restore-pointer	range-after-restore	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T18:33:03.913Z	split	extracted	restore-pointer	range-state	after	NA	completed: active=DIV;parent=P;offset=1;length=0;savedParent=P;pointerHr=0x00000000;dirty=1
+2026-10-28T18:33:03.914Z	split	extracted	restore-pointer	range-after-input	after	NA	completed: <DIV class=section>  <P>First <A href="file:///RUNTIME/main.html#target-section-middle">Backlink</A></P>  <P>MX</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T18:33:03.915Z	split	extracted	restore-pointer	range-state	after	NA	completed: active=DIV;parent=P;offset=2;length=0;savedParent=P;pointerHr=0x00000000;dirty=1

@@ -1,0 +1,9 @@
+phase	dom	fnv1a_utf16	dirty	undo	redo	undo_type	redo_type	selection	hresult
+initial	<DIV id=probe-marker class=section><P>seed</P></DIV>	1B1FB5B0DD828C47	0	0	0	none	none	parent=BODY;text=(null)	0x00000000
+prior-Q	<DIV id=probe-marker class=section><P>seedQ</P></DIV>	BEEF3EA47603AC3C	1	1	0	{00000000-0000-0000-0000-000000000000}:0	none	parent=P;text=(null)	0x00000000
+input-X	<DIV id=probe-marker class=section><P>seedQX</P></DIV>	CC6454081A2F4D9A	1	1	0	{00000000-0000-0000-0000-000000000000}:0	none	parent=P;text=(null)	0x00000000
+undo-X	<DIV id=probe-marker class=section><P>seed</P></DIV>	1B1FB5B0DD828C47	1	0	1	none	{00000000-0000-0000-0000-000000000000}:0	parent=P;text=(null)	0x00000000
+undo-Q	<DIV id=probe-marker class=section><P>seed</P></DIV>	1B1FB5B0DD828C47	1	0	1	none	{00000000-0000-0000-0000-000000000000}:0	parent=P;text=(null)	0x00000000
+redo-Q	<DIV id=probe-marker class=section><P>seedQX</P></DIV>	CC6454081A2F4D9A	1	1	0	{00000000-0000-0000-0000-000000000000}:0	none	parent=P;text=(null)	0x00000000
+redo-X	<DIV id=probe-marker class=section><P>seedQX</P></DIV>	CC6454081A2F4D9A	1	1	0	{00000000-0000-0000-0000-000000000000}:0	none	parent=P;text=(null)	0x00000000
+result	FAIL	undoX=0;undoQ=1;redoQ=0;redoX=1;savepoint=0
