@@ -4,6 +4,7 @@ param(
  [Parameter(Mandatory)][string]$CandidateExe,
  [Parameter(Mandatory)][string]$EvidenceDirectory,
  [int[]]$SizesMiB=@(1,20,50),
+ [ValidateSet('caret','range')][string[]]$Kinds=@('caret','range'),
  [ValidateSet('baseline','candidate')][string[]]$Builds=@('baseline','candidate'),
  [ValidateRange(1,2147483647)][long]$AffinityMask=1,
  [ValidateRange(1,600)][int]$TimeoutSeconds=600
@@ -12,7 +13,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot RuntimeTestIsolation.ps1)
 $evidence=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EvidenceDirectory)
 New-Item -ItemType Directory -Path $evidence -Force | Out-Null
-$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TRACE','FBE_NEXT_TEST_PERF_LEGACY','FBE_NEXT_TEST_PERF_AFFINITY','FBE_NEXT_TEST_PERF_KIND');$saved=@{};foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name)}
+$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TRACE','FBE_NEXT_TEST_PERF_LEGACY','FBE_NEXT_TEST_PERF_AFFINITY','FBE_NEXT_TEST_PERF_KIND','FBE_NEXT_TEST_PERF_STAGE');$saved=@{};foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name)}
 $utf8=[Text.UTF8Encoding]::new($false)
 $summary=[Collections.Generic.List[object]]::new()
 [ordered]@{cpu=(Get-CimInstance Win32_Processor).Name;logicalCpus=[Environment]::ProcessorCount;os=[Environment]::OSVersion.VersionString;affinityMask=$AffinityMask;affinityScope='UI thread';priority='Normal';priorityBoost=$false;warmups=1;measuredRepeats=5} | ConvertTo-Json | Set-Content (Join-Path $evidence environment.json)
@@ -35,14 +36,17 @@ try {
   foreach($entry in @(@{Name='baseline';Exe=$BaselineExe},@{Name='candidate';Exe=$CandidateExe}) | Where-Object { $_.Name -in $Builds }) {
    # Separate 50 MiB caret/range processes retain the same per-process timeout
    # and avoid carrying a preceding scenario's heap high-water mark forward.
-   foreach($scenarioKind in $(if($size -ge 50){@('caret','range')}else{@('both')})) {
+   foreach($scenarioKind in $(if($size -ge 50){@($Kinds)}else{@('both')})) {
    $iso=New-IsolatedFbeRuntime -FbeExe $entry.Exe -Name transition-perf;$passed=$false
    try {
     $null=New-IsolatedFbeSettingsSeed -Isolation $iso -StartupScriptsDirectory (Join-Path $iso.Root empty-scripts)
     $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='community-transition-performance';$env:FBE_NEXT_TRACE='0';$env:FBE_NEXT_TEST_PERF_AFFINITY=$AffinityMask.ToString();$env:FBE_NEXT_TEST_PERF_KIND=$scenarioKind;$env:FBE_NEXT_TEST_PERF_LEGACY=if($entry.Name -eq 'baseline'){'1'}else{'0'}
     $reportName=if($scenarioKind -eq 'both'){"{0}-{1}.tsv" -f $entry.Name,$size}else{"{0}-{1}-{2}.tsv" -f $entry.Name,$size,$scenarioKind}
     $report=Join-Path $evidence $reportName
+    $env:FBE_NEXT_TEST_PERF_STAGE=Join-Path $evidence ($reportName+'.stages.tsv')
+    $launchUtc=[DateTime]::UtcNow.ToString('o')
     $process=Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -ArgumentList @('--portable','-b',$report,$fixture) -WindowStyle Hidden -PassThru
+    [ordered]@{ launchUtc=$launchUtc; processStartUtc=$process.StartTime.ToUniversalTime().ToString('o'); timeoutSeconds=$TimeoutSeconds; scenario=$scenarioKind; sizeMiB=$size } | ConvertTo-Json | Set-Content (Join-Path $evidence ($reportName+'.launch.json'))
     $process.PriorityClass=[Diagnostics.ProcessPriorityClass]::Normal
     $process.PriorityBoostEnabled=$false
     $exitCode=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds $TimeoutSeconds
