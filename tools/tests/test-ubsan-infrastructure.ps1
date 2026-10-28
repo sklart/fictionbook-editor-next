@@ -1,6 +1,26 @@
 [CmdletBinding()]
 param([string]$LlvmRoot)
 $ErrorActionPreference='Stop'
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+using Microsoft.Win32.SafeHandles;
+public static class FbeFinalPath {
+    [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+    static extern uint GetFinalPathNameByHandleW(SafeFileHandle handle, StringBuilder path, uint size, uint flags);
+    public static string Get(SafeFileHandle handle) {
+        var path = new StringBuilder(32768);
+        uint length = GetFinalPathNameByHandleW(handle, path, (uint)path.Capacity, 0);
+        if (length == 0 || length >= path.Capacity) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+        return path.ToString();
+    }
+}
+'@
+function Get-FinalFilePath([string]$Path) {
+    $file=[IO.File]::Open($Path,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete)
+    try { return [FbeFinalPath]::Get($file.SafeFileHandle) } finally { $file.Dispose() }
+}
 $root=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $toolchain=& (Join-Path $root 'tools/build/Resolve-UbsanToolchain.ps1') -LlvmRoot $LlvmRoot
 . (Join-Path $root 'tools/build/Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64 -PlatformToolset v143 -VcVarsVersion 14.44
@@ -125,7 +145,12 @@ exit $LASTEXITCODE
     $negativeCompile='& '+(& $quote $toolchain.compilerPath)+' --target=i686-pc-windows-msvc -fuse-ld=lld /guard:cf /nologo /EHsc /std:c++17 /MT /O1 '+(& $quote $source)+' '+(& $quote ("/Fo"+(Join-Path $out 'lookalike.obj')))+' '+(& $quote ("/Fe"+$lookalike))+' /link /INCREMENTAL:NO'
     ($negativeCompile+"`nif(`$LASTEXITCODE){exit `$LASTEXITCODE}`nStart-Process -FilePath "+(& $quote $lookalike)+" -ArgumentList daemon | Out-Null`nexit 0") | Set-Content $worker
     $lookalikeResult=Invoke-SanitizerCase -Sanitizer Undefined -Name 'infrastructure.unrelated-daemon' -Worker $worker -Directory (Join-Path $out 'unrelated-daemon') -Executable $lookalike -TimeoutSeconds 10
-    if($lookalikeResult.status -ne 'FAIL' -or -not $lookalikeResult.timedOut -or $lookalikeResult.infrastructureCleanup.Count -or -not @($lookalikeResult.allProcesses|Where-Object { $_.Executable -eq $lookalike -and -not $_.Instrumented }).Count) { throw 'Unrelated daemon was incorrectly accepted or cleaned as compiler infrastructure.' }
+    $lookalikeFinalPath=Get-FinalFilePath $lookalike
+    if ((Get-FinalFilePath $toolchain.compilerPath) -eq $lookalikeFinalPath) { throw 'Different executable files resolved to the same final path.' }
+    $observedLookalike=@($lookalikeResult.allProcesses | Where-Object {
+        $_.Name -eq 'mspdbsrv.exe' -and -not $_.Instrumented -and $_.Executable -and (Get-FinalFilePath $_.Executable) -eq $lookalikeFinalPath
+    })
+    if($lookalikeResult.status -ne 'FAIL' -or -not $lookalikeResult.timedOut -or $lookalikeResult.infrastructureCleanup.Count -or -not $observedLookalike.Count) { throw 'Unrelated daemon was incorrectly accepted or cleaned as compiler infrastructure.' }
     @{status='PASS';toolchain=$toolchain;clean=$clean;intentionalFindings=$findings;zeroExitDiagnostic=$recover;helperRouting=$helperResult;atlExceptionClean=$atlClean;atlExceptionOwnOverflow=$atlOwn;ignorelistSha256=(Get-FileHash -LiteralPath $toolchain.ignorelistPath).Hash;unrelatedDaemon=$lookalikeResult;extraChecks=$false} | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $out summary.json) -Encoding utf8
     Write-Host "PASS: clang-cl Win32, clean probe, overflow/shift/alignment/null source stacks and zero-exit diagnostic classification. $out"
 } finally { $env:UBSAN_SYMBOLIZER_PATH=$oldSymbolizer }
