@@ -55,7 +55,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for folder in cls.folders:
                 folder.cleanup()
 
-    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide=''):
+    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False):
         extra = extra or {}
         temp = tempfile.TemporaryDirectory(prefix='epub-fidelity-')
         self.folders.append(temp)
@@ -87,10 +87,10 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             files['nav.xhtml'] = ('fixture-nav', 'application/xhtml+xml', '<nav epub:type="toc"><ol>' + render_tree(tree) + '</ol></nav>' + extra_nav)
         else:
             files['toc.ncx'] = ('fixture-ncx', 'application/x-dtbncx+xml', '<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1"><head><meta name="dtb:uid" content="fixture"/></head><docTitle><text>Fixture</text></docTitle><navMap>' + render_tree(tree, True) + '</navMap></ncx>')
-        def xhtml(content):
+        def xhtml(content, ident):
             return ('<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml" '
                     'xmlns:epub="http://www.idpf.org/2007/ops" xmlns:xlink="http://www.w3.org/1999/xlink">'
-                    '<head><title>Fixture</title></head><body>' + content + '</body></html>')
+                    '<head><title>Fixture</title></head><body' + (f' id="body-{ident}"' if body_ids else '') + '>' + content + '</body></html>')
         with zipfile.ZipFile(epub, 'w') as z:
             z.writestr('mimetype', 'application/epub+zip')
             z.writestr('META-INF/container.xml', '<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0"><rootfiles><rootfile full-path="OEBPS/book.opf" media-type="application/oebps-package+xml"/></rootfiles></container>')
@@ -98,7 +98,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for path, (ident, mime, content) in files.items():
                 properties = ' properties="nav"' if ident == 'fixture-nav' else ''
                 manifest.append(f'<item id="{ident}" href="{quote(path, safe="/")}" media-type="{mime}"{properties}/>')
-                z.writestr('OEBPS/' + path, xhtml(content) if mime == 'application/xhtml+xml' else content)
+                z.writestr('OEBPS/' + path, xhtml(content, ident) if mime == 'application/xhtml+xml' else content)
             modified = '<meta property="dcterms:modified">2026-10-21T00:00:00Z</meta>' if version.startswith('3') else ''
             toc = '' if version.startswith('3') or navigation is False else ' toc="fixture-ncx"'
             z.writestr('OEBPS/book.opf', f'<package xmlns="http://www.idpf.org/2007/opf" version="{version}" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">fixture</dc:identifier><dc:title>Fixture</dc:title><dc:language>ru</dc:language><dc:creator>Tester</dc:creator>' + modified + '</metadata><manifest>' + ''.join(manifest) + ''.join(manifest_extra) + f'</manifest><spine{toc}>' + ''.join(f'<itemref idref="{ident}"/>' for ident in (spine or ['chapter'])) + '</spine>' + guide + '</package>')
@@ -368,10 +368,76 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         links = [n.get(HREF) for n in root.findall('.//f:a', NS)]
         self.assertTrue(any(link and link.startswith('#') for link in links))
 
+    def test_service_filter_option_matrix(self):
+        toc = '<h1>Contents</h1><p id="ch1">Entry</p>'
+        chapter = '<h1><a href="part0002.html#ch1">Chapter <strong>One</strong></a></h1><p>Text</p>'
+        guide = '<guide><reference type="toc" href="Text/part0002.html"/></guide>'
+        extra = {'Text/part0002.html': ('service', 'application/xhtml+xml', toc)}
+        for options, skipped in [(['--skip-service-pages', '--remove-service-sections'], True),
+                                 (['--skip-service-pages', '--keep-service-sections'], False),
+                                 (['--keep-service-pages', '--remove-service-sections'], False),
+                                 (['--keep-service-pages', '--keep-service-sections'], False),
+                                 (['--skip-service-pages', '--remove-service-sections', '--no-validate'], True),
+                                 (['--skip-service-pages', '--remove-service-sections', '--no-links'], True)]:
+            with self.subTest(options=options):
+                root = self.convert(chapter, extra, version='2.0', spine=['service', 'chapter'], guide=guide, options=options)
+                self.assertEqual('Entry' not in self.text(root), skipped)
+                self.assertIn('Chapter One', self.text(root))
+                if not skipped:
+                    self.assertTrue(any((a.get(HREF) or '').startswith('#') for a in root.findall('.//f:a', NS)))
+
+    def test_unresolved_local_fragment_fails_even_without_xsd(self):
+        for options in ([], ['--no-validate']):
+            with self.subTest(options=options):
+                self.convert('<h1>Chapter</h1><p><a href="#missing-anchor">Broken</a></p>',
+                             fail=True, options=options)
+                self.assertIn('missing-anchor', self.diagnostics)
+
     def test_section_with_only_epigraphs_is_valid_and_keeps_text(self):
         root = self.convert('<p class="epigraph">First quotation</p><p class="epigraph">Second quotation</p>')
         self.assertIn('First quotation', self.text(root))
         self.assertIn('Second quotation', self.text(root))
+
+    def test_split_body_id_does_not_wrap_preceding_documents(self):
+        root = self.convert('<h1>First chapter</h1><p>First text</p>',
+                            {'Text/c1.xhtml': ('c1', 'application/xhtml+xml', '<h1>Second chapter</h1><p>Second text</p>')},
+                            spine=['chapter', 'c1'], navigation=False, body_ids=True)
+        sections = root.find('f:body', NS).findall('f:section', NS)
+        self.assertEqual(len(sections), 2)
+        self.assertIn('First text', self.text(sections[0]))
+        self.assertNotIn('First text', self.text(sections[1]))
+        self.assertIn('Second text', self.text(sections[1]))
+
+    def test_ncx_hierarchy_across_split_continuation(self):
+        extra = {'Text/part_split_000.xhtml': ('part', 'application/xhtml+xml', '<p>Part introduction</p>'),
+                 'Text/part_split_001.xhtml': ('continued', 'application/xhtml+xml', '<h1>Part heading</h1><p>Part continuation</p>'),
+                 'Text/c1.xhtml': ('c1', 'application/xhtml+xml', '<h1>Chapter</h1><p>Chapter text</p>')}
+        root = self.convert('<p>Opening</p>', extra, version='2.0', body_ids=True,
+                            spine=['chapter', 'part', 'continued', 'c1'],
+                            navigation=[('Part', 'Text/part_split_000.xhtml#body-part', [('Chapter', 'Text/c1.xhtml#body-c1', [])])])
+        body = root.find('f:body', NS)
+        sections = body.findall('f:section', NS)
+        self.assertEqual(len(sections), 2)
+        part = sections[1]
+        self.assertIn('Part introduction', self.text(part))
+        self.assertIn('Part continuation', self.text(part))
+        self.assertIn('Chapter text', self.text(part))
+        self.assertLess(self.text(part).index('Part continuation'), self.text(part).index('Chapter text'))
+
+    def test_split_continuation_with_independent_navigation_stays_flat(self):
+        extra = {'Text/part_split_000.xhtml': ('part', 'application/xhtml+xml', '<p>Part introduction</p>'),
+                 'Text/part_split_001.xhtml': ('continued', 'application/xhtml+xml', '<h1>Independent heading</h1><p>Independent text</p>'),
+                 'Text/c1.xhtml': ('c1', 'application/xhtml+xml', '<h1>Chapter</h1><p>Chapter text</p>')}
+        nav = [('Part', 'Text/part_split_000.xhtml#body-part', [('Chapter', 'Text/c1.xhtml#body-c1', [])]),
+               ('Independent', 'Text/part_split_001.xhtml#body-continued', [])]
+        root = self.convert('<p>Opening</p>', extra, version='2.0', body_ids=True,
+                            spine=['chapter', 'part', 'continued', 'c1'], navigation=nav)
+        sections = root.find('f:body', NS).findall('f:section', NS)
+        self.assertEqual(len(sections), 4)
+        self.assertIn('Navigation hierarchy not applied', self.diagnostics)
+        text = self.text(root.find('f:body', NS))
+        self.assertLess(text.index('Part introduction'), text.index('Independent text'))
+        self.assertLess(text.index('Independent text'), text.index('Chapter text'))
 
     def hierarchy_fixture(self, version='3.0', intro=False, navigation=None, options=()):
         tree = [('Part one', 'Text/chapter.xhtml', [('Chapter one', 'Text/c1.xhtml', []), ('Chapter two', 'Text/c2.xhtml', [])]),

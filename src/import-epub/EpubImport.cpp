@@ -97,6 +97,7 @@ namespace
         std::map<std::wstring, CStringW> noteRoots;
         CStringW warnings;
         int noteReferences = 0, importedNoteReferences = 0, lostNoteReferences = 0;
+        int skippedServiceLinks = 0;
         int imageReferences = 0, importedImages = 0, skippedImages = 0;
         unsigned indexedElements = 0, structuralLookups = 0;
         unsigned residualFragments = 0, recoveredFragments = 0;
@@ -2840,7 +2841,10 @@ namespace
                 // unresolved ordinary targets remain visible to strict validation.
                 if (!IsExternalHref(href) && !href.Left(href.Find(L'#') >= 0 ? href.Find(L'#') : href.GetLength()).IsEmpty() &&
                     g_content.excludedServiceDocuments.count(LowerMapKey(targetPath).GetString()))
+                {
+                    ++g_content.skippedServiceLinks;
                     return text;
+                }
                 CStringW normalizedHref = ResolveFb2Href(ctx, href);
                 return L"<a l:href=\"" + XmlEscape(normalizedHref) + L"\">" + text + L"</a>";
             }
@@ -4756,13 +4760,15 @@ namespace
             return false;
         }
 
-        if (TryConvertBodyToSplitSections(body, fallbackTitle, ctx, outSection))
+        CStringW splitSections;
+        if (TryConvertBodyToSplitSections(body, fallbackTitle, ctx, splitSections))
         {
             const CStringW bodyId = OptionalIdAttribute(body, ctx);
             if (!bodyId.IsEmpty())
             {
-                CStringW wrapped;AppendFb2Section(wrapped, CStringW(), outSection, bodyId);outSection = wrapped;
+                CStringW wrapped;AppendFb2Section(wrapped, CStringW(), splitSections, bodyId);splitSections = wrapped;
             }
+            outSection += splitSections;
             return true;
         }
 
@@ -5394,6 +5400,39 @@ namespace
             const auto target = targets.find(anchor->second);
             if (target != targets.end()) mapped[i] = target->second;
         }
+        // A split continuation is part of the same source document. Move it
+        // only across an immediate reading-order boundary, and never if it
+        // contains an independently mapped navigation target.
+        for (size_t i = 0; i < mapped.size(); ++i)
+        {
+            const auto& entry = package.navigation[i];
+            const auto parent = mapped[i];
+            if (!parent || entry.spineIndex < 0 ||
+                static_cast<size_t>(entry.spineIndex + 1) >= package.spine.size()) continue;
+            CStringW continuationPath(entry.path);
+            if (continuationPath.Replace(L"_split_000.", L"_split_001.") != 1) continue;
+            const auto nextItem = package.manifest.find(std::wstring(package.spine[static_cast<size_t>(entry.spineIndex + 1)]));
+            if (nextItem == package.manifest.end() || LowerMapKey(nextItem->second.absPath) != LowerMapKey(continuationPath)) continue;
+            const auto anchor = anchors.find(std::wstring(LowerMapKey(continuationPath)));
+            if (anchor == anchors.end()) continue;
+            const auto found = targets.find(anchor->second);
+            if (found == targets.end()) continue;
+            auto continuation = found->second;
+            const auto container = ParentNode(parent);
+            while (continuation && ParentNode(continuation) != container)
+                continuation = ParentNode(continuation);
+            if (!continuation || continuation == parent || LocalName(continuation) != L"section") continue;
+            IXMLDOMNode* raw = nullptr; continuation->get_previousSibling(&raw);
+            MSXML2::IXMLDOMNodePtr previous(raw, false);
+            while (previous && MsxmlGetNodeType(previous) != MSXML2::NODE_ELEMENT)
+            {raw = nullptr;previous->get_previousSibling(&raw);previous.Attach(raw);}
+            if (previous != parent) continue;
+            bool mappedInside = false;
+            for (const auto& target : mapped)
+                for (auto ancestor = target; ancestor; ancestor = ParentNode(ancestor))
+                    if (ancestor == continuation) {mappedInside = true;break;}
+            if (!mappedInside) AppendDomChild(parent, continuation);
+        }
         for (size_t i = 0; i < mapped.size(); ++i)
         {
             const auto child = mapped[i];
@@ -5851,6 +5890,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         const auto cover = ResolveCoverImageItem(package);
         if (cover) usedImageIds.emplace(cover->id.GetString());
     }
+    log.AddFormatInt(L"Links to excluded service documents preserved as text: %d", g_content.skippedServiceLinks);
     log.AddFormatInt(L"Imported sections: %d", importedSections);
     log.AddFormatInt(L"Images used: %d", static_cast<int>(usedImageIds.size()));
 
