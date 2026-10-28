@@ -29,8 +29,6 @@ void EditorViewPresentationHost::SaveSelection(EditorView view)
 void EditorViewPresentationHost::PrepareEditorViewPresentation(EditorView previous, EditorView target,
 	const EditorViewTransitionPlan& plan)
 {
-	m_restoreMappedBodyAfterFocus = previous == SOURCE && target == BODY &&
-		m_context.selection.BodySource().sourceToBodyTransferred && (bool)m_context.selection.BodyRange();
 	if (plan.commitSourceToDocument) m_context.source.SendMessage(SCI_SETSAVEPOINT);
 	if (previous != target && target != SOURCE) {
 		if (previous == SOURCE) m_context.view.HideActiveWnd();
@@ -56,9 +54,7 @@ void EditorViewPresentationHost::PrepareEditorViewPresentation(EditorView previo
 
 void EditorViewPresentationHost::RestoreSelection(EditorView target)
 {
-	// A mapped Source selection is applied once after focus below. Selecting
-	// it here as well makes MSHTML traverse/layout a large document twice.
-	if (target == BODY && !m_restoreMappedBodyAfterFocus && (bool)m_context.selection.BodyRange()) m_context.selection.BodyRange()->select();
+	if (target == BODY && (bool)m_context.selection.BodyRange()) m_context.selection.BodyRange()->select();
 	if (target == DESC && (bool)m_context.selection.DescriptionRange()) m_context.selection.DescriptionRange()->select();
 }
 

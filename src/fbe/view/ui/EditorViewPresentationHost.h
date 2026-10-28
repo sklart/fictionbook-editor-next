@@ -43,5 +43,4 @@ public:
 
 private:
 	EditorViewPresentationContext m_context;
-	bool m_restoreMappedBodyAfterFocus = false;
 };
