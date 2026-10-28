@@ -220,7 +220,16 @@ HRESULT CommitBinaryEdit(const IDispatchPtr& script, IOleUndoManager* manager,
 
 static MSHTML::IHTMLDOMNodePtr BinaryParent(const IDispatchPtr& script) {
   MSHTML::IHTMLDocument2Ptr dom(ScriptDocument(script));
-  return MSHTML::IHTMLDOMNodePtr(dom->all->item(L"binobj"));
+  IDispatchPtr section(dom->all->item(L"binobj"));
+  if (!section) return MSHTML::IHTMLDOMNodePtr();
+  // apiAddBinary appends to the Description section body when it exists,
+  // and to binobj directly in the legacy layout before that body is created.
+  CComDispatchDriver dispatch(section);
+  _variant_t body;
+  if (SUCCEEDED(dispatch.GetPropertyByName(L"_descriptionBody", &body)) &&
+      V_VT(&body) == VT_DISPATCH && V_DISPATCH(&body))
+    return MSHTML::IHTMLDOMNodePtr(V_DISPATCH(&body));
+  return MSHTML::IHTMLDOMNodePtr(section);
 }
 
 static IDispatchPtr FindImportedImage(MSHTML::IHTMLDOMNodePtr node, const _variant_t& id) {

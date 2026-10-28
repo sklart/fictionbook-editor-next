@@ -1576,7 +1576,24 @@
 		}
 		wchar_t inlineMode[2] = {};
 		const bool inlineImage = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_INLINE", inlineMode, _countof(inlineMode)) != 1 || inlineMode[0] != L'0';
-		m_doc->m_body.AddImage(imagePath, inlineImage);
+		auto sectionOuterHtml = [&]() -> CString
+		{
+			MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document() ? MSHTML::IHTMLWindow2Ptr(m_doc->m_body.Document()->parentWindow) : MSHTML::IHTMLWindow2Ptr());
+			const wchar_t* snapshotScript = L"function FbeRuntimeImageSectionSnapshot(){var divs=document.body.getElementsByTagName('DIV');for(var i=0;i<divs.length;i++)if(divs[i].className=='section')return divs[i].outerHTML;return '';}";
+			if (!window || FAILED(window->execScript(_bstr_t(snapshotScript), _bstr_t(L"JScript")))) return CString();
+			CComDispatchDriver script(m_doc->m_body.Script()); _variant_t snapshot;
+			return SUCCEEDED(script.Invoke0(L"FbeRuntimeImageSectionSnapshot", &snapshot)) && V_VT(&snapshot) == VT_BSTR ? CString(static_cast<const wchar_t*>(_bstr_t(snapshot))) : CString();
+		};
+		const CString sectionBeforeImport = sectionOuterHtml();
+		MSHTML::IHTMLElementPtr importedElement;
+		const HRESULT importedResult = m_doc->m_body.AddImage(imagePath, inlineImage, std::addressof(importedElement));
+		if (FAILED(importedResult) || !importedElement)
+		{
+			CStringA failure;
+			failure.Format("import-failed;phase=AddImage;hresult=0x%08lX;element=%d", static_cast<unsigned long>(importedResult), importedElement ? 1 : 0);
+			appendImportPhase(failure);
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
 		appendImportPhase("import-complete");
 		wchar_t undoRedoMode[2] = {};
 		const bool undoRedo = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_UNDO_REDO", undoRedoMode, _countof(undoRedoMode)) == 1 && undoRedoMode[0] == L'1';
@@ -1584,19 +1601,11 @@
 		const DWORD undoRedoCyclesLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_UNDO_REDO_CYCLES", undoRedoCyclesText, _countof(undoRedoCyclesText));
 		const int undoRedoCycles = undoRedoCyclesLength && undoRedoCyclesLength < _countof(undoRedoCyclesText) ? _wtoi(undoRedoCyclesText) : 1;
 		if (undoRedoCycles < 1 || undoRedoCycles > 5) { appendImportPhase("import-failed;phase=undo;reason=undo-redo-cycles"); output.Close(); ::PostQuitMessage(1); return 0; }
-		if (!inlineImage && undoRedo)
+		if (undoRedo)
 		{
 			appendImportPhase("post-insert-idle-start");
 			for (int idle = 0; idle < 8; ++idle) { MSG message = {}; if (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } else ::Sleep(5); }
 			appendImportPhase("post-insert-idle-complete");
-			auto sectionOuterHtml = [&]() -> CString
-			{
-				MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document() ? MSHTML::IHTMLWindow2Ptr(m_doc->m_body.Document()->parentWindow) : MSHTML::IHTMLWindow2Ptr());
-				const wchar_t* snapshotScript = L"function FbeRuntimeImageSectionSnapshot(){var divs=document.body.getElementsByTagName('DIV');for(var i=0;i<divs.length;i++)if(divs[i].className=='section')return divs[i].outerHTML;return '';}";
-				if (!window || FAILED(window->execScript(_bstr_t(snapshotScript), _bstr_t(L"JScript")))) return CString();
-				CComDispatchDriver script(m_doc->m_body.Script()); _variant_t snapshot;
-				return SUCCEEDED(script.Invoke0(L"FbeRuntimeImageSectionSnapshot", &snapshot)) && V_VT(&snapshot) == VT_BSTR ? CString(static_cast<const wchar_t*>(_bstr_t(snapshot))) : CString();
-			};
 			CString insertedSection;
 			insertedSection = sectionOuterHtml();
 			if (insertedSection.IsEmpty()) { appendImportPhase("import-failed;phase=undo;reason=initial-section"); output.Close(); ::PostQuitMessage(1); return 0; }
@@ -1606,7 +1615,8 @@
 				m_doc->m_body.SetFocus(); appendImportPhase("undo-start");
 				m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
 				appendImportPhase("undo-complete");
-				// Do not dereference MSHTML DOM between the native Undo and Redo.
+				if (sectionBeforeImport.IsEmpty() || sectionOuterHtml() != sectionBeforeImport)
+				{ appendImportPhase("import-failed;phase=undo;reason=initial-dom"); output.Close(); ::PostQuitMessage(1); return 0; }
 				m_doc->m_body.SetFocus(); appendImportPhase("redo-start");
 				m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
 				appendImportPhase("redo-complete");
@@ -1622,7 +1632,7 @@
 			output.Close(); ::PostQuitMessage(1); return 0;
 		}
 		appendImportPhase("save-complete");
-		if (!inlineImage && undoRedo)
+		if (undoRedo)
 		{
 			const CString filename(m_doc->m_filename);
 			appendImportPhase("reopen-start");
