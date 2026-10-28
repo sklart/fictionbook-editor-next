@@ -55,7 +55,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for folder in cls.folders:
                 folder.cleanup()
 
-    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav=''):
+    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide=''):
         extra = extra or {}
         temp = tempfile.TemporaryDirectory(prefix='epub-fidelity-')
         self.folders.append(temp)
@@ -101,7 +101,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 z.writestr('OEBPS/' + path, xhtml(content) if mime == 'application/xhtml+xml' else content)
             modified = '<meta property="dcterms:modified">2026-10-21T00:00:00Z</meta>' if version.startswith('3') else ''
             toc = '' if version.startswith('3') or navigation is False else ' toc="fixture-ncx"'
-            z.writestr('OEBPS/book.opf', f'<package xmlns="http://www.idpf.org/2007/opf" version="{version}" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">fixture</dc:identifier><dc:title>Fixture</dc:title><dc:language>ru</dc:language><dc:creator>Tester</dc:creator>' + modified + '</metadata><manifest>' + ''.join(manifest) + ''.join(manifest_extra) + f'</manifest><spine{toc}>' + ''.join(f'<itemref idref="{ident}"/>' for ident in (spine or ['chapter'])) + '</spine></package>')
+            z.writestr('OEBPS/book.opf', f'<package xmlns="http://www.idpf.org/2007/opf" version="{version}" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">fixture</dc:identifier><dc:title>Fixture</dc:title><dc:language>ru</dc:language><dc:creator>Tester</dc:creator>' + modified + '</metadata><manifest>' + ''.join(manifest) + ''.join(manifest_extra) + f'</manifest><spine{toc}>' + ''.join(f'<itemref idref="{ident}"/>' for ident in (spine or ['chapter'])) + '</spine>' + guide + '</package>')
             for path, content in (raw or {}).items():
                 z.writestr(path, content)
         output = folder / 'case.fb2'
@@ -353,6 +353,25 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                     note, = self.notes(root)
                     self.assertIn('Last', self.text(note))
                     self.assertEqual('ReturnMarker' in self.text(note), kept)
+
+    def test_skipped_guide_toc_preserves_chapter_and_links(self):
+        toc = '<h1>Contents</h1><p id="ch1">Entry</p>'
+        chapter = '<h1><a href="part0002.html#ch1">Chapter <strong>One</strong></a></h1><p>Body <a href="next.xhtml#target">Forward</a></p>'
+        extra = {'Text/part0002.html': ('service', 'application/xhtml+xml', toc),
+                 'Text/next.xhtml': ('next', 'application/xhtml+xml', '<h1 id="target">Next</h1><p>Last</p>')}
+        guide = '<guide><reference type="toc" title="Contents" href="Text/part0002.html"/></guide>'
+        root = self.convert(chapter, extra, version='2.0', spine=['service', 'chapter', 'next'],
+                            guide=guide, options=['--skip-service-pages', '--remove-service-sections'])
+        self.assertIn('Chapter One', self.text(root))
+        self.assertIn('Body', self.text(root))
+        self.assertNotIn('Entry', self.text(root))
+        links = [n.get(HREF) for n in root.findall('.//f:a', NS)]
+        self.assertTrue(any(link and link.startswith('#') for link in links))
+
+    def test_section_with_only_epigraphs_is_valid_and_keeps_text(self):
+        root = self.convert('<p class="epigraph">First quotation</p><p class="epigraph">Second quotation</p>')
+        self.assertIn('First quotation', self.text(root))
+        self.assertIn('Second quotation', self.text(root))
 
     def hierarchy_fixture(self, version='3.0', intro=False, navigation=None, options=()):
         tree = [('Part one', 'Text/chapter.xhtml', [('Chapter one', 'Text/c1.xhtml', []), ('Chapter two', 'Text/c2.xhtml', [])]),

@@ -92,6 +92,7 @@ namespace
         std::map<std::wstring, ManifestItem> extraImages;
         std::set<std::wstring> reservedIds, emittedIds, noteTargets, requestedNotes;
         std::set<std::wstring> mainDocuments, noteContentAnchors, noteRootDocuments, residualDocuments;
+        std::set<std::wstring> excludedServiceDocuments;
         std::map<std::wstring, CStringW> noteLinks;
         std::map<std::wstring, CStringW> noteRoots;
         CStringW warnings;
@@ -2725,6 +2726,7 @@ namespace
         return out;
     }
 
+    CStringW LowerMapKey(CStringW value);
     CStringW ResolveFb2HrefFragment(const ConvertContext& ctx, const CStringW& rawFragment);
     CStringW ResolveFb2Href(const ConvertContext& ctx, const CStringW& rawHref);
     CStringW PathAnchorMapKey(const CStringW& absPath, const CStringW& rawId);
@@ -2834,6 +2836,11 @@ namespace
 
             if (!href.IsEmpty() && g_options.preserveLinks)
             {
+                // Only explicitly filtered service documents lose their links;
+                // unresolved ordinary targets remain visible to strict validation.
+                if (!IsExternalHref(href) && !href.Left(href.Find(L'#') >= 0 ? href.Find(L'#') : href.GetLength()).IsEmpty() &&
+                    g_content.excludedServiceDocuments.count(LowerMapKey(targetPath).GetString()))
+                    return text;
                 CStringW normalizedHref = ResolveFb2Href(ctx, href);
                 return L"<a l:href=\"" + XmlEscape(normalizedHref) + L"\">" + text + L"</a>";
             }
@@ -5448,6 +5455,35 @@ namespace
                 else content = content || LocalName(child) != L"p" || !TrimString(NodeText(child)).IsEmpty() ||
                     FindFirstElementByLocalName(child, L"image") != nullptr;
             }
+            // FB2 requires a content block after section metadata.  If the
+            // source consists only of epigraphs, represent the last one as a
+            // cite, retaining its children and their reading order.
+            bool hasBody = false;
+            MSXML2::IXMLDOMNodePtr lastEpigraph;
+            for (const auto& child : children)
+            {
+                const CStringW name = LocalName(child);
+                if (name == L"epigraph") lastEpigraph = child;
+                else if (name != L"title" && name != L"image" && name != L"annotation") hasBody = true;
+            }
+            if (!hasBody && lastEpigraph)
+            {
+                IXMLDOMNode* created = nullptr;
+                CheckError(dom->createNode(CComVariant(static_cast<long>(MSXML2::NODE_ELEMENT)), CComBSTR(L"cite"),
+                    CComBSTR(L"http://www.gribuser.ru/xml/fictionbook/2.0"), &created));
+                MSXML2::IXMLDOMNodePtr cite(created, false);
+                for (;;)
+                {
+                    IXMLDOMNode* raw = nullptr; lastEpigraph->get_firstChild(&raw);
+                    MSXML2::IXMLDOMNodePtr first(raw, false); if (!first) break;
+                    AppendDomChild(cite, first);
+                }
+                IXMLDOMNode* replaced = nullptr;
+                CheckError(node->replaceChild(cite, lastEpigraph, &replaced));
+                if (replaced) replaced->Release();
+                warning += L"Epigraph-only section: final epigraph preserved as cite.\r\n";
+                content = true;
+            }
             if (title && !content)
             {
                 const auto paragraphs = MsxmlGetChildNodes(title);
@@ -5655,6 +5691,14 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     int importedSections = 0;
 
     PrepareContentInventory(package, anchorIdMap);
+    // Inventory retains all spine documents for note discovery and forward links.
+    // Record explicit service exclusions separately before rendering any chapter.
+    for (const auto& id : package.spine)
+    {
+        const auto item = package.manifest.find(std::wstring(id));
+        if (item != package.manifest.end() && IsLikelyCoverSpineItem(item->second, package))
+            g_content.excludedServiceDocuments.emplace(LowerMapKey(item->second.absPath).GetString());
+    }
 
     if (options.importNotes)
     {
