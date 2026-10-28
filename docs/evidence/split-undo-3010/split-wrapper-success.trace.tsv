@@ -1,0 +1,4 @@
+timestamp	operation	backend	case	phase	event	hresult	details
+2026-10-28T10:22:56.822Z	split	extracted	split-wrapper-success	split-content	after	NA	completed: <DIV class=section>  <P>First</P>  <P>M</P></DIV>  <DIV id=split-wrapper-success class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-28T10:22:56.822Z	split	extracted	split-wrapper-success	selection-membership	after	NA	completed: start=1; end=-1; new=1
+2026-10-28T10:22:56.874Z	split	extracted	split-wrapper-success	undo-content	after	NA	completed: <DIV id=split-wrapper-success class=section>  <P>First</P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=split-wrapper-success class=section>  <P>iddle</P>  <P>Last</P></DIV>

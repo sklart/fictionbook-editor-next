@@ -241,6 +241,37 @@
 		const bool applied = splitResult.IsApplied();
 		const CString after(contentHtml());
 		trace.After(L"split-content", after);
+		if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SPLIT_TIMELINE", nullptr, 0)) {
+			const bool addInput = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SPLIT_TIMELINE_INPUT", nullptr, 0) > 0;
+			IServiceProviderPtr service(document); CComPtr<IOleUndoManager> manager;
+			if (service) service->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&manager));
+			auto countUnits = [&](bool redo) -> long {
+				CComPtr<IEnumOleUndoUnits> units;
+				if (!manager || FAILED(redo ? manager->EnumRedoable(&units) : manager->EnumUndoable(&units)) || !units) return -1;
+				long count = 0; for (; count < 256; ++count) { IOleUndoUnit* unit = nullptr; ULONG fetched = 0;
+					const HRESULT hr = units->Next(1, &unit, &fetched); if (unit) unit->Release(); if (hr != S_OK || fetched != 1) break; }
+				return count;
+			};
+			auto observe = [&](const wchar_t* phase) {
+				trace.After(phase, contentHtml());
+				CString state; state.Format(L"dirty=%d; undo=%ld; redo=%ld", m_doc->DocChanged() ? 1 : 0, countUnits(false), countUnits(true));
+				trace.After(L"timeline-state", state);
+				MSHTML::IHTMLTxtRangePtr active(document->selection->createRange());
+				if (active) { MSHTML::IHTMLElementPtr element(active->parentElement()); CString selection;
+					selection.Format(L"parent=%s; selected=%s", element ? static_cast<const wchar_t*>(element->tagName) : L"", static_cast<const wchar_t*>(active->text));
+					trace.After(L"timeline-selection", selection); }
+			};
+			trace.After(L"timeline-original", before); observe(L"timeline-split");
+			if (addInput) { m_doc->m_body.SetFocus(); const HWND focus = ::GetFocus(); if (focus) ::SendMessage(focus, WM_CHAR, L'X', 0); observe(L"timeline-input"); }
+			const CString expected(contentHtml()); int undoCount = 0; bool restored = false;
+			for (int i = 1; i <= 12; ++i) { BOOL ignored = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, ignored); ++undoCount;
+				CString phase; phase.Format(L"timeline-undo-%d", i); observe(phase); if (contentHtml() == before) { restored = true; break; } }
+			for (int i = 1; i <= undoCount; ++i) { BOOL ignored = FALSE; m_doc->m_body.OnRedo(0, 0, m_doc->m_body, ignored);
+				CString phase; phase.Format(L"timeline-redo-%d", i); observe(phase); }
+			const bool redone = contentHtml() == expected;
+			CStringA row; row.Format("timeline_restored=%d\nundo_steps=%d\ntimeline_redone=%d\ninput=%d\n", restored, undoCount, redone, addInput);
+			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(0); return 0;
+		}
 		auto statusName = [](const FbeStructure::StructuralOperationResult& result) -> const char* {
 			return result.IsApplied() ? "applied" : result.HasTechnicalFailure() ? "failed" : "not-applicable";
 		};

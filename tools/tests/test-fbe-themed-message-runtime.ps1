@@ -1,12 +1,14 @@
 <# Exercises FBE-owned dark message boxes through a real isolated Win32 process. #>
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 150)
+param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 150, [string]$EvidenceDirectory, [switch]$SimulateArrowDelay)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'themed-message'
 $passed = $false
+$savedArrowDelay = $env:FBE_NEXT_TEST_ARROW_DELAY
 try {
+    if ($SimulateArrowDelay) { $env:FBE_NEXT_TEST_ARROW_DELAY = '1' }
     $fixture = Join-Path $isolation.Root 'dialog.fb2'
     $report = Join-Path $isolation.Root 'dialog.tsv'
     [IO.File]::WriteAllText($fixture, '<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>dialog</book-title><lang>en</lang></title-info><document-info><id>themed-dialog-test</id><version>1.0</version></document-info></description><body><section><p>dialog</p></section></body></FictionBook>', [Text.UTF8Encoding]::new($false))
@@ -21,6 +23,10 @@ try {
         $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $savedMode, $savedScenario
     }
     if (-not (Test-Path -LiteralPath $report)) { throw 'Themed-message scenario produced no report.' }
+    if ($EvidenceDirectory) {
+        New-Item -ItemType Directory -Force -Path $EvidenceDirectory | Out-Null
+        Copy-Item -LiteralPath $report -Destination (Join-Path $EvidenceDirectory 'dialog.tsv') -Force
+    }
     $rows = @(Import-Csv -LiteralPath $report -Delimiter "`t")
     $expected = @('forged-command', 'yesno-escape', 'focused-enter', 'default-second', 'close-cancel', 'escape-cancel', 'long-warning', 'localized-mnemonic', 'arrow-space', 'long-keyboard-scroll')
     if ($rows.Count -ne $expected.Count) { throw "Expected $($expected.Count) dialog cases, got $($rows.Count)." }
@@ -90,5 +96,6 @@ try {
     $passed = $true
     Write-Host 'Themed message responses, native button parity, keyboard, command origin, DPI geometry, WM_QUIT, and partial-creation fallback passed.'
 } finally {
+    $env:FBE_NEXT_TEST_ARROW_DELAY = $savedArrowDelay
     Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed
 }

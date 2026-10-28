@@ -1,0 +1,766 @@
+{
+  "description": "Anonymized classification against the pre-fix FB2; text, images and absolute paths are not included. Cases can have inline formatting. br_to_space is addressed by the direct line-break conversion.",
+  "counts": {
+    "same_direct_text": 66,
+    "br_to_space": 28
+  },
+  "cases": [
+    {
+      "source_document": "text/part0003.html",
+      "source_block_index": 4,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0004.html",
+      "source_block_index": 27,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0006.html",
+      "source_block_index": 103,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em",
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0006.html",
+      "source_block_index": 111,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0006.html",
+      "source_block_index": 130,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0007.html",
+      "source_block_index": 147,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0008.html",
+      "source_block_index": 203,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0010.html",
+      "source_block_index": 244,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0010.html",
+      "source_block_index": 252,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em",
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0010.html",
+      "source_block_index": 255,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0010.html",
+      "source_block_index": 257,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0011.html",
+      "source_block_index": 276,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0011.html",
+      "source_block_index": 328,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0012.html",
+      "source_block_index": 344,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0012.html",
+      "source_block_index": 350,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0014.html",
+      "source_block_index": 384,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0015.html",
+      "source_block_index": 441,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0016.html",
+      "source_block_index": 459,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0016.html",
+      "source_block_index": 467,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0018.html",
+      "source_block_index": 587,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0018.html",
+      "source_block_index": 590,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0019.html",
+      "source_block_index": 616,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em",
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0019.html",
+      "source_block_index": 630,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0022.html",
+      "source_block_index": 719,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0022.html",
+      "source_block_index": 729,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0022.html",
+      "source_block_index": 742,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0022.html",
+      "source_block_index": 752,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0027.html",
+      "source_block_index": 937,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0030.html",
+      "source_block_index": 1065,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0030.html",
+      "source_block_index": 1122,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0033.html",
+      "source_block_index": 1209,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0033.html",
+      "source_block_index": 1212,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0033.html",
+      "source_block_index": 1213,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0033.html",
+      "source_block_index": 1215,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0035_split_000.html",
+      "source_block_index": 1332,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0035_split_001.html",
+      "source_block_index": 1339,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0035_split_001.html",
+      "source_block_index": 1341,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0036.html",
+      "source_block_index": 1378,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0037_split_001.html",
+      "source_block_index": 1421,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0037_split_001.html",
+      "source_block_index": 1423,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0039_split_001.html",
+      "source_block_index": 1514,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0039_split_001.html",
+      "source_block_index": 1516,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0041.html",
+      "source_block_index": 1589,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0041.html",
+      "source_block_index": 1597,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0042_split_000.html",
+      "source_block_index": 1612,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0042_split_000.html",
+      "source_block_index": 1615,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0042_split_000.html",
+      "source_block_index": 1628,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0042_split_001.html",
+      "source_block_index": 1643,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0042_split_001.html",
+      "source_block_index": 1645,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0043.html",
+      "source_block_index": 1663,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0044.html",
+      "source_block_index": 1684,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0044.html",
+      "source_block_index": 1726,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0044.html",
+      "source_block_index": 1735,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em",
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0045_split_001.html",
+      "source_block_index": 1818,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0045_split_001.html",
+      "source_block_index": 1820,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0047_split_000.html",
+      "source_block_index": 1913,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0047_split_001.html",
+      "source_block_index": 1956,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0047_split_001.html",
+      "source_block_index": 1958,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0048.html",
+      "source_block_index": 1976,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0049_split_000.html",
+      "source_block_index": 2014,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0049_split_001.html",
+      "source_block_index": 2039,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0049_split_001.html",
+      "source_block_index": 2041,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0051_split_001.html",
+      "source_block_index": 2144,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0051_split_001.html",
+      "source_block_index": 2146,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0053_split_000.html",
+      "source_block_index": 2204,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0053_split_001.html",
+      "source_block_index": 2247,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0053_split_001.html",
+      "source_block_index": 2249,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0054_split_000.html",
+      "source_block_index": 2269,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0054_split_001.html",
+      "source_block_index": 2280,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0054_split_001.html",
+      "source_block_index": 2282,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0055.html",
+      "source_block_index": 2304,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0055.html",
+      "source_block_index": 2321,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0057_split_001.html",
+      "source_block_index": 2374,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0057_split_001.html",
+      "source_block_index": 2376,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0059_split_001.html",
+      "source_block_index": 2482,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0059_split_001.html",
+      "source_block_index": 2484,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0060.html",
+      "source_block_index": 2495,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0061.html",
+      "source_block_index": 2560,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0063.html",
+      "source_block_index": 2698,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0064.html",
+      "source_block_index": 2732,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0066.html",
+      "source_block_index": 2790,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0072.html",
+      "source_block_index": 2955,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0074.html",
+      "source_block_index": 3005,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0079.html",
+      "source_block_index": 3195,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0079.html",
+      "source_block_index": 3210,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0080.html",
+      "source_block_index": 3261,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0082.html",
+      "source_block_index": 3298,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "sup"
+      ]
+    },
+    {
+      "source_document": "text/part0082.html",
+      "source_block_index": 3305,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0082.html",
+      "source_block_index": 3309,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0084.html",
+      "source_block_index": 3350,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0085.html",
+      "source_block_index": 3354,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br",
+        "strong"
+      ]
+    },
+    {
+      "source_document": "text/part0087.html",
+      "source_block_index": 3372,
+      "classification": "same_direct_text",
+      "inline_tags": [
+        "em"
+      ]
+    },
+    {
+      "source_document": "text/part0088.html",
+      "source_block_index": 3377,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    },
+    {
+      "source_document": "text/part0088.html",
+      "source_block_index": 3384,
+      "classification": "br_to_space",
+      "inline_tags": [
+        "br"
+      ]
+    }
+  ]
+}
