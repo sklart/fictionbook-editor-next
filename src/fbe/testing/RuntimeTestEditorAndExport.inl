@@ -2804,6 +2804,25 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 	}
 	if (IsFbeTestScenario(L"themed-message-behavior"))
 	{
+		static std::atomic<int> arrowSeen(0), arrowFocus(0), spaceDownSeen(0), spaceUpSeen(0), arrowActive(0);
+		struct KeyboardProbe {
+			static LRESULT CALLBACK Observe(int code, WPARAM action, LPARAM value) {
+				if(code >= 0 && action == PM_REMOVE) {
+					const MSG* message = reinterpret_cast<const MSG*>(value);
+					if(message->message == WM_KEYDOWN && message->wParam == VK_RIGHT) {
+						wchar_t delay[2] = {};
+						if(::GetEnvironmentVariableW(L"FBE_NEXT_TEST_ARROW_DELAY", delay, _countof(delay)) == 1 && delay[0] == L'1') ::Sleep(250);
+						arrowFocus.store(::GetDlgCtrlID(::GetFocus()));
+						arrowActive.store(::GetActiveWindow() == ::GetAncestor(message->hwnd, GA_ROOT) ? 1 : 0);
+						arrowSeen.store(1);
+					}
+					if(message->wParam == VK_SPACE && message->message == WM_KEYDOWN) spaceDownSeen.store(1);
+					if(message->wParam == VK_SPACE && message->message == WM_KEYUP) spaceUpSeen.store(1);
+				}
+				return ::CallNextHookEx(NULL, code, action, value);
+			}
+		};
+		HHOOK keyboardProbe = ::SetWindowsHookExW(WH_GETMESSAGE, KeyboardProbe::Observe, NULL, ::GetCurrentThreadId());
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
 		CStringA header("case\tresult\twindow\tgeometry\tcontent\tkeyboard\tdpi_geometry\tdpi_font\tbounds\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
@@ -2924,18 +2943,36 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 				}
 				case 8: { // Arrows move button focus; Space activates the focused button.
 					HWND noButton = ::GetDlgItem(dialog, IDNO);
-					::PostMessageW(firstButton, WM_KEYDOWN, VK_RIGHT, 0);
-					::Sleep(80);
+					arrowSeen.store(0); arrowFocus.store(0); arrowActive.store(0); spaceDownSeen.store(0); spaceUpSeen.store(0);
+					GUITHREADINFO initial = {}; initial.cbSize = sizeof(initial);
+					bool initialInfo = false;
+					for(int retry = 0; retry < 200; ++retry) {
+						initialInfo = ::GetGUIThreadInfo(::GetWindowThreadProcessId(dialog, NULL), &initial) != FALSE;
+						if(initialInfo && initial.hwndFocus == firstButton) break;
+						::Sleep(10);
+					}
+					const int initialFocus = initialInfo && initial.hwndFocus ? ::GetDlgCtrlID(initial.hwndFocus) : 0;
+					const bool arrowPosted = initial.hwndFocus == firstButton && ::PostMessageW(firstButton, WM_KEYDOWN, VK_RIGHT, 0) != FALSE;
 					GUITHREADINFO focus = {}; focus.cbSize = sizeof(focus);
-					keyboard = noButton != NULL && ::GetGUIThreadInfo(::GetWindowThreadProcessId(dialog, NULL), &focus) &&
+					bool focusInfo = false;
+					for(int retry = 0; retry < 200 && arrowPosted && ::IsWindow(dialog); ++retry) {
+						focusInfo = ::GetGUIThreadInfo(::GetWindowThreadProcessId(dialog, NULL), &focus) != FALSE;
+						if(arrowSeen.load() && focusInfo && focus.hwndFocus == noButton) break;
+						::Sleep(10);
+					}
+					const int afterFocus = focusInfo && focus.hwndFocus ? ::GetDlgCtrlID(focus.hwndFocus) : 0;
+					keyboard = keyboardProbe != NULL && arrowPosted && arrowSeen.load() && noButton != NULL && focusInfo &&
 						focus.hwndFocus == noButton;
 					if(keyboard)
 					{
-						::PostMessageW(noButton, WM_KEYDOWN, VK_SPACE, 0);
-						::PostMessageW(noButton, WM_KEYUP, VK_SPACE, 0);
-						::Sleep(100);
-						keyboard = !::IsWindow(dialog);
+						const bool downPosted = ::PostMessageW(noButton, WM_KEYDOWN, VK_SPACE, 0) != FALSE;
+						const bool upPosted = ::PostMessageW(noButton, WM_KEYUP, VK_SPACE, 0) != FALSE;
+						for(int retry = 0; retry < 200 && ::IsWindow(dialog); ++retry) ::Sleep(10);
+						keyboard = downPosted && upPosted && spaceDownSeen.load() && spaceUpSeen.load() && !::IsWindow(dialog);
 					}
+					bounds.AppendFormat(";hook=%d;initial=%d;arrow_posted=%d;arrow_seen=%d;arrow_focus=%d;arrow_active=%d;after=%d;space_down=%d;space_up=%d;closed=%d",
+						keyboardProbe != NULL ? 1 : 0, initialFocus, arrowPosted ? 1 : 0, arrowSeen.load(), arrowFocus.load(), arrowActive.load(), afterFocus,
+						spaceDownSeen.load(), spaceUpSeen.load(), ::IsWindow(dialog) ? 0 : 1);
 					if(::IsWindow(dialog) && noButton != NULL) ::SendMessageW(noButton, BM_CLICK, 0, 0);
 					break;
 				}
@@ -2998,6 +3035,7 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		runDialog("localized-mnemonic", MB_YESNO, 7, IDNO, 20);
 		runDialog("arrow-space", MB_YESNO, 8, IDNO, 20);
 		runDialog("long-keyboard-scroll", MB_OK | MB_ICONWARNING, 9, IDOK, 10000);
+		if(keyboardProbe) ::UnhookWindowsHookEx(keyboardProbe);
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
 	if (IsFbeTestScenario(L"themed-message-quit"))
