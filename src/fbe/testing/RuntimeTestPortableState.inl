@@ -34,7 +34,17 @@ public:
 	void InitializeStructural(MSHTML::IHTMLElementPtr target, bool addFirst, const CString& original, const CString& first, const CString& next, CAtlFile* report) { m_target = target; m_structural = true; m_addFirst = addFirst; m_original = original; m_first = first; m_next = next; m_report = report; }
 	void InitializeText(MSHTML::IHTMLElementPtr target, const CString& original, CAtlFile* report, bool nodeValue = false) { m_target = target; m_text = true; m_nodeValue = nodeValue; m_original = original; m_report = report; }
 	void InitializeSelection(MSHTML::IHTMLElementPtr target, CAtlFile* report) { m_target = target; m_selection = true; m_report = report; }
-	void DetachReport() { m_report = nullptr; m_observedUnits.clear(); }
+	void InitializeMutation(MSHTML::IHTMLElementPtr target, int mode, CAtlFile* report) { m_target = target; m_probeMode = mode; m_report = report; }
+	void TraceNodes(const wchar_t* phase) {
+		if (!m_report || !m_target) return;
+		MSHTML::IHTMLElementCollectionPtr children(m_target->children); MSHTML::IHTMLElementPtr p(children ? MSHTML::IHTMLElementPtr(children->item(0)) : MSHTML::IHTMLElementPtr()); if (!p) return;
+		unsigned index = 0, textCount = 0; for (MSHTML::IHTMLDOMNodePtr n(MSHTML::IHTMLDOMNodePtr(p)->firstChild); n; n = n->nextSibling, ++index) {
+			CComPtr<IUnknown> id; n->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&id)); unsigned number = 0; for (size_t i = 0; i < m_observedNodes.size(); ++i) if (m_observedNodes[i].p == id.p) { number = static_cast<unsigned>(i + 1); break; } if (!number && id) { m_observedNodes.push_back(id); number = static_cast<unsigned>(m_observedNodes.size()); }
+			const long type = n->nodeType; if (type == 3) ++textCount; CString value; if (type == 3) value = static_cast<const wchar_t*>(_bstr_t(n->nodeValue)); CStringA value8(CW2A(value, CP_UTF8)); CStringA row; row.Format("node-map\t%S\t%u\ttype=%ld\tidentity=%u\tvalue=%s\r\n", phase, index, type, number, value8.GetString()); DWORD written = 0; m_report->Write(row, static_cast<DWORD>(row.GetLength()), &written);
+		}
+		CString text(static_cast<const wchar_t*>(p->innerText)), html(static_cast<const wchar_t*>(p->innerHTML)); CStringA t(CW2A(text, CP_UTF8)), h(CW2A(html, CP_UTF8)), row; row.Format("node-summary\t%S\tcount=%u\ttext-count=%u\ttext=%s\thtml=%s\tstate=%d\r\n", phase, index, textCount, t.GetString(), h.GetString(), m_probeState ? 1 : 0); DWORD written = 0; m_report->Write(row, static_cast<DWORD>(row.GetLength()), &written); m_report->Flush();
+	}
+	void DetachReport() { m_report = nullptr; m_observedUnits.clear(); m_observedNodes.clear(); }
 	void TraceUnits(const wchar_t* phase, IOleUndoManager* manager) {
 		if (!m_report || !manager) return;
 		for (int side = 0; side != 2; ++side) {
@@ -64,7 +74,18 @@ public:
 			TraceUnits(L"do-enter", manager);
 			if (m_addFirst) { lastAdd = manager->Add(this); if (FAILED(lastAdd)) { m_doing = false; return lastAdd; } }
 			TraceUnits(L"before-mutation", manager);
-			if (m_structural) {
+			if (m_probeMode) {
+				TraceNodes(L"do-before");
+				if (m_probeMode == 1) m_probeState = !m_probeState;
+				else {
+					MSHTML::IHTMLElementCollectionPtr children(m_target->children); MSHTML::IHTMLElementPtr p(children ? MSHTML::IHTMLElementPtr(children->item(0)) : MSHTML::IHTMLElementPtr()); if (!p) { m_doing = false; return E_UNEXPECTED; }
+					const wchar_t* expected = m_after ? L"Rtail" : L"Qtail"; const wchar_t* replacement = m_after ? L"Q" : L"R";
+					if (CString(static_cast<const wchar_t*>(p->innerText)) != expected) { m_doing = false; return E_UNEXPECTED; }
+					if (m_probeMode == 4) p->innerHTML = m_after ? L"Qtail" : L"Rtail";
+					else { MSHTML::IHTMLDOMNodePtr n(MSHTML::IHTMLDOMNodePtr(p)->firstChild); if (!n || n->nodeType != 3 || CString(static_cast<const wchar_t*>(_bstr_t(n->nodeValue))) != (m_after ? L"R" : L"Q")) { m_doing = false; return E_UNEXPECTED; } if (m_probeMode == 2) n->nodeValue = _variant_t(replacement); else { MSHTML::IHTMLDOMTextNode2Ptr text(n); if (!text) { m_doing = false; return E_NOINTERFACE; } text->replaceData(0, 1, _bstr_t(replacement)); } }
+				}
+				m_after = !m_after; TraceNodes(L"do-after");
+			} else if (m_structural) {
 				if (!m_target || !m_target->parentElement) { m_doing = false; return E_UNEXPECTED; }
 				if (m_after) {
 					MSHTML::IHTMLElementPtr next(MSHTML::IHTMLDOMNodePtr(m_target)->nextSibling);
@@ -114,6 +135,9 @@ private:
 	CString m_original, m_first, m_next;
 	CAtlFile* m_report = nullptr;
 	std::vector<CComPtr<IUnknown>> m_observedUnits;
+	std::vector<CComPtr<IUnknown>> m_observedNodes;
+	int m_probeMode = 0;
+	bool m_probeState = true;
 	bool m_mutate = false, m_structural = false, m_text = false, m_nodeValue = false, m_selection = false, m_doing = false, m_addFirst = false, m_after = true;
 };
 
