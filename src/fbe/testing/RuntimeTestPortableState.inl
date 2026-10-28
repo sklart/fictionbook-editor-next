@@ -24,6 +24,47 @@ private:
 	std::vector<CComPtr<IOleUndoUnit>> m_units;
 };
 
+// Test-only experiment: distinguish OLE's inverse registration from an
+// MSHTML mutation performed inside IOleUndoUnit::Do. The target is a live,
+// never-removed fixture element, not a retained pointer to a split node.
+class CSplitTransactionMarker : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit {
+public:
+	BEGIN_COM_MAP(CSplitTransactionMarker) COM_INTERFACE_ENTRY(IOleUndoUnit) END_COM_MAP()
+	void Initialize(MSHTML::IHTMLElementPtr target, bool mutate, bool addFirst) { m_target = target; m_mutate = mutate; m_addFirst = addFirst; }
+	void InitializeStructural(MSHTML::IHTMLElementPtr target, bool addFirst, const CString& original, const CString& first, const CString& next) { m_target = target; m_structural = true; m_addFirst = addFirst; m_original = original; m_first = first; m_next = next; }
+	unsigned calls = 0;
+	HRESULT lastAdd = E_PENDING;
+	STDMETHOD(Do)(IOleUndoManager* manager) {
+		if (!manager) return E_POINTER;
+		++calls;
+		try {
+			if (m_addFirst) { lastAdd = manager->Add(this); if (FAILED(lastAdd)) return lastAdd; }
+			if (m_structural) {
+				if (!m_target || !m_target->parentElement) return E_UNEXPECTED;
+				if (m_after) {
+					MSHTML::IHTMLElementPtr next(MSHTML::IHTMLDOMNodePtr(m_target)->nextSibling);
+					if (!next || U::scmp(next->id, L"probe-marker")) return E_UNEXPECTED;
+					MSHTML::IHTMLDOMNodePtr(next)->removeNode(VARIANT_TRUE);
+					m_target->id = L"probe-marker"; m_target->innerHTML = m_original.AllocSysString();
+				} else {
+					m_target->id = L"probe-left"; m_target->innerHTML = m_first.AllocSysString();
+					m_target->insertAdjacentHTML(L"afterEnd", m_next.AllocSysString());
+				}
+				m_after = !m_after;
+			} else if (m_mutate) { if (!m_target || !m_target->parentElement) return E_UNEXPECTED; m_target->title = m_after ? L"before" : L"after"; m_after = !m_after; }
+			if (!m_addFirst) lastAdd = manager->Add(this);
+			return lastAdd;
+		} catch (const _com_error& error) { return error.Error(); }
+	}
+	STDMETHOD(GetDescription)(BSTR* value) { if (!value) return E_POINTER; *value = ::SysAllocString(L"split transaction marker probe"); return *value ? S_OK : E_OUTOFMEMORY; }
+	STDMETHOD(GetUnitType)(CLSID* clsid, LONG* id) { if (!clsid || !id) return E_POINTER; *clsid = CLSID_NULL; *id = 0; return S_OK; }
+	STDMETHOD(OnNextAdd)() { return S_OK; }
+private:
+	MSHTML::IHTMLElementPtr m_target;
+	CString m_original, m_first, m_next;
+	bool m_mutate = false, m_structural = false, m_addFirst = false, m_after = true;
+};
+
 class CUndoManagerEnableScope {
 public:
 	CUndoManagerEnableScope(IOleUndoManager* manager) : m_manager(manager), m_enabled(false) { if (m_manager && SUCCEEDED(m_manager->Enable(FALSE))) m_enabled = true; }
