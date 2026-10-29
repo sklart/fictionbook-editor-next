@@ -303,6 +303,12 @@ void Doc::MarkSavePoint() {
 	m_editor.ResetFormChanged();
 }
 
+void Doc::ReconcileUnchangedStartupTemplate() {
+	CString current;
+	if (m_hasSavedBodyHtml && !m_editor.IsFormChanged() && CaptureBodyHtml(current) && current == m_savedBodyHtml)
+		MarkSavePoint();
+}
+
 void Doc::MarkDocCP() {
 	m_body_cp = m_editor.GetVersionNumber();
 	m_hasRecoveryBodyHtml = CaptureBodyHtml(m_recoveryBodyHtml);

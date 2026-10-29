@@ -4898,6 +4898,11 @@ LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 	// Apply the persisted pane width before a recovery prompt enters its modal
 	// loop, so the startup dialog never exposes the temporary default splitter.
 	m_splitter.SetSplitterPos(_Settings.GetSplitterPos());
+	// A delayed MSHTML version increment may leave the untouched startup
+	// template dirty. Compare the saved body before reconciling, and do this
+	// before any recovery document can replace it.
+	if ((_ARGV.GetSize() == 0 || _ARGV[0].IsEmpty()) && !m_bad_xml && m_doc)
+		m_doc->ReconcileUnchangedStartupTemplate();
 	StartupTrace::AppendTestStartupBreadcrumb("postcreate-recovery-start");
 	TryRestoreRecovery();
 	StartupTrace::AppendTestStartupBreadcrumb("postcreate-recovery-complete");
@@ -5592,6 +5597,10 @@ LRESULT CMainFrame::OnFileNew(WORD, WORD, HWND, BOOL&)
 	m_bad_xml = false; m_bad_filename.Empty();
 	AttachDocument(m_doc);
 	ResetStatusForDocument();
+	// Attaching the freshly created template visits Description and Body, whose
+	// initialization can update the DOM. Establish the baseline only here,
+	// before returning control to the user; imported documents stay dirty.
+	m_doc->MarkSavePoint();
   }
 
   return 0;

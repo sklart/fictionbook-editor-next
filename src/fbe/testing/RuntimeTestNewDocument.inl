@@ -31,6 +31,7 @@ if(IsFbeTestScenario(L"new-document-safety-runtime")) {
         auto created=[&](FB::Doc* old){
             require(m_doc!=old&&m_document_session.HasDocument()&&FB::Doc::m_active_doc==m_doc,"new identity and active document");
             require(!m_doc->m_namevalid&&m_document_session.Location().storagePath.IsEmpty()&&!m_document_session.IsArchive(),"new unsaved session");
+            require(!DocChanged(),"new document initially clean without resetting savepoint");
             require(m_doc->m_body.HasDoc()&&m_view.GetActiveWnd()==m_doc->m_body&&!IsSourceActive(),"new Body visible");
             require(order&&prepared==detached,"detach before destroying old host");
             require(m_source.SendMessage(SCI_GETLENGTH)==0&&!m_source.SendMessage(SCI_CANUNDO)&&!m_source.SendMessage(SCI_CANREDO),"new Source and history cleared");

@@ -110,6 +110,7 @@ public:
   }
 
 	void MarkSavePoint();
+	void ReconcileUnchangedStartupTemplate();
 	struct UndoSavepoints {
 		long savedVersion, recoveryVersion;
 		CString savedHtml, recoveryHtml;

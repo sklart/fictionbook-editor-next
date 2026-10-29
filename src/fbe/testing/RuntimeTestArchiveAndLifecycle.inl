@@ -1254,6 +1254,26 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		::PostQuitMessage(opened ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"startup-blank-clean-runtime"))
+	{
+		const bool clean = m_document_session.HasDocument() && m_document_session.Location().storagePath.IsEmpty() && !DocChanged();
+		const auto saved = m_doc->CaptureUndoSavepoints();
+		MSHTML::IHTMLDocument3Ptr document(m_doc->m_editor.Document());
+		MSHTML::IHTMLElementPtr body = document ? document->getElementById(L"fbw_body") : NULL;
+		const bool bodyMatches = body && saved.hasSaved && CString(static_cast<LPCWSTR>(body->innerHTML)) == saved.savedHtml;
+		ShowView(SOURCE);
+		m_source.SendMessage(SCI_GOTOPOS, 0);
+		m_source.SendMessage(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(" "));
+		const bool editDirty = DocChanged() && m_source.SendMessage(SCI_CANUNDO);
+		m_source.SendMessage(SCI_UNDO);
+		const bool undoClean = !DocChanged();
+		m_source.SendMessage(SCI_REDO);
+		const bool redoDirty = DocChanged();
+		CStringA report; report.Format("startup_clean=%d\nbody_matches=%d\nedit_dirty=%d\nundo_clean=%d\nredo_dirty=%d\n", clean, bodyMatches, editDirty, undoClean, redoDirty);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(clean && editDirty && undoClean && redoDirty ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"new-document-runtime"))
 	{
 		FB::Doc* const original = m_doc;
