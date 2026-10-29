@@ -4952,6 +4952,35 @@ namespace
     }
 
 
+    CStringW IsoCalendarDate(const CStringW& source)
+    {
+        CStringW value(source); value.Trim();
+        const int n = value.GetLength();
+        if (n < 10 || value[4] != L'-' || value[7] != L'-') return CStringW();
+        for (int i : {0, 1, 2, 3, 5, 6, 8, 9}) if (value[i] < L'0' || value[i] > L'9') return CStringW();
+        const int year = _wtoi(value.Left(4)), month = _wtoi(value.Mid(5, 2)), day = _wtoi(value.Mid(8, 2));
+        const int days[] = {0,31,28,31,30,31,30,31,31,30,31,30,31};
+        if (year < 1 || month < 1 || month > 12) return CStringW();
+        const bool leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+        if (day < 1 || day > days[month] + (month == 2 && leap ? 1 : 0)) return CStringW();
+        if (n > 10) {
+            if (n < 19 || (value[10] != L'T' && value[10] != L't') || value[13] != L':' || value[16] != L':') return CStringW();
+            for (int i : {11, 12, 14, 15, 17, 18}) if (value[i] < L'0' || value[i] > L'9') return CStringW();
+            if (_wtoi(value.Mid(11, 2)) > 23 || _wtoi(value.Mid(14, 2)) > 59 || _wtoi(value.Mid(17, 2)) > 59) return CStringW();
+            int pos = 19;
+            if (pos < n && value[pos] == L'.') { ++pos; const int start = pos; while (pos < n && value[pos] >= L'0' && value[pos] <= L'9') ++pos; if (pos == start) return CStringW(); }
+            if (pos < n && (value[pos] == L'Z' || value[pos] == L'z')) ++pos;
+            else if (pos < n && (value[pos] == L'+' || value[pos] == L'-')) {
+                if (pos + 6 != n || value[pos+3] != L':' || value[pos+1] < L'0' || value[pos+1] > L'9' || value[pos+2] < L'0' || value[pos+2] > L'9' || value[pos+4] < L'0' || value[pos+4] > L'9' || value[pos+5] < L'0' || value[pos+5] > L'9') return CStringW();
+                const int hours = _wtoi(value.Mid(pos+1, 2)), minutes = _wtoi(value.Mid(pos+4, 2));
+                if (hours > 14 || minutes > 59 || (hours == 14 && minutes != 0)) return CStringW();
+                pos += 6;
+            }
+            if (pos != n) return CStringW();
+        }
+        return value.Left(10);
+    }
+
     CStringW CurrentDateIso()
     {
         SYSTEMTIME st = {};
@@ -5133,8 +5162,11 @@ namespace
             xml += L"        <p>" + XmlEscape(package.description) + L"</p>\r\n";
             xml += L"      </annotation>\r\n";
         }
-        if (!package.date.IsEmpty())
-            xml += L"      <date>" + XmlEscape(package.date) + L"</date>\r\n";
+        if (!package.date.IsEmpty()) {
+            const CStringW normalizedDate = IsoCalendarDate(package.date);
+            const CStringW valueAttr = normalizedDate.IsEmpty() ? CStringW() : L" value=\"" + normalizedDate + L"\"";
+            xml += L"      <date" + valueAttr + L">" + XmlEscape(package.date) + L"</date>\r\n";
+        }
         if (!package.coverId.IsEmpty())
         {
             const ManifestItem* coverImage = ResolveCoverImageItem(package);
@@ -5160,7 +5192,7 @@ namespace
         xml += L"    </title-info>\r\n";
         xml += L"    <document-info>\r\n";
         xml += L"      <author><nickname>ImportEPUB</nickname></author>\r\n";
-        xml += L"      <program-used>FBE ImportEPUB plugin</program-used>\r\n";
+        xml += L"      <program-used>FBE Next ImportEPUB plugin, FictionBook Editor Next " FBE_VERSION_WSTRING L"</program-used>\r\n";
         xml += L"      <date>" + CurrentDateIso() + L"</date>\r\n";
         if (!package.identifier.IsEmpty())
             xml += L"      <id>" + XmlEscape(package.identifier) + L"</id>\r\n";

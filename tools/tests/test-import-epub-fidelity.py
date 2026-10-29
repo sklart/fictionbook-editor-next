@@ -55,7 +55,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for folder in cls.folders:
                 folder.cleanup()
 
-    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False):
+    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, identifier='fixture', date=''):
         extra = extra or {}
         temp = tempfile.TemporaryDirectory(prefix='epub-fidelity-')
         self.folders.append(temp)
@@ -101,7 +101,8 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 z.writestr('OEBPS/' + path, xhtml(content, ident) if mime == 'application/xhtml+xml' else content)
             modified = '<meta property="dcterms:modified">2026-10-21T00:00:00Z</meta>' if version.startswith('3') else ''
             toc = '' if version.startswith('3') or navigation is False else ' toc="fixture-ncx"'
-            z.writestr('OEBPS/book.opf', f'<package xmlns="http://www.idpf.org/2007/opf" version="{version}" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">fixture</dc:identifier><dc:title>Fixture</dc:title><dc:language>ru</dc:language><dc:creator>Tester</dc:creator>' + modified + '</metadata><manifest>' + ''.join(manifest) + ''.join(manifest_extra) + f'</manifest><spine{toc}>' + ''.join(f'<itemref idref="{ident}"/>' for ident in (spine or ['chapter'])) + '</spine>' + guide + '</package>')
+            date_xml = f'<dc:date>{date}</dc:date>' if date else ''
+            z.writestr('OEBPS/book.opf', f'<package xmlns="http://www.idpf.org/2007/opf" version="{version}" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">{identifier}</dc:identifier><dc:title>Fixture</dc:title><dc:language>ru</dc:language><dc:creator>Tester</dc:creator>' + date_xml + modified + '</metadata><manifest>' + ''.join(manifest) + ''.join(manifest_extra) + f'</manifest><spine{toc}>' + ''.join(f'<itemref idref="{ident}"/>' for ident in (spine or ['chapter'])) + '</spine>' + guide + '</package>')
             for path, content in (raw or {}).items():
                 z.writestr(path, content)
         output = folder / 'case.fb2'
@@ -255,6 +256,40 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assert_once(root, 'Following text')
         self.assertEqual(len(root.findall('f:binary', NS)), 2)
         self.assertIn('Image-only paragraph retained', self.diagnostics)
+
+    def test_image_paragraph_anchor_remains_resolvable(self):
+        root = self.convert('<h1>Images</h1><p id="illustration"><img src="../a.png"/></p>'
+                            '<p>See <a href="#illustration">illustration</a>.</p>',
+                            {'a.png': ('a', 'image/png', PNG)})
+        link = next(a for a in root.findall('.//f:a', NS) if 'illustration' in self.text(a))
+        target = link.get(HREF).removeprefix('#')
+        self.assertTrue(target)
+        self.assertEqual(len([node for node in root.iter() if node.get('id') == target]), 1)
+        self.assertEqual(base64.b64decode(root.find('f:binary', NS).text), PNG)
+
+    def test_program_used_identifies_current_build(self):
+        root = self.convert('<p>Content</p>')
+        header = (ROOT / 'src/version.h').read_text(encoding='utf-8')
+        version = re.search(r'#define FBE_VERSION_STRING "([^"]+)"', header).group(1)
+        self.assertEqual(root.find('.//f:document-info/f:program-used', NS).text,
+                         'FBE Next ImportEPUB plugin, FictionBook Editor Next ' + version)
+
+    def test_source_timestamp_and_uuid(self):
+        uuid = 'urn:uuid:12345678-1234-4234-9234-123456789abc'
+        stamp = '2020-01-02T23:45:00-05:00'
+        root = self.convert('<p>Content</p>', identifier=uuid, date=stamp)
+        date = root.find('.//f:title-info/f:date', NS)
+        self.assertEqual(date.text, stamp)
+        self.assertEqual(date.get('value'), '2020-01-02')
+        self.assertEqual(root.find('.//f:document-info/f:id', NS).text, uuid)
+
+    def test_invalid_dates_do_not_gain_normalized_value(self):
+        for stamp in ('2021-02-29', '2020-01-02T25:00:00Z', '2020-01-02T12:00:00+14:30', '2020-01-02garbage'):
+            with self.subTest(stamp=stamp):
+                root = self.convert('<p>Content</p>', date=stamp)
+                date = root.find('.//f:title-info/f:date', NS)
+                self.assertEqual(date.text, stamp)
+                self.assertIsNone(date.get('value'))
 
     def test_relative_encoded_images(self):
         root = self.convert('<p>Image<img src="../Images/%D1%80%D0%B8%D1%81%20one.png"/></p>',
