@@ -1,0 +1,106 @@
+Opened log file 'D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-split-20261029\p268-null-object.txt'
+
+Microsoft (R) Windows Debugger Version 10.0.18362.1 X86
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+CommandLine: D:\Download\FBeditor\out\p268\FBE.exe D:\Download\FBeditor\out\p268-test.fb2
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\winrt.natvis'
+Error: Change all symbol paths attempts to access 'C:\Windows\Symbols' failed: 0x2 - Не удается найти указанный файл.
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Error                                          C:\Windows\Symbols
+Symbol search path is: C:\Windows\Symbols
+Executable search path is: 
+ModLoad: 00600000 00858000   FBE.exe 
+ModLoad: 77090000 77250000   ntdll.dll
+ModLoad: 759b0000 75aa0000   C:\WINDOWS\SysWOW64\KERNEL32.DLL
+ModLoad: 76510000 767e9000   C:\WINDOWS\SysWOW64\KERNELBASE.dll
+ModLoad: 74a20000 74acf000   C:\WINDOWS\SysWOW64\apphelp.dll
+ModLoad: 75650000 7570c000   C:\WINDOWS\SysWOW64\RPCRT4.dll
+ModLoad: 76310000 764fd000   C:\WINDOWS\SysWOW64\USER32.dll
+ModLoad: 6ee10000 6ef8f000   C:\WINDOWS\WinSxS\x86_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.26100.9711_none_b69fe26d52438af9\gdiplus.dll
+ModLoad: 75520000 7553c000   C:\WINDOWS\SysWOW64\win32u.dll
+ModLoad: 76f60000 77070000   C:\WINDOWS\SysWOW64\ucrtbase.dll
+ModLoad: 769c0000 76c58000   C:\WINDOWS\SysWOW64\combase.dll
+ModLoad: 76c80000 76ca2000   C:\WINDOWS\SysWOW64\GDI32.dll
+ModLoad: 68810000 68886000   C:\WINDOWS\SysWOW64\GLU32.dll
+ModLoad: 68890000 68973000   C:\WINDOWS\SysWOW64\OPENGL32.dll
+ModLoad: 768f0000 769b7000   C:\WINDOWS\SysWOW64\msvcrt.dll
+ModLoad: 75ac0000 75bab000   C:\WINDOWS\SysWOW64\gdi32full.dll
+ModLoad: 01390000 01457000   C:\WINDOWS\SysWOW64\msvcrt.dll
+ModLoad: 767f0000 76875000   C:\WINDOWS\SysWOW64\msvcp_win.dll
+ModLoad: 755c0000 75645000   C:\WINDOWS\SysWOW64\ADVAPI32.dll
+ModLoad: 752e0000 75399000   C:\WINDOWS\SysWOW64\COMDLG32.dll
+ModLoad: 75430000 754b5000   C:\WINDOWS\SysWOW64\sechost.dll
+ModLoad: 74c00000 74cd5000   C:\WINDOWS\SysWOW64\shcore.dll
+ModLoad: 757f0000 75842000   C:\WINDOWS\SysWOW64\SHLWAPI.dll
+ModLoad: 75c20000 7628b000   C:\WINDOWS\SysWOW64\SHELL32.dll
+ModLoad: 6efd0000 6f1f7000   C:\WINDOWS\WinSxS\x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.26100.9711_none_85b4ef87f7b1112b\COMCTL32.dll
+ModLoad: 75850000 759a7000   C:\WINDOWS\SysWOW64\ole32.dll
+ModLoad: 74b50000 74bf0000   C:\WINDOWS\SysWOW64\OLEAUT32.dll
+ModLoad: 707d0000 70968000   C:\WINDOWS\SysWOW64\urlmon.dll
+ModLoad: 6ed10000 6ed16000   C:\WINDOWS\SysWOW64\MSIMG32.dll
+ModLoad: 73970000 73b93000   C:\WINDOWS\SysWOW64\WININET.dll
+ModLoad: 70580000 707bd000   C:\WINDOWS\SysWOW64\iertutil.dll
+ModLoad: 72230000 7294e000   C:\WINDOWS\SysWOW64\windows.storage.dll
+ModLoad: 70550000 7056e000   C:\WINDOWS\SysWOW64\srvcli.dll
+ModLoad: 73240000 7324b000   C:\WINDOWS\SysWOW64\netutils.dll
+ModLoad: 6c160000 6c194000   D:\Download\FBeditor\out\p268\pcre.dll
+ModLoad: 721a0000 721aa000   C:\WINDOWS\SysWOW64\CRYPTBASE.DLL
+ModLoad: 6c0f0000 6c126000   C:\WINDOWS\SysWOW64\dxcore.dll
+(47a4.87e8): Break instruction exception - code 80000003 (first chance)
+eax=00000000 ebx=00000000 ecx=59db0000 edx=00000000 esi=00eb5200 edi=00b49000
+eip=771a91a8 esp=009ff614 ebp=009ff640 iopl=0         nv up ei pl zr na pe nc
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000246
+ntdll!LdrInitShimEngineDynamic+0x6a8:
+771a91a8 cc              int     3
+0:000> bp 006b2043;g;r;dd ebx L8;du poi(ebx);du poi(ebx+4);kb;qd
+ModLoad: 75720000 75745000   C:\WINDOWS\SysWOW64\IMM32.DLL
+ModLoad: 72190000 72199000   C:\Program Files (x86)\Common Files\Crypto Pro\AppCompat\cpwinet.dll
+ModLoad: 73260000 73275000   C:\WINDOWS\SysWOW64\kernel.appcore.dll
+ModLoad: 76290000 7630a000   C:\WINDOWS\SysWOW64\bcryptPrimitives.dll
+ModLoad: 6dc30000 6dcae000   C:\WINDOWS\SysWOW64\uxtheme.dll
+ModLoad: 753a0000 75429000   C:\WINDOWS\SysWOW64\clbcatq.dll
+Breakpoint 0 hit
+*** WARNING: Unable to verify checksum for FBE.exe
+eax=00f1301c ebx=009fea7c ecx=00000000 edx=00000000 esi=00f1ba40 edi=00000000
+eip=006b2043 esp=009fe9e8 ebp=009fea20 iopl=0         nv up ei pl zr na pe nc
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000246
+FBE+0xb2043:
+006b2043 6803400080      push    80004003h
+009fea7c  00ef7560 00ef74d8 00000000 00000000
+009fea8c  00000000 00000000 00000000 00000000
+00ef7560  "C:\Users\Sklyarov\AppData\Local\"
+00ef75a0  "FBE\Settings.xml"
+00ef74d8  "FBE"
+ChildEBP RetAddr  Args to Child              
+WARNING: Stack unwind information not available. Following frames may be wrong.
+009fea20 006b1d19 7eae6cf0 759c41b0 ffffffff FBE+0xb2043
+009fea54 0068b2ba 00ef74c8 009feab0 00000001 FBE+0xb1d19
+009feac0 00632448 00000000 007664f0 77144664 FBE+0x8b2ba
+009ffae8 006d93e3 00600000 00000000 00eb5768 FBE+0x32448
+009ffb34 759c5d49 00b49000 759c5d30 009ffb9c FBE+0xd93e3
+009ffb44 770fc75b 00b49000 0bd26748 00000000 KERNEL32!BaseThreadInitThunk+0x19
+009ffb9c 770fc6e1 ffffffff 77146330 00000000 ntdll!RtlInitializeExceptionChain+0x6b
+009ffbac 00000000 006d945c 00b49000 00000000 ntdll!RtlGetAppContainerNamedObjectPath+0x231
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\winrt.natvis'

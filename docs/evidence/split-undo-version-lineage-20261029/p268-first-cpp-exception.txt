@@ -1,0 +1,183 @@
+Opened log file 'D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-split-20261029\p268-first-cpp-exception.txt'
+
+Microsoft (R) Windows Debugger Version 10.0.18362.1 X86
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+CommandLine: D:\Download\FBeditor\out\p268\FBE.exe D:\Download\FBeditor\out\p268-test.fb2
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\winrt.natvis'
+Error: Change all symbol paths attempts to access 'C:\Windows\Symbols' failed: 0x2 - Не удается найти указанный файл.
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Error                                          C:\Windows\Symbols
+Symbol search path is: C:\Windows\Symbols
+Executable search path is: 
+ModLoad: 00600000 00858000   FBE.exe 
+ModLoad: 77090000 77250000   ntdll.dll
+ModLoad: 759b0000 75aa0000   C:\WINDOWS\SysWOW64\KERNEL32.DLL
+ModLoad: 76510000 767e9000   C:\WINDOWS\SysWOW64\KERNELBASE.dll
+ModLoad: 74a20000 74acf000   C:\WINDOWS\SysWOW64\apphelp.dll
+ModLoad: 75650000 7570c000   C:\WINDOWS\SysWOW64\RPCRT4.dll
+ModLoad: 76310000 764fd000   C:\WINDOWS\SysWOW64\USER32.dll
+ModLoad: 6ee10000 6ef8f000   C:\WINDOWS\WinSxS\x86_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.26100.9711_none_b69fe26d52438af9\gdiplus.dll
+ModLoad: 75520000 7553c000   C:\WINDOWS\SysWOW64\win32u.dll
+ModLoad: 76f60000 77070000   C:\WINDOWS\SysWOW64\ucrtbase.dll
+ModLoad: 769c0000 76c58000   C:\WINDOWS\SysWOW64\combase.dll
+ModLoad: 76c80000 76ca2000   C:\WINDOWS\SysWOW64\GDI32.dll
+ModLoad: 68890000 68973000   C:\WINDOWS\SysWOW64\OPENGL32.dll
+ModLoad: 68810000 68886000   C:\WINDOWS\SysWOW64\GLU32.dll
+ModLoad: 75ac0000 75bab000   C:\WINDOWS\SysWOW64\gdi32full.dll
+ModLoad: 768f0000 769b7000   C:\WINDOWS\SysWOW64\msvcrt.dll
+ModLoad: 01390000 01457000   C:\WINDOWS\SysWOW64\msvcrt.dll
+ModLoad: 767f0000 76875000   C:\WINDOWS\SysWOW64\msvcp_win.dll
+ModLoad: 755c0000 75645000   C:\WINDOWS\SysWOW64\ADVAPI32.dll
+ModLoad: 752e0000 75399000   C:\WINDOWS\SysWOW64\COMDLG32.dll
+ModLoad: 75430000 754b5000   C:\WINDOWS\SysWOW64\sechost.dll
+ModLoad: 74c00000 74cd5000   C:\WINDOWS\SysWOW64\shcore.dll
+ModLoad: 757f0000 75842000   C:\WINDOWS\SysWOW64\SHLWAPI.dll
+ModLoad: 75c20000 7628b000   C:\WINDOWS\SysWOW64\SHELL32.dll
+ModLoad: 6efd0000 6f1f7000   C:\WINDOWS\WinSxS\x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.26100.9711_none_85b4ef87f7b1112b\COMCTL32.dll
+ModLoad: 75850000 759a7000   C:\WINDOWS\SysWOW64\ole32.dll
+ModLoad: 74b50000 74bf0000   C:\WINDOWS\SysWOW64\OLEAUT32.dll
+ModLoad: 6ed10000 6ed16000   C:\WINDOWS\SysWOW64\MSIMG32.dll
+ModLoad: 6c160000 6c194000   D:\Download\FBeditor\out\p268\pcre.dll
+ModLoad: 707d0000 70968000   C:\WINDOWS\SysWOW64\urlmon.dll
+ModLoad: 73970000 73b93000   C:\WINDOWS\SysWOW64\WININET.dll
+ModLoad: 70580000 707bd000   C:\WINDOWS\SysWOW64\iertutil.dll
+ModLoad: 72230000 7294e000   C:\WINDOWS\SysWOW64\windows.storage.dll
+ModLoad: 721a0000 721aa000   C:\WINDOWS\SysWOW64\CRYPTBASE.DLL
+ModLoad: 70550000 7056e000   C:\WINDOWS\SysWOW64\srvcli.dll
+ModLoad: 73240000 7324b000   C:\WINDOWS\SysWOW64\netutils.dll
+ModLoad: 6c0f0000 6c126000   C:\WINDOWS\SysWOW64\dxcore.dll
+(5f4c.521c): Break instruction exception - code 80000003 (first chance)
+eax=00000000 ebx=00000000 ecx=25ee0000 edx=00000000 esi=00ed5200 edi=00bc0000
+eip=771a91a8 esp=009ff374 ebp=009ff3a0 iopl=0         nv up ei pl zr na pe nc
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000246
+ntdll!LdrInitShimEngineDynamic+0x6a8:
+771a91a8 cc              int     3
+0:000> sxe eh;g; .exr -1; kb; q
+ModLoad: 75720000 75745000   C:\WINDOWS\SysWOW64\IMM32.DLL
+ModLoad: 72190000 72199000   C:\Program Files (x86)\Common Files\Crypto Pro\AppCompat\cpwinet.dll
+ModLoad: 73260000 73275000   C:\WINDOWS\SysWOW64\kernel.appcore.dll
+ModLoad: 76290000 7630a000   C:\WINDOWS\SysWOW64\bcryptPrimitives.dll
+ModLoad: 6dc30000 6dcae000   C:\WINDOWS\SysWOW64\uxtheme.dll
+ModLoad: 753a0000 75429000   C:\WINDOWS\SysWOW64\clbcatq.dll
+(5f4c.521c): C++ EH exception - code e06d7363 (first chance)
+First chance exceptions are reported before any exception handling.
+This exception may be expected and handled.
+*** WARNING: Unable to verify checksum for FBE.exe
+ExceptionAddress: 7667bae4 (KERNELBASE!RaiseException+0x00000064)
+   ExceptionCode: e06d7363 (C++ EH exception)
+  ExceptionFlags: 00000001
+NumberParameters: 3
+   Parameter[0]: 19930520
+   Parameter[1]: 009fe71c
+   Parameter[2]: 0073c22c
+!cppexr ffffffffffffffff
+*************************************************************************
+***                                                                   ***
+***                                                                   ***
+***    Either you specified an unqualified symbol, or your debugger   ***
+***    doesn't have full symbol information.  Unqualified symbol      ***
+***    resolution is turned off by default. Please either specify a   ***
+***    fully qualified symbol module!symbolname, or enable resolution ***
+***    of unqualified symbols by typing ".symopt- 100". Note that     ***
+***    enabling unqualified symbol resolution with network symbol     ***
+***    server shares in the symbol path may cause the debugger to     ***
+***    appear to hang for long periods of time when an incorrect      ***
+***    symbol name is typed or the network symbol server is down.     ***
+***                                                                   ***
+***    For some commands to work properly, your symbol path           ***
+***    must point to .pdb files that have full type information.      ***
+***                                                                   ***
+***    Certain .pdb files (such as the public OS symbols) do not      ***
+***    contain the required information.  Contact the group that      ***
+***    provided you with these symbols if you need this command to    ***
+***    work.                                                          ***
+***                                                                   ***
+***    Type referenced: msvcrt!EHExceptionRecord                      ***
+***                                                                   ***
+*************************************************************************
+*************************************************************************
+***                                                                   ***
+***                                                                   ***
+***    Either you specified an unqualified symbol, or your debugger   ***
+***    doesn't have full symbol information.  Unqualified symbol      ***
+***    resolution is turned off by default. Please either specify a   ***
+***    fully qualified symbol module!symbolname, or enable resolution ***
+***    of unqualified symbols by typing ".symopt- 100". Note that     ***
+***    enabling unqualified symbol resolution with network symbol     ***
+***    server shares in the symbol path may cause the debugger to     ***
+***    appear to hang for long periods of time when an incorrect      ***
+***    symbol name is typed or the network symbol server is down.     ***
+***                                                                   ***
+***    For some commands to work properly, your symbol path           ***
+***    must point to .pdb files that have full type information.      ***
+***                                                                   ***
+***    Certain .pdb files (such as the public OS symbols) do not      ***
+***    contain the required information.  Contact the group that      ***
+***    provided you with these symbols if you need this command to    ***
+***    work.                                                          ***
+***                                                                   ***
+***    Type referenced: ucrtbase!EHExceptionRecord                    ***
+***                                                                   ***
+*************************************************************************
+*************************************************************************
+***                                                                   ***
+***                                                                   ***
+***    Either you specified an unqualified symbol, or your debugger   ***
+***    doesn't have full symbol information.  Unqualified symbol      ***
+***    resolution is turned off by default. Please either specify a   ***
+***    fully qualified symbol module!symbolname, or enable resolution ***
+***    of unqualified symbols by typing ".symopt- 100". Note that     ***
+***    enabling unqualified symbol resolution with network symbol     ***
+***    server shares in the symbol path may cause the debugger to     ***
+***    appear to hang for long periods of time when an incorrect      ***
+***    symbol name is typed or the network symbol server is down.     ***
+***                                                                   ***
+***    For some commands to work properly, your symbol path           ***
+***    must point to .pdb files that have full type information.      ***
+***                                                                   ***
+***    Certain .pdb files (such as the public OS symbols) do not      ***
+***    contain the required information.  Contact the group that      ***
+***    provided you with these symbols if you need this command to    ***
+***    work.                                                          ***
+***                                                                   ***
+***    Type referenced: EHExceptionRecord                             ***
+***                                                                   ***
+*************************************************************************
+unable to find C-Runtime symbols, even with unqualified search
+ChildEBP RetAddr  Args to Child              
+WARNING: Stack unwind information not available. Following frames may be wrong.
+009fe6c8 006dbe1f e06d7363 00000001 00000003 KERNELBASE!RaiseException+0x64
+009fe70c 006d772e 009fe71c 0073c22c 00721b30 FBE+0xdbe1f
+009fe72c 006d74ce 80004003 00000000 009fe780 FBE+0xd772e
+009fe73c 006b204d 80004003 33c53840 00765ab8 FBE+0xd74ce
+009fe780 006b1d19 33c53874 759c41b0 ffffffff FBE+0xb204d
+009fe7b4 0068b2ba 00f17088 009fe810 00000001 FBE+0xb1d19
+009fe820 00632448 00000000 007664f0 77144664 FBE+0x8b2ba
+009ff848 006d93e3 00600000 00000000 00ed5768 FBE+0x32448
+009ff894 759c5d49 00bc0000 759c5d30 009ff8fc FBE+0xd93e3
+009ff8a4 770fc75b 00bc0000 284b6a20 00000000 KERNEL32!BaseThreadInitThunk+0x19
+009ff8fc 770fc6e1 ffffffff 77146349 00000000 ntdll!RtlInitializeExceptionChain+0x6b
+009ff90c 00000000 006d945c 00bc0000 00000000 ntdll!RtlGetAppContainerNamedObjectPath+0x231
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\Visualizers\winrt.natvis'
