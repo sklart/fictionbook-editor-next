@@ -114,6 +114,13 @@ if (IsFbeTestScenario(L"community-selection-positions"))
   ShowView(SOURCE); pump(); ShowView(BODY); pump();
   check("paragraph_pair",CString(static_cast<LPCWSTR>(MSHTML::IHTMLTxtRangePtr(m_doc->m_body.Document()->selection->createRange())->text))==expectedText);
   ShowView(SOURCE); pump();
+  check("source_focus_after_body", ::GetFocus() == m_source.m_hWnd);
+  const int typedBefore = static_cast<int>(m_source.SendMessage(SCI_GETLENGTH));
+  const int selectedLength = static_cast<int>(m_source.SendMessage(SCI_GETSELECTIONEND) - m_source.SendMessage(SCI_GETSELECTIONSTART));
+  ::SendMessage(m_source, WM_CHAR, 'X', 1);
+  check("source_typing_after_body", m_source.SendMessage(SCI_GETLENGTH) == typedBefore - selectedLength + 1);
+  m_source.SendMessage(SCI_UNDO);
+  check("source_typing_undo", m_source.SendMessage(SCI_GETLENGTH) == typedBefore);
   const int edit = static_cast<int>(m_source.SendMessage(SCI_GETSELECTIONSTART));
   m_source.SendMessage(SCI_SETSEL,edit,edit); const CStringA insertion(CW2A(L"\x0416\x03A9",CP_UTF8));
   const int beforeEditLength=static_cast<int>(m_source.SendMessage(SCI_GETLENGTH));

@@ -60,7 +60,8 @@ void EditorViewPresentationHost::RestoreSelection(EditorView target)
 
 void EditorViewPresentationHost::CompleteEditorViewPresentation(EditorView previous, EditorView target)
 {
-	m_context.view.SetFocus();
+	if (target == SOURCE) m_context.source.SetFocus();
+	else m_context.view.SetFocus();
 	if (target == BODY && previous == SOURCE && m_context.selection.BodySource().sourceToBodyTransferred && (bool)m_context.selection.BodyRange())
 		m_context.selection.BodyRange()->select();
 	if (target != SOURCE || !m_context.selection.BodySource().bodyToSourceTransferred) return;
