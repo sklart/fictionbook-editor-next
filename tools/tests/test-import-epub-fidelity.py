@@ -727,6 +727,28 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for metric in ['indexed_elements', 'structural_lookups']:
                 self.assertLessEqual(metrics[1][metric], metrics[0][metric] * 3.1)
 
+    def test_standalone_attribution_preserves_text_and_valid_structure(self):
+        root = self.convert('<h1>Chapter</h1><p>Quotation text.</p><p id="attribution" class="text-author"><em>Author Name</em></p><p>Following text. <a href="#attribution">Attribution link</a></p>')
+        self.assert_once(root, 'Quotation text.', 'Author Name', 'Following text.')
+        text = self.text(root)
+        self.assertLess(text.index('Quotation text.'), text.index('Author Name'))
+        self.assertLess(text.index('Author Name'), text.index('Following text.'))
+        author = next(p for p in root.findall('.//f:p', NS) if 'Author Name' in self.text(p))
+        self.assertIsNotNone(author.find('f:emphasis', NS))
+        self.assertTrue(author.get('id'))
+        self.assertTrue(any(a.get(HREF) == '#' + author.get('id') for a in root.findall('.//f:a', NS)))
+        self.assertEqual(root.findall('.//f:section/f:text-author', NS), [])
+
+    def test_epigraph_and_citation_attributions_survive(self):
+        root = self.convert('<section><div class="epigraph"><p>Epigraph line</p><p class="text-author">Epigraph Author</p></div>'
+                            '<blockquote><p>Quote line</p><p class="text-author">Quote Author</p></blockquote>'
+                            '<section><p>Nested body</p></section></section>')
+        self.assert_once(root, 'Epigraph line', 'Epigraph Author', 'Quote line', 'Quote Author', 'Nested body')
+        text = self.text(root)
+        self.assertLess(text.index('Epigraph line'), text.index('Epigraph Author'))
+        self.assertLess(text.index('Quote line'), text.index('Quote Author'))
+        self.assertEqual(root.findall('.//f:section/f:text-author', NS), [])
+
     def test_linear_structure_index_without_notes(self):
         self.performance_samples(False)
 

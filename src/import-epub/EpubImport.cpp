@@ -4028,7 +4028,9 @@ namespace
             CStringW author = ChildrenInlineToFb2(node, ctx);
             author.Trim();
             if (!author.IsEmpty())
-                out += L"      <text-author>" + author + L"</text-author>\r\n";
+                // A standalone attribution is a section block, not a child of
+                // an epigraph, cite or poem. Keep it in place as a paragraph.
+                out += L"      <p" + OptionalIdAttribute(node, ctx) + L">" + author + L"</p>\r\n";
             return;
         }
 
