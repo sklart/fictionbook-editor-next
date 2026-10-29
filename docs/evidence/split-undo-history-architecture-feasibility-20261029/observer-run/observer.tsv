@@ -1,0 +1,6 @@
+phase	text	dom	events
+initial	tail	<P>tail</P>
+typed-Q	Qtail	<P>Qtail</P>	document-property
+script-text	script-change	<P>script-change</P>
+script-insert	script-change	<P>script-change</P>
+<P>script-insert</P>

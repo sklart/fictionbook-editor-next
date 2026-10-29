@@ -1,0 +1,28 @@
+diff --git a/src/fbe/testing/RuntimeTestUndoAndContainers.inl b/src/fbe/testing/RuntimeTestUndoAndContainers.inl
+index d8ffb002..e4c9564a 100644
+--- a/src/fbe/testing/RuntimeTestUndoAndContainers.inl
++++ b/src/fbe/testing/RuntimeTestUndoAndContainers.inl
+@@ -1,4 +1,23 @@
+ #include "RuntimeTestControlOracle.inl"
++	if (IsFbeTestScenario(L"history-observer-boundary"))
++	{
++		DWORD written = 0;
++		try {
++			ShowView(BODY); MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
++			MSHTML::IHTMLElementPtr section(document->all->item(L"oracle-section"));
++			MSHTML::IHTMLElementPtr paragraph(section ? MSHTML::IHTMLDOMNodePtr(section)->firstChild : MSHTML::IHTMLDOMNodePtr());
++			if (!paragraph || CString(static_cast<const wchar_t*>(paragraph->innerText)) != L"tail") CheckError(E_UNEXPECTED);
++			CheckError(document->parentWindow->execScript(L"window.__fbeHistoryEvents=[];document.attachEvent('oninput',function(){window.__fbeHistoryEvents.push('input');});document.attachEvent('onpropertychange',function(){window.__fbeHistoryEvents.push('document-property');});document.getElementById('oracle-section').attachEvent('onpropertychange',function(){window.__fbeHistoryEvents.push('section-property');});", L"JScript"));
++			auto snapshot = [&](const char* phase) {
++				CheckError(document->parentWindow->execScript(L"document.title=window.__fbeHistoryEvents.join('|');", L"JScript")); CString events(static_cast<const wchar_t*>(document->title)); CString content(static_cast<const wchar_t*>(paragraph->innerText)); CString html(static_cast<const wchar_t*>(section->innerHTML)); CStringA events8(CW2A(events, CP_UTF8)), content8(CW2A(content, CP_UTF8)), html8(CW2A(html, CP_UTF8)), row; row.Format("%s\t%s\t%s\t%s\r\n", phase, content8.GetString(), html8.GetString(), events8.GetString()); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
++			};
++			const CStringA header("phase\ttext\tdom\tevents\r\n"); output.Write(header, static_cast<DWORD>(header.GetLength()), &written); snapshot("initial");
++			m_doc->m_body.GoTo(paragraph, false); m_doc->m_body.SetFocus(); HWND focus = ::GetFocus(); if (!focus) CheckError(E_FAIL); ::SendMessage(focus, WM_CHAR, L'Q', 0); snapshot("typed-Q");
++			CheckError(document->parentWindow->execScript(L"window.__fbeHistoryEvents=[];document.getElementById('oracle-section').getElementsByTagName('P')[0].firstChild.nodeValue='script-change';", L"JScript")); snapshot("script-text");
++			CheckError(document->parentWindow->execScript(L"window.__fbeHistoryEvents=[];var e=document.createElement('P');e.innerText='script-insert';document.getElementById('oracle-section').appendChild(e);", L"JScript")); snapshot("script-insert");
++			output.Close(); ::PostQuitMessage(0); return 0;
++		} catch (const _com_error& error) { CStringA row; row.Format("error\t0x%08lX\r\n", static_cast<unsigned long>(error.Error())); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
++	}
+ 	if (IsFbeTestScenario(L"structural-commands"))
+ 	{
+ 		wchar_t action[32] = {};

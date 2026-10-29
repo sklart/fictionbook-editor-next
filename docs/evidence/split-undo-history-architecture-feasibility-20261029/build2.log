@@ -1,0 +1,50 @@
+Версия MSBuild 17.14.60+43b635718 для .NET Framework
+
+  Copying requisite resources...
+  Regex Help HTML generated: 24 pages.
+  Fluent Pin masks prepared: D:\Download\FBeditor\out\undo-architecture-feasibility\build\generated\Win32\Release\pin-icons\FluentPinMasks.generated.h
+  AboutBox.cpp
+  ElementDescMnr.cpp
+  ElementDescriptor.cpp
+  ExternalHelper.cpp
+  FBDoc.cpp
+  RecentDocumentsStore.cpp
+  PluginExecutionController.cpp
+  PortableToolbarStore.cpp
+  ScriptToolbarManager.cpp
+  DocumentLifecycleController.cpp
+  DocumentFileDialogs.cpp
+  PendingDocument.cpp
+  RecoveryStore.cpp
+  FBE.cpp
+  XmlScriptBackend.cpp
+  RegexBackend.cpp
+  PluginManager.cpp
+  EditorBackgrounds.cpp
+  PluginApiV2.cpp
+  XmlSourceThemes.cpp
+  Компиляция...
+  VisualDomNormalizer.cpp
+  mainfrm.cpp
+  script.cpp
+  Settings.cpp
+  Speller.cpp
+  FBE_i.c
+  SettingsAdvancedPage.cpp
+  SettingsGeneralPage.cpp
+  SettingsImagesPage.cpp
+  SettingsEditorPage.cpp
+  SettingsSpellingPage.cpp
+  SettingsSourcePage.cpp
+  SettingsDlg.cpp
+  SettingsHotkeysDlg.cpp
+  SettingsWordsDlg.cpp
+  buildstamp.c
+     Создается библиотека D:\Download\FBeditor\out\undo-architecture-feasibility\out\observer-architecture\FBE\Release\FBE.lib и объект D:\Download\FBeditor\out\undo-architecture-feasibility\out\observer-architecture\FBE\Release\FBE.exp
+  Создание кода
+  Создание кода завершено
+  FBE.vcxproj -> D:\Download\FBeditor\out\undo-architecture-feasibility\out\observer-architecture\FBE\Release\FBE.exe
+  Runtime JSON-локализация экспортирована.
+    Каталог: D:\Download\FBeditor\out\undo-architecture-feasibility\out\observer-architecture\FBE\Release\Lang
+    Языков: 12
+    Модулей: 6
