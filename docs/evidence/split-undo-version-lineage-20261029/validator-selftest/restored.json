@@ -1,0 +1,44 @@
+{
+  "classification": "MULTISTEP_UNDO",
+  "undoSteps": 2,
+  "exhaustedClaim": false,
+  "matchesBefore": true,
+  "redo": "PASS",
+  "before": {
+    "path": "D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-split-20261029\\validator-selftest\\before.fb2",
+    "sha256": "77613DE7E92F0A72F129FAE81DC8FCD29B172F4D2730CCF4F6BCF74E1032D12E",
+    "body": "<body xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\"><section id=\"s\"><p>tail</p></section></body>",
+    "sections": 1,
+    "duplicateIds": [],
+    "brokenLocalHrefs": [],
+    "xsd": "NOT_RUN"
+  },
+  "afterSplit": {
+    "path": "D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-split-20261029\\validator-selftest\\split.fb2",
+    "sha256": "F061EA5637A3E7C5333A6B2467ACC19349556F89E2A4EE120A7491A1F9C3503B",
+    "body": "<body xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\"><section><p>t</p></section><section id=\"s\"><p>ail</p></section></body>",
+    "sections": 2,
+    "duplicateIds": [],
+    "brokenLocalHrefs": [],
+    "xsd": "NOT_RUN"
+  },
+  "afterUndo": {
+    "path": "D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-split-20261029\\validator-selftest\\before.fb2",
+    "sha256": "77613DE7E92F0A72F129FAE81DC8FCD29B172F4D2730CCF4F6BCF74E1032D12E",
+    "body": "<body xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\"><section id=\"s\"><p>tail</p></section></body>",
+    "sections": 1,
+    "duplicateIds": [],
+    "brokenLocalHrefs": [],
+    "xsd": "NOT_RUN"
+  },
+  "afterRedo": {
+    "path": "D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-split-20261029\\validator-selftest\\split.fb2",
+    "sha256": "F061EA5637A3E7C5333A6B2467ACC19349556F89E2A4EE120A7491A1F9C3503B",
+    "body": "<body xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\"><section><p>t</p></section><section id=\"s\"><p>ail</p></section></body>",
+    "sections": 2,
+    "duplicateIds": [],
+    "brokenLocalHrefs": [],
+    "xsd": "NOT_RUN"
+  },
+  "warning": "Offline saved-XML comparison; exhaustedClaim must be independently observed. Exact body XML, not semantic canonicalization. Save may change history; use independent runs."
+}

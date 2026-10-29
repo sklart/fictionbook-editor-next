@@ -1,0 +1,38 @@
+{
+  "fixture": "synthetic ui-fixture.fb2",
+  "profile": "current HKCU with user authorization",
+  "launches": [
+    {
+      "version": "2.6.8",
+      "ui_split": "NOT_RUN",
+      "observation": "COM error 0x80004003; closed through UI; application crash recorded"
+    },
+    {
+      "version": "2.7.0",
+      "ui_split": "NOT_RUN",
+      "observation": "no targetable editor window after 12s; process stopped"
+    },
+    {
+      "version": "2.7.9",
+      "ui_split": "NOT_RUN",
+      "observation": "no targetable editor window after 10s; process stopped"
+    },
+    {
+      "version": "3.0.5",
+      "ui_split": "NOT_RUN",
+      "observation": "no targetable editor window after 12s; process stopped"
+    }
+  ],
+  "windowsApplicationEvents": [
+    {
+      "TimeCreated": "2026-10-29T07:28:09.9722114+03:00",
+      "Id": 1000,
+      "Message": "Имя сбойного приложения: FBE.exe, версия: 2.6.0.0, метка времени: 0x56924132\r\nИмя сбойного модуля: FBE.exe, версия: 2.6.0.0, метка времени: 0x56924132\r\nКод исключения: 0xc0000409\r\nСмещение ошибки: 0x000ebd16\r\nИдентификатор сбойного процесса: 0x4EC8\r\nВремя запуска сбойного приложения: 0x1DD675DD3DC1A76\r\nПуть сбойного приложения: D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-split-20261029\\original-2.6.8\\extracted\\FBE.exe\r\nПуть сбойного модуля: D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-split-20261029\\original-2.6.8\\extracted\\FBE.exe\r\nИдентификатор отчета: 5ff17b83-619d-4076-b1e1-69a2a979ac49\r\nПолное имя сбойного пакета: \r\nКод приложения, связанного со сбойным пакетом: "
+    },
+    {
+      "TimeCreated": "2026-10-29T07:27:16.0814376+03:00",
+      "Id": 1000,
+      "Message": "Имя сбойного приложения: FBE.exe, версия: 2.6.0.0, метка времени: 0x56924132\r\nИмя сбойного модуля: FBE.exe, версия: 2.6.0.0, метка времени: 0x56924132\r\nКод исключения: 0xc0000409\r\nСмещение ошибки: 0x000ebd16\r\nИдентификатор сбойного процесса: 0x92F0\r\nВремя запуска сбойного приложения: 0x1DD675DC40F97A4\r\nПуть сбойного приложения: D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-split-20261029\\original-2.6.8\\extracted\\FBE.exe\r\nПуть сбойного модуля: D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-split-20261029\\original-2.6.8\\extracted\\FBE.exe\r\nИдентификатор отчета: 194f98bb-ccc8-4111-8289-ea4c48c595f8\r\nПолное имя сбойного пакета: \r\nКод приложения, связанного со сбойным пакетом: "
+    }
+  ]
+}

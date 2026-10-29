@@ -1,0 +1,108 @@
+diff --git a/src/fbe/testing/RuntimeTestPortableState.inl b/src/fbe/testing/RuntimeTestPortableState.inl
+index dd401a35..92c68160 100644
+--- a/src/fbe/testing/RuntimeTestPortableState.inl
++++ b/src/fbe/testing/RuntimeTestPortableState.inl
+@@ -2,6 +2,13 @@
+ #include "../settings/hotkeys/HotkeyExport.h"
+ #include "Script64ResultChecks.h"
+
++class CTestDirtyRangeSink : public CComObjectRootEx<CComSingleThreadModel>, public MSHTML::IHTMLChangeSink {
++public:
++	BEGIN_COM_MAP(CTestDirtyRangeSink) COM_INTERFACE_ENTRY(MSHTML::IHTMLChangeSink) END_COM_MAP()
++	STDMETHOD(raw_Notify)() { ++notifications; return S_OK; }
++	unsigned notifications = 0;
++};
++
+ // Test-only OLE parent for the Split undo probe.  It is intentionally kept
+ // outside production structural code until MSHTML proves this composition.
+ class CSplitUndoProbeParent : public CComObjectRootEx<CComSingleThreadModel>, public IOleParentUndoUnit {
+diff --git a/src/fbe/testing/RuntimeTestUndoAndContainers.inl b/src/fbe/testing/RuntimeTestUndoAndContainers.inl
+index e4c9564a..b8f9c1da 100644
+--- a/src/fbe/testing/RuntimeTestUndoAndContainers.inl
++++ b/src/fbe/testing/RuntimeTestUndoAndContainers.inl
+@@ -1,4 +1,36 @@
+ #include "RuntimeTestControlOracle.inl"
++	if (IsFbeTestScenario(L"history-dirty-range-boundary"))
++	{
++		DWORD written = 0, cookie = 0; CComPtr<MSHTML::IMarkupContainer2> container;
++		struct Registration { CComPtr<MSHTML::IMarkupContainer2>* container; DWORD* cookie; ~Registration() { if (*container && *cookie) (*container)->UnRegisterForDirtyRange(*cookie); } } registration{std::addressof(container), &cookie};
++		try {
++			ShowView(BODY); MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document()); CheckError(document->QueryInterface(&container));
++			CComObject<CTestDirtyRangeSink>* raw = nullptr; CheckError(CComObject<CTestDirtyRangeSink>::CreateInstance(&raw)); CComPtr<MSHTML::IHTMLChangeSink> sink(raw);
++			const HRESULT registerHr = container->RegisterForDirtyRange(sink, &cookie); CheckError(registerHr); if (!cookie) CheckError(E_UNEXPECTED);
++			MSHTML::IMarkupServices2Ptr markup(m_doc->m_body.MarkupServices()); MSHTML::IHTMLElementPtr section(document->all->item(L"oracle-section")); if (!section) CheckError(E_UNEXPECTED);
++			CStringA header("phase\tbefore\tafter\tversion_before\tversion_after\tbefore_notify\tafter_script_notify\tafter_message_notify\tafter_idle_notify\tdirty_hr\tstart_scope\tend_scope\r\n"); output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
++			struct Mutation { const char* name; const wchar_t* script; };
++			const Mutation cases[] = {
++				{"nodeValue", L"document.getElementById('probe-text').firstChild.nodeValue='changed';"},
++				{"innerHTML", L"document.getElementById('probe-text').innerHTML='html-change';"},
++				{"appendChild", L"var n=document.createElement('P');n.id='added';n.innerText='added';document.getElementById('oracle-section').appendChild(n);"},
++				{"insertBefore", L"var n=document.createElement('P');n.id='before';n.innerText='before';var p=document.getElementById('oracle-section');p.insertBefore(n,p.firstChild);"},
++				{"removeChild", L"var n=document.getElementById('added');n.parentNode.removeChild(n);"},
++				{"id", L"document.getElementById('probe-text').id='probe-renamed';"},
++				{"href", L"document.getElementById('oracle-section').getElementsByTagName('A')[0].href='#probe-renamed';"},
++				{"multiple", L"document.getElementById('probe-renamed').title='one';document.getElementById('oracle-section').getElementsByTagName('A')[0].title='two';"}
++			};
++			for (const auto& item : cases) {
++				CString before(static_cast<const wchar_t*>(section->innerHTML)); before.Replace(L"\r",L""); before.Replace(L"\n",L""); before.Replace(L"\t",L" "); const long versionBefore = container->GetVersionNumber(); const unsigned n0 = raw->notifications;
++				const HRESULT scriptHr = document->parentWindow->execScript(_bstr_t(item.script), L"JScript"); CheckError(scriptHr); const unsigned n1 = raw->notifications;
++				const UINT sentinel = WM_APP + 0x3F9; if (!::PostThreadMessage(::GetCurrentThreadId(), sentinel, 0, 0)) CheckError(HRESULT_FROM_WIN32(::GetLastError())); MSG msg = {}; while (::PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) { if (msg.message == sentinel) break; if (msg.message == WM_QUIT) { ::PostQuitMessage(static_cast<int>(msg.wParam)); break; } ::TranslateMessage(&msg); ::DispatchMessage(&msg); } const unsigned n2 = raw->notifications;
++				::MsgWaitForMultipleObjectsEx(0, nullptr, 100, QS_ALLINPUT, MWMO_INPUTAVAILABLE); while (::PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) { if (msg.message == WM_QUIT) { ::PostQuitMessage(static_cast<int>(msg.wParam)); break; } ::TranslateMessage(&msg); ::DispatchMessage(&msg); } const unsigned n3 = raw->notifications;
++				MSHTML::IMarkupPointerPtr start, end; CheckError(markup->CreateMarkupPointer(&start)); CheckError(markup->CreateMarkupPointer(&end)); const HRESULT dirtyHr = container->GetAndClearDirtyRange(cookie, start, end); MSHTML::IHTMLElementPtr s, e; HRESULT sh = FAILED(dirtyHr) ? dirtyHr : start->CurrentScope(&s); HRESULT eh = FAILED(dirtyHr) ? dirtyHr : end->CurrentScope(&e);
++				CString after(static_cast<const wchar_t*>(section->innerHTML)); after.Replace(L"\r",L""); after.Replace(L"\n",L""); after.Replace(L"\t",L" "); CStringA before8(CW2A(before,CP_UTF8)), after8(CW2A(after,CP_UTF8)), row; row.Format("%s\t%s\t%s\t%ld\t%ld\t%u\t%u\t%u\t%u\t0x%08lX\t%S:0x%08lX\t%S:0x%08lX\r\n", item.name, before8.GetString(), after8.GetString(), versionBefore, container->GetVersionNumber(), n0, n1, n2, n3, static_cast<unsigned long>(dirtyHr), s ? static_cast<const wchar_t*>(s->tagName) : L"", static_cast<unsigned long>(sh), e ? static_cast<const wchar_t*>(e->tagName) : L"", static_cast<unsigned long>(eh)); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
++			}
++			const HRESULT unregistered = container->UnRegisterForDirtyRange(cookie); cookie = 0; CheckError(unregistered); output.Close(); ::PostQuitMessage(0); return 0;
++		} catch (const _com_error& error) { CStringA row; row.Format("error\t0x%08lX\r\n", static_cast<unsigned long>(error.Error())); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
++	}
+ 	if (IsFbeTestScenario(L"history-observer-boundary"))
+ 	{
+ 		DWORD written = 0;
+diff --git a/tools/tests/test-fbe-history-observer-boundary.ps1 b/tools/tests/test-fbe-history-observer-boundary.ps1
+index a7feb970..66a68866 100644
+--- a/tools/tests/test-fbe-history-observer-boundary.ps1
++++ b/tools/tests/test-fbe-history-observer-boundary.ps1
+@@ -1,7 +1,8 @@
+ [CmdletBinding()]
+ param(
+     [Parameter(Mandatory)][string]$FbeExe,
+-    [Parameter(Mandatory)][string]$EvidenceDirectory
++    [Parameter(Mandatory)][string]$EvidenceDirectory,
++    [switch]$DirtyRange
+ )
+ $ErrorActionPreference = 'Stop'
+ . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+@@ -15,8 +16,9 @@ try {
+     $null = New-IsolatedFbeSettingsSeed -Isolation $iso -StartupScriptsDirectory (Join-Path $iso.Root 'empty-scripts')
+     $fixture = Join-Path $iso.Root 'observer.fb2'; $report = Join-Path $evidence 'observer.tsv'
+     $xml = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><nickname>Test</nickname></author><book-title>Observer</book-title><lang>en</lang></title-info><document-info><id>observer</id><version>1</version></document-info></description><body><section id="oracle-section"><p>tail</p></section></body></FictionBook>'
++    if ($DirtyRange) { $xml = $xml.Replace('<p>tail</p>', '<p id="probe-text">tail</p><p><a id="probe-link" l:href="#oracle-section">link</a></p>').Replace('xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"', 'xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"') }
+     [IO.File]::WriteAllText($fixture, $xml, [Text.UTF8Encoding]::new($false))
+-    $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'history-observer-boundary'
++    $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = if ($DirtyRange) { 'history-dirty-range-boundary' } else { 'history-observer-boundary' }
+     $p = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -WindowStyle Hidden -ArgumentList @('--portable','-b',$report,$fixture) -PassThru
+     $code = Wait-IsolatedFbeProcess -Process $p -Isolation $iso -Scenario 'history-observer-boundary' -Report $report -TimeoutSeconds 120
+     if ($code -ne 0 -or !(Test-Path -LiteralPath $report)) { throw "Observer failed: exit=$code" }
+diff --git a/tools/tests/test-fbe-split-undo-timeline.ps1 b/tools/tests/test-fbe-split-undo-timeline.ps1
+index 65d5d6b3..ad7b8e8a 100644
+--- a/tools/tests/test-fbe-split-undo-timeline.ps1
++++ b/tools/tests/test-fbe-split-undo-timeline.ps1
+@@ -3,7 +3,8 @@ param(
+     [string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
+     [Parameter(Mandatory)][string]$EvidenceDirectory,
+     [switch]$IncludePrior,
+-    [switch]$RangeCases
++    [switch]$RangeCases,
++    [switch]$OnlySplit
+ )
+ $ErrorActionPreference = 'Stop'
+ . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+@@ -13,7 +14,8 @@ $names = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SPLIT_PO
+ $old = @{}; foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name) }
+ try {
+     if ($IncludePrior -and $RangeCases) { throw 'IncludePrior and RangeCases are separate diagnostics.' }
+-    foreach ($mode in $(if ($RangeCases) { @('after-split','after-undo','after-redo','restore-range','restore-pointer','undo-restore-range','undo-restore-pointer','undo-fresh') } elseif ($IncludePrior) { @('split-prior-input') } else { @('split','split-input') })) {
++    if ($OnlySplit -and ($IncludePrior -or $RangeCases)) { throw 'OnlySplit is a separate diagnostic.' }
++    foreach ($mode in $(if ($RangeCases) { @('after-split','after-undo','after-redo','restore-range','restore-pointer','undo-restore-range','undo-restore-pointer','undo-fresh') } elseif ($IncludePrior) { @('split-prior-input') } elseif ($OnlySplit) { @('split') } else { @('split','split-input') })) {
+         $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name split-timeline; $passed = $false
+         try {
+             $null = New-IsolatedFbeSettingsSeed -Isolation $iso -StartupScriptsDirectory (Join-Path $iso.Root empty-scripts)

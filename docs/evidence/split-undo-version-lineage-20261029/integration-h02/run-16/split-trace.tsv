@@ -1,0 +1,167 @@
+timestamp	operation	backend	case	phase	event	hresult	details
+2026-10-29T01:57:10.167Z	split	extracted	split	split-enter	before	NA
+2026-10-29T01:57:10.168Z	split	extracted	split	split-enter	after	NA	completed
+2026-10-29T01:57:10.168Z	split	extracted	split	selection-create	before	NA
+2026-10-29T01:57:10.169Z	split	extracted	split	selection-create	after	NA	completed
+2026-10-29T01:57:10.169Z	split	extracted	split	parent-resolved	before	NA
+2026-10-29T01:57:10.169Z	split	extracted	split	parent-resolved	after	NA	completed
+2026-10-29T01:57:10.169Z	split	extracted	split	container-range-create	before	NA
+2026-10-29T01:57:10.169Z	split	extracted	split	container-range-create	after	NA	completed
+2026-10-29T01:57:10.169Z	split	extracted	split	container-range-move	before	NA
+2026-10-29T01:57:10.169Z	split	extracted	split	container-range-move	after	NA	completed
+2026-10-29T01:57:10.171Z	split	extracted	split	range-start-validated	before	NA
+2026-10-29T01:57:10.171Z	split	extracted	split	range-start-validated	after	NA	completed
+2026-10-29T01:57:10.172Z	split	extracted	split	range-start-create	before	NA
+2026-10-29T01:57:10.172Z	split	extracted	split	range-start-create	after	NA	completed
+2026-10-29T01:57:10.172Z	split	extracted	split	range-end-create	before	NA
+2026-10-29T01:57:10.173Z	split	extracted	split	range-end-create	after	NA	completed
+2026-10-29T01:57:10.173Z	split	extracted	split	range-end-validated	before	NA
+2026-10-29T01:57:10.173Z	split	extracted	split	range-end-validated	after	NA	completed
+2026-10-29T01:57:10.173Z	split	extracted	split	preflight-complete	after	NA	completed
+2026-10-29T01:57:10.173Z	split	extracted	split	split-check-success	after	NA	completed
+2026-10-29T01:57:10.173Z	split	extracted	split	split-enter	before	NA
+2026-10-29T01:57:10.174Z	split	extracted	split	split-enter	after	NA	completed
+2026-10-29T01:57:10.174Z	split	extracted	split	selection-create	before	NA
+2026-10-29T01:57:10.174Z	split	extracted	split	selection-create	after	NA	completed
+2026-10-29T01:57:10.175Z	split	extracted	split	parent-resolved	before	NA
+2026-10-29T01:57:10.176Z	split	extracted	split	parent-resolved	after	NA	completed
+2026-10-29T01:57:10.176Z	split	extracted	split	container-range-create	before	NA
+2026-10-29T01:57:10.177Z	split	extracted	split	container-range-create	after	NA	completed
+2026-10-29T01:57:10.177Z	split	extracted	split	container-range-move	before	NA
+2026-10-29T01:57:10.177Z	split	extracted	split	container-range-move	after	NA	completed
+2026-10-29T01:57:10.177Z	split	extracted	split	range-start-validated	before	NA
+2026-10-29T01:57:10.178Z	split	extracted	split	range-start-validated	after	NA	completed
+2026-10-29T01:57:10.178Z	split	extracted	split	range-start-create	before	NA
+2026-10-29T01:57:10.178Z	split	extracted	split	range-start-create	after	NA	completed
+2026-10-29T01:57:10.178Z	split	extracted	split	range-end-create	before	NA
+2026-10-29T01:57:10.179Z	split	extracted	split	range-end-create	after	NA	completed
+2026-10-29T01:57:10.179Z	split	extracted	split	range-end-validated	before	NA
+2026-10-29T01:57:10.179Z	split	extracted	split	range-end-validated	after	NA	completed
+2026-10-29T01:57:10.179Z	split	extracted	split	preflight-complete	after	NA	completed
+2026-10-29T01:57:10.180Z	split	extracted	split	new-container-create	before	NA
+2026-10-29T01:57:10.180Z	split	extracted	split	new-container-create	after	NA	completed
+2026-10-29T01:57:10.181Z	split	extracted	split	title-prototype-create	before	NA
+2026-10-29T01:57:10.181Z	split	extracted	split	title-prototype-create	after	NA	completed
+2026-10-29T01:57:10.181Z	split	extracted	split	selection-start-pointer-create	before	NA
+2026-10-29T01:57:10.181Z	split	extracted	split	selection-start-pointer-create	after	0x00000000
+2026-10-29T01:57:10.181Z	split	extracted	split	selection-end-pointer-create	before	NA
+2026-10-29T01:57:10.182Z	split	extracted	split	selection-end-pointer-create	after	0x00000000
+2026-10-29T01:57:10.182Z	split	extracted	split	element-start-pointer-create	before	NA
+2026-10-29T01:57:10.182Z	split	extracted	split	element-start-pointer-create	after	0x00000000
+2026-10-29T01:57:10.183Z	split	extracted	split	element-end-pointer-create	before	NA
+2026-10-29T01:57:10.183Z	split	extracted	split	element-end-pointer-create	after	0x00000000
+2026-10-29T01:57:10.183Z	split	extracted	split	title-range-create	before	NA
+2026-10-29T01:57:10.183Z	split	extracted	split	title-range-create	after	NA	completed
+2026-10-29T01:57:10.184Z	split	extracted	split	selection-pointers-move	before	NA
+2026-10-29T01:57:10.184Z	split	extracted	split	selection-pointers-move	after	0x00000000
+2026-10-29T01:57:10.184Z	split	extracted	split	pre-range-create	before	NA
+2026-10-29T01:57:10.185Z	split	extracted	split	pre-range-create	after	NA	completed
+2026-10-29T01:57:10.185Z	split	extracted	split	element-start-pointer-move	before	NA
+2026-10-29T01:57:10.185Z	split	extracted	split	element-start-pointer-move	after	0x00000000
+2026-10-29T01:57:10.185Z	split	extracted	split	pre-range-move	before	NA
+2026-10-29T01:57:10.186Z	split	extracted	split	pre-range-move	after	0x00000000
+2026-10-29T01:57:10.186Z	split	extracted	split	post-range-create	before	NA
+2026-10-29T01:57:10.186Z	split	extracted	split	post-range-create	after	NA	completed
+2026-10-29T01:57:10.187Z	split	extracted	split	element-end-pointer-move	before	NA
+2026-10-29T01:57:10.187Z	split	extracted	split	element-end-pointer-move	after	0x00000000
+2026-10-29T01:57:10.187Z	split	extracted	split	post-range-move	before	NA
+2026-10-29T01:57:10.187Z	split	extracted	split	post-range-move	after	0x00000000
+2026-10-29T01:57:10.187Z	split	extracted	split	new-container-content	before	NA
+2026-10-29T01:57:10.187Z	split	extracted	split	new-container-content	after	NA	completed
+2026-10-29T01:57:10.187Z	split	extracted	split	undo-begin	before	NA
+2026-10-29T01:57:10.189Z	split	extracted	split	undo-begin	after	NA	completed
+2026-10-29T01:57:10.189Z	split	extracted	split	source-cleanup	before	NA
+2026-10-29T01:57:10.194Z	split	extracted	split	source-cleanup	after	NA	completed
+2026-10-29T01:57:10.195Z	split	extracted	split	next-dom-after-cleanup	after	NA	completed: <P>iddle</P>  <P>Last</P>
+2026-10-29T01:57:10.195Z	split	extracted	split	insert-container	before	NA
+2026-10-29T01:57:10.195Z	split	extracted	split	insert-container	after	NA	completed
+2026-10-29T01:57:10.196Z	split	extracted	split	new-container-id	after	NA	completed: target-section-middle
+2026-10-29T01:57:10.196Z	split	extracted	split	new-container-id-after-cleanup	after	NA	completed: target-section-middle
+2026-10-29T01:57:10.196Z	split	extracted	split	undo-end	before	NA
+2026-10-29T01:57:10.197Z	split	extracted	split	undo-end	after	NA	completed
+2026-10-29T01:57:10.197Z	split	extracted	split	selection-update	before	NA
+2026-10-29T01:57:10.197Z	split	extracted	split	selection-pointer-create	before	NA
+2026-10-29T01:57:10.198Z	split	extracted	split	selection-pointer-create	after	0x00000000
+2026-10-29T01:57:10.198Z	split	extracted	split	selection-pointer-move	before	NA
+2026-10-29T01:57:10.198Z	split	extracted	split	selection-pointer-move	after	0x00000000
+2026-10-29T01:57:10.198Z	split	extracted	split	selection-range-move	before	NA
+2026-10-29T01:57:10.199Z	split	extracted	split	selection-range-move	after	0x00000000
+2026-10-29T01:57:10.205Z	split	extracted	split	selection-update	after	NA	completed
+2026-10-29T01:57:10.206Z	split	extracted	split	split-success	after	NA	completed
+2026-10-29T01:57:10.207Z	split	extracted	split	split-content	after	NA	completed: <DIV class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.207Z	split	extracted	split	timeline-original	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.207Z	split	extracted	split	timeline-split	after	NA	completed: <DIV class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.208Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=1; redo=0
+2026-10-29T01:57:10.208Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.254Z	split	extracted	split	timeline-undo-1	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.255Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=0; redo=1
+2026-10-29T01:57:10.255Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.295Z	split	extracted	split	timeline-undo-2	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.296Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=0; redo=1
+2026-10-29T01:57:10.296Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.335Z	split	extracted	split	timeline-undo-3	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.336Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=0; redo=1
+2026-10-29T01:57:10.336Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.377Z	split	extracted	split	timeline-undo-4	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.377Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=0; redo=1
+2026-10-29T01:57:10.378Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.422Z	split	extracted	split	timeline-undo-5	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.422Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=0; redo=1
+2026-10-29T01:57:10.422Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.466Z	split	extracted	split	timeline-undo-6	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.467Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=0; redo=1
+2026-10-29T01:57:10.468Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.510Z	split	extracted	split	timeline-undo-7	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.511Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=0; redo=1
+2026-10-29T01:57:10.511Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.555Z	split	extracted	split	timeline-undo-8	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.555Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=0; redo=1
+2026-10-29T01:57:10.555Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.599Z	split	extracted	split	timeline-undo-9	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.599Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=0; redo=1
+2026-10-29T01:57:10.599Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.642Z	split	extracted	split	timeline-undo-10	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.642Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=0; redo=1
+2026-10-29T01:57:10.643Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.687Z	split	extracted	split	timeline-undo-11	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.687Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=0; redo=1
+2026-10-29T01:57:10.688Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.731Z	split	extracted	split	timeline-undo-12	after	NA	completed: <DIV id=target-section-middle class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>Middle</P>  <P>Last</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.732Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=0; redo=1
+2026-10-29T01:57:10.733Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.735Z	split	extracted	split	timeline-redo-1	after	NA	completed: <DIV class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.735Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=1; redo=0
+2026-10-29T01:57:10.736Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.736Z	split	extracted	split	timeline-redo-2	after	NA	completed: <DIV class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.736Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=1; redo=0
+2026-10-29T01:57:10.736Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.737Z	split	extracted	split	timeline-redo-3	after	NA	completed: <DIV class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.737Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=1; redo=0
+2026-10-29T01:57:10.737Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.738Z	split	extracted	split	timeline-redo-4	after	NA	completed: <DIV class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.738Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=1; redo=0
+2026-10-29T01:57:10.738Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.738Z	split	extracted	split	timeline-redo-5	after	NA	completed: <DIV class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.739Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=1; redo=0
+2026-10-29T01:57:10.739Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.739Z	split	extracted	split	timeline-redo-6	after	NA	completed: <DIV class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.740Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=1; redo=0
+2026-10-29T01:57:10.740Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.740Z	split	extracted	split	timeline-redo-7	after	NA	completed: <DIV class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.740Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=1; redo=0
+2026-10-29T01:57:10.741Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.741Z	split	extracted	split	timeline-redo-8	after	NA	completed: <DIV class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.741Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=1; redo=0
+2026-10-29T01:57:10.742Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.742Z	split	extracted	split	timeline-redo-9	after	NA	completed: <DIV class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.742Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=1; redo=0
+2026-10-29T01:57:10.743Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.743Z	split	extracted	split	timeline-redo-10	after	NA	completed: <DIV class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.744Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=1; redo=0
+2026-10-29T01:57:10.744Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.744Z	split	extracted	split	timeline-redo-11	after	NA	completed: <DIV class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.744Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=1; redo=0
+2026-10-29T01:57:10.745Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)
+2026-10-29T01:57:10.745Z	split	extracted	split	timeline-redo-12	after	NA	completed: <DIV class=section>  <P>First <A href="file:///C:/Users/Sklyarov/AppData/Local/Temp/fr-01981f9ef8fb4a868ad688fb70d67d54/main.html#target-section-middle">Backlink</A></P>  <P>M</P></DIV>  <DIV id=target-section-middle class=section>  <P>iddle</P>  <P>Last</P></DIV>
+2026-10-29T01:57:10.745Z	split	extracted	split	timeline-state	after	NA	completed: dirty=1; undo=1; redo=0
+2026-10-29T01:57:10.746Z	split	extracted	split	timeline-selection	after	NA	completed: parent=P; selected=(null)

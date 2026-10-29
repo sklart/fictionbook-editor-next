@@ -1,0 +1,67 @@
+[
+  {
+    "path": "third_party/hunspell/src/hunspell",
+    "sourceFiles": 34,
+    "different": 0
+  },
+  {
+    "path": "third_party/scintilla/include",
+    "sourceFiles": 10,
+    "different": 0
+  },
+  {
+    "path": "third_party/lexilla/include",
+    "sourceFiles": 3,
+    "different": 0
+  },
+  {
+    "path": "build/hunspell/include",
+    "sourceFiles": 1,
+    "different": 0
+  },
+  {
+    "path": "build/hunspell/lib/Release",
+    "sourceFiles": 2,
+    "different": 0
+  },
+  {
+    "path": "build/pcre2/install/Release",
+    "sourceFiles": 225,
+    "different": 0
+  },
+  {
+    "path": "build/libwebp/install/Release",
+    "sourceFiles": 22,
+    "different": 0
+  },
+  {
+    "path": "build/openjpeg/install/Release",
+    "sourceFiles": 8,
+    "different": 0
+  },
+  {
+    "path": "build/libheif/install/Release",
+    "sourceFiles": 33,
+    "different": 0
+  },
+  {
+    "path": "build/libde265/install/Release",
+    "sourceFiles": 8,
+    "different": 0
+  },
+  {
+    "path": "build/aom/install/Release",
+    "sourceFiles": 14,
+    "different": 0
+  },
+  {
+    "path": "build/libarchive/install/Release",
+    "sourceFiles": 45,
+    "different": 0
+  },
+  {
+    "path": "build/zlib/install/Release",
+    "sourceFiles": 16,
+    "different": 0
+  }
+]
