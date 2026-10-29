@@ -197,9 +197,67 @@ void CMainFrame::RunPortableStateTestScenario()
 	}
 	if(scriptsToolbarCustomizeCtrlF)
 	{
+		std::vector<ScriptsToolbarCommand> sample;
+		for (int i = 0; i < 4; ++i) { ScriptsToolbarCommand item = {}; item.command = 30000 + i; item.button.iBitmap = -1; sample.push_back(item); }
+		sample[0].name = L"Alpha"; sample[0].relativePath = L"z\\alpha.js";
+		sample[1].name = L"Zulu"; sample[1].relativePath = L"A\\zulu.js";
+		sample[2].name = L"\u0422\u0435\u0441\u0442"; sample[2].relativePath = L"A\\nested\\one.js";
+		sample[3].name = L"\u0422\u0435\u0441\u0442"; sample[3].relativePath = L"a\\nested\\two.js";
+		ScriptsToolbarTarget target = {}; target.id = L"test"; target.name = L"test";
+		CSimpleArray<TBBUTTON> defaults;
+		CScriptsToolbarCustomizeDlg sorting(NULL, sample, defaults, _Settings, std::vector<ScriptsToolbarTarget>(1, target),
+			[](const CString&, const std::vector<PortableToolbarItem>&) { return true; }, true, CString());
+		bool sorted = sorting.Create(m_hWnd) != NULL;
+		if (sorted) {
+			CListBox list(sorting.GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE));
+			sorted = list.GetCount() == 5 && list.GetItemData(1) == 1 && list.GetItemData(2) == 2 && list.GetItemData(3) == 3 && list.GetItemData(4) == 0;
+			::SendMessage(list, LB_SETSEL, TRUE, 2);
+			sorting.SetDlgItemText(IDC_SCRIPTS_TOOLBAR_SEARCH, L"nested");
+			sorted = sorted && list.GetCount() == 2 && list.GetItemData(0) == 2 && list.GetItemData(1) == 3 && ::SendMessage(list, LB_GETSEL, 0, 0) > 0;
+			sorting.DestroyWindow();
+		}
+		PortableToolbarItem existing = {}; existing.command = sample[0].command; target.items.push_back(existing);
+		std::vector<PortableToolbarItem> savedItems;
+		CScriptsToolbarCustomizeDlg insertion(NULL, sample, defaults, _Settings, std::vector<ScriptsToolbarTarget>(1, target),
+			[&savedItems](const CString&, const std::vector<PortableToolbarItem>& items) { savedItems = items; return true; }, true, CString());
+		bool inserted = insertion.Create(m_hWnd) != NULL;
+		if (inserted) {
+			CListBox current(insertion.GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT));
+			CListBox available(insertion.GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE));
+			::SendMessage(current, LB_SETSEL, TRUE, 0);
+			::SendMessage(available, WM_SETFOCUS, 0, 0);
+			::SendMessage(available, LB_SETSEL, TRUE, 1);
+			::SendMessage(insertion, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_ADD, BN_CLICKED), reinterpret_cast<LPARAM>(insertion.GetDlgItem(IDC_SCRIPTS_TOOLBAR_ADD).m_hWnd));
+			inserted = savedItems.size() == 2 && savedItems[0].command == sample[1].command && savedItems[1].command == sample[0].command;
+			HWND down = insertion.GetDlgItem(IDC_SCRIPTS_TOOLBAR_DOWN), up = insertion.GetDlgItem(IDC_SCRIPTS_TOOLBAR_UP);
+			inserted = inserted && ::IsWindowEnabled(down) && !::IsWindowEnabled(up);
+			::SendMessage(down, BM_CLICK, 0, 0);
+			inserted = inserted && savedItems.size() == 2 && savedItems[0].command == sample[0].command && savedItems[1].command == sample[1].command;
+			inserted = inserted && ::IsWindowEnabled(up) && !::IsWindowEnabled(down);
+			::SendMessage(up, BM_CLICK, 0, 0);
+			inserted = inserted && savedItems.size() == 2 && savedItems[0].command == sample[1].command && savedItems[1].command == sample[0].command;
+			for (int repeat = 0; repeat < 2; ++repeat) {
+				::SendMessage(available, WM_SETFOCUS, 0, 0);
+				::SendMessage(available, LB_SETSEL, FALSE, -1);
+				::SendMessage(available, LB_SETSEL, TRUE, 0);
+				::SendMessage(insertion, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_ADD, BN_CLICKED), reinterpret_cast<LPARAM>(insertion.GetDlgItem(IDC_SCRIPTS_TOOLBAR_ADD).m_hWnd));
+			}
+			inserted = inserted && savedItems.size() == 4 && savedItems[0].separator && savedItems[1].separator && savedItems[2].command == sample[1].command;
+			::SendMessage(current, LB_SETSEL, FALSE, -1);
+			::SendMessage(current, LB_SETSEL, TRUE, 0);
+			::SendMessage(current, LB_SETSEL, TRUE, 1);
+			::SendMessage(insertion, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_CURRENT, LBN_SELCHANGE), reinterpret_cast<LPARAM>(current.m_hWnd));
+			::SendMessage(down, BM_CLICK, 0, 0);
+			inserted = inserted && savedItems.size() == 4 && savedItems[0].command == sample[1].command && savedItems[1].separator && savedItems[2].separator && savedItems[3].command == sample[0].command;
+			insertion.DestroyWindow();
+		}
 		ScriptsToolbarCustomizeRuntimeTest::ResetCtrlFSmoke();
 		ShowScriptsToolbarCustomizeDialog(m_ScriptsToolbar);
-		WritePortableStateTestText(reportPath, ScriptsToolbarCustomizeRuntimeTest::CtrlFSmokeReport());
+		CStringA report = ScriptsToolbarCustomizeRuntimeTest::CtrlFSmokeReport();
+		if (!sorted || !inserted) report.Replace("result=pass", "result=fail");
+		report.AppendFormat("directory-sort=%d\n", sorted);
+		report.AppendFormat("insert-before=%d\n", inserted);
+		WritePortableStateTestText(reportPath, report);
 		PostMessage(WM_CLOSE); return;
 	}
 	auto currentDefinitions = [&]() { std::vector<ScriptToolbarDefinition> result; for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) result.push_back(m_scriptToolbars.Items()[index].definition); return result; };

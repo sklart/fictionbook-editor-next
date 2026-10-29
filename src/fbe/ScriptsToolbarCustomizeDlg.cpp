@@ -132,7 +132,12 @@ void CScriptsToolbarCustomizeDlg::RestoreSelection(CListBox& list, const std::ve
 }
 void CScriptsToolbarCustomizeDlg::ActivateList(CListBox& list)
 {
+	if(list.m_hWnd == m_currentList.m_hWnd) m_savedInsert = -1;
 	CListBox& other = list.m_hWnd == m_availableList.m_hWnd ? m_currentList : m_availableList;
+	if(other.m_hWnd == m_currentList.m_hWnd) {
+		const std::vector<int> rows = GetSelectedRows(other);
+		if(!rows.empty()) m_savedInsert = rows.front();
+	}
 	if(other.GetSelCount() > 0) { ::SendMessage(other, LB_SETSEL, FALSE, -1); UpdateButtonState(); }
 }
 void CScriptsToolbarCustomizeDlg::PopulateAvailable(const std::vector<DWORD_PTR>* selected, bool redraw)
@@ -150,8 +155,19 @@ void CScriptsToolbarCustomizeDlg::PopulateAvailable(const std::vector<DWORD_PTR>
 	std::vector<size_t> ordered;
 	for(size_t i = 0; i < m_available.size(); ++i) ordered.push_back(i);
 	std::stable_sort(ordered.begin(), ordered.end(), [this](size_t left, size_t right) {
+		auto directory = [](CString path) {
+			path.Replace(L'/', L'\\');
+			const int slash = path.ReverseFind(L'\\');
+			return slash < 0 ? CString() : path.Left(slash);
+		};
+		const int byDirectory = directory(m_available[left].relativePath).CompareNoCase(directory(m_available[right].relativePath));
+		if(byDirectory != 0) return byDirectory < 0;
 		const int byName = m_available[left].name.CompareNoCase(m_available[right].name);
-		return byName != 0 ? byName < 0 : m_available[left].relativePath.CompareNoCase(m_available[right].relativePath) < 0;
+		if(byName != 0) return byName < 0;
+		const int byPath = m_available[left].relativePath.CompareNoCase(m_available[right].relativePath);
+		if(byPath != 0) return byPath < 0;
+		const int exactPath = m_available[left].relativePath.Compare(m_available[right].relativePath);
+		return exactPath != 0 ? exactPath < 0 : m_available[left].command < m_available[right].command;
 	});
 	for(size_t orderedIndex = 0; orderedIndex < ordered.size(); ++orderedIndex) {
 		const size_t i = ordered[orderedIndex];
@@ -229,7 +245,7 @@ int CScriptsToolbarCustomizeDlg::SelectedAvailableCommand() const
 }
 
 LRESULT CScriptsToolbarCustomizeDlg::OnSearchChanged(WORD, WORD, HWND, BOOL&) { PopulateAvailable(); UpdateButtonState(); return 0; }
-LRESULT CScriptsToolbarCustomizeDlg::OnPanelChanged(WORD, WORD, HWND, BOOL&) { const int index = m_panelList.GetCurSel(); if(index >= 0 && index < static_cast<int>(m_panels.size())) { m_toolbar = m_panels[index].toolbar; RefreshLists(); UpdateButtonState(); } return 0; }
+LRESULT CScriptsToolbarCustomizeDlg::OnPanelChanged(WORD, WORD, HWND, BOOL&) { const int index = m_panelList.GetCurSel(); if(index >= 0 && index < static_cast<int>(m_panels.size())) { m_savedInsert = -1; m_toolbar = m_panels[index].toolbar; RefreshLists(); UpdateButtonState(); } return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnSelectionChanged(WORD, WORD, HWND, BOOL&) { UpdateButtonState(); return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnToolTipText(int, LPNMHDR hdr, BOOL& bHandled)
 {
@@ -260,18 +276,20 @@ LRESULT CScriptsToolbarCustomizeDlg::OnAdd(WORD, WORD, HWND, BOOL&)
 {
 	const std::vector<int> rows = GetSelectedRows(m_availableList); if(rows.empty()) return 0;
 	const std::vector<PortableToolbarItem> previous = CurrentItems(); std::vector<DWORD_PTR> currentSelection;
+	size_t insert = m_savedInsert >= 0 && static_cast<size_t>(m_savedInsert) <= CurrentItems().size() ? static_cast<size_t>(m_savedInsert) : CurrentItems().size();
 	for(size_t rowIndex = 0; rowIndex < rows.size(); ++rowIndex) {
 		const DWORD_PTR item = m_availableList.GetItemData(rows[rowIndex]);
-		if(item == kSeparatorItem) { PortableToolbarItem separator = {}; separator.separator = true; separator.width = 8; CurrentItems().push_back(separator); currentSelection.push_back(CurrentItems().size() - 1); continue; }
+		if(item == kSeparatorItem) { PortableToolbarItem separator = {}; separator.separator = true; separator.width = 8; CurrentItems().insert(CurrentItems().begin() + insert, separator); currentSelection.push_back(insert++); continue; }
 		if(item >= m_available.size() || ToolbarContainsCommand(m_available[item].command)) continue;
 		PortableToolbarItem command = {}; command.command = m_available[item].command;
-		CurrentItems().push_back(command); currentSelection.push_back(CurrentItems().size() - 1);
+		CurrentItems().insert(CurrentItems().begin() + insert, command); currentSelection.push_back(insert++);
 	}
-	if(!currentSelection.empty() && CommitCurrentItems(previous)) { std::vector<DWORD_PTR> empty; RefreshLists(&empty, &currentSelection); UpdateButtonState(); }
+	if(!currentSelection.empty() && CommitCurrentItems(previous)) { m_savedInsert = -1; std::vector<DWORD_PTR> empty; RefreshLists(&empty, &currentSelection); UpdateButtonState(); }
 	return 0;
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnRemove(WORD, WORD, HWND, BOOL&)
 {
+	m_savedInsert = -1;
 	std::vector<int> rows = GetSelectedRows(m_currentList); if(rows.empty()) return 0;
 	const std::vector<PortableToolbarItem> previous = CurrentItems();
 	std::vector<DWORD_PTR> availableSelection;
@@ -333,8 +351,11 @@ bool CScriptsToolbarCustomizeDlg::MoveSelectedButtons(bool down)
 	for(size_t rowIndex = 0; rowIndex < rows.size(); ++rowIndex) selected[rows[rowIndex]] = 1;
 	const std::vector<PortableToolbarItem> previous = CurrentItems(); std::vector<PortableToolbarItem> buttons = CurrentItems();
 	bool moved = false;
-	if(down) for(int index = count - 2; index >= 0; --index) if(selected[index] && !selected[index + 1]) { std::swap(buttons[index], buttons[index + 1]); std::swap(selected[index], selected[index + 1]); moved = true; }
-	else for(int upIndex = 1; upIndex < count; ++upIndex) if(selected[upIndex] && !selected[upIndex - 1]) { std::swap(buttons[upIndex], buttons[upIndex - 1]); std::swap(selected[upIndex], selected[upIndex - 1]); moved = true; }
+	if(down) {
+		for(int index = count - 2; index >= 0; --index) if(selected[index] && !selected[index + 1]) { std::swap(buttons[index], buttons[index + 1]); std::swap(selected[index], selected[index + 1]); moved = true; }
+	} else {
+		for(int upIndex = 1; upIndex < count; ++upIndex) if(selected[upIndex] && !selected[upIndex - 1]) { std::swap(buttons[upIndex], buttons[upIndex - 1]); std::swap(selected[upIndex], selected[upIndex - 1]); moved = true; }
+	}
 	if(!moved) return false;
 	CurrentItems() = buttons; if(!CommitCurrentItems(previous)) return false; std::vector<DWORD_PTR> selection;
 	for(int i = 0; i < count; ++i) if(selected[i]) selection.push_back(i);
