@@ -222,6 +222,40 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertEqual(len(parent.findall('f:section', NS)), 2)
         self.assertIsNotNone(parent.find('f:section/f:section', NS))
 
+    def test_block_and_inline_images_preserve_context(self):
+        root = self.convert('<h1>Images</h1><img src="../a.png"/><p>Before<img src="../a.png"/>After</p><p><img src="../a.png"/></p>',
+                            {'a.png': ('a', 'image/png', PNG)})
+        body = root.find('f:body', NS)
+        self.assertEqual(len(body.findall('.//f:section/f:image', NS)), 2)
+        inline = next(p for p in body.findall('.//f:p', NS) if 'Before' in self.text(p))
+        self.assertIsNotNone(inline.find('f:image', NS))
+        self.assertIn('After', self.text(inline))
+        self.assertEqual(base64.b64decode(root.find('f:binary', NS).text), PNG)
+
+    def test_figure_image_and_caption_are_preserved(self):
+        root = self.convert('<h1>Illustration</h1><figure><img src="../a.png"/><figcaption>Picture caption</figcaption></figure><p>Following text</p>',
+                            {'a.png': ('a', 'image/png', PNG)})
+        self.assert_once(root, 'Picture caption', 'Following text')
+        self.assertIsNotNone(root.find('.//f:section/f:image', NS))
+        self.assertLess(self.text(root).index('Picture caption'), self.text(root).index('Following text'))
+        self.assertEqual(base64.b64decode(root.find('f:binary', NS).text), PNG)
+
+    def test_images_at_paragraph_edges_remain_inline_with_text(self):
+        root = self.convert('<h1>Mixed</h1><p><img src="../a.png"/>Leading text</p><p>Trailing text<img src="../a.png"/></p>',
+                            {'a.png': ('a', 'image/png', PNG)})
+        for phrase in ('Leading text', 'Trailing text'):
+            paragraph = next(p for p in root.findall('.//f:p', NS) if phrase in self.text(p))
+            self.assertIsNotNone(paragraph.find('f:image', NS))
+        self.assertEqual(base64.b64decode(root.find('f:binary', NS).text), PNG)
+
+    def test_consecutive_images_before_body_remain_valid(self):
+        root = self.convert('<h1>Images</h1><img src="../a.png"/><img src="../b.png"/><p>Following text</p>',
+                            {'a.png': ('a', 'image/png', PNG), 'b.png': ('b', 'image/png', PNG)})
+        self.assertEqual(len(root.findall('.//f:body//f:image', NS)), 2)
+        self.assert_once(root, 'Following text')
+        self.assertEqual(len(root.findall('f:binary', NS)), 2)
+        self.assertIn('Image-only paragraph retained', self.diagnostics)
+
     def test_relative_encoded_images(self):
         root = self.convert('<p>Image<img src="../Images/%D1%80%D0%B8%D1%81%20one.png"/></p>',
                             {'Images/рис one.png': ('pic', 'image/png', PNG)})

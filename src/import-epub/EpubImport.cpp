@@ -5495,6 +5495,52 @@ namespace
         if (LocalName(node) != L"section") return;
         if (!sections)
         {
+            // A section's first body block cannot be an image unless it is
+            // followed by a non-image body block. Promote image-only paragraphs
+            // only where the resulting order satisfies that FB2 rule.
+            auto soleImage = [](const MSXML2::IXMLDOMNodePtr& paragraph) -> MSXML2::IXMLDOMNodePtr {
+                if (LocalName(paragraph) != L"p" || !Attr(paragraph, L"id").IsEmpty() || !TrimString(NodeText(paragraph)).IsEmpty()) return nullptr;
+                const auto nodes = MsxmlGetChildNodes(paragraph);
+                const long length = nodes ? MsxmlGetNodeListLength(nodes) : 0;
+                MSXML2::IXMLDOMNodePtr image;
+                for (long i = 0; i < length; ++i) {
+                    const auto child = MsxmlGetNodeListItem(nodes, i);
+                    const auto type = MsxmlGetNodeType(child);
+                    if (type == MSXML2::NODE_ELEMENT) {
+                        if (image || LocalName(child) != L"image" || !Attr(child, L"id").IsEmpty()) return nullptr;
+                        image = child;
+                    } else if (type != MSXML2::NODE_TEXT && type != MSXML2::NODE_COMMENT) return nullptr;
+                }
+                return image;
+            };
+            bool bodyStarted = false, headerImageUsed = false;
+            for (size_t i = 0; i < children.size(); ++i) {
+                const CStringW name = LocalName(children[i]);
+                if (name == L"title" || name == L"epigraph" || name == L"annotation") continue;
+                auto image = soleImage(children[i]);
+                bool followingBody = false;
+                for (size_t j = i + 1; image && !bodyStarted && j < children.size(); ++j) {
+                    const CStringW next = LocalName(children[j]);
+                    if (next == L"title" || next == L"epigraph" || next == L"annotation") continue;
+                    followingBody = !soleImage(children[j]) && next != L"image";
+                    break;
+                }
+                if (image && (bodyStarted || (!headerImageUsed && followingBody))) {
+                    IXMLDOMNode* removed = nullptr;
+                    CheckError(children[i]->removeChild(image, &removed)); if (removed) removed->Release();
+                    IXMLDOMNode* replaced = nullptr;
+                    CheckError(node->replaceChild(image, children[i], &replaced)); if (replaced) replaced->Release();
+                    children[i] = image;
+                    if (bodyStarted) continue;
+                    // The first image occupies the optional section image slot.
+                    headerImageUsed = true;
+                    continue;
+                }
+                if (image)
+                    warning += L"Image-only paragraph retained: FB2 section ordering requires a text block at this position.\r\n";
+                if (name == L"image" && !bodyStarted) headerImageUsed = true;
+                else if (name != L"image") bodyStarted = true;
+            }
             MSXML2::IXMLDOMNodePtr title;
             bool content = false;
             for (const auto& child : children)
