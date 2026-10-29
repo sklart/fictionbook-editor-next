@@ -1,0 +1,33 @@
+diff --git "a/D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-fbe-268\\original\\main.js" "b/D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-fbe-268\\msxml6-patched\\main.js"
+index 2197e0e7..afec2d20 100644
+--- "a/D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-fbe-268\\original\\main.js"
++++ "b/D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-fbe-268\\msxml6-patched\\main.js"
+@@ -377,8 +377,8 @@ function SaveImage(source)
+ 
+ function LoadXSL(path, lang)
+ {
+-	var xslt = new ActiveXObject("Msxml2.XSLTemplate.4.0");
+-	var xsl = new ActiveXObject("Msxml2.FreeThreadedDOMDocument.4.0");
++	var xslt = new ActiveXObject("Msxml2.XSLTemplate.6.0");
++	var xsl = new ActiveXObject("Msxml2.FreeThreadedDOMDocument.6.0");
+ 	xsl.async = false;
+ 	var proc;
+ 
+@@ -483,7 +483,7 @@ function LoadFromDOM(dom, lang)
+ 
+ function XmlFromText(text)
+ {
+-	var xml = new ActiveXObject("Msxml2.DOMDocument.4.0");
++	var xml = new ActiveXObject("Msxml2.DOMDocument.6.0");
+ 	xml.async=false;
+ 	xml.preserveWhiteSpace = true;
+ 	xml.loadXML(text);
+@@ -509,7 +509,7 @@ function apiLoadFB2(path, lang)
+ 	var css=document.getElementById("css");
+ 	var css_filename = css.href;
+ 	css.href="";
+-	var xml = new ActiveXObject("Msxml2.DOMDocument.4.0");
++	var xml = new ActiveXObject("Msxml2.DOMDocument.6.0");
+ 	xml.async=false;
+ 	xml.preserveWhiteSpace = true;
+ 

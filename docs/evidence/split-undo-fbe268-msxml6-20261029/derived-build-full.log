@@ -1,0 +1,17 @@
+
+  affentry.cxx
+  affixmgr.cxx
+  csutil.cxx
+  dictmgr.cxx
+  filemgr.cxx
+  hashmgr.cxx
+  hunspell.cxx
+  hunzip.cxx
+  phonet.cxx
+  replist.cxx
+  suggestmgr.cxx
+  hunspelldll.c
+  libhunspell.vcxproj -> D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\hunspell\src\win_api\Release\libhunspell.lib
+  Building Custom Rule D:/Users/evpobr/Documents/GitHubVisualStudio/pcre/CMakeLists.txt
+  Системе не удается найти указанный путь.
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Microsoft\VC\v170\Microsoft.CppCommon.targets(254,5): error MSB8066: пользовательская сборка для "D:\Users\evpobr\Documents\GitHubVisualStudio\pcre\CMakeLists.txt" завершила работу с кодом 3. [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\pcre\pcre.vcxproj]

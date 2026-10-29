@@ -1,0 +1,137 @@
+
+  stdafx.cpp
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\stdafx.h(71,1): warning C4192: автоматическое исключение "ISequentialStream" во время импорта библиотеки типов "msxml6.dll" [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "stdafx.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\stdafx.h(71,1): warning C4192: автоматическое исключение "_FILETIME" во время импорта библиотеки типов "msxml6.dll" [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "stdafx.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\stdafx.h(81,9): warning C4278: min: идентификатор в библиотеке типов "mshtml.tlb" уже является макроопределением; используйте квалификатор "rename" [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "stdafx.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\stdafx.h(81,9): warning C4278: max: идентификатор в библиотеке типов "mshtml.tlb" уже является макроопределением; используйте квалификатор "rename" [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "stdafx.cpp")
+
+  AboutBox.cpp
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\AboutBox.cpp(136,16): warning C4244: инициализация: преобразование "std::streamoff" в "int", возможна потеря данных [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/AboutBox.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\AboutBox.cpp(258,16): warning C4244: инициализация: преобразование "std::streamoff" в "int", возможна потеря данных [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/AboutBox.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\AboutBox.cpp(302,15): warning C4244: инициализация: преобразование "std::streamoff" в "int", возможна потеря данных [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/AboutBox.cpp")
+
+  DocumentTree.cpp
+  ElementDescMnr.cpp
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\mainfrm.h(25,10): error C1083: Не удается открыть файл включение: FBE.h: No such file or directory, [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/ElementDescMnr.cpp")
+
+  ElementDescriptor.cpp
+  GLLogo.cpp
+  script.cpp
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\mainfrm.h(25,10): error C1083: Не удается открыть файл включение: FBE.h: No such file or directory, [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/script.cpp")
+
+  Settings.cpp
+  SettingsDlg.cpp
+  SettingsHotkeysDlg.cpp
+  SettingsOtherDlg.cpp
+  SettingsWordsDlg.cpp
+  Speller.cpp
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\Speller.cpp(6,10): error C1083: Не удается открыть файл включение: FBE.h: No such file or directory, [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/Speller.cpp")
+
+  Splitter.cpp
+  xmlMatchedTagsHighlighter.cpp
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(290,4): error C2065: basic_string: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(290,17): error C2062: тип "char" не требуется [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(291,4): error C2065: closeTag: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(292,4): error C2065: closeTag: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(294,4): error C2065: basic_string: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(294,17): error C2062: тип "char" не требуется [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(295,4): error C2065: openTag: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(296,4): error C2065: openTag: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(301,56): error C2065: closeTag: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(301,74): error C2065: openTag: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(301,11): error C2660: XmlMatchedTagsHighlighter::getMatchedTagPos: функция не принимает 4 аргументов [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+      D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(106,33):
+       см. объявление "XmlMatchedTagsHighlighter::getMatchedTagPos"
+      D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(301,11):
+      при попытке сопоставить список аргументов "(int, int, std::vector<int,std::allocator<int>>, XmlMatchedTagsHighlighter::XmlMatchedTagsPos)"
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(314,4): error C2065: basic_string: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(314,17): error C2062: тип "char" не требуется [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(315,4): error C2065: openTag: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(316,4): error C2065: openTag: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(318,4): error C2065: basic_string: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(318,17): error C2062: тип "char" не требуется [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(319,4): error C2065: closeTag: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(320,4): error C2065: closeTag: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(325,62): error C2065: openTag: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(325,79): error C2065: closeTag: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(325,19): error C2660: XmlMatchedTagsHighlighter::getMatchedTagPos: функция не принимает 4 аргументов [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/xmlMatchedTagsHighlighter.cpp")
+      D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(106,33):
+       см. объявление "XmlMatchedTagsHighlighter::getMatchedTagPos"
+      D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\xmlMatchedTagsHighlighter.cpp(325,19):
+      при попытке сопоставить список аргументов "(int, int, std::vector<int,std::allocator<int>>, XmlMatchedTagsHighlighter::XmlMatchedTagsPos)"
+
+  XMLSerializer.cpp
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\XMLSerializer\XMLSerializer.cpp(90,7): error C2039: "SAXXMLReader40": не является членом "MSXML2". [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/XMLSerializer/XMLSerializer.cpp")
+      D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\Release\msxml6.tlh(13,11):
+       см. объявление "MSXML2"
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\XMLSerializer\XMLSerializer.cpp(90,7): error C2065: SAXXMLReader40: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/XMLSerializer/XMLSerializer.cpp")
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\XMLSerializer\XMLSerializer.cpp(92,7): error C2039: "MXXMLWriter40": не является членом "MSXML2". [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/XMLSerializer/XMLSerializer.cpp")
+      D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\Release\msxml6.tlh(13,11):
+       см. объявление "MSXML2"
+
+D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\XMLSerializer\XMLSerializer.cpp(92,7): error C2065: MXXMLWriter40: необъявленный идентификатор [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+  (компиляция исходного файла "/XMLSerializer/XMLSerializer.cpp")
+

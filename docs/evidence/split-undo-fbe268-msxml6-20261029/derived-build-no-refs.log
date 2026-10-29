@@ -1,0 +1,9 @@
+
+  Copying requisite resources...
+  Не удается найти указанный файл.
+  ═хфюёЄрЄюўэю ярь Єш
+  ╤ъюяшЁютрэю Їрщыют: 177.
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Microsoft\VC\v170\Microsoft.CppCommon.targets(156,5): error MSB3073: выход из команды "rd "D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\Release\"cmd /S /Q [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Microsoft\VC\v170\Microsoft.CppCommon.targets(156,5): error MSB3073: xcopy "D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\files\*.*" "D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\Release\" /E /Q /Y [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Microsoft\VC\v170\Microsoft.CppCommon.targets(156,5): error MSB3073:  [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Microsoft\VC\v170\Microsoft.CppCommon.targets(156,5): error MSB3073: :VCEnd" с кодом 4. [D:\Download\FBeditor\out\undo-architecture-feasibility\out\historical-fbe-268\derived-source\FBE.vcxproj]

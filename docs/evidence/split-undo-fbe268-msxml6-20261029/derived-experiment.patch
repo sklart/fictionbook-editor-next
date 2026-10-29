@@ -1,0 +1,50 @@
+diff --git "a/D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-fbe-268\\baseline-source\\stdafx.h" "b/D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-fbe-268\\derived-source\\stdafx.h"
+index 423947b0..92787d9c 100644
+--- "a/D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-fbe-268\\baseline-source\\stdafx.h"
++++ "b/D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-fbe-268\\derived-source\\stdafx.h"
+@@ -12,9 +12,9 @@
+ #endif
+ 
+ // Change these values to use different versions
+-#define WINVER			0x0500
++#define WINVER			0x0501
+ #define _WIN32_WINNT	0x0501
+-#define _WIN32_IE		0x0501
++#define _WIN32_IE		0x0600
+ 
+ // Insert your headers here
+ //#define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
+@@ -68,7 +68,7 @@ extern CAppModule _Module;
+ #include <time.h>
+ 
+ // MSXML
+-#import <msxml4.dll>
++#import <msxml6.dll>
+ 
+ // vb regexps
+ #import "vbscript3.tlb"
+diff --git "a/D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-fbe-268\\baseline-source\\XMLSerializer\\XMLSerializer.cpp" "b/D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-fbe-268\\derived-source\\XMLSerializer\\XMLSerializer.cpp"
+index 7fce33ff..8f26273c 100644
+--- "a/D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-fbe-268\\baseline-source\\XMLSerializer\\XMLSerializer.cpp"
++++ "b/D:\\Download\\FBeditor\\out\\undo-architecture-feasibility\\out\\historical-fbe-268\\derived-source\\XMLSerializer\\XMLSerializer.cpp"
+@@ -7,7 +7,7 @@ CXMLSerializer::CXMLSerializer(const CString& sFile, const CString& sAppName, bo
+ {
+ 	try
+ 	{
+-		m_doc.CreateInstance(__uuidof(MSXML2::DOMDocument40));
++		m_doc.CreateInstance(__uuidof(MSXML2::DOMDocument60));
+ 
+ 		SetFile(sFile);
+ 		SetApplicationName(sAppName);
+@@ -87,9 +87,9 @@ int CXMLSerializer::InitializeWriters(const CString& encoding, const bool& xmlDe
+ {
+ 	try
+ 	{
+-		if(!SUCCEEDED(m_rdr.CreateInstance(__uuidof(MSXML2::SAXXMLReader40))))
++		if(!SUCCEEDED(m_rdr.CreateInstance(__uuidof(MSXML2::SAXXMLReader60))))
+ 			return E_FAIL;
+-		if(!SUCCEEDED(m_wrt.CreateInstance(__uuidof(MSXML2::MXXMLWriter40))))
++		if(!SUCCEEDED(m_wrt.CreateInstance(__uuidof(MSXML2::MXXMLWriter60))))
+ 			return E_FAIL;
+ 
+ 		m_wrt->byteOrderMark = bom;
