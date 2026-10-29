@@ -1,4 +1,36 @@
 #include "RuntimeTestControlOracle.inl"
+	if (IsFbeTestScenario(L"history-dirty-range-boundary"))
+	{
+		DWORD written = 0, cookie = 0; CComPtr<MSHTML::IMarkupContainer2> container;
+		struct Registration { CComPtr<MSHTML::IMarkupContainer2>* container; DWORD* cookie; ~Registration() { if (*container && *cookie) (*container)->UnRegisterForDirtyRange(*cookie); } } registration{std::addressof(container), &cookie};
+		try {
+			ShowView(BODY); MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document()); CheckError(document->QueryInterface(&container));
+			CComObject<CTestDirtyRangeSink>* raw = nullptr; CheckError(CComObject<CTestDirtyRangeSink>::CreateInstance(&raw)); CComPtr<MSHTML::IHTMLChangeSink> sink(raw);
+			const HRESULT registerHr = container->RegisterForDirtyRange(sink, &cookie); CheckError(registerHr); if (!cookie) CheckError(E_UNEXPECTED);
+			MSHTML::IMarkupServices2Ptr markup(m_doc->m_body.MarkupServices()); MSHTML::IHTMLElementPtr section(document->all->item(L"oracle-section")); if (!section) CheckError(E_UNEXPECTED);
+			CStringA header("phase\tbefore\tafter\tversion_before\tversion_after\tbefore_notify\tafter_script_notify\tafter_message_notify\tafter_idle_notify\tdirty_hr\tstart_scope\tend_scope\r\n"); output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+			struct Mutation { const char* name; const wchar_t* script; };
+			const Mutation cases[] = {
+				{"nodeValue", L"document.getElementById('probe-text').firstChild.nodeValue='changed';"},
+				{"innerHTML", L"document.getElementById('probe-text').innerHTML='html-change';"},
+				{"appendChild", L"var n=document.createElement('P');n.id='added';n.innerText='added';document.getElementById('oracle-section').appendChild(n);"},
+				{"insertBefore", L"var n=document.createElement('P');n.id='before';n.innerText='before';var p=document.getElementById('oracle-section');p.insertBefore(n,p.firstChild);"},
+				{"removeChild", L"var n=document.getElementById('added');n.parentNode.removeChild(n);"},
+				{"id", L"document.getElementById('probe-text').id='probe-renamed';"},
+				{"href", L"document.getElementById('oracle-section').getElementsByTagName('A')[0].href='#probe-renamed';"},
+				{"multiple", L"document.getElementById('probe-renamed').title='one';document.getElementById('oracle-section').getElementsByTagName('A')[0].title='two';"}
+			};
+			for (const auto& item : cases) {
+				CString before(static_cast<const wchar_t*>(section->innerHTML)); before.Replace(L"\r",L""); before.Replace(L"\n",L""); before.Replace(L"\t",L" "); const long versionBefore = container->GetVersionNumber(); const unsigned n0 = raw->notifications;
+				const HRESULT scriptHr = document->parentWindow->execScript(_bstr_t(item.script), L"JScript"); CheckError(scriptHr); const unsigned n1 = raw->notifications;
+				const UINT sentinel = WM_APP + 0x3F9; if (!::PostThreadMessage(::GetCurrentThreadId(), sentinel, 0, 0)) CheckError(HRESULT_FROM_WIN32(::GetLastError())); MSG msg = {}; while (::PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) { if (msg.message == sentinel) break; if (msg.message == WM_QUIT) { ::PostQuitMessage(static_cast<int>(msg.wParam)); break; } ::TranslateMessage(&msg); ::DispatchMessage(&msg); } const unsigned n2 = raw->notifications;
+				::MsgWaitForMultipleObjectsEx(0, nullptr, 100, QS_ALLINPUT, MWMO_INPUTAVAILABLE); while (::PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) { if (msg.message == WM_QUIT) { ::PostQuitMessage(static_cast<int>(msg.wParam)); break; } ::TranslateMessage(&msg); ::DispatchMessage(&msg); } const unsigned n3 = raw->notifications;
+				MSHTML::IMarkupPointerPtr start, end; CheckError(markup->CreateMarkupPointer(&start)); CheckError(markup->CreateMarkupPointer(&end)); const HRESULT dirtyHr = container->GetAndClearDirtyRange(cookie, start, end); MSHTML::IHTMLElementPtr s, e; HRESULT sh = FAILED(dirtyHr) ? dirtyHr : start->CurrentScope(&s); HRESULT eh = FAILED(dirtyHr) ? dirtyHr : end->CurrentScope(&e);
+				CString after(static_cast<const wchar_t*>(section->innerHTML)); after.Replace(L"\r",L""); after.Replace(L"\n",L""); after.Replace(L"\t",L" "); CStringA before8(CW2A(before,CP_UTF8)), after8(CW2A(after,CP_UTF8)), row; row.Format("%s\t%s\t%s\t%ld\t%ld\t%u\t%u\t%u\t%u\t0x%08lX\t%S:0x%08lX\t%S:0x%08lX\r\n", item.name, before8.GetString(), after8.GetString(), versionBefore, container->GetVersionNumber(), n0, n1, n2, n3, static_cast<unsigned long>(dirtyHr), s ? static_cast<const wchar_t*>(s->tagName) : L"", static_cast<unsigned long>(sh), e ? static_cast<const wchar_t*>(e->tagName) : L"", static_cast<unsigned long>(eh)); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
+			}
+			const HRESULT unregistered = container->UnRegisterForDirtyRange(cookie); cookie = 0; CheckError(unregistered); output.Close(); ::PostQuitMessage(0); return 0;
+		} catch (const _com_error& error) { CStringA row; row.Format("error\t0x%08lX\r\n", static_cast<unsigned long>(error.Error())); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
+	}
 	if (IsFbeTestScenario(L"history-observer-boundary"))
 	{
 		DWORD written = 0;

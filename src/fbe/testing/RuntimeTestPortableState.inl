@@ -2,6 +2,13 @@
 #include "../settings/hotkeys/HotkeyExport.h"
 #include "Script64ResultChecks.h"
 
+class CTestDirtyRangeSink : public CComObjectRootEx<CComSingleThreadModel>, public MSHTML::IHTMLChangeSink {
+public:
+	BEGIN_COM_MAP(CTestDirtyRangeSink) COM_INTERFACE_ENTRY(MSHTML::IHTMLChangeSink) END_COM_MAP()
+	STDMETHOD(raw_Notify)() { ++notifications; return S_OK; }
+	unsigned notifications = 0;
+};
+
 // Test-only OLE parent for the Split undo probe.  It is intentionally kept
 // outside production structural code until MSHTML proves this composition.
 class CSplitUndoProbeParent : public CComObjectRootEx<CComSingleThreadModel>, public IOleParentUndoUnit {

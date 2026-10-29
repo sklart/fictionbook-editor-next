@@ -3,7 +3,8 @@ param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [Parameter(Mandatory)][string]$EvidenceDirectory,
     [switch]$IncludePrior,
-    [switch]$RangeCases
+    [switch]$RangeCases,
+    [switch]$OnlySplit
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
@@ -13,7 +14,8 @@ $names = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SPLIT_PO
 $old = @{}; foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name) }
 try {
     if ($IncludePrior -and $RangeCases) { throw 'IncludePrior and RangeCases are separate diagnostics.' }
-    foreach ($mode in $(if ($RangeCases) { @('after-split','after-undo','after-redo','restore-range','restore-pointer','undo-restore-range','undo-restore-pointer','undo-fresh') } elseif ($IncludePrior) { @('split-prior-input') } else { @('split','split-input') })) {
+    if ($OnlySplit -and ($IncludePrior -or $RangeCases)) { throw 'OnlySplit is a separate diagnostic.' }
+    foreach ($mode in $(if ($RangeCases) { @('after-split','after-undo','after-redo','restore-range','restore-pointer','undo-restore-range','undo-restore-pointer','undo-fresh') } elseif ($IncludePrior) { @('split-prior-input') } elseif ($OnlySplit) { @('split') } else { @('split','split-input') })) {
         $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name split-timeline; $passed = $false
         try {
             $null = New-IsolatedFbeSettingsSeed -Isolation $iso -StartupScriptsDirectory (Join-Path $iso.Root empty-scripts)
