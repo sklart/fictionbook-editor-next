@@ -1,0 +1,17 @@
+step,operation,observed_text,sections_visible,undo_available,redo_available
+0,open,First Backlink Middle Last,1,false,false
+1,type Q,First Backlink QMiddle Last,1,true,false
+2,split,First Backlink QM iddle Last,2,true,false
+3,type X,First Backlink QM Xiddle Last,2,true,false
+4,undo X,First Backlink QM iddle Last,2,true,true
+5,undo split part 1,First Backlink QMiddle Last iddle Last,2,true,true
+6,undo split part 2,First Backlink QMiddle Last iddle Last,1,true,true
+7,undo Q,First Backlink Middle Last iddle Last,1,false,true
+8,redo Q,First Backlink QMiddle Last iddle Last,1,true,true
+9,redo split part 1,First Backlink QMiddle Last iddle Last,2,true,true
+10,redo split part 2,First Backlink QM iddle Last,2,true,true
+11,redo X,First Backlink QM Xiddle Last,2,true,false
+12,undo X again,First Backlink QM iddle Last,UNKNOWN,true,true
+13,undo split part 1 again,First Backlink QMiddle Last iddle Last,UNKNOWN,true,true
+14,undo split part 2 again,First Backlink QMiddle Last iddle Last,UNKNOWN,true,true
+15,undo Q again,First Backlink Middle Last iddle Last,UNKNOWN,false,true
