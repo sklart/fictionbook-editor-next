@@ -173,7 +173,7 @@ EXE SHA256: `0F5FA8F0EAA1C0A47D11959D77EE1E347B15D760307BF47FEB9A87ECAEE1F22F`.
 
 ## Ограничение GUI
 
-В этом этапе [computer-use](C:/Users/Sklyarov/.codex/plugins/cache/openai-bundled/computer-use/26.1023.50603/skills/computer-use/SKILL.md) не смог инициализировать JavaScript kernel: `failed to write kernel assets: Системе не удается найти указанный путь. (os error 3)`. После js_reset и одной повторной инициализации результат тот же. Контроль окон даже не начался; прежняя ошибка foreground PID в этом запуске не подтверждалась.
+В этом этапе computer-use (bundled 26.1023.50603, skills/computer-use/SKILL.md) не смог инициализировать JavaScript kernel: `failed to write kernel assets: Системе не удается найти указанный путь. (os error 3)`. После js_reset и одной повторной инициализации результат тот же. Контроль окон даже не начался; прежняя ошибка foreground PID в этом запуске не подтверждалась.
 
 Обязательный guidance skill предписывает при неудачной recovery “stop and report that the Windows Computer Use helper may have failed”. Остановлена только GUI-автоматизация. Ограничения инструмента не обходились; build/native/runtime проверки продолжены.
 

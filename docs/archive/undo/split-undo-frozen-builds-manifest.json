@@ -1,0 +1,431 @@
+{
+  "research_branch": "codex/fbe-undo-architecture-feasibility",
+  "research_head": "bcc9435b07f8916e1a23d53d7fb5e47b4a769ede",
+  "integration_head": "a9c33414a77f957d73a890d69e3767877bc05d08",
+  "local_archive": "LOCAL_ONLY",
+  "full_file_inventory": "frozen-all-files-sha256.csv",
+  "builds": [
+    {
+      "build_id": "9d9ed9bb-e2-modefix-20261029",
+      "source_base_commit": "9d9ed9bbacd6d445f1fb7c6c6ad664cabfd07929",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "AAB7194CCB9712EFA8077D1F4074E076BD8918A7EBC25954416E032DC4CF2C02",
+      "pdb_sha256": "A9DB8ED0D1ED100B161F21A2D5DEDC936E630046FE96ED81FD0B142DFD4AC86E",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "e2-modefix",
+      "archive_relative_path": "frozen-builds/9d9ed9bb-e2-modefix-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "9d9ed9bb-e2-observer-20261029",
+      "source_base_commit": "9d9ed9bbacd6d445f1fb7c6c6ad664cabfd07929",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "5A88AB9411335758D79ACBEAF069545728B3ED1A0C6182A9231C8BBA2595C339",
+      "pdb_sha256": "693A18AF62B27A272772C4755FEA4543AFC08CEC0536F45AB50021AF903E9B30",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "UNAVAILABLE",
+      "experiment": "e2-observer",
+      "archive_relative_path": "frozen-builds/9d9ed9bb-e2-observer-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "9d9ed9bb-e2-s1-20261029",
+      "source_base_commit": "9d9ed9bbacd6d445f1fb7c6c6ad664cabfd07929",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "3E6D4240A1BD3A0F319BA26FD4F99AF3DA88A87A1AD5B9FD8CA2E3880B536DCB",
+      "pdb_sha256": "7537CCDFA7C5BA1D544F71005C4DFF921C8E51C91E9AF9F869A2D07CC455E540",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "e2-s1",
+      "archive_relative_path": "frozen-builds/9d9ed9bb-e2-s1-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "9d9ed9bb-e2-s2a-20261029",
+      "source_base_commit": "9d9ed9bbacd6d445f1fb7c6c6ad664cabfd07929",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "BC344EE849E95DB9FF293E02DBF62076D3F6A57321E7071A3EF49EF396361C53",
+      "pdb_sha256": "7118DD1068E5AA0299F88107A70D3BBD604E5231F885BA4191191B2A23368BF8",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "e2-s2a",
+      "archive_relative_path": "frozen-builds/9d9ed9bb-e2-s2a-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "9d9ed9bb-e2-s2b-20261029",
+      "source_base_commit": "9d9ed9bbacd6d445f1fb7c6c6ad664cabfd07929",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "AC4A568FA12F896B8B677B45B3252CE37B569F7FC4E0C51E77731FD3257EC505",
+      "pdb_sha256": "D35442607A947F6B2F3D6A91C6210163FB830C0247D8070A1F5F794CC33C9CB4",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "e2-s2b",
+      "archive_relative_path": "frozen-builds/9d9ed9bb-e2-s2b-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "9d9ed9bb-e2-s2c-20261029",
+      "source_base_commit": "9d9ed9bbacd6d445f1fb7c6c6ad664cabfd07929",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "CE6F185A774A895BEFDACF5DBFF81735386DD52092D9E2ED15B0447E73C9B925",
+      "pdb_sha256": "A2AA3D9F8310CEA612AC2CDB68FB2C847A2B6638265E30BB8DA45CA26753D3C1",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "e2-s2c",
+      "archive_relative_path": "frozen-builds/9d9ed9bb-e2-s2c-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "9d9ed9bb-e2-s2d-20261029",
+      "source_base_commit": "9d9ed9bbacd6d445f1fb7c6c6ad664cabfd07929",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "E448AD6D78C908FC86ABF9946454A0044310350382F1E62F5FF79B2A04B4288B",
+      "pdb_sha256": "37BDF32850C5B1B4B2816135EC787402F67DF9AD619432D08F0D863F6DA03002",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "e2-s2d",
+      "archive_relative_path": "frozen-builds/9d9ed9bb-e2-s2d-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "9d9ed9bb-matrix-e2-20261029",
+      "source_base_commit": "9d9ed9bbacd6d445f1fb7c6c6ad664cabfd07929",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "8A7A171F2583AA6E64DB9F690240555F0A615A869120DC3CBF8F30BAC3623D1F",
+      "pdb_sha256": "7B4646E5F54944C726CB97CC28BD5EA1EB2400E4D288691189B9CD5ECFFC58FF",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "UNAVAILABLE",
+      "experiment": "matrix-e2",
+      "archive_relative_path": "frozen-builds/9d9ed9bb-matrix-e2-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "ae6e514d-k1-oracle-20261029",
+      "source_base_commit": "ae6e514d6263be953d7a143e10ce52aeafc6a4c9",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "06DCBEC481F834A4C9C6D2EE1C5BD3258053CDB2C2F029EED818782F2AB864E6",
+      "pdb_sha256": "6675B961D76C282EF78699C8BF5CA5B5430BC3FD33EF69A2E2944FEF53A4414C",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "k1-oracle",
+      "archive_relative_path": "frozen-builds/ae6e514d-k1-oracle-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "ae6e514d-k2-k3-20261029",
+      "source_base_commit": "ae6e514d6263be953d7a143e10ce52aeafc6a4c9",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "37530E8F0664B9FFC7D3B2B3238F937A0381FD9ED6F28D282DDA4B3A9250F96E",
+      "pdb_sha256": "396E5B0D7D1F99793ACF8C43A6A1381194EE2EEE28125B7E04DD97D5F29B7C2A",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "k2-k3",
+      "archive_relative_path": "frozen-builds/ae6e514d-k2-k3-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "ae6e514d-k3-identity-20261029",
+      "source_base_commit": "ae6e514d6263be953d7a143e10ce52aeafc6a4c9",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "E662535F73577C31FE9F071783158918573976CF4DE1FE072A41FEFA2F54DA88",
+      "pdb_sha256": "873BECD35D2ED69F776D278F7C240F0E64522C015269E4D61A1F9996B7E8A195",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "k3-identity",
+      "archive_relative_path": "frozen-builds/ae6e514d-k3-identity-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "ae6e514d-k5-extended-20261029",
+      "source_base_commit": "ae6e514d6263be953d7a143e10ce52aeafc6a4c9",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "42E76B7E4A1A888AB16AED91369E536DEFEE72DA5A3564064830D0EE075598C8",
+      "pdb_sha256": "38B508CD514C6A843BBC5652F6BECECFFAD10B266DA9394BE5AFF8F87B6DBE49",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "k5-extended",
+      "archive_relative_path": "frozen-builds/ae6e514d-k5-extended-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "ae6e514d-k5-restore-20261029",
+      "source_base_commit": "ae6e514d6263be953d7a143e10ce52aeafc6a4c9",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "64D8C175A67A1F0B570F80C5699BF421BFEB0C30586964527CC20CC259ECC67B",
+      "pdb_sha256": "4EF884895AA5D5D47AF9FBD268C2C45F3C11D145CEBFD74B41044F177D3F4438",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "k5-restore",
+      "archive_relative_path": "frozen-builds/ae6e514d-k5-restore-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "ae6e514d-k5-target-guard-20261029",
+      "source_base_commit": "ae6e514d6263be953d7a143e10ce52aeafc6a4c9",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "4ECBE4AB3899F79886CBCD642A68B47EE48E853202FDD209FE725558FC154E51",
+      "pdb_sha256": "BF7AD6B82971E1C396FD843049405CDD695A65970E4E3437CD783FC871B1C7CF",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "k5-target-guard",
+      "archive_relative_path": "frozen-builds/ae6e514d-k5-target-guard-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "ae6e514d-k5-target-oracle-20261029",
+      "source_base_commit": "ae6e514d6263be953d7a143e10ce52aeafc6a4c9",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "A1A4F5A8EC0FA7912ACBC580E6EBE70AF5ABE06651BA50971CC4F89BB61676A7",
+      "pdb_sha256": "00848B04AC91C7A9553611D428D260D2D5DC94A1195EE38EEE1FBF166A4A670C",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "k5-target-oracle",
+      "archive_relative_path": "frozen-builds/ae6e514d-k5-target-oracle-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "dcf054a2-redo-document-oracle-20261029",
+      "source_base_commit": "dcf054a212f4d35db773741b1a023ccf0eaeb736",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "DAA349BA29915D7BF50ABF03B605855DDF2924DFA6C2EF25DD192749B2BC2004",
+      "pdb_sha256": "75AC42FA83A0FBEF249421B6FA8755C07F3654AED62F188B5F21B20CE43EC0FF",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "redo-document-oracle",
+      "archive_relative_path": "frozen-builds/dcf054a2-redo-document-oracle-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "dcf054a2-redo-final-guard-20261029",
+      "source_base_commit": "dcf054a212f4d35db773741b1a023ccf0eaeb736",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "6D9793A845D3BDBC5EFDD694FAE242164CA168D9CB5AD38C3F69C0E6DB2C0319",
+      "pdb_sha256": "4568BEA1A0A53E765B570E512A0D3130D24881C5A2408B0103BB5B576F87B231",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "redo-final-guard",
+      "archive_relative_path": "frozen-builds/dcf054a2-redo-final-guard-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "dcf054a2-redo-owner-alternative-20261029",
+      "source_base_commit": "dcf054a212f4d35db773741b1a023ccf0eaeb736",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "B2A1C6113EB1BD7D74D19EE7A02C4F41A722CD2F8CE7B1AE4A1011579CAE1ABE",
+      "pdb_sha256": "9D6E482BFCE292B918B6B929A729020E432070CDA5A2F5419BB61D0177F365A2",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "redo-owner-alternative",
+      "archive_relative_path": "frozen-builds/dcf054a2-redo-owner-alternative-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "dcf054a2-redo-selection-diagnostic-20261029",
+      "source_base_commit": "dcf054a212f4d35db773741b1a023ccf0eaeb736",
+      "source_worktree_dirty_at_build": true,
+      "exe_sha256": "BE9DDBEF6E9F2800DDCE69906D118998534BA99FA980ADD4EB0483182934E0E5",
+      "pdb_sha256": "67061278449A1CEF5C6BB51F2357C1ECB164F041D12900B3587D6D61218C1CED",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "7 / CSS1Compat",
+      "experiment": "redo-selection-diagnostic",
+      "archive_relative_path": "frozen-builds/dcf054a2-redo-selection-diagnostic-20261029",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    },
+    {
+      "build_id": "retained-temp-fr-c0d7138ad1ec4729a24fa85b4459d19f",
+      "source_base_commit": "2eddafc3fd7182068fef9fbf88df6085edb75da5",
+      "source_worktree_dirty_at_build": true,
+      "source_provenance_note": "base reported by research; exact build source and revision not independently proven",
+      "exe_sha256": "E274C3F4EE96CBB585417291AC353A222E830570B1D1BF2E197E156A87795002",
+      "pdb_sha256": "B9688CECD2288DDF33E033CB63B37B18759D4EEBB9F3DA91D9051C353DA728B8",
+      "windows_build": "26300.9711",
+      "mshtml_x86": "11.00.26100.9711",
+      "document_mode": "UNAVAILABLE",
+      "experiment": "minimal DOM addressed-seven; earlier MSB8028 noted",
+      "archive_relative_path": "retained-temp/fr-c0d7138ad1ec4729a24fa85b4459d19f",
+      "required_runtime_files_verified": [
+        "main.html",
+        "main.js",
+        "fb2.xsl",
+        "FictionBook.xsd",
+        "Scintilla.dll",
+        "Lexilla.dll"
+      ],
+      "research_date": "2026-10-29"
+    }
+  ],
+  "retained_temp_file_inventory": "retained-temp-sha256.csv"
+}

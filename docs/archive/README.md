@@ -24,3 +24,4 @@
 | [undo-contract-completion-report](undo/undo-contract-completion-report.md) | Проверки completion/cleanup Undo-контракта и границы непроведённого runtime. |
 | [manual-test-findings-2026-06-29](validation/manual-test-findings-2026-06-29.md) | Исходные наблюдения ручной проверки и не закрытые автоматически сценарии реальных книг/сред. |
 | [script64-before-safe-pairs.json](script-cards/script64-before-safe-pairs.json) | Отрицательный runtime-прогон до исправления: непосредственное доказательство причины дефекта, на которое опирается исследование скрипта 64. |
+| [split-undo-research-2026-10-29](undo/split-undo-research-2026-10-29.md) | Исторический дефект, пробы MSHTML, экспериментальные решения и нерешённая позиция каретки после Redo. |
