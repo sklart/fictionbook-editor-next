@@ -41,6 +41,10 @@ bool IsStylesheet(const MSHTML::IHTMLElementPtr& elem)
 
 bool IsStyle(const MSHTML::IHTMLElementPtr& elem)
 {
+	// Only SPAN markup can match the prefix below.  Avoid serializing the
+	// entire subtree for every BODY, DIV and paragraph while building the tree.
+	if(U::scmp(elem->tagName, L"SPAN") != 0)
+		return false;
 	CString outerHTML(static_cast<const wchar_t*>(elem->outerHTML));
 	outerHTML.MakeLower();
 	return (outerHTML.Find(L"<span class=") == 0);

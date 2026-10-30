@@ -8,6 +8,22 @@ if(IsFbeTestScenario(L"document-tree-titles-runtime")) {
         ShowWindow(SW_SHOWNOACTIVATE);
         ShowView(BODY);CTreeView& tree=m_document_tree.m_tree.m_tree;tree.SetScriptMode(false);
         auto document=m_doc->m_body.Document();
+        // Keep style descriptor classification identical to its historical
+        // serialized-markup predicate for real MSHTML elements.
+        extern bool IsStyle(const MSHTML::IHTMLElementPtr&);
+        MSHTML::IHTMLElementPtr styleFixture(document->createElement(L"DIV"));
+        styleFixture->innerHTML=L"<div class='section'><p>body</p></div><p class='sample'>text</p><span class='sample'>text</span><span id='first' class='sample'>text</span><span>plain</span><span class='sample'><span class='nested'>nested</span></span>";
+        MSHTML::IHTMLElementCollectionPtr styleElements(styleFixture->all);
+        require(styleElements && styleElements->length >= 6);
+        int styleMatches=0, styleNonMatches=0;
+        for(long i=0;styleElements && i<styleElements->length;++i) {
+            MSHTML::IHTMLElementPtr item(styleElements->item(_variant_t(i),_variant_t(i)));
+            require((bool)item); CString markup(static_cast<LPCWSTR>(item->outerHTML)); markup.MakeLower();
+            const bool expected=markup.Find(L"<span class=")==0;
+            if(expected) ++styleMatches; else ++styleNonMatches;
+            require(IsStyle(item)==expected);
+        }
+        require(styleMatches>0 && styleNonMatches>0);
         auto element=[&](LPCWSTR id){return MSHTML::IHTMLElementPtr(MSHTML::IHTMLDocument3Ptr(document)->getElementById(id));};
         auto caption=[&](LPCWSTR id){
             CString text;bool found=false;
