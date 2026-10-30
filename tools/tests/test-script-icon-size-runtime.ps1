@@ -25,6 +25,7 @@ try {
         if($exitCode -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw "Script icon size runtime failed ($Mode/$scenario), exit=$exitCode" }
         if($scenario -eq 'script-toolbar-runtime-size' -and ($text -notmatch '(?m)^size-switches-pass=1\r?$' -or $text -notmatch '(?m)^initial-icon-size=16\r?$')) { throw 'Missing default size or 100-switch coverage' }
         if($scenario -eq 'script-toolbar-runtime-size' -and ($text -notmatch '(?m)^fixture-16px-pixels=1\r?$' -or $text -match '(?m)^fixture-16px-pixels=0\r?$')) { throw '16px script icon pixels differ from the source icon.' }
+        if($scenario -eq 'script-toolbar-runtime-size' -and $text -notmatch '(?m)^tree-fixture-16px-pixels=1\r?$') { throw '16px script tree icon pixels differ from the source icon.' }
     }
     $passed = $true
     Write-Host "Script icon size runtime: PASS ($Mode)."

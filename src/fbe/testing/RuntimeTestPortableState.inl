@@ -1209,6 +1209,39 @@ void CMainFrame::RunPortableStateTestScenario()
 		const int duplicateIds = duplicateBandIds();
 		const bool restarted = showOneRow && duplicateIds == 0 && InitializeScripts() && oneRow();
 		CStringA matrixDetails;
+		auto compareFixturePixels = [&](HIMAGELIST images, int imageIndex) {
+			bool matches = false;
+			HICON reference = static_cast<HICON>(::LoadImageW(NULL, fixtureIcon, IMAGE_ICON, 16, 16, LR_LOADFROMFILE));
+			HDC screen = ::GetDC(NULL); HDC actual = screen ? ::CreateCompatibleDC(screen) : NULL; HDC expectedDc = screen ? ::CreateCompatibleDC(screen) : NULL;
+			HBITMAP actualBitmap = screen ? ::CreateCompatibleBitmap(screen, 16, 16) : NULL; HBITMAP expectedBitmap = screen ? ::CreateCompatibleBitmap(screen, 16, 16) : NULL;
+			if(reference && actual && expectedDc && actualBitmap && expectedBitmap && images && imageIndex >= 0 && imageIndex < ::ImageList_GetImageCount(images)) {
+				HGDIOBJ oldActual = ::SelectObject(actual, actualBitmap); HGDIOBJ oldExpected = ::SelectObject(expectedDc, expectedBitmap);
+				RECT rect = {0, 0, 16, 16};
+				matches = true;
+				for(COLORREF background : {RGB(255,255,255), RGB(32,32,32)}) {
+					HBRUSH brush = ::CreateSolidBrush(background); ::FillRect(actual, &rect, brush); ::FillRect(expectedDc, &rect, brush); ::DeleteObject(brush);
+					if(!::ImageList_Draw(images, imageIndex, actual, 0, 0, ILD_TRANSPARENT) || !::DrawIconEx(expectedDc, 0, 0, reference, 16, 16, 0, NULL, DI_NORMAL)) matches = false;
+					int mismatches = 0, maxError = 0, firstX = -1, firstY = -1; COLORREF firstActual = 0, firstExpected = 0;
+					for(int y=0; y<16; ++y) for(int x=0; x<16; ++x) {
+						const COLORREF observed = ::GetPixel(actual,x,y), original = ::GetPixel(expectedDc,x,y);
+						maxError = (std::max)(maxError, (std::max)(abs(static_cast<int>(GetRValue(observed))-static_cast<int>(GetRValue(original))),
+							(std::max)(abs(static_cast<int>(GetGValue(observed))-static_cast<int>(GetGValue(original))), abs(static_cast<int>(GetBValue(observed))-static_cast<int>(GetBValue(original))))));
+						if(observed != original) { if(mismatches == 0) { firstX=x; firstY=y; firstActual=observed; firstExpected=original; } ++mismatches; }
+					}
+					// The two native composition paths can round a channel by one level.
+					if(maxError > 1) matches = false;
+					matrixDetails.AppendFormat("fixture-pixel-diff=%d/max:%d/%d,%d:%06lx/%06lx;background:%06lx\n", mismatches, maxError, firstX, firstY, firstActual, firstExpected, background);
+				}
+				::SelectObject(actual,oldActual); ::SelectObject(expectedDc,oldExpected);
+			}
+			if(actualBitmap) ::DeleteObject(actualBitmap);
+			if(expectedBitmap) ::DeleteObject(expectedBitmap);
+			if(actual) ::DeleteDC(actual);
+			if(expectedDc) ::DeleteDC(expectedDc);
+			if(screen) ::ReleaseDC(NULL,screen);
+			if(reference) ::DestroyIcon(reference);
+			return matches;
+		};
 		auto metrics = [&](HWND window, UINT dpi, bool requireVisibleScript) {
 			if(!::IsWindow(window)) return false;
 			const HIMAGELIST images = reinterpret_cast<HIMAGELIST>(::SendMessage(window, TB_GETIMAGELIST, 0, 0));
@@ -1223,38 +1256,7 @@ void CMainFrame::RunPortableStateTestScenario()
 				{ scriptImageIndex = catalog[index].iBitmap; scriptImage = scriptImageIndex >= m_scriptsToolbarBaseImageCount && scriptImageIndex < ::ImageList_GetImageCount(images); }
 			bool scriptPixelsMatch = true;
 			if(dpi == 96 && _Settings.GetScriptIconSize() == 16) {
-				scriptPixelsMatch = false;
-				HICON reference = static_cast<HICON>(::LoadImageW(NULL, fixtureIcon, IMAGE_ICON, 16, 16, LR_LOADFROMFILE));
-				HDC screen = ::GetDC(NULL); HDC actual = screen ? ::CreateCompatibleDC(screen) : NULL; HDC expectedDc = screen ? ::CreateCompatibleDC(screen) : NULL;
-				HBITMAP actualBitmap = screen ? ::CreateCompatibleBitmap(screen, 16, 16) : NULL; HBITMAP expectedBitmap = screen ? ::CreateCompatibleBitmap(screen, 16, 16) : NULL;
-				if(reference && actual && expectedDc && actualBitmap && expectedBitmap && scriptImage) {
-					HGDIOBJ oldActual = ::SelectObject(actual, actualBitmap); HGDIOBJ oldExpected = ::SelectObject(expectedDc, expectedBitmap);
-					RECT rect = {0, 0, 16, 16};
-					scriptPixelsMatch = true;
-					for(COLORREF background : {RGB(255,255,255), RGB(32,32,32)}) {
-						HBRUSH brush = ::CreateSolidBrush(background); ::FillRect(actual, &rect, brush); ::FillRect(expectedDc, &rect, brush); ::DeleteObject(brush);
-						if(!::ImageList_Draw(images, scriptImageIndex, actual, 0, 0, ILD_TRANSPARENT) || !::DrawIconEx(expectedDc, 0, 0, reference, 16, 16, 0, NULL, DI_NORMAL)) scriptPixelsMatch = false;
-						int mismatches = 0, maxError = 0, firstX = -1, firstY = -1; COLORREF firstActual = 0, firstExpected = 0;
-						for(int y=0; y<16; ++y) for(int x=0; x<16; ++x) {
-							const COLORREF observed = ::GetPixel(actual,x,y), original = ::GetPixel(expectedDc,x,y);
-							maxError = (std::max)(maxError, (std::max)(abs(static_cast<int>(GetRValue(observed))-static_cast<int>(GetRValue(original))),
-								(std::max)(abs(static_cast<int>(GetGValue(observed))-static_cast<int>(GetGValue(original))), abs(static_cast<int>(GetBValue(observed))-static_cast<int>(GetBValue(original))))));
-							if(observed != original) { if(mismatches == 0) { firstX=x; firstY=y; firstActual=observed; firstExpected=original; } ++mismatches; }
-						}
-						// ImageList_Draw and DrawIconEx round alpha composition separately.
-						// A one-level channel difference is the observed native rounding;
-						// larger changes, missing pixels and wrong icons still fail.
-						if(maxError > 1) scriptPixelsMatch = false;
-						matrixDetails.AppendFormat("fixture-pixel-diff=%d/max:%d/%d,%d:%06lx/%06lx;background:%06lx\n", mismatches, maxError, firstX, firstY, firstActual, firstExpected, background);
-					}
-					::SelectObject(actual,oldActual); ::SelectObject(expectedDc,oldExpected);
-				}
-				if(actualBitmap) ::DeleteObject(actualBitmap);
-				if(expectedBitmap) ::DeleteObject(expectedBitmap);
-				if(actual) ::DeleteDC(actual);
-				if(expectedDc) ::DeleteDC(expectedDc);
-				if(screen) ::ReleaseDC(NULL,screen);
-				if(reference) ::DestroyIcon(reference);
+				scriptPixelsMatch = scriptImage && compareFixturePixels(images, scriptImageIndex);
 				matrixDetails.AppendFormat("fixture-16px-pixels=%d\n", scriptPixelsMatch);
 			}
 			// Measure the painted glyph, not only the ImageList cell. The source
@@ -1332,6 +1334,14 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool restoredDpi = UpdateScriptToolbarDpiMetrics(UiMetrics::DpiForWindow(m_hWnd));
 		CTreeView& iconTree = m_document_tree.m_tree.m_tree;
 		_Settings.SetDocumentTreeScripts(true); iconTree.SetScriptMode(true); RefreshNavigationScriptTree();
+		_Settings.SetScriptIconSize(16);
+		iconTree.UpdateScriptDpiMetrics(96);
+		const HTREEITEM fixtureTreeItem = iconTree.FindScriptTreeItem(L"runtimesize.js");
+		TVITEMW treeItem = {}; treeItem.mask = TVIF_IMAGE; treeItem.hItem = fixtureTreeItem;
+		const bool fixtureTreePixels = fixtureTreeItem && ::SendMessageW(iconTree, TVM_GETITEMW, 0, reinterpret_cast<LPARAM>(&treeItem)) &&
+			compareFixturePixels(iconTree.ScriptImageList(), treeItem.iImage);
+		matrixDetails.AppendFormat("tree-fixture-16px-pixels=%d\n", fixtureTreePixels);
+		iconTree.UpdateScriptDpiMetrics(UiMetrics::DpiForWindow(iconTree));
 		iconTree.SelectItem(iconTree.FindScriptTreeItem(L"runtimesize.js"));
 		const bool favoriteReady = iconTree.ExecuteScriptPopupCommand(NavigationPopupToggleFavorite);
 		const HTREEITEM scriptItem = iconTree.FindScriptTreeItem(L"runtimesize.js");
@@ -1358,7 +1368,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			return CString(static_cast<LPCWSTR>(m_doc->m_body.Document()->title)) == L"Icon size command passed";
 		};
 		const bool scriptBeforeResize = runScript();
-		bool sizesPassed = scriptItem != NULL && folderItem != NULL && favoriteReady && iconTree.IsFavoriteScript(scriptUid) && scriptBeforeResize;
+		bool sizesPassed = fixtureTreePixels && scriptItem != NULL && folderItem != NULL && favoriteReady && iconTree.IsFavoriteScript(scriptUid) && scriptBeforeResize;
 		DWORD gdiWarm = 0, userWarm = 0, gdiEnd = 0, userEnd = 0;
 		for(int cycle = 0; cycle < 100; ++cycle) {
 			const int sizes[] = {20, 24, 32, 16}; const int size = sizes[cycle % 4];
