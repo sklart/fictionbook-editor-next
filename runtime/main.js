@@ -2524,7 +2524,17 @@ function NewDocumentID(msg)
 
 	if(AskYesNo(msg))
 	{
-		desc.all.diID.value=window.external.GetUUID();
+		var id=desc.all.diID;
+		if(!id) return;
+		var next=window.external.GetUUID();
+		if(!next || next==id.value) return;
+		// The field is read-only and this assignment is programmatic. Focus it
+		// before changing the value so the editor's existing form-change tracker
+		// captures the old value, then deliver the same notification as an edit.
+		id.focus();
+		id.value=next;
+		id.fireEvent("onkeyup");
+		DescriptionValidate();
 	}
 }
 //-----------------------------------------------
