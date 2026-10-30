@@ -4454,6 +4454,44 @@
         "bg-BG": "Отделното име на корицата се използва само при уеднаквяване на имената."
       }
     },
+    "import_epub.option.unify_notes": {
+      "component": "import-epub.options",
+      "resourceId": "IDS_IMPORT_OPTIONS_OPT_UNIFY_NOTES",
+      "source": "Унифицировать нумерацию примечаний",
+      "translations": {
+        "en-US": "Unify note numbering",
+        "ru-RU": "Унифицировать нумерацию примечаний",
+        "uk-UA": "Уніфікувати нумерацію приміток",
+        "de-DE": "Anmerkungen einheitlich nummerieren",
+        "fr-FR": "Uniformiser la numérotation des notes",
+        "es-ES": "Unificar la numeración de notas",
+        "it-IT": "Uniforma la numerazione delle note",
+        "pl-PL": "Ujednolić numerację przypisów",
+        "pt-PT": "Uniformizar a numeração das notas",
+        "nl-NL": "Nootnummering uniform maken",
+        "cs-CZ": "Sjednotit číslování poznámek",
+        "bg-BG": "Уеднаквяване на номерацията на бележките"
+      }
+    },
+    "import_epub.tooltip.unify_notes": {
+      "component": "import-epub.options",
+      "resourceId": "IDS_IMPORT_OPTIONS_TT_UNIFY_NOTES",
+      "source": "Нумеровать примечания по первому упоминанию, сохраняя содержательный текст ссылок. По умолчанию выключено.",
+      "translations": {
+        "en-US": "Number notes by their first reference; preserve meaningful link text. Off by default.",
+        "ru-RU": "Нумеровать примечания по первому упоминанию, сохраняя содержательный текст ссылок. По умолчанию выключено.",
+        "uk-UA": "Нумерувати примітки за першою згадкою, зберігаючи змістовний текст посилань. Типово вимкнено.",
+        "de-DE": "Anmerkungen nach erster Erwähnung nummerieren und aussagekräftigen Linktext erhalten. Standardmäßig aus.",
+        "fr-FR": "Numéroter les notes selon leur première référence et conserver le texte des liens. Désactivé par défaut.",
+        "es-ES": "Numerar las notas por su primera referencia y conservar el texto significativo. Desactivado por defecto.",
+        "it-IT": "Numera le note in ordine di prima citazione e conserva il testo significativo. Disattivato per impostazione predefinita.",
+        "pl-PL": "Numeruj przypisy według pierwszego odwołania, zachowując treść łączy. Domyślnie wyłączone.",
+        "pt-PT": "Numerar notas pela primeira referência, mantendo o texto significativo. Desativado por predefinição.",
+        "nl-NL": "Nummer noten op eerste verwijzing en behoud betekenisvolle linktekst. Standaard uit.",
+        "cs-CZ": "Číslovat poznámky podle prvního odkazu a zachovat smysluplný text odkazů. Ve výchozím stavu vypnuto.",
+        "bg-BG": "Номериране според първото позоваване със запазване на смисления текст на връзките. По подразбиране е изключено."
+      }
+    },
     "import_epub.runtime.title_block_not_inspected": {
       "component": "import-epub.runtime",
       "resourceId": "IDS_IMPORT_RUNTIME_TITLE_BLOCK_NOT_INSPECTED",

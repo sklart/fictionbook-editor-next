@@ -173,6 +173,8 @@
 #define IDS_IMPORT_OPTIONS_TT_UNIFY_IMAGES 470
 #define IDS_IMPORT_OPTIONS_OPT_COVER_NAME 471
 #define IDS_IMPORT_OPTIONS_TT_COVER_NAME 472
+#define IDS_IMPORT_OPTIONS_OPT_UNIFY_NOTES 473
+#define IDS_IMPORT_OPTIONS_TT_UNIFY_NOTES 474
 
 // Resource identifier required by Windows shell to display VersionInfo.
 // Without this define, VS_VERSION_INFO in .rc can become a named resource

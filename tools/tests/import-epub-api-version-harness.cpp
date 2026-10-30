@@ -52,8 +52,15 @@ int wmain(int argc, wchar_t** argv)
     fourth.base.base.base.cbSize = sizeof(fourth);
     hr = build(argv[2], &fourth.base.base.base, &output, nullptr, &error);
     const bool v4 = SUCCEEDED(hr) && output != nullptr;
+    SysFreeString(output); SysFreeString(error); output = error = nullptr;
+    ImportEpubOptionsV5 fifth = {}; fifth.base = fourth; fifth.base.base.base.base.version = IMPORT_EPUB_API_VERSION_5;
+    fifth.base.base.base.base.cbSize = sizeof(ImportEpubOptionsV4); fifth.unifyNoteNumbers = 1;
+    const bool truncatedV5 = build(argv[2], &fifth.base.base.base.base, &output, nullptr, &error) == E_INVALIDARG && !output && !error;
+    fifth.base.base.base.base.cbSize = sizeof(fifth);
+    hr = build(argv[2], &fifth.base.base.base.base, &output, nullptr, &error);
+    const bool v5 = SUCCEEDED(hr) && output != nullptr;
     SysFreeString(output); SysFreeString(error);
-    std::printf("v1=%d guarded-v1=%d truncated-v2=%d unknown-version=%d v2=%d truncated-v3=%d v3=%d truncated-v4=%d v4=%d\n", v1, guardedV1, truncated, unknown, v2, truncatedV3, v3, truncatedV4, v4);
+    std::printf("v1=%d guarded-v1=%d truncated-v2=%d unknown-version=%d v2=%d truncated-v3=%d v3=%d truncated-v4=%d v4=%d truncated-v5=%d v5=%d\n", v1, guardedV1, truncated, unknown, v2, truncatedV3, v3, truncatedV4, v4, truncatedV5, v5);
     FreeLibrary(dll); CoUninitialize();
-    return v1 && guardedV1 && truncated && unknown && v2 && truncatedV3 && v3 && truncatedV4 && v4 ? 0 : 1;
+    return v1 && guardedV1 && truncated && unknown && v2 && truncatedV3 && v3 && truncatedV4 && v4 && truncatedV5 && v5 ? 0 : 1;
 }

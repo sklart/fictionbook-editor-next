@@ -23,7 +23,7 @@ namespace
         bool importTables, importLists, importPoemsEpigraphs, importSubtitles, splitSectionsByHeadings, preserveLinks;
         bool cleanTypography, importPageBreaks, skipHiddenElements, validateResult, addDiagnosticSection, writeImportLog;
         bool saveFb2Copy, useCssSemanticClasses, removeFootnoteBacklinks, removeServiceSections, writeLogOnWarnings;
-        bool saveIntermediateFb2OnError, keepTempOnError, separatorSubtitles, createTitleBlock, unifyImageNames, separateCoverName;
+        bool saveIntermediateFb2OnError, keepTempOnError, separatorSubtitles, createTitleBlock, unifyImageNames, separateCoverName, unifyNoteNumbers;
         int svgConversionMode;
 
         ConsoleImportOptions()
@@ -31,7 +31,7 @@ namespace
             , importTables(true), importLists(true), importPoemsEpigraphs(true), importSubtitles(true), splitSectionsByHeadings(true), preserveLinks(true)
             , cleanTypography(true), importPageBreaks(true), skipHiddenElements(true), validateResult(true), addDiagnosticSection(false), writeImportLog(false)
             , saveFb2Copy(false), useCssSemanticClasses(true), removeFootnoteBacklinks(true), removeServiceSections(true), writeLogOnWarnings(true)
-            , saveIntermediateFb2OnError(false), keepTempOnError(false), separatorSubtitles(false), createTitleBlock(false), unifyImageNames(false), separateCoverName(false), svgConversionMode(SVG_IMPORT_CONVERT_PNG)
+            , saveIntermediateFb2OnError(false), keepTempOnError(false), separatorSubtitles(false), createTitleBlock(false), unifyImageNames(false), separateCoverName(false), unifyNoteNumbers(false), svgConversionMode(SVG_IMPORT_CONVERT_PNG)
         {
         }
     };
@@ -161,6 +161,7 @@ namespace
         ConsolePrintf(L"  --title-block / --no-title-block\n");
         ConsolePrintf(L"  --unify-image-names / --no-unify-image-names\n");
         ConsolePrintf(L"  --separate-cover-name / --no-separate-cover-name\n");
+        ConsolePrintf(L"  --unify-note-numbers / --no-unify-note-numbers\n");
         ConsolePrintf(L"  --poems / --no-poems\n");
         ConsolePrintf(L"  --pagebreaks / --no-pagebreaks\n");
         ConsolePrintf(L"  --split-sections / --no-split-sections\n");
@@ -1267,6 +1268,10 @@ namespace
             options.importOptions.separateCoverName = true;
         else if (arg.CompareNoCase(L"--no-separate-cover-name") == 0)
             options.importOptions.separateCoverName = false;
+        else if (arg.CompareNoCase(L"--unify-note-numbers") == 0)
+            options.importOptions.unifyNoteNumbers = true;
+        else if (arg.CompareNoCase(L"--no-unify-note-numbers") == 0)
+            options.importOptions.unifyNoteNumbers = false;
         else if (arg.CompareNoCase(L"--poems") == 0)
             options.importOptions.importPoemsEpigraphs = true;
         else if (arg.CompareNoCase(L"--no-poems") == 0)
@@ -1383,32 +1388,38 @@ namespace
         error.Empty();
         statsSummary.Empty();
         quality = Fb2QualityStats();
-        ImportEpubOptionsV4 apiOptions = {};
-        apiOptions.base.base.base = MakeImportEpubApiOptions(options);
+        ImportEpubOptionsV5 apiOptions = {};
+        apiOptions.base.base.base.base = MakeImportEpubApiOptions(options);
         if (options.separatorSubtitles)
         {
-            apiOptions.base.base.base.cbSize = sizeof(ImportEpubOptionsV2);
-            apiOptions.base.base.base.version = IMPORT_EPUB_API_VERSION_2;
-            apiOptions.base.base.separatorSubtitles = 1;
+            apiOptions.base.base.base.base.cbSize = sizeof(ImportEpubOptionsV2);
+            apiOptions.base.base.base.base.version = IMPORT_EPUB_API_VERSION_2;
+            apiOptions.base.base.base.separatorSubtitles = 1;
         }
         if (options.createTitleBlock)
         {
-            apiOptions.base.base.base.cbSize = sizeof(ImportEpubOptionsV3);
-            apiOptions.base.base.base.version = IMPORT_EPUB_API_VERSION_3;
-            apiOptions.base.createTitleBlock = 1;
+            apiOptions.base.base.base.base.cbSize = sizeof(ImportEpubOptionsV3);
+            apiOptions.base.base.base.base.version = IMPORT_EPUB_API_VERSION_3;
+            apiOptions.base.base.createTitleBlock = 1;
         }
         if (options.unifyImageNames || options.separateCoverName)
         {
-            apiOptions.base.base.base.cbSize = sizeof(apiOptions);
-            apiOptions.base.base.base.version = IMPORT_EPUB_API_VERSION_4;
-            apiOptions.unifyImageNames = options.unifyImageNames ? 1 : 0;
-            apiOptions.separateCoverName = options.separateCoverName ? 1 : 0;
+            apiOptions.base.base.base.base.cbSize = sizeof(ImportEpubOptionsV4);
+            apiOptions.base.base.base.base.version = IMPORT_EPUB_API_VERSION_4;
+            apiOptions.base.unifyImageNames = options.unifyImageNames ? 1 : 0;
+            apiOptions.base.separateCoverName = options.separateCoverName ? 1 : 0;
+        }
+        if (options.unifyNoteNumbers)
+        {
+            apiOptions.base.base.base.base.cbSize = sizeof(apiOptions);
+            apiOptions.base.base.base.base.version = IMPORT_EPUB_API_VERSION_5;
+            apiOptions.unifyNoteNumbers = 1;
         }
         BSTR apiFb2 = nullptr;
         BSTR apiError = nullptr;
         ImportEpubRuntimeStatsV1 runtimeStats = {};
         runtimeStats.cbSize = sizeof(runtimeStats);
-        HRESULT hr = g_importEpubBuild(inputPath, &apiOptions.base.base.base, &apiFb2, &runtimeStats, &apiError);
+        HRESULT hr = g_importEpubBuild(inputPath, &apiOptions.base.base.base.base, &apiFb2, &runtimeStats, &apiError);
         if (FAILED(hr))
         {
             if (apiError)
@@ -1556,6 +1567,7 @@ namespace
         AppendBoolOption(cmd, options.importOptions.createTitleBlock, L"--title-block", L"--no-title-block");
         AppendBoolOption(cmd, options.importOptions.unifyImageNames, L"--unify-image-names", L"--no-unify-image-names");
         AppendBoolOption(cmd, options.importOptions.separateCoverName, L"--separate-cover-name", L"--no-separate-cover-name");
+        AppendBoolOption(cmd, options.importOptions.unifyNoteNumbers, L"--unify-note-numbers", L"--no-unify-note-numbers");
         AppendBoolOption(cmd, options.importOptions.importPoemsEpigraphs, L"--poems", L"--no-poems");
         AppendBoolOption(cmd, options.importOptions.importPageBreaks, L"--pagebreaks", L"--no-pagebreaks");
         AppendBoolOption(cmd, options.importOptions.splitSectionsByHeadings, L"--split-sections", L"--no-split-sections");

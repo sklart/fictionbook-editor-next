@@ -3171,8 +3171,16 @@ namespace
                 CombineAndCanonicalizePath(ctx.currentXhtmlDir, hash < 0 ? href : href.Left(hash));
             const CStringW noteKey = IsExternalHref(href) ? CStringW() : PathAnchorMapKey(targetPath, HrefFragment(href));
             const auto note = g_content.noteLinks.find(std::wstring(noteKey));
-            if (g_options.importNotes && (IsNoteReferenceElement(node) || note != g_content.noteLinks.end() ||
-                g_content.requestedNotes.count(std::wstring(noteKey))))
+            CStringW marker = TrimString(NodeText(node));
+            marker.Trim(L"[]() .");
+            bool number = !marker.IsEmpty() && marker.GetLength() <= 8;
+            for (int i = 0; number && i < marker.GetLength(); ++i) number = iswdigit(marker[i]) != 0;
+            bool symbol = !marker.IsEmpty() && marker.GetLength() <= 3;
+            for (int i = 0; symbol && i < marker.GetLength(); ++i)
+                symbol = marker[i] == L'*' || marker[i] == 0x2020 || marker[i] == 0x2021 || marker[i] == 0x00A7;
+            const bool letter = marker.GetLength() == 1 && iswalpha(marker[0]) != 0;
+            if (g_options.importNotes && (IsNoteReferenceElement(node) ||
+                ((note != g_content.noteLinks.end() || g_content.requestedNotes.count(std::wstring(noteKey))) && (number || symbol || letter))))
             {
                 ++g_content.noteReferences;
                 if (text.IsEmpty()) text = L"*";
@@ -6203,6 +6211,131 @@ namespace
         }
     }
 
+    void CollectNoteMarkerTextNodes(const MSXML2::IXMLDOMNodePtr& node, std::vector<MSXML2::IXMLDOMNodePtr>& textNodes)
+    {
+        if (!node) return;
+        const auto type = MsxmlGetNodeType(node);
+        if (type == MSXML2::NODE_TEXT || type == MSXML2::NODE_CDATA_SECTION) { textNodes.push_back(node); return; }
+        const auto children = MsxmlGetChildNodes(node);
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        for (long i = 0; i < count; ++i) CollectNoteMarkerTextNodes(MsxmlGetNodeListItem(children, i), textNodes);
+    }
+
+    void ApplyUnifiedNoteNumbers(const MSXML2::IXMLDOMDocument2Ptr& dom)
+    {
+        const auto root = MsxmlGetDocumentElement(dom);
+        const auto children = MsxmlGetChildNodes(root);
+        MSXML2::IXMLDOMNodePtr mainBody, notesBody;
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        for (long i = 0; i < count; ++i)
+        {
+            const auto child = MsxmlGetNodeListItem(children, i);
+            if (LocalName(child) != L"body") continue;
+            if (Attr(child, L"name") == L"notes") notesBody = child;
+            else if (!mainBody) mainBody = child;
+        }
+        if (!mainBody || !notesBody) return;
+        std::map<std::wstring, MSXML2::IXMLDOMNodePtr> sections;
+        std::vector<MSXML2::IXMLDOMNodePtr> originalSections;
+        const auto noteChildren = MsxmlGetChildNodes(notesBody);
+        const long noteCount = noteChildren ? MsxmlGetNodeListLength(noteChildren) : 0;
+        for (long i = 0; i < noteCount; ++i)
+        {
+            const auto section = MsxmlGetNodeListItem(noteChildren, i);
+            if (LocalName(section) != L"section") continue;
+            const CStringW id = Attr(section, L"id");
+            if (!id.IsEmpty()) sections.emplace(std::wstring(id), section);
+            originalSections.push_back(section);
+        }
+        struct Renumbered { CStringW id, marker; MSXML2::IXMLDOMNodePtr section; };
+        std::map<std::wstring, Renumbered> renamed;
+        std::vector<MSXML2::IXMLDOMNodePtr> ordered;
+        std::set<IXMLDOMNode*> selectedSections;
+        std::vector<MSXML2::IXMLDOMNodePtr> mainLinks;
+        CollectElementsByLocalName(mainBody, L"a", mainLinks);
+        for (const auto& link : mainLinks)
+        {
+            if (Attr(link, L"type") != L"note") continue;
+            const CStringW href = AttrByLocalName(link, L"href");
+            if (href.GetLength() < 2 || href[0] != L'#') continue;
+            const std::wstring oldId(href.Mid(1));
+            const auto found = sections.find(oldId);
+            if (found == sections.end()) continue;
+            auto mapped = renamed.find(oldId);
+            if (mapped == renamed.end())
+            {
+                const unsigned number = static_cast<unsigned>(ordered.size() + 1);
+                CStringW desired, marker; desired.Format(L"n_%u", number); marker.Format(L"[%u]", number);
+                const CStringW newId = oldId == std::wstring(desired) ? desired : UniqueContentId(desired);
+                mapped = renamed.emplace(oldId, Renumbered{newId, marker, found->second}).first;
+                ordered.push_back(found->second);
+                selectedSections.insert(found->second.GetInterfacePtr());
+            }
+            std::vector<MSXML2::IXMLDOMNodePtr> textNodes;
+            CollectNoteMarkerTextNodes(link, textNodes);
+            CStringW text = TrimString(NodeText(link));
+            bool markerOnly = !text.IsEmpty();
+            for (int i = 0; markerOnly && i < text.GetLength(); ++i)
+            {
+                const wchar_t c = text[i];
+                markerOnly = (c >= L'0' && c <= L'9') || c == L'[' || c == L']' || c == L'(' || c == L')' || c == L'*' || c == L' ';
+            }
+            if (markerOnly && textNodes.size() == 1)
+                CheckError(textNodes[0]->put_nodeValue(CComVariant(mapped->second.marker)));
+            else
+            {
+                IXMLDOMText* raw = nullptr;
+                CheckError(dom->createTextNode(CComBSTR(L" " + mapped->second.marker), &raw));
+                MSXML2::IXMLDOMNodePtr textNode(raw, false); AppendDomChild(link, textNode);
+            }
+        }
+        if (ordered.empty()) return;
+        for (const auto& entry : renamed)
+        {
+            const auto attributes = MsxmlGetAttributes(entry.second.section);
+            IXMLDOMNode* raw = nullptr; CheckError(attributes->getNamedItem(CComBSTR(L"id"), &raw));
+            MSXML2::IXMLDOMNodePtr idNode(raw, false);
+            if (!idNode) CheckError(E_FAIL);
+            CheckError(idNode->put_nodeValue(CComVariant(entry.second.id)));
+            const auto title = FindFirstElementByLocalName(entry.second.section, L"title");
+            const auto paragraph = FindFirstElementByLocalName(title, L"p");
+            if (paragraph)
+            {
+                IXMLDOMText* rawText = nullptr;
+                CheckError(dom->createTextNode(CComBSTR(entry.second.marker + L" "), &rawText));
+                MSXML2::IXMLDOMNodePtr marker(rawText, false);
+                IXMLDOMNode* rawFirst = nullptr; CheckError(paragraph->get_firstChild(&rawFirst));
+                MSXML2::IXMLDOMNodePtr first(rawFirst, false);
+                if (first)
+                {
+                    IXMLDOMNode* inserted = nullptr;
+                    CheckError(paragraph->insertBefore(marker, CComVariant(static_cast<IDispatch*>(first.GetInterfacePtr())), &inserted));
+                    if (inserted) inserted->Release();
+                }
+                else AppendDomChild(paragraph, marker);
+            }
+        }
+        std::vector<MSXML2::IXMLDOMNodePtr> links;
+        CollectElementsByLocalName(root, L"a", links);
+        for (const auto& link : links)
+        {
+            CStringW href = AttrByLocalName(link, L"href");
+            if (href.GetLength() < 2 || href[0] != L'#') continue;
+            const auto entry = renamed.find(std::wstring(href.Mid(1)));
+            if (entry == renamed.end()) continue;
+            const auto attributes = MsxmlGetAttributes(link);
+            IXMLDOMNode* raw = nullptr; CheckError(attributes->getNamedItem(CComBSTR(L"l:href"), &raw));
+            MSXML2::IXMLDOMNodePtr attr(raw, false);
+            if (!attr) CheckError(E_FAIL);
+            CheckError(attr->put_nodeValue(CComVariant(L"#" + entry->second.id)));
+        }
+        for (const auto& section : originalSections)
+        {
+            if (!selectedSections.count(section.GetInterfacePtr())) ordered.push_back(section);
+        }
+        for (const auto& section : ordered) AppendDomChild(notesBody, section);
+    }
+
     bool ValidateGeneratedFb2Xml(CStringW& xml, CStringW& warning, const EpubPackage& package,
         const std::map<std::wstring, std::wstring>& anchors)
     {
@@ -6234,6 +6367,7 @@ namespace
 
         ApplyNavigationHierarchy(dom, package, anchors, warning);
         NormalizeSectionChildren(dom, MsxmlGetDocumentElement(dom), warning);
+        if (g_options.importNotes && g_options.unifyNoteNumbers) ApplyUnifiedNoteNumbers(dom);
         BSTR normalized = nullptr;
         if (FAILED(dom->get_xml(&normalized))) return false;
         xml = MsxmlBstrToString(normalized);
@@ -6671,16 +6805,18 @@ namespace
         result.importLists = source.importLists != 0;
         result.importPoemsEpigraphs = source.importPoemsEpigraphs != 0;
         result.importSubtitles = source.importSubtitles != 0;
-        if ((source.version == IMPORT_EPUB_API_VERSION_2 || source.version == IMPORT_EPUB_API_VERSION_3 || source.version == IMPORT_EPUB_API_VERSION_4) && source.cbSize >= sizeof(ImportEpubOptionsV2))
+        if ((source.version >= IMPORT_EPUB_API_VERSION_2 && source.version <= IMPORT_EPUB_API_VERSION_5) && source.cbSize >= sizeof(ImportEpubOptionsV2))
             result.separatorSubtitles = reinterpret_cast<const ImportEpubOptionsV2&>(source).separatorSubtitles != 0;
-        if ((source.version == IMPORT_EPUB_API_VERSION_3 || source.version == IMPORT_EPUB_API_VERSION_4) && source.cbSize >= sizeof(ImportEpubOptionsV3))
+        if ((source.version >= IMPORT_EPUB_API_VERSION_3 && source.version <= IMPORT_EPUB_API_VERSION_5) && source.cbSize >= sizeof(ImportEpubOptionsV3))
             result.createTitleBlock = reinterpret_cast<const ImportEpubOptionsV3&>(source).createTitleBlock != 0;
-        if (source.version == IMPORT_EPUB_API_VERSION_4 && source.cbSize >= sizeof(ImportEpubOptionsV4))
+        if ((source.version == IMPORT_EPUB_API_VERSION_4 || source.version == IMPORT_EPUB_API_VERSION_5) && source.cbSize >= sizeof(ImportEpubOptionsV4))
         {
             const auto& extended = reinterpret_cast<const ImportEpubOptionsV4&>(source);
             result.unifyImageNames = extended.unifyImageNames != 0;
             result.separateCoverName = extended.separateCoverName != 0;
         }
+        if (source.version == IMPORT_EPUB_API_VERSION_5 && source.cbSize >= sizeof(ImportEpubOptionsV5))
+            result.unifyNoteNumbers = reinterpret_cast<const ImportEpubOptionsV5&>(source).unifyNoteNumbers != 0;
         result.splitSectionsByHeadings = source.splitSectionsByHeadings != 0;
         result.preserveLinks = source.preserveLinks != 0;
         result.cleanTypography = source.cleanTypography != 0;
@@ -6713,10 +6849,11 @@ extern "C" HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
     *apiFb2Xml = nullptr;
     *apiErrorText = nullptr;
     if (!epubPath || !*epubPath || (apiOptions && (apiOptions->cbSize < sizeof(ImportEpubOptionsV1) ||
-        (apiOptions->version != IMPORT_EPUB_API_VERSION && apiOptions->version != IMPORT_EPUB_API_VERSION_2 && apiOptions->version != IMPORT_EPUB_API_VERSION_3 && apiOptions->version != IMPORT_EPUB_API_VERSION_4) ||
+        (apiOptions->version != IMPORT_EPUB_API_VERSION && apiOptions->version != IMPORT_EPUB_API_VERSION_2 && apiOptions->version != IMPORT_EPUB_API_VERSION_3 && apiOptions->version != IMPORT_EPUB_API_VERSION_4 && apiOptions->version != IMPORT_EPUB_API_VERSION_5) ||
         (apiOptions->version == IMPORT_EPUB_API_VERSION_2 && apiOptions->cbSize < sizeof(ImportEpubOptionsV2)) ||
         (apiOptions->version == IMPORT_EPUB_API_VERSION_3 && apiOptions->cbSize < sizeof(ImportEpubOptionsV3)) ||
-        (apiOptions->version == IMPORT_EPUB_API_VERSION_4 && apiOptions->cbSize < sizeof(ImportEpubOptionsV4)))) ||
+        (apiOptions->version == IMPORT_EPUB_API_VERSION_4 && apiOptions->cbSize < sizeof(ImportEpubOptionsV4)) ||
+        (apiOptions->version == IMPORT_EPUB_API_VERSION_5 && apiOptions->cbSize < sizeof(ImportEpubOptionsV5)))) ||
         (apiRuntimeStats && apiRuntimeStats->cbSize < sizeof(ImportEpubRuntimeStatsV1)))
         return E_INVALIDARG;
 

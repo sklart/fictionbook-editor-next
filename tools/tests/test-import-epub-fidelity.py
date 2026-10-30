@@ -200,6 +200,55 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertEqual(len(note.findall('f:p', NS)), 2)
         self.assertIsNotNone(note.find('.//f:emphasis', NS))
 
+    def test_optional_unified_notes_follow_first_reference_and_preserve_links(self):
+        body = ('<p id="n_1">Start <a epub:type="noteref" href="../notes.xhtml#b"><strong>42</strong></a> '
+                '<a epub:type="noteref" href="../notes.xhtml#a">7</a> '
+                '<a epub:type="noteref" href="../notes.xhtml#b">42</a> '
+                '<a href="../notes.xhtml#b">Ordinary link</a></p>')
+        extra = {'notes.xhtml': ('notes', 'application/xhtml+xml',
+                 '<aside epub:type="footnote" id="a"><p>First in file</p></aside>'
+                 '<aside epub:type="footnote" id="b"><p>Second in file</p><p><em>More text</em></p></aside>')}
+        normal = self.convert(body, extra)
+        self.assertEqual([self.text(a) for a in normal.findall('.//f:a[@type="note"]', NS)], ['42', '7', '42'])
+        root = self.convert(body, extra, options=['--unify-note-numbers'])
+        notes = self.notes(root)
+        links = root.findall('f:body//f:a[@type="note"]', NS)
+        self.assertEqual([self.text(a) for a in links], ['[1]', '[2]', '[1]'])
+        self.assertIsNotNone(links[0].find('f:strong', NS))
+        self.assertEqual(links[0].get(HREF), links[2].get(HREF))
+        self.assertEqual([n.get('id') for n in notes], [links[0].get(HREF)[1:], links[1].get(HREF)[1:]])
+        self.assertTrue(self.text(notes[0].find('f:title', NS)).startswith('[1] '))
+        self.assertTrue(self.text(notes[1].find('f:title', NS)).startswith('[2] '))
+        self.assertIn('Second in file', self.text(notes[0]))
+        self.assertIn('First in file', self.text(notes[1]))
+        self.assertIsNotNone(notes[0].find('.//f:emphasis', NS))
+        self.assertEqual(next(a for a in root.findall('.//f:a', NS) if self.text(a) == 'Ordinary link').get(HREF), links[0].get(HREF))
+        self.assertNotEqual(links[0].get(HREF), '#n_1')
+
+    def test_unified_note_numbers_preserve_meaningful_link_text(self):
+        root = self.convert('<p>See <a epub:type="noteref" href="#n"><em>translator note</em></a>.</p>'
+                            '<aside epub:type="footnote" id="n"><p>Detailed note</p></aside>',
+                            options=['--unify-note-numbers'])
+        link, = root.findall('.//f:a[@type="note"]', NS)
+        self.assertEqual(self.text(link), 'translator note [1]')
+        self.assertIsNotNone(link.find('f:emphasis', NS))
+
+    def test_unified_notes_preserve_unreferenced_notes_and_crosslinks(self):
+        body = ('<p><a epub:type="noteref" href="../notes.xhtml#b">9</a> '
+                '<a epub:type="noteref" href="../notes.xhtml#a">2</a></p>')
+        extra = {'notes.xhtml': ('notes', 'application/xhtml+xml',
+                 '<aside epub:type="footnote" id="a"><p>A <a href="#b">Other note</a></p></aside>'
+                 '<aside epub:type="footnote" id="b"><p>B</p></aside>'
+                 '<aside epub:type="footnote" id="unused"><p>Unreferenced note</p></aside>')}
+        root = self.convert(body, extra, options=['--unify-note-numbers'])
+        notes = self.notes(root)
+        self.assertEqual(len(notes), 3)
+        self.assertEqual(notes[0].get('id'), 'n_1')
+        self.assertEqual(notes[1].get('id'), 'n_2')
+        self.assertIn('Unreferenced note', self.text(notes[2]))
+        link = next(a for a in notes[1].findall('.//f:a', NS) if self.text(a) == 'Other note')
+        self.assertEqual(link.get(HREF), '#n_1')
+
     def test_duplicate_ids_and_arbitrary_filenames(self):
         root = self.convert('<p>One<a href="../alpha.xhtml#n">1</a> Two<a href="../beta.xhtml#n">2</a></p>',
                             {p: (p[0], 'application/xhtml+xml', f'<div id="n"><p>{t}</p></div>')

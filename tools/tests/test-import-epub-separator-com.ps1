@@ -22,7 +22,7 @@ try {
             'mimetype' = 'application/epub+zip'
             'META-INF/container.xml' = '<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0"><rootfiles><rootfile full-path="OEBPS/book.opf" media-type="application/oebps-package+xml"/></rootfiles></container>'
             'OEBPS/book.opf' = '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">fixture</dc:identifier><dc:title>Fixture</dc:title><dc:language>en</dc:language><dc:creator>Tester</dc:creator><meta name="cover" content="coveritem"/><meta property="dcterms:modified">2026-10-21T00:00:00Z</meta></metadata><manifest><item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml"/><item id="coveritem" href="cover.png" media-type="image/png"/></manifest><spine><itemref idref="chapter"/></spine></package>'
-            'OEBPS/chapter.xhtml' = '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Fixture</title></head><body><p>Before</p><p id="divider">* * *</p><p>After<img src="cover.png"/></p></body></html>'
+            'OEBPS/chapter.xhtml' = '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Fixture</title></head><body><p>Before<a epub:type="noteref" href="#footnote">42</a></p><p id="divider">* * *</p><p>After<img src="cover.png"/></p><aside epub:type="footnote" id="footnote"><p>Note body</p></aside></body></html>'
         }
         foreach($entry in $entries.GetEnumerator()) {
             $writer = [IO.StreamWriter]::new($archive.CreateEntry($entry.Key).Open(), [Text.UTF8Encoding]::new($false))
@@ -35,7 +35,7 @@ try {
     $settings = Join-Path $iso.DataPath 'Settings\Plugins'; New-Item -ItemType Directory -Force -Path $settings | Out-Null
     foreach($case in @(@{ separator=0; title=0 }, @{ separator=1; title=0 }, @{ separator=0; title=1 }, @{ separator=1; title=1 })) {
         $enabled = $case.separator; $titleEnabled = $case.title
-        $profile = @{ schemaVersion = 1; values = @{ SeparatorSubtitles = $enabled; CreateTitleBlock = $titleEnabled; UnifyImageNames = $enabled; SeparateCoverName = $titleEnabled } } | ConvertTo-Json
+        $profile = @{ schemaVersion = 1; values = @{ SeparatorSubtitles = $enabled; CreateTitleBlock = $titleEnabled; UnifyImageNames = $enabled; SeparateCoverName = $titleEnabled; UnifyNoteNumbers = $titleEnabled } } | ConvertTo-Json
         [IO.File]::WriteAllText((Join-Path $settings 'import-epub.json'), $profile, [Text.UTF8Encoding]::new($false))
         $fb2 = Join-Path $iso.Root "result-$enabled-$titleEnabled.fb2"
         $process = Start-Process -FilePath (Join-Path $iso.Root 'separator-com.exe') -WorkingDirectory $iso.Root -WindowStyle Hidden -PassThru -ArgumentList @('"' + (Join-Path $iso.Root 'Plugins\ImportEPUB.dll') + '"', '"' + $epub + '"', '"' + $fb2 + '"')
@@ -62,7 +62,11 @@ try {
         foreach($image in $result.SelectNodes("//*[local-name()='image']")) {
             if($image.GetAttribute('href', 'http://www.w3.org/1999/xlink') -ne "#$binary") { throw 'Image reference did not match the binary ID.' }
         }
+        $noteLink = $result.SelectSingleNode("//*[local-name()='a' and @type='note']")
+        $expectedMarker = if($titleEnabled -eq 1) { '[1]' } else { '42' }
+        $expectedTarget = if($titleEnabled -eq 1) { '#n_1' } else { '#footnote' }
+        if($noteLink.InnerText -ne $expectedMarker -or $noteLink.GetAttribute('href', 'http://www.w3.org/1999/xlink') -ne $expectedTarget) { throw 'Unexpected note numbering or target.' }
     }
     $passed = $true
-    Write-Host 'COM separator/title/image options, anchors and XSD checks passed.'
+    Write-Host 'COM separator/title/image/note options, anchors and XSD checks passed.'
 } finally { Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed }
