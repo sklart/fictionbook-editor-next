@@ -1569,6 +1569,23 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assertIn('Item text', self.text(root))
                 self.assertIn('Nested text', self.text(root))
 
+    def test_table_row_and_cell_anchors_remain_linkable(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<p><a href="#table">Table</a> <a href="#row">Row</a> '
+                                    '<a href="#cell">Cell</a> <a href="#inner">Inner</a></p>'
+                                    '<table id="table"><tr id="row"><td id="cell" rowspan="2">'
+                                    '<span id="inner">Alpha</span></td><td>Beta</td></tr>'
+                                    '<tr><td>Gamma</td></tr></table>', version=version, navigation=False)
+                ids = {n.get('id') for n in root.iter() if n.get('id')}
+                self.assertTrue({'table', 'row', 'cell', 'inner'}.issubset(ids))
+                self.assertEqual(len(root.findall('.//f:table/f:tr', NS)), 2)
+                self.assertTrue(any(n.get('rowspan') == '2' for n in root.findall('.//f:td', NS)))
+                self.assertEqual(self.text(next(n for n in root.findall('.//f:td', NS) if n.get('id') == 'row')), 'Beta')
+                self.assertEqual(self.text(next(n for n in root.findall('.//f:td', NS) if n.get('id') == 'cell')), 'Alpha')
+                self.assertIn('Alpha', self.text(root))
+                self.assertIn('Gamma', self.text(root))
+
     def test_epigraph_attribution_structure_matrix(self):
         cases = (
             '<section><div class="epigraph"><p>First quotation</p><p class="text-author">First author</p></div></section>',

@@ -4245,7 +4245,7 @@ namespace
         CStringW caption = TableCaptionText(node, ctx);
         if (!caption.IsEmpty())
             table += L"      <subtitle>" + caption + L"</subtitle>\r\n";
-        table += L"      <table>\r\n";
+        table += L"      <table" + OptionalIdAttribute(node, ctx) + L">\r\n";
         int rowCount = 0;
         for (size_t r = 0; r < rows.size(); ++r)
         {
@@ -4254,6 +4254,18 @@ namespace
             MSXML2::IXMLDOMNodeListPtr cells = MsxmlGetChildNodes(rows[r]);
             int cellCount = 0;
             long n = cells ? MsxmlGetNodeListLength(cells) : 0;
+            long rowAnchorCell = -1;
+            for (long c = 0; c < n; ++c)
+            {
+                const auto cell = MsxmlGetNodeListItem(cells, c);
+                const CStringW name = LocalName(cell);
+                if ((name == L"td" || name == L"th") && CollectRawAnchorIds(cell).empty())
+                {
+                    rowAnchorCell = c;
+                    break;
+                }
+            }
+            const CStringW rowId = rowAnchorCell >= 0 ? OptionalIdAttribute(rows[r], ctx) : CStringW();
             for (long c = 0; c < n; ++c)
             {
                 MSXML2::IXMLDOMNodePtr cell = MsxmlGetNodeListItem(cells, c);
@@ -4266,7 +4278,10 @@ namespace
                 text.Trim();
                 CStringW cellName = name;
                 cellName.MakeLower();
-                row += L"          <" + cellName + TableCellAttributes(cell) + L">" + text + L"</" + cellName + L">\r\n";
+                const auto ids = CollectRawAnchorIds(cell);
+                const CStringW cellId = c == rowAnchorCell && !rowId.IsEmpty() ? rowId :
+                    (ids.empty() ? CStringW() : OptionalIdAttributeFromRaw(ids.front(), ctx));
+                row += L"          <" + cellName + cellId + TableCellAttributes(cell) + L">" + text + L"</" + cellName + L">\r\n";
                 ++cellCount;
             }
             row += L"        </tr>\r\n";
@@ -4279,7 +4294,7 @@ namespace
         table += L"      </table>\r\n";
 
         if (rowCount > 0)
-            out += table;
+            out += AnchorMarkerParagraphsFromRawIds(CollectRawAnchorIds(node), 0, ctx) + table;
     }
 
 
