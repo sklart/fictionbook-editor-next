@@ -28,6 +28,7 @@ public:
 	bool Load(const CString& path);
 
 	virtual bool IsMe(const MSHTML::IHTMLElementPtr& elem);
+	FN_IsMe NativeMatcher() const { return m_script ? NULL : m_isMe; }
 	CString GetTitle(const MSHTML::IHTMLElementPtr& elem);
 
 	bool ViewInTree();

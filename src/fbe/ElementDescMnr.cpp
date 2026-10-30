@@ -316,9 +316,44 @@ bool CElementDescMnr::InitScriptEDs()
 
 bool CElementDescMnr::GetElementDescriptor(const MSHTML::IHTMLElementPtr& elem, CElementDescriptor **desc) const
 {
+	// Standard descriptors inspect the same two COM properties repeatedly.
+	// Cache them for this lookup only; unknown matchers and script descriptors
+	// continue to use their original virtual IsMe implementation.
+	const _bstr_t tag(elem->tagName);
+	const _bstr_t cls(elem->className);
+	const wchar_t* tagName = tag;
+	const wchar_t* className = cls;
 	for(int i = 0; i < m_stEDs.GetSize(); i++)
 	{
-		if(m_stEDs[i]->IsMe(elem))
+		const FN_IsMe matcher = m_stEDs[i]->NativeMatcher();
+		bool matched = false;
+		if (matcher == IsStylesheet) matched = U::scmp(className, L"stylesheet") == 0;
+		else if (matcher == IsStyle) matched = U::scmp(tagName, L"SPAN") == 0 && IsStyle(elem);
+		else if (matcher == IsImage) matched = U::scmp(className, L"image") == 0;
+		else {
+			const wchar_t* expectedTag = L"DIV";
+			const wchar_t* expectedClass = NULL;
+			if (matcher == IsSection) expectedClass = L"section";
+			else if (matcher == IsBody) expectedClass = L"body";
+			else if (matcher == IsAnnotation) expectedClass = L"annotation";
+			else if (matcher == IsHistory) expectedClass = L"history";
+			else if (matcher == IsPoem) expectedClass = L"poem";
+			else if (matcher == IsStanza) expectedClass = L"stanza";
+			else if (matcher == IsTitle) expectedClass = L"title";
+			else if (matcher == IsEpigraph) expectedClass = L"epigraph";
+			else if (matcher == IsCite) expectedClass = L"cite";
+			else if (matcher == IsTable) expectedClass = L"table";
+			else {
+				expectedTag = L"P";
+				if (matcher == IsSubtitle) expectedClass = L"subtitle";
+				else if (matcher == IsTH) expectedClass = L"th";
+				else if (matcher == IsTD) expectedClass = L"td";
+				else if (matcher == IsTR) expectedClass = L"tr";
+			}
+			matched = expectedClass ? U::scmp(tagName, expectedTag) == 0 && U::scmp(className, expectedClass) == 0
+				: m_stEDs[i]->IsMe(elem);
+		}
+		if(matched)
 		{
 			*desc = m_stEDs[i];
 			return true;

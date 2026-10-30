@@ -24,6 +24,27 @@ if(IsFbeTestScenario(L"document-tree-titles-runtime")) {
             require(IsStyle(item)==expected);
         }
         require(styleMatches>0 && styleNonMatches>0);
+        // Compare the manager's cached-property path against each original
+        // descriptor predicate, including priority and script fallbacks.
+        extern CElementDescMnr _EDMnr;
+        styleFixture->innerHTML=L"<div class='stylesheet'></div><span class='sample'>x</span><div class='section'></div><div class='body'></div><p class='image'></p><div class='annotation'></div><div class='history'></div><div class='poem'></div><div class='stanza'></div><div class='title'></div><div class='epigraph'></div><div class='cite'></div><div class='table'></div><p class='subtitle'></p><p class='th'></p><p class='td'></p><p class='tr'></p><p>plain</p><em class='unknown'>inline</em><span id='first' class='sample'>x</span>";
+        styleElements=styleFixture->all;
+        require(styleElements && styleElements->length >= 20);
+        for(long i=0;i<styleElements->length;++i) {
+            MSHTML::IHTMLElementPtr item(styleElements->item(_variant_t(i),_variant_t(i)));
+            require((bool)item); CElementDescriptor* expected=NULL; CElementDescriptor* actual=NULL;
+            for(int j=0;j<_EDMnr.GetStEDsCount() && !expected;++j) if(_EDMnr.GetStED(j)->IsMe(item)) expected=_EDMnr.GetStED(j);
+            for(int j=0;j<_EDMnr.GetEDsCount() && !expected;++j) if(_EDMnr.GetED(j)->IsMe(item)) expected=_EDMnr.GetED(j);
+            const bool found=_EDMnr.GetElementDescriptor(item,&actual);
+            require(found==(expected!=NULL) && actual==expected);
+        }
+        struct CustomDescriptorProbe : CElementDescriptor {
+            bool IsMe(const MSHTML::IHTMLElementPtr& item) override { return U::scmp(item->className,L"unknown")==0; }
+        } customDescriptor;
+        CElementDescMnr customManager; customManager.AddElementDescriptor(&customDescriptor);
+        MSHTML::IHTMLElementPtr customElement(document->createElement(L"P")); customElement->className=L"unknown";
+        CElementDescriptor* customMatch=NULL;
+        require(customManager.GetElementDescriptor(customElement,&customMatch) && customMatch==&customDescriptor);
         auto element=[&](LPCWSTR id){return MSHTML::IHTMLElementPtr(MSHTML::IHTMLDocument3Ptr(document)->getElementById(id));};
         auto caption=[&](LPCWSTR id){
             CString text;bool found=false;
