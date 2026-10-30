@@ -1586,6 +1586,19 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assertIn('Alpha', self.text(root))
                 self.assertIn('Gamma', self.text(root))
 
+    def test_definition_list_nested_anchors_remain_linkable(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<p><a href="#defs">Definitions</a> <a href="#term">Term</a> '
+                                    '<a href="#definition">Definition</a> <a href="#nested">Nested</a></p>'
+                                    '<dl id="defs"><dt id="term">Term</dt><dd><p id="definition">'
+                                    'Definition text</p><dl><dt id="nested">Nested term</dt>'
+                                    '<dd>Nested explanation</dd></dl></dd></dl>', version=version, navigation=False)
+                ids = {n.get('id') for n in root.iter() if n.get('id')}
+                self.assertTrue({'defs', 'term', 'definition', 'nested'}.issubset(ids))
+                for text in ('Term', 'Definition text', 'Nested term', 'Nested explanation'):
+                    self.assertIn(text, self.text(root))
+
     def test_epigraph_attribution_structure_matrix(self):
         cases = (
             '<section><div class="epigraph"><p>First quotation</p><p class="text-author">First author</p></div></section>',

@@ -4358,6 +4358,8 @@ namespace
         if (!g_options.importLists || !node)
             return;
 
+        const CStringW listId = OptionalIdAttribute(node, ctx);
+        if (!listId.IsEmpty()) out += L"      <p" + listId + L"></p>\r\n";
         MSXML2::IXMLDOMNodeListPtr children = MsxmlGetChildNodes(node);
         long count = children ? MsxmlGetNodeListLength(children) : 0;
         for (long i = 0; i < count; ++i)
@@ -4367,14 +4369,18 @@ namespace
                 continue;
 
             CStringW name = LocalName(child);
+            if (name.CompareNoCase(L"dt") != 0 && name.CompareNoCase(L"dd") != 0)
+                continue;
             CStringW text = ChildrenInlineToFb2(child, ctx);
             text.Trim();
+            const auto ids = CollectRawAnchorIds(child);
+            const CStringW idAttr = ids.empty() ? CStringW() : OptionalIdAttributeFromRaw(ids.front(), ctx);
+            out += AnchorMarkerParagraphsFromRawIds(ids, 1, ctx);
             if (text.IsEmpty())
+            {
+                if (!idAttr.IsEmpty()) out += L"      <p" + idAttr + L"></p>\r\n";
                 continue;
-
-            CStringW extraMarkers;
-            CStringW idAttr = OptionalIdAttributeAndExtraMarkersIncludingDescendant(child, ctx, extraMarkers);
-            out += extraMarkers;
+            }
             if (name.CompareNoCase(L"dt") == 0)
                 out += L"      <p" + idAttr + L"><strong>" + text + L"</strong></p>\r\n";
             else if (name.CompareNoCase(L"dd") == 0)
