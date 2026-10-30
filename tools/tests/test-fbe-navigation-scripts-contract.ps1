@@ -35,7 +35,9 @@ Must $treeHeader 'GetScriptTreeMetrics\(' 'runtime probe exposes scripts-tree ic
 if($tree -match 'void CTreeView::BuildScriptChildren\([\s\S]*?\n\}') { if($Matches[0] -match 'AddIcon\(|AddImage\(') { throw 'Tree rebuild must not append image-list slots.' } }
 Must $tree 'visual\.icon != NULL' 'ICO visual snapshot is supported'
 Must $tree 'visual\.bitmap != NULL' 'BMP visual snapshot is supported'
-Must $tree 'if\(m_script_mode\) \{ bHandled = TRUE; return 0; \}' 'script mode fail-closes structural drag notifications'
+if($tree -notmatch '(?s)LRESULT CTreeView::OnBegindrag\b(.*?)LRESULT CTreeView::OnLButtonUp\b') { throw 'Missing navigation scripts contract: begin-drag handler' }
+$beginDrag = $Matches[1]
+Must $beginDrag 'if\(m_script_mode\)[\s\S]*?!m_script_items\[found->second\]\.isFolder[\s\S]*?m_script_drag_uids\.push_back\(script->uid\)[\s\S]*?bHandled = TRUE;\s*return 0;[\s\S]*?m_move_from\.m_hTreeItem' 'script drag accepts script UIDs and returns before structural drag setup'
 Must $tree 'if\(value && m_drag\) EndDrag\(\);' 'switching to script mode releases an in-flight structural drag safely'
 foreach($handler in @('OnCut', 'OnPaste', 'OnDelete', 'OnRight', 'OnLeft', 'OnMerge')) {
     $handlerStart = $tree.IndexOf("LRESULT CTreeView::$handler")
