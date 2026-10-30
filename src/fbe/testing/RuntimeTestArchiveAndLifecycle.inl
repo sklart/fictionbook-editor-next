@@ -483,8 +483,22 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 	}
 	if (IsFbeTestScenario(L"description-input-undo-probe"))
 	{
+		const bool cleanImmediately = !DocChanged();
+		const ULONGLONG pumpUntil = ::GetTickCount64() + 100;
+		while (::GetTickCount64() < pumpUntil) {
+			MSG message = {};
+			while (::PeekMessageW(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessageW(&message); }
+			::Sleep(1);
+		}
+		const bool cleanBeforeDescription = !DocChanged();
+		const auto initialSavepoint = m_doc->CaptureUndoSavepoints();
+		const long initialVersion = m_doc->m_body.GetVersionNumber();
+		MSHTML::IHTMLDocument2Ptr initialDocument(m_doc->m_body.Document());
+		MSHTML::IHTMLElementPtr initialBody(initialDocument ? initialDocument->all->item(L"fbw_body") : NULL);
+		const CString initialBodyHtml(initialBody ? static_cast<LPCWSTR>(initialBody->innerHTML) : L"");
 		ShowView(DESC);
-		m_doc->MarkSavePoint();
+		const bool initiallyClean = !DocChanged();
+		const bool formInitiallyChanged = m_doc->m_body.IsFormChanged();
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		MSHTML::IHTMLDocument3Ptr document3(document);
 		MSHTML::IHTMLInputTextElementPtr title(document3 ? document3->getElementById(L"tiTitle") : NULL);
@@ -513,6 +527,16 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		OLECMD redo = { IDM_REDO, 0 }; m_doc->m_body.QueryStatus(&redo, 1);
 		SendMessage(WM_COMMAND,ID_EDIT_REDO,0);
 		const CString afterRedo = title ? CString(static_cast<LPCWSTR>(title->value)) : CString();
+		const bool saved = m_doc->Save();
+		const bool cleanAfterSave = saved && !DocChanged();
+		if (title) { MSHTML::IHTMLElement2Ptr element(title); if (element) element->focus(); title->select(); }
+		const HWND savedFocus = ::GetFocus();
+		if (savedFocus) ::SendMessageW(savedFocus, WM_CHAR, L'Z', 1);
+		const CString editedAfterSave = title ? CString(static_cast<LPCWSTR>(title->value)) : CString();
+		const bool dirtyAfterSavedEdit = DocChanged();
+		SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
+		const CString afterSavedUndo = title ? CString(static_cast<LPCWSTR>(title->value)) : CString();
+		const bool dirtyAfterSavedUndo = DocChanged();
 		const CString beforeLanguage = snapshotXml();
 		MSHTML::IHTMLSelectElementPtr language(document3 ? document3->getElementById(L"tiLang") : NULL);
 		const CString languageBefore = language ? CString(static_cast<LPCWSTR>(language->value)) : CString();
@@ -522,9 +546,11 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		CStringA report; report.Format("input-focused=%d\ninput-edited=%d\ninput-dirty=%d\nsnapshot-before-present=%d\nsnapshot-changed=%d\nsnapshot-undo-restored=%d\nlanguage-changed=%d\nsnapshot-language-changed=%d\nundo-enabled=%d\nundo-units=%d\nundo-restored=%d\nundo-dirty=%d\nredo-enabled=%d\nredo-restored=%d\nservice=0x%08lX\nenumerated=0x%08lX\n",
 			focused != NULL, edited != before, dirtyAfterEdit, !snapshotBefore.IsEmpty(), snapshotEdited != snapshotBefore, snapshotUndo == snapshotBefore, language && languageBefore != languageAfter, beforeLanguage != afterLanguage, (status.cmdf & OLECMDF_ENABLED) != 0, unitCount, afterUndo == before,
 			dirtyAfterUndo, (redo.cmdf & OLECMDF_ENABLED) != 0, afterRedo == edited, static_cast<unsigned long>(service), static_cast<unsigned long>(enumerated));
+		report.AppendFormat("clean-immediately=%d\nclean-before-description=%d\ninitially-clean=%d\ninitial-form-changed=%d\nsaved=%d\nsaved-clean=%d\nsaved-edit-changed=%d\nsaved-edit-dirty=%d\nsaved-undo-restored=%d\nsaved-undo-dirty=%d\n", cleanImmediately, cleanBeforeDescription, initiallyClean, formInitiallyChanged, saved, cleanAfterSave, editedAfterSave != afterRedo, dirtyAfterSavedEdit, afterSavedUndo == afterRedo, dirtyAfterSavedUndo);
+		report.AppendFormat("initial-saved-version=%ld\ninitial-current-version=%ld\ninitial-body-equal=%d\ninitial-body-snapshot=%d\n", initialSavepoint.savedVersion, initialVersion, initialSavepoint.hasSaved && initialBodyHtml == initialSavepoint.savedHtml, initialSavepoint.hasSaved);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(focused && edited != before && dirtyAfterEdit && (status.cmdf & OLECMDF_ENABLED) && unitCount > 0 &&
-			afterUndo == before && (redo.cmdf & OLECMDF_ENABLED) && afterRedo == edited && SUCCEEDED(service) && SUCCEEDED(enumerated) ? 0 : 1);
+			afterUndo == before && (redo.cmdf & OLECMDF_ENABLED) && afterRedo == edited && saved && cleanAfterSave && editedAfterSave != afterRedo && dirtyAfterSavedEdit && afterSavedUndo == afterRedo && SUCCEEDED(service) && SUCCEEDED(enumerated) ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"generated-id-runtime"))
