@@ -211,6 +211,9 @@ void CMainFrame::RunPortableStateTestScenario()
 		if (sorted) {
 			CListBox list(sorting.GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE));
 			sorted = list.GetCount() == 5 && list.GetItemData(1) == 1 && list.GetItemData(2) == 2 && list.GetItemData(3) == 3 && list.GetItemData(4) == 0;
+			CString firstDuplicate, secondDuplicate;
+			list.GetText(2, firstDuplicate); list.GetText(3, secondDuplicate);
+			sorted = sorted && firstDuplicate != secondDuplicate && firstDuplicate.Find(L"one.js") >= 0 && secondDuplicate.Find(L"two.js") >= 0;
 			::SendMessage(list, LB_SETSEL, TRUE, 2);
 			sorting.SetDlgItemText(IDC_SCRIPTS_TOOLBAR_SEARCH, L"nested");
 			sorted = sorted && list.GetCount() == 2 && list.GetItemData(0) == 2 && list.GetItemData(1) == 3 && ::SendMessage(list, LB_GETSEL, 0, 0) > 0;

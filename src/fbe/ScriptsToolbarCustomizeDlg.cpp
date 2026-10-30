@@ -189,11 +189,9 @@ CString CScriptsToolbarCustomizeDlg::DisplayName(size_t availableIndex) const
 	for(size_t index = 0; index < m_available.size(); ++index)
 		if(m_available[index].name.CompareNoCase(item.name) == 0) ++duplicates;
 	if(duplicates < 2) return item.name;
-	CString shortPath(item.relativePath);
-	const int slash = (std::max)(shortPath.ReverseFind(L'\\'), shortPath.ReverseFind(L'/'));
-	if(slash > 0) shortPath = shortPath.Left(slash);
-	if(shortPath.IsEmpty()) shortPath = item.relativePath;
-	return item.name + L" — " + shortPath;
+	// Titles need not be unique even inside a single directory.  Include the
+	// filename as well so the user can distinguish such scripts before adding.
+	return item.name + L" — " + item.relativePath;
 }
 
 void CScriptsToolbarCustomizeDlg::PopulateCurrent(const std::vector<DWORD_PTR>* selected, bool redraw)
