@@ -60,6 +60,8 @@ namespace
         CStringW identifier;
         CStringW isbn;
         CStringW date;
+        CStringW dateEvent;
+        std::vector<std::pair<CStringW, CStringW>> datedEvents;
         CStringW publisher;
         CStringW source;
         CStringW rights;
@@ -1678,8 +1680,16 @@ namespace
 
         nodes.clear();
         CollectElementsByLocalName(MsxmlGetDocumentElement(doc), L"date", nodes);
-        if (!nodes.empty())
-            package.date = NodeText(nodes[0]);
+        int dateRank = -1;
+        for (const auto& node : nodes)
+        {
+            const CStringW date = NodeText(node);
+            if (date.IsEmpty()) continue;
+            CStringW event = AttrByLocalName(node, L"event"); event.Trim(); event.MakeLower();
+            package.datedEvents.emplace_back(event, date);
+            const int rank = event == L"publication" ? 3 : event.IsEmpty() ? 2 : event == L"creation" ? 1 : 0;
+            if (rank > dateRank) { package.date = date; package.dateEvent = event; dateRank = rank; }
+        }
 
         nodes.clear();
         CollectElementsByLocalName(MsxmlGetDocumentElement(doc), L"publisher", nodes);
@@ -5843,7 +5853,7 @@ namespace
             xml += L"      <id>" + GuidString() + L"</id>\r\n";
         xml += L"      <version>1.0</version>\r\n";
         xml += L"    </document-info>\r\n";
-        const CStringW publicationYear = PublicationYear(package.date);
+        const CStringW publicationYear = package.dateEvent.IsEmpty() || package.dateEvent == L"publication" ? PublicationYear(package.date) : CStringW();
         if (!package.publisher.IsEmpty() || !publicationYear.IsEmpty() || !package.isbn.IsEmpty())
         {
             xml += L"    <publish-info>\r\n";
@@ -5861,6 +5871,9 @@ namespace
             xml += L"    <custom-info info-type=\"EPUB rights\">" + XmlEscape(package.rights) + L"</custom-info>\r\n";
         if (!package.modifiedDate.IsEmpty())
             xml += L"    <custom-info info-type=\"EPUB modified\">" + XmlEscape(package.modifiedDate) + L"</custom-info>\r\n";
+        for (const auto& datedEvent : package.datedEvents)
+            if (!datedEvent.first.IsEmpty() || package.datedEvents.size() > 1)
+                xml += L"    <custom-info info-type=\"EPUB date" + (datedEvent.first.IsEmpty() ? CStringW() : L" " + XmlEscape(datedEvent.first)) + L"\">" + XmlEscape(datedEvent.second) + L"</custom-info>\r\n";
         if (!package.titleSort.IsEmpty())
             xml += L"    <custom-info info-type=\"EPUB title sort\">" + XmlEscape(package.titleSort) + L"</custom-info>\r\n";
         CStringW subjectsText = BuildSubjectsText(package);

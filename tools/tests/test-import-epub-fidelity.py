@@ -56,7 +56,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for folder in cls.folders:
                 folder.cleanup()
 
-    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, identifier='fixture', date='', head='', language='ru', chapter_title='Fixture', creators=('Tester',), cover_id=''):
+    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, identifier='fixture', date='', head='', language='ru', chapter_title='Fixture', creators=('Tester',), cover_id='', metadata_extra=''):
         extra = extra or {}
         temp = tempfile.TemporaryDirectory(prefix='epub-fidelity-')
         self.folders.append(temp)
@@ -106,7 +106,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             date_xml = f'<dc:date>{date}</dc:date>' if date else ''
             language_xml = f'<dc:language>{language}</dc:language>' if language else ''
             creators_xml = ''.join(f'<dc:creator>{creator}</dc:creator>' for creator in creators)
-            z.writestr('OEBPS/book.opf', f'<package xmlns="http://www.idpf.org/2007/opf" version="{version}" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">{identifier}</dc:identifier><dc:title>Fixture</dc:title>' + language_xml + creators_xml + date_xml + modified + '</metadata><manifest>' + ''.join(manifest) + ''.join(manifest_extra) + f'</manifest><spine{toc}>' + ''.join(f'<itemref idref="{ident}"/>' for ident in (spine or ['chapter'])) + '</spine>' + guide + '</package>')
+            z.writestr('OEBPS/book.opf', f'<package xmlns="http://www.idpf.org/2007/opf" xmlns:opf="http://www.idpf.org/2007/opf" version="{version}" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">{identifier}</dc:identifier><dc:title>Fixture</dc:title>' + language_xml + creators_xml + date_xml + modified + metadata_extra + '</metadata><manifest>' + ''.join(manifest) + ''.join(manifest_extra) + f'</manifest><spine{toc}>' + ''.join(f'<itemref idref="{ident}"/>' for ident in (spine or ['chapter'])) + '</spine>' + guide + '</package>')
             for path, content in (raw or {}).items():
                 z.writestr(path, content)
         output = folder / 'case.fb2'
@@ -832,6 +832,26 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertEqual(date.text, stamp)
         self.assertEqual(date.get('value'), '2020-01-02')
         self.assertEqual(root.find('.//f:document-info/f:id', NS).text, uuid)
+
+    def test_epub2_publication_and_creation_dates_keep_their_meaning(self):
+        root = self.convert('<p>Content</p>', version='2.0', navigation=False,
+                            metadata_extra='<dc:date opf:event="creation">1999-01-02</dc:date>'
+                                           '<dc:date opf:event="publication">2004-03-04</dc:date>')
+        self.assertEqual(root.find('.//f:title-info/f:date', NS).text, '2004-03-04')
+        self.assertEqual(root.find('.//f:publish-info/f:year', NS).text, '2004')
+        dates = [(n.get('info-type'), n.text) for n in root.findall('.//f:custom-info', NS)]
+        self.assertIn(('EPUB date creation', '1999-01-02'), dates)
+        root = self.convert('<p>Content</p>', version='2.0', navigation=False,
+                            metadata_extra='<dc:date opf:event="creation">1999-01-02</dc:date>')
+        self.assertEqual(root.find('.//f:title-info/f:date', NS).text, '1999-01-02')
+        self.assertIsNone(root.find('.//f:publish-info/f:year', NS))
+        root = self.convert('<p>Content</p>', version='2.0', navigation=False, date='2002-01-01',
+                            metadata_extra='<dc:date xmlns:alt="http://www.idpf.org/2007/opf" alt:event="publication">2004-03-04</dc:date>'
+                                           '<dc:date opf:event="modification">2005-05-06</dc:date>')
+        self.assertEqual(root.find('.//f:title-info/f:date', NS).text, '2004-03-04')
+        dates = [(n.get('info-type'), n.text) for n in root.findall('.//f:custom-info', NS)]
+        self.assertIn(('EPUB date', '2002-01-01'), dates)
+        self.assertIn(('EPUB date modification', '2005-05-06'), dates)
 
     def test_invalid_dates_do_not_gain_normalized_value(self):
         for stamp in ('2021-02-29', '2020-01-02T25:00:00Z', '2020-01-02T12:00:00+14:30', '2020-01-02garbage'):
