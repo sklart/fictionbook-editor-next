@@ -4815,7 +4815,11 @@ namespace
             return;
 
         if (IsHiddenElement(node))
+        {
+            // Hidden content is omitted, but links can still target IDs in it.
+            out += AnchorMarkerParagraphsFromRawIds(CollectRawAnchorIds(node), 0, ctx);
             return;
+        }
 
         if (IsBacklinkElement(node))
         {

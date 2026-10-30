@@ -1572,6 +1572,15 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assertEqual('Visual contents' in self.text(root), kept)
                 self.assertEqual(PNG in {base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)}, kept)
 
+    def test_hidden_block_preserves_referenced_anchor_without_text(self):
+        root = self.convert('<p><a href="#hidden-target">Link</a></p>'
+                            '<div hidden=""><span id="hidden-target">Invisible text.</span></div>'
+                            '<p>Visible text.</p>', navigation=False)
+        self.assertNotIn('Invisible text.', self.text(root))
+        self.assertIn('Visible text.', self.text(root))
+        self.assertIn('hidden-target', {n.get('id') for n in root.iter() if n.get('id')})
+        self.assertIn('#hidden-target', [n.get(HREF) for n in root.findall('.//f:a', NS)])
+
     def test_hidden_boolean_attribute_with_empty_value(self):
         body = ('<p hidden="">Hidden empty.</p><p hidden="false">Hidden false.</p>'
                 '<p>Visible text.</p>')
