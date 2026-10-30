@@ -93,6 +93,7 @@ namespace
         std::set<std::wstring> reservedIds, emittedIds, noteTargets, requestedNotes;
         std::set<std::wstring> mainDocuments, noteContentAnchors, noteRootDocuments, residualDocuments;
         std::set<std::wstring> excludedServiceDocuments;
+        std::set<std::wstring> warnedInlineCss;
         std::map<std::wstring, CStringW> noteLinks;
         std::map<std::wstring, CStringW> noteRoots;
         CStringW warnings;
@@ -1850,6 +1851,7 @@ namespace
     }
 
     bool IsExternalHref(CStringW href);
+    MSXML2::IXMLDOMNodePtr FindFirstElementByLocalName(const MSXML2::IXMLDOMNodePtr& node, LPCWSTR localName);
 
     void ReadNavigationTree(EpubPackage& package, const MSXML2::IXMLDOMNodePtr& node,
         const CStringW& baseDir, int parent, bool ncx)
@@ -2733,9 +2735,308 @@ namespace
     CStringW PathAnchorMapKey(const CStringW& absPath, const CStringW& rawId);
     bool IsExternalHref(CStringW href);
 
-    CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx);
+    struct InlineFontState { bool italic = false; bool bold = false; };
+    struct CssFontRule
+    {
+        CStringW element, declarations;
+        std::vector<CStringW> classes;
+        int specificity = 0;
+    };
+    thread_local const std::vector<CssFontRule>* g_cssFontRules = nullptr;
+    CStringW SupportedCssFontDeclarations(CStringW declarations, CStringW& warning, bool* hasFont = nullptr);
 
-    CStringW ChildrenInlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
+    bool ParseCssNumericWeight(const CStringW& value, int& weight)
+    {
+        if (value.IsEmpty() || value.GetLength() > 4) return false;
+        int parsed = 0;
+        for (int i = 0; i < value.GetLength(); ++i)
+        {
+            if (value[i] < L'0' || value[i] > L'9') return false;
+            parsed = parsed * 10 + value[i] - L'0';
+        }
+        if (parsed < 1 || parsed > 1000) return false;
+        weight = parsed;
+        return true;
+    }
+
+    void ApplyFontDeclarations(CStringW style, InlineFontState& font, const InlineFontState& inherited)
+    {
+        style.MakeLower();
+        int position = 0;
+        while (position != -1)
+        {
+            CStringW declaration = style.Tokenize(L";", position);
+            const int colon = declaration.Find(L':');
+            if (colon < 0) continue;
+            CStringW key = declaration.Left(colon), value = declaration.Mid(colon + 1);
+            key.Trim(); value.Trim();
+            if (key == L"font-style")
+            {
+                if (value == L"italic" || value == L"oblique") font.italic = true;
+                else if (value == L"normal" || value == L"initial") font.italic = false;
+                else if (value == L"inherit" || value == L"unset") font.italic = inherited.italic;
+            }
+            else if (key == L"font-weight")
+            {
+                if (value == L"bold") font.bold = true;
+                else if (value == L"normal" || value == L"initial") font.bold = false;
+                else if (value == L"inherit" || value == L"unset") font.bold = inherited.bold;
+                else { int weight = 0; if (ParseCssNumericWeight(value, weight)) font.bold = weight >= 600; }
+            }
+        }
+    }
+
+    bool MatchesCssClass(const MSXML2::IXMLDOMNodePtr& node, const CStringW& name)
+    {
+        CStringW classes = Attr(node, L"class");
+        int position = 0;
+        while (position != -1)
+            if (classes.Tokenize(L" \t\r\n", position) == name) return true;
+        return false;
+    }
+
+    void ApplyInlineFont(const MSXML2::IXMLDOMNodePtr& node, InlineFontState& font)
+    {
+        if (!node || MsxmlGetNodeType(node) != MSXML2::NODE_ELEMENT) return;
+        const InlineFontState inherited = font;
+        CStringW name = LocalName(node);
+        if (name.CompareNoCase(L"em") == 0 || name.CompareNoCase(L"i") == 0) font.italic = true;
+        if (name.CompareNoCase(L"strong") == 0 || name.CompareNoCase(L"b") == 0) font.bold = true;
+        if (g_cssFontRules)
+        {
+            // Stable sorting preserves source order for selectors of equal specificity.
+            for (const auto& rule : *g_cssFontRules)
+            {
+                if (!rule.element.IsEmpty() && rule.element.CompareNoCase(name) != 0) continue;
+                bool matches = true;
+                for (const auto& cssClass : rule.classes)
+                    if (!MatchesCssClass(node, cssClass)) { matches = false; break; }
+                if (matches) ApplyFontDeclarations(rule.declarations, font, inherited);
+            }
+        }
+        const CStringW inlineStyle = Attr(node, L"style");
+        if (!inlineStyle.IsEmpty())
+        {
+            CStringW warning;
+            const CStringW supported = SupportedCssFontDeclarations(inlineStyle, warning);
+            if (!warning.IsEmpty() && g_content.warnedInlineCss.emplace(inlineStyle.GetString()).second)
+                g_content.warnings += warning;
+            ApplyFontDeclarations(supported, font, inherited);
+        }
+    }
+
+    bool IsCssIdentifier(const CStringW& value)
+    {
+        if (value.IsEmpty()) return false;
+        for (int i = 0; i < value.GetLength(); ++i)
+        {
+            const wchar_t c = value[i];
+            if (!((c >= L'a' && c <= L'z') || (c >= L'A' && c <= L'Z') ||
+                (c >= L'0' && c <= L'9') || c == L'_' || c == L'-')) return false;
+        }
+        return true;
+    }
+
+    CStringW SupportedCssFontDeclarations(CStringW declarations, CStringW& warning, bool* hasFont)
+    {
+        CStringW supported;
+        if (hasFont) *hasFont = false;
+        int position = 0;
+        while (position != -1)
+        {
+            CStringW declaration = declarations.Tokenize(L";", position);
+            const int colon = declaration.Find(L':');
+            if (colon < 0) continue;
+            CStringW key = declaration.Left(colon), value = declaration.Mid(colon + 1);
+            key.Trim(); key.MakeLower(); value.Trim(); value.MakeLower();
+            if (key != L"font-style" && key != L"font-weight" && key != L"font") continue;
+            if (hasFont) *hasFont = true;
+            int weight = 0;
+            const bool numericWeight = ParseCssNumericWeight(value, weight);
+            const bool inheritedKeyword = value == L"inherit" || value == L"initial" || value == L"unset";
+            const bool valid = (key == L"font-style" && (value == L"italic" || value == L"oblique" || value == L"normal" || inheritedKeyword)) ||
+                (key == L"font-weight" && (value == L"normal" || value == L"bold" || numericWeight || inheritedKeyword));
+            if (!valid) { warning += L"Unsupported CSS font declaration: " + key + L"\r\n"; continue; }
+            supported += key + L":" + value + L";";
+        }
+        return supported;
+    }
+
+    void ParseCssFontRules(CStringW css, std::vector<CssFontRule>& rules, CStringW& warning)
+    {
+        wchar_t commentQuote = 0;
+        for (int index = 0; index < css.GetLength(); ++index)
+        {
+            const wchar_t c = css[index];
+            if (commentQuote)
+            {
+                if (c == L'\\' && index + 1 < css.GetLength()) ++index;
+                else if (c == commentQuote) commentQuote = 0;
+            }
+            else if (c == L'\'' || c == L'"') commentQuote = c;
+            else if (c == L'/' && index + 1 < css.GetLength() && css[index + 1] == L'*')
+            {
+                const int end = css.Find(L"*/", index + 2);
+                if (end < 0) { warning += L"Unterminated CSS comment.\r\n"; css = css.Left(index); break; }
+                css.Delete(index, end + 2 - index);
+                css.Insert(index, L' ');
+            }
+        }
+        int position = 0;
+        while (position < css.GetLength())
+        {
+            while (position < css.GetLength() && (css[position] == L' ' || css[position] == L'\t' ||
+                css[position] == L'\r' || css[position] == L'\n')) ++position;
+            if (position >= css.GetLength()) break;
+            if (css[position] == L'@')
+            {
+                // Skip the entire unknown at-rule, including nested blocks. Never
+                // apply a rule inside @media as though it were unconditional.
+                int depth = 0;
+                wchar_t quote = 0;
+                bool finished = false;
+                for (int i = position; i < css.GetLength(); ++i)
+                {
+                    const wchar_t c = css[i];
+                    if (quote)
+                    {
+                        if (c == L'\\' && i + 1 < css.GetLength()) ++i;
+                        else if (c == quote) quote = 0;
+                        continue;
+                    }
+                    if (c == L'\'' || c == L'"') { quote = c; continue; }
+                    if (c == L'{') ++depth;
+                    else if (c == L'}' && depth > 0 && --depth == 0) { position = i + 1; finished = true; break; }
+                    else if (c == L';' && depth == 0) { position = i + 1; finished = true; break; }
+                }
+                warning += L"Unsupported CSS at-rule; its contents were not applied.\r\n";
+                if (!finished) break;
+                continue;
+            }
+            const int open = css.Find(L'{', position);
+            if (open < 0) break;
+            int close = -1;
+            wchar_t quote = 0;
+            for (int index = open + 1; index < css.GetLength(); ++index)
+            {
+                const wchar_t c = css[index];
+                if (quote)
+                {
+                    if (c == L'\\' && index + 1 < css.GetLength()) ++index;
+                    else if (c == quote) quote = 0;
+                }
+                else if (c == L'\'' || c == L'"') quote = c;
+                else if (c == L'}') { close = index; break; }
+            }
+            if (close < 0) { warning += L"Unsupported or malformed CSS font rule.\r\n"; break; }
+            CStringW selectors = css.Mid(position, open - position);
+            CStringW declarations = css.Mid(open + 1, close - open - 1);
+            bool affectsFont = false;
+            const CStringW supported = SupportedCssFontDeclarations(declarations, warning, &affectsFont);
+            if (affectsFont)
+            {
+                int selectorPosition = 0;
+                while (selectorPosition != -1)
+                {
+                    CStringW selector = selectors.Tokenize(L",", selectorPosition); selector.Trim();
+                    CssFontRule rule;
+                    const int dot = selector.Find(L'.');
+                    rule.element = dot >= 0 ? selector.Left(dot) : selector;
+                    bool valid = rule.element.IsEmpty() || IsCssIdentifier(rule.element);
+                    int classPosition = dot;
+                    while (classPosition >= 0)
+                    {
+                        const int next = selector.Find(L'.', classPosition + 1);
+                        const CStringW cssClass = next >= 0 ? selector.Mid(classPosition + 1, next - classPosition - 1) : selector.Mid(classPosition + 1);
+                        if (!IsCssIdentifier(cssClass)) { valid = false; break; }
+                        rule.classes.push_back(cssClass);
+                        classPosition = next;
+                    }
+                    valid = valid && (!rule.element.IsEmpty() || !rule.classes.empty());
+                    if (!valid) { warning += L"Unsupported CSS font selector or declaration: " + selector + L"\r\n"; continue; }
+                    rule.specificity = static_cast<int>(rule.classes.size()) * 10 + (rule.element.IsEmpty() ? 0 : 1);
+                    rule.declarations = supported;
+                    if (!supported.IsEmpty()) rules.push_back(rule);
+                }
+            }
+            position = close + 1;
+        }
+    }
+
+    class ScopedCssFontRules
+    {
+        const std::vector<CssFontRule>* previous_;
+        std::vector<CssFontRule> rules_;
+    public:
+        ScopedCssFontRules(const MSXML2::IXMLDOMDocument2Ptr& doc, const CStringW& path,
+            const ConvertContext& ctx, CStringW& warning) : previous_(g_cssFontRules)
+        {
+            const auto head = FindFirstElementByLocalName(MsxmlGetDocumentElement(doc), L"head");
+            const auto children = MsxmlGetChildNodes(head);
+            const long count = children ? MsxmlGetNodeListLength(children) : 0;
+            for (long i = 0; i < count; ++i)
+            {
+                const auto child = MsxmlGetNodeListItem(children, i);
+                const CStringW name = LocalName(child);
+                CStringW media = Attr(child, L"media"); media.Trim();
+                if ((name.CompareNoCase(L"style") == 0 || name.CompareNoCase(L"link") == 0) &&
+                    !media.IsEmpty() && media.CompareNoCase(L"all") != 0)
+                {
+                    warning += L"Unsupported CSS media condition; stylesheet was not applied: " + media + L"\r\n";
+                    continue;
+                }
+                if (name.CompareNoCase(L"style") == 0) ParseCssFontRules(MsxmlGetNodeText(child), rules_, warning);
+                else if (name.CompareNoCase(L"link") == 0 && ContainsNoCase(Attr(child, L"rel"), L"stylesheet"))
+                {
+                    const CStringW href = Attr(child, L"href");
+                    CStringW resource = href;
+                    const int fragment = resource.Find(L'#');
+                    if (fragment >= 0) resource = resource.Left(fragment);
+                    const int query = resource.Find(L'?');
+                    if (query >= 0) resource = resource.Left(query);
+                    const CStringW absolute = CombineAndCanonicalizePath(DirectoryOf(path), resource);
+                    const ManifestItem* stylesheet = nullptr;
+                    if (ctx.package && !absolute.IsEmpty() && !IsExternalHref(href))
+                        for (const auto& item : ctx.package->manifest)
+                            if (item.second.absPath.CompareNoCase(absolute) == 0 && item.second.mediaType.CompareNoCase(L"text/css") == 0)
+                            { stylesheet = &item.second; break; }
+                    std::vector<unsigned char> bytes;
+                    CStringW text;
+                    if (!stylesheet || !ReadTextFileBytes(stylesheet->absPath, bytes) || !DecodeTextFileBytes(bytes, text))
+                        warning += L"Stylesheet could not be loaded from the EPUB manifest: " + href + L"\r\n";
+                    else ParseCssFontRules(text, rules_, warning);
+                }
+            }
+            std::stable_sort(rules_.begin(), rules_.end(), [](const CssFontRule& a, const CssFontRule& b) { return a.specificity < b.specificity; });
+            g_cssFontRules = &rules_;
+        }
+        ~ScopedCssFontRules() { g_cssFontRules = previous_; }
+    };
+
+    InlineFontState InheritedInlineFont(const MSXML2::IXMLDOMNodePtr& node)
+    {
+        std::vector<MSXML2::IXMLDOMNodePtr> ancestors;
+        for (MSXML2::IXMLDOMNodePtr current = node; current; )
+        {
+            ancestors.push_back(current);
+            MSXML2::IXMLDOMNode* parent = nullptr;
+            current->get_parentNode(&parent);
+            current = MSXML2::IXMLDOMNodePtr(parent, false);
+        }
+        InlineFontState font;
+        for (auto it = ancestors.rbegin(); it != ancestors.rend(); ++it) ApplyInlineFont(*it, font);
+        return font;
+    }
+
+    CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, InlineFontState font);
+    CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
+    {
+        MSXML2::IXMLDOMNode* parent = nullptr;
+        if (node) node->get_parentNode(&parent);
+        return InlineToFb2(node, ctx, InheritedInlineFont(MSXML2::IXMLDOMNodePtr(parent, false)));
+    }
+
+    CStringW ChildrenInlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, InlineFontState font)
     {
         CStringW out;
         MSXML2::IXMLDOMNodeListPtr children = MsxmlGetChildNodes(node);
@@ -2744,11 +3045,16 @@ namespace
 
         long count = MsxmlGetNodeListLength(children);
         for (long i = 0; i < count; ++i)
-            out += InlineToFb2(MsxmlGetNodeListItem(children, i), ctx);
+            out += InlineToFb2(MsxmlGetNodeListItem(children, i), ctx, font);
         return out;
     }
 
-    CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
+    CStringW ChildrenInlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
+    {
+        return ChildrenInlineToFb2(node, ctx, InheritedInlineFont(node));
+    }
+
+    CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, InlineFontState font)
     {
         if (!node)
             return CStringW();
@@ -2756,7 +3062,11 @@ namespace
         MSXML2::DOMNodeType type = MsxmlGetNodeType(node);
         if (type == MSXML2::NODE_TEXT || type == MSXML2::NODE_CDATA_SECTION)
         {
-            return XmlEscape(NormalizeImportedText(MsxmlGetNodeText(node)));
+            CStringW text = XmlEscape(NormalizeImportedText(MsxmlGetNodeText(node)));
+            if (text.IsEmpty()) return text;
+            if (font.italic) text = L"<emphasis>" + text + L"</emphasis>";
+            if (font.bold) text = L"<strong>" + text + L"</strong>";
+            return text;
         }
 
         if (type != MSXML2::NODE_ELEMENT)
@@ -2770,23 +3080,22 @@ namespace
             return CStringW();
 
         CStringW name = LocalName(node);
-        if (name.CompareNoCase(L"em") == 0 || name.CompareNoCase(L"i") == 0)
-            return L"<emphasis>" + ChildrenInlineToFb2(node, ctx) + L"</emphasis>";
-        if (name.CompareNoCase(L"strong") == 0 || name.CompareNoCase(L"b") == 0)
-            return L"<strong>" + ChildrenInlineToFb2(node, ctx) + L"</strong>";
+        ApplyInlineFont(node, font);
+        if (name.CompareNoCase(L"em") == 0 || name.CompareNoCase(L"i") == 0 || name.CompareNoCase(L"strong") == 0 || name.CompareNoCase(L"b") == 0)
+            return ChildrenInlineToFb2(node, ctx, font);
         if (name.CompareNoCase(L"sup") == 0)
-            return L"<sup>" + ChildrenInlineToFb2(node, ctx) + L"</sup>";
+            return L"<sup>" + ChildrenInlineToFb2(node, ctx, font) + L"</sup>";
         if (name.CompareNoCase(L"sub") == 0)
-            return L"<sub>" + ChildrenInlineToFb2(node, ctx) + L"</sub>";
+            return L"<sub>" + ChildrenInlineToFb2(node, ctx, font) + L"</sub>";
         if (name.CompareNoCase(L"code") == 0 || name.CompareNoCase(L"kbd") == 0 || name.CompareNoCase(L"samp") == 0 || name.CompareNoCase(L"var") == 0)
-            return L"<code>" + ChildrenInlineToFb2(node, ctx) + L"</code>";
+            return L"<code>" + ChildrenInlineToFb2(node, ctx, font) + L"</code>";
         if (name.CompareNoCase(L"del") == 0 || name.CompareNoCase(L"s") == 0 || name.CompareNoCase(L"strike") == 0)
-            return L"<strikethrough>" + ChildrenInlineToFb2(node, ctx) + L"</strikethrough>";
+            return L"<strikethrough>" + ChildrenInlineToFb2(node, ctx, font) + L"</strikethrough>";
         if (name.CompareNoCase(L"q") == 0)
-            return L"«" + ChildrenInlineToFb2(node, ctx) + L"»";
+            return L"«" + ChildrenInlineToFb2(node, ctx, font) + L"»";
         if (name.CompareNoCase(L"abbr") == 0 || name.CompareNoCase(L"acronym") == 0)
         {
-            CStringW text = ChildrenInlineToFb2(node, ctx);
+            CStringW text = ChildrenInlineToFb2(node, ctx, font);
             CStringW title = NormalizeImportedText(Attr(node, L"title"));
             title.Trim();
             if (!title.IsEmpty())
@@ -2795,7 +3104,7 @@ namespace
         }
         if (name.CompareNoCase(L"rt") == 0)
         {
-            CStringW text = ChildrenInlineToFb2(node, ctx);
+            CStringW text = ChildrenInlineToFb2(node, ctx, font);
             text.Trim();
             return text.IsEmpty() ? CStringW() : L" (" + text + L")";
         }
@@ -2809,9 +3118,10 @@ namespace
                 return CStringW();
 
             CStringW href = Attr(node, L"href");
-            CStringW text = ChildrenInlineToFb2(node, ctx);
-            text.Trim();
-            if (text.IsEmpty())
+            CStringW text = ChildrenInlineToFb2(node, ctx, font);
+            CStringW visibleText = text;
+            visibleText.Trim();
+            if (visibleText.IsEmpty())
                 text = XmlEscape(NormalizeImportedText(Attr(node, L"title")));
             if (text.IsEmpty())
                 text = XmlEscape(NormalizeImportedText(Attr(node, L"aria-label")));
@@ -2865,7 +3175,7 @@ namespace
             return LoadImportRuntimeString(IDS_IMPORT_RUNTIME_IMAGE_PLACEHOLDER, L"[Image]");
         }
 
-        return ChildrenInlineToFb2(node, ctx);
+        return ChildrenInlineToFb2(node, ctx, font);
     }
 
     bool IsHeadingName(const CStringW& name)
@@ -4485,6 +4795,7 @@ namespace
             return false;
         }
 
+        ScopedCssFontRules cssRules(doc, xhtmlPath, ctx, warning);
         MSXML2::IXMLDOMNodePtr body = FindFirstElementByLocalName(MsxmlGetDocumentElement(doc), L"body");
         if (!body)
             return false;
@@ -4752,6 +5063,7 @@ namespace
             return false;
         }
 
+        ScopedCssFontRules cssRules(doc, xhtmlPath, ctx, warning);
         SourceNoteIndex index(doc);
         MSXML2::IXMLDOMNodePtr body = FindFirstElementByLocalName(MsxmlGetDocumentElement(doc), L"body");
         if (!body)

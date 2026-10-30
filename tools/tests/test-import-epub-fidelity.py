@@ -55,7 +55,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for folder in cls.folders:
                 folder.cleanup()
 
-    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, identifier='fixture', date=''):
+    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, identifier='fixture', date='', head=''):
         extra = extra or {}
         temp = tempfile.TemporaryDirectory(prefix='epub-fidelity-')
         self.folders.append(temp)
@@ -90,7 +90,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         def xhtml(content, ident):
             return ('<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml" '
                     'xmlns:epub="http://www.idpf.org/2007/ops" xmlns:xlink="http://www.w3.org/1999/xlink">'
-                    '<head><title>Fixture</title></head><body' + (f' id="body-{ident}"' if body_ids else '') + '>' + content + '</body></html>')
+                    '<head><title>Fixture</title>' + (head if ident == 'chapter' else '') + '</head><body' + (f' id="body-{ident}"' if body_ids else '') + '>' + content + '</body></html>')
         with zipfile.ZipFile(epub, 'w') as z:
             z.writestr('mimetype', 'application/epub+zip')
             z.writestr('META-INF/container.xml', '<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0"><rootfiles><rootfile full-path="OEBPS/book.opf" media-type="application/oebps-package+xml"/></rootfiles></container>')
@@ -273,6 +273,266 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         version = re.search(r'#define FBE_VERSION_STRING "([^"]+)"', header).group(1)
         self.assertEqual(root.find('.//f:document-info/f:program-used', NS).text,
                          'FBE Next ImportEPUB plugin, FictionBook Editor Next ' + version)
+
+    def test_section_id_and_intentional_repeated_heading_text(self):
+        root = self.convert('<section id="Section0035"><h1>Repeated Heading</h1>'
+                            '<p>Repeated Heading</p><p>Following body</p></section>', navigation=False)
+        ids = [node.get('id', '') for node in root.iter()]
+        self.assertTrue(any('Section0035' in identifier for identifier in ids), ids)
+        self.assertEqual(self.text(root).count('Repeated Heading'), 2)
+        self.assert_once(root, 'Following body')
+
+    def test_navigation_heading_has_no_generated_duplicate(self):
+        root = self.convert('<h1 id="chapter">Chapter Heading</h1><p>Body text</p>',
+                            navigation=[('Chapter Heading', 'Text/chapter.xhtml#chapter', [])])
+        self.assert_once(root, 'Chapter Heading', 'Body text')
+
+    def test_first_quote_does_not_gain_text_heading(self):
+        root = self.convert('<blockquote><p><em>Opening quotation</em></p></blockquote><p>Actual body</p>', navigation=False)
+        self.assert_once(root, 'Opening quotation', 'Actual body')
+        for title in root.findall('.//f:title', NS):
+            self.assertNotEqual(self.text(title).strip(), 'Текст')
+
+    def test_inline_style_override_does_not_leak_to_next_paragraph(self):
+        root = self.convert('<p><em>Italic <span style="font-style: normal">Normal</span> italic again</em></p>'
+                            '<p>Plain following paragraph</p>', navigation=False)
+        plain = next(p for p in root.findall('.//f:p', NS) if 'Plain following paragraph' in self.text(p))
+        self.assertEqual(len(plain.findall('.//f:strong', NS)), 0)
+        self.assertEqual(len(plain.findall('.//f:emphasis', NS)), 0)
+        self.assert_once(root, 'Plain following paragraph', 'Normal')
+        self.assertFalse(any('Normal' in self.text(node) for node in root.findall('.//f:emphasis', NS)))
+
+    def test_inline_css_bold_italic_combination(self):
+        root = self.convert('<p><span style="font-style: italic; font-weight: 700">Styled text</span></p><p>Plain next</p>', navigation=False)
+        styled = next(p for p in root.findall('.//f:p', NS) if 'Styled text' in self.text(p))
+        self.assertTrue(any('Styled text' in self.text(node) for node in styled.findall('.//f:strong', NS)))
+        self.assertTrue(any('Styled text' in self.text(node) for node in styled.findall('.//f:emphasis', NS)))
+        plain = next(p for p in root.findall('.//f:p', NS) if 'Plain next' in self.text(p))
+        self.assertIsNone(plain.find('.//f:strong', NS))
+        self.assertIsNone(plain.find('.//f:emphasis', NS))
+
+    def test_numeric_font_weights_and_nested_reset(self):
+        root = self.convert('<p><span style="font-weight: 550">Light</span> '
+                            '<span style="font-weight: 600">Bold <span style="font-weight: 1">Reset</span></span> '
+                            '<span style="font-weight: 1000">Heavy</span></p>', navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Light' in self.text(p))
+        strong = paragraph.findall('.//f:strong', NS)
+        for label in ('Bold', 'Heavy'):
+            self.assertTrue(any(label in self.text(n) for n in strong), label)
+        for label in ('Light', 'Reset'):
+            self.assertFalse(any(label in self.text(n) for n in strong), label)
+        self.assertNotIn('Unsupported CSS font declaration', self.diagnostics)
+
+    def test_block_styles_inherit_and_nested_normal_resets(self):
+        root = self.convert('<div style="font-style: italic; font-weight: 700">'
+                            '<p>Inherited <span style="font-style: normal; font-weight: normal">Reset</span> Restored</p>'
+                            '<p style="font-style: normal; font-weight: 400">Plain block</p></div>'
+                            '<p>Outside block</p>', navigation=False)
+        paragraphs = root.findall('.//f:p', NS)
+        inherited = next(p for p in paragraphs if 'Inherited' in self.text(p))
+        for tag in ('strong', 'emphasis'):
+            formatted = inherited.findall('.//f:' + tag, NS)
+            self.assertTrue(any('Inherited' in self.text(n) for n in formatted))
+            self.assertTrue(any('Restored' in self.text(n) for n in formatted))
+            self.assertFalse(any('Reset' in self.text(n) for n in formatted))
+        for label in ('Plain block', 'Outside block'):
+            paragraph = next(p for p in paragraphs if label in self.text(p))
+            self.assertIsNone(paragraph.find('.//f:strong', NS))
+            self.assertIsNone(paragraph.find('.//f:emphasis', NS))
+
+    def test_css_inherit_initial_and_unset_use_parent_values(self):
+        root = self.convert('<div style="font-style: italic; font-weight: bold"><p>'
+                            '<span class="reset" style="font-style: inherit; font-weight: unset">Inherited</span> '
+                            '<span style="font-style: initial; font-weight: initial">Initial</span></p></div>'
+                            '<p><em style="font-style: inherit">Plain em</em></p>',
+                            head='<style>.reset {font-style: normal; font-weight: normal}</style>', navigation=False)
+        formatted = root.findall('.//f:emphasis', NS), root.findall('.//f:strong', NS)
+        for nodes in formatted:
+            self.assertTrue(any('Inherited' in self.text(n) for n in nodes))
+            self.assertFalse(any('Initial' in self.text(n) for n in nodes))
+        self.assertFalse(any('Plain em' in self.text(n) for n in formatted[0]))
+        self.assertNotIn('Unsupported CSS font declaration', self.diagnostics)
+
+    def test_stylesheet_classes_inheritance_cascade_and_inline_override(self):
+        root = self.convert('<div class="outer"><p class="both">Inherited '
+                            '<span class="reset">Reset</span> Restored</p></div><p>Plain</p>',
+                            extra={'styles/book.css': ('sheet', 'text/css',
+                                '.outer { font-style: italic } .both { font-weight: 700 } '
+                                'span.reset { font-style: normal; font-weight: normal }')},
+                            head='<link rel="stylesheet" type="text/css" href="../styles/book.css" />', navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Inherited' in self.text(p))
+        for tag in ('strong', 'emphasis'):
+            formatted = paragraph.findall('.//f:' + tag, NS)
+            self.assertTrue(any('Inherited' in self.text(n) for n in formatted))
+            self.assertTrue(any('Restored' in self.text(n) for n in formatted))
+            self.assertFalse(any('Reset' in self.text(n) for n in formatted))
+        plain = next(p for p in root.findall('.//f:p', NS) if 'Plain' in self.text(p))
+        self.assertIsNone(plain.find('.//f:strong', NS))
+        self.assertIsNone(plain.find('.//f:emphasis', NS))
+
+    def test_external_stylesheet_encoded_unicode_path_with_query(self):
+        path = 'styles/Книга style.css'
+        href = '../' + quote(path, safe='/') + '?version=2'
+        root = self.convert('<p class="styled">Text styled</p>',
+                            extra={path: ('sheet', 'text/css', '.styled { font-style: italic }')},
+                            head=f'<link rel="stylesheet" href="{href}" />', navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Text styled' in self.text(p))
+        self.assertIsNotNone(paragraph.find('.//f:emphasis', NS))
+
+    def test_stylesheet_not_in_manifest_is_not_loaded(self):
+        root = self.convert('<p class="styled">Text plain</p>',
+                            raw={'OEBPS/styles/unlisted.css': '.styled {font-weight: bold}'},
+                            head='<link rel="stylesheet" href="../styles/unlisted.css" />', navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Text plain' in self.text(p))
+        self.assertIsNone(paragraph.find('.//f:strong', NS))
+        self.assertIn('Stylesheet could not be loaded from the EPUB manifest', self.diagnostics)
+
+    def test_stylesheet_encoded_traversal_is_not_loaded(self):
+        root = self.convert('<p class="styled">Text plain</p>',
+                            outside={'secret.css': b'.styled {font-weight: bold}'},
+                            head='<link rel="stylesheet" href="../../../%2e%2e/secret.css" />', navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Text plain' in self.text(p))
+        self.assertIsNone(paragraph.find('.//f:strong', NS))
+        self.assertIn('Stylesheet could not be loaded from the EPUB manifest', self.diagnostics)
+
+    def test_embedded_css_specificity_and_source_order(self):
+        root = self.convert('<p class="first second">Formatted <span style="font-weight: normal">Normal</span></p>',
+                            head='<style type="text/css">p.first { font-weight: bold } '
+                                 '.second { font-weight: normal } .first { font-style: italic } '
+                                 '.first { font-style: normal } .second { font-style: italic }</style>', navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Formatted' in self.text(p))
+        self.assertTrue(any('Formatted' in self.text(n) for n in paragraph.findall('.//f:strong', NS)))
+        self.assertTrue(any('Formatted' in self.text(n) for n in paragraph.findall('.//f:emphasis', NS)))
+        self.assertFalse(any('Normal' in self.text(n) for n in paragraph.findall('.//f:strong', NS)))
+
+    def test_compound_class_selector_matches_all_classes_and_specificity(self):
+        root = self.convert('<p class="one two">Both classes</p><p class="one">One class</p>'
+                            '<p class="One two">Case differs</p>',
+                            head='<style>p.one.two {font-weight: bold; font-style: italic} '
+                                 '.one {font-weight: normal}</style>', navigation=False)
+        paragraphs = root.findall('.//f:p', NS)
+        both = next(p for p in paragraphs if 'Both classes' in self.text(p))
+        self.assertIsNotNone(both.find('.//f:strong', NS))
+        self.assertIsNotNone(both.find('.//f:emphasis', NS))
+        for label in ('One class', 'Case differs'):
+            paragraph = next(p for p in paragraphs if label in self.text(p))
+            self.assertIsNone(paragraph.find('.//f:strong', NS))
+            self.assertIsNone(paragraph.find('.//f:emphasis', NS))
+
+    def test_css_classes_apply_to_notes_without_leaking_to_other_documents(self):
+        root = self.convert('<p>Chapter<a epub:type="noteref" href="#n">1</a></p>'
+                            '<aside epub:type="footnote" id="n"><p class="em">Styled note</p></aside>',
+                            extra={'Text/next.xhtml': ('next', 'application/xhtml+xml', '<p class="em">Plain other document</p>')},
+                            spine=['chapter', 'next'], head='<style>.em {font-style: italic}</style>', navigation=False)
+        note = self.notes(root)[0]
+        self.assertTrue(any('Styled note' in self.text(n) for n in note.findall('.//f:emphasis', NS)))
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Plain other document' in self.text(p))
+        self.assertIsNone(paragraph.find('.//f:emphasis', NS))
+
+    def test_unsupported_css_font_selector_is_reported(self):
+        self.convert('<p class="a"><span class="b">Text survives</span></p>',
+                     head='<style>.a .b {font-style: italic}</style>', navigation=False)
+        self.assertIn('Unsupported CSS font selector', self.diagnostics)
+
+    def test_unsupported_css_at_rules_warn_without_swallowing_following_rules(self):
+        root = self.convert('<p class="hidden-rule">Media text</p><p class="supported">Later rule</p>',
+                            head='<style>@import "other.css"; @media print {'
+                                 '.hidden-rule {font-style: italic} .supported {font-weight: bold}} '
+                                 '.supported {font-style: italic}</style>', navigation=False)
+        media = next(p for p in root.findall('.//f:p', NS) if 'Media text' in self.text(p))
+        later = next(p for p in root.findall('.//f:p', NS) if 'Later rule' in self.text(p))
+        self.assertIsNone(media.find('.//f:emphasis', NS))
+        self.assertIsNone(later.find('.//f:strong', NS))
+        self.assertIsNotNone(later.find('.//f:emphasis', NS))
+        self.assertIn('Unsupported CSS at-rule', self.diagnostics)
+
+    def test_css_media_attribute_is_not_applied_unconditionally(self):
+        root = self.convert('<p class="print-only">Print rule</p><p class="ordinary">Normal rule</p>',
+                            head='<style media="print">.print-only {font-weight: bold}</style>'
+                                 '<style>.ordinary {font-style: italic}</style>', navigation=False)
+        print_rule = next(p for p in root.findall('.//f:p', NS) if 'Print rule' in self.text(p))
+        ordinary = next(p for p in root.findall('.//f:p', NS) if 'Normal rule' in self.text(p))
+        self.assertIsNone(print_rule.find('.//f:strong', NS))
+        self.assertIsNotNone(ordinary.find('.//f:emphasis', NS))
+        self.assertIn('Unsupported CSS media', self.diagnostics)
+
+    def test_unrelated_important_does_not_discard_supported_font_style(self):
+        root = self.convert('<p class="styled">Keep italic</p>',
+                            head='<style>.styled {color: red !important; font-style: italic}</style>', navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Keep italic' in self.text(p))
+        self.assertIsNotNone(paragraph.find('.//f:emphasis', NS))
+
+    def test_unsupported_font_declaration_does_not_discard_other_font_property(self):
+        root = self.convert('<p class="styled">Keep bold</p>',
+                            head='<style>.styled {font-style: italic !important; font-weight: bold}</style>', navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Keep bold' in self.text(p))
+        self.assertIsNotNone(paragraph.find('.//f:strong', NS))
+        self.assertIn('Unsupported CSS font declaration', self.diagnostics)
+
+    def test_css_quoted_brace_does_not_end_rule_or_consume_next_selector(self):
+        root = self.convert('<p class="one">First italic</p><p class="two">Second bold</p>',
+                            head="<style>.one { content: '}'; font-style: italic } .two { font-weight: bold }</style>",
+                            navigation=False)
+        first = next(p for p in root.findall('.//f:p', NS) if 'First italic' in self.text(p))
+        second = next(p for p in root.findall('.//f:p', NS) if 'Second bold' in self.text(p))
+        self.assertIsNotNone(first.find('.//f:emphasis', NS))
+        self.assertIsNotNone(second.find('.//f:strong', NS))
+
+    def test_css_font_shorthand_with_spacing_warns(self):
+        self.convert('<p class="styled">Content</p>',
+                     head='<style>.styled { font : italic 12pt serif }</style>', navigation=False)
+        self.assertIn('Unsupported CSS font declaration', self.diagnostics)
+
+    def test_css_comment_delimiter_inside_string_is_not_a_comment(self):
+        root = self.convert('<p class="styled">Italic text</p>',
+                            head="<style>.styled {content: '/*'; /* real comment */ font-style: italic}</style>",
+                            navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Italic text' in self.text(p))
+        self.assertIsNotNone(paragraph.find('.//f:emphasis', NS))
+
+    def test_unsupported_inline_font_value_warns_without_losing_supported_property(self):
+        root = self.convert('<p><span style="font-style: italic !important; font-weight: 700">'
+                            'Text retained</span></p>', navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Text retained' in self.text(p))
+        self.assertIsNotNone(paragraph.find('.//f:strong', NS))
+        self.assertIn('Unsupported CSS font declaration', self.diagnostics)
+
+    def test_formatted_inline_link_image_and_reset_preserve_content(self):
+        root = self.convert('<p><em>Before <a href="#target">Link <span style="font-style: normal">normal</span></a> '
+                            '<img src="../images/pixel.png" alt="pixel" /> After</em></p>'
+                            '<p id="target">Target</p>',
+                            extra={'images/pixel.png': ('pixel', 'image/png', PNG)}, navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Before' in self.text(p))
+        self.assertIsNotNone(paragraph.find('.//f:a', NS))
+        self.assertIsNotNone(paragraph.find('.//f:image', NS))
+        self.assertFalse(any('normal' in self.text(n) for n in paragraph.findall('.//f:emphasis', NS)))
+        self.assertTrue(any('Link' in self.text(n) for n in paragraph.findall('.//f:emphasis', NS)))
+        self.assert_once(root, 'Before', 'Link', 'normal', 'After', 'Target')
+
+    def test_link_boundary_spaces_survive_with_and_without_formatting(self):
+        root = self.convert('<p>one<a href="#target"> two </a>three</p>'
+                            '<p>four<a href="#target"><em> five </em></a>six</p>'
+                            '<p id="target">Target</p>', navigation=False)
+        paragraphs = root.findall('.//f:p', NS)
+        self.assertTrue(any(self.text(p) == 'one two three' for p in paragraphs),
+                        [self.text(p) for p in paragraphs])
+        self.assertTrue(any(self.text(p) == 'four five six' for p in paragraphs),
+                        [self.text(p) for p in paragraphs])
+
+    def test_formatting_does_not_leak_after_structural_blocks(self):
+        root = self.convert('<h1><b>Bold heading</b></h1><p>After heading</p>'
+                            '<blockquote><p><em>Italic quote</em></p></blockquote><p>After quote</p>'
+                            '<aside epub:type="epigraph"><p><b>Bold epigraph</b></p></aside><p>After epigraph</p>'
+                            '<figure><img src="../images/pixel.png" alt="pixel" />'
+                            '<figcaption><em>Italic caption</em></figcaption></figure><p>After figure</p>',
+                            extra={'images/pixel.png': ('pixel', 'image/png', PNG)}, navigation=False)
+        for text in ('After heading', 'After quote', 'After epigraph', 'After figure'):
+            paragraph = next(p for p in root.findall('.//f:p', NS) if text in self.text(p))
+            self.assertIsNone(paragraph.find('.//f:strong', NS), text)
+            self.assertIsNone(paragraph.find('.//f:emphasis', NS), text)
+            self.assert_once(root, text)
+        for text in ('Bold heading', 'Italic quote', 'Bold epigraph', 'Italic caption'):
+            self.assert_once(root, text)
 
     def test_source_timestamp_and_uuid(self):
         uuid = 'urn:uuid:12345678-1234-4234-9234-123456789abc'
