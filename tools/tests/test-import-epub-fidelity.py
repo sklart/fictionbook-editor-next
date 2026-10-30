@@ -1599,6 +1599,23 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 for text in ('Term', 'Definition text', 'Nested term', 'Nested explanation'):
                     self.assertIn(text, self.text(root))
 
+    def test_citation_restarts_after_attribution_preserving_order(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<p><a href="#quotation">Read quotation</a></p>'
+                                    '<blockquote id="quotation"><p>First quotation</p>'
+                                    '<p class="text-author">First author</p><p>Second quotation</p>'
+                                    '<p class="text-author">Second author</p></blockquote>',
+                                    version=version, navigation=False)
+                cites = root.findall('.//f:cite', NS)
+                self.assertEqual(len(cites), 2)
+                self.assertEqual([self.text(n).strip() for n in cites[0].findall('f:text-author', NS)], ['First author'])
+                self.assertEqual([self.text(n).strip() for n in cites[1].findall('f:text-author', NS)], ['Second author'])
+                text = self.text(root)
+                positions = [text.index(x) for x in ('First quotation', 'First author', 'Second quotation', 'Second author')]
+                self.assertEqual(positions, sorted(positions))
+                self.assertTrue(any(n.get('id') == 'quotation' for n in cites))
+
     def test_epigraph_attribution_structure_matrix(self):
         cases = (
             '<section><div class="epigraph"><p>First quotation</p><p class="text-author">First author</p></div></section>',

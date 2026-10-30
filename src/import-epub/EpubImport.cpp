@@ -3956,6 +3956,8 @@ namespace
         CollectElementsByLocalName(node, L"p", paragraphs);
 
         CStringW xml;
+        std::vector<CStringW> blocks;
+        bool afterAuthor = false;
         int count = 0;
         if (paragraphs.empty())
         {
@@ -3975,24 +3977,35 @@ namespace
                 text.Trim();
                 if (!text.IsEmpty())
                 {
-                    if (LooksLikeTextAuthor(paragraphs[i]))
+                    const bool author = LooksLikeTextAuthor(paragraphs[i]);
+                    if (!author && afterAuthor)
+                    {
+                        blocks.push_back(xml);
+                        xml.Empty();
+                    }
+                    if (author)
                         xml += L"        <text-author>" + text + L"</text-author>\r\n";
                     else
                         xml += L"        <p>" + text + L"</p>\r\n";
+                    afterAuthor = author;
                     ++count;
                 }
             }
         }
         if (count > 0)
         {
+            blocks.push_back(xml);
             const CStringW rootRaw = RawAnchorId(node);
             const CStringW rootId = OptionalIdAttributeFromRaw(rootRaw, ctx);
             std::vector<CStringW> anchors = CollectRawAnchorIds(node);
             CStringW markers = AnchorMarkerParagraphsFromRawIds(anchors,
                 !rootRaw.IsEmpty() && !anchors.empty() && anchors.front() == rootRaw ? 1 : 0, ctx);
-            out += epigraph ? L"      <epigraph" : L"      <cite";
-            out += rootId + L">\r\n" + markers + xml;
-            out += epigraph ? L"      </epigraph>\r\n" : L"      </cite>\r\n";
+            for (size_t i = 0; i < blocks.size(); ++i)
+            {
+                out += epigraph ? L"      <epigraph" : L"      <cite";
+                out += (i == 0 ? rootId : CStringW()) + L">\r\n" + (i == 0 ? markers : CStringW()) + blocks[i];
+                out += epigraph ? L"      </epigraph>\r\n" : L"      </cite>\r\n";
+            }
         }
     }
 
