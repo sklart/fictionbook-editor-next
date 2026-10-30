@@ -27,6 +27,34 @@ if(IsFbeTestScenario(L"new-document-edit-state-runtime")) {
         DWORD evidenceBytes = 0; output.Write(evidence, evidence.GetLength(), &evidenceBytes); output.Flush();
         require(!DocChanged() && !m_doc->m_namevalid, "new document clean");
         ::ShowWindow(m_hWnd, SW_SHOWNORMAL); ::SetForegroundWindow(m_hWnd);
+        ShowView(DESC); pump();
+        MSHTML::IHTMLDocument3Ptr descriptionHtmlDoc(m_doc->m_body.Document());
+        MSHTML::IHTMLInputTextElementPtr undoTitle(descriptionHtmlDoc->getElementById(L"tiTitle"));
+        MSHTML::IHTMLInputTextElementPtr undoKeywords(descriptionHtmlDoc->getElementById(L"tiKwd"));
+        require(undoTitle && undoKeywords, "description undo controls");
+        const CString initialTitle(static_cast<LPCWSTR>(undoTitle->value));
+        const CString initialKeywords(static_cast<LPCWSTR>(undoKeywords->value));
+        auto typeTitle = [&]() {
+            MSHTML::IHTMLElement2Ptr titleElement(undoTitle); titleElement->focus(); undoTitle->select(); pump();
+            const HWND focus = ::GetFocus(); require(focus != NULL, "description undo focus");
+            ::SendMessageW(focus, WM_CHAR, L'X', 1); pump();
+            require(CString(static_cast<LPCWSTR>(undoTitle->value)) != initialTitle && DocChanged(), "description typed dirty");
+        };
+        typeTitle();
+        SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
+        require(CString(static_cast<LPCWSTR>(undoTitle->value)) == initialTitle && !DocChanged(), "description undo restores clean state");
+        SendMessage(WM_COMMAND, ID_EDIT_REDO, 0); pump();
+        require(CString(static_cast<LPCWSTR>(undoTitle->value)) != initialTitle && DocChanged(), "description redo restores dirty state");
+        SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
+        require(!DocChanged(), "description second undo clean");
+        undoKeywords->value = L"unrelated pending keywords";
+        typeTitle();
+        SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
+        require(CString(static_cast<LPCWSTR>(undoTitle->value)) == initialTitle && DocChanged(), "description undo preserves unrelated edit");
+        undoKeywords->value = static_cast<LPCWSTR>(initialKeywords);
+        typeTitle();
+        SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
+        require(!DocChanged(), "description undo clean after restoring unrelated edit");
         ShowView(BODY); m_doc->m_body.SetFocus();
         MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
         MSHTML::IHTMLElement2Ptr body(MSHTML::IHTMLDocument3Ptr(document)->getElementById(L"fbw_body"));
@@ -197,6 +225,17 @@ if(IsFbeTestScenario(L"new-document-edit-state-runtime")) {
         const auto binaryXml = m_doc->CreateDOMForAnalysis();
         require(binaryXml && CString(static_cast<LPCWSTR>(binaryXml->xml)).Find(L"new-test.png") >= 0, "new binary stored");
         require(DocChanged(), "binary only edit dirty");
+        ShowView(DESC); pump();
+        MSHTML::IHTMLDocument3Ptr binaryDescription(m_doc->m_body.Document());
+        MSHTML::IHTMLInputTextElementPtr binaryTitle(binaryDescription->getElementById(L"tiTitle"));
+        require(binaryTitle != nullptr, "binary description title");
+        const CString binaryOriginalTitle(static_cast<LPCWSTR>(binaryTitle->value));
+        MSHTML::IHTMLElement2Ptr binaryTitleElement(binaryTitle); binaryTitleElement->focus(); binaryTitle->select(); pump();
+        const HWND binaryFocus = ::GetFocus(); require(binaryFocus != NULL, "binary description focus");
+        ::SendMessageW(binaryFocus, WM_CHAR, L'X', 1); pump();
+        require(CString(static_cast<LPCWSTR>(binaryTitle->value)) != binaryOriginalTitle, "binary description typed");
+        SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
+        require(CString(static_cast<LPCWSTR>(binaryTitle->value)) == binaryOriginalTitle && DocChanged(), "description undo preserves pending binary");
         passed = true; details = "body typing undo redo, description cancel, binary dirty and save reopen PASS";
     } catch (const _com_error& error) { CStringA code; code.Format(" hr=0x%08lX", static_cast<unsigned long>(error.Error())); details += code; }
     catch (...) { details = "native exception"; }

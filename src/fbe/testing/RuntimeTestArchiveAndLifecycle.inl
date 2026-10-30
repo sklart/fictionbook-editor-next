@@ -457,8 +457,14 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		OLECMD redo = { IDM_REDO, 0 }; m_doc->m_body.QueryStatus(&redo, 1);
 		SendMessage(WM_COMMAND,ID_EDIT_REDO,0);
 		const CString afterRedo = title ? CString(static_cast<LPCWSTR>(title->value)) : CString();
-		CStringA report; report.Format("input-focused=%d\ninput-edited=%d\ninput-dirty=%d\nsnapshot-before-present=%d\nsnapshot-changed=%d\nsnapshot-undo-restored=%d\nundo-enabled=%d\nundo-units=%d\nundo-restored=%d\nundo-dirty=%d\nredo-enabled=%d\nredo-restored=%d\nservice=0x%08lX\nenumerated=0x%08lX\n",
-			focused != NULL, edited != before, dirtyAfterEdit, !snapshotBefore.IsEmpty(), snapshotEdited != snapshotBefore, snapshotUndo == snapshotBefore, (status.cmdf & OLECMDF_ENABLED) != 0, unitCount, afterUndo == before,
+		const CString beforeLanguage = snapshotXml();
+		MSHTML::IHTMLSelectElementPtr language(document3 ? document3->getElementById(L"tiLang") : NULL);
+		const CString languageBefore = language ? CString(static_cast<LPCWSTR>(language->value)) : CString();
+		if (language) language->value = languageBefore == L"ru" ? L"en" : L"ru";
+		const CString languageAfter = language ? CString(static_cast<LPCWSTR>(language->value)) : CString();
+		const CString afterLanguage = snapshotXml();
+		CStringA report; report.Format("input-focused=%d\ninput-edited=%d\ninput-dirty=%d\nsnapshot-before-present=%d\nsnapshot-changed=%d\nsnapshot-undo-restored=%d\nlanguage-changed=%d\nsnapshot-language-changed=%d\nundo-enabled=%d\nundo-units=%d\nundo-restored=%d\nundo-dirty=%d\nredo-enabled=%d\nredo-restored=%d\nservice=0x%08lX\nenumerated=0x%08lX\n",
+			focused != NULL, edited != before, dirtyAfterEdit, !snapshotBefore.IsEmpty(), snapshotEdited != snapshotBefore, snapshotUndo == snapshotBefore, language && languageBefore != languageAfter, beforeLanguage != afterLanguage, (status.cmdf & OLECMDF_ENABLED) != 0, unitCount, afterUndo == before,
 			dirtyAfterUndo, (redo.cmdf & OLECMDF_ENABLED) != 0, afterRedo == edited, static_cast<unsigned long>(service), static_cast<unsigned long>(enumerated));
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(focused && edited != before && dirtyAfterEdit && (status.cmdf & OLECMDF_ENABLED) && unitCount > 0 &&

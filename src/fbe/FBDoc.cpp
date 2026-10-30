@@ -335,7 +335,9 @@ void Doc::CaptureNewTemplateBaseline() {
 }
 
 void Doc::ReconcileNewTemplateAfterUndo() {
-	if (!m_hasNewTemplateBaseline || m_editor.IsFormChanged()) return;
+	if (!m_hasNewTemplateBaseline) return;
+	// Form-change tracking is sticky across Undo. Clear it only after both the
+	// visual body and the complete saved template, including binaries, match.
 	CString current;
 	if (!m_hasSavedBodyHtml || !CaptureBodyHtml(current) || current != m_savedBodyHtml) return;
 	try {
