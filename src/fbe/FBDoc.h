@@ -109,7 +109,7 @@ public:
 	void MarkSavePoint();
 	void CaptureNewTemplateBaseline();
 	void ReconcileNewTemplateAfterUndo();
-	void ReconcileDescriptionAfterUndo();
+	void ReconcileDescriptionSavepoint();
 	void ReconcileUnchangedStartupTemplate();
 	struct UndoSavepoints {
 		long savedVersion, recoveryVersion;

@@ -320,7 +320,8 @@ bool Doc::CaptureDescriptionState(CString& state) {
 			MSHTML::IHTMLSelectElementPtr select(element);
 			if (select) append(_bstr_t(select->value));
 		}
-		append(_bstr_t(description->outerHTML));
+		// The root's display style changes when switching views and is not FB2 data.
+		append(_bstr_t(description->innerHTML));
 		return true;
 	} catch (const _com_error&) { state.Empty(); return false; }
 	catch (const std::bad_alloc&) { state.Empty(); return false; }
@@ -393,7 +394,7 @@ void Doc::MarkSavePoint() {
 	m_body_ver = m_editor.GetVersionNumber();
 }
 
-void Doc::ReconcileDescriptionAfterUndo() {
+void Doc::ReconcileDescriptionSavepoint() {
 	if (!DocChanged() || !m_hasDescriptionSavepoint || m_binaryLegacyDepth) return;
 	try { ReconcileBinaryStore(); } catch (...) { return; }
 	// A script can replace legacy binary properties outside the catalog. Do not

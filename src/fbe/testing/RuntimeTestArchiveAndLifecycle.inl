@@ -559,11 +559,13 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		if (title) { MSHTML::IHTMLElement2Ptr element(title); if (element) element->focus(); title->select(); }
 		if (::GetFocus()) ::SendMessageW(::GetFocus(), WM_CHAR, L'Q', 1);
 		const bool fieldEditDirty = DocChanged();
+		m_doc->ReconcileDescriptionSavepoint();
+		const bool fieldReconcileDirty = DocChanged();
 		SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
 		const bool fieldUndoRestored = title && CString(static_cast<LPCWSTR>(title->value)) == afterRedo;
 		const bool fieldUndoDirty = DocChanged();
 		const bool keywordRetained = keywords && CString(static_cast<LPCWSTR>(keywords->value)) == L"independent keyword edit";
-		const bool independentFieldPreserved = fieldEditDirty && fieldUndoRestored && fieldUndoDirty && keywordRetained;
+		const bool independentFieldPreserved = fieldEditDirty && fieldReconcileDirty && fieldUndoRestored && fieldUndoDirty && keywordRetained;
 		if (keywords) keywords->value = static_cast<LPCWSTR>(originalKeywords);
 		const bool savedBeforeBinary = m_doc->Save() && !DocChanged();
 		MSHTML::IHTMLElementPtr binaryContainer(document3 ? document3->getElementById(L"binobj") : NULL);
@@ -582,10 +584,12 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		if (title) { MSHTML::IHTMLElement2Ptr element(title); if (element) element->focus(); title->select(); }
 		if (::GetFocus()) ::SendMessageW(::GetFocus(), WM_CHAR, L'B', 1);
 		const bool binaryEditDirty = DocChanged();
+		m_doc->ReconcileDescriptionSavepoint();
+		const bool binaryReconcileDirty = DocChanged();
 		SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
 		const bool binaryUndoRestored = title && CString(static_cast<LPCWSTR>(title->value)) == afterRedo;
 		const bool binaryUndoDirty = DocChanged();
-		const bool independentBinaryPreserved = savedBeforeBinary && SUCCEEDED(binaryChange) && binaryEditDirty && binaryUndoRestored && binaryUndoDirty;
+		const bool independentBinaryPreserved = savedBeforeBinary && SUCCEEDED(binaryChange) && binaryEditDirty && binaryReconcileDirty && binaryUndoRestored && binaryUndoDirty;
 		if (originalPayload) m_doc->m_binaryStore.payloads.Assign(binaryDispatch, originalPayload);
 		const bool savedBeforeBody = m_doc->Save() && !DocChanged();
 		MSHTML::IHTMLElementPtr editorBody(document3 ? document3->getElementById(L"fbw_body") : NULL);
@@ -596,8 +600,10 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		if (title) { MSHTML::IHTMLElement2Ptr element(title); if (element) element->focus(); title->select(); }
 		if (::GetFocus()) ::SendMessageW(::GetFocus(), WM_CHAR, L'W', 1);
 		const bool bodyEditDirty = DocChanged();
+		m_doc->ReconcileDescriptionSavepoint();
+		const bool bodyReconcileDirty = DocChanged();
 		SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
-		const bool independentBodyPreserved = savedBeforeBody && bodyParagraph && title && bodyEditDirty &&
+		const bool independentBodyPreserved = savedBeforeBody && bodyParagraph && title && bodyEditDirty && bodyReconcileDirty &&
 			CString(static_cast<LPCWSTR>(title->value)) == afterRedo &&
 			CString(static_cast<LPCWSTR>(bodyParagraph->innerText)) == oldBodyText + L" pending body edit" && DocChanged();
 		const CString beforeLanguage = snapshotXml();

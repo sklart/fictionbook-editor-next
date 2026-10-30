@@ -23,11 +23,11 @@ try {
     Copy-Item -LiteralPath $report -Destination (Join-Path $EvidenceDirectory 'report.txt') -Force
     $text = Get-Content -LiteralPath $report -Raw
     Write-Host $text
-    if ($code -ne 0 -or $text -notmatch '(?m)^input-edited=1\r?$' -or $text -notmatch '(?m)^input-dirty=1\r?$' -or
+    if ($code -ne 0 -or $text -notmatch '(?m)^clean-before-description=1\r?$' -or $text -notmatch '(?m)^input-edited=1\r?$' -or $text -notmatch '(?m)^input-dirty=1\r?$' -or
         $text -notmatch '(?m)^snapshot-before-present=1\r?$' -or $text -notmatch '(?m)^snapshot-changed=1\r?$' -or
         $text -notmatch '(?m)^snapshot-undo-restored=1\r?$' -or $text -notmatch '(?m)^language-changed=1\r?$' -or
         $text -notmatch '(?m)^snapshot-language-changed=1\r?$' -or $text -notmatch '(?m)^saved-clean=1\r?$' -or
-        $text -notmatch '(?m)^saved-undo-restored=1\r?$' -or $text -notmatch '(?m)^saved-undo-dirty=0\r?$' -or
+        $text -notmatch '(?m)^undo-dirty=0\r?$' -or $text -notmatch '(?m)^saved-undo-restored=1\r?$' -or $text -notmatch '(?m)^saved-undo-dirty=0\r?$' -or
         $text -notmatch '(?m)^initial-content-preserved=1\r?$' -or $text -notmatch '(?m)^independent-field-preserved=1\r?$' -or
         $text -notmatch '(?m)^independent-binary-preserved=1\r?$' -or $text -notmatch '(?m)^independent-body-preserved=1\r?$') { throw "Description input probe failed: $code" }
     $passed = $true
