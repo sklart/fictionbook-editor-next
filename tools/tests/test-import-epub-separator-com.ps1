@@ -15,6 +15,7 @@ try {
     Copy-Item -LiteralPath $exe -Destination (Join-Path $iso.Root 'separator-com.exe')
     $epub = Join-Path $iso.Root 'separator.epub'
     Add-Type -AssemblyName System.IO.Compression
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
     $file = [IO.File]::Open($epub, [IO.FileMode]::CreateNew)
     $archive = [IO.Compression.ZipArchive]::new($file, [IO.Compression.ZipArchiveMode]::Create)
     try {
@@ -72,6 +73,33 @@ try {
         $next = $blockImage.NextSibling; while($next -and $next.NodeType -ne 'Element') { $next = $next.NextSibling }
         if(($previous.LocalName -eq 'empty-line') -ne ($enabled -eq 1) -or ($next.LocalName -eq 'empty-line') -ne ($titleEnabled -eq 1)) { throw 'Unexpected blank lines around standalone image.' }
     }
+    # Exercise the generated-section normalization through the actual COM plug-in.
+    $nestedEpub = Join-Path $iso.Root 'nested-epigraph.epub'
+    Copy-Item -LiteralPath $epub -Destination $nestedEpub
+    $archive = [IO.Compression.ZipFile]::Open($nestedEpub, [IO.Compression.ZipArchiveMode]::Update)
+    try {
+        $archive.GetEntry('OEBPS/chapter.xhtml').Delete()
+        $writer = [IO.StreamWriter]::new($archive.CreateEntry('OEBPS/chapter.xhtml').Open(), [Text.UTF8Encoding]::new($false))
+        try {
+            $writer.Write('<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Fixture</title></head><body><section><div class="epigraph"><p>First quotation</p><p class="text-author">First author</p></div><div class="epigraph"><p>Second quotation</p><p class="text-author">Second author</p></div><section><p>Child body</p></section></section></body></html>')
+        } finally { $writer.Dispose() }
+    } finally { $archive.Dispose() }
+    $profile = @{ schemaVersion = 1; values = @{} } | ConvertTo-Json
+    [IO.File]::WriteAllText((Join-Path $settings 'import-epub.json'), $profile, [Text.UTF8Encoding]::new($false))
+    $nestedFb2 = Join-Path $iso.Root 'nested-epigraph.fb2'
+    $process = Start-Process -FilePath (Join-Path $iso.Root 'separator-com.exe') -WorkingDirectory $iso.Root -WindowStyle Hidden -PassThru -ArgumentList @('"' + (Join-Path $iso.Root 'Plugins\ImportEPUB.dll') + '"', '"' + $nestedEpub + '"', '"' + $nestedFb2 + '"')
+    if(-not $process.WaitForExit(30000)) { Stop-Process -Id $process.Id -Force; throw 'COM epigraph conversion timed out.' }
+    if($process.ExitCode -ne 0) { throw "COM epigraph conversion failed: $($process.ExitCode)." }
+    $reader = [Xml.XmlReader]::Create($nestedFb2, $validation)
+    try { while($reader.Read()) {} } finally { $reader.Close() }
+    [xml]$nested = [IO.File]::ReadAllText($nestedFb2, [Text.Encoding]::UTF8)
+    $body = $nested.SelectSingleNode("/*[local-name()='FictionBook']/*[local-name()='body']").InnerText
+    $previous = -1
+    foreach($text in @('First quotation', 'First author', 'Second quotation', 'Second author', 'Child body')) {
+        $position = $body.IndexOf($text, [StringComparison]::Ordinal)
+        if($position -le $previous -or $position -ne $body.LastIndexOf($text, [StringComparison]::Ordinal)) { throw "COM epigraph text missing, duplicated or reordered: $text" }
+        $previous = $position
+    }
     $passed = $true
-    Write-Host 'COM separator/title/image/note/spacing options, anchors and XSD checks passed.'
+    Write-Host 'COM separator/title/image/note/spacing options, epigraph structure, anchors and XSD checks passed.'
 } finally { Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed }
