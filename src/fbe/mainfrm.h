@@ -907,9 +907,15 @@ public:
 		return 0; 
 	}
 
-	LRESULT OnVersionAdvance(WORD delta, WORD, HWND, BOOL&)
+	LRESULT OnVersionAdvance(WORD, WORD, HWND payload, BOOL&)
 	{
-		m_doc->AdvanceDocVersion(delta);
+		const auto* adjustment = reinterpret_cast<const SpellVersionAdjustment*>(payload);
+		if (!m_doc || !adjustment || !adjustment->document) return 0;
+		CComPtr<IUnknown> current, source;
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		if (document) document->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&current));
+		adjustment->document->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&source));
+		if (current && current == source) m_doc->AdvanceDocVersionIfUnchanged(adjustment->before, adjustment->after);
 		return 0;
 	}
 

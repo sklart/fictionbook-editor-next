@@ -900,6 +900,16 @@ BOOL CFBEView::PreTranslateMessage(MSG* pMsg)
 
 // editing commands
 LRESULT CFBEView::ExecCommand(int cmd) {
+  const LRESULT result = ExecCommandCore(cmd);
+  if (cmd == IDM_UNDO && m_ownerDocument) {
+    m_ownerDocument->RestoreCleanIfBodyMatches();
+    if (SUCCEEDED(result)) m_ownerDocument->ReconcileNewTemplateAfterUndo();
+    if (SUCCEEDED(result)) m_ownerDocument->ReconcileDescriptionSavepoint();
+  }
+  return result;
+}
+
+LRESULT CFBEView::ExecCommandCore(int cmd) {
   // Native and MSHTML-owned history may both change binary nodes/expandos.
   struct BinaryHistoryInvalidation {
     FB::Doc* doc;
@@ -2810,9 +2820,6 @@ void CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom)
 LRESULT CFBEView::OnUndo(WORD, WORD, HWND, BOOL&)
 {
 	LRESULT result = ExecCommand(IDM_UNDO);
-	if (m_ownerDocument) m_ownerDocument->RestoreCleanIfBodyMatches();
-	if (m_ownerDocument && SUCCEEDED(result)) m_ownerDocument->ReconcileNewTemplateAfterUndo();
-	if (m_ownerDocument && SUCCEEDED(result)) m_ownerDocument->ReconcileDescriptionSavepoint();
 	::SendMessage(m_frame, WM_COMMAND, static_cast<WPARAM>(MAKELONG(0, IDN_TREE_RESTORE)), 0);
 	return result;
 }

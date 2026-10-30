@@ -690,6 +690,7 @@ public:
 
 	// editing commands
 	LRESULT ExecCommand(int cmd);
+	LRESULT ExecCommandCore(int cmd);
 	void QueryStatus(OLECMD *cmd, int ncmd);
 	CString QueryCmdText(int cmd);
 

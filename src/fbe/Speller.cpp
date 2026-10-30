@@ -1048,6 +1048,9 @@ void CSpeller::CheckCurrentPage()
 		return;
 	}
 	CWords words;
+	MSHTML::IHTMLDocument2Ptr versionDocument(m_doc2);
+	MSHTML::IMarkupContainer2Ptr versionMarkup(m_mkc);
+	const long versionBefore = versionMarkup ? versionMarkup->GetVersionNumber() : -1;
 	std::pair< std::set<long>::iterator, bool > pr;
 	int currNum, numChanges = 0;
 	MSHTML::IHTMLElementPtr elem, endElem;
@@ -1098,7 +1101,11 @@ void CSpeller::CheckCurrentPage()
 		elem = GetNextParagraph(elem, m_fbw_body);
 	}
 	
-	if (numChanges) AdvanceVersionNumber(numChanges);
+	if (numChanges && versionBefore >= 0 && versionMarkup && versionMarkup == m_mkc && versionDocument == m_doc2) {
+		const long versionAfter = versionMarkup->GetVersionNumber();
+		if (versionAfter >= versionBefore && versionAfter - versionBefore == numChanges)
+			AdvanceVersionNumber(versionDocument, versionBefore, versionAfter);
+	}
 }
 
 //

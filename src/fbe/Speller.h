@@ -11,6 +11,12 @@
 #include "SpellText.h"
 #include "CustomDictionaryIO.h"
 
+struct SpellVersionAdjustment {
+	IUnknown* document;
+	long before;
+	long after;
+};
+
 // Hunspell API function prototypes
 #ifdef __cplusplus
 extern "C" {
@@ -257,9 +263,10 @@ public:
 		}
 	}
 	void HighlightMisspells();
-	void AdvanceVersionNumber(int delta)
+	void AdvanceVersionNumber(IUnknown* document, long before, long after)
 	{
-		::PostMessage(m_frame, WM_COMMAND,MAKELONG(ID_VER_ADVANCE,delta), 0);
+		SpellVersionAdjustment adjustment = { document, before, after };
+		::SendMessage(m_frame, WM_COMMAND, MAKEWPARAM(ID_VER_ADVANCE, 0), reinterpret_cast<LPARAM>(&adjustment));
 	}
 
 	// popup menu service

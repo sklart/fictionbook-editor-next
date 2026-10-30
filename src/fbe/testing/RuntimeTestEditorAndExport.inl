@@ -2243,9 +2243,23 @@
 		m_doc->m_body.OnScroll(NULL);
 		MSG message = {}; while (::PeekMessage(&message, m_hWnd, AU::WM_BODY_SCROLL, AU::WM_BODY_SCROLL, PM_REMOVE)) ::DispatchMessage(&message);
 		OnIdle();
+		const long scrollChecks = m_Speller->GetTestCheckScrollCalls();
+		const ULONGLONG commandDelta = g_idleProfile.commandUpdates - commands, selectionDelta = g_idleProfile.selectionUpdates - selections, toolbarDelta = g_idleProfile.toolbarUpdates - toolbars;
+		m_doc->MarkSavePoint();
+		MSHTML::IHTMLDocument3Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLElementPtr body(document ? document->getElementById(L"fbw_body") : NULL);
+		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : NULL);
+		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(0L), _variant_t()) : NULL);
+		const CString original = paragraph ? CString(static_cast<LPCWSTR>(paragraph->innerText)) : CString();
+		if (paragraph) paragraph->insertAdjacentText(L"beforeEnd", L" unsaved spelling test");
+		const bool dirtyBeforeSpell = m_doc->DocChanged();
+		if (m_doc->m_body.Document()->parentWindow) m_doc->m_body.Document()->parentWindow->scrollTo(0, 10000);
+		m_Speller->CheckCurrentPage();
+		const bool dirtyPreserved = dirtyBeforeSpell && m_doc->DocChanged();
+		const bool contentPreserved = paragraph && CString(static_cast<LPCWSTR>(paragraph->innerText)) == original + L" unsaved spelling test";
 		CStringA report;
-		report.Format("spell_scroll_checks\t%ld\r\ncommand_state_updates\t%I64u\r\nselection_context_builds\t%I64u\r\ntoolbar_updates\t%I64u\r\n", m_Speller->GetTestCheckScrollCalls(), g_idleProfile.commandUpdates - commands, g_idleProfile.selectionUpdates - selections, g_idleProfile.toolbarUpdates - toolbars);
-		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close(); ::PostQuitMessage(written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
+		report.Format("spell_scroll_checks\t%ld\r\ncommand_state_updates\t%I64u\r\nselection_context_builds\t%I64u\r\ntoolbar_updates\t%I64u\r\nspell_dirty_preserved\t%d\r\nspell_content_preserved\t%d\r\n", scrollChecks, commandDelta, selectionDelta, toolbarDelta, dirtyPreserved, contentPreserved);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close(); ::PostQuitMessage(written == static_cast<DWORD>(report.GetLength()) && dirtyPreserved && contentPreserved ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"clipboard-fallback"))
 	{

@@ -105,6 +105,10 @@ public:
   void	  AdvanceDocVersion (int delta) {
 	  m_body_ver += delta;
   }
+	void AdvanceDocVersionIfUnchanged(long before, long after) {
+		if (before >= 0 && after >= before && m_body_ver == before &&
+			m_editor.GetVersionNumber() == after && !m_editor.IsFormChanged()) m_body_ver = after;
+	}
 
 	void MarkSavePoint();
 	void CaptureNewTemplateBaseline();

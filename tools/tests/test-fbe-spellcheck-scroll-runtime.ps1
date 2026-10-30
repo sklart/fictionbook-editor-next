@@ -15,6 +15,6 @@ try {
   $oldMode,$oldScenario=$env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO; $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='spellcheck-scroll'
   try { $p=Start-Process -FilePath $FbeExe -ArgumentList @('--portable','-b',$report,$fixture) -WorkingDirectory (Split-Path $FbeExe) -WindowStyle Hidden -PassThru; if(!$p.WaitForExit($TimeoutSeconds*1000)){Stop-Process $p -Force;throw 'spell scroll runtime timed out'} } finally {$env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO=$oldMode,$oldScenario}
   if($p.ExitCode -ne 0 -or !(Test-Path $report)){throw 'spell scroll runtime failed'}; $r=@{};Get-Content $report|%{$x=$_-split "`t",2;if($x.Count-eq 2){$r[$x[0]]=[UInt64]$x[1]}}
-  if($r.spell_scroll_checks -lt 1 -or $r.command_state_updates -ne 0 -or $r.selection_context_builds -ne 0 -or $r.toolbar_updates -ne 0){throw "scroll metrics invalid: $($r|ConvertTo-Json -Compress)"}; Write-Host 'Spellcheck scroll runtime passed.'
+  if($r.spell_scroll_checks -lt 1 -or $r.command_state_updates -ne 0 -or $r.selection_context_builds -ne 0 -or $r.toolbar_updates -ne 0 -or $r.spell_dirty_preserved -ne 1 -or $r.spell_content_preserved -ne 1){throw "scroll metrics or unsaved edit preservation invalid: $($r|ConvertTo-Json -Compress)"}; Write-Host 'Spellcheck scroll runtime passed.'
   $passed = $true
 } finally {Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed}
