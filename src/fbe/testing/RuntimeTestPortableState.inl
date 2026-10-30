@@ -1158,10 +1158,13 @@ void CMainFrame::RunPortableStateTestScenario()
 		::CreateDirectory(scriptsDirectory, NULL);
 		_Settings.SetScriptsFolder(scriptsDirectory, true);
 		const bool fixtureWritten = WritePortableStateTestText(scriptsDirectory + L"RuntimeSize.js", "function Run() { document.title = 'Icon size command passed'; }\n");
+		const CString fixtureIcon = scriptsDirectory + L"RuntimeSize.ico";
+		const CString bundledIcon = U::GetProgDir() + L"Scripts\\06_\u0427\u0438\u0441\u0442\u043a\u0430.ico";
+		const bool fixtureIconCopied = ::CopyFileW(bundledIcon, fixtureIcon, FALSE) != FALSE;
 		const CString iconFolder = scriptsDirectory + L"IconFolder\\";
 		::CreateDirectory(iconFolder, NULL);
 		const bool nestedFixtureWritten = WritePortableStateTestText(iconFolder + L"Nested.js", "function Run() {}\n");
-		if(!fixtureWritten || !nestedFixtureWritten || !InitializeScripts()) { WritePortableStateTestText(reportPath, "phase=script-toolbar-runtime-size\nreason=initial-reload\nresult=fail\n"); PostMessage(WM_CLOSE); return; }
+		if(!fixtureWritten || !fixtureIconCopied || !nestedFixtureWritten || !InitializeScripts()) { WritePortableStateTestText(reportPath, "phase=script-toolbar-runtime-size\nreason=initial-reload\nresult=fail\n"); PostMessage(WM_CLOSE); return; }
 		CString scriptUid; UINT scriptCommand = 0;
 		for(int index = 0; index < m_scripts.Menu().Count(); ++index)
 			if(m_scripts.Menu().Item(index).relativePath.CompareNoCase(L"RuntimeSize.js") == 0)
@@ -1214,10 +1217,46 @@ void CMainFrame::RunPortableStateTestScenario()
 			const LRESULT buttonSize = ::SendMessage(window, TB_GETBUTTONSIZE, 0, 0);
 			RECT bounds = {}; ::GetWindowRect(window, &bounds);
 			TBBUTTONS catalog; const bool available = GetAvailableButtons(window, catalog);
-			bool scriptImage = false;
+			bool scriptImage = false; int scriptImageIndex = -1;
 			for(int index = 0; available && index < catalog.GetSize(); ++index)
 				if(catalog[index].idCommand == static_cast<int>(scriptCommand))
-					scriptImage = catalog[index].iBitmap >= m_scriptsToolbarBaseImageCount && catalog[index].iBitmap < ::ImageList_GetImageCount(images);
+				{ scriptImageIndex = catalog[index].iBitmap; scriptImage = scriptImageIndex >= m_scriptsToolbarBaseImageCount && scriptImageIndex < ::ImageList_GetImageCount(images); }
+			bool scriptPixelsMatch = true;
+			if(dpi == 96 && _Settings.GetScriptIconSize() == 16) {
+				scriptPixelsMatch = false;
+				HICON reference = static_cast<HICON>(::LoadImageW(NULL, fixtureIcon, IMAGE_ICON, 16, 16, LR_LOADFROMFILE));
+				HDC screen = ::GetDC(NULL); HDC actual = screen ? ::CreateCompatibleDC(screen) : NULL; HDC expectedDc = screen ? ::CreateCompatibleDC(screen) : NULL;
+				HBITMAP actualBitmap = screen ? ::CreateCompatibleBitmap(screen, 16, 16) : NULL; HBITMAP expectedBitmap = screen ? ::CreateCompatibleBitmap(screen, 16, 16) : NULL;
+				if(reference && actual && expectedDc && actualBitmap && expectedBitmap && scriptImage) {
+					HGDIOBJ oldActual = ::SelectObject(actual, actualBitmap); HGDIOBJ oldExpected = ::SelectObject(expectedDc, expectedBitmap);
+					RECT rect = {0, 0, 16, 16};
+					scriptPixelsMatch = true;
+					for(COLORREF background : {RGB(255,255,255), RGB(32,32,32)}) {
+						HBRUSH brush = ::CreateSolidBrush(background); ::FillRect(actual, &rect, brush); ::FillRect(expectedDc, &rect, brush); ::DeleteObject(brush);
+						if(!::ImageList_Draw(images, scriptImageIndex, actual, 0, 0, ILD_TRANSPARENT) || !::DrawIconEx(expectedDc, 0, 0, reference, 16, 16, 0, NULL, DI_NORMAL)) scriptPixelsMatch = false;
+						int mismatches = 0, maxError = 0, firstX = -1, firstY = -1; COLORREF firstActual = 0, firstExpected = 0;
+						for(int y=0; y<16; ++y) for(int x=0; x<16; ++x) {
+							const COLORREF observed = ::GetPixel(actual,x,y), original = ::GetPixel(expectedDc,x,y);
+							maxError = (std::max)(maxError, (std::max)(abs(static_cast<int>(GetRValue(observed))-static_cast<int>(GetRValue(original))),
+								(std::max)(abs(static_cast<int>(GetGValue(observed))-static_cast<int>(GetGValue(original))), abs(static_cast<int>(GetBValue(observed))-static_cast<int>(GetBValue(original))))));
+							if(observed != original) { if(mismatches == 0) { firstX=x; firstY=y; firstActual=observed; firstExpected=original; } ++mismatches; }
+						}
+						// ImageList_Draw and DrawIconEx round alpha composition separately.
+						// A one-level channel difference is the observed native rounding;
+						// larger changes, missing pixels and wrong icons still fail.
+						if(maxError > 1) scriptPixelsMatch = false;
+						matrixDetails.AppendFormat("fixture-pixel-diff=%d/max:%d/%d,%d:%06lx/%06lx;background:%06lx\n", mismatches, maxError, firstX, firstY, firstActual, firstExpected, background);
+					}
+					::SelectObject(actual,oldActual); ::SelectObject(expectedDc,oldExpected);
+				}
+				if(actualBitmap) ::DeleteObject(actualBitmap);
+				if(expectedBitmap) ::DeleteObject(expectedBitmap);
+				if(actual) ::DeleteDC(actual);
+				if(expectedDc) ::DeleteDC(expectedDc);
+				if(screen) ::ReleaseDC(NULL,screen);
+				if(reference) ::DestroyIcon(reference);
+				matrixDetails.AppendFormat("fixture-16px-pixels=%d\n", scriptPixelsMatch);
+			}
 			// Measure the painted glyph, not only the ImageList cell. The source
 			// has transparent corners but its painted area must grow with DPI.
 			HDC screen = ::GetDC(NULL);
@@ -1247,7 +1286,7 @@ void CMainFrame::RunPortableStateTestScenario()
 				dpi, width, height, LOWORD(buttonSize), HIWORD(buttonSize), bounds.bottom - bounds.top, available, scriptImage, visibleScript, graphicScaled);
 			return imageSizeRead && width == expected && height == expected &&
 				LOWORD(buttonSize) >= UiMetrics::ScaleForDpi(_Settings.GetScriptIconSize() + 7, dpi) && HIWORD(buttonSize) >= UiMetrics::ScaleForDpi(_Settings.GetScriptIconSize() + 7, dpi) &&
-				bounds.bottom - bounds.top >= HIWORD(buttonSize) && scriptImage && visibleScript && graphicScaled;
+				bounds.bottom - bounds.top >= HIWORD(buttonSize) && scriptImage && visibleScript && graphicScaled && scriptPixelsMatch;
 		};
 		const UINT dpis[] = { 96, 120, 144, 168, 192 };
 		bool dpiMatrix = restarted && scriptCommand != 0 && !scriptUid.IsEmpty();
