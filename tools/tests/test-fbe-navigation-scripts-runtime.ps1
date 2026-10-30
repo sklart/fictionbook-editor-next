@@ -85,7 +85,7 @@ try {
 		$process = Start-Process -FilePath $FbeExe -WorkingDirectory $exeDirectory -ArgumentList @('--portable', $document) -PassThru
 		if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Navigation scripts multiselect runtime test timed out.' }
 		$text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
-		$required = @('folder-name-excluded','filename-match','three-selected','right-click-preserves','keyboard-context-preserves','unsafe-disabled','favorites-added','mixed-favorite-add','dedicated-image','icon-light-dark','virtual-nodes-excluded','duplicate-representation','invalid-rejected','toolbar-order','no-duplicates','toolbar-persisted','remove-action','favorites-removed')
+		$required = @('folder-name-excluded','filename-match','three-selected','right-click-preserves','keyboard-context-preserves','unsafe-disabled','favorites-added','mixed-favorite-add','dedicated-image','icon-light-dark','virtual-nodes-excluded','duplicate-representation','single-menu-direct','multi-menu-named','invalid-rejected','toolbar-order','no-duplicates','toolbar-persisted','remove-action','favorites-removed')
 		if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^phase=navigation-scripts-multiselect$' -or $text -notmatch '(?m)^result=pass$') { throw "Navigation scripts multiselect runtime failed:`n$text" }
 		foreach($key in $required) { if($text -notmatch "(?m)^$key=1$") { throw "Navigation scripts multiselect runtime failed ($key):`n$text" } }
 	} finally { $env:FBE_NEXT_TEST_MODE = $savedMode; $env:FBE_NEXT_TEST_SCENARIO = $savedScenario; $env:FBE_NEXT_UI_LOCALE = $savedLocale }

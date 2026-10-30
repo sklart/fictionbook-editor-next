@@ -231,6 +231,7 @@ public:
 		const std::function<void(const CString&)>& openLocation,
 		const std::function<void(UINT)>& runScript);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
+	void AppendScriptToolbarMenu(HMENU menu) const;
 	void SetScriptCardHandler(const std::function<void(const CString&)>& handler) { m_show_script_card = handler; }
 	void SetScriptFilter(const CString& filter);
 	const CString& ScriptFilter() const { return m_script_filter; }

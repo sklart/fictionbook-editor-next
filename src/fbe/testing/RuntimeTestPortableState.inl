@@ -1461,6 +1461,22 @@ void CMainFrame::RunPortableStateTestScenario()
 		if(tree.FavoriteGroupItem() != NULL) tree.SetItemState(tree.FavoriteGroupItem(), 0, TVIS_SELECTED);
 		const bool duplicateRepresentation = tree.FavoriteScriptTreeItem(uidA) != NULL &&
 			(tree.SetItemState(tree.FavoriteScriptTreeItem(uidA), TVIS_SELECTED, TVIS_SELECTED), tree.SelectedScripts().size() == 3);
+		std::vector<ScriptTreeToolbarTarget> actualTargets;
+		for(const auto& toolbar : m_scriptToolbars.Items()) { ScriptTreeToolbarTarget target; target.id = toolbar.definition.id; target.name = toolbar.definition.name; actualTargets.push_back(target); }
+		ScriptTreeToolbarTarget firstTarget; firstTarget.id = L"scripts-main"; firstTarget.name = L"Main renamed";
+		ScriptTreeToolbarTarget secondTarget; secondTarget.id = L"test-hidden"; secondTarget.name = L"Hidden renamed";
+		auto buildToolbarMenu = [&]() { HMENU menu = ::CreatePopupMenu(); if(menu != NULL) tree.AppendScriptToolbarMenu(menu); return menu; };
+		tree.SetScriptToolbarTargets(std::vector<ScriptTreeToolbarTarget>{ firstTarget });
+		HMENU singleMenu = buildToolbarMenu();
+		const bool singleMenuDirect = singleMenu != NULL && ::GetMenuItemCount(singleMenu) == 1 && ::GetSubMenu(singleMenu, 0) == NULL && ::GetMenuItemID(singleMenu, 0) == NavigationPopupAddToolbarBase;
+		if(singleMenu != NULL) ::DestroyMenu(singleMenu);
+		tree.SetScriptToolbarTargets(std::vector<ScriptTreeToolbarTarget>{ firstTarget, secondTarget });
+		HMENU multiMenu = buildToolbarMenu(); HMENU submenu = multiMenu == NULL ? NULL : ::GetSubMenu(multiMenu, 0);
+		wchar_t firstLabel[128] = {}, secondLabel[128] = {};
+		if(submenu != NULL) { ::GetMenuString(submenu, 0, firstLabel, _countof(firstLabel), MF_BYPOSITION); ::GetMenuString(submenu, 1, secondLabel, _countof(secondLabel), MF_BYPOSITION); }
+		const bool multiMenuNamed = submenu != NULL && ::GetMenuItemCount(submenu) == 2 && CString(firstLabel) == firstTarget.name && CString(secondLabel) == secondTarget.name && ::GetMenuItemID(submenu, 0) == NavigationPopupAddToolbarBase && ::GetMenuItemID(submenu, 1) == NavigationPopupAddToolbarBase + 1;
+		if(multiMenu != NULL) ::DestroyMenu(multiMenu);
+		tree.SetScriptToolbarTargets(actualTargets);
 		ScriptToolbarRuntime* mainToolbar = m_scriptToolbars.Find(L"scripts-main");
 		const size_t beforeCount = mainToolbar == NULL ? 0 : mainToolbar->definition.items.size();
 		const bool invalidRejected = mainToolbar != NULL && !AddScriptsToToolbar(std::vector<CString>{ uidA, L"missing-script-uid" }, L"scripts-main") &&
@@ -1491,9 +1507,9 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool removeAction = tree.SelectedScriptsAreAllFavorites();
 		const bool favoritesRemoved = removeAction && tree.ExecuteScriptPopupCommand(NavigationPopupToggleFavorite) &&
 			!tree.IsFavoriteScript(uidA) && !tree.IsFavoriteScript(uidB) && !tree.IsFavoriteScript(uidC);
-		const bool passed = initialized && folderNameExcluded && filenameMatch && threeSelected && rightClickPreserves && keyboardContextPreserves && unsafeDisabled && favoritesAdded && mixedFavoriteAdd && dedicatedImage && iconLightDark && virtualNodesExcluded && duplicateRepresentation && invalidRejected && toolbarOrder && noDuplicates && toolbarPersisted && favoritesRemoved;
-		CStringA report; report.Format("phase=navigation-scripts-multiselect\nfolder-name-excluded=%d\nfilename-match=%d\nthree-selected=%d\nright-click-preserves=%d\nkeyboard-context-preserves=%d\nunsafe-disabled=%d\nfavorites-added=%d\nmixed-favorite-add=%d\ndedicated-image=%d\nicon-light-dark=%d\nvirtual-nodes-excluded=%d\nduplicate-representation=%d\ninvalid-rejected=%d\ntoolbar-order=%d\nno-duplicates=%d\ntoolbar-persisted=%d\nremove-action=%d\nfavorites-removed=%d\nresult=%s\n",
-			folderNameExcluded, filenameMatch, threeSelected, rightClickPreserves, keyboardContextPreserves, unsafeDisabled, favoritesAdded, mixedFavoriteAdd, dedicatedImage, iconLightDark, virtualNodesExcluded, duplicateRepresentation, invalidRejected, toolbarOrder, noDuplicates, toolbarPersisted, removeAction, favoritesRemoved, passed ? "pass" : "fail");
+		const bool passed = initialized && folderNameExcluded && filenameMatch && threeSelected && rightClickPreserves && keyboardContextPreserves && unsafeDisabled && favoritesAdded && mixedFavoriteAdd && dedicatedImage && iconLightDark && virtualNodesExcluded && duplicateRepresentation && singleMenuDirect && multiMenuNamed && invalidRejected && toolbarOrder && noDuplicates && toolbarPersisted && favoritesRemoved;
+		CStringA report; report.Format("phase=navigation-scripts-multiselect\nfolder-name-excluded=%d\nfilename-match=%d\nthree-selected=%d\nright-click-preserves=%d\nkeyboard-context-preserves=%d\nunsafe-disabled=%d\nfavorites-added=%d\nmixed-favorite-add=%d\ndedicated-image=%d\nicon-light-dark=%d\nvirtual-nodes-excluded=%d\nduplicate-representation=%d\nsingle-menu-direct=%d\nmulti-menu-named=%d\ninvalid-rejected=%d\ntoolbar-order=%d\nno-duplicates=%d\ntoolbar-persisted=%d\nremove-action=%d\nfavorites-removed=%d\nresult=%s\n",
+			folderNameExcluded, filenameMatch, threeSelected, rightClickPreserves, keyboardContextPreserves, unsafeDisabled, favoritesAdded, mixedFavoriteAdd, dedicatedImage, iconLightDark, virtualNodesExcluded, duplicateRepresentation, singleMenuDirect, multiMenuNamed, invalidRejected, toolbarOrder, noDuplicates, toolbarPersisted, removeAction, favoritesRemoved, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(navigationSearchFavoritesRuntime)

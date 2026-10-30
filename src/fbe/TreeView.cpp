@@ -1268,12 +1268,8 @@ LRESULT CTreeView::OnContextMenu(UINT /*uMsg*/, WPARAM /* unused: wParam */, LPA
 		m_script_popup_favorite_label = FbeLoadRuntimeStringByKey(allFavorites ? L"fbe.document_tree.scripts.remove_favorite" : L"fbe.document_tree.scripts.add_favorite",
 			allFavorites ? L"★ Remove from favorites" : L"★ Add to favorites");
 		menu.AppendMenu(MF_STRING, NavigationPopupToggleFavorite, m_script_popup_favorite_label);
-		CMenu toolbars; toolbars.CreatePopupMenu();
-		for(size_t index = 0; index < m_script_toolbars.size(); ++index)
-			toolbars.AppendMenu(MF_STRING, NavigationPopupAddToolbarBase + static_cast<UINT>(index), m_script_toolbars[index].name);
-		if(m_script_toolbars.empty()) toolbars.AppendMenu(MF_STRING | MF_GRAYED, static_cast<UINT_PTR>(0), FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.no_toolbars", L"No script toolbars"));
 		menu.AppendMenu(MF_SEPARATOR);
-		menu.AppendMenu(MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>(static_cast<HMENU>(toolbars)), FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.add_to_toolbar", L"Add to toolbar >"));
+		AppendScriptToolbarMenu(menu);
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_STRING | (multiple ? MF_GRAYED : 0), NavigationPopupOpenLocation, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.open_location", L"Open file location"));
 		const UINT command = menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD, point.x, point.y, m_hWnd);
@@ -1344,6 +1340,24 @@ void CTreeView::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, con
 }
 
 void CTreeView::SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars) { m_script_toolbars = toolbars; }
+
+void CTreeView::AppendScriptToolbarMenu(HMENU menu) const
+{
+	CString label = FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.add_to_toolbar", L"Add to toolbar >");
+	if(m_script_toolbars.size() == 1)
+	{
+		label.TrimRight(L" >");
+		::AppendMenu(menu, MF_STRING, NavigationPopupAddToolbarBase, label);
+		return;
+	}
+	HMENU submenu = ::CreatePopupMenu();
+	if(submenu == NULL) return;
+	for(size_t index = 0; index < m_script_toolbars.size(); ++index)
+		::AppendMenu(submenu, MF_STRING, NavigationPopupAddToolbarBase + static_cast<UINT>(index), m_script_toolbars[index].name);
+	if(m_script_toolbars.empty())
+		::AppendMenu(submenu, MF_STRING | MF_GRAYED, 0, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.no_toolbars", L"No script toolbars"));
+	if(!::AppendMenu(menu, MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>(submenu), label)) ::DestroyMenu(submenu);
+}
 
 void CTreeView::SetScriptFilter(const CString& filter)
 {
