@@ -14,6 +14,9 @@ param(
     # CI already ran post-build suites in the build job.
     [switch]$SkipEarlyRuntimeSuites,
 
+    # Temporary opt-in: the Split/Undo contour remains incomplete when skipped.
+    [switch]$SkipSplitUndo,
+
     # Table regressions are intentionally opt-in while portable finalization is
     # in progress. They remain available for their dedicated test contour.
     [switch]$RunTableTests,
@@ -239,7 +242,11 @@ foreach ($treeMode in @('portable', 'installed')) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-cite-poem-undo-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-cite-poem-undo-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-structural-editor-boundary.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-split-container-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+if ($SkipSplitUndo) {
+    Write-Warning 'SKIPPED: Split/Undo production validation; release verification is incomplete.'
+} else {
+    & (Join-Path $repoRoot "tools\tests\test-fbe-split-container-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+}
 & (Join-Path $repoRoot "tools\tests\test-fbe-structural-commands.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-structural-commands-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-table-toolbar-contract.ps1")
@@ -461,8 +468,12 @@ if ($FullValidation) {
         & (Join-Path $repoRoot "tools\tests\test-regex-help-visual-runtime.ps1") -ArtifactDirectory (Join-Path $repoRoot 'out/tests/full-regex-help-html')
         & (Join-Path $repoRoot "tools\tests\test-script-hotkey-management-runtime.ps1") -FbeExe (Join-Path $outputDir 'FBE.exe')
     }
-	& (Join-Path $repoRoot "tools\tests\test-fbe-split-undo-probe.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -KeepArtifacts
-	& (Join-Path $repoRoot "tools\tests\test-fbe-split-ole-undo-probe.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -KeepArtifacts
+    if (-not $SkipSplitUndo) {
+        & (Join-Path $repoRoot "tools\tests\test-fbe-split-undo-probe.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -KeepArtifacts
+        & (Join-Path $repoRoot "tools\tests\test-fbe-split-ole-undo-probe.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -KeepArtifacts
+    } else {
+        Write-Warning 'SKIPPED: Split/Undo diagnostic probes.'
+    }
     & (Join-Path $repoRoot "tools\tests\test-fbd-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-source-full-process-benchmark.ps1")
     & (Join-Path $repoRoot "tools\tests\test-words-ownerdata-stress.ps1")
@@ -719,4 +730,8 @@ Assert-TrackedEditorRuntimeDllSnapshot -RepositoryRoot $repoRoot -Snapshot $trac
 if ($FullValidation -and -not $SkipEarlyRuntimeSuites -and -not (Get-Content -LiteralPath $requiredCiRuntimeReport -Raw | ConvertFrom-Json).complete) {
     throw "FullValidation incomplete: required external runtime checks are NOT RUN. See $requiredCiRuntimeReport"
 }
-Write-Host "Проверка релиза для версии $expectedVersion прошла успешно."
+if ($SkipSplitUndo) {
+    Write-Warning "Release verification for version $expectedVersion is INCOMPLETE: Split/Undo was skipped. All other selected checks completed."
+} else {
+    Write-Host "Проверка релиза для версии $expectedVersion прошла успешно."
+}
