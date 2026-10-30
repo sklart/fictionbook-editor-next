@@ -4267,6 +4267,8 @@ namespace
         if (!node)
             return;
 
+        const CStringW figureId = OptionalIdAttribute(node, ctx);
+        if (!figureId.IsEmpty()) out += L"      <p" + figureId + L"></p>\r\n";
         const auto children = MsxmlGetChildNodes(node);
         const long count = children ? MsxmlGetNodeListLength(children) : 0;
         for (long i = 0; i < count; ++i)
@@ -4275,7 +4277,11 @@ namespace
             if (LocalName(child) == L"figcaption")
             {
                 const CStringW caption = ChildrenInlineToFb2(child, ctx);
-                if (!TrimString(caption).IsEmpty()) out += L"      <subtitle>" + caption + L"</subtitle>\r\n";
+                const auto ids = CollectRawAnchorIds(child);
+                const CStringW captionId = ids.empty() ? CStringW() : OptionalIdAttributeFromRaw(ids.front(), ctx);
+                out += AnchorMarkerParagraphsFromRawIds(ids, 1, ctx);
+                if (!TrimString(caption).IsEmpty() || !captionId.IsEmpty())
+                    out += L"      <subtitle" + captionId + L">" + caption + L"</subtitle>\r\n";
             }
             else AppendBlockNode(child, out, ctx);
         }
@@ -4361,7 +4367,12 @@ namespace
         if (name == L"picture" || name == L"img" || name == L"image" || name == L"object")
         {
             const CStringW image = Fb2ImageElementForNode(ctx, node);
-            if (!image.IsEmpty()) out += L"      <p>" + image + L"</p>\r\n";
+            if (!image.IsEmpty()) {
+                const auto ids = CollectRawAnchorIds(node);
+                const CStringW imageId = ids.empty() ? CStringW() : OptionalIdAttributeFromRaw(ids.front(), ctx);
+                out += AnchorMarkerParagraphsFromRawIds(ids, 1, ctx);
+                out += L"      <p" + imageId + L">" + image + L"</p>\r\n";
+            }
             else if (name == L"object")
             {
                 const auto children = MsxmlGetChildNodes(node);

@@ -1417,7 +1417,10 @@ static MSXML2::IXMLDOMNodePtr	  ProcessP(MSHTML::IHTMLElement *p,
   MSHTML::IHTMLDOMNodePtr   hp(p);
 
   // check if it is an empty-line
-  if(U::scmp(cls, L"td") && U::scmp(cls, L"th"))
+  // An empty paragraph can be the target of an FB2 link. Converting it to
+  // empty-line (which has no id in the schema) or dropping it loses that
+  // target on Save/Reopen, so keep it as a paragraph when it has an id.
+  if(U::scmp(cls, L"td") && U::scmp(cls, L"th") && _bstr_t(p->id).length() == 0)
   {
 	if	(hp->hasChildNodes()==VARIANT_FALSE ||
 		(!(bool)hp->firstChild->nextSibling && hp->firstChild->nodeType==3 &&

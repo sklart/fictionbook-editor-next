@@ -100,6 +100,29 @@ try {
         if($position -le $previous -or $position -ne $body.LastIndexOf($text, [StringComparison]::Ordinal)) { throw "COM epigraph text missing, duplicated or reordered: $text" }
         $previous = $position
     }
+    $figureEpub = Join-Path $iso.Root 'figure-anchors.epub'
+    Copy-Item -LiteralPath $epub -Destination $figureEpub
+    $archive = [IO.Compression.ZipFile]::Open($figureEpub, [IO.Compression.ZipArchiveMode]::Update)
+    try {
+        $archive.GetEntry('OEBPS/chapter.xhtml').Delete()
+        $writer = [IO.StreamWriter]::new($archive.CreateEntry('OEBPS/chapter.xhtml').Open(), [Text.UTF8Encoding]::new($false))
+        try {
+            $writer.Write('<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Fixture</title></head><body><h1>Illustration</h1><figure id="figure-anchor"><img id="image-anchor" src="cover.png"/><figcaption id="caption-anchor">Picture <em id="caption-inner">caption</em></figcaption></figure><p><a href="#figure-anchor">Figure</a> <a href="#image-anchor">Image</a> <a href="#caption-anchor">Caption</a> <a href="#caption-inner">Inner</a></p></body></html>')
+        } finally { $writer.Dispose() }
+    } finally { $archive.Dispose() }
+    $figureFb2 = Join-Path $iso.Root 'figure-anchors.fb2'
+    $process = Start-Process -FilePath (Join-Path $iso.Root 'separator-com.exe') -WorkingDirectory $iso.Root -WindowStyle Hidden -PassThru -ArgumentList @('"' + (Join-Path $iso.Root 'Plugins\ImportEPUB.dll') + '"', '"' + $figureEpub + '"', '"' + $figureFb2 + '"')
+    if(-not $process.WaitForExit(30000)) { Stop-Process -Id $process.Id -Force; throw 'COM figure conversion timed out.' }
+    if($process.ExitCode -ne 0) { throw "COM figure conversion failed: $($process.ExitCode)." }
+    $reader = [Xml.XmlReader]::Create($figureFb2, $validation)
+    try { while($reader.Read()) {} } finally { $reader.Close() }
+    [xml]$figure = [IO.File]::ReadAllText($figureFb2, [Text.Encoding]::UTF8)
+    foreach($id in @('figure-anchor','image-anchor','caption-anchor','caption-inner')) {
+        if($figure.SelectNodes("//*[@id='$id']").Count -ne 1 -or $figure.SelectNodes("//*[local-name()='a' and @*[local-name()='href']='#$id']").Count -ne 1) { throw "COM figure anchor missing, duplicated or unlinked: $id" }
+    }
+    if($figure.SelectNodes("//*[local-name()='subtitle' and normalize-space(.)='Picture caption']").Count -ne 1) { throw 'COM figure caption was lost.' }
+    $stored = [Convert]::FromBase64String($figure.SelectSingleNode("//*[local-name()='binary']").InnerText)
+    if([Convert]::ToBase64String($png) -cne [Convert]::ToBase64String($stored)) { throw 'COM figure image bytes changed.' }
     $passed = $true
-    Write-Host 'COM separator/title/image/note/spacing options, epigraph structure, anchors and XSD checks passed.'
+    Write-Host 'COM separator/title/image/note/spacing options, epigraph and figure anchors, image bytes and XSD checks passed.'
 } finally { Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed }

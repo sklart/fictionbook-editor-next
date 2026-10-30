@@ -330,6 +330,22 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertLess(self.text(root).index('Picture caption'), self.text(root).index('Following text'))
         self.assertEqual(base64.b64decode(root.find('f:binary', NS).text), PNG)
 
+    def test_figure_and_caption_anchor_targets_are_preserved(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<h1>Illustration</h1><figure id="figure-anchor"><img id="image-anchor" src="../a.png"/>'
+                                    '<figcaption id="caption-anchor">Picture <em id="caption-inner">caption</em></figcaption></figure>'
+                                    '<p><a href="#figure-anchor">Figure link</a> '
+                                    '<a href="#caption-anchor">Caption link</a> <a href="#caption-inner">Inner link</a> '
+                                    '<a href="#image-anchor">Image link</a></p>',
+                                    {'a.png': ('a', 'image/png', PNG)}, version=version)
+                self.assert_once(root, 'Picture caption', 'Figure link', 'Caption link', 'Inner link', 'Image link')
+                ids = {node.get('id') for node in root.iter() if node.get('id')}
+                self.assertTrue({'figure-anchor', 'image-anchor', 'caption-anchor', 'caption-inner'} <= ids)
+                links = {a.get(HREF) for a in root.findall('.//f:a', NS)}
+                self.assertTrue({'#figure-anchor', '#image-anchor', '#caption-anchor', '#caption-inner'} <= links)
+                self.assertEqual(base64.b64decode(root.find('f:binary', NS).text), PNG)
+
     def test_images_at_paragraph_edges_remain_inline_with_text(self):
         root = self.convert('<h1>Mixed</h1><p><img src="../a.png"/>Leading text</p><p>Trailing text<img src="../a.png"/></p>',
                             {'a.png': ('a', 'image/png', PNG)})
