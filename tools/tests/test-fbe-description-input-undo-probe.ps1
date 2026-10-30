@@ -27,7 +27,9 @@ try {
         $text -notmatch '(?m)^snapshot-before-present=1\r?$' -or $text -notmatch '(?m)^snapshot-changed=1\r?$' -or
         $text -notmatch '(?m)^snapshot-undo-restored=1\r?$' -or $text -notmatch '(?m)^language-changed=1\r?$' -or
         $text -notmatch '(?m)^snapshot-language-changed=1\r?$' -or $text -notmatch '(?m)^saved-clean=1\r?$' -or
-        $text -notmatch '(?m)^saved-undo-restored=1\r?$' -or $text -notmatch '(?m)^initial-content-preserved=1\r?$') { throw "Description input probe failed: $code" }
+        $text -notmatch '(?m)^saved-undo-restored=1\r?$' -or $text -notmatch '(?m)^saved-undo-dirty=0\r?$' -or
+        $text -notmatch '(?m)^initial-content-preserved=1\r?$' -or $text -notmatch '(?m)^independent-field-preserved=1\r?$' -or
+        $text -notmatch '(?m)^independent-binary-preserved=1\r?$' -or $text -notmatch '(?m)^independent-body-preserved=1\r?$') { throw "Description input probe failed: $code" }
     $passed = $true
 } finally {
     $env:FBE_NEXT_TEST_MODE = $oldMode; $env:FBE_NEXT_TEST_SCENARIO = $oldScenario

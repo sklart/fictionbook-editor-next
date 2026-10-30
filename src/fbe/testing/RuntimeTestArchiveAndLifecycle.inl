@@ -553,6 +553,53 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
 		const CString afterSavedUndo = title ? CString(static_cast<LPCWSTR>(title->value)) : CString();
 		const bool dirtyAfterSavedUndo = DocChanged();
+		MSHTML::IHTMLInputTextElementPtr keywords(document3 ? document3->getElementById(L"tiKwd") : NULL);
+		const CString originalKeywords = keywords ? CString(static_cast<LPCWSTR>(keywords->value)) : CString();
+		if (keywords) keywords->value = L"independent keyword edit";
+		if (title) { MSHTML::IHTMLElement2Ptr element(title); if (element) element->focus(); title->select(); }
+		if (::GetFocus()) ::SendMessageW(::GetFocus(), WM_CHAR, L'Q', 1);
+		const bool fieldEditDirty = DocChanged();
+		SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
+		const bool fieldUndoRestored = title && CString(static_cast<LPCWSTR>(title->value)) == afterRedo;
+		const bool fieldUndoDirty = DocChanged();
+		const bool keywordRetained = keywords && CString(static_cast<LPCWSTR>(keywords->value)) == L"independent keyword edit";
+		const bool independentFieldPreserved = fieldEditDirty && fieldUndoRestored && fieldUndoDirty && keywordRetained;
+		if (keywords) keywords->value = static_cast<LPCWSTR>(originalKeywords);
+		const bool savedBeforeBinary = m_doc->Save() && !DocChanged();
+		MSHTML::IHTMLElementPtr binaryContainer(document3 ? document3->getElementById(L"binobj") : NULL);
+		MSHTML::IHTMLElementCollectionPtr binaryNodes(binaryContainer ? MSHTML::IHTMLElement2Ptr(binaryContainer)->getElementsByTagName(L"DIV") : NULL);
+		IDispatchPtr binaryDispatch;
+		std::shared_ptr<const CComVariant> originalPayload;
+		for (long index = 0; binaryNodes && index < binaryNodes->length && !originalPayload; ++index) {
+			IDispatchPtr candidate(binaryNodes->item(_variant_t(index), _variant_t()));
+			originalPayload = m_doc->m_binaryStore.payloads.Snapshot(candidate);
+			if (originalPayload) binaryDispatch = candidate;
+		}
+		CComVariant changedPayload;
+		changedPayload.vt = VT_ARRAY | VT_UI1; changedPayload.parray = ::SafeArrayCreateVector(VT_UI1, 0, 4);
+		if (changedPayload.parray) { for (LONG index = 0; index < 4; ++index) { BYTE value = static_cast<BYTE>(index + 5); ::SafeArrayPutElement(changedPayload.parray, &index, &value); } }
+		const HRESULT binaryChange = originalPayload && changedPayload.parray ? m_doc->m_binaryStore.payloads.Assign(binaryDispatch, std::make_shared<CComVariant>(changedPayload)) : E_FAIL;
+		if (title) { MSHTML::IHTMLElement2Ptr element(title); if (element) element->focus(); title->select(); }
+		if (::GetFocus()) ::SendMessageW(::GetFocus(), WM_CHAR, L'B', 1);
+		const bool binaryEditDirty = DocChanged();
+		SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
+		const bool binaryUndoRestored = title && CString(static_cast<LPCWSTR>(title->value)) == afterRedo;
+		const bool binaryUndoDirty = DocChanged();
+		const bool independentBinaryPreserved = savedBeforeBinary && SUCCEEDED(binaryChange) && binaryEditDirty && binaryUndoRestored && binaryUndoDirty;
+		if (originalPayload) m_doc->m_binaryStore.payloads.Assign(binaryDispatch, originalPayload);
+		const bool savedBeforeBody = m_doc->Save() && !DocChanged();
+		MSHTML::IHTMLElementPtr editorBody(document3 ? document3->getElementById(L"fbw_body") : NULL);
+		MSHTML::IHTMLElementCollectionPtr paragraphs(editorBody ? MSHTML::IHTMLElement2Ptr(editorBody)->getElementsByTagName(L"P") : NULL);
+		MSHTML::IHTMLElementPtr bodyParagraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(0L), _variant_t()) : NULL);
+		const CString oldBodyText = bodyParagraph ? CString(static_cast<LPCWSTR>(bodyParagraph->innerText)) : CString();
+		if (bodyParagraph) bodyParagraph->innerText = static_cast<LPCWSTR>(oldBodyText + L" pending body edit");
+		if (title) { MSHTML::IHTMLElement2Ptr element(title); if (element) element->focus(); title->select(); }
+		if (::GetFocus()) ::SendMessageW(::GetFocus(), WM_CHAR, L'W', 1);
+		const bool bodyEditDirty = DocChanged();
+		SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
+		const bool independentBodyPreserved = savedBeforeBody && bodyParagraph && title && bodyEditDirty &&
+			CString(static_cast<LPCWSTR>(title->value)) == afterRedo &&
+			CString(static_cast<LPCWSTR>(bodyParagraph->innerText)) == oldBodyText + L" pending body edit" && DocChanged();
 		const CString beforeLanguage = snapshotXml();
 		MSHTML::IHTMLSelectElementPtr language(document3 ? document3->getElementById(L"tiLang") : NULL);
 		const CString languageBefore = language ? CString(static_cast<LPCWSTR>(language->value)) : CString();
@@ -565,10 +612,12 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		report.AppendFormat("clean-immediately=%d\nclean-before-description=%d\ninitially-clean=%d\ninitial-form-changed=%d\nsaved=%d\nsaved-clean=%d\nsaved-edit-changed=%d\nsaved-edit-dirty=%d\nsaved-undo-restored=%d\nsaved-undo-dirty=%d\n", cleanImmediately, cleanBeforeDescription, initiallyClean, formInitiallyChanged, saved, cleanAfterSave, editedAfterSave != afterRedo, dirtyAfterSavedEdit, afterSavedUndo == afterRedo, dirtyAfterSavedUndo);
 		report.AppendFormat("initial-saved-version=%ld\ninitial-current-version=%ld\ninitial-body-equal=%d\ninitial-body-snapshot=%d\n", initialSavepoint.savedVersion, initialVersion, initialSavepoint.hasSaved && initialBodyHtml == initialSavepoint.savedHtml, initialSavepoint.hasSaved);
 		report.AppendFormat("initial-content-preserved=%d\n", initialContentPreserved);
+		report.AppendFormat("independent-field-preserved=%d\nindependent-binary-preserved=%d\nindependent-body-preserved=%d\n", independentFieldPreserved, independentBinaryPreserved, independentBodyPreserved);
+		report.AppendFormat("field-undo-restored=%d\nfield-undo-dirty=%d\nkeyword-retained=%d\nsaved-before-binary=%d\nbinary-change=0x%08lX\nbinary-undo-restored=%d\nbinary-undo-dirty=%d\n", fieldUndoRestored, fieldUndoDirty, keywordRetained, savedBeforeBinary, static_cast<unsigned long>(binaryChange), binaryUndoRestored, binaryUndoDirty);
 		report.AppendFormat("initial-title=%d\ninitial-author=%d\ninitial-id=%d\ninitial-body-text=%d\ninitial-binary=%d\n", initialTitle, initialAuthor, initialId, initialBodyText, initialBinary);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(initialContentPreserved && focused && edited != before && dirtyAfterEdit && (status.cmdf & OLECMDF_ENABLED) && unitCount > 0 &&
-			afterUndo == before && (redo.cmdf & OLECMDF_ENABLED) && afterRedo == edited && saved && cleanAfterSave && editedAfterSave != afterRedo && dirtyAfterSavedEdit && afterSavedUndo == afterRedo && SUCCEEDED(service) && SUCCEEDED(enumerated) ? 0 : 1);
+			afterUndo == before && (redo.cmdf & OLECMDF_ENABLED) && afterRedo == edited && saved && cleanAfterSave && editedAfterSave != afterRedo && dirtyAfterSavedEdit && afterSavedUndo == afterRedo && independentFieldPreserved && independentBinaryPreserved && independentBodyPreserved && SUCCEEDED(service) && SUCCEEDED(enumerated) ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"generated-id-runtime"))

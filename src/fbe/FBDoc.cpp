@@ -296,6 +296,36 @@ bool Doc::CaptureBodyHtml(CString& html) {
 	} catch (const _com_error&) { return false; }
 }
 
+bool Doc::CaptureDescriptionState(CString& state) {
+	state.Empty();
+	// Compare the complete Description markup and live control values; binary
+	// payloads are guarded separately by their document-owned revision.
+	if (m_binaryLegacyDepth || m_binaryStore.Dirty()) return false;
+	try {
+		MSHTML::IHTMLDocument3Ptr document(m_editor.Document());
+		MSHTML::IHTMLElementPtr description(document ? document->getElementById(L"fbw_desc") : NULL);
+		if (!description) return false;
+		MSHTML::IHTMLElementCollectionPtr controls(MSHTML::IHTMLElement2Ptr(description)->getElementsByTagName(L"*"));
+		if (!controls) return false;
+		auto append = [&](const _bstr_t& value) {
+			CString length; length.Format(L"%u:", value.length()); state += length;
+			state.Append(static_cast<LPCWSTR>(value), static_cast<int>(value.length()));
+		};
+		for (long index = 0; index < controls->length; ++index) {
+			IDispatchPtr element(controls->item(_variant_t(index), _variant_t()));
+			MSHTML::IHTMLInputElementPtr input(element);
+			if (input) { append(_bstr_t(input->value)); append(_bstr_t(input->checked ? L"1" : L"0")); continue; }
+			MSHTML::IHTMLTextAreaElementPtr area(element);
+			if (area) { append(_bstr_t(area->value)); continue; }
+			MSHTML::IHTMLSelectElementPtr select(element);
+			if (select) append(_bstr_t(select->value));
+		}
+		append(_bstr_t(description->outerHTML));
+		return true;
+	} catch (const _com_error&) { state.Empty(); return false; }
+	catch (const std::bad_alloc&) { state.Empty(); return false; }
+}
+
 bool Doc::DocChanged() {
 	const bool formChanged = m_editor.IsFormChanged();
 	const long currentVersion = m_editor.GetVersionNumber();
@@ -354,10 +384,26 @@ void Doc::MarkSavePoint() {
 	m_hasNewTemplateBaseline = false;
 	m_newTemplateEdited = false;
 	m_newTemplateXml.Empty();
-	m_body_ver = m_editor.GetVersionNumber();
 	m_hasSavedBodyHtml = CaptureBodyHtml(m_savedBodyHtml);
 	m_reconcilePasteHistoryClean = false;
 	m_editor.ResetFormChanged();
+	m_hasDescriptionSavepoint = CaptureDescriptionState(m_savedDescriptionState);
+	m_savedBinaryRevision = m_binaryStore.payloads.Revision();
+	m_savedLegacyEpoch = m_binaryLegacyEpoch;
+	m_body_ver = m_editor.GetVersionNumber();
+}
+
+void Doc::ReconcileDescriptionAfterUndo() {
+	if (!DocChanged() || !m_hasDescriptionSavepoint || m_binaryLegacyDepth) return;
+	try { ReconcileBinaryStore(); } catch (...) { return; }
+	// A script can replace legacy binary properties outside the catalog. Do not
+	// infer a clean state across script execution or a payload revision change.
+	if (m_binaryStore.Dirty() ||
+		m_savedBinaryRevision != m_binaryStore.payloads.Revision() || m_savedLegacyEpoch != m_binaryLegacyEpoch) return;
+	CString body, description;
+	if (!m_hasSavedBodyHtml || !CaptureBodyHtml(body) || body != m_savedBodyHtml ||
+		!CaptureDescriptionState(description) || description != m_savedDescriptionState) return;
+	MarkSavePoint();
 }
 
 void Doc::ReconcileUnchangedStartupTemplate() {
@@ -724,7 +770,7 @@ void Doc::RunScript(LPCOLESTR filePath)
     struct LegacyBinaryScope {
         GUID identity;
         explicit LegacyBinaryScope(Doc& doc) : identity(doc.ClipboardIdentity()) {
-            ++doc.m_binaryLegacyDepth; doc.m_binaryStore.Invalidate(true);
+			++doc.m_binaryLegacyDepth; ++doc.m_binaryLegacyEpoch; doc.m_binaryStore.Invalidate(true);
         }
         ~LegacyBinaryScope() {
             // A reentrant command may replace the owning document.

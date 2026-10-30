@@ -2812,6 +2812,7 @@ LRESULT CFBEView::OnUndo(WORD, WORD, HWND, BOOL&)
 	LRESULT result = ExecCommand(IDM_UNDO);
 	if (m_ownerDocument) m_ownerDocument->RestoreCleanIfBodyMatches();
 	if (m_ownerDocument && SUCCEEDED(result)) m_ownerDocument->ReconcileNewTemplateAfterUndo();
+	if (m_ownerDocument && SUCCEEDED(result)) m_ownerDocument->ReconcileDescriptionAfterUndo();
 	::SendMessage(m_frame, WM_COMMAND, static_cast<WPARAM>(MAKELONG(0, IDN_TREE_RESTORE)), 0);
 	return result;
 }

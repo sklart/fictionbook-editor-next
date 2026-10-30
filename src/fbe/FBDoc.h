@@ -109,6 +109,7 @@ public:
 	void MarkSavePoint();
 	void CaptureNewTemplateBaseline();
 	void ReconcileNewTemplateAfterUndo();
+	void ReconcileDescriptionAfterUndo();
 	void ReconcileUnchangedStartupTemplate();
 	struct UndoSavepoints {
 		long savedVersion, recoveryVersion;
@@ -123,6 +124,7 @@ public:
 		m_body_ver = state.clean ? m_editor.GetVersionNumber() : state.savedVersion;
 		m_body_cp = state.recoveryClean ? m_editor.GetVersionNumber() : state.recoveryVersion;
 		m_savedBodyHtml = state.savedHtml; m_recoveryBodyHtml = state.recoveryHtml;
+		m_hasDescriptionSavepoint = false;
 		m_hasSavedBodyHtml = state.hasSaved; m_hasRecoveryBodyHtml = state.hasRecovery;
 		m_reconcilePasteHistoryClean = state.reconcile;
 	}
@@ -131,7 +133,7 @@ public:
 		if (recoveryClean && (m_body_cp == originalVersion || m_body_cp == -1)) MarkDocCP();
 		m_reconcilePasteHistoryClean = !saveClean || !recoveryClean;
 	}
-  void	  ResetSavePoint() { m_body_ver=-1; m_reconcilePasteHistoryClean = false; m_hasNewTemplateBaseline = false; m_newTemplateXml.Empty(); }
+  void	  ResetSavePoint() { m_body_ver=-1; m_reconcilePasteHistoryClean = false; m_hasNewTemplateBaseline = false; m_newTemplateXml.Empty(); m_hasDescriptionSavepoint = false; }
 
 	void MarkDocCP();
 	void MarkDocCPIfChanged(bool force = false);
@@ -195,7 +197,11 @@ private:
 	CString m_newTemplateXml;
 	bool m_hasNewTemplateBaseline = false, m_newTemplateEdited = false;
 	bool m_reconcilePasteHistoryClean = false;
+	CString m_savedDescriptionState;
+	unsigned long long m_savedBinaryRevision = 0, m_savedLegacyEpoch = 0, m_binaryLegacyEpoch = 0;
+	bool m_hasDescriptionSavepoint = false;
 	bool CaptureBodyHtml(CString& html);
+	bool CaptureDescriptionState(CString& state);
 
   // Последняя ошибка операции сохранения. Нужна, чтобы интерфейс мог
   // предложить «Сохранить как» при отказе в доступе к исходному файлу.
