@@ -19,14 +19,17 @@ try {
         $entries = @{
             'mimetype' = 'application/epub+zip'
             'META-INF/container.xml' = '<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0"><rootfiles><rootfile full-path="OEBPS/book.opf" media-type="application/oebps-package+xml"/></rootfiles></container>'
-            'OEBPS/book.opf' = '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">notes-fixture</dc:identifier><dc:title>Notes fixture</dc:title><dc:creator>Tester</dc:creator><dc:language>en</dc:language><meta property="dcterms:modified">2026-01-01T00:00:00Z</meta></metadata><manifest><item id="chapter" href="Text/chapter.xhtml" media-type="application/xhtml+xml"/><item id="notes" href="notes.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="chapter"/></spine></package>'
+            'OEBPS/book.opf' = '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">notes-fixture</dc:identifier><dc:title>Notes fixture</dc:title><dc:creator>Tester</dc:creator><dc:language>en</dc:language><meta property="dcterms:modified">2026-01-01T00:00:00Z</meta></metadata><manifest><item id="chapter" href="Text/chapter.xhtml" media-type="application/xhtml+xml"/><item id="notes" href="notes.xhtml" media-type="application/xhtml+xml"/><item id="image" href="image.png" media-type="image/png"/></manifest><spine><itemref idref="chapter"/></spine></package>'
             'OEBPS/Text/chapter.xhtml' = '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Chapter</title></head><body><p><a id="ref" epub:type="noteref" href="../notes.xhtml#n">42</a> <a epub:type="noteref" href="../notes.xhtml#n">42</a> <a href="../notes.xhtml#back">Marker link</a></p></body></html>'
-            'OEBPS/notes.xhtml' = '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Notes</title></head><body><aside epub:type="footnote" id="n"><p>First note paragraph</p><p><em>Second note paragraph</em></p><a id="back" epub:type="backlink" href="Text/chapter.xhtml#ref"><span id="nested">Return</span></a></aside></body></html>'
+            'OEBPS/notes.xhtml' = '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Notes</title></head><body><aside epub:type="footnote" id="n"><p>First note paragraph</p><p><em>Second note paragraph</em></p><ul><li>Note item one</li><li>Note item two</li></ul><img src="image.png" alt="Note image"/><a id="back" epub:type="backlink" href="Text/chapter.xhtml#ref"><span id="nested">Return</span></a></aside></body></html>'
         }
         foreach($entry in $entries.GetEnumerator()) {
             $writer = [IO.StreamWriter]::new($archive.CreateEntry($entry.Key).Open(), [Text.UTF8Encoding]::new($false))
             try { $writer.Write($entry.Value) } finally { $writer.Dispose() }
         }
+        $imageBytes = [Convert]::FromBase64String('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=')
+        $imageStream = $archive.CreateEntry('OEBPS/image.png').Open()
+        try { $imageStream.Write($imageBytes, 0, $imageBytes.Length) } finally { $imageStream.Dispose() }
     } finally { $archive.Dispose(); $stream.Dispose() }
     $schema = [Xml.XmlReaderSettings]::new(); $schema.ValidationType = [Xml.ValidationType]::Schema
     $schema.Schemas.XmlResolver = [Xml.XmlUrlResolver]::new()
@@ -55,6 +58,12 @@ try {
             $section = $doc.SelectSingleNode("/*[local-name()='FictionBook']/*[local-name()='body' and @name='notes']/*[local-name()='section']")
             if(!$section -or !$section.InnerText.Contains('First note paragraph') -or !$section.InnerText.Contains('Second note paragraph') -or $section.InnerText.Contains('Return')) { throw "Note content or removed backlink incorrect in $path" }
             if(!$section.SelectSingleNode(".//*[local-name()='emphasis' and normalize-space(.)='Second note paragraph']")) { throw "Note emphasis missing in $path" }
+            $text = $section.InnerText
+            $positions = @('First note paragraph','Second note paragraph','Note item one','Note item two' | ForEach-Object { $text.IndexOf($_, [StringComparison]::Ordinal) })
+            if($positions.Count -ne 4 -or $positions[0] -lt 0 -or $positions[1] -le $positions[0] -or $positions[2] -le $positions[1] -or $positions[3] -le $positions[2]) { throw "Note text or list order lost in $path" }
+            $images = @($section.SelectNodes(".//*[local-name()='image']"))
+            $binaries = @($doc.SelectNodes("/*[local-name()='FictionBook']/*[local-name()='binary']"))
+            if($images.Count -ne 1 -or $binaries.Count -ne 1 -or $images[0].GetAttribute('href','http://www.w3.org/1999/xlink') -cne ('#' + $binaries[0].GetAttribute('id')) -or [Convert]::ToBase64String([Convert]::FromBase64String($binaries[0].InnerText)) -cne [Convert]::ToBase64String($imageBytes)) { throw "Note image or binary lost in $path" }
             $main = $doc.SelectSingleNode("/*[local-name()='FictionBook']/*[local-name()='body' and not(@name)]")
             if(!$main -or $main.InnerText.Contains('First note paragraph') -or $main.InnerText.Contains('Second note paragraph')) { throw "Note text duplicated in main body in $path" }
             $marker = $main.SelectSingleNode(".//*[local-name()='a' and normalize-space(.)='Marker link']")
@@ -63,7 +72,7 @@ try {
         }
     }
     $passed = $true
-    Write-Host 'External note links, repeated references, backlink anchors and XSD after FBE Save/Reopen: PASS.'
+    Write-Host 'External note links, content, image, backlink anchors and XSD after FBE Save/Reopen: PASS.'
 } finally {
     if($passed) { Remove-Item -LiteralPath $directory -Recurse -Force }
     else { Write-Host "Note regression failure artifacts: $directory" }
