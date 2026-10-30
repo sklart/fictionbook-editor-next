@@ -246,6 +246,9 @@ if(IsFbeTestScenario(L"new-document-safety-runtime")) {
             require(_Settings.GetUseSpellChecker()?m_Speller&&m_Speller->Enabled()&&NewDocumentRuntimeProbe::Attached(m_Speller,m_doc->m_body.Document()):!NewDocumentRuntimeProbe::References(m_Speller)&&!m_Speller->Enabled(),"spell references match new document or remain detached");
         };
         auto newCommand=[&](){FB::Doc* old=m_doc;SendMessage(WM_COMMAND,ID_FILE_NEW);created(old);};
+        auto pumpMessages=[](){const ULONGLONG until=::GetTickCount64()+100;
+            while(::GetTickCount64()<until){MSG message={};while(::PeekMessageW(&message,nullptr,0,0,PM_REMOVE)){::TranslateMessage(&message);::DispatchMessageW(&message);}::Sleep(1);}
+        };
         auto answerNew=[&](int answer,WORD command=ID_FILE_NEW,bool expectPrompt=true){
             std::atomic<bool> stop(false);bool found=false;const DWORD thread=::GetCurrentThreadId();
             std::thread driver([&](){const ULONGLONG until=::GetTickCount64()+8000;
@@ -260,7 +263,8 @@ if(IsFbeTestScenario(L"new-document-safety-runtime")) {
                 }
                 if(!stop.load())::PostThreadMessageW(thread,WM_QUIT,93,0);
             });
-            SendMessage(WM_COMMAND,command);stop=true;driver.join();require(!expectPrompt||found,"save decision answered");
+            SendMessage(WM_COMMAND,command);stop=true;driver.join();
+            require(expectPrompt ? found : !found, expectPrompt ? "save decision answered" : "unexpected save decision");
         };
         phase("spell enabled: old interfaces observed and detached");
         _Settings.SetUseSpellChecker(true);ApplyConfChanges(false,false);clean();
@@ -276,7 +280,11 @@ if(IsFbeTestScenario(L"new-document-safety-runtime")) {
         for(int cycle=0;cycle<2;++cycle){clean();require(LoadFile(first)==OK,"open before New");clean();newCommand();clean();require(LoadFile(first)==OK,"open after New");clean();SendMessage(WM_COMMAND,ID_FILE_CLOSE);require(!m_document_session.HasDocument()&&!NewDocumentRuntimeProbe::References(m_Speller),"close after New");newCommand();}
         phase("spell disabled; consecutive new books");
         _Settings.SetUseSpellChecker(false);ApplyConfChanges(false,false);clean();newCommand();clean();newCommand();
-        clean();require(LoadFile(first)==OK,"Source fixture open");
+        phase("untouched New after message pump then New and Open");
+        pumpMessages();require(!DocChanged(),"untouched New remains clean after message pump");
+        { FB::Doc* previous=m_doc;answerNew(IDNO,ID_FILE_NEW,false);created(previous); }
+        pumpMessages();require(!DocChanged(),"second untouched New remains clean after message pump");
+        require(LoadFile(first)==OK,"open after untouched New without save prompt");
         _Settings.SetUseSpellChecker(true);ApplyConfChanges(false,false);ShowView(SOURCE);
         const auto sourceBeforeEdit=FbeScripts::SourceBytes(m_source);
         const size_t editAt=sourceBeforeEdit.find("NEW_OLD_UNIQUE");require(editAt!=std::string::npos,"Source edit target");
@@ -301,7 +309,8 @@ if(IsFbeTestScenario(L"new-document-safety-runtime")) {
         clean();require(LoadFile(first)==OK,"reopen saved old file");ShowView(SOURCE);
         require(FbeScripts::SourceBytes(m_source).find("NEW_SOURCE_SAVED")!=std::string::npos,"New saved original changes");
         clean();newCommand();ShowView(SOURCE);require(FbeScripts::SourceBytes(m_source).find("NEW_SOURCE_SAVED")==std::string::npos&&!m_source.SendMessage(SCI_CANUNDO),"Source rebuilt from new document");
-        ShowView(BODY);clean();
+        ShowView(BODY);
+        pumpMessages();
         require(!DocChanged(),"disposable book clean before EPUB import");
         phase("EPUB import then New");
         WORD importCommand=0;
@@ -309,8 +318,7 @@ if(IsFbeTestScenario(L"new-document-safety-runtime")) {
         require(importCommand!=0,"EPUB importer available");
         wchar_t epub[32768]={};::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NEW_EPUB",epub,_countof(epub));
         ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO",L"import-epub");::SetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_EPUB_PATH",epub);
-        // Import may update the disposable template's metadata while converting
-        // the EPUB, so answer its normal discard prompt if one is displayed.
+        // An untouched new document must not prompt before importing EPUB.
         answerNew(IDNO,importCommand,false);
         ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO",L"new-document-safety-runtime");::SetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_EPUB_PATH",nullptr);
         require(m_document_session.HasDocument()&&!m_doc->m_namevalid&&DocChanged(),"import prepared");clean();newCommand();
