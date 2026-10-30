@@ -61,6 +61,16 @@ try {
     $first = Profiles $profileA
     $importSettings = $first['import-epub'] | ConvertFrom-Json
     if($null -eq $importSettings.values.SeparatorSubtitles -or $importSettings.values.SeparatorSubtitles -ne 0) { throw 'SeparatorSubtitles must be persisted and disabled by default.' }
+    if($null -eq $importSettings.values.CreateTitleBlock -or $importSettings.values.CreateTitleBlock -ne 0) { throw 'CreateTitleBlock must be persisted and disabled by default.' }
+    Probe $iso.Root portable ui-import-title
+    $titleEnabled = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
+    if($titleEnabled.values.CreateTitleBlock -ne 1) { throw 'The title block option was not enabled through the dialog.' }
+    Probe $iso.Root portable dialogs
+    $titleReloaded = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
+    if($titleReloaded.values.CreateTitleBlock -ne 1) { throw 'The title block option was not retained after reopening.' }
+    Probe $iso.Root portable ui-import-title
+    $titleDisabled = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
+    if($titleDisabled.values.CreateTitleBlock -ne 0) { throw 'The title block option was not disabled through the dialog.' }
     Probe $iso.Root portable ui-import-separator
     $enabledSettings = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
     if($enabledSettings.values.SeparatorSubtitles -ne 1) { throw 'The separator option was not enabled through the dialog.' }

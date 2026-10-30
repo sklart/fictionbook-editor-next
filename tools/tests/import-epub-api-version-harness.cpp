@@ -38,8 +38,15 @@ int wmain(int argc, wchar_t** argv)
     extended.base.version = IMPORT_EPUB_API_VERSION_2;
     hr = build(argv[2], &extended.base, &output, nullptr, &error);
     const bool v2 = SUCCEEDED(hr) && output != nullptr;
+    SysFreeString(output); SysFreeString(error); output = error = nullptr;
+    ImportEpubOptionsV3 third = {}; third.base = extended; third.base.base.version = IMPORT_EPUB_API_VERSION_3;
+    third.base.base.cbSize = sizeof(ImportEpubOptionsV2); third.createTitleBlock = 1;
+    const bool truncatedV3 = build(argv[2], &third.base.base, &output, nullptr, &error) == E_INVALIDARG && !output && !error;
+    third.base.base.cbSize = sizeof(third);
+    hr = build(argv[2], &third.base.base, &output, nullptr, &error);
+    const bool v3 = SUCCEEDED(hr) && output != nullptr;
     SysFreeString(output); SysFreeString(error);
-    std::printf("v1=%d guarded-v1=%d truncated-v2=%d unknown-version=%d v2=%d\n", v1, guardedV1, truncated, unknown, v2);
+    std::printf("v1=%d guarded-v1=%d truncated-v2=%d unknown-version=%d v2=%d truncated-v3=%d v3=%d\n", v1, guardedV1, truncated, unknown, v2, truncatedV3, v3);
     FreeLibrary(dll); CoUninitialize();
-    return v1 && guardedV1 && truncated && unknown && v2 ? 0 : 1;
+    return v1 && guardedV1 && truncated && unknown && v2 && truncatedV3 && v3 ? 0 : 1;
 }

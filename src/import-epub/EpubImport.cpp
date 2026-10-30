@@ -102,6 +102,7 @@ namespace
         int imageReferences = 0, importedImages = 0, skippedImages = 0;
         unsigned indexedElements = 0, structuralLookups = 0;
         unsigned residualFragments = 0, recoveredFragments = 0;
+        int generatedBookTitleOffset = -1, generatedBookTitleLength = 0;
     };
     thread_local ContentInventory g_content;
 
@@ -5168,7 +5169,16 @@ namespace
         if (sectionTitle.IsEmpty())
             sectionTitle = XmlEscape(fallbackTitle);
 
+        const int sectionOffset = outSection.GetLength();
+        const bool firstGeneratedBookTitle = sectionOffset == 0 && !titleTaken && ctx.package &&
+            !sectionTitle.IsEmpty() && sectionTitle.CompareNoCase(XmlEscape(ctx.package->title)) == 0;
         AppendFb2Section(outSection, sectionTitle, content, sectionIdAttr);
+        if (firstGeneratedBookTitle)
+        {
+            const CStringW generatedTitle = L"      <title><p>" + sectionTitle + L"</p></title>\r\n";
+            const int offset = outSection.Find(generatedTitle, sectionOffset);
+            if (offset >= 0) { g_content.generatedBookTitleOffset = offset; g_content.generatedBookTitleLength = generatedTitle.GetLength(); }
+        }
         return true;
     }
 
@@ -5501,6 +5511,82 @@ namespace
         if (cyrillic * 100 >= letters * 85 && ruWords >= 8 && ruDistinct.size() >= 4) return L"ru";
         if (latin * 100 >= letters * 85 && enWords >= 8 && enDistinct.size() >= 4) return L"en";
         return CStringW();
+    }
+
+    bool HasEquivalentOpeningTitle(const CStringW& body, const EpubPackage& package, bool& readable)
+    {
+        readable = false;
+        MSXML2::IXMLDOMDocument2Ptr document;
+        if (FAILED(CreateMsxmlDom(document))) return false;
+        // Only inspect a bounded prefix of the first generated section. A
+        // second DOM for the entire book would multiply peak memory usage.
+        CStringW wrapped = L"<root xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\" xmlns:l=\"http://www.w3.org/1999/xlink\">";
+        const int sectionEnd = body.Find(L"</section>");
+        const int limit = sectionEnd < 0 ? body.GetLength() : sectionEnd;
+        const int titleOpen = body.Find(L"<title>");
+        const int titleClose = titleOpen >= 0 ? body.Find(L"</title>", titleOpen) : -1;
+        int position = 0, captured = 0, bytes = 0;
+        while (captured < 10 && position < limit)
+        {
+            int start = body.Find(L"<p", position);
+            if (start < 0 || start >= limit) break;
+            const int next = start + 2;
+            if (next >= body.GetLength() || (body[next] != L'>' && body[next] != L' ' && body[next] != L'\t' && body[next] != L'\r' && body[next] != L'\n'))
+            { position = next; continue; }
+            const int end = body.Find(L"</p>", next);
+            if (end < 0 || end >= limit) return false;
+            const int length = end + 4 - start;
+            if (length > 262144 - bytes) return false;
+            const bool firstTitle = captured == 0 && titleOpen >= 0 && titleOpen < start && titleClose > end;
+            if (firstTitle) wrapped += L"<title>";
+            wrapped += body.Mid(start, length);
+            if (firstTitle) wrapped += L"</title>";
+            bytes += length; ++captured; position = end + 4;
+        }
+        wrapped += L"</root>";
+        VARIANT_BOOL loaded = VARIANT_FALSE;
+        if (FAILED(document->loadXML(CComBSTR(wrapped), &loaded)) || loaded != VARIANT_TRUE) return false;
+        readable = true;
+        std::vector<MSXML2::IXMLDOMNodePtr> paragraphs;
+        CollectElementsByLocalName(MsxmlGetDocumentElement(document), L"p", paragraphs);
+        bool titleFound = false;
+        std::vector<bool> authorsFound(package.creators.size(), false);
+        const size_t count = (std::min)(paragraphs.size(), static_cast<size_t>(10));
+        for (size_t i = 0; i < count; ++i)
+        {
+            const CStringW text = NodeText(paragraphs[i]);
+            if (text.IsEmpty()) continue;
+            bool matches = false;
+            if (text.CompareNoCase(package.title) == 0) { titleFound = true; matches = true; }
+            for (size_t j = 0; j < package.creators.size(); ++j)
+                if (text.CompareNoCase(package.creators[j]) == 0) { authorsFound[j] = true; matches = true; }
+            if (!matches)
+            {
+                MSXML2::IXMLDOMNode* rawParent = nullptr;
+                paragraphs[i]->get_parentNode(&rawParent);
+                MSXML2::IXMLDOMNodePtr parent(rawParent, false);
+                if (i == 0 && LocalName(parent) == L"title") continue;
+                break;
+            }
+        }
+        if (!titleFound) return false;
+        return std::find(authorsFound.begin(), authorsFound.end(), false) == authorsFound.end();
+    }
+
+    CStringW BuildMetadataTitleBlock(const EpubPackage& package)
+    {
+        CStringW content;
+        for (const auto& author : package.creators)
+        {
+            CStringW name = TrimString(author);
+            if (!name.IsEmpty()) content += L"      <p>" + XmlEscape(name) + L"</p>\r\n";
+        }
+        CStringW block;
+        if (content.IsEmpty())
+            AppendFb2Section(block, CStringW(), L"      <p>" + XmlEscape(package.title) + L"</p>\r\n");
+        else
+            AppendFb2Section(block, XmlEscape(package.title), content);
+        return block;
     }
 
     bool HasStringValue(const std::vector<CStringW>& values, const CStringW& value)
@@ -6406,6 +6492,20 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     else if (!detectedLanguage.IsEmpty() && (declaredLanguage == L"ru" || declaredLanguage == L"en") && declaredLanguage != detectedLanguage)
         warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_LANGUAGE_CONFLICT, L"Language metadata conflicts with the main text sample; metadata was retained.") + L"\r\n";
 
+    CStringW titleBlock;
+    if (options.createTitleBlock)
+    {
+        bool readable = false;
+        const bool alreadyPresent = HasEquivalentOpeningTitle(body, package, readable);
+        if (readable && !alreadyPresent)
+        {
+            titleBlock = BuildMetadataTitleBlock(package);
+            if (!titleBlock.IsEmpty() && g_content.generatedBookTitleOffset >= 0 && g_content.generatedBookTitleLength > 0)
+                body.Delete(g_content.generatedBookTitleOffset, g_content.generatedBookTitleLength);
+        }
+        else if (!readable) warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_TITLE_BLOCK_NOT_INSPECTED, L"Title block was not added because the existing body could not be inspected.") + L"\r\n";
+    }
+
     CStringW binariesXml = BuildBinariesXml(package, usedImageIds, warning);
     warning += g_content.warnings;
     CStringW inventory;
@@ -6433,6 +6533,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         outFb2Xml += L"      <p>" + XmlEscape(summary) + L"</p>\r\n";
         outFb2Xml += L"    </section>\r\n";
     }
+    outFb2Xml += titleBlock;
     outFb2Xml += body;
     outFb2Xml += L"  </body>\r\n";
     if (options.importNotes)
@@ -6510,8 +6611,10 @@ namespace
         result.importLists = source.importLists != 0;
         result.importPoemsEpigraphs = source.importPoemsEpigraphs != 0;
         result.importSubtitles = source.importSubtitles != 0;
-        if (source.version == IMPORT_EPUB_API_VERSION_2 && source.cbSize >= sizeof(ImportEpubOptionsV2))
+        if ((source.version == IMPORT_EPUB_API_VERSION_2 || source.version == IMPORT_EPUB_API_VERSION_3) && source.cbSize >= sizeof(ImportEpubOptionsV2))
             result.separatorSubtitles = reinterpret_cast<const ImportEpubOptionsV2&>(source).separatorSubtitles != 0;
+        if (source.version == IMPORT_EPUB_API_VERSION_3 && source.cbSize >= sizeof(ImportEpubOptionsV3))
+            result.createTitleBlock = reinterpret_cast<const ImportEpubOptionsV3&>(source).createTitleBlock != 0;
         result.splitSectionsByHeadings = source.splitSectionsByHeadings != 0;
         result.preserveLinks = source.preserveLinks != 0;
         result.cleanTypography = source.cleanTypography != 0;
@@ -6544,8 +6647,9 @@ extern "C" HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
     *apiFb2Xml = nullptr;
     *apiErrorText = nullptr;
     if (!epubPath || !*epubPath || (apiOptions && (apiOptions->cbSize < sizeof(ImportEpubOptionsV1) ||
-        (apiOptions->version != IMPORT_EPUB_API_VERSION && apiOptions->version != IMPORT_EPUB_API_VERSION_2) ||
-        (apiOptions->version == IMPORT_EPUB_API_VERSION_2 && apiOptions->cbSize < sizeof(ImportEpubOptionsV2)))) ||
+        (apiOptions->version != IMPORT_EPUB_API_VERSION && apiOptions->version != IMPORT_EPUB_API_VERSION_2 && apiOptions->version != IMPORT_EPUB_API_VERSION_3) ||
+        (apiOptions->version == IMPORT_EPUB_API_VERSION_2 && apiOptions->cbSize < sizeof(ImportEpubOptionsV2)) ||
+        (apiOptions->version == IMPORT_EPUB_API_VERSION_3 && apiOptions->cbSize < sizeof(ImportEpubOptionsV3)))) ||
         (apiRuntimeStats && apiRuntimeStats->cbSize < sizeof(ImportEpubRuntimeStatsV1)))
         return E_INVALIDARG;
 

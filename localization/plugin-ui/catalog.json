@@ -4340,6 +4340,63 @@
         "bg-BG": "      <p>[Текстът на главата не е извлечен]</p>\\r\\n"
       }
     },
+    "import_epub.option.title_block": {
+      "component": "import-epub.options",
+      "resourceId": "IDS_IMPORT_OPTIONS_OPT_TITLE_BLOCK",
+      "source": "Добавлять титульный блок из метаданных книги",
+      "translations": {
+        "en-US": "Add a title block from book metadata",
+        "ru-RU": "Добавлять титульный блок из метаданных книги",
+        "uk-UA": "Додавати титульний блок із метаданих книги",
+        "de-DE": "Titelblock aus Buchmetadaten hinzufügen",
+        "fr-FR": "Ajouter un bloc de titre à partir des métadonnées du livre",
+        "es-ES": "Añadir un bloque de título con los metadatos del libro",
+        "it-IT": "Aggiungi un blocco del titolo dai metadati del libro",
+        "pl-PL": "Dodaj blok tytułowy z metadanych książki",
+        "pt-PT": "Adicionar bloco de título dos metadados do livro",
+        "nl-NL": "Titelblok uit boekmetadata toevoegen",
+        "cs-CZ": "Přidat titulní blok z metadat knihy",
+        "bg-BG": "Добавяне на заглавен блок от метаданните на книгата"
+      }
+    },
+    "import_epub.tooltip.title_block": {
+      "component": "import-epub.options",
+      "resourceId": "IDS_IMPORT_OPTIONS_TT_TITLE_BLOCK",
+      "source": "Добавляет название и авторов в начало книги, если аналогичный титульный блок не найден. По умолчанию выключено.",
+      "translations": {
+        "en-US": "Add the title and authors at the start unless an equivalent title block is found. Off by default.",
+        "ru-RU": "Добавляет название и авторов в начало книги, если аналогичный титульный блок не найден. По умолчанию выключено.",
+        "uk-UA": "Додає назву й авторів на початку книги, якщо аналогічний титульний блок не знайдено. Типово вимкнено.",
+        "de-DE": "Fügt Titel und Autoren am Buchanfang hinzu, sofern kein entsprechender Titelblock vorhanden ist. Standardmäßig aus.",
+        "fr-FR": "Ajoute le titre et les auteurs au début si aucun bloc équivalent n’est trouvé. Désactivé par défaut.",
+        "es-ES": "Añade el título y los autores al principio si no existe un bloque equivalente. Desactivado por defecto.",
+        "it-IT": "Aggiunge titolo e autori all’inizio se non è presente un blocco equivalente. Disattivato per impostazione predefinita.",
+        "pl-PL": "Dodaje tytuł i autorów na początku, jeśli nie znaleziono równoważnego bloku. Domyślnie wyłączone.",
+        "pt-PT": "Adiciona o título e os autores no início se não houver um bloco equivalente. Desativado por defeito.",
+        "nl-NL": "Voegt titel en auteurs aan het begin toe als geen vergelijkbaar titelblok bestaat. Standaard uit.",
+        "cs-CZ": "Přidá název a autory na začátek, pokud nebyl nalezen obdobný titulní blok. Ve výchozím stavu vypnuto.",
+        "bg-BG": "Добавя заглавието и авторите в началото, ако няма подобен заглавен блок. Изключено по подразбиране."
+      }
+    },
+    "import_epub.runtime.title_block_not_inspected": {
+      "component": "import-epub.runtime",
+      "resourceId": "IDS_IMPORT_RUNTIME_TITLE_BLOCK_NOT_INSPECTED",
+      "source": "Титульный блок не добавлен: не удалось проверить существующее содержимое книги.",
+      "translations": {
+        "en-US": "Title block was not added because the existing body could not be inspected.",
+        "ru-RU": "Титульный блок не добавлен: не удалось проверить существующее содержимое книги.",
+        "uk-UA": "Титульний блок не додано: не вдалося перевірити наявний вміст книги.",
+        "de-DE": "Der Titelblock wurde nicht hinzugefügt, da der vorhandene Buchtext nicht geprüft werden konnte.",
+        "fr-FR": "Le bloc de titre n’a pas été ajouté car le contenu existant n’a pas pu être vérifié.",
+        "es-ES": "No se añadió el bloque de título porque no se pudo comprobar el contenido existente.",
+        "it-IT": "Il blocco del titolo non è stato aggiunto perché non è stato possibile controllare il contenuto esistente.",
+        "pl-PL": "Nie dodano bloku tytułowego, ponieważ nie udało się sprawdzić istniejącej treści.",
+        "pt-PT": "O bloco de título não foi adicionado porque não foi possível verificar o conteúdo existente.",
+        "nl-NL": "Het titelblok is niet toegevoegd omdat de bestaande inhoud niet kon worden gecontroleerd.",
+        "cs-CZ": "Titulní blok nebyl přidán, protože nebylo možné zkontrolovat stávající obsah.",
+        "bg-BG": "Заглавният блок не е добавен, защото съществуващото съдържание не можа да бъде проверено."
+      }
+    },
     "import_epub.option.separator_subtitles": {
       "component": "import-epub.options",
       "resourceId": "IDS_IMPORT_OPTIONS_OPT_SEPARATOR_SUBTITLES",

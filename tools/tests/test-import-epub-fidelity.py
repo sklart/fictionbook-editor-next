@@ -55,7 +55,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for folder in cls.folders:
                 folder.cleanup()
 
-    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, identifier='fixture', date='', head='', language='ru'):
+    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, identifier='fixture', date='', head='', language='ru', chapter_title='Fixture', creators=('Tester',)):
         extra = extra or {}
         temp = tempfile.TemporaryDirectory(prefix='epub-fidelity-')
         self.folders.append(temp)
@@ -90,7 +90,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         def xhtml(content, ident):
             return ('<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml" '
                     'xmlns:epub="http://www.idpf.org/2007/ops" xmlns:xlink="http://www.w3.org/1999/xlink">'
-                    '<head><title>Fixture</title>' + (head if ident == 'chapter' else '') + '</head><body' + (f' id="body-{ident}"' if body_ids else '') + '>' + content + '</body></html>')
+                    '<head><title>' + (chapter_title if ident == 'chapter' else 'Fixture') + '</title>' + (head if ident == 'chapter' else '') + '</head><body' + (f' id="body-{ident}"' if body_ids else '') + '>' + content + '</body></html>')
         with zipfile.ZipFile(epub, 'w') as z:
             z.writestr('mimetype', 'application/epub+zip')
             z.writestr('META-INF/container.xml', '<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0"><rootfiles><rootfile full-path="OEBPS/book.opf" media-type="application/oebps-package+xml"/></rootfiles></container>')
@@ -103,7 +103,8 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             toc = '' if version.startswith('3') or navigation is False else ' toc="fixture-ncx"'
             date_xml = f'<dc:date>{date}</dc:date>' if date else ''
             language_xml = f'<dc:language>{language}</dc:language>' if language else ''
-            z.writestr('OEBPS/book.opf', f'<package xmlns="http://www.idpf.org/2007/opf" version="{version}" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">{identifier}</dc:identifier><dc:title>Fixture</dc:title>' + language_xml + '<dc:creator>Tester</dc:creator>' + date_xml + modified + '</metadata><manifest>' + ''.join(manifest) + ''.join(manifest_extra) + f'</manifest><spine{toc}>' + ''.join(f'<itemref idref="{ident}"/>' for ident in (spine or ['chapter'])) + '</spine>' + guide + '</package>')
+            creators_xml = ''.join(f'<dc:creator>{creator}</dc:creator>' for creator in creators)
+            z.writestr('OEBPS/book.opf', f'<package xmlns="http://www.idpf.org/2007/opf" version="{version}" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">{identifier}</dc:identifier><dc:title>Fixture</dc:title>' + language_xml + creators_xml + date_xml + modified + '</metadata><manifest>' + ''.join(manifest) + ''.join(manifest_extra) + f'</manifest><spine{toc}>' + ''.join(f'<itemref idref="{ident}"/>' for ident in (spine or ['chapter'])) + '</spine>' + guide + '</package>')
             for path, content in (raw or {}).items():
                 z.writestr(path, content)
         output = folder / 'case.fb2'
@@ -293,6 +294,41 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assert_once(root, 'Opening quotation', 'Actual body')
         for title in root.findall('.//f:title', NS):
             self.assertNotEqual(self.text(title).strip(), 'Текст')
+
+    def test_optional_title_block_uses_metadata_and_avoids_existing_equivalent(self):
+        plain = self.convert('<p>Opening text</p>', navigation=False, chapter_title='Chapter')
+        self.assertNotIn('Tester', self.text(plain.find('f:body', NS)))
+        added = self.convert('<p>Opening text</p>', navigation=False, chapter_title='Chapter', options=('--title-block',))
+        body = added.find('f:body', NS)
+        self.assert_once(body, 'Fixture', 'Tester', 'Opening text')
+        existing = self.convert('<p>Fixture</p><p>Tester</p><p>Opening text</p>',
+                                navigation=False, chapter_title='Chapter', options=('--title-block',))
+        self.assert_once(existing.find('f:body', NS), 'Fixture', 'Tester', 'Opening text')
+
+    def test_title_block_handles_multiple_and_absent_authors(self):
+        for authors in [('Ada', 'Leo Tolstoy'), ()]:
+            root = self.convert('<p>Opening text</p>', navigation=False, chapter_title='Chapter',
+                                creators=authors, options=('--title-block',))
+            body = root.find('f:body', NS)
+            self.assert_once(body, 'Fixture', 'Opening text', *authors)
+            self.assertEqual(len(root.findall('.//f:title-info/f:author', NS)), max(1, len(authors)))
+
+    def test_title_block_suppresses_only_converter_generated_duplicate(self):
+        added = self.convert('<p>Opening text</p>', navigation=False, options=('--title-block',))
+        self.assert_once(added.find('f:body', NS), 'Fixture', 'Tester', 'Opening text')
+        repeated = self.convert('<h1>Fixture</h1><p>Fixture</p><p>Body</p>',
+                                navigation=False, options=('--title-block',))
+        body = repeated.find('f:body', NS)
+        self.assertEqual(self.text(body).count('Fixture'), 3)
+        self.assert_once(body, 'Tester', 'Body')
+
+    def test_later_matching_text_is_not_assumed_to_be_a_title_page(self):
+        root = self.convert('<p>Opening text</p><p>Fixture</p><p>Tester</p><p>Following</p>',
+                            navigation=False, chapter_title='Chapter', options=('--title-block',))
+        body = root.find('f:body', NS)
+        self.assertEqual(self.text(body).count('Fixture'), 2)
+        self.assertEqual(self.text(body).count('Tester'), 2)
+        self.assert_once(body, 'Opening text', 'Following')
 
     def test_asterisk_separators_are_optional_and_do_not_change_other_paragraphs(self):
         body = '<p>Before</p><p>***</p><p>* * *</p><p>2 * 3 = 6</p><p>After</p>'

@@ -30,10 +30,11 @@ try {
         }
     } finally { $archive.Dispose(); $file.Dispose() }
     $settings = Join-Path $iso.DataPath 'Settings\Plugins'; New-Item -ItemType Directory -Force -Path $settings | Out-Null
-    foreach($enabled in @(0, 1)) {
-        $profile = @{ schemaVersion = 1; values = @{ SeparatorSubtitles = $enabled } } | ConvertTo-Json
+    foreach($case in @(@{ separator=0; title=0 }, @{ separator=1; title=0 }, @{ separator=0; title=1 }, @{ separator=1; title=1 })) {
+        $enabled = $case.separator; $titleEnabled = $case.title
+        $profile = @{ schemaVersion = 1; values = @{ SeparatorSubtitles = $enabled; CreateTitleBlock = $titleEnabled } } | ConvertTo-Json
         [IO.File]::WriteAllText((Join-Path $settings 'import-epub.json'), $profile, [Text.UTF8Encoding]::new($false))
-        $fb2 = Join-Path $iso.Root "result-$enabled.fb2"
+        $fb2 = Join-Path $iso.Root "result-$enabled-$titleEnabled.fb2"
         $process = Start-Process -FilePath (Join-Path $iso.Root 'separator-com.exe') -WorkingDirectory $iso.Root -WindowStyle Hidden -PassThru -ArgumentList @('"' + (Join-Path $iso.Root 'Plugins\ImportEPUB.dll') + '"', '"' + $epub + '"', '"' + $fb2 + '"')
         if(-not $process.WaitForExit(30000)) { Stop-Process -Id $process.Id -Force; throw 'COM separator conversion timed out.' }
         if($process.ExitCode -ne 0) { throw "COM separator conversion failed: $($process.ExitCode)." }
@@ -47,9 +48,12 @@ try {
         $paragraph = $result.SelectNodes("//*[local-name()='p' and normalize-space(.)='* * *']").Count
         $subtitle = $result.SelectNodes("//*[local-name()='subtitle' and normalize-space(.)='* * *']").Count
         if(($enabled -eq 0 -and ($paragraph -ne 1 -or $subtitle -ne 0)) -or ($enabled -eq 1 -and ($paragraph -ne 0 -or $subtitle -ne 1))) { throw "Unexpected separator structure: enabled=$enabled p=$paragraph subtitle=$subtitle" }
+        $title = $result.SelectNodes("/*[local-name()='FictionBook']/*[local-name()='body']//*[local-name()='p' and normalize-space(.)='Fixture']").Count
+        $author = $result.SelectNodes("/*[local-name()='FictionBook']/*[local-name()='body']//*[local-name()='p' and normalize-space(.)='Tester']").Count
+        if($title -ne 1 -or $author -ne $titleEnabled) { throw "Unexpected title block: enabled=$titleEnabled title=$title author=$author" }
         $ids = @($result.SelectNodes('//*[@id]') | ForEach-Object { $_.GetAttribute('id') })
         if(-not ($ids -match 'divider')) { throw 'Separator anchor was lost.' }
     }
     $passed = $true
-    Write-Host 'COM separator option off/on and anchor checks passed.'
+    Write-Host 'COM separator/title options independently off/on, anchors and XSD checks passed.'
 } finally { Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed }

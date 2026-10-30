@@ -69,6 +69,7 @@ static int Dialogs(const wchar_t* directory, const std::wstring& scenario = L"",
             peerIndex = index; peerDirectory = directory;
             PluginOptionsProbe::Start(index, action, L"", std::wstring(names[index]) + scenario, profile);
             if(scenario == L"ui-import-separator" && index == 2) PluginOptionsProbe::targetControlId = 2026;
+            if(scenario == L"ui-import-title" && index == 2) PluginOptionsProbe::targetControlId = 2027;
             PluginOptionsProbe::peerSave = scenario == L"ui-conflict" ? SavePeer : NULL;
         }
         const UINT_PTR timer = ::SetTimer(NULL, 0, 80, PluginOptionsProbe::Timer);
@@ -270,7 +271,7 @@ int wmain(int argc, wchar_t** argv) {
     else if(argc == 4 && wcscmp(argv[2], L"conversions") == 0) result = Conversions(argv[3]);
     else if(argc == 4 && wcsncmp(argv[2], L"ui-", 3) == 0) {
         const std::wstring scenario(argv[2]);
-        const int only = scenario == L"ui-import-separator" ? 2 : (scenario.find(L"ui-peer") == 0 ? static_cast<int>(scenario.back() - L'0') : -1);
+        const int only = (scenario == L"ui-import-separator" || scenario == L"ui-import-title") ? 2 : (scenario.find(L"ui-peer") == 0 ? static_cast<int>(scenario.back() - L'0') : -1);
         result = Dialogs(argv[3], scenario, only);
     }
     else result = 4;
