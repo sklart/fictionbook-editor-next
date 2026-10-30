@@ -62,10 +62,10 @@ try {
     $importSettings = $first['import-epub'] | ConvertFrom-Json
     if($null -eq $importSettings.values.SeparatorSubtitles -or $importSettings.values.SeparatorSubtitles -ne 0) { throw 'SeparatorSubtitles must be persisted and disabled by default.' }
     if($null -eq $importSettings.values.CreateTitleBlock -or $importSettings.values.CreateTitleBlock -ne 0) { throw 'CreateTitleBlock must be persisted and disabled by default.' }
-    foreach($field in @('UnifyImageNames','SeparateCoverName','UnifyNoteNumbers')) {
+    foreach($field in @('UnifyImageNames','SeparateCoverName','UnifyNoteNumbers','BlankBeforeImages','BlankAfterImages')) {
         if($null -eq $importSettings.values.$field -or $importSettings.values.$field -ne 0) { throw "$field must be persisted and disabled by default." }
     }
-    foreach($pair in @(@('ui-import-unify-images','UnifyImageNames'),@('ui-import-cover-name','SeparateCoverName'),@('ui-import-unify-notes','UnifyNoteNumbers'))) {
+    foreach($pair in @(@('ui-import-unify-images','UnifyImageNames'),@('ui-import-cover-name','SeparateCoverName'),@('ui-import-unify-notes','UnifyNoteNumbers'),@('ui-import-blank-before','BlankBeforeImages'),@('ui-import-blank-after','BlankAfterImages'))) {
         Probe $iso.Root portable $pair[0]
         $enabled = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
         if($enabled.values.($pair[1]) -ne 1) { throw "Option $($pair[1]) was not enabled through the dialog." }

@@ -6211,6 +6211,81 @@ namespace
         }
     }
 
+    void ApplyImageSpacing(const MSXML2::IXMLDOMDocument2Ptr& dom, CStringW& warning)
+    {
+        std::vector<MSXML2::IXMLDOMNodePtr> sections;
+        CollectElementsByLocalName(MsxmlGetDocumentElement(dom), L"section", sections);
+        for (const auto& section : sections)
+        {
+            std::vector<MSXML2::IXMLDOMNodePtr> children;
+            const auto list = MsxmlGetChildNodes(section);
+            const long count = list ? MsxmlGetNodeListLength(list) : 0;
+            bool hasSections = false, hasAnnotation = false;
+            for (long i = 0; i < count; ++i)
+            {
+                const auto child = MsxmlGetNodeListItem(list, i);
+                if (MsxmlGetNodeType(child) != MSXML2::NODE_ELEMENT) continue;
+                children.push_back(child);
+                hasSections = hasSections || LocalName(child) == L"section";
+                hasAnnotation = hasAnnotation || LocalName(child) == L"annotation";
+            }
+            bool bodyStarted = false;
+            for (const auto& child : children)
+            {
+                const CStringW name = LocalName(child);
+                if (name == L"title" || name == L"epigraph" || name == L"annotation") continue;
+                bool imageBlock = name == L"image";
+                if (name == L"p" && TrimString(NodeText(child)).IsEmpty())
+                {
+                    const auto nested = MsxmlGetChildNodes(child);
+                    const long length = nested ? MsxmlGetNodeListLength(nested) : 0;
+                    int images = 0; bool other = false;
+                    for (long j = 0; j < length; ++j)
+                    {
+                        const auto item = MsxmlGetNodeListItem(nested, j);
+                        if (MsxmlGetNodeType(item) == MSXML2::NODE_ELEMENT)
+                        { if (LocalName(item) == L"image") ++images; else other = true; }
+                    }
+                    imageBlock = images == 1 && !other;
+                }
+                const bool headerImage = name == L"image" && !bodyStarted;
+                if (imageBlock)
+                {
+                    if (hasSections || (headerImage && hasAnnotation))
+                        warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_IMAGE_SPACING_SKIPPED, L"Image spacing skipped: FB2 section ordering would be invalid.") + L"\r\n";
+                    else
+                    {
+                        auto makeLine = [&]() -> MSXML2::IXMLDOMNodePtr {
+                            IXMLDOMNode* raw = nullptr;
+                            CheckError(dom->createNode(CComVariant(static_cast<long>(MSXML2::NODE_ELEMENT)), CComBSTR(L"empty-line"),
+                                CComBSTR(L"http://www.gribuser.ru/xml/fictionbook/2.0"), &raw));
+                            return MSXML2::IXMLDOMNodePtr(raw, false);
+                        };
+                        if (g_options.blankBeforeImages)
+                        {
+                            const auto line = makeLine(); IXMLDOMNode* inserted = nullptr;
+                            CheckError(section->insertBefore(line, CComVariant(static_cast<IDispatch*>(child.GetInterfacePtr())), &inserted));
+                            if (inserted) inserted->Release();
+                        }
+                        if (g_options.blankAfterImages)
+                        {
+                            const auto line = makeLine(); IXMLDOMNode* rawNext = nullptr;
+                            CheckError(child->get_nextSibling(&rawNext)); MSXML2::IXMLDOMNodePtr next(rawNext, false);
+                            if (next)
+                            {
+                                IXMLDOMNode* inserted = nullptr;
+                                CheckError(section->insertBefore(line, CComVariant(static_cast<IDispatch*>(next.GetInterfacePtr())), &inserted));
+                                if (inserted) inserted->Release();
+                            }
+                            else AppendDomChild(section, line);
+                        }
+                    }
+                }
+                if (name != L"image") bodyStarted = true;
+            }
+        }
+    }
+
     void CollectNoteMarkerTextNodes(const MSXML2::IXMLDOMNodePtr& node, std::vector<MSXML2::IXMLDOMNodePtr>& textNodes)
     {
         if (!node) return;
@@ -6367,6 +6442,7 @@ namespace
 
         ApplyNavigationHierarchy(dom, package, anchors, warning);
         NormalizeSectionChildren(dom, MsxmlGetDocumentElement(dom), warning);
+        if (g_options.blankBeforeImages || g_options.blankAfterImages) ApplyImageSpacing(dom, warning);
         if (g_options.importNotes && g_options.unifyNoteNumbers) ApplyUnifiedNoteNumbers(dom);
         BSTR normalized = nullptr;
         if (FAILED(dom->get_xml(&normalized))) return false;
@@ -6805,18 +6881,24 @@ namespace
         result.importLists = source.importLists != 0;
         result.importPoemsEpigraphs = source.importPoemsEpigraphs != 0;
         result.importSubtitles = source.importSubtitles != 0;
-        if ((source.version >= IMPORT_EPUB_API_VERSION_2 && source.version <= IMPORT_EPUB_API_VERSION_5) && source.cbSize >= sizeof(ImportEpubOptionsV2))
+        if ((source.version >= IMPORT_EPUB_API_VERSION_2 && source.version <= IMPORT_EPUB_API_VERSION_6) && source.cbSize >= sizeof(ImportEpubOptionsV2))
             result.separatorSubtitles = reinterpret_cast<const ImportEpubOptionsV2&>(source).separatorSubtitles != 0;
-        if ((source.version >= IMPORT_EPUB_API_VERSION_3 && source.version <= IMPORT_EPUB_API_VERSION_5) && source.cbSize >= sizeof(ImportEpubOptionsV3))
+        if ((source.version >= IMPORT_EPUB_API_VERSION_3 && source.version <= IMPORT_EPUB_API_VERSION_6) && source.cbSize >= sizeof(ImportEpubOptionsV3))
             result.createTitleBlock = reinterpret_cast<const ImportEpubOptionsV3&>(source).createTitleBlock != 0;
-        if ((source.version == IMPORT_EPUB_API_VERSION_4 || source.version == IMPORT_EPUB_API_VERSION_5) && source.cbSize >= sizeof(ImportEpubOptionsV4))
+        if ((source.version >= IMPORT_EPUB_API_VERSION_4 && source.version <= IMPORT_EPUB_API_VERSION_6) && source.cbSize >= sizeof(ImportEpubOptionsV4))
         {
             const auto& extended = reinterpret_cast<const ImportEpubOptionsV4&>(source);
             result.unifyImageNames = extended.unifyImageNames != 0;
             result.separateCoverName = extended.separateCoverName != 0;
         }
-        if (source.version == IMPORT_EPUB_API_VERSION_5 && source.cbSize >= sizeof(ImportEpubOptionsV5))
+        if ((source.version == IMPORT_EPUB_API_VERSION_5 || source.version == IMPORT_EPUB_API_VERSION_6) && source.cbSize >= sizeof(ImportEpubOptionsV5))
             result.unifyNoteNumbers = reinterpret_cast<const ImportEpubOptionsV5&>(source).unifyNoteNumbers != 0;
+        if (source.version == IMPORT_EPUB_API_VERSION_6 && source.cbSize >= sizeof(ImportEpubOptionsV6))
+        {
+            const auto& extended = reinterpret_cast<const ImportEpubOptionsV6&>(source);
+            result.blankBeforeImages = extended.blankBeforeImages != 0;
+            result.blankAfterImages = extended.blankAfterImages != 0;
+        }
         result.splitSectionsByHeadings = source.splitSectionsByHeadings != 0;
         result.preserveLinks = source.preserveLinks != 0;
         result.cleanTypography = source.cleanTypography != 0;
@@ -6849,11 +6931,12 @@ extern "C" HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
     *apiFb2Xml = nullptr;
     *apiErrorText = nullptr;
     if (!epubPath || !*epubPath || (apiOptions && (apiOptions->cbSize < sizeof(ImportEpubOptionsV1) ||
-        (apiOptions->version != IMPORT_EPUB_API_VERSION && apiOptions->version != IMPORT_EPUB_API_VERSION_2 && apiOptions->version != IMPORT_EPUB_API_VERSION_3 && apiOptions->version != IMPORT_EPUB_API_VERSION_4 && apiOptions->version != IMPORT_EPUB_API_VERSION_5) ||
+        (apiOptions->version < IMPORT_EPUB_API_VERSION || apiOptions->version > IMPORT_EPUB_API_VERSION_6) ||
         (apiOptions->version == IMPORT_EPUB_API_VERSION_2 && apiOptions->cbSize < sizeof(ImportEpubOptionsV2)) ||
         (apiOptions->version == IMPORT_EPUB_API_VERSION_3 && apiOptions->cbSize < sizeof(ImportEpubOptionsV3)) ||
         (apiOptions->version == IMPORT_EPUB_API_VERSION_4 && apiOptions->cbSize < sizeof(ImportEpubOptionsV4)) ||
-        (apiOptions->version == IMPORT_EPUB_API_VERSION_5 && apiOptions->cbSize < sizeof(ImportEpubOptionsV5)))) ||
+        (apiOptions->version == IMPORT_EPUB_API_VERSION_5 && apiOptions->cbSize < sizeof(ImportEpubOptionsV5)) ||
+        (apiOptions->version == IMPORT_EPUB_API_VERSION_6 && apiOptions->cbSize < sizeof(ImportEpubOptionsV6)))) ||
         (apiRuntimeStats && apiRuntimeStats->cbSize < sizeof(ImportEpubRuntimeStatsV1)))
         return E_INVALIDARG;
 

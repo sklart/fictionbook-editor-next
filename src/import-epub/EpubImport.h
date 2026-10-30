@@ -28,6 +28,8 @@ struct EpubImportOptions
     bool unifyImageNames;
     bool separateCoverName;
     bool unifyNoteNumbers;
+    bool blankBeforeImages;
+    bool blankAfterImages;
     bool splitSectionsByHeadings;
     bool preserveLinks;
     bool cleanTypography;
@@ -61,6 +63,8 @@ struct EpubImportOptions
         , unifyImageNames(false)
         , separateCoverName(false)
         , unifyNoteNumbers(false)
+        , blankBeforeImages(false)
+        , blankAfterImages(false)
         , splitSectionsByHeadings(true)
         , preserveLinks(true)
         , cleanTypography(true)

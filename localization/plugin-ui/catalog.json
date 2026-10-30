@@ -4492,6 +4492,101 @@
         "bg-BG": "Номериране според първото позоваване със запазване на смисления текст на връзките. По подразбиране е изключено."
       }
     },
+    "import_epub.option.blank_before_images": {
+      "component": "import-epub.options",
+      "resourceId": "IDS_IMPORT_OPTIONS_OPT_BLANK_BEFORE",
+      "source": "Пустая строка перед блочными изображениями",
+      "translations": {
+        "en-US": "Blank line before block images",
+        "ru-RU": "Пустая строка перед блочными изображениями",
+        "uk-UA": "Порожній рядок перед блоковими зображеннями",
+        "de-DE": "Leerzeile vor Blockbildern",
+        "fr-FR": "Ligne vide avant les images en bloc",
+        "es-ES": "Línea vacía antes de imágenes de bloque",
+        "it-IT": "Riga vuota prima delle immagini di blocco",
+        "pl-PL": "Pusty wiersz przed obrazami blokowymi",
+        "pt-PT": "Linha vazia antes de imagens em bloco",
+        "nl-NL": "Lege regel vóór blokafbeeldingen",
+        "cs-CZ": "Prázdný řádek před blokovými obrázky",
+        "bg-BG": "Празен ред пред блоковите изображения"
+      }
+    },
+    "import_epub.option.blank_after_images": {
+      "component": "import-epub.options",
+      "resourceId": "IDS_IMPORT_OPTIONS_OPT_BLANK_AFTER",
+      "source": "Пустая строка после блочных изображений",
+      "translations": {
+        "en-US": "Blank line after block images",
+        "ru-RU": "Пустая строка после блочных изображений",
+        "uk-UA": "Порожній рядок після блокових зображень",
+        "de-DE": "Leerzeile nach Blockbildern",
+        "fr-FR": "Ligne vide après les images en bloc",
+        "es-ES": "Línea vacía después de imágenes de bloque",
+        "it-IT": "Riga vuota dopo le immagini di blocco",
+        "pl-PL": "Pusty wiersz po obrazach blokowych",
+        "pt-PT": "Linha vazia após imagens em bloco",
+        "nl-NL": "Lege regel na blokafbeeldingen",
+        "cs-CZ": "Prázdný řádek za blokovými obrázky",
+        "bg-BG": "Празен ред след блоковите изображения"
+      }
+    },
+    "import_epub.tooltip.blank_before_images": {
+      "component": "import-epub.options",
+      "resourceId": "IDS_IMPORT_OPTIONS_TT_BLANK_BEFORE",
+      "source": "Добавлять пустую строку перед блочными изображениями, где это допускает структура FB2. По умолчанию выключено.",
+      "translations": {
+        "en-US": "Add a blank line before block images where FB2 structure permits. Off by default.",
+        "ru-RU": "Добавлять пустую строку перед блочными изображениями, где это допускает структура FB2. По умолчанию выключено.",
+        "uk-UA": "Додавати порожній рядок перед блоковими зображеннями, де це дозволяє структура FB2. Типово вимкнено.",
+        "de-DE": "Leerzeile vor Blockbildern einfügen, soweit die FB2-Struktur dies erlaubt. Standardmäßig aus.",
+        "fr-FR": "Ajouter une ligne vide avant les images en bloc lorsque la structure FB2 le permet. Désactivé par défaut.",
+        "es-ES": "Añadir una línea vacía antes de imágenes de bloque cuando lo permita FB2. Desactivado por defecto.",
+        "it-IT": "Aggiungi una riga vuota prima delle immagini di blocco quando FB2 lo consente. Disattivato per impostazione predefinita.",
+        "pl-PL": "Dodaj pusty wiersz przed obrazami blokowymi, gdy pozwala na to struktura FB2. Domyślnie wyłączone.",
+        "pt-PT": "Adicionar linha vazia antes de imagens em bloco quando a estrutura FB2 o permite. Desativado por predefinição.",
+        "nl-NL": "Voeg een lege regel vóór blokafbeeldingen toe waar FB2 dit toestaat. Standaard uit.",
+        "cs-CZ": "Přidat prázdný řádek před blokové obrázky, pokud to struktura FB2 dovoluje. Ve výchozím stavu vypnuto.",
+        "bg-BG": "Добавяне на празен ред пред блокови изображения, когато структурата на FB2 позволява. По подразбиране е изключено."
+      }
+    },
+    "import_epub.tooltip.blank_after_images": {
+      "component": "import-epub.options",
+      "resourceId": "IDS_IMPORT_OPTIONS_TT_BLANK_AFTER",
+      "source": "Добавлять пустую строку после блочных изображений, где это допускает структура FB2. По умолчанию выключено.",
+      "translations": {
+        "en-US": "Add a blank line after block images where FB2 structure permits. Off by default.",
+        "ru-RU": "Добавлять пустую строку после блочных изображений, где это допускает структура FB2. По умолчанию выключено.",
+        "uk-UA": "Додавати порожній рядок після блокових зображень, де це дозволяє структура FB2. Типово вимкнено.",
+        "de-DE": "Leerzeile nach Blockbildern einfügen, soweit die FB2-Struktur dies erlaubt. Standardmäßig aus.",
+        "fr-FR": "Ajouter une ligne vide après les images en bloc lorsque la structure FB2 le permet. Désactivé par défaut.",
+        "es-ES": "Añadir una línea vacía después de imágenes de bloque cuando lo permita FB2. Desactivado por defecto.",
+        "it-IT": "Aggiungi una riga vuota dopo le immagini di blocco quando FB2 lo consente. Disattivato per impostazione predefinita.",
+        "pl-PL": "Dodaj pusty wiersz po obrazach blokowych, gdy pozwala na to struktura FB2. Domyślnie wyłączone.",
+        "pt-PT": "Adicionar linha vazia após imagens em bloco quando a estrutura FB2 o permite. Desativado por predefinição.",
+        "nl-NL": "Voeg een lege regel na blokafbeeldingen toe waar FB2 dit toestaat. Standaard uit.",
+        "cs-CZ": "Přidat prázdný řádek za blokové obrázky, pokud to struktura FB2 dovoluje. Ve výchozím stavu vypnuto.",
+        "bg-BG": "Добавяне на празен ред след блокови изображения, когато структурата на FB2 позволява. По подразбиране е изключено."
+      }
+    },
+    "import_epub.runtime.image_spacing_skipped": {
+      "component": "import-epub.runtime",
+      "resourceId": "IDS_IMPORT_RUNTIME_IMAGE_SPACING_SKIPPED",
+      "source": "Пустые строки у изображения пропущены: они нарушили бы порядок элементов FB2.",
+      "translations": {
+        "en-US": "Image spacing skipped: FB2 section ordering would be invalid.",
+        "ru-RU": "Пустые строки у изображения пропущены: они нарушили бы порядок элементов FB2.",
+        "uk-UA": "Порожні рядки біля зображення пропущено: вони порушили б порядок елементів FB2.",
+        "de-DE": "Bildabstand ausgelassen: Die Reihenfolge der FB2-Elemente wäre ungültig.",
+        "fr-FR": "Espacement de l’image ignoré : l’ordre des éléments FB2 serait invalide.",
+        "es-ES": "Espaciado de imagen omitido: el orden de elementos FB2 sería inválido.",
+        "it-IT": "Spaziatura immagine ignorata: l’ordine degli elementi FB2 non sarebbe valido.",
+        "pl-PL": "Odstęp obrazu pominięto: kolejność elementów FB2 byłaby nieprawidłowa.",
+        "pt-PT": "Espaçamento da imagem ignorado: a ordem dos elementos FB2 seria inválida.",
+        "nl-NL": "Afbeeldingsafstand overgeslagen: de volgorde van FB2-elementen zou ongeldig zijn.",
+        "cs-CZ": "Odstup obrázku vynechán: pořadí prvků FB2 by bylo neplatné.",
+        "bg-BG": "Разстоянието около изображението е пропуснато: редът на елементите във FB2 би бил невалиден."
+      }
+    },
     "import_epub.runtime.title_block_not_inspected": {
       "component": "import-epub.runtime",
       "resourceId": "IDS_IMPORT_RUNTIME_TITLE_BLOCK_NOT_INSPECTED",

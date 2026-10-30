@@ -338,6 +338,61 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             self.assertIsNotNone(paragraph.find('f:image', NS))
         self.assertEqual(base64.b64decode(root.find('f:binary', NS).text), PNG)
 
+    def test_optional_spacing_around_block_images_not_inline_images(self):
+        body = ('<h1>Pictures</h1><p>Opening</p><img src="../a.png"/>'
+                '<p>Text<img src="../a.png"/>continues</p><p id="image-anchor"><img src="../a.png"/></p><p>End</p>')
+        images = {'a.png': ('a', 'image/png', PNG)}
+        for before, after in ((False, False), (True, False), (False, True), (True, True)):
+            with self.subTest(before=before, after=after):
+                options = (['--blank-before-images'] if before else []) + (['--blank-after-images'] if after else [])
+                root = self.convert(body, images, options=options)
+                section = root.find('f:body/f:section', NS)
+                children = list(section)
+                blocks = [i for i, child in enumerate(children) if child.tag.endswith('}image') or
+                          (child.tag.endswith('}p') and child.find('f:image', NS) is not None and not self.text(child).strip())]
+                self.assertEqual(len(blocks), 2)
+                for index in blocks:
+                    self.assertEqual(index > 0 and children[index-1].tag.endswith('}empty-line'), before)
+                    self.assertEqual(index+1 < len(children) and children[index+1].tag.endswith('}empty-line'), after)
+                inline = next(p for p in section.findall('f:p', NS) if 'Text' in self.text(p))
+                self.assertEqual(self.text(inline), 'Textcontinues')
+                self.assertIsNotNone(inline.find('f:image', NS))
+                self.assertTrue(any(n.get('id') == 'image-anchor' for n in root.iter()))
+
+    def test_image_spacing_at_section_start_remains_valid(self):
+        root = self.convert('<h1>Pictures</h1><img src="../a.png"/><p>Text</p>',
+                            {'a.png': ('a', 'image/png', PNG)},
+                            options=['--blank-before-images', '--blank-after-images'])
+        section = root.find('f:body/f:section', NS)
+        tags = [node.tag.rsplit('}', 1)[-1] for node in section]
+        image = tags.index('image')
+        self.assertEqual(tags[image-1:image+2], ['empty-line', 'image', 'empty-line'])
+
+    def test_image_spacing_for_consecutive_images_and_notes(self):
+        root = self.convert('<p>Body<a epub:type="noteref" href="#n">1</a></p>'
+                            '<img src="../a.png"/><img src="../a.png"/><p>End</p>'
+                            '<aside epub:type="footnote" id="n"><p>Note</p><img src="../a.png"/><p>Note end</p></aside>',
+                            {'a.png': ('a', 'image/png', PNG)},
+                            options=['--blank-before-images', '--blank-after-images'])
+        self.assertEqual(len(root.findall('f:body//f:image', NS)), 3)
+        for section in root.findall('.//f:section', NS):
+            children = list(section)
+            for index, child in enumerate(children):
+                standalone = child.tag.endswith('}image') or (child.tag.endswith('}p') and
+                             child.find('f:image', NS) is not None and not self.text(child).strip())
+                if standalone:
+                    self.assertTrue(index and children[index-1].tag.endswith('}empty-line'))
+                    self.assertTrue(index+1 < len(children) and children[index+1].tag.endswith('}empty-line'))
+        self.assert_once(root, 'Body', 'End', 'Note end')
+
+    def test_image_spacing_with_nested_sections_preserves_content(self):
+        root = self.convert('<section><h1>Parent</h1><img src="../a.png"/>'
+                            '<section><h2>Child</h2><p>Child text</p></section></section>',
+                            {'a.png': ('a', 'image/png', PNG)},
+                            options=['--blank-before-images', '--blank-after-images'])
+        self.assert_once(root, 'Parent', 'Child text')
+        self.assertEqual(len(root.findall('f:body//f:image', NS)), 1)
+
     def test_consecutive_images_before_body_remain_valid(self):
         root = self.convert('<h1>Images</h1><img src="../a.png"/><img src="../b.png"/><p>Following text</p>',
                             {'a.png': ('a', 'image/png', PNG), 'b.png': ('b', 'image/png', PNG)})

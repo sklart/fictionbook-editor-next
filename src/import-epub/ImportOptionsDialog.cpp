@@ -43,6 +43,8 @@ namespace
         IDC_OPT_UNIFY_IMAGES,
         IDC_OPT_COVER_NAME,
         IDC_OPT_UNIFY_NOTES,
+        IDC_OPT_BLANK_BEFORE_IMAGES,
+        IDC_OPT_BLANK_AFTER_IMAGES,
         IDC_SVG_LABEL = 2100,
         IDC_SVG_MODE = 2101,
         IDC_DEFAULTS = 2201,
@@ -75,6 +77,8 @@ namespace
         { IDC_OPT_UNIFY_IMAGES, IDS_IMPORT_OPTIONS_OPT_UNIFY_IMAGES, IDS_IMPORT_OPTIONS_TT_UNIFY_IMAGES, &EpubImportOptions::unifyImageNames },
         { IDC_OPT_COVER_NAME, IDS_IMPORT_OPTIONS_OPT_COVER_NAME, IDS_IMPORT_OPTIONS_TT_COVER_NAME, &EpubImportOptions::separateCoverName },
         { IDC_OPT_UNIFY_NOTES, IDS_IMPORT_OPTIONS_OPT_UNIFY_NOTES, IDS_IMPORT_OPTIONS_TT_UNIFY_NOTES, &EpubImportOptions::unifyNoteNumbers },
+        { IDC_OPT_BLANK_BEFORE_IMAGES, IDS_IMPORT_OPTIONS_OPT_BLANK_BEFORE, IDS_IMPORT_OPTIONS_TT_BLANK_BEFORE, &EpubImportOptions::blankBeforeImages },
+        { IDC_OPT_BLANK_AFTER_IMAGES, IDS_IMPORT_OPTIONS_OPT_BLANK_AFTER, IDS_IMPORT_OPTIONS_TT_BLANK_AFTER, &EpubImportOptions::blankAfterImages },
         { IDC_OPT_SPLIT_HEADINGS, IDS_IMPORT_OPTIONS_OPT_SPLIT_HEADINGS, IDS_IMPORT_OPTIONS_TT_SPLIT_HEADINGS, &EpubImportOptions::splitSectionsByHeadings },
         { IDC_OPT_LINKS, IDS_IMPORT_OPTIONS_OPT_LINKS, IDS_IMPORT_OPTIONS_TT_LINKS, &EpubImportOptions::preserveLinks },
         { IDC_OPT_CLEAN_TYPOGRAPHY, IDS_IMPORT_OPTIONS_OPT_CLEAN_TYPOGRAPHY, IDS_IMPORT_OPTIONS_TT_CLEAN_TYPOGRAPHY, &EpubImportOptions::cleanTypography },
@@ -113,7 +117,9 @@ namespace
     {
         IDC_OPT_IMAGES,
         IDC_OPT_UNIFY_IMAGES,
-        IDC_OPT_COVER_NAME
+        IDC_OPT_COVER_NAME,
+        IDC_OPT_BLANK_BEFORE_IMAGES,
+        IDC_OPT_BLANK_AFTER_IMAGES
     };
 
     const int kGroupLinksNotes[] =
@@ -706,6 +712,8 @@ void LoadImportOptions(EpubImportOptions& options, FbePluginSettings::Revision* 
     LoadBoolValue(key, L"UnifyImageNames", options.unifyImageNames);
     LoadBoolValue(key, L"SeparateCoverName", options.separateCoverName);
     LoadBoolValue(key, L"UnifyNoteNumbers", options.unifyNoteNumbers);
+    LoadBoolValue(key, L"BlankBeforeImages", options.blankBeforeImages);
+    LoadBoolValue(key, L"BlankAfterImages", options.blankAfterImages);
     LoadBoolValue(key, L"SplitSectionsByHeadings", options.splitSectionsByHeadings);
     LoadBoolValue(key, L"PreserveLinks", options.preserveLinks);
     LoadBoolValue(key, L"CleanTypography", options.cleanTypography);
@@ -751,6 +759,8 @@ HRESULT SaveImportOptions(const EpubImportOptions& options, const FbePluginSetti
     SaveBoolValue(key, L"UnifyImageNames", options.unifyImageNames);
     SaveBoolValue(key, L"SeparateCoverName", options.separateCoverName);
     SaveBoolValue(key, L"UnifyNoteNumbers", options.unifyNoteNumbers);
+    SaveBoolValue(key, L"BlankBeforeImages", options.blankBeforeImages);
+    SaveBoolValue(key, L"BlankAfterImages", options.blankAfterImages);
     SaveBoolValue(key, L"SplitSectionsByHeadings", options.splitSectionsByHeadings);
     SaveBoolValue(key, L"PreserveLinks", options.preserveLinks);
     SaveBoolValue(key, L"CleanTypography", options.cleanTypography);
