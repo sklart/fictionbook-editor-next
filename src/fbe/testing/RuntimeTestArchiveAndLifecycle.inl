@@ -425,6 +425,39 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		::PostQuitMessage(descriptionCurrent && sourceCurrent ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"description-input-undo-probe"))
+	{
+		ShowView(DESC);
+		m_doc->MarkSavePoint();
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLDocument3Ptr document3(document);
+		MSHTML::IHTMLInputTextElementPtr title(document3 ? document3->getElementById(L"tiTitle") : NULL);
+		CString before = title ? CString(static_cast<LPCWSTR>(title->value)) : CString();
+		if (title) { MSHTML::IHTMLElement2Ptr element(title); if (element) element->focus(); title->select(); }
+		const HWND focused = ::GetFocus();
+		if (focused) ::SendMessageW(focused, WM_CHAR, L'X', 1);
+		const CString edited = title ? CString(static_cast<LPCWSTR>(title->value)) : CString();
+		OLECMD status = { IDM_UNDO, 0 }; m_doc->m_body.QueryStatus(&status, 1);
+		const bool dirtyAfterEdit = DocChanged();
+		IServiceProviderPtr provider(document); CComPtr<IOleUndoManager> manager;
+		const HRESULT service = provider ? provider->QueryService(SID_SOleUndoManager,IID_IOleUndoManager,reinterpret_cast<void**>(&manager)) : E_NOINTERFACE;
+		CComPtr<IEnumOleUndoUnits> units; const HRESULT enumerated = manager ? manager->EnumUndoable(&units) : E_NOINTERFACE;
+		int unitCount = 0; CComPtr<IOleUndoUnit> unit;
+		if (units) while (units->Next(1,&unit,NULL) == S_OK) { ++unitCount; unit.Release(); }
+		SendMessage(WM_COMMAND,ID_EDIT_UNDO,0);
+		const CString afterUndo = title ? CString(static_cast<LPCWSTR>(title->value)) : CString();
+		const bool dirtyAfterUndo = DocChanged();
+		OLECMD redo = { IDM_REDO, 0 }; m_doc->m_body.QueryStatus(&redo, 1);
+		SendMessage(WM_COMMAND,ID_EDIT_REDO,0);
+		const CString afterRedo = title ? CString(static_cast<LPCWSTR>(title->value)) : CString();
+		CStringA report; report.Format("input-focused=%d\ninput-edited=%d\ninput-dirty=%d\nundo-enabled=%d\nundo-units=%d\nundo-restored=%d\nundo-dirty=%d\nredo-enabled=%d\nredo-restored=%d\nservice=0x%08lX\nenumerated=0x%08lX\n",
+			focused != NULL, edited != before, dirtyAfterEdit, (status.cmdf & OLECMDF_ENABLED) != 0, unitCount, afterUndo == before,
+			dirtyAfterUndo, (redo.cmdf & OLECMDF_ENABLED) != 0, afterRedo == edited, static_cast<unsigned long>(service), static_cast<unsigned long>(enumerated));
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(focused && edited != before && dirtyAfterEdit && (status.cmdf & OLECMDF_ENABLED) && unitCount > 0 &&
+			afterUndo == before && (redo.cmdf & OLECMDF_ENABLED) && afterRedo == edited && SUCCEEDED(service) && SUCCEEDED(enumerated) ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"generated-id-runtime"))
 	{
 		ShowView(SOURCE);
