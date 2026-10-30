@@ -215,8 +215,23 @@ void CMainFrame::RunPortableStateTestScenario()
 			list.GetText(2, firstDuplicate); list.GetText(3, secondDuplicate);
 			sorted = sorted && firstDuplicate != secondDuplicate && firstDuplicate.Find(L"one.js") >= 0 && secondDuplicate.Find(L"two.js") >= 0;
 			::SendMessage(list, LB_SETSEL, TRUE, 2);
+			sorting.SetDlgItemText(IDC_SCRIPTS_TOOLBAR_SEARCH, L"zulu");
+			sorted = sorted && list.GetCount() == 1 && list.GetItemData(0) == 1 && list.GetSelCount() == 0;
+			sorting.SetDlgItemText(IDC_SCRIPTS_TOOLBAR_SEARCH, L"");
+			sorted = sorted && list.GetCount() == 5 && list.GetItemData(2) == 2 && ::SendMessage(list, LB_GETSEL, 2, 0) > 0;
 			sorting.SetDlgItemText(IDC_SCRIPTS_TOOLBAR_SEARCH, L"nested");
 			sorted = sorted && list.GetCount() == 2 && list.GetItemData(0) == 2 && list.GetItemData(1) == 3 && ::SendMessage(list, LB_GETSEL, 0, 0) > 0;
+			::SendMessage(list, LB_SETSEL, TRUE, 1);
+			::SendMessage(sorting, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_AVAILABLE, LBN_SELCHANGE), reinterpret_cast<LPARAM>(list.m_hWnd));
+			sorting.SetDlgItemText(IDC_SCRIPTS_TOOLBAR_SEARCH, L"two.js");
+			sorted = sorted && list.GetCount() == 1 && list.GetItemData(0) == 3 && ::SendMessage(list, LB_GETSEL, 0, 0) > 0;
+			sorting.SetDlgItemText(IDC_SCRIPTS_TOOLBAR_SEARCH, L"");
+			sorted = sorted && ::SendMessage(list, LB_GETSEL, 2, 0) > 0 && ::SendMessage(list, LB_GETSEL, 3, 0) > 0;
+			sorting.SetDlgItemText(IDC_SCRIPTS_TOOLBAR_SEARCH, L"zulu");
+			::SendMessage(list, LB_SETSEL, TRUE, 0);
+			::SendMessage(sorting, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_AVAILABLE, LBN_SELCHANGE), reinterpret_cast<LPARAM>(list.m_hWnd));
+			sorting.SetDlgItemText(IDC_SCRIPTS_TOOLBAR_SEARCH, L"");
+			sorted = sorted && ::SendMessage(list, LB_GETSEL, 1, 0) > 0 && ::SendMessage(list, LB_GETSEL, 2, 0) == 0 && ::SendMessage(list, LB_GETSEL, 3, 0) == 0;
 			sorting.DestroyWindow();
 		}
 		PortableToolbarItem existing = {}; existing.command = sample[0].command; target.items.push_back(existing);

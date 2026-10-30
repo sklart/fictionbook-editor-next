@@ -127,7 +127,7 @@ void CScriptsToolbarCustomizeDlg::RestoreSelection(CListBox& list, const std::ve
 	::SendMessage(list, LB_SETSEL, FALSE, -1);
 	for(int i = 0; i < list.GetCount(); ++i)
 		for(size_t j = 0; j < selection.size(); ++j) if(list.GetItemData(i) == selection[j]) { ::SendMessage(list, LB_SETSEL, TRUE, i); break; }
-	if(list.GetSelCount() == 0 && !selection.empty()) list.SetCurSel(min(list.GetCount() - 1, max(0, topIndex)));
+	if(list.m_hWnd != m_availableList.m_hWnd && list.GetSelCount() == 0 && !selection.empty()) list.SetCurSel(min(list.GetCount() - 1, max(0, topIndex)));
 	if(list.GetCount() > 0) list.SetTopIndex(min(list.GetCount() - 1, max(0, topIndex)));
 }
 void CScriptsToolbarCustomizeDlg::ActivateList(CListBox& list)
@@ -138,10 +138,12 @@ void CScriptsToolbarCustomizeDlg::ActivateList(CListBox& list)
 		const std::vector<int> rows = GetSelectedRows(other);
 		if(!rows.empty()) m_savedInsert = rows.front();
 	}
+	if(other.m_hWnd == m_availableList.m_hWnd) m_availableFilterSelection.clear();
 	if(other.GetSelCount() > 0) { ::SendMessage(other, LB_SETSEL, FALSE, -1); UpdateButtonState(); }
 }
 void CScriptsToolbarCustomizeDlg::PopulateAvailable(const std::vector<DWORD_PTR>* selected, bool redraw)
 {
+	if(selected != NULL) m_availableFilterSelection = *selected;
 	CString search; GetDlgItemText(IDC_SCRIPTS_TOOLBAR_SEARCH, search); search.MakeLower();
 	const int top = m_availableList.GetTopIndex(); const std::vector<DWORD_PTR> saved = selected != NULL ? *selected : GetSelectedItemData(m_availableList);
 	if(redraw) ::SendMessage(m_availableList, WM_SETREDRAW, FALSE, 0);
@@ -242,9 +244,13 @@ int CScriptsToolbarCustomizeDlg::SelectedAvailableCommand() const
 	return item < m_available.size() ? m_available[item].command : 0;
 }
 
-LRESULT CScriptsToolbarCustomizeDlg::OnSearchChanged(WORD, WORD, HWND, BOOL&) { PopulateAvailable(); UpdateButtonState(); return 0; }
-LRESULT CScriptsToolbarCustomizeDlg::OnPanelChanged(WORD, WORD, HWND, BOOL&) { const int index = m_panelList.GetCurSel(); if(index >= 0 && index < static_cast<int>(m_panels.size())) { m_savedInsert = -1; m_toolbar = m_panels[index].toolbar; RefreshLists(); UpdateButtonState(); } return 0; }
-LRESULT CScriptsToolbarCustomizeDlg::OnSelectionChanged(WORD, WORD, HWND, BOOL&) { UpdateButtonState(); return 0; }
+LRESULT CScriptsToolbarCustomizeDlg::OnSearchChanged(WORD, WORD, HWND, BOOL&) {
+	if(m_availableFilterSelection.empty()) m_availableFilterSelection = GetSelectedItemData(m_availableList);
+	const std::vector<DWORD_PTR> selection = m_availableFilterSelection;
+	PopulateAvailable(&selection); UpdateButtonState(); return 0;
+}
+LRESULT CScriptsToolbarCustomizeDlg::OnPanelChanged(WORD, WORD, HWND, BOOL&) { const int index = m_panelList.GetCurSel(); if(index >= 0 && index < static_cast<int>(m_panels.size())) { m_savedInsert = -1; m_availableFilterSelection = GetSelectedItemData(m_availableList); m_toolbar = m_panels[index].toolbar; RefreshLists(); UpdateButtonState(); } return 0; }
+LRESULT CScriptsToolbarCustomizeDlg::OnSelectionChanged(WORD, WORD id, HWND, BOOL&) { if(id == IDC_SCRIPTS_TOOLBAR_AVAILABLE) m_availableFilterSelection = GetSelectedItemData(m_availableList); UpdateButtonState(); return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnToolTipText(int, LPNMHDR hdr, BOOL& bHandled)
 {
 	LPNMTTDISPINFO info = reinterpret_cast<LPNMTTDISPINFO>(hdr);

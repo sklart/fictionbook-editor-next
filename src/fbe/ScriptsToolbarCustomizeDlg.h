@@ -66,6 +66,7 @@ private:
 	std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)> m_saveItems;
 	CListBox m_availableList;
 	CListBox m_currentList;
+	std::vector<DWORD_PTR> m_availableFilterSelection;
 	int m_savedInsert = -1;
 	CComboBox m_panelList;
 	CToolTipCtrl m_toolTip;
