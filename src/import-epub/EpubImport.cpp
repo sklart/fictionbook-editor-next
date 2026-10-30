@@ -3956,7 +3956,6 @@ namespace
         CollectElementsByLocalName(node, L"p", paragraphs);
 
         CStringW xml;
-        xml += epigraph ? L"      <epigraph>\r\n" : L"      <cite>\r\n";
         int count = 0;
         if (paragraphs.empty())
         {
@@ -3984,10 +3983,17 @@ namespace
                 }
             }
         }
-        xml += epigraph ? L"      </epigraph>\r\n" : L"      </cite>\r\n";
-
         if (count > 0)
-            out += xml;
+        {
+            const CStringW rootRaw = RawAnchorId(node);
+            const CStringW rootId = OptionalIdAttributeFromRaw(rootRaw, ctx);
+            std::vector<CStringW> anchors = CollectRawAnchorIds(node);
+            CStringW markers = AnchorMarkerParagraphsFromRawIds(anchors,
+                !rootRaw.IsEmpty() && !anchors.empty() && anchors.front() == rootRaw ? 1 : 0, ctx);
+            out += epigraph ? L"      <epigraph" : L"      <cite";
+            out += rootId + L">\r\n" + markers + xml;
+            out += epigraph ? L"      </epigraph>\r\n" : L"      </cite>\r\n";
+        }
     }
 
     CStringW TableCellAttributes(const MSXML2::IXMLDOMNodePtr& node)
@@ -6246,6 +6252,13 @@ namespace
                     CheckError(dom->createNode(CComVariant(static_cast<long>(MSXML2::NODE_ELEMENT)), CComBSTR(L"cite"),
                         CComBSTR(L"http://www.gribuser.ru/xml/fictionbook/2.0"), &created));
                     MSXML2::IXMLDOMNodePtr cite(created, false);
+                    const CStringW id = Attr(child, L"id");
+                    if (!id.IsEmpty())
+                    {
+                        CComQIPtr<IXMLDOMElement> element(cite);
+                        if (!element) CheckError(E_NOINTERFACE);
+                        CheckError(element->setAttribute(CComBSTR(L"id"), CComVariant(id)));
+                    }
                     for (;;)
                     {
                         IXMLDOMNode* raw = nullptr; child->get_firstChild(&raw);
@@ -6341,6 +6354,13 @@ namespace
                 CheckError(dom->createNode(CComVariant(static_cast<long>(MSXML2::NODE_ELEMENT)), CComBSTR(L"cite"),
                     CComBSTR(L"http://www.gribuser.ru/xml/fictionbook/2.0"), &created));
                 MSXML2::IXMLDOMNodePtr cite(created, false);
+                const CStringW id = Attr(lastEpigraph, L"id");
+                if (!id.IsEmpty())
+                {
+                    CComQIPtr<IXMLDOMElement> element(cite);
+                    if (!element) CheckError(E_NOINTERFACE);
+                    CheckError(element->setAttribute(CComBSTR(L"id"), CComVariant(id)));
+                }
                 for (;;)
                 {
                     IXMLDOMNode* raw = nullptr; lastEpigraph->get_firstChild(&raw);

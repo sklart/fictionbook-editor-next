@@ -1531,6 +1531,31 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assertLess(text.index('Quoted text'), text.index('Attribution'))
                 self.assertLess(text.index('Attribution'), text.index('After quotation'))
 
+    def test_sidebar_and_late_epigraph_keep_link_targets(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<p><a href="#sidebar">Sidebar</a> <a href="#inner">Inner</a> '
+                                    '<a href="#quote">Quotation</a></p>'
+                                    '<aside id="sidebar"><p>Sidebar <span id="inner">text</span></p></aside>'
+                                    '<div class="epigraph" id="quote"><p>Quotation text</p></div>',
+                                    version=version, navigation=False)
+                ids = {n.get('id') for n in root.iter() if n.get('id')}
+                links = [a.get(HREF) for a in root.findall('.//f:a', NS)]
+                self.assertTrue({'sidebar', 'inner', 'quote'}.issubset(ids))
+                self.assertTrue({'#sidebar', '#inner', '#quote'}.issubset(links))
+                self.assertIn('Sidebar text', self.text(root))
+                self.assertIn('Quotation text', self.text(root))
+
+    def test_epigraph_only_section_keeps_link_target(self):
+        root = self.convert('<p><a href="later.xhtml#quotation">Quotation link</a></p>',
+                            {'Text/later.xhtml': ('later', 'application/xhtml+xml',
+                             '<div class="epigraph" id="quotation"><p>Quoted text</p></div>')},
+                            spine=['chapter', 'later'], navigation=False)
+        link = next(a for a in root.findall('.//f:a', NS) if self.text(a) == 'Quotation link')
+        self.assertEqual(link.get(HREF), '#quotation')
+        self.assertTrue(any(n.get('id') == 'quotation' for n in root.iter()))
+        self.assertIn('Quoted text', self.text(root))
+
     def test_epigraph_attribution_structure_matrix(self):
         cases = (
             '<section><div class="epigraph"><p>First quotation</p><p class="text-author">First author</p></div></section>',
