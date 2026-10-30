@@ -99,10 +99,7 @@ public:
   bool	  Save();
 
   // changes
-  bool	  DocChanged() {
-	  return m_body_ver!=m_editor.GetVersionNumber() ||
-		  //m_desc_ver!=m_desc.GetVersionNumber() || 
-		  m_editor.IsFormChanged(); }
+  bool    DocChanged();
 
   // added by SeNS
   void	  AdvanceDocVersion (int delta) {
@@ -110,6 +107,8 @@ public:
   }
 
 	void MarkSavePoint();
+	void CaptureNewTemplateBaseline();
+	void ReconcileNewTemplateAfterUndo();
 	void ReconcileUnchangedStartupTemplate();
 	struct UndoSavepoints {
 		long savedVersion, recoveryVersion;
@@ -132,7 +131,7 @@ public:
 		if (recoveryClean && (m_body_cp == originalVersion || m_body_cp == -1)) MarkDocCP();
 		m_reconcilePasteHistoryClean = !saveClean || !recoveryClean;
 	}
-  void	  ResetSavePoint() { m_body_ver=-1; m_reconcilePasteHistoryClean = false; }
+  void	  ResetSavePoint() { m_body_ver=-1; m_reconcilePasteHistoryClean = false; m_hasNewTemplateBaseline = false; m_newTemplateXml.Empty(); }
 
 	void MarkDocCP();
 	void MarkDocCPIfChanged(bool force = false);
@@ -193,6 +192,8 @@ private:
   long		    m_body_cp;
 	CString m_savedBodyHtml, m_recoveryBodyHtml;
 	bool m_hasSavedBodyHtml = false, m_hasRecoveryBodyHtml = false;
+	CString m_newTemplateXml;
+	bool m_hasNewTemplateBaseline = false, m_newTemplateEdited = false;
 	bool m_reconcilePasteHistoryClean = false;
 	bool CaptureBodyHtml(CString& html);
 

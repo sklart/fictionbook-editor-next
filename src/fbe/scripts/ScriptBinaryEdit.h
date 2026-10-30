@@ -22,6 +22,37 @@ struct Cover {
 };
 inline bool Reference(const _variant_t& value, const CString& id)
 { return value.vt == VT_BSTR && (CString(value.bstrVal) == L"#" + id || CString(value.bstrVal) == L"fbw-internal:#" + id); }
+
+inline bool IsDescriptionPreview(MSHTML::IHTMLDocument2Ptr document, MSHTML::IHTMLElementPtr element)
+{
+    if (!document || !element || U::scmp(element->tagName, L"IMG")) return false;
+    const auto parent = element->parentElement;
+    if (parent && U::scmp(element->id, L"descriptionCoverPreview") == 0 &&
+        U::scmp(element->className, L"description-cover-preview") == 0 && U::scmp(parent->id, L"tiCover") == 0) {
+        IDispatchPtr cover(document->all->item(L"tiCover"));
+        CComPtr<IUnknown> parentIdentity, coverIdentity;
+        if (cover && SUCCEEDED(parent->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&parentIdentity))) &&
+            SUCCEEDED(cover->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&coverIdentity))) && parentIdentity == coverIdentity)
+            return true;
+    }
+    const _variant_t preview(element->getAttribute(L"data-description-preview", 2));
+    if (preview.vt != VT_BSTR || CString(preview.bstrVal) != L"true" || !parent ||
+        U::scmp(parent->className, L"description-binary-thumb-slot") != 0) return false;
+    const auto row = parent->parentElement;
+    if (!row || U::scmp(row->className, L"description-binary") != 0) return false;
+    const auto holder = row->parentElement;
+    IDispatchPtr outer(document->all->item(L"binobj"));
+    if (!holder || !outer) return false;
+    CComPtr<IUnknown> holderIdentity, outerIdentity;
+    if (FAILED(holder->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&holderIdentity))) ||
+        FAILED(outer->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&outerIdentity)))) return false;
+    if (holderIdentity == outerIdentity) return true;
+    CComDispatchDriver dispatch(outer); CComVariant inner;
+    if (FAILED(dispatch.GetPropertyByName(L"_descriptionBody", &inner)) || inner.vt != VT_DISPATCH || !inner.pdispVal) return false;
+    CComPtr<IUnknown> innerIdentity;
+    if (FAILED(inner.pdispVal->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&innerIdentity)))) return false;
+    return holderIdentity == innerIdentity;
+}
 inline std::vector<Cover> Covers(MSHTML::IHTMLDocument2Ptr document)
 {
     std::vector<Cover> result;
@@ -48,6 +79,7 @@ inline References FindReferences(MSHTML::IHTMLDocument2Ptr document, const CStri
     for (long index = 0; index < elements->length; ++index) {
         MSHTML::IHTMLElementPtr element(elements->item(index));
         if (!element) continue;
+        if (IsDescriptionPreview(document, element)) continue;
         MSHTML::IHTMLSelectElementPtr select(element);
         if (select && CString(static_cast<LPCWSTR>(select->value)) == L"#" + id) {
             result.any = true;
@@ -223,6 +255,7 @@ struct Edit {
         if (FAILED(FbeUndo::Inject(L"binary-api-oom"))) throw std::bad_alloc();
         CheckError(script.Invoke0(L"RebuildImagesInfo")); CheckError(script.Invoke0(L"FillCoverList"));
         for (const auto& cover : covers) cover.select->value = !undo && !remains && cover.value == L"#" + before.id ? L"" : static_cast<LPCWSTR>(cover.value);
+        CheckError(script.Invoke0(L"DescriptionUpdateCover"));
         if (existed && remains) {
             auto elements = document->all;
             for (long index = 0; index < elements->length; ++index) {

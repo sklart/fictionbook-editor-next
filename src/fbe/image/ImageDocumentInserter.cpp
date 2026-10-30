@@ -220,7 +220,17 @@ HRESULT CommitBinaryEdit(const IDispatchPtr& script, IOleUndoManager* manager,
 
 static MSHTML::IHTMLDOMNodePtr BinaryParent(const IDispatchPtr& script) {
   MSHTML::IHTMLDocument2Ptr dom(ScriptDocument(script));
-  return MSHTML::IHTMLDOMNodePtr(dom->all->item(L"binobj"));
+  IDispatchPtr container(dom->all->item(L"binobj"));
+  if (!container) return MSHTML::IHTMLDOMNodePtr();
+  // Modern Description wraps attachment rows in an inner body. The script
+  // appends there, so snapshot and rollback must observe that same parent.
+  CComDispatchDriver dispatch(container);
+  CComVariant inner;
+  if (SUCCEEDED(dispatch.GetPropertyByName(L"_descriptionBody", &inner)) && inner.vt == VT_DISPATCH && inner.pdispVal) {
+    MSHTML::IHTMLDOMNodePtr node(inner.pdispVal);
+    if (node) return node;
+  }
+  return MSHTML::IHTMLDOMNodePtr(container);
 }
 
 static IDispatchPtr FindImportedImage(MSHTML::IHTMLDOMNodePtr node, const _variant_t& id) {

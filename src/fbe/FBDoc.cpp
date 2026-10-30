@@ -296,7 +296,62 @@ bool Doc::CaptureBodyHtml(CString& html) {
 	} catch (const _com_error&) { return false; }
 }
 
+bool Doc::DocChanged() {
+	const bool formChanged = m_editor.IsFormChanged();
+	const long currentVersion = m_editor.GetVersionNumber();
+	if (m_hasNewTemplateBaseline && !m_newTemplateEdited && (formChanged || m_body_ver != currentVersion)) {
+		// A delayed MSHTML initialization can change the version after New.
+		// Compare the complete detached FB2, including metadata and binaries,
+		// before accepting a new savepoint; never hide a real edit.
+		const CString baseline = m_newTemplateXml;
+		m_newTemplateEdited = true;
+		CString currentBody;
+		if (!formChanged && m_hasSavedBodyHtml && CaptureBodyHtml(currentBody) && currentBody == m_savedBodyHtml) {
+			try {
+				const auto snapshot = CreateDOMForAnalysis();
+				if (snapshot && CString(static_cast<LPCWSTR>(snapshot->xml)) == baseline) {
+					MarkSavePoint();
+					m_newTemplateXml = baseline;
+					m_hasNewTemplateBaseline = true;
+					return false;
+				}
+			} catch (const _com_error&) { } catch (const std::bad_alloc&) { }
+		}
+	}
+	return m_body_ver != m_editor.GetVersionNumber() || formChanged;
+}
+
+void Doc::CaptureNewTemplateBaseline() {
+	m_hasNewTemplateBaseline = false;
+	m_newTemplateEdited = false;
+	m_newTemplateXml.Empty();
+	try {
+		const auto snapshot = CreateDOMForAnalysis();
+		if (snapshot) {
+			m_newTemplateXml = static_cast<LPCWSTR>(snapshot->xml);
+			m_hasNewTemplateBaseline = !m_newTemplateXml.IsEmpty();
+		}
+	} catch (const _com_error&) { } catch (const std::bad_alloc&) { }
+}
+
+void Doc::ReconcileNewTemplateAfterUndo() {
+	if (!m_hasNewTemplateBaseline || m_editor.IsFormChanged()) return;
+	CString current;
+	if (!m_hasSavedBodyHtml || !CaptureBodyHtml(current) || current != m_savedBodyHtml) return;
+	try {
+		const auto snapshot = CreateDOMForAnalysis();
+		if (!snapshot || CString(static_cast<LPCWSTR>(snapshot->xml)) != m_newTemplateXml) return;
+		const CString baseline = m_newTemplateXml;
+		MarkSavePoint();
+		m_newTemplateXml = baseline;
+		m_hasNewTemplateBaseline = true;
+	} catch (const _com_error&) { } catch (const std::bad_alloc&) { }
+}
+
 void Doc::MarkSavePoint() {
+	m_hasNewTemplateBaseline = false;
+	m_newTemplateEdited = false;
+	m_newTemplateXml.Empty();
 	m_body_ver = m_editor.GetVersionNumber();
 	m_hasSavedBodyHtml = CaptureBodyHtml(m_savedBodyHtml);
 	m_reconcilePasteHistoryClean = false;

@@ -5667,6 +5667,7 @@ LRESULT CMainFrame::OnFileNew(WORD, WORD, HWND, BOOL&)
 	// initialization can update the DOM. Establish the baseline only here,
 	// before returning control to the user; imported documents stay dirty.
 	m_doc->MarkSavePoint();
+	m_doc->CaptureNewTemplateBaseline();
   }
 
   return 0;
