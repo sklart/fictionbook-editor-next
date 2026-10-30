@@ -6196,7 +6196,11 @@ namespace
         for (const auto& child : children)
         {
             const CStringW name = LocalName(child);
-            if (name == L"section" || name == L"title") {run = nullptr;continue;}
+            if (name == L"section" || name == L"title")
+            {
+                if (run) NormalizeSectionChildren(dom, run, warning);
+                run = nullptr;continue;
+            }
             if (!run)
             {
                 IXMLDOMNode* created = nullptr;
@@ -6209,6 +6213,7 @@ namespace
             }
             IXMLDOMNode* moved = nullptr;CheckError(run->appendChild(child, &moved));if (moved) moved->Release();
         }
+        if (run) NormalizeSectionChildren(dom, run, warning);
     }
 
     void ApplyImageSpacing(const MSXML2::IXMLDOMDocument2Ptr& dom, CStringW& warning)

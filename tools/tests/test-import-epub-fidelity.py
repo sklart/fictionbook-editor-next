@@ -1355,6 +1355,9 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             '<div class="epigraph"><p>Second quotation</p><p class="text-author">Second author</p></div></section>',
             '<section><section><p>First quotation</p><p class="text-author">First author</p></section>'
             '<section><blockquote><p>Second quotation</p><p class="text-author">Second author</p></blockquote></section></section>',
+            '<section><div class="epigraph"><p>First quotation</p><p class="text-author">First author</p></div>'
+            '<div class="epigraph"><p>Second quotation</p><p class="text-author">Second author</p></div>'
+            '<section><p>Child body</p></section></section>',
         )
         for version in ('2.0', '3.0'):
             for case in cases:
