@@ -57,13 +57,13 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for folder in cls.folders:
                 folder.cleanup()
 
-    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, identifier='fixture', date='', head='', language='ru', chapter_title='Fixture', creators=('Tester',), cover_id='', metadata_extra=''):
+    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, identifier='fixture', date='', head='', language='ru', chapter_title='Fixture', creators=('Tester',), cover_id='', metadata_extra='', temp_padding=0):
         extra = extra or {}
         temp = tempfile.TemporaryDirectory(prefix='epub-fidelity-')
         self.folders.append(temp)
         folder = Path(temp.name)
         self.last_folder = folder
-        extraction_temp = folder / 'temp'
+        extraction_temp = folder / ('t' * temp_padding if temp_padding else 'temp')
         extraction_temp.mkdir()
         for name, data in (outside or {}).items():
             (extraction_temp / name).write_bytes(data)
@@ -141,6 +141,13 @@ Write-Output 'Independent FB2 XSD validation: PASS'
 
     def text(self, root):
         return ''.join(root.itertext())
+
+    def test_long_temporary_path_with_long_archive_entry(self):
+        long_name = 'Text/' + ('chapter_' * 12) + '.xhtml'
+        root = self.convert('<p>Control chapter.</p>',
+                            extra={long_name: ('long', 'application/xhtml+xml', '<p>Long path text.</p>')},
+                            spine=['long'], navigation=False, temp_padding=45)
+        self.assertIn('Long path text.', ''.join(root.itertext()))
 
     def test_links_outside_spine_epub2(self):
         root = self.convert('<h1>Main</h1><p>Chapter <a href="../links.xhtml#n">[1]</a> remains.</p>',
@@ -1641,6 +1648,158 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                                         spine=['chapter', 'credits'], options=options)
                     self.assertEqual('Publication credits text' in self.text(root), kept)
                     self.assertIn('Opening content', self.text(root))
+
+    def test_nested_heading_anchors_remain_linkable(self):
+        for version in ('2.0', '3.0'):
+            for options in ([], ['--no-split-sections']):
+                with self.subTest(version=version, options=options):
+                    root = self.convert('<p><a href="#first">First</a> <a href="#second">Second</a></p>'
+                                        '<div><h2><a id="first"/><span id="second">Nested heading</span></h2>'
+                                        '<p>Heading body</p></div>', version=version, options=options,
+                                        navigation=False)
+                    ids = {n.get('id') for n in root.iter() if n.get('id')}
+                    self.assertTrue({'first', 'second'}.issubset(ids))
+                    self.assertIn('Nested heading', self.text(root))
+                    self.assertIn('Heading body', self.text(root))
+
+    def test_decimal_series_position_preserves_original_metadata(self):
+        for position, expected in (('1.0', '1'), ('2.000', '2'), ('2.5', None), ('unknown', None)):
+            with self.subTest(position=position):
+                metadata = ('<meta name="calibre:series" content="Sample series"/>'
+                            f'<meta name="calibre:series_index" content="{position}"/>')
+                root = self.convert('<p>Story</p>', version='2.0', metadata_extra=metadata)
+                sequence = root.find('f:description/f:title-info/f:sequence', NS)
+                self.assertIsNotNone(sequence)
+                self.assertEqual(sequence.get('number'), expected)
+                extra = root.find('f:description/f:custom-info[@info-type="EPUB series position"]', NS)
+                self.assertIsNotNone(extra)
+                self.assertEqual(extra.text, position)
+                if expected is None:
+                    self.assertIn('series position is not an integer', self.diagnostics)
+
+    def test_page_break_anchor_survives_both_page_break_options(self):
+        for version in ('2.0', '3.0'):
+            for options in (['--pagebreaks'], ['--no-pagebreaks']):
+                with self.subTest(version=version, options=options):
+                    root = self.convert('<p><a href="#page">Page reference</a> '
+                                        '<a href="#page2">Next page</a></p>'
+                                        '<div><hr id="page"/><span epub:type="pagebreak" id="page2"/>'
+                                        '<p>Following text</p></div>',
+                                        version=version, options=options, navigation=False)
+                    self.assertTrue(any(n.get('id') == 'page' for n in root.iter()))
+                    self.assertTrue(any(n.get('id') == 'page2' for n in root.iter()))
+                    self.assertIn('Following text', self.text(root))
+
+    def test_unknown_underscore_genre_is_preserved_as_subject(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<p>Story</p>', version=version,
+                                    metadata_extra='<dc:subject>sf_action</dc:subject>'
+                                                   '<dc:subject>made_up_genre</dc:subject>')
+                genres = [n.text for n in root.findall('f:description/f:title-info/f:genre', NS)]
+                self.assertIn('sf_action', genres)
+                self.assertNotIn('made_up_genre', genres)
+                subjects = root.find('f:description/f:custom-info[@info-type="EPUB subjects"]', NS)
+                self.assertIn('made_up_genre', subjects.text)
+                self.assertIn('Unrecognized FB2-like genre', self.diagnostics)
+
+    def test_cover_labelled_xhtml_with_text_is_not_discarded(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                extra = {'Text/cover-story.xhtml': ('cover-page', 'application/xhtml+xml',
+                         '<p>Cover page text</p><p>Unique opening passage</p>')}
+                root = self.convert('<p>Following chapter</p>', extra, version=version,
+                                    spine=['cover-page', 'chapter'], cover_id='cover-page',
+                                    options=['--skip-service-pages'], navigation=False)
+                for phrase in ('Cover page text', 'Unique opening passage', 'Following chapter'):
+                    self.assertEqual(self.text(root).count(phrase), 1)
+                self.assertIn('Cover-labelled XHTML contains text', self.diagnostics)
+
+    def test_empty_note_candidate_does_not_consume_heading_anchor(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<p><sup><a href="#alias">1</a></sup> '
+                                    '<a href="#alias">Jump to heading</a></p>'
+                                    '<h1 id="heading"><a id="alias"/>Heading text</h1>'
+                                    '<p>Body text</p>', version=version, navigation=False)
+                ids = {n.get('id') for n in root.iter() if n.get('id')}
+                self.assertTrue({'heading', 'alias'}.issubset(ids))
+                links = [a.get(HREF) for a in root.findall('.//f:a', NS)]
+                self.assertIn('#alias', links)
+                self.assertIn('Heading text', self.text(root))
+                self.assertIn('Body text', self.text(root))
+
+    def test_ordinary_link_to_collected_note_alias_resolves_to_note(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                extra = {'notes.xhtml': ('notes', 'application/xhtml+xml',
+                         '<ol><li id="outer"><a id="inner"/>Note text</li></ol>')}
+                root = self.convert('<p><sup><a href="../notes.xhtml#inner">1</a></sup> '
+                                    '<a href="../notes.xhtml#inner">Read note</a></p>',
+                                    extra, version=version, navigation=False)
+                note, = self.notes(root)
+                link = next(a for a in root.findall('.//f:a', NS) if self.text(a) == 'Read note')
+                self.assertEqual(link.get(HREF), '#' + note.get('id'))
+                self.assertNotEqual(link.get('type'), 'note')
+                self.assertIn('Note text', self.text(note))
+
+    def test_poem_retains_nested_page_anchor(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<p><a href="#page">Page reference</a></p>'
+                                    '<p class="poem" id="verse"><span epub:type="pagebreak" id="page"/>'
+                                    'Poem text</p>', version=version, navigation=False)
+                ids = {n.get('id') for n in root.iter() if n.get('id')}
+                self.assertTrue({'verse', 'page'}.issubset(ids))
+                self.assertIn('Poem text', self.text(root))
+
+    def test_unmarked_anchor_inside_list_note_remains_linkable(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                extra = {'notes.xhtml': ('notes', 'application/xhtml+xml',
+                         '<ol><li id="note" epub:type="footnote"><a id="alias"/>Note text</li></ol>')}
+                root = self.convert('<p><a epub:type="noteref" href="../notes.xhtml#note">1</a> '
+                                    '<a href="../notes.xhtml#alias">Read detail</a></p>', extra,
+                                    version=version, navigation=False)
+                note, = self.notes(root)
+                link = next(a for a in root.findall('.//f:a', NS) if self.text(a) == 'Read detail')
+                self.assertTrue(any('#' + (n.get('id') or '') == link.get(HREF) for n in note.iter()))
+                self.assertIn('Note text', self.text(note))
+
+    def test_document_link_to_chapter_with_preface_before_heading(self):
+        for version in ('2.0', '3.0'):
+            for heading in ('<h1>Heading text</h1>', '<h1 id="heading">Heading text</h1>'):
+                with self.subTest(version=version, heading=heading):
+                    links = '<a href="later.xhtml">Whole chapter</a>'
+                    if 'id=' in heading:
+                        links += ' <a href="later.xhtml#heading">Heading link</a>'
+                    root = self.convert('<p>' + links + '</p>',
+                                        {'Text/later.xhtml': ('later', 'application/xhtml+xml',
+                                         '<div><p>Chapter preface</p></div>' + heading + '<p>Chapter text</p>')},
+                                        version=version, spine=['chapter', 'later'], navigation=False)
+                    text = self.text(root)
+                    self.assertLess(text.index('Chapter preface'), text.index('Heading text'))
+                    self.assertLess(text.index('Heading text'), text.index('Chapter text'))
+
+    def test_semantic_subheading_keeps_nested_anchor(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<p><a href="#sub-anchor">Subheading link</a></p>'
+                                    '<div><h2 class="subheading"><a id="sub-anchor"/>'
+                                    'Subheading text</h2><p>Following text</p></div>',
+                                    version=version, navigation=False)
+                self.assertTrue(any(n.get('id') == 'sub-anchor' for n in root.iter()))
+                self.assertIn('Subheading text', self.text(root))
+                self.assertIn('Following text', self.text(root))
+
+    def test_empty_quote_preserves_anchor_target(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<p><a href="#empty-quote">Quote link</a></p>'
+                                    '<blockquote><p id="empty-quote"><span/></p></blockquote>'
+                                    '<p>Following text</p>', version=version, navigation=False)
+                self.assertTrue(any(n.get('id') == 'empty-quote' for n in root.iter()))
+                self.assertIn('Following text', self.text(root))
 
     def test_epigraph_attribution_structure_matrix(self):
         cases = (

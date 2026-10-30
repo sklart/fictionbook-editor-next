@@ -12,6 +12,7 @@
 #include <set>
 #include <algorithm>
 #include <cwctype>
+#include <new>
 #include <thread>
 #include <shlwapi.h>
 #include <gdiplus.h>
@@ -22,6 +23,7 @@ namespace
     EpubImportOptions g_options;
     EpubImportRuntimeStats g_runtimeStats;
     thread_local CStringW g_bookRoot;
+    thread_local LPCWSTR g_importStage = L"initialization";
     struct BookRootScope {
         CStringW previous;
         explicit BookRootScope(const CStringW& root) : previous(g_bookRoot) { g_bookRoot=root; }
@@ -98,6 +100,9 @@ namespace
         std::set<std::wstring> mainDocuments, noteContentAnchors, noteRootDocuments, residualDocuments;
         std::set<std::wstring> excludedServiceDocuments;
         std::set<std::wstring> warnedInlineCss;
+        std::map<std::wstring, bool> imageOnlyCoverPages;
+        std::set<std::wstring> fb2GenreIds;
+        bool fb2GenresLoaded = false;
         std::map<std::wstring, CStringW> noteLinks;
         std::map<std::wstring, CStringW> noteRoots;
         CStringW warnings;
@@ -863,6 +868,30 @@ namespace
         return s;
     }
 
+    CStringW CompactGuidString()
+    {
+        GUID guid = {};
+        if (FAILED(::CoCreateGuid(&guid)))
+            return CStringW();
+        static const wchar_t alphabet[] = L"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_";
+        const unsigned char* bytes = reinterpret_cast<const unsigned char*>(&guid);
+        CStringW result;
+        unsigned int bits = 0, value = 0;
+        for (size_t i = 0; i < sizeof(guid); ++i)
+        {
+            value = (value << 8) | bytes[i];
+            bits += 8;
+            while (bits >= 6)
+            {
+                bits -= 6;
+                result.AppendChar(alphabet[(value >> bits) & 63]);
+            }
+        }
+        if (bits)
+            result.AppendChar(alphabet[(value << (6 - bits)) & 63]);
+        return result;
+    }
+
     bool DeleteDirectoryTree(const CStringW& dir)
     {
         if (!DirectoryExists(dir))
@@ -913,9 +942,27 @@ namespace
             : m_keep(false)
         {
             wchar_t temp[MAX_PATH] = L"";
-            ::GetTempPathW(_countof(temp), temp);
-            m_path.Format(L"%sImportEPUB_%s", temp, GuidString().GetString());
-            CreateDirectoryRecursive(m_path);
+            const DWORD tempLength = ::GetTempPathW(_countof(temp), temp);
+            if (tempLength == 0 || tempLength >= _countof(temp))
+                return;
+            // Shell's ZIP provider is sensitive to the complete path length,
+            // including the archive's internal entry name. Keep the temporary
+            // directory short while retaining the full GUID entropy.
+            for (int attempt = 0; attempt < 4; ++attempt)
+            {
+                const CStringW id = CompactGuidString();
+                if (id.IsEmpty())
+                    break;
+                CStringW candidate;
+                candidate.Format(L"%sE_%s", temp, id.GetString());
+                if (::CreateDirectoryW(candidate, nullptr))
+                {
+                    m_path = candidate;
+                    break;
+                }
+                if (::GetLastError() != ERROR_ALREADY_EXISTS)
+                    break;
+            }
         }
 
         ~TempDirectory()
@@ -3291,6 +3338,10 @@ namespace
 
             if (!href.IsEmpty() && g_options.preserveLinks)
             {
+                // An ordinary link can point to an anchor collected inside a
+                // note whose FB2 section uses a different root identifier.
+                if (g_options.importNotes && note != g_content.noteLinks.end())
+                    return L"<a l:href=\"#" + XmlEscape(note->second) + L"\">" + text + L"</a>";
                 // Only explicitly filtered service documents lose their links;
                 // unresolved ordinary targets remain visible to strict validation.
                 if (!IsExternalHref(href) && !href.Left(href.Find(L'#') >= 0 ? href.Find(L'#') : href.GetLength()).IsEmpty() &&
@@ -3944,7 +3995,20 @@ namespace
         poem += L"      </poem>\r\n";
 
         if (lineCount > 0 || !authors.IsEmpty())
+        {
+            const CStringW rootRaw = RawAnchorId(node);
+            const CStringW rootId = OptionalIdAttributeFromRaw(rootRaw, ctx);
+            const auto ids = CollectRawAnchorIds(node);
+            CStringW markers;
+            for (size_t i = !rootRaw.IsEmpty() && !ids.empty() && ids.front() == rootRaw ? 1 : 0; i < ids.size(); ++i)
+            {
+                const CStringW id = OptionalIdAttributeFromRaw(ids[i], ctx);
+                if (!id.IsEmpty()) markers += L"          <v" + id + L"></v>\r\n";
+            }
+            poem.Replace(L"      <poem>\r\n", L"      <poem" + rootId + L">\r\n");
+            poem.Replace(L"        <stanza>\r\n", L"        <stanza>\r\n" + markers);
             out += poem;
+        }
     }
 
     void AppendEpigraphOrCiteNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx, bool epigraph)
@@ -4006,6 +4070,11 @@ namespace
                 out += (i == 0 ? rootId : CStringW()) + L">\r\n" + (i == 0 ? markers : CStringW()) + blocks[i];
                 out += epigraph ? L"      </epigraph>\r\n" : L"      </cite>\r\n";
             }
+        }
+        else
+        {
+            // An otherwise empty quote can still contain a legitimate target.
+            out += AnchorMarkerParagraphsFromRawIds(CollectRawAnchorIds(node), 0, ctx);
         }
     }
 
@@ -4595,13 +4664,17 @@ namespace
         {
             CStringW subtitle = ChildrenInlineToFb2(node, ctx);
             subtitle.Trim();
-            if (!subtitle.IsEmpty())
-                out += L"      <subtitle>" + subtitle + L"</subtitle>\r\n";
+            const auto ids = CollectRawAnchorIds(node);
+            const CStringW id = ids.empty() ? CStringW() : OptionalIdAttributeFromRaw(ids.front(), ctx);
+            out += AnchorMarkerParagraphsFromRawIds(ids, 1, ctx);
+            if (!subtitle.IsEmpty() || !id.IsEmpty())
+                out += L"      <subtitle" + id + L">" + subtitle + L"</subtitle>\r\n";
             return;
         }
 
         if (LooksLikePageBreak(node) || name.CompareNoCase(L"hr") == 0)
         {
+            out += AnchorMarkerParagraphsFromRawIds(CollectRawAnchorIds(node), 0, ctx);
             if (!g_options.importPageBreaks)
                 return;
 
@@ -4648,8 +4721,11 @@ namespace
         {
             CStringW title = ChildrenInlineToFb2(node, ctx);
             title.Trim();
-            if (!title.IsEmpty())
-                out += L"      <subtitle>" + title + L"</subtitle>\r\n";
+            CStringW markers;
+            const CStringW id = OptionalIdAttributeAndExtraMarkersIncludingDescendant(node, ctx, markers);
+            out += markers;
+            if (!title.IsEmpty() || !id.IsEmpty())
+                out += L"      <subtitle" + id + L">" + title + L"</subtitle>\r\n";
             return;
         }
 
@@ -5008,7 +5084,11 @@ namespace
                 const CStringW childName = LocalName(MsxmlGetNodeListItem(items, i));
                 blocks = blocks || childName == L"p" || childName == L"div" || childName == L"section" || childName == L"ol" || childName == L"ul";
             }
-            if (!blocks) return L"      <p>" + ChildrenInlineToFb2(noteNode, noteContext) + L"</p>\r\n";
+            if (!blocks)
+            {
+                const CStringW markers = AnchorMarkerParagraphsFromRawIds(CollectRawAnchorIds(noteNode), 0, noteContext);
+                return markers + L"      <p>" + ChildrenInlineToFb2(noteNode, noteContext) + L"</p>\r\n";
+            }
         }
         MSXML2::IXMLDOMNodePtr firstHeading = FindFirstHeadingChild(noteNode);
 
@@ -5065,7 +5145,6 @@ namespace
             g_content.noteTargets.emplace(key.GetString());
             g_content.emittedIds.emplace(id->second);
         }
-        isNotesDocument = !noteNodes.empty() && !HasMainContent(body, xhtmlPath);
 
         for (size_t i = 0; i < noteNodes.size(); ++i)
         {
@@ -5104,14 +5183,40 @@ namespace
             if (note.content.IsEmpty())
             {
                 warning += L"Empty or unsupported note: " + xhtmlPath + L"#" + rawId + L"\r\n";
-                g_content.noteLinks.erase(std::wstring(PathAnchorMapKey(xhtmlPath, rawId)));
-                g_content.noteTargets.erase(std::wstring(PathAnchorMapKey(xhtmlPath, rawId)));
+                // The inventory reserved this identifier as a note before
+                // rendering proved it empty. Release every alias so the
+                // original heading or other target can still emit its anchor.
+                g_content.emittedIds.erase(noteKey);
+                noteIds.erase(noteKey);
+                g_content.noteRoots.erase(std::wstring(NoteRootKey(noteNodes[i], xhtmlPath)));
+                for (auto link = g_content.noteLinks.begin(); link != g_content.noteLinks.end();)
+                {
+                    if (link->second == id)
+                    {
+                        g_content.noteTargets.erase(link->first);
+                        g_content.noteContentAnchors.erase(link->first);
+                        link = g_content.noteLinks.erase(link);
+                    }
+                    else ++link;
+                }
                 continue;
             }
 
             notes.push_back(note);
         }
 
+        bool hasRetainedNotes = false;
+        for (const auto& node : noteNodes)
+        {
+            const CStringW key = PathAnchorMapKey(xhtmlPath, NoteAnchorId(node, xhtmlPath));
+            const auto note = g_content.noteLinks.find(std::wstring(key));
+            if (note != g_content.noteLinks.end() && noteIds.count(std::wstring(note->second.GetString())))
+            {
+                hasRetainedNotes = true;
+                break;
+            }
+        }
+        isNotesDocument = hasRetainedNotes && !HasMainContent(body, xhtmlPath);
         if (isNotesDocument)
         {
             for (const auto& node : noteNodes)
@@ -5124,6 +5229,37 @@ namespace
         }
 
         return !noteNodes.empty();
+    }
+
+    bool IsImageOnlyCoverPage(const ManifestItem& item)
+    {
+        if (IsImageMediaType(item.mediaType) || IsImageHrefByExtension(item.href)) return true;
+        const std::wstring key(LowerMapKey(item.absPath).GetString());
+        const auto cached = g_content.imageOnlyCoverPages.find(key);
+        if (cached != g_content.imageOnlyCoverPages.end()) return cached->second;
+
+        bool imageOnly = false;
+        MSXML2::IXMLDOMDocument2Ptr doc;
+        CStringW error;
+        if (LoadXmlFile(item.absPath, doc, error))
+        {
+            const auto body = FindFirstElementByLocalName(MsxmlGetDocumentElement(doc), L"body");
+            if (body)
+            {
+                const CStringW text = NodeText(body);
+                imageOnly = true;
+                for (int i = 0; i < text.GetLength(); ++i)
+                    if (!iswspace(text[i]) && text[i] != 0x00a0 && text[i] != 0xfeff && text[i] != 0x200b)
+                    {
+                        imageOnly = false;
+                        break;
+                    }
+                if (!imageOnly)
+                    g_content.warnings += L"Cover-labelled XHTML contains text and was retained.\r\n";
+            }
+        }
+        g_content.imageOnlyCoverPages.emplace(key, imageOnly);
+        return imageOnly;
     }
 
     bool IsLikelyCoverSpineItem(const ManifestItem& item, const EpubPackage& package)
@@ -5147,7 +5283,7 @@ namespace
 
         if (id == L"nav" || id == L"toc" || id == L"ncx")
             return true;
-        if (IsTokenInList(props, L"nav") || IsTokenInList(props, L"cover"))
+        if (IsTokenInList(props, L"nav"))
             return true;
         if (item.mediaType.CompareNoCase(L"application/x-dtbncx+xml") == 0)
             return true;
@@ -5163,15 +5299,14 @@ namespace
                 return true;
         }
 
-        if (item.id.CompareNoCase(L"cover") == 0)
-            return true;
+        bool cover = item.id.CompareNoCase(L"cover") == 0 || IsTokenInList(props, L"cover");
         if (!package.coverId.IsEmpty())
         {
-            const ManifestItem* cover = FindManifestItemById(package, package.coverId);
-            if (cover && item.href.CompareNoCase(cover->href) == 0)
-                return true;
+            const ManifestItem* coverItem = FindManifestItemById(package, package.coverId);
+            cover = cover || (coverItem && item.href.CompareNoCase(coverItem->href) == 0);
         }
-        return stem == L"cover" && (href.Right(6) == L".xhtml" || href.Right(5) == L".html");
+        cover = cover || (stem == L"cover" && (href.Right(6) == L".xhtml" || href.Right(5) == L".html"));
+        return cover && IsImageOnlyCoverPage(item);
     }
 
     CStringW BuildNotesBodyXml(const std::vector<EpubNote>& notes)
@@ -5282,7 +5417,17 @@ namespace
                 while (!stack.empty() && stack.back().level >= level) close();
                 if (!preface.IsEmpty())
                 {
-                    AppendFb2Section(outSection, XmlEscape(fallbackTitle), preface);
+                    CStringW prefaceId;
+                    if (outSection.GetLength() == initialLength && stack.empty() && ctx.anchorIdMap)
+                    {
+                        const CStringW filename = FileNameOnly(ctx.currentXhtmlPath);
+                        const auto document = ctx.anchorIdMap->find(std::wstring(LowerMapKey(ctx.currentXhtmlPath)));
+                        const auto filenameAnchor = ctx.anchorIdMap->find(std::wstring(PathAnchorMapKey(ctx.currentXhtmlPath, filename)));
+                        if (document != ctx.anchorIdMap->end() && filenameAnchor != ctx.anchorIdMap->end() &&
+                            document->second == filenameAnchor->second)
+                            prefaceId = OptionalIdAttributeFromRaw(filename, ctx);
+                    }
+                    AppendFb2Section(outSection, XmlEscape(fallbackTitle), preface, prefaceId);
                     preface.Empty();
                 }
                 Section section = {};section.level = level;section.title = heading;
@@ -5639,6 +5784,30 @@ namespace
     }
 
 
+    bool IsKnownFb2Genre(const CStringW& genre)
+    {
+        if (!g_content.fb2GenresLoaded)
+        {
+            g_content.fb2GenresLoaded = true;
+            MSXML2::IXMLDOMDocument2Ptr schema;
+            CStringW error;
+            const CStringW path = DirectoryOfCurrentModule() + L"\\..\\FictionBookGenres.xsd";
+            if (LoadXmlFile(path, schema, error))
+            {
+                std::vector<MSXML2::IXMLDOMNodePtr> values;
+                CollectElementsByLocalName(MsxmlGetDocumentElement(schema), L"enumeration", values);
+                for (const auto& value : values)
+                {
+                    const CStringW name = Attr(value, L"value");
+                    if (!name.IsEmpty()) g_content.fb2GenreIds.emplace(name.GetString());
+                }
+            }
+            if (g_content.fb2GenreIds.empty())
+                g_content.warnings += L"FB2 genre list could not be loaded; original EPUB subjects remain in custom-info.\r\n";
+        }
+        return g_content.fb2GenreIds.count(std::wstring(genre.GetString())) != 0;
+    }
+
     CStringW MapSubjectToFb2Genre(const CStringW& subject)
     {
         CStringW s(subject);
@@ -5649,9 +5818,12 @@ namespace
         CStringW lower(s);
         lower.MakeLower();
 
-        // If the EPUB already contains an FB2-like genre id, keep it.
+        // Preserve a direct identifier only if it occurs in the FB2 schema.
         if (s.Find(L" ") < 0 && s.Find(L",") < 0 && s.Find(L"_") >= 0)
-            return s;
+        {
+            if (IsKnownFb2Genre(s)) return s;
+            g_content.warnings += L"Unrecognized FB2-like genre retained in EPUB subjects.\r\n";
+        }
 
         if (ContainsNoCase(lower, L"\x043D\x0430\x0443\x0447") || ContainsNoCase(lower, L"science") || ContainsNoCase(lower, L"\x0430\x0441\x0442\x0440\x043E\x043D") || ContainsNoCase(lower, L"\x043A\x043E\x0441\x043C\x043E\x0441"))
             return L"sci_popular";
@@ -5857,6 +6029,22 @@ namespace
         return text;
     }
 
+    CStringW NormalizeFb2SeriesNumber(const CStringW& raw)
+    {
+        CStringW value(raw);
+        value.Trim();
+        if (value.IsEmpty()) return CStringW();
+        int i = (value[0] == L'+' || value[0] == L'-') ? 1 : 0;
+        const int digits = i;
+        while (i < value.GetLength() && value[i] >= L'0' && value[i] <= L'9') ++i;
+        if (i == digits) return CStringW();
+        if (i == value.GetLength()) return value;
+        if (value[i] != L'.' || i + 1 == value.GetLength()) return CStringW();
+        for (int j = i + 1; j < value.GetLength(); ++j)
+            if (value[j] != L'0') return CStringW();
+        return value.Left(i);
+    }
+
     CStringW BuildDescriptionXml(const EpubPackage& package)
     {
         CStringW xml;
@@ -5911,11 +6099,12 @@ namespace
         xml += L"      <lang>" + XmlEscape(fb2Lang) + L"</lang>\r\n";
         for (size_t i = 0; i < package.contributors.size(); ++i)
             AppendPersonXml(xml, L"translator", package.contributors[i]);
+        const CStringW seriesNumber = NormalizeFb2SeriesNumber(package.seriesNumber);
         if (!package.seriesName.IsEmpty())
         {
             CStringW numberAttr;
-            if (!package.seriesNumber.IsEmpty())
-                numberAttr = L" number=\"" + XmlEscape(package.seriesNumber) + L"\"";
+            if (!seriesNumber.IsEmpty())
+                numberAttr = L" number=\"" + XmlEscape(seriesNumber) + L"\"";
             xml += L"      <sequence name=\"" + XmlEscape(package.seriesName) + L"\"" + numberAttr + L"/>\r\n";
         }
         xml += L"    </title-info>\r\n";
@@ -5940,6 +6129,12 @@ namespace
             if (!package.isbn.IsEmpty())
                 xml += L"      <isbn>" + XmlEscape(package.isbn) + L"</isbn>\r\n";
             xml += L"    </publish-info>\r\n";
+        }
+        if (!package.seriesNumber.IsEmpty() && (seriesNumber != package.seriesNumber || package.seriesName.IsEmpty()))
+        {
+            xml += L"    <custom-info info-type=\"EPUB series position\">" + XmlEscape(package.seriesNumber) + L"</custom-info>\r\n";
+            if (seriesNumber.IsEmpty())
+                g_content.warnings += L"EPUB series position is not an integer; original value preserved in custom-info.\r\n";
         }
         if (!package.source.IsEmpty())
             xml += L"    <custom-info info-type=\"EPUB source\">" + XmlEscape(package.source) + L"</custom-info>\r\n";
@@ -6685,6 +6880,7 @@ namespace
         VARIANT_BOOL loaded = VARIANT_FALSE;
         CComBSTR xmlText(static_cast<LPCWSTR>(xml));
         HRESULT loadHr = dom->loadXML(xmlText, &loaded);
+        xmlText.Empty();
         if (FAILED(loadHr) || loaded != VARIANT_TRUE)
         {
             CStringW reason = MsxmlGetParseErrorReason(dom);
@@ -6704,8 +6900,23 @@ namespace
         NormalizeSectionChildren(dom, MsxmlGetDocumentElement(dom), warning);
         if (g_options.blankBeforeImages || g_options.blankAfterImages) ApplyImageSpacing(dom, warning);
         if (g_options.importNotes && g_options.unifyNoteNumbers) ApplyUnifiedNoteNumbers(dom);
+        // Keep the original only when the user requested an intermediate FB2
+        // on error. Otherwise release it before serializing the DOM, which can
+        // require another very large allocation for image-heavy books.
+        if (!g_options.saveIntermediateFb2OnError) xml.Empty();
         BSTR normalized = nullptr;
-        if (FAILED(dom->get_xml(&normalized))) return false;
+        const HRESULT serializeHr = dom->get_xml(&normalized);
+        if (FAILED(serializeHr) || !normalized)
+        {
+            CStringW reason;
+            reason.Format(L"Could not serialize normalized FB2 (HRESULT 0x%08lX).\r\n", static_cast<unsigned long>(serializeHr));
+            warning += reason;
+            return false;
+        }
+        // The DOM and its serialized result now own the content. Release the
+        // pre-normalized copy before allocating the replacement, otherwise
+        // image-heavy FB2 files can exhaust the Win32 address space.
+        xml.Empty();
         xml = MsxmlBstrToString(normalized);
         CStringW referenceWarnings;ValidateInternalReferences(xml, referenceWarnings);warning += referenceWarnings;
         if (!referenceWarnings.IsEmpty()) return false;
@@ -6740,6 +6951,7 @@ EpubImportRuntimeStats GetLastEpubImportRuntimeStats()
 
 bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& options, CStringW& outFb2Xml, CStringW& errorText)
 {
+    g_importStage = L"initialization";
     g_options = options;
     g_runtimeStats = EpubImportRuntimeStats();
     g_content = ContentInventory();
@@ -6768,8 +6980,16 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     }
 
     TempDirectory temp;
+    if (temp.Path().IsEmpty())
+    {
+        errorText = L"Cannot create a temporary directory for EPUB import.";
+        log.Add(errorText);
+        log.SaveIfRequested(epubPath, options.writeLogOnWarnings);
+        return false;
+    }
     BookRootScope bookRoot(temp.Path()+L"\\epub");
     CStringW extractDir;
+    g_importStage = L"archive extraction";
     if (!ExpandEpubToDirectory(epubPath, temp.Path(), extractDir, errorText))
     {
         log.Add(errorText);
@@ -6795,6 +7015,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     log.AddFormat(L"OPF: %s", opfPath);
 
     EpubPackage package;
+    g_importStage = L"package metadata";
     if (!ParseOpf(opfPath, package, errorText))
     {
         log.Add(errorText);
@@ -6830,6 +7051,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     std::set<std::wstring> noteDocumentIds;
     int importedSections = 0;
 
+    g_importStage = L"content inventory";
     PrepareContentInventory(package, anchorIdMap);
     if (options.unifyImageNames && options.separateCoverName && options.importCover)
     {
@@ -6847,6 +7069,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
 
     if (options.importNotes)
     {
+        g_importStage = L"notes collection";
         // First pass: collect EPUB endnotes/footnotes into a separate FB2 notes body.
         // This makes FBE note links work instead of leaving raw XHTML links like
         // chapter_003.xhtml#n_1 in the main text.
@@ -6881,6 +7104,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         log.AddFormatInt(L"Notes found: %d", static_cast<int>(notes.size()));
     }
 
+    g_importStage = L"chapter conversion";
     for (size_t i = 0; i < package.spine.size(); ++i)
     {
         std::map<std::wstring, ManifestItem>::const_iterator it = package.manifest.find(std::wstring(package.spine[i].GetString()));
@@ -7048,7 +7272,10 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         else if (!readable) warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_TITLE_BLOCK_NOT_INSPECTED, L"Title block was not added because the existing body could not be inspected.") + L"\r\n";
     }
 
+    g_importStage = L"image conversion";
     CStringW binariesXml = BuildBinariesXml(package, usedImageIds, warning);
+    g_importStage = L"FB2 assembly";
+    const CStringW descriptionXml = BuildDescriptionXml(package);
     warning += g_content.warnings;
     CStringW inventory;
     inventory.Format(L"Notes references: found=%d imported=%d lost=%d; images: references=%d used=%u imported=%d skipped=%d\r\n",
@@ -7061,7 +7288,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     outFb2Xml += L"<?xml version=\"1.0\"?>\r\n";
     outFb2Xml += L"<FictionBook xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\" ";
     outFb2Xml += L"xmlns:l=\"http://www.w3.org/1999/xlink\">\r\n";
-    outFb2Xml += BuildDescriptionXml(package);
+    outFb2Xml += descriptionXml;
     outFb2Xml += L"  <body>\r\n";
     if (options.addDiagnosticSection && !warning.IsEmpty())
     {
@@ -7081,11 +7308,15 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     if (options.importNotes)
         outFb2Xml += BuildNotesBodyXml(notes);
     outFb2Xml += binariesXml;
+    binariesXml.Empty();
+    body.Empty();
+    titleBlock.Empty();
     outFb2Xml += L"</FictionBook>\r\n";
 
     // XML, section shape and reference integrity are always checked. The schema
     // check additionally follows the user's existing validation option.
     {
+        g_importStage = L"FB2 validation";
         CStringW validationWarning;
         const bool valid = ValidateGeneratedFb2Xml(outFb2Xml, validationWarning, package, anchorIdMap);
         log.AddFormatInt(L"Generated FB2 links with missing targets: %d", g_content.missingGeneratedTargets);
@@ -7220,10 +7451,42 @@ extern "C" HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
         const EpubImportOptions options = apiOptions ? ImportEpubOptionsFromApi(*apiOptions) : EpubImportOptions();
         converted = BuildFb2XmlFromEpub(CStringW(epubPath), options, fb2Xml, errorText);
     }
+    catch (const _com_error& error)
+    {
+        const HRESULT hr = error.Error();
+        if (hr == E_OUTOFMEMORY)
+        {
+            *apiErrorText = ::SysAllocString(L"ImportEPUB ran out of memory during conversion.");
+            return E_OUTOFMEMORY;
+        }
+        wchar_t message[256] = {};
+        ::swprintf_s(message, _countof(message), L"ImportEPUB failed at %s with COM error 0x%08lX.", g_importStage, static_cast<unsigned long>(hr));
+        *apiErrorText = ::SysAllocString(message);
+        return *apiErrorText ? (FAILED(hr) ? hr : E_FAIL) : E_OUTOFMEMORY;
+    }
+    catch (const ATL::CAtlException& error)
+    {
+        const HRESULT hr = error.m_hr;
+        if (hr == E_OUTOFMEMORY)
+        {
+            *apiErrorText = ::SysAllocString(L"ImportEPUB ran out of memory during conversion.");
+            return E_OUTOFMEMORY;
+        }
+        wchar_t message[256] = {};
+        ::swprintf_s(message, _countof(message), L"ImportEPUB failed at %s with ATL error 0x%08lX.", g_importStage, static_cast<unsigned long>(hr));
+        *apiErrorText = ::SysAllocString(message);
+        return *apiErrorText ? (FAILED(hr) ? hr : E_FAIL) : E_OUTOFMEMORY;
+    }
+    catch (const std::bad_alloc&)
+    {
+        *apiErrorText = ::SysAllocString(L"ImportEPUB ran out of memory during conversion.");
+        return E_OUTOFMEMORY;
+    }
     catch (...)
     {
-        errorText = L"ImportEPUB encountered an unexpected internal error.";
-        *apiErrorText = AllocateImportEpubApiText(errorText);
+        wchar_t message[256] = {};
+        ::swprintf_s(message, _countof(message), L"ImportEPUB encountered an unexpected internal error at %s.", g_importStage);
+        *apiErrorText = ::SysAllocString(message);
         return *apiErrorText ? E_FAIL : E_OUTOFMEMORY;
     }
 
