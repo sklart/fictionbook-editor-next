@@ -1459,6 +1459,8 @@ namespace
         return g_options.useCssSemanticClasses && ContainsNoCase(classes, token);
     }
 
+    bool CssComputedHidden(const MSXML2::IXMLDOMNodePtr& node);
+
     bool IsHiddenElement(const MSXML2::IXMLDOMNodePtr& node)
     {
         if (!g_options.skipHiddenElements || !node || MsxmlGetNodeType(node) != MSXML2::NODE_ELEMENT)
@@ -1469,18 +1471,7 @@ namespace
 
         // aria-hidden affects the accessibility tree, not visual rendering.
         // Treating it as CSS visibility discards visible text and images.
-        CStringW style = Attr(node, L"style");
-        style.MakeLower();
-        style.Remove(L' ');
-        style.Remove(L'\t');
-        if (style.Find(L"display:none") >= 0 || style.Find(L"visibility:hidden") >= 0)
-            return true;
-
-        return HasCssClass(node, L"hidden") ||
-            HasCssClass(node, L"hide") ||
-            HasCssClass(node, L"visually-hidden") ||
-            HasCssClass(node, L"sr-only") ||
-            HasCssClass(node, L"screen-reader-only");
+        return CssComputedHidden(node);
     }
 
     CStringW AttrByLocalName(const MSXML2::IXMLDOMNodePtr& node, LPCWSTR localName)
@@ -2731,8 +2722,8 @@ namespace
             for (long i = 0; i < count; ++i) ImageCandidates(MsxmlGetNodeListItem(children, i), candidates);
             return;
         }
-        if (name != L"img" && name != L"image" && name != L"source" && name != L"object") return;
-        CStringW primary = name == L"object" ? Attr(node, L"data") : Attr(node, L"src");
+        if (name != L"img" && name != L"image" && name != L"source" && name != L"object" && name != L"video") return;
+        CStringW primary = name == L"object" ? Attr(node, L"data") : name == L"video" ? Attr(node, L"poster") : Attr(node, L"src");
         if (primary.IsEmpty()) primary = AttrByLocalName(node, L"href");
         if (!primary.IsEmpty()) candidates.push_back(primary);
         const CStringW srcset = Attr(node, L"srcset");
@@ -2866,7 +2857,9 @@ namespace
     };
     struct CssFontRule
     {
-        CStringW declarations;
+        CStringW declarations, visibilityDeclarations;
+        CStringW backgroundHref, backgroundDir;
+        bool backgroundSet = false, backgroundImportant = false;
         std::vector<CssSelectorPart> parts;
         int classSpecificity = 0, elementSpecificity = 0;
     };
@@ -2895,6 +2888,71 @@ namespace
         if (suffix != L"important") return false;
         value = value.Left(bang); value.Trim();
         return true;
+    }
+
+    void ParseCssBackground(CStringW declarations, bool& set, bool& important, CStringW& href)
+    {
+        int position = 0;
+        while (position != -1)
+        {
+            CStringW declaration = declarations.Tokenize(L";", position);
+            const int colon = declaration.Find(L':');
+            if (colon < 0) continue;
+            CStringW key = declaration.Left(colon), value = declaration.Mid(colon + 1);
+            key.Trim(); key.MakeLower(); value.Trim();
+            if (key != L"background-image" && key != L"background") continue;
+            CStringW lowered(value); lowered.MakeLower();
+            const bool priority = ExtractCssImportant(lowered);
+            if (priority)
+            {
+                const int bang = value.ReverseFind(L'!');
+                value = value.Left(bang); value.Trim();
+            }
+            if (set && important && !priority) continue;
+            set = true; important = priority; href.Empty();
+            lowered = value; lowered.MakeLower();
+            const int start = lowered.Find(L"url(");
+            if (start < 0 || lowered.Find(L"url(", start + 4) >= 0) continue;
+            const int end = value.Find(L')', start + 4);
+            if (end < 0) continue;
+            href = value.Mid(start + 4, end - start - 4); href.Trim();
+            if (href.GetLength() >= 2 && ((href[0] == L'\'' && href[href.GetLength() - 1] == L'\'') ||
+                (href[0] == L'"' && href[href.GetLength() - 1] == L'"')))
+                href = href.Mid(1, href.GetLength() - 2);
+        }
+    }
+
+    bool HasCssVisibilityDeclaration(CStringW declarations)
+    {
+        int position = 0;
+        while (position != -1)
+        {
+            CStringW declaration = declarations.Tokenize(L";", position);
+            const int colon = declaration.Find(L':');
+            if (colon < 0) continue;
+            CStringW key = declaration.Left(colon); key.Trim(); key.MakeLower();
+            if (key == L"display" || key == L"visibility") return true;
+        }
+        return false;
+    }
+
+    void ApplyCssVisibility(CStringW declarations, bool important, bool& displayHidden, bool& visibilityHidden)
+    {
+        declarations.MakeLower();
+        int position = 0;
+        while (position != -1)
+        {
+            CStringW declaration = declarations.Tokenize(L";", position);
+            const int colon = declaration.Find(L':');
+            if (colon < 0) continue;
+            CStringW key = declaration.Left(colon), value = declaration.Mid(colon + 1);
+            key.Trim(); value.Trim();
+            if (ExtractCssImportant(value) != important) continue;
+            if (key == L"display" && value == L"none") displayHidden = true;
+            else if (key == L"display" && !value.IsEmpty() && value != L"inherit" && value != L"unset") displayHidden = false;
+            else if (key == L"visibility" && (value == L"hidden" || value == L"collapse")) visibilityHidden = true;
+            else if (key == L"visibility" && (value == L"visible" || value == L"initial")) visibilityHidden = false;
+        }
     }
 
     void ApplyFontDeclarations(CStringW style, InlineFontState& font, const InlineFontState& inherited, bool important)
@@ -2984,7 +3042,8 @@ namespace
         {
             if (g_cssFontRules) for (const auto& rule : *g_cssFontRules)
             {
-                if (MatchesCssRule(node, rule)) ApplyFontDeclarations(rule.declarations, font, inherited, priority != 0);
+                if (!rule.declarations.IsEmpty() && MatchesCssRule(node, rule))
+                    ApplyFontDeclarations(rule.declarations, font, inherited, priority != 0);
             }
             ApplyFontDeclarations(supported, font, inherited, priority != 0);
         }
@@ -3028,7 +3087,7 @@ namespace
         return supported;
     }
 
-    void ParseCssFontRules(CStringW css, std::vector<CssFontRule>& rules, CStringW& warning)
+    void ParseCssFontRules(CStringW css, const CStringW& baseDir, std::vector<CssFontRule>& rules, CStringW& warning)
     {
         wchar_t commentQuote = 0;
         for (int index = 0; index < css.GetLength(); ++index)
@@ -3099,7 +3158,11 @@ namespace
             CStringW declarations = css.Mid(open + 1, close - open - 1);
             bool affectsFont = false;
             const CStringW supported = SupportedCssFontDeclarations(declarations, warning, &affectsFont);
-            if (affectsFont)
+            bool backgroundSet = false, backgroundImportant = false;
+            CStringW backgroundHref;
+            ParseCssBackground(declarations, backgroundSet, backgroundImportant, backgroundHref);
+            const bool affectsVisibility = HasCssVisibilityDeclaration(declarations);
+            if (affectsFont || backgroundSet || affectsVisibility)
             {
                 int selectorPosition = 0;
                 while (selectorPosition != -1)
@@ -3134,7 +3197,12 @@ namespace
                     valid = valid && !rule.parts.empty();
                     if (!valid) { warning += L"Unsupported CSS font selector or declaration: " + selector + L"\r\n"; continue; }
                     rule.declarations = supported;
-                    if (!supported.IsEmpty()) rules.push_back(rule);
+                    if (affectsVisibility) rule.visibilityDeclarations = declarations;
+                    rule.backgroundSet = backgroundSet;
+                    rule.backgroundImportant = backgroundImportant;
+                    rule.backgroundHref = backgroundHref;
+                    rule.backgroundDir = baseDir;
+                    if (!supported.IsEmpty() || backgroundSet || affectsVisibility) rules.push_back(rule);
                 }
             }
             position = close + 1;
@@ -3163,7 +3231,7 @@ namespace
                     warning += L"Unsupported CSS media condition; stylesheet was not applied: " + media + L"\r\n";
                     continue;
                 }
-                if (name.CompareNoCase(L"style") == 0) ParseCssFontRules(MsxmlGetNodeText(child), rules_, warning);
+                if (name.CompareNoCase(L"style") == 0) ParseCssFontRules(MsxmlGetNodeText(child), DirectoryOf(path), rules_, warning);
                 else if (name.CompareNoCase(L"link") == 0 && ContainsNoCase(Attr(child, L"rel"), L"stylesheet"))
                 {
                     const CStringW href = Attr(child, L"href");
@@ -3182,7 +3250,7 @@ namespace
                     CStringW text;
                     if (!stylesheet || !ReadTextFileBytes(stylesheet->absPath, bytes) || !DecodeTextFileBytes(bytes, text))
                         warning += L"Stylesheet could not be loaded from the EPUB manifest: " + href + L"\r\n";
-                    else ParseCssFontRules(text, rules_, warning);
+                    else ParseCssFontRules(text, DirectoryOf(stylesheet->absPath), rules_, warning);
                 }
             }
             std::stable_sort(rules_.begin(), rules_.end(), [](const CssFontRule& a, const CssFontRule& b) {
@@ -3192,6 +3260,65 @@ namespace
         }
         ~ScopedCssFontRules() { g_cssFontRules = previous_; }
     };
+
+    bool CssComputedHidden(const MSXML2::IXMLDOMNodePtr& node)
+    {
+        bool displayHidden = false, visibilityHidden = false;
+        const CStringW inlineStyle = Attr(node, L"style");
+        for (int priority = 0; priority != 2; ++priority)
+        {
+            if (g_cssFontRules) for (const auto& rule : *g_cssFontRules)
+            {
+                if (!rule.visibilityDeclarations.IsEmpty() && MatchesCssRule(node, rule))
+                    ApplyCssVisibility(rule.visibilityDeclarations, priority != 0, displayHidden, visibilityHidden);
+            }
+            ApplyCssVisibility(inlineStyle, priority != 0, displayHidden, visibilityHidden);
+        }
+        return displayHidden || visibilityHidden;
+    }
+
+    CStringW EmptyBlockBackgroundImage(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
+    {
+        if (!g_options.importImages || !node) return CStringW();
+        const CStringW name = LocalName(node);
+        if (name != L"div" && name != L"section" && name != L"figure") return CStringW();
+        const auto children = MsxmlGetChildNodes(node);
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        for (long i = 0; i < count; ++i)
+            if (MsxmlGetNodeType(MsxmlGetNodeListItem(children, i)) == MSXML2::NODE_ELEMENT)
+                return CStringW();
+        if (!TrimString(NodeText(node)).IsEmpty()) return CStringW();
+
+        bool inlineSet = false, inlineImportant = false;
+        CStringW inlineHref;
+        ParseCssBackground(Attr(node, L"style"), inlineSet, inlineImportant, inlineHref);
+        CStringW href, directory;
+        for (int priority = 0; priority != 2; ++priority)
+        {
+            if (g_cssFontRules) for (const auto& rule : *g_cssFontRules)
+            {
+                if (rule.backgroundSet && rule.backgroundImportant == (priority != 0) && MatchesCssRule(node, rule))
+                {
+                    href = rule.backgroundHref;
+                    directory = rule.backgroundDir;
+                }
+            }
+            if (inlineSet && inlineImportant == (priority != 0))
+            {
+                href = inlineHref;
+                directory = ctx.currentXhtmlDir;
+            }
+        }
+        if (href.IsEmpty()) return CStringW();
+        if (IsExternalHref(href))
+        {
+            g_content.warnings += L"External CSS background image was not imported.\r\n";
+            return CStringW();
+        }
+        ConvertContext imageContext = ctx;
+        imageContext.currentXhtmlDir = directory;
+        return Fb2ImageElementForHref(imageContext, href);
+    }
 
     InlineFontState InheritedInlineFont(const MSXML2::IXMLDOMNodePtr& node)
     {
@@ -3208,6 +3335,12 @@ namespace
         return font;
     }
 
+    thread_local unsigned int g_inlineLinkDepth = 0;
+    struct InlineLinkScope
+    {
+        InlineLinkScope() { ++g_inlineLinkDepth; }
+        ~InlineLinkScope() { --g_inlineLinkDepth; }
+    };
     CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, InlineFontState font);
     CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
     {
@@ -3260,6 +3393,16 @@ namespace
             return CStringW();
 
         CStringW name = LocalName(node);
+        const CStringW inlineStyle = Attr(node, L"style");
+        if (g_options.importImages && ContainsNoCase(inlineStyle, L"background") && !TrimString(NodeText(node)).IsEmpty())
+        {
+            bool backgroundSet = false, backgroundImportant = false;
+            CStringW backgroundHref;
+            ParseCssBackground(inlineStyle, backgroundSet, backgroundImportant, backgroundHref);
+            const CStringW warningKey = L"background:" + inlineStyle;
+            if (backgroundSet && !backgroundHref.IsEmpty() && g_content.warnedInlineCss.emplace(warningKey.GetString()).second)
+                g_content.warnings += L"CSS background image on non-empty inline content was not imported.\r\n";
+        }
         ApplyInlineFont(node, font);
         if (name.CompareNoCase(L"em") == 0 || name.CompareNoCase(L"i") == 0 || name.CompareNoCase(L"strong") == 0 || name.CompareNoCase(L"b") == 0)
             return ChildrenInlineToFb2(node, ctx, font);
@@ -3297,7 +3440,13 @@ namespace
             if (IsBacklinkElement(node))
                 return CStringW();
 
+            if (g_inlineLinkDepth != 0)
+            {
+                g_content.warnings += L"Nested hyperlink was flattened because FB2 cannot nest links.\r\n";
+                return ChildrenInlineToFb2(node, ctx, font);
+            }
             CStringW href = Attr(node, L"href");
+            InlineLinkScope linkScope;
             CStringW text = ChildrenInlineToFb2(node, ctx, font);
             CStringW visibleText = text;
             visibleText.Trim();
@@ -3351,6 +3500,11 @@ namespace
                 return L"<a l:href=\"" + XmlEscape(normalizedHref) + L"\">" + text + L"</a>";
             }
             return text;
+        }
+        if (name == L"video")
+        {
+            g_content.warnings += L"EPUB video is not supported; its poster and fallback content were retained when available.\r\n";
+            return Fb2ImageElementForNode(ctx, node) + ChildrenInlineToFb2(node, ctx, font);
         }
         if (name == L"img" || name == L"image" || name == L"picture" || name == L"object")
         {
@@ -3941,6 +4095,26 @@ namespace
         CStringW cls = Attr(node, L"class");
         return IsTokenInList(type, L"pagebreak") || IsTokenInList(type, L"page-break") ||
             SemanticClassContains(cls, L"pagebreak") || SemanticClassContains(cls, L"page-break");
+    }
+
+    bool PageBreakHasContent(const MSXML2::IXMLDOMNodePtr& node)
+    {
+        if (!node || IsHiddenElement(node)) return false;
+        const CStringW name = LocalName(node);
+        if (name == L"img" || name == L"image" || name == L"picture" || name == L"object" || name == L"svg" || name == L"video")
+            return true;
+        const auto type = MsxmlGetNodeType(node);
+        if (type == MSXML2::NODE_TEXT || type == MSXML2::NODE_CDATA_SECTION)
+        {
+            const CStringW text = NodeText(node);
+            for (int i = 0; i < text.GetLength(); ++i)
+                if (!iswspace(text[i]) && !iswdigit(text[i]) && !iswpunct(text[i])) return true;
+        }
+        const auto children = MsxmlGetChildNodes(node);
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        for (long i = 0; i < count; ++i)
+            if (PageBreakHasContent(MsxmlGetNodeListItem(children, i))) return true;
+        return false;
     }
 
     void AppendPoemNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx)
@@ -4592,6 +4766,13 @@ namespace
         if (name.CompareNoCase(L"script") == 0 || name.CompareNoCase(L"style") == 0 || name.CompareNoCase(L"head") == 0)
             return;
 
+        const CStringW backgroundImage = EmptyBlockBackgroundImage(node, ctx);
+        if (!backgroundImage.IsEmpty())
+        {
+            out += L"      <p" + OptionalIdAttribute(node, ctx) + L">" + backgroundImage + L"</p>\r\n";
+            return;
+        }
+
         if (ctx.collectingNotes && name.CompareNoCase(L"a") == 0)
         {
             const std::vector<CStringW> ids = CollectRawAnchorIds(node);
@@ -4608,6 +4789,16 @@ namespace
             return;
         }
 
+        if (name == L"video")
+        {
+            g_content.warnings += L"EPUB video is not supported; its poster and fallback content were retained when available.\r\n";
+            const CStringW image = Fb2ImageElementForNode(ctx, node);
+            if (!image.IsEmpty()) out += L"      <p>" + image + L"</p>\r\n";
+            const auto children = MsxmlGetChildNodes(node);
+            const long count = children ? MsxmlGetNodeListLength(children) : 0;
+            for (long i = 0; i < count; ++i) AppendBlockNode(MsxmlGetNodeListItem(children, i), out, ctx);
+            return;
+        }
         if (name == L"picture" || name == L"img" || name == L"image" || name == L"object")
         {
             const CStringW image = Fb2ImageElementForNode(ctx, node);
@@ -4704,7 +4895,7 @@ namespace
             return;
         }
 
-        if (LooksLikePageBreak(node) || name.CompareNoCase(L"hr") == 0)
+        if ((LooksLikePageBreak(node) && !PageBreakHasContent(node)) || name.CompareNoCase(L"hr") == 0)
         {
             out += AnchorMarkerParagraphsFromRawIds(CollectRawAnchorIds(node), 0, ctx);
             if (!g_options.importPageBreaks)
@@ -4933,7 +5124,7 @@ namespace
         const auto type = MsxmlGetNodeType(node);
         if (type == MSXML2::NODE_TEXT || type == MSXML2::NODE_CDATA_SECTION) return !TrimString(NodeText(node)).IsEmpty();
         const CStringW name = LocalName(node);
-        if (name == L"img" || name == L"image" || name == L"picture" || name == L"object") return g_options.importImages;
+        if (name == L"img" || name == L"image" || name == L"picture" || name == L"object" || name == L"video") return g_options.importImages;
         const auto children = MsxmlGetChildNodes(node);
         const long count = children ? MsxmlGetNodeListLength(children) : 0;
         for (long i = 0; i < count; ++i) if (HasMainContent(MsxmlGetNodeListItem(children, i), path)) return true;
@@ -5313,17 +5504,14 @@ namespace
             package.guideServiceDocuments.find(std::wstring(item.absPath.GetString())) != package.guideServiceDocuments.end())
             return true;
 
-        if (id == L"nav" || id == L"toc" || id == L"ncx")
-            return true;
-        if (IsTokenInList(props, L"nav"))
-            return true;
         if (item.mediaType.CompareNoCase(L"application/x-dtbncx+xml") == 0)
-            return true;
-        if (stem == L"nav" || stem == L"toc" || stem == L"contents")
             return true;
 
         if (g_options.removeServiceSections)
         {
+            if (id == L"nav" || id == L"toc" || id == L"ncx" || IsTokenInList(props, L"nav") ||
+                stem == L"nav" || stem == L"toc" || stem == L"contents")
+                return true;
             if (stem == L"titlepage" || stem == L"title-page" || stem == L"landmarks" ||
                 stem == L"page-list" || stem == L"copyright" || stem == L"calibre")
                 return true;
@@ -5591,7 +5779,7 @@ namespace
         if (!node || IsHiddenElement(node) || IsBacklinkElement(node) || IsCollectedNoteNode(node, ctx)) return;
         const CStringW name = LocalName(node);
         if (name == L"script" || name == L"style" || name == L"head" ||
-            (LooksLikePageBreak(node) && !g_options.importPageBreaks)) return;
+            (LooksLikePageBreak(node) && !PageBreakHasContent(node) && !g_options.importPageBreaks)) return;
         if (name == L"img" || name == L"image" || name == L"picture" || name == L"object")
         {
             if (g_options.importImages)

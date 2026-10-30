@@ -1538,6 +1538,95 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assertLess(text.index('Quoted text'), text.index('Attribution'))
                 self.assertLess(text.index('Attribution'), text.index('After quotation'))
 
+    def test_css_background_in_empty_content_block(self):
+        root = self.convert('<div class="illustration"></div><p>Following text.</p>',
+                            extra={'Styles/layout.css': ('css', 'text/css', '.illustration { background-image: url(../images/ornament.png); }'),
+                                   'images/ornament.png': ('ornament', 'image/png', PNG)},
+                            head='<link rel="stylesheet" href="../Styles/layout.css"/>', navigation=False)
+        self.assertIn(PNG, {base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)})
+        self.assertIn('Following text.', self.text(root))
+
+    def test_css_background_cascade_and_inline_override(self):
+        css = ('.art { background-image: url(../images/a.png); } '
+               'div.art { background-image: url(../images/b.jpg); } '
+               '.priority { background-image: url(../images/a.png) !important; }')
+        root = self.convert('<div class="art"></div><div class="art" style="background-image:none"></div>'
+                            '<div class="art priority" style="background-image:url(../images/b.jpg)"></div>'
+                            '<p>After.</p>',
+                            extra={'Styles/layout.css': ('css', 'text/css', css),
+                                   'images/a.png': ('a', 'image/png', PNG),
+                                   'images/b.jpg': ('b', 'image/jpeg', JPEG)},
+                            head='<link rel="stylesheet" href="../Styles/layout.css"/>', navigation=False)
+        images = root.findall('.//f:body//f:image', NS)
+        binaries = {n.get('id'): base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)}
+        self.assertEqual([binaries[n.get(HREF)[1:]] for n in images], [JPEG, PNG])
+
+    def test_spine_contents_page_kept_unless_service_removal_requested(self):
+        extra = {'Text/contents.xhtml': ('contents', 'application/xhtml+xml',
+                 '<p>Visual contents <img src="../images/contents.png"/></p>'),
+                 'images/contents.png': ('contents-image', 'image/png', PNG)}
+        for options, kept in (([], True), (['--remove-service-sections'], False)):
+            with self.subTest(options=options):
+                root = self.convert('<p>Chapter text.</p>', extra, spine=['contents', 'chapter'],
+                                    options=options, navigation=False)
+                self.assertEqual('Visual contents' in self.text(root), kept)
+                self.assertEqual(PNG in {base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)}, kept)
+
+    def test_stylesheet_visibility_and_explicit_include_hidden(self):
+        css = '.hidden {display:none;} .hidden.show {display:block;} .important {display:none !important;}'
+        body = ('<p class="hidden">Hidden text.</p><p class="hidden show">Visible override.</p>'
+                '<p class="important" style="display:block">Important hidden.</p>')
+        extra = {'Styles/layout.css': ('css', 'text/css', css)}
+        for options, includes in (([], False), (['--include-hidden'], True)):
+            with self.subTest(options=options):
+                root = self.convert(body, extra=extra, head='<link rel="stylesheet" href="../Styles/layout.css"/>',
+                                    options=options, navigation=False)
+                self.assertIn('Visible override.', self.text(root))
+                self.assertEqual('Hidden text.' in self.text(root), includes)
+                self.assertEqual('Important hidden.' in self.text(root), includes)
+
+    def test_hidden_class_is_not_proof_of_invisible_section(self):
+        root = self.convert('<section class="hidden"><p>Visible section.</p>'
+                            '<img src="../images/map.png"/></section>',
+                            extra={'Styles/layout.css': ('css', 'text/css', 'h1.hidden {display:none;}'),
+                                   'images/map.png': ('map', 'image/png', PNG)},
+                            head='<link rel="stylesheet" href="../Styles/layout.css"/>', navigation=False)
+        self.assertIn('Visible section.', self.text(root))
+        self.assertIn(PNG, {base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)})
+
+    def test_nested_links_keep_text_without_invalid_fb2(self):
+        root = self.convert('<p><a href="#first">Outer <a href="#second">Inner</a> tail</a></p>'
+                            '<p id="first">First</p><p id="second">Second</p>', navigation=False)
+        links = root.findall('.//f:a', NS)
+        self.assertEqual(len(links), 1)
+        self.assertEqual(links[0].get(HREF), '#first')
+        self.assertIn('Outer Inner tail', ''.join(links[0].itertext()))
+        self.assertIn('nested hyperlink was flattened', self.diagnostics.lower())
+
+    def test_video_poster_preserved_as_image(self):
+        root = self.convert('<p>Before</p><video poster="../images/poster.jpg" controls="controls">'
+                            '<source src="../media/clip.mp4" type="video/mp4"/></video><p>After</p>',
+                            extra={'images/poster.jpg': ('poster', 'image/jpeg', JPEG)}, navigation=False)
+        self.assertIn(JPEG, {base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)})
+        self.assertLess(self.text(root).index('Before'), self.text(root).index('After'))
+        self.assertIn('video', self.diagnostics.lower())
+
+    def test_pagebreak_class_preserves_paragraph_content(self):
+        for options in (['--pagebreaks'], ['--no-pagebreaks']):
+            with self.subTest(options=options):
+                root = self.convert('<p class="P_TEXTBODY_CENTERALIGN_PAGEBREAK">'
+                                    '<span><img src="../images/gallery.png"/></span>Gallery caption</p>',
+                                    extra={'images/gallery.png': ('gallery', 'image/png', PNG)},
+                                    options=options, navigation=False)
+                self.assertIn('Gallery caption', self.text(root))
+                self.assertIn(PNG, {base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)})
+
+    def test_inline_background_with_text_is_reported(self):
+        root = self.convert('<p><span style="background-image:url(../images/cap.png)">A</span>fter</p>',
+                            extra={'images/cap.png': ('cap', 'image/png', PNG)}, navigation=False)
+        self.assertIn('After', self.text(root))
+        self.assertIn('background image on non-empty inline content', self.diagnostics.lower())
+
     def test_aria_hidden_does_not_hide_visual_content(self):
         root = self.convert('<p aria-hidden="true">Visible text for sighted readers.</p>'
                             '<div aria-hidden="true"><img src="../images/ornament.png"/></div>'
