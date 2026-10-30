@@ -1660,6 +1660,10 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertIn('After', self.text(root))
         self.assertIn('background image on non-empty inline content', self.diagnostics.lower())
 
+    def test_invalid_xhtml_reports_failed_normalization_stage(self):
+        self.convert('<p>&nbsp;<b>Unclosed</p>', navigation=False, fail=True)
+        self.assertIn('html fallback:', self.diagnostics.lower())
+
     def test_stylesheet_background_with_text_is_reported_only_when_effective(self):
         css = '.cap { background-image: url(../images/cap.png); }'
         extra = {'Styles/layout.css': ('css', 'text/css', css),

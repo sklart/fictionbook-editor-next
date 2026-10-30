@@ -1331,9 +1331,12 @@ namespace
             // loading the file as text and applying a conservative XML-safe
             // normalization. For OPF/container XML the same fallback also fixes
             // common XML 1.1 declarations that MSXML 6.0 rejects as "bad version".
-            if (LoadXmlFileAfterMarkupSanitizing(path, htmlMode, dom, errorText)) { remember(); return true; }
+            CStringW fallbackError;
+            if (LoadXmlFileAfterMarkupSanitizing(path, htmlMode, dom, fallbackError)) { remember(); return true; }
 
             errorText.Format(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_XML_LOAD_FAILED, L"MSXML could not read the XML file:\r\n%s\r\n%s")), path.GetString(), reason.GetString());
+            if (!fallbackError.IsEmpty())
+                errorText += CStringW(htmlMode ? L"\r\nHTML fallback: " : L"\r\nXML fallback: ") + fallbackError;
             return false;
         }
 
