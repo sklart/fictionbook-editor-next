@@ -26,6 +26,10 @@ try {
         if($scenario -eq 'script-toolbar-runtime-size' -and ($text -notmatch '(?m)^size-switches-pass=1\r?$' -or $text -notmatch '(?m)^initial-icon-size=16\r?$')) { throw 'Missing default size or 100-switch coverage' }
         if($scenario -eq 'script-toolbar-runtime-size' -and ($text -notmatch '(?m)^fixture-16px-pixels=1\r?$' -or $text -match '(?m)^fixture-16px-pixels=0\r?$')) { throw '16px script icon pixels differ from the source icon.' }
         if($scenario -eq 'script-toolbar-runtime-size' -and $text -notmatch '(?m)^tree-fixture-16px-pixels=1\r?$') { throw '16px script tree icon pixels differ from the source icon.' }
+        if($scenario -eq 'script-toolbar-runtime-size' -and (($text -notmatch '(?m)^dual-bitmap-preferred=1\r?$') -or ($text -match '(?m)^dual-bitmap-preferred=0\r?$') -or ($text -notmatch '(?m)^dual-larger-ico-preferred=1\r?$') -or ($text -match '(?m)^dual-larger-ico-preferred=0\r?$'))) { throw 'BMP/ICO sidecar priority is inconsistent.' }
+        if($scenario -eq 'script-toolbar-runtime-size' -and (($text -notmatch '(?m)^tree-dual-bitmap=1\r?$') -or ($text -notmatch '(?m)^tree-dual-larger-ico=1\r?$'))) { throw 'BMP/ICO tree sidecar priority is inconsistent.' }
+        if($scenario -eq 'script-toolbar-runtime-size' -and (($text -notmatch '(?m)^bitmap-only-16=1\r?$') -or ($text -match '(?m)^bitmap-only-16=0\r?$') -or ($text -notmatch '(?m)^bitmap-only-20=1\r?$') -or ($text -match '(?m)^bitmap-only-20=0\r?$'))) { throw 'BMP-only icon rendering or native-size centering failed.' }
+        if($scenario -eq 'script-toolbar-runtime-size' -and (($text -notmatch '(?m)^tree-bitmap-only-16=1\r?$') -or ($text -notmatch '(?m)^tree-bitmap-only-20=1\r?$'))) { throw 'BMP-only tree icon rendering or native-size centering failed.' }
     }
     $passed = $true
     Write-Host "Script icon size runtime: PASS ($Mode)."

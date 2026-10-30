@@ -12,7 +12,7 @@ VisualResource VisualResources::Load(const CString& directory, const CString& ba
 	const CString bitmapPath = base + L".bmp";
 	const DWORD bitmapAttributes = ::GetFileAttributes(bitmapPath);
 	if (bitmapAttributes != INVALID_FILE_ATTRIBUTES && (bitmapAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
-		result.bitmap = static_cast<HBITMAP>(::LoadImage(NULL, bitmapPath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE));
+		result.bitmap = static_cast<HBITMAP>(::LoadImage(NULL, bitmapPath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION));
 	if(result.bitmap != NULL)
 	{
 		// Match WTL AddBitmap's default mask and turn it into a native alpha

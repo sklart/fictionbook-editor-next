@@ -2640,6 +2640,22 @@ int AddScriptToolbarImage(HIMAGELIST images, const CString& scriptPath, HICON fa
 	CString iconPath(scriptPath);
 	if(iconPath.Right(3).CompareNoCase(L".js") == 0) iconPath.Delete(iconPath.GetLength() - 3, 3);
 	iconPath += L".ico";
+	BITMAP bitmapInfo = {};
+	const bool usableBitmap = bitmap != NULL && ::GetObject(bitmap, sizeof(bitmapInfo), &bitmapInfo) == sizeof(bitmapInfo) &&
+		bitmapInfo.bmWidth == bitmapInfo.bmHeight && bitmapInfo.bmWidth > 0;
+	auto addBitmap = [&]() {
+		if(!usableBitmap) return -1;
+		HBITMAP scaled = FitScriptBitmap(bitmap, bitmapInfo.bmWidth, targetSize);
+		const int index = scaled != NULL ? ::ImageList_Add(images, scaled, NULL) : -1;
+		if(scaled != NULL) ::DeleteObject(scaled);
+		return index;
+	};
+	// Match the tree: a sufficiently large BMP sidecar takes precedence;
+	// a smaller BMP yields to an ICO with a suitable larger frame.
+	if(usableBitmap && bitmapInfo.bmWidth >= targetSize) {
+		const int index = addBitmap();
+		if(index >= 0) return index;
+	}
 	HICON source = static_cast<HICON>(::LoadImageW(NULL, iconPath, IMAGE_ICON, targetSize, targetSize, LR_LOADFROMFILE));
 	if(source != NULL)
 	{
@@ -2647,17 +2663,8 @@ int AddScriptToolbarImage(HIMAGELIST images, const CString& scriptPath, HICON fa
 		::DestroyIcon(source);
 		return index;
 	}
-	if(bitmap != NULL)
-	{
-		BITMAP info = {};
-		if(::GetObject(bitmap, sizeof(info), &info) == sizeof(info) && info.bmWidth == info.bmHeight && info.bmWidth > 0)
-		{
-			HBITMAP scaled = FitScriptBitmap(bitmap, info.bmWidth, targetSize);
-			const int index = scaled != NULL ? ::ImageList_Add(images, scaled, NULL) : -1;
-			if(scaled != NULL) ::DeleteObject(scaled);
-			if(index >= 0) return index;
-		}
-	}
+	const int bitmapIndex = addBitmap();
+	if(bitmapIndex >= 0) return bitmapIndex;
 	SHFILEINFOW fileInfo = {};
 	if(::SHGetFileInfoW(L"script.js", FILE_ATTRIBUTE_NORMAL, &fileInfo, sizeof(fileInfo), SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES))
 	{
