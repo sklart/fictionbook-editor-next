@@ -3279,22 +3279,12 @@ namespace
         return displayHidden || visibilityHidden;
     }
 
-    CStringW EmptyBackgroundImage(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, bool inlineElement)
+    void ResolveCssBackground(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, CStringW& href, CStringW& directory)
     {
-        if (!g_options.importImages || !node) return CStringW();
-        const CStringW name = LocalName(node);
-        if (inlineElement ? name != L"span" : (name != L"div" && name != L"section" && name != L"figure")) return CStringW();
-        const auto children = MsxmlGetChildNodes(node);
-        const long count = children ? MsxmlGetNodeListLength(children) : 0;
-        for (long i = 0; i < count; ++i)
-            if (MsxmlGetNodeType(MsxmlGetNodeListItem(children, i)) == MSXML2::NODE_ELEMENT)
-                return CStringW();
-        if (!TrimString(NodeText(node)).IsEmpty()) return CStringW();
-
         bool inlineSet = false, inlineImportant = false;
         CStringW inlineHref;
         ParseCssBackground(Attr(node, L"style"), inlineSet, inlineImportant, inlineHref);
-        CStringW href, directory;
+        href.Empty(); directory.Empty();
         for (int priority = 0; priority != 2; ++priority)
         {
             if (g_cssFontRules) for (const auto& rule : *g_cssFontRules)
@@ -3311,6 +3301,22 @@ namespace
                 directory = ctx.currentXhtmlDir;
             }
         }
+    }
+
+    CStringW EmptyBackgroundImage(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, bool inlineElement)
+    {
+        if (!g_options.importImages || !node) return CStringW();
+        const CStringW name = LocalName(node);
+        if (inlineElement ? name != L"span" : (name != L"div" && name != L"section" && name != L"figure")) return CStringW();
+        const auto children = MsxmlGetChildNodes(node);
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        for (long i = 0; i < count; ++i)
+            if (MsxmlGetNodeType(MsxmlGetNodeListItem(children, i)) == MSXML2::NODE_ELEMENT)
+                return CStringW();
+        if (!TrimString(NodeText(node)).IsEmpty()) return CStringW();
+
+        CStringW href, directory;
+        ResolveCssBackground(node, ctx, href, directory);
         if (href.IsEmpty()) return CStringW();
         if (IsExternalHref(href))
         {
@@ -3400,14 +3406,13 @@ namespace
             const CStringW backgroundImage = EmptyBackgroundImage(node, ctx, true);
             if (!backgroundImage.IsEmpty()) return backgroundImage;
         }
-        const CStringW inlineStyle = Attr(node, L"style");
-        if (g_options.importImages && ContainsNoCase(inlineStyle, L"background") && !TrimString(NodeText(node)).IsEmpty())
+        if (g_options.importImages)
         {
-            bool backgroundSet = false, backgroundImportant = false;
-            CStringW backgroundHref;
-            ParseCssBackground(inlineStyle, backgroundSet, backgroundImportant, backgroundHref);
-            const CStringW warningKey = L"background:" + inlineStyle;
-            if (backgroundSet && !backgroundHref.IsEmpty() && g_content.warnedInlineCss.emplace(warningKey.GetString()).second)
+            CStringW backgroundHref, backgroundDirectory;
+            ResolveCssBackground(node, ctx, backgroundHref, backgroundDirectory);
+            const CStringW warningKey = L"background:" + backgroundDirectory + L"/" + backgroundHref;
+            if (!backgroundHref.IsEmpty() && !TrimString(NodeText(node)).IsEmpty() &&
+                g_content.warnedInlineCss.emplace(warningKey.GetString()).second)
                 g_content.warnings += L"CSS background image on non-empty inline content was not imported.\r\n";
         }
         ApplyInlineFont(node, font);

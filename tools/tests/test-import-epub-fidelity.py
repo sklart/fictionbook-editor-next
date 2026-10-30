@@ -1660,6 +1660,23 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertIn('After', self.text(root))
         self.assertIn('background image on non-empty inline content', self.diagnostics.lower())
 
+    def test_stylesheet_background_with_text_is_reported_only_when_effective(self):
+        css = '.cap { background-image: url(../images/cap.png); }'
+        extra = {'Styles/layout.css': ('css', 'text/css', css),
+                 'images/cap.png': ('cap', 'image/png', PNG)}
+        head = '<link rel="stylesheet" href="../Styles/layout.css"/>'
+        root = self.convert('<p><span class="cap">A</span>fter</p>', extra=extra, head=head, navigation=False)
+        self.assertIn('After', self.text(root))
+        self.assertIn('background image on non-empty inline content', self.diagnostics.lower())
+        self.convert('<p><span class="cap" style="background:none">A</span>fter</p>',
+                     extra=extra, head=head, navigation=False)
+        self.assertNotIn('background image on non-empty inline content', self.diagnostics.lower())
+        for body, options in (('<p><span class="cap" hidden="">A</span>fter</p>', []),
+                              ('<p><span class="cap">A</span>fter</p>', ['--no-images'])):
+            with self.subTest(body=body, options=options):
+                self.convert(body, extra=extra, head=head, options=options, navigation=False)
+                self.assertNotIn('background image on non-empty inline content', self.diagnostics.lower())
+
     def test_empty_inline_css_background_preserves_image_in_order(self):
         css = '.ornament { background-image: url(../images/ornament.png); }'
         extra = {'Styles/layout.css': ('css', 'text/css', css),
