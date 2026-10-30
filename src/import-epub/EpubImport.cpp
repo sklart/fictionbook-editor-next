@@ -3446,6 +3446,66 @@ namespace
                 return ChildrenInlineToFb2(node, ctx, font);
             }
             CStringW href = Attr(node, L"href");
+            // HTML can contain nested anchors, but FB2 cannot. Split direct
+            // nested links into adjacent links, keeping the outer destination
+            // on the text on either side and the inner destination on its text.
+            const auto linkChildren = MsxmlGetChildNodes(node);
+            const long linkChildCount = linkChildren ? MsxmlGetNodeListLength(linkChildren) : 0;
+            bool hasDirectNestedLink = false;
+            for (long i = 0; i < linkChildCount; ++i)
+            {
+                const auto child = MsxmlGetNodeListItem(linkChildren, i);
+                if (LocalName(child) == L"a" && !Attr(child, L"href").IsEmpty())
+                {
+                    hasDirectNestedLink = true;
+                    break;
+                }
+            }
+            if (hasDirectNestedLink && !IsNoteReferenceElement(node))
+            {
+                const int hash = href.Find(L'#');
+                const CStringW targetPath = hash == 0 ? ctx.currentXhtmlPath :
+                    CombineAndCanonicalizePath(ctx.currentXhtmlDir, hash < 0 ? href : href.Left(hash));
+                const CStringW noteKey = IsExternalHref(href) ? CStringW() : PathAnchorMapKey(targetPath, HrefFragment(href));
+                const auto note = g_content.noteLinks.find(std::wstring(noteKey));
+                const bool excluded = !IsExternalHref(href) && !href.Left(hash >= 0 ? hash : href.GetLength()).IsEmpty() &&
+                    g_content.excludedServiceDocuments.count(LowerMapKey(targetPath).GetString());
+                if (excluded) ++g_content.skippedServiceLinks;
+                const CStringW normalizedHref = href.IsEmpty() ? CStringW() :
+                    (g_options.importNotes && note != g_content.noteLinks.end()
+                        ? CStringW(L"#") + note->second : ResolveFb2Href(ctx, href));
+                CStringW result, pending;
+                bool outerLinkEmitted = false;
+                auto flush = [&]() {
+                    if (pending.IsEmpty()) return;
+                    if (!href.IsEmpty() && g_options.preserveLinks && !excluded && !TrimString(pending).IsEmpty())
+                    {
+                        result += L"<a l:href=\"" + XmlEscape(normalizedHref) + L"\">" + pending + L"</a>";
+                        outerLinkEmitted = true;
+                    }
+                    else
+                        result += pending;
+                    pending.Empty();
+                };
+                for (long i = 0; i < linkChildCount; ++i)
+                {
+                    const auto child = MsxmlGetNodeListItem(linkChildren, i);
+                    if (LocalName(child) == L"a" && !Attr(child, L"href").IsEmpty())
+                    {
+                        flush();
+                        result += InlineToFb2(child, ctx, font);
+                    }
+                    else
+                    {
+                        InlineLinkScope linkScope;
+                        pending += InlineToFb2(child, ctx, font);
+                    }
+                }
+                flush();
+                if (!outerLinkEmitted && !href.IsEmpty() && g_options.preserveLinks && !excluded)
+                    g_content.warnings += L"Outer hyperlink had no separate text and was omitted while retaining nested links.\r\n";
+                return result;
+            }
             InlineLinkScope linkScope;
             CStringW text = ChildrenInlineToFb2(node, ctx, font);
             CStringW visibleText = text;

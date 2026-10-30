@@ -1598,9 +1598,23 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         root = self.convert('<p><a href="#first">Outer <a href="#second">Inner</a> tail</a></p>'
                             '<p id="first">First</p><p id="second">Second</p>', navigation=False)
         links = root.findall('.//f:a', NS)
-        self.assertEqual(len(links), 1)
-        self.assertEqual(links[0].get(HREF), '#first')
-        self.assertIn('Outer Inner tail', ''.join(links[0].itertext()))
+        self.assertEqual([node.get(HREF) for node in links], ['#first', '#second', '#first'])
+        self.assertEqual(''.join(''.join(node.itertext()) for node in links), 'Outer Inner tail')
+        self.assertNotIn('nested hyperlink was flattened', self.diagnostics.lower())
+
+    def test_nested_link_without_outer_text_reports_omitted_destination(self):
+        root = self.convert('<p><a href="#first"><a href="#second">Inner</a></a></p>'
+                            '<p id="first">First</p><p id="second">Second</p>', navigation=False)
+        links = root.findall('.//f:a', NS)
+        self.assertEqual([node.get(HREF) for node in links], ['#second'])
+        self.assertIn('outer hyperlink had no separate text', self.diagnostics.lower())
+
+    def test_formatted_nested_link_reports_flattening(self):
+        root = self.convert('<p><a href="#first">Outer <strong><a href="#second">Inner</a></strong></a></p>'
+                            '<p id="first">First</p><p id="second">Second</p>', navigation=False)
+        links = root.findall('.//f:a', NS)
+        self.assertEqual([node.get(HREF) for node in links], ['#first'])
+        self.assertIn('Inner', self.text(root))
         self.assertIn('nested hyperlink was flattened', self.diagnostics.lower())
 
     def test_video_poster_preserved_as_image(self):
