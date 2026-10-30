@@ -2777,11 +2777,16 @@ namespace
     bool IsExternalHref(CStringW href);
 
     struct InlineFontState { bool italic = false; bool bold = false; };
+    struct CssSelectorPart
+    {
+        CStringW element;
+        std::vector<CStringW> classes;
+    };
     struct CssFontRule
     {
-        CStringW element, declarations;
-        std::vector<CStringW> classes;
-        int specificity = 0;
+        CStringW declarations;
+        std::vector<CssSelectorPart> parts;
+        int classSpecificity = 0, elementSpecificity = 0;
     };
     thread_local const std::vector<CssFontRule>* g_cssFontRules = nullptr;
     CStringW SupportedCssFontDeclarations(CStringW declarations, CStringW& warning, bool* hasFont = nullptr);
@@ -2847,6 +2852,34 @@ namespace
         return false;
     }
 
+    bool MatchesCssPart(const MSXML2::IXMLDOMNodePtr& node, const CssSelectorPart& part)
+    {
+        if (!node || MsxmlGetNodeType(node) != MSXML2::NODE_ELEMENT) return false;
+        if (!part.element.IsEmpty() && part.element.CompareNoCase(LocalName(node)) != 0) return false;
+        for (const auto& cssClass : part.classes)
+            if (!MatchesCssClass(node, cssClass)) return false;
+        return true;
+    }
+
+    bool MatchesCssRule(const MSXML2::IXMLDOMNodePtr& node, const CssFontRule& rule)
+    {
+        if (rule.parts.empty() || !MatchesCssPart(node, rule.parts.back())) return false;
+        MSXML2::IXMLDOMNodePtr ancestor(node);
+        for (size_t index = rule.parts.size() - 1; index > 0; --index)
+        {
+            bool found = false;
+            while (ancestor)
+            {
+                IXMLDOMNode* parent = nullptr;
+                if (FAILED(ancestor->get_parentNode(&parent))) return false;
+                ancestor = MSXML2::IXMLDOMNodePtr(parent, false);
+                if (MatchesCssPart(ancestor, rule.parts[index - 1])) { found = true; break; }
+            }
+            if (!found) return false;
+        }
+        return true;
+    }
+
     void ApplyInlineFont(const MSXML2::IXMLDOMNodePtr& node, InlineFontState& font)
     {
         if (!node || MsxmlGetNodeType(node) != MSXML2::NODE_ELEMENT) return;
@@ -2869,11 +2902,7 @@ namespace
         {
             if (g_cssFontRules) for (const auto& rule : *g_cssFontRules)
             {
-                if (!rule.element.IsEmpty() && rule.element.CompareNoCase(name) != 0) continue;
-                bool matches = true;
-                for (const auto& cssClass : rule.classes)
-                    if (!MatchesCssClass(node, cssClass)) { matches = false; break; }
-                if (matches) ApplyFontDeclarations(rule.declarations, font, inherited, priority != 0);
+                if (MatchesCssRule(node, rule)) ApplyFontDeclarations(rule.declarations, font, inherited, priority != 0);
             }
             ApplyFontDeclarations(supported, font, inherited, priority != 0);
         }
@@ -2994,22 +3023,34 @@ namespace
                 while (selectorPosition != -1)
                 {
                     CStringW selector = selectors.Tokenize(L",", selectorPosition); selector.Trim();
+                    if (selector.IsEmpty()) continue;
                     CssFontRule rule;
-                    const int dot = selector.Find(L'.');
-                    rule.element = dot >= 0 ? selector.Left(dot) : selector;
-                    bool valid = rule.element.IsEmpty() || IsCssIdentifier(rule.element);
-                    int classPosition = dot;
-                    while (classPosition >= 0)
+                    bool valid = true;
+                    int partPosition = 0;
+                    while (partPosition != -1)
                     {
-                        const int next = selector.Find(L'.', classPosition + 1);
-                        const CStringW cssClass = next >= 0 ? selector.Mid(classPosition + 1, next - classPosition - 1) : selector.Mid(classPosition + 1);
-                        if (!IsCssIdentifier(cssClass)) { valid = false; break; }
-                        rule.classes.push_back(cssClass);
-                        classPosition = next;
+                        const CStringW token = selector.Tokenize(L" \t\r\n\f", partPosition);
+                        if (token.IsEmpty()) continue;
+                        CssSelectorPart part;
+                        const int dot = token.Find(L'.');
+                        part.element = dot >= 0 ? token.Left(dot) : token;
+                        if (!part.element.IsEmpty() && !IsCssIdentifier(part.element)) { valid = false; break; }
+                        int classPosition = dot;
+                        while (classPosition >= 0)
+                        {
+                            const int next = token.Find(L'.', classPosition + 1);
+                            const CStringW cssClass = next >= 0 ? token.Mid(classPosition + 1, next - classPosition - 1) : token.Mid(classPosition + 1);
+                            if (!IsCssIdentifier(cssClass)) { valid = false; break; }
+                            part.classes.push_back(cssClass);
+                            classPosition = next;
+                        }
+                        if (!valid || (part.element.IsEmpty() && part.classes.empty())) { valid = false; break; }
+                        rule.classSpecificity += static_cast<int>(part.classes.size());
+                        if (!part.element.IsEmpty()) ++rule.elementSpecificity;
+                        rule.parts.push_back(part);
                     }
-                    valid = valid && (!rule.element.IsEmpty() || !rule.classes.empty());
+                    valid = valid && !rule.parts.empty();
                     if (!valid) { warning += L"Unsupported CSS font selector or declaration: " + selector + L"\r\n"; continue; }
-                    rule.specificity = static_cast<int>(rule.classes.size()) * 10 + (rule.element.IsEmpty() ? 0 : 1);
                     rule.declarations = supported;
                     if (!supported.IsEmpty()) rules.push_back(rule);
                 }
@@ -3062,7 +3103,9 @@ namespace
                     else ParseCssFontRules(text, rules_, warning);
                 }
             }
-            std::stable_sort(rules_.begin(), rules_.end(), [](const CssFontRule& a, const CssFontRule& b) { return a.specificity < b.specificity; });
+            std::stable_sort(rules_.begin(), rules_.end(), [](const CssFontRule& a, const CssFontRule& b) {
+                return a.classSpecificity != b.classSpecificity ? a.classSpecificity < b.classSpecificity : a.elementSpecificity < b.elementSpecificity;
+            });
             g_cssFontRules = &rules_;
         }
         ~ScopedCssFontRules() { g_cssFontRules = previous_; }

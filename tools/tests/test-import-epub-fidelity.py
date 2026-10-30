@@ -649,8 +649,26 @@ Write-Output 'Independent FB2 XSD validation: PASS'
 
     def test_unsupported_css_font_selector_is_reported(self):
         self.convert('<p class="a"><span class="b">Text survives</span></p>',
-                     head='<style>.a .b {font-style: italic}</style>', navigation=False)
+                     head='<style>.a > .b {font-style: italic}</style>', navigation=False)
         self.assertIn('Unsupported CSS font selector', self.diagnostics)
+
+    def test_css_descendant_selectors_match_ancestors_and_cascade(self):
+        root = self.convert('<div class="outer"><p><span class="target">Nested italic</span></p>'
+                            '<p class="target">Ancestor is not self</p></div>'
+                            '<p><span class="target">Outside plain</span></p><p class="self target">Self only</p>'
+                            '<div class="outer"><p class="target">Specific bold</p></div>',
+                            head='<style>.outer .target {font-style: italic} '
+                                 'div.outer p.target {font-weight: bold} '
+                                 'p.target {font-weight: normal} '
+                                 '.outer .target {font-style: normal} '
+                                 'div.outer .target {font-style: italic !important} '
+                                 '.self .target {font-style: italic}</style>', navigation=False)
+        for label, italic, bold in (('Nested italic', True, False), ('Ancestor is not self', True, True),
+                                    ('Outside plain', False, False), ('Self only', False, False), ('Specific bold', True, True)):
+            paragraph = next(p for p in root.findall('.//f:p', NS) if label in self.text(p))
+            self.assertEqual(paragraph.find('.//f:emphasis', NS) is not None, italic, label)
+            self.assertEqual(paragraph.find('.//f:strong', NS) is not None, bold, label)
+        self.assertNotIn('Unsupported CSS font selector', self.diagnostics)
 
     def test_unsupported_css_at_rules_warn_without_swallowing_following_rules(self):
         root = self.convert('<p class="hidden-rule">Media text</p><p class="supported">Later rule</p>',
