@@ -221,6 +221,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		CScriptsToolbarCustomizeDlg insertion(NULL, sample, defaults, _Settings, std::vector<ScriptsToolbarTarget>(1, target),
 			[&savedItems](const CString&, const std::vector<PortableToolbarItem>& items) { savedItems = items; return true; }, true, CString());
 		bool inserted = insertion.Create(m_hWnd) != NULL;
+		bool keyboardMove = false;
 		if (inserted) {
 			CListBox current(insertion.GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT));
 			CListBox available(insertion.GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE));
@@ -265,14 +266,29 @@ void CMainFrame::RunPortableStateTestScenario()
 			::SendMessage(current, LB_SETSEL, TRUE, -1);
 			::SendMessage(insertion, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_CURRENT, LBN_SELCHANGE), reinterpret_cast<LPARAM>(current.m_hWnd));
 			inserted = inserted && !::IsWindowEnabled(up) && !::IsWindowEnabled(down);
+			::SendMessage(current, LB_SETSEL, FALSE, -1);
+			::SendMessage(current, LB_SETSEL, TRUE, 1);
+			::SendMessage(insertion, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_CURRENT, LBN_SELCHANGE), reinterpret_cast<LPARAM>(current.m_hWnd));
+			BYTE originalKeys[256] = {}, ctrlKeys[256] = {};
+			if (::GetKeyboardState(originalKeys)) {
+				memcpy(ctrlKeys, originalKeys, sizeof(ctrlKeys)); ctrlKeys[VK_CONTROL] |= 0x80;
+				if (::SetKeyboardState(ctrlKeys)) {
+					::SendMessage(current, WM_KEYDOWN, VK_DOWN, 0);
+					const bool movedDown = savedItems.size() == 4 && savedItems[0].separator && savedItems[1].separator && savedItems[2].command == sample[1].command && savedItems[3].command == sample[0].command && ::SendMessage(current, LB_GETSEL, 2, 0) > 0;
+					::SendMessage(current, WM_KEYDOWN, VK_UP, 0);
+					keyboardMove = movedDown && savedItems.size() == 4 && savedItems[0].separator && savedItems[1].command == sample[1].command && savedItems[2].separator && savedItems[3].command == sample[0].command && ::SendMessage(current, LB_GETSEL, 1, 0) > 0;
+				}
+				::SetKeyboardState(originalKeys);
+			}
 			insertion.DestroyWindow();
 		}
 		ScriptsToolbarCustomizeRuntimeTest::ResetCtrlFSmoke();
 		ShowScriptsToolbarCustomizeDialog(m_ScriptsToolbar);
 		CStringA report = ScriptsToolbarCustomizeRuntimeTest::CtrlFSmokeReport();
-		if (!sorted || !inserted) report.Replace("result=pass", "result=fail");
+		if (!sorted || !inserted || !keyboardMove) report.Replace("result=pass", "result=fail");
 		report.AppendFormat("directory-sort=%d\n", sorted);
 		report.AppendFormat("insert-before=%d\n", inserted);
+		report.AppendFormat("keyboard-move=%d\n", keyboardMove);
 		WritePortableStateTestText(reportPath, report);
 		PostMessage(WM_CLOSE); return;
 	}
