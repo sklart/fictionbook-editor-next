@@ -206,6 +206,19 @@ if(IsFbeTestScenario(L"new-document-edit-state-runtime")) {
 if(IsFbeTestScenario(L"new-document-safety-runtime")) {
     bool passed=false;CStringA details="start";
     auto require=[&](bool ok,const char* label){details=label;if(!ok)CheckError(E_FAIL);};
+    auto bodyHistoryEmpty=[&](){
+        IServiceProviderPtr provider(m_doc->m_body.Document()); CComPtr<IOleUndoManager> manager;
+        if(!provider) return false;
+        CheckError(provider->QueryService(SID_SOleUndoManager,IID_IOleUndoManager,reinterpret_cast<void**>(&manager)));
+        if(!manager) return false;
+        for(bool redo : {false,true}) {
+            CComPtr<IEnumOleUndoUnits> units; CheckError(redo ? manager->EnumRedoable(&units) : manager->EnumUndoable(&units));
+            if(!units) return false;
+            CComPtr<IOleUndoUnit> unit; const HRESULT result=units->Next(1,&unit,NULL);
+            if(result!=S_FALSE) { CheckError(result); return false; }
+        }
+        return true;
+    };
     auto phase=[&](const char* label){CStringA row=CStringA("phase=")+label+"\r\n";DWORD n=0;output.Write(row,row.GetLength(),&n);output.Flush();};
     struct ObserverGuard {~ObserverGuard(){NewDocumentRuntimeProbe::Observer()={};::SetEnvironmentVariableW(L"FBE_NEXT_FAULT_INJECT",nullptr);}} observerGuard;
     extern CElementDescMnr _EDMnr;
@@ -240,7 +253,7 @@ if(IsFbeTestScenario(L"new-document-safety-runtime")) {
             require(m_doc->m_body.HasDoc()&&m_view.GetActiveWnd()==m_doc->m_body&&!IsSourceActive(),"new Body visible");
             require(order&&prepared==detached,"detach before destroying old host");
             require(m_source.SendMessage(SCI_GETLENGTH)==0&&!m_source.SendMessage(SCI_CANUNDO)&&!m_source.SendMessage(SCI_CANREDO),"new Source and history cleared");
-            require(!m_doc->m_body.CheckCommand(ID_EDIT_UNDO)&&!m_doc->m_body.CheckCommand(ID_EDIT_REDO),"new Body history empty");
+            require(bodyHistoryEmpty(),"new Body history empty");
             require(xml().Find(L"NEW_OLD_UNIQUE")<0,"old content absent");
             require(m_document_tree.m_tree.m_tree.GetCount()>0,"new structure built");
             require(_Settings.GetUseSpellChecker()?m_Speller&&m_Speller->Enabled()&&NewDocumentRuntimeProbe::Attached(m_Speller,m_doc->m_body.Document()):!NewDocumentRuntimeProbe::References(m_Speller)&&!m_Speller->Enabled(),"spell references match new document or remain detached");

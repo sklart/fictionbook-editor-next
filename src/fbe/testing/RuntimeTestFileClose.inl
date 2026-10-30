@@ -2,6 +2,19 @@ if (IsFbeTestScenario(L"file-close-runtime")) {
     extern CElementDescMnr _EDMnr;
     bool passed=false;CStringA details="start";
     auto require=[&](bool ok,const char* label){details=label;if(!ok)CheckError(E_FAIL);};
+    auto bodyHistoryEmpty=[&](){
+        IServiceProviderPtr provider(m_doc->m_body.Document()); CComPtr<IOleUndoManager> manager;
+        if(!provider) return false;
+        CheckError(provider->QueryService(SID_SOleUndoManager,IID_IOleUndoManager,reinterpret_cast<void**>(&manager)));
+        if(!manager) return false;
+        for(bool redo : {false,true}) {
+            CComPtr<IEnumOleUndoUnits> units; CheckError(redo ? manager->EnumRedoable(&units) : manager->EnumUndoable(&units));
+            if(!units) return false;
+            CComPtr<IOleUndoUnit> unit; const HRESULT result=units->Next(1,&unit,NULL);
+            if(result!=S_FALSE) { CheckError(result); return false; }
+        }
+        return true;
+    };
     auto phase=[&](const char* label){CStringA row=CStringA("phase=")+label+"\r\n";DWORD n=0;output.Write(row,row.GetLength(),&n);output.Flush();};
     try {
         const CString first=m_document_session.Location().storagePath;
@@ -215,7 +228,7 @@ if (IsFbeTestScenario(L"file-close-runtime")) {
             ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_EPUB_PATH",epub.data());
             SendMessage(WM_COMMAND,importCommand);
             require(m_document_session.HasDocument()&&FB::Doc::m_active_doc==m_doc&&m_view.GetActiveWnd()==m_doc->m_body,"import committed/presented");
-            require(DocChanged()&&!m_doc->m_body.CheckCommand(ID_EDIT_UNDO)&&!m_doc->m_body.CheckCommand(ID_EDIT_REDO),"import dirty with empty history");
+            require(DocChanged()&&bodyHistoryEmpty(),"import dirty with empty history");
             require(m_source.SendMessage(SCI_GETLENGTH)==0&&!m_source.SendMessage(SCI_CANUNDO),"import Source reset");
             require(CString(static_cast<LPCWSTR>(m_doc->m_body.Document()->body->innerText)).Find(L"CLOSE_FIRST_UNIQUE")<0,"import has no previous content");
             auto bytes=[&](const CString& path){
@@ -311,7 +324,7 @@ if (IsFbeTestScenario(L"file-close-runtime")) {
                 nativeSave(saved,false,IDYES);
                 require(m_doc->m_namevalid&&m_doc->m_filename==saved&&!DocChanged()&&m_doc->GetDocumentFileType()==FictionBookFileType::Fb2,"saved imported document identity/type/clean");
                 require(m_document_session.Location().storagePath==saved&&m_document_session.Location().documentType==FictionBookFileType::Fb2&&!m_document_session.IsArchive(),"saved imported session matches document");
-                require(!m_doc->m_body.CheckCommand(ID_EDIT_UNDO)&&!m_doc->m_body.CheckCommand(ID_EDIT_REDO),"saved import has empty history");
+                require(bodyHistoryEmpty(),"saved import has empty history");
                 require(bytes(existing)==existingBytes&&bytes(epubPath)==epubBytes,"source EPUB and original FB2 unchanged");
                 require(LoadFile(saved)==OK&&CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml))==imported&&!DocChanged(),"saved import reopens with matching content");
                 const CString overwrite=U::GetProgDir()+(replacement?L"overwrite-replaced.fb2":L"overwrite-closed.fb2");
@@ -324,7 +337,7 @@ if (IsFbeTestScenario(L"file-close-runtime")) {
         require(LoadFile(second.data())==OK&&m_document_session.HasDocument(),"reopen after close");
         filtersPreserved();
         require(m_document_tree.m_tree.m_tree.GetCount()>0,"reopen restored document elements");
-        require(!m_doc->m_body.CheckCommand(ID_EDIT_UNDO)&&!m_doc->m_body.CheckCommand(ID_EDIT_REDO),"reopen history empty");
+        require(bodyHistoryEmpty(),"reopen history empty");
         HMENU fileMenu=::GetSubMenu(m_MenuBar.GetMenu(),0);wchar_t caption[256]={};::GetMenuStringW(fileMenu,ID_FILE_CLOSE,caption,_countof(caption),MF_BYCOMMAND);
         const CString localized=FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.file.close",L"&Close");
         require(CString(caption).Find(localized)==0,"localized Close menu");

@@ -16,6 +16,7 @@ try {
         if($process.ExitCode -ne 0) { throw "Generated ID runtime failed ($($process.ExitCode)):`n$text" }
         foreach($key in @('initially-clean','canceled-clean','generated','dirty','source-current','saved','clean-after-save','persisted')) { if($text -notmatch "(?m)^$key=1$") { throw "Generated ID runtime failed ($key):`n$text" } }
         foreach($key in @('undo-before','undo-after')) { $match = [regex]::Match($text, "(?m)^$key=(\d+)$"); if(-not $match.Success) { throw "Missing $key diagnostic." }; Write-Host "$key=$($match.Groups[1].Value)" }
+        foreach($key in @('undo-units-before','undo-units-after')) { $match = [regex]::Match($text, "(?m)^$key=(\d+)$"); if(-not $match.Success) { throw "Cannot enumerate $key diagnostic.`n$text" }; Write-Host "$key=$($match.Groups[1].Value)" }
         $savedXml = [xml]([IO.File]::ReadAllText($fixture, [Text.Encoding]::UTF8))
         $savedId = $savedXml.SelectSingleNode("/*[local-name()='FictionBook']/*[local-name()='description']/*[local-name()='document-info']/*[local-name()='id']").InnerText
         if(-not $savedId -or $savedId -eq 'original-id') { throw 'Saved document has no generated ID.' }
