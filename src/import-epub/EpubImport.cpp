@@ -5994,6 +5994,12 @@ namespace
         return -1;
     }
 
+    bool IsInsideXmlTag(const CStringW& xml, int pos)
+    {
+        const int open = FindPreviousChar(xml, L'<', pos);
+        return open >= 0 && open > FindPreviousChar(xml, L'>', pos);
+    }
+
     void ValidateInternalReferences(const CStringW& xml, CStringW& warning)
     {
         std::set<std::wstring> binaryIds;
@@ -6033,6 +6039,11 @@ namespace
         int idSearchPos = 0;
         while ((idSearchPos = xml.Find(L" id=\"", idSearchPos)) >= 0)
         {
+            if (!IsInsideXmlTag(xml, idSearchPos))
+            {
+                idSearchPos += 5;
+                continue;
+            }
             idSearchPos += 5;
             int end = xml.Find(L"\"", idSearchPos);
             if (end < 0)
@@ -6052,6 +6063,11 @@ namespace
         int internalHrefPos = 0;
         while ((internalHrefPos = xml.Find(L"l:href=\"#", internalHrefPos)) >= 0)
         {
+            if (!IsInsideXmlTag(xml, internalHrefPos))
+            {
+                internalHrefPos += 9;
+                continue;
+            }
             int tagStart = FindPreviousChar(xml, L'<', internalHrefPos);
             int tagEnd = xml.Find(L">", internalHrefPos);
             int valueStart = internalHrefPos + 9;
@@ -6079,6 +6095,11 @@ namespace
         int notePos = 0;
         while ((notePos = xml.Find(L"type=\"note\"", notePos)) >= 0)
         {
+            if (!IsInsideXmlTag(xml, notePos))
+            {
+                notePos += 11;
+                continue;
+            }
             int tagStart = FindPreviousChar(xml, L'<', notePos);
             int hrefPos = tagStart >= 0 ? xml.Find(L"l:href=\"#", tagStart) : -1;
             if (hrefPos >= 0 && hrefPos < notePos)

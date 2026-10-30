@@ -261,6 +261,22 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         for link, text in zip(links, ['Alpha note', 'Beta note']):
             self.assertIn(text, self.text(next(n for n in notes if '#' + n.get('id') == link.get(HREF))))
 
+    def test_html_examples_are_not_fb2_attributes(self):
+        example = '&lt;span id="example"&gt;demo&lt;/span&gt;'
+        fake_link = '&lt;a l:href="#missing"&gt;demo&lt;/a&gt;'
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<h1 id="real">Heading</h1><p><a href="#real">Real link</a></p>'
+                                    f'<pre>{example} {example} {fake_link}</pre>', version=version)
+                self.assertEqual(self.text(root).count('<span id="example">demo</span>'), 2)
+                self.assertIn('<a l:href="#missing">demo</a>', self.text(root))
+                self.assertTrue(any(a.get(HREF) == '#real' for a in root.findall('.//f:a', NS)))
+
+    def test_html_example_does_not_satisfy_real_link(self):
+        self.convert('<p><a href="#example">Broken link</a></p>'
+                     '<pre>&lt;span id="example"&gt;demo&lt;/span&gt;</pre>', fail=True)
+        self.assertIn('missing generated link targets: 1', self.public_diagnostics)
+
     def test_ordinary_links(self):
         root = self.convert('<h1 id="N">Title</h1><p><a href="#N">Section</a></p><p id="n">Other anchor</p>')
         self.assertEqual(self.notes(root), [])
