@@ -1466,7 +1466,9 @@ namespace
         if (!g_options.skipHiddenElements || !node || MsxmlGetNodeType(node) != MSXML2::NODE_ELEMENT)
             return false;
 
-        if (!Attr(node, L"hidden").IsEmpty())
+        // HTML boolean attributes are active by presence, including hidden="".
+        const auto attributes = MsxmlGetAttributes(node);
+        if (attributes && MsxmlGetNamedItem(attributes, L"hidden"))
             return true;
 
         // aria-hidden affects the accessibility tree, not visual rendering.

@@ -1572,6 +1572,16 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assertEqual('Visual contents' in self.text(root), kept)
                 self.assertEqual(PNG in {base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)}, kept)
 
+    def test_hidden_boolean_attribute_with_empty_value(self):
+        body = ('<p hidden="">Hidden empty.</p><p hidden="false">Hidden false.</p>'
+                '<p>Visible text.</p>')
+        for options, included in (([], False), (['--include-hidden'], True)):
+            with self.subTest(options=options):
+                root = self.convert(body, options=options, navigation=False)
+                self.assertIn('Visible text.', self.text(root))
+                self.assertEqual('Hidden empty.' in self.text(root), included)
+                self.assertEqual('Hidden false.' in self.text(root), included)
+
     def test_stylesheet_visibility_and_explicit_include_hidden(self):
         css = '.hidden {display:none;} .hidden.show {display:block;} .important {display:none !important;}'
         body = ('<p class="hidden">Hidden text.</p><p class="hidden show">Visible override.</p>'
