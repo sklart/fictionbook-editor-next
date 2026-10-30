@@ -1520,6 +1520,17 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertLess(text.index('Quote line'), text.index('Quote Author'))
         self.assertEqual(root.findall('.//f:section/f:text-author', NS), [])
 
+    def test_epigraph_after_body_preserves_order(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<p>Before quotation</p><div class="epigraph"><p>Quoted text</p>'
+                                    '<p class="text-author">Attribution</p></div><p>After quotation</p>',
+                                    version=version, navigation=False)
+                text = self.text(root)
+                self.assertLess(text.index('Before quotation'), text.index('Quoted text'))
+                self.assertLess(text.index('Quoted text'), text.index('Attribution'))
+                self.assertLess(text.index('Attribution'), text.index('After quotation'))
+
     def test_epigraph_attribution_structure_matrix(self):
         cases = (
             '<section><div class="epigraph"><p>First quotation</p><p class="text-author">First author</p></div></section>',

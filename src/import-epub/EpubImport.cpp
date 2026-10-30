@@ -6233,6 +6233,33 @@ namespace
         if (LocalName(node) != L"section") return;
         if (!sections)
         {
+            // An epigraph is section metadata only before the image,
+            // annotation and body. Later quotations must stay in reading
+            // order, so retain them as body citations instead.
+            bool pastEpigraphs = false;
+            for (auto& child : children)
+            {
+                const CStringW name = LocalName(child);
+                if (name == L"epigraph" && pastEpigraphs)
+                {
+                    IXMLDOMNode* created = nullptr;
+                    CheckError(dom->createNode(CComVariant(static_cast<long>(MSXML2::NODE_ELEMENT)), CComBSTR(L"cite"),
+                        CComBSTR(L"http://www.gribuser.ru/xml/fictionbook/2.0"), &created));
+                    MSXML2::IXMLDOMNodePtr cite(created, false);
+                    for (;;)
+                    {
+                        IXMLDOMNode* raw = nullptr; child->get_firstChild(&raw);
+                        MSXML2::IXMLDOMNodePtr first(raw, false); if (!first) break;
+                        AppendDomChild(cite, first);
+                    }
+                    IXMLDOMNode* replaced = nullptr;
+                    CheckError(node->replaceChild(cite, child, &replaced));
+                    if (replaced) replaced->Release();
+                    child = cite;
+                    warning += L"Epigraph after section content preserved as cite.\r\n";
+                }
+                else if (name != L"title" && name != L"epigraph") pastEpigraphs = true;
+            }
             // A section's first body block cannot be an image unless it is
             // followed by a non-image body block. Promote image-only paragraphs
             // only where the resulting order satisfies that FB2 rule.
