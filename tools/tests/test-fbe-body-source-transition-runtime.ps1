@@ -4,7 +4,8 @@ param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [int]$TimeoutSeconds = 90,
     [ValidateRange(6, 20000)]
-    [int]$ParagraphCount = 6
+    [int]$ParagraphCount = 6,
+    [switch]$Clipboard
 )
 
 $ErrorActionPreference = 'Stop'
@@ -12,7 +13,27 @@ $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPat
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-body-source-transition-' + [guid]::NewGuid().ToString('N'))
 [void](New-Item -ItemType Directory -Path $directory)
+$clipboardCaptured = $false
 try {
+    if ($Clipboard) {
+        if ([Threading.Thread]::CurrentThread.GetApartmentState() -ne [Threading.ApartmentState]::STA) { throw 'Clipboard test requires PowerShell -STA.' }
+        Add-Type -AssemblyName System.Windows.Forms
+        Add-Type -AssemblyName System.Drawing
+        $originalClipboard = [Windows.Forms.Clipboard]::GetDataObject()
+        $clipboardSnapshot = [Windows.Forms.DataObject]::new()
+        if ($originalClipboard) {
+            foreach ($format in $originalClipboard.GetFormats($false)) {
+                $value = $originalClipboard.GetData($format, $false)
+                if ($null -eq $value) { throw "Cannot capture clipboard format: $format" }
+                if ($value -is [IO.Stream]) {
+                    $position = $value.Position; $value.Position = 0
+                    $copy = [IO.MemoryStream]::new(); $value.CopyTo($copy); $value.Position = $position; $copy.Position = 0; $value = $copy
+                } elseif ($value -is [Drawing.Image]) { $value = $value.Clone() }
+                $clipboardSnapshot.SetData($format, $false, $value)
+            }
+        }
+        $clipboardCaptured = $true
+    }
     $fixture = Join-Path $directory 'transition.fb2'; $report = Join-Path $directory 'transition.txt'
     $filler = @(if ($ParagraphCount -gt 6) {
         7..$ParagraphCount | ForEach-Object { "<p>PHASE_B_BENCHMARK paragraph $_ " + ('source serialization search snapshot cache ' * 8) + '</p>' }
@@ -28,17 +49,26 @@ try {
         if ($selectionOffset -lt $totalLength * 0.4 -or $selectionOffset -gt $totalLength * 0.6) { throw 'Selection fixture is not near the middle of the book.' }
     }
     @($prefix, ($lateFiller -join ''), '</section></body></FictionBook>') | Set-Content -LiteralPath $fixture -Encoding utf8
-    $oldMode, $oldScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
+    $oldMode, $oldScenario, $oldClipboard = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SOURCE_CLIPBOARD
     try {
         $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'body-source-transition-runtime'
+        $env:FBE_NEXT_TEST_SOURCE_CLIPBOARD = if ($Clipboard) { '1' } else { $null }
         $timer = [Diagnostics.Stopwatch]::StartNew()
         $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -PassThru
         if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE не завершил BODY/SOURCE transition scenario.' }
 		$timer.Stop()
         if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { $diagnostics = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<report missing>' }; throw "FBE BODY/SOURCE transition scenario failed: exit $($process.ExitCode).`n$diagnostics" }
-    } finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario }
+    } finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario; $env:FBE_NEXT_TEST_SOURCE_CLIPBOARD=$oldClipboard }
     $rows = @{}; foreach($line in Get-Content -LiteralPath $report) { $parts = $line -split '='; if($parts.Count -eq 2) { $rows[$parts[0]] = $parts[1] } }
     foreach($key in @('source_checkpoint_current','checkpoint_reused','checkpoint_forced','body_checkpoint_current','body_browser_fits','folded_selection_restored','source_focus_after_selection','source_typing_after_selection','source_typing_undo','source_backspace','source_backspace_undo','source_delete','source_delete_undo','source_delete_redo','source_delete_restored','source_arrow_collapse')) { if($rows[$key] -ne '1') { throw "BODY/SOURCE checkpoint/layout check failed: $key (value '$($rows[$key])')." } }
     foreach($key in @('source_active','source_current','body_without_change','valid_edit','edited_source','cycles','invalid_rejected','invalid_preserved','selection_saved','title_selection','title_caret_selection','annotation_selection','unicode_inline_selection','inline_selection','repeated_text_selection','tag_boundary_selection','paragraph_pair_selection','nested_section_selection','collapsed_caret_selection','body_to_source_selection','description_to_source_no_selection')) { if($rows[$key] -ne '1') { throw "BODY/SOURCE transition check failed: $key (value '$($rows[$key])')." } }
+    if ($Clipboard) { foreach ($key in @('source_clipboard_exercised','source_copy_paste','source_copy_paste_undo','source_copy_paste_redo')) { if ($rows[$key] -ne '1') { throw "BODY/SOURCE clipboard check failed: $key (value '$($rows[$key])')." } } }
     Write-Host "FBE BODY/SOURCE transition runtime passed: paragraphs=$ParagraphCount, fixture_bytes=$((Get-Item -LiteralPath $fixture).Length), elapsed_ms=$($timer.ElapsedMilliseconds)."
-} finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+} finally {
+    try {
+        if ($clipboardCaptured) {
+            if ($originalClipboard) { [Windows.Forms.Clipboard]::SetDataObject($clipboardSnapshot, $true, 10, 100) }
+            else { [Windows.Forms.Clipboard]::Clear() }
+        }
+    } finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+}

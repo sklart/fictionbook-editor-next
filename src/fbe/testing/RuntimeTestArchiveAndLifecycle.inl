@@ -589,6 +589,24 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		::SendMessageW(m_source, WM_KEYDOWN, VK_LEFT, 1);
 		const bool sourceArrowCollapsesSelection = validInputRange && m_source.SendMessage(SCI_GETSELECTIONSTART) == inputStart &&
 			m_source.SendMessage(SCI_GETSELECTIONEND) == inputStart && FbeScripts::SourceBytes(m_source) == sourceBeforeTyping;
+		wchar_t clipboardTest[4] = {};
+		const bool exerciseClipboard = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SOURCE_CLIPBOARD", clipboardTest, _countof(clipboardTest)) == 1 && clipboardTest[0] == L'1';
+		bool sourceCopyPaste = true, sourceCopyPasteUndo = true, sourceCopyPasteRedo = true;
+		if (exerciseClipboard && validInputRange) {
+			m_source.SendMessage(SCI_SETSEL, inputStart, inputEnd);
+			::SendMessageW(m_source, WM_COPY, 0, 0);
+			m_source.SendMessage(SCI_SETSEL, inputEnd, inputEnd);
+			::SendMessageW(m_source, WM_PASTE, 0, 0);
+			std::string expectedPaste = sourceBeforeTyping;
+			expectedPaste.insert(static_cast<size_t>(inputEnd), sourceBeforeTyping.substr(static_cast<size_t>(inputStart), static_cast<size_t>(inputEnd - inputStart)));
+			sourceCopyPaste = FbeScripts::SourceBytes(m_source) == expectedPaste;
+			m_source.SendMessage(SCI_UNDO);
+			sourceCopyPasteUndo = FbeScripts::SourceBytes(m_source) == sourceBeforeTyping;
+			m_source.SendMessage(SCI_REDO);
+			sourceCopyPasteRedo = FbeScripts::SourceBytes(m_source) == expectedPaste;
+			m_source.SendMessage(SCI_UNDO);
+			sourceCopyPasteUndo = sourceCopyPasteUndo && FbeScripts::SourceBytes(m_source) == sourceBeforeTyping;
+		} else if (exerciseClipboard) sourceCopyPaste = false;
 		m_source.SendMessage(SCI_SETSEL, inputStart, inputEnd);
 		// Preserve the slow fallback when a target is hidden by folding. An
 		// already visible target must not require expanding the document.
@@ -685,9 +703,10 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		report.AppendFormat("body_browser_fits=%d\nfolded_selection_restored=%d\n", bodyBrowserFits ? 1 : 0, foldedSelectionRestored ? 1 : 0);
 		report.AppendFormat("source_focus_after_selection=%d\nsource_typing_after_selection=%d\nsource_typing_undo=%d\n", sourceFocusedAfterSelection, sourceTypingAfterSelection, sourceTypingUndone);
 		report.AppendFormat("source_backspace=%d\nsource_backspace_undo=%d\nsource_delete=%d\nsource_delete_undo=%d\nsource_delete_redo=%d\nsource_delete_restored=%d\nsource_arrow_collapse=%d\n", sourceBackspace, sourceBackspaceUndo, sourceDelete, sourceDeleteUndo, sourceDeleteRedo, sourceDeleteRestored, sourceArrowCollapsesSelection);
+		report.AppendFormat("source_clipboard_exercised=%d\nsource_copy_paste=%d\nsource_copy_paste_undo=%d\nsource_copy_paste_redo=%d\n", exerciseClipboard, sourceCopyPaste, sourceCopyPasteUndo, sourceCopyPasteRedo);
 		report.AppendFormat("fold_setup=%d/%d/%d;selection=%Id/%Id->%Id/%Id\n", foldParent, foldTarget, targetWasFolded ? 1 : 0, foldSelectionStart, foldSelectionEnd, foldRestoredStart, foldRestoredEnd);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidRejected && invalidPreserved && titleSelection && titleCaretSelection && annotationSelection && unicodeInlineSelection && inlineSelection && repeatedTextSelection && tagBoundarySelection && paragraphPairSelection && nestedSectionSelection && collapsedCaretSelection && bodyToSourceTransfersSelection && descriptionToSourceSkipsSelection && sourceCheckpointCurrent && checkpointReused && checkpointForced && bodyCheckpointCurrent && bodyBrowserFits && foldedSelectionRestored && sourceFocusedAfterSelection && sourceTypingAfterSelection && sourceTypingUndone && sourceBackspace && sourceBackspaceUndo && sourceDelete && sourceDeleteUndo && sourceDeleteRedo && sourceDeleteRestored && sourceArrowCollapsesSelection ? 0 : 1);
+		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidRejected && invalidPreserved && titleSelection && titleCaretSelection && annotationSelection && unicodeInlineSelection && inlineSelection && repeatedTextSelection && tagBoundarySelection && paragraphPairSelection && nestedSectionSelection && collapsedCaretSelection && bodyToSourceTransfersSelection && descriptionToSourceSkipsSelection && sourceCheckpointCurrent && checkpointReused && checkpointForced && bodyCheckpointCurrent && bodyBrowserFits && foldedSelectionRestored && sourceFocusedAfterSelection && sourceTypingAfterSelection && sourceTypingUndone && sourceBackspace && sourceBackspaceUndo && sourceDelete && sourceDeleteUndo && sourceDeleteRedo && sourceDeleteRestored && sourceArrowCollapsesSelection && sourceCopyPaste && sourceCopyPasteUndo && sourceCopyPasteRedo ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"source-xml-declaration-encoding-runtime"))
