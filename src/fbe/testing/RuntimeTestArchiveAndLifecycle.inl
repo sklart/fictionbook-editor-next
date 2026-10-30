@@ -568,6 +568,27 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		const bool sourceTypingAfterSelection = inputEnd > inputStart && FbeScripts::SourceBytes(m_source) == expectedTyping;
 		m_source.SendMessage(SCI_UNDO);
 		const bool sourceTypingUndone = FbeScripts::SourceBytes(m_source) == sourceBeforeTyping;
+		const bool validInputRange = inputStart >= 0 && inputEnd > inputStart && static_cast<size_t>(inputEnd) <= sourceBeforeTyping.size();
+		std::string expectedDeleted = sourceBeforeTyping;
+		if (validInputRange) expectedDeleted.erase(static_cast<size_t>(inputStart), static_cast<size_t>(inputEnd - inputStart));
+		m_source.SendMessage(SCI_SETSEL, inputStart, inputEnd);
+		::SendMessageW(m_source, WM_KEYDOWN, VK_BACK, 1);
+		const bool sourceBackspace = validInputRange && FbeScripts::SourceBytes(m_source) == expectedDeleted;
+		m_source.SendMessage(SCI_UNDO);
+		const bool sourceBackspaceUndo = FbeScripts::SourceBytes(m_source) == sourceBeforeTyping;
+		m_source.SendMessage(SCI_SETSEL, inputStart, inputEnd);
+		::SendMessageW(m_source, WM_KEYDOWN, VK_DELETE, 1);
+		const bool sourceDelete = validInputRange && FbeScripts::SourceBytes(m_source) == expectedDeleted;
+		m_source.SendMessage(SCI_UNDO);
+		const bool sourceDeleteUndo = FbeScripts::SourceBytes(m_source) == sourceBeforeTyping;
+		m_source.SendMessage(SCI_REDO);
+		const bool sourceDeleteRedo = FbeScripts::SourceBytes(m_source) == expectedDeleted;
+		m_source.SendMessage(SCI_UNDO);
+		const bool sourceDeleteRestored = FbeScripts::SourceBytes(m_source) == sourceBeforeTyping;
+		m_source.SendMessage(SCI_SETSEL, inputStart, inputEnd);
+		::SendMessageW(m_source, WM_KEYDOWN, VK_LEFT, 1);
+		const bool sourceArrowCollapsesSelection = validInputRange && m_source.SendMessage(SCI_GETSELECTIONSTART) == inputStart &&
+			m_source.SendMessage(SCI_GETSELECTIONEND) == inputStart && FbeScripts::SourceBytes(m_source) == sourceBeforeTyping;
 		m_source.SendMessage(SCI_SETSEL, inputStart, inputEnd);
 		// Preserve the slow fallback when a target is hidden by folding. An
 		// already visible target must not require expanding the document.
@@ -663,9 +684,10 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		report.AppendFormat("source_checkpoint_current=%d\ncheckpoint_reused=%d\ncheckpoint_forced=%d\nbody_checkpoint_current=%d\n", sourceCheckpointCurrent, checkpointReused, checkpointForced, bodyCheckpointCurrent);
 		report.AppendFormat("body_browser_fits=%d\nfolded_selection_restored=%d\n", bodyBrowserFits ? 1 : 0, foldedSelectionRestored ? 1 : 0);
 		report.AppendFormat("source_focus_after_selection=%d\nsource_typing_after_selection=%d\nsource_typing_undo=%d\n", sourceFocusedAfterSelection, sourceTypingAfterSelection, sourceTypingUndone);
+		report.AppendFormat("source_backspace=%d\nsource_backspace_undo=%d\nsource_delete=%d\nsource_delete_undo=%d\nsource_delete_redo=%d\nsource_delete_restored=%d\nsource_arrow_collapse=%d\n", sourceBackspace, sourceBackspaceUndo, sourceDelete, sourceDeleteUndo, sourceDeleteRedo, sourceDeleteRestored, sourceArrowCollapsesSelection);
 		report.AppendFormat("fold_setup=%d/%d/%d;selection=%Id/%Id->%Id/%Id\n", foldParent, foldTarget, targetWasFolded ? 1 : 0, foldSelectionStart, foldSelectionEnd, foldRestoredStart, foldRestoredEnd);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidRejected && invalidPreserved && titleSelection && titleCaretSelection && annotationSelection && unicodeInlineSelection && inlineSelection && repeatedTextSelection && tagBoundarySelection && paragraphPairSelection && nestedSectionSelection && collapsedCaretSelection && bodyToSourceTransfersSelection && descriptionToSourceSkipsSelection && sourceCheckpointCurrent && checkpointReused && checkpointForced && bodyCheckpointCurrent && bodyBrowserFits && foldedSelectionRestored && sourceFocusedAfterSelection && sourceTypingAfterSelection && sourceTypingUndone ? 0 : 1);
+		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidRejected && invalidPreserved && titleSelection && titleCaretSelection && annotationSelection && unicodeInlineSelection && inlineSelection && repeatedTextSelection && tagBoundarySelection && paragraphPairSelection && nestedSectionSelection && collapsedCaretSelection && bodyToSourceTransfersSelection && descriptionToSourceSkipsSelection && sourceCheckpointCurrent && checkpointReused && checkpointForced && bodyCheckpointCurrent && bodyBrowserFits && foldedSelectionRestored && sourceFocusedAfterSelection && sourceTypingAfterSelection && sourceTypingUndone && sourceBackspace && sourceBackspaceUndo && sourceDelete && sourceDeleteUndo && sourceDeleteRedo && sourceDeleteRestored && sourceArrowCollapsesSelection ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"source-xml-declaration-encoding-runtime"))
