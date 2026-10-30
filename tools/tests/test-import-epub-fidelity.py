@@ -1458,7 +1458,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertIn('XHTML cache hits: 128', self.diagnostics)
 
     def test_xhtml_cache_byte_limit_falls_back_without_content_loss(self):
-        root = self.convert('<p>Large source remains.</p><!--' + ('a' * (2 * 1024 * 1024)) + '-->',
+        root = self.convert('<p>Large source remains.</p><!--' + ('a' * (512 * 1024)) + '-->',
                             navigation=False, options=['--no-notes'])
         self.assert_once(root, 'Large source remains.')
         self.assertIn('XHTML load calls: total=2 unique=1 max-per-file=2', self.diagnostics)

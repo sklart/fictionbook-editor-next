@@ -1254,7 +1254,7 @@ namespace
             // The inventory, note and rendering passes only read source DOMs.
             // Bound both the number of COM documents and their input bytes;
             // over-budget documents keep the original load-on-each-pass path.
-            const unsigned long long limit = 2ULL * 1024 * 1024;
+            const unsigned long long limit = 512ULL * 1024;
             if (!htmlMode || !dom || g_content.xhtmlCache.size() >= 128) return;
             WIN32_FILE_ATTRIBUTE_DATA attributes = {};
             if (!::GetFileAttributesExW(path, GetFileExInfoStandard, &attributes)) return;
