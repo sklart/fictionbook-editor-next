@@ -1348,6 +1348,27 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertLess(text.index('Quote line'), text.index('Quote Author'))
         self.assertEqual(root.findall('.//f:section/f:text-author', NS), [])
 
+    def test_epigraph_attribution_structure_matrix(self):
+        cases = (
+            '<section><div class="epigraph"><p>First quotation</p><p class="text-author">First author</p></div></section>',
+            '<section><div class="epigraph"><p>First quotation</p><p class="text-author">First author</p></div>'
+            '<div class="epigraph"><p>Second quotation</p><p class="text-author">Second author</p></div></section>',
+            '<section><section><p>First quotation</p><p class="text-author">First author</p></section>'
+            '<section><blockquote><p>Second quotation</p><p class="text-author">Second author</p></blockquote></section></section>',
+        )
+        for version in ('2.0', '3.0'):
+            for case in cases:
+                with self.subTest(version=version, case=case):
+                    root = self.convert(case, version=version, navigation=False)
+                    expected = ['First quotation', 'First author']
+                    if 'Second quotation' in case:
+                        expected += ['Second quotation', 'Second author']
+                    self.assert_once(root, *expected)
+                    text = self.text(root)
+                    positions = [text.index(value) for value in expected]
+                    self.assertEqual(positions, sorted(positions))
+                    self.assertEqual(root.findall('.//f:section/f:text-author', NS), [])
+
     def test_linear_structure_index_without_notes(self):
         self.performance_samples(False)
 
