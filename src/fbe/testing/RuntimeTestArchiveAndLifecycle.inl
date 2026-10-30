@@ -405,6 +405,26 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		::PostQuitMessage(bodyOpened && sourcePreserved && bodyAfterSource && saved && reopened && bodyAfterReopen ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"generated-id-reopen-runtime"))
+	{
+		wchar_t expected[128] = {};
+		const DWORD expectedLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPECTED_ID", expected, _countof(expected));
+		ShowView(DESC);
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLDocument3Ptr document3(document);
+		MSHTML::IHTMLInputTextElementPtr id(document3 ? document3->getElementById(L"diID") : NULL);
+		const bool descriptionCurrent = expectedLength > 0 && expectedLength < _countof(expected) && id && CString(static_cast<LPCWSTR>(id->value)) == expected;
+		ShowView(SOURCE);
+		const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
+		std::vector<char> xml(static_cast<size_t>(length) + 1);
+		m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(xml.data()));
+		const CStringA expectedUtf8(CW2A(expected, CP_UTF8));
+		const bool sourceCurrent = descriptionCurrent && strstr(xml.data(), expectedUtf8) != NULL;
+		CStringA report; report.Format("description-current=%d\nsource-current=%d\n", descriptionCurrent, sourceCurrent);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(descriptionCurrent && sourceCurrent ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"generated-id-runtime"))
 	{
 		ShowView(SOURCE);
@@ -416,11 +436,13 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		MSHTML::IHTMLWindow2Ptr window(document ? document->parentWindow : NULL);
 		const CString before = id ? CString(static_cast<LPCWSTR>(id->value)) : CString();
 		const bool initiallyClean = !DocChanged();
+		const bool undoBefore = m_doc->m_body.CheckCommand(ID_EDIT_UNDO);
 		const HRESULT cancelAction = window ? static_cast<HRESULT>(window->execScript(_bstr_t(L"window.AskYesNo=function(){return false;}; NewDocumentID('');"), _bstr_t(L"JScript"))) : E_NOINTERFACE;
 		const bool canceledClean = SUCCEEDED(cancelAction) && id && CString(static_cast<LPCWSTR>(id->value)) == before && !DocChanged();
 		const HRESULT action = window ? static_cast<HRESULT>(window->execScript(_bstr_t(L"window.AskYesNo=function(){return true;}; NewDocumentID('');"), _bstr_t(L"JScript"))) : E_NOINTERFACE;
 		const CString after = id ? CString(static_cast<LPCWSTR>(id->value)) : CString();
 		const bool generated = SUCCEEDED(action) && !after.IsEmpty() && after != before;
+		const bool undoAfter = m_doc->m_body.CheckCommand(ID_EDIT_UNDO);
 		const bool dirty = DocChanged();
 		ShowView(SOURCE);
 		const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
@@ -437,6 +459,7 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		const CString reopenedXml = reopenedOk ? CString(static_cast<LPCWSTR>(reopened->xml)) : CString();
 		const bool persisted = reopenedOk && reopenedXml.Find(after) >= 0;
 		CStringA report; report.Format("initially-clean=%d\ncanceled-clean=%d\ngenerated=%d\ndirty=%d\nsource-current=%d\nsaved=%d\nclean-after-save=%d\npersisted=%d\n", initiallyClean, canceledClean, generated, dirty, sourceCurrent, saved, cleanAfterSave, persisted);
+		report.AppendFormat("undo-before=%d\nundo-after=%d\n", undoBefore, undoAfter);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(initiallyClean && canceledClean && generated && dirty && sourceCurrent && saved && cleanAfterSave && persisted ? 0 : 1);
 		return 0;
