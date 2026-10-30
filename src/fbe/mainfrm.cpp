@@ -2937,7 +2937,7 @@ bool CMainFrame::AddScriptToToolbar(const CString& scriptUid, const CString& too
 	return AddScriptsToToolbar(std::vector<CString>(1, scriptUid), toolbarId);
 }
 
-bool CMainFrame::AddScriptsToToolbar(const std::vector<CString>& scriptUids, const CString& toolbarId)
+bool CMainFrame::AddScriptsToToolbar(const std::vector<CString>& scriptUids, const CString& toolbarId, int insertBefore)
 {
 	if(scriptUids.empty()) return false;
 	std::vector<const ScriptDescriptor*> scripts;
@@ -2961,6 +2961,8 @@ bool CMainFrame::AddScriptsToToolbar(const std::vector<CString>& scriptUids, con
 		if(current[index].id == toolbarId)
 		{
 			bool changed = false;
+			size_t insertion = insertBefore < 0 ? current[index].items.size() : static_cast<size_t>(insertBefore);
+			if(insertion > current[index].items.size()) return false;
 			for(size_t scriptIndex = 0; scriptIndex < scripts.size(); ++scriptIndex)
 			{
 				const ScriptDescriptor& script = *scripts[scriptIndex];
@@ -2972,12 +2974,75 @@ bool CMainFrame::AddScriptsToToolbar(const std::vector<CString>& scriptUids, con
 						{ present = true; break; }
 				if(present) continue;
 				PortableToolbarItem item = {}; item.separator = false; item.command = 0; item.width = 0; item.relativePath = script.relativePath; item.scriptUid = script.uid; item.scriptName = script.name;
-				current[index].items.push_back(item);
+				current[index].items.insert(current[index].items.begin() + insertion, item);
+				++insertion;
 				changed = true;
 			}
 			return !changed || ApplyScriptToolbarDefinitions(previous, current);
 		}
 	return false;
+}
+
+void CMainFrame::HandleScriptTreeDrag(int phase, POINT screen, const std::vector<CString>& uids)
+{
+	if(phase == 0 && m_scriptTreeEmptyMarker != NULL && ::IsWindow(m_scriptTreeEmptyMarker))
+	{
+		const HWND parent = ::GetParent(m_scriptTreeEmptyMarker);
+		for(const auto& runtime : m_scriptToolbars.Items())
+		{
+			RECT bounds = {};
+			if(runtime.window == parent && runtime.definition.visible && ::IsWindowVisible(parent) &&
+				::GetWindowRect(parent, &bounds) && ::PtInRect(&bounds, screen) &&
+				::SendMessage(parent, TB_BUTTONCOUNT, 0, 0) == 0 && runtime.definition.items.empty())
+			{
+				::SetCursor(::LoadCursor(NULL, IDC_ARROW));
+				return;
+			}
+		}
+	}
+	if(m_scriptTreeEmptyMarker != NULL && ::IsWindow(m_scriptTreeEmptyMarker)) ::DestroyWindow(m_scriptTreeEmptyMarker);
+	m_scriptTreeEmptyMarker = NULL;
+	if(m_scriptTreeDragMarker != NULL && ::IsWindow(m_scriptTreeDragMarker))
+	{
+		TBINSERTMARK clear = {}; clear.iButton = -1;
+		::SendMessage(m_scriptTreeDragMarker, TB_SETINSERTMARK, 0, reinterpret_cast<LPARAM>(&clear));
+	}
+	m_scriptTreeDragMarker = NULL;
+	if(phase == 2) return;
+	for(const auto& runtime : m_scriptToolbars.Items())
+	{
+		if(!runtime.definition.visible || !::IsWindow(runtime.window) || !::IsWindowVisible(runtime.window)) continue;
+		RECT bounds = {};
+		if(!::GetWindowRect(runtime.window, &bounds) || !::PtInRect(&bounds, screen)) continue;
+		const int count = static_cast<int>(::SendMessage(runtime.window, TB_BUTTONCOUNT, 0, 0));
+		if(count < 0 || static_cast<size_t>(count) != runtime.definition.items.size()) return;
+		POINT point = screen; ::ScreenToClient(runtime.window, &point);
+		int insertion = count;
+		for(int index = 0; index < count; ++index)
+		{
+			RECT button = {};
+			if(!::SendMessage(runtime.window, TB_GETITEMRECT, index, reinterpret_cast<LPARAM>(&button))) return;
+			if(point.x < (button.left + button.right) / 2) { insertion = index; break; }
+		}
+		if(phase == 1) { AddScriptsToToolbar(uids, runtime.definition.id, insertion); return; }
+		if(count > 0)
+		{
+			TBINSERTMARK mark = {}; mark.iButton = insertion == count ? count - 1 : insertion;
+			mark.dwFlags = insertion == count ? TBIMHT_AFTER : 0;
+			::SendMessage(runtime.window, TB_SETINSERTMARK, 0, reinterpret_cast<LPARAM>(&mark));
+			m_scriptTreeDragMarker = runtime.window;
+		}
+		else
+		{
+			RECT client = {}; ::GetClientRect(runtime.window, &client);
+			const int width = (std::max)(2, UiMetrics::ScaleForDpi(2, UiMetrics::DpiForWindow(runtime.window)));
+			m_scriptTreeEmptyMarker = ::CreateWindowEx(WS_EX_TRANSPARENT | WS_EX_NOACTIVATE, L"STATIC", NULL,
+				WS_CHILD | WS_VISIBLE | SS_ETCHEDVERT, 0, 0, width, client.bottom - client.top, runtime.window, NULL, _Module.GetModuleInstance(), NULL);
+		}
+		::SetCursor(::LoadCursor(NULL, IDC_ARROW));
+		return;
+	}
+	if(phase == 0) ::SetCursor(::LoadCursor(NULL, IDC_NO));
 }
 
 void CMainFrame::RefreshNavigationScriptTree()
@@ -2993,6 +3058,7 @@ void CMainFrame::RefreshNavigationScriptTree()
 		[this](const CString& path) { const int slash = path.ReverseFind(L'\\'); if(slash >= 0) ::ShellExecute(m_hWnd, L"open", path.Left(slash), NULL, NULL, SW_SHOWNORMAL); },
 		[this](UINT commandId) { BOOL handled = FALSE; OnToolsScript(0, static_cast<WORD>(ID_SCRIPT_BASE + commandId), NULL, handled); });
 	m_document_tree.m_tree.m_tree.SetScriptCardHandler([this](const CString& uid) { ShowScriptCard(uid); });
+	m_document_tree.m_tree.m_tree.SetScriptDragHandler([this](int phase, POINT point, const std::vector<CString>& uids) { HandleScriptTreeDrag(phase, point, uids); });
 }
 
 void CMainFrame::ShowScriptCard(const CString& uid)

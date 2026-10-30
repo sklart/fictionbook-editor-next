@@ -982,6 +982,15 @@ LRESULT CTreeView::OnChar(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /* unus
 
 LRESULT CTreeView::OnKeyDown(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /* unused: lParam */, BOOL& bHandled)
 {  
+	if(m_script_dragging && wParam == VK_ESCAPE)
+	{
+		m_script_dragging = false;
+		if(m_script_drag_handler) m_script_drag_handler(2, POINT{}, m_script_drag_uids);
+		m_script_drag_uids.clear();
+		if(::GetCapture() == m_hWnd) ::ReleaseCapture();
+		bHandled = TRUE;
+		return 0;
+	}
 	if(!m_script_mode && wParam == 'A' && (GetKeyState(VK_CONTROL) & 0x8000))
 	{
 		SelectAllVisibleItems();
@@ -1059,7 +1068,21 @@ LRESULT CTreeView::OnKeyDown(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /* u
 
 LRESULT CTreeView::OnBegindrag(int /* unused: idCtrl */, LPNMHDR mhdr, BOOL& bHandled)
 {
-	if(m_script_mode) { bHandled = TRUE; return 0; }
+	if(m_script_mode)
+	{
+		const LPNMTREEVIEW drag = reinterpret_cast<LPNMTREEVIEW>(mhdr);
+		const auto found = drag ? m_script_nodes.find(drag->itemNew.hItem) : m_script_nodes.end();
+		if(found != m_script_nodes.end() && found->second < m_script_items.size() &&
+			!m_script_items[found->second].isFolder && m_script_drag_handler)
+		{
+			if((GetItemState(drag->itemNew.hItem, TVIS_SELECTED) & TVIS_SELECTED) == 0) SelectItem(drag->itemNew.hItem);
+			m_script_drag_uids.clear();
+			for(const auto* script : SelectedScripts()) m_script_drag_uids.push_back(script->uid);
+			if(!m_script_drag_uids.empty()) { m_script_dragging = true; SetCapture(); }
+		}
+		bHandled = TRUE;
+		return 0;
+	}
 	LPNMTREEVIEW pnmtv = (LPNMTREEVIEW) mhdr;
 	
 	m_move_from.m_hTreeItem = pnmtv->itemNew.hItem;	
@@ -1077,6 +1100,17 @@ LRESULT CTreeView::OnLButtonUp(UINT, WPARAM, LPARAM lParam, BOOL& bHandled)
 {
 	if(m_script_mode)
 	{
+		if(m_script_dragging)
+		{
+			POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+			::ClientToScreen(m_hWnd, &point);
+			m_script_dragging = false;
+			if(::GetCapture() == m_hWnd) ::ReleaseCapture();
+			if(m_script_drag_handler) m_script_drag_handler(1, point, m_script_drag_uids);
+			m_script_drag_uids.clear();
+			bHandled = TRUE;
+			return 0;
+		}
 		const HTREEITEM pressed = m_script_info_pressed;
 		m_script_info_pressed = NULL;
 		if(pressed != NULL)
@@ -1107,6 +1141,12 @@ LRESULT CTreeView::OnLButtonUp(UINT, WPARAM, LPARAM lParam, BOOL& bHandled)
 
 LRESULT CTreeView::OnCaptureChanged(UINT, WPARAM, LPARAM, BOOL& bHandled)
 {
+	if(m_script_dragging)
+	{
+		m_script_dragging = false;
+		if(m_script_drag_handler) m_script_drag_handler(2, POINT{}, m_script_drag_uids);
+		m_script_drag_uids.clear();
+	}
 	const HTREEITEM pressed = m_script_info_pressed;
 	m_script_info_pressed = NULL;
 	RECT bounds = {};
@@ -1119,6 +1159,14 @@ LRESULT CTreeView::OnMouseMove(UINT, WPARAM, LPARAM lParam, BOOL& bHandled)
 {
 	if(m_script_mode)
 	{
+		if(m_script_dragging)
+		{
+			POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+			::ClientToScreen(m_hWnd, &point);
+			if(m_script_drag_handler) m_script_drag_handler(0, point, m_script_drag_uids);
+			bHandled = TRUE;
+			return 0;
+		}
 		TRACKMOUSEEVENT tracking = { sizeof(tracking), TME_LEAVE, m_hWnd, 0 };
 		::TrackMouseEvent(&tracking);
 		POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };

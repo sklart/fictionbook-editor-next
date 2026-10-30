@@ -72,6 +72,9 @@ protected:
 	HWND m_script_search_window = NULL;
 	HTREEITEM m_script_info_hover = NULL;
 	HTREEITEM m_script_info_pressed = NULL;
+	bool m_script_dragging = false;
+	std::vector<CString> m_script_drag_uids;
+	std::function<void(int, POINT, const std::vector<CString>&)> m_script_drag_handler;
 	ScriptCardPreviewPopup m_script_preview;
 	struct ScriptPreviewCache {
 		CString path;
@@ -231,6 +234,7 @@ public:
 		const std::function<void(const CString&)>& openLocation,
 		const std::function<void(UINT)>& runScript);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
+	void SetScriptDragHandler(const std::function<void(int, POINT, const std::vector<CString>&)>& handler) { m_script_drag_handler = handler; }
 	void AppendScriptToolbarMenu(HMENU menu) const;
 	void SetScriptCardHandler(const std::function<void(const CString&)>& handler) { m_show_script_card = handler; }
 	void SetScriptFilter(const CString& filter);

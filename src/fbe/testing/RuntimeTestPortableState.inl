@@ -1504,13 +1504,124 @@ void CMainFrame::RunPortableStateTestScenario()
 				break;
 			}
 		toolbarPersisted = toolbarPersisted && foundPersistedToolbar;
+		std::vector<ScriptToolbarDefinition> beforeInsert, withInsert;
+		for(const auto& toolbar : m_scriptToolbars.Items()) beforeInsert.push_back(toolbar.definition);
+		withInsert = beforeInsert;
+		ScriptToolbarDefinition insertTarget; insertTarget.id = L"navigation-insertion-test"; insertTarget.name = L"Insertion test"; insertTarget.visible = true;
+		PortableToolbarItem separator = {}; separator.separator = true;
+		PortableToolbarItem existing = {}; existing.scriptUid = uidC;
+		insertTarget.items.push_back(separator); insertTarget.items.push_back(existing); withInsert.push_back(insertTarget);
+		bool insertedAtPosition = ApplyScriptToolbarDefinitions(beforeInsert, withInsert) &&
+			AddScriptsToToolbar(std::vector<CString>{ uidA, uidB, uidC }, insertTarget.id, 1);
+		const ScriptToolbarRuntime* insertionRuntime = m_scriptToolbars.Find(insertTarget.id);
+		insertedAtPosition = insertedAtPosition && insertionRuntime != NULL && insertionRuntime->definition.items.size() == 4 &&
+			insertionRuntime->definition.items[0].separator && insertionRuntime->definition.items[1].scriptUid == uidA &&
+			insertionRuntime->definition.items[2].scriptUid == uidB && insertionRuntime->definition.items[3].scriptUid == uidC;
+		PortableToolbarLayout insertedLayout;
+		bool insertedPersisted = insertedAtPosition && PortableToolbarStore::Load(insertedLayout);
+		bool foundInsert = false;
+		for(const auto& toolbar : insertedLayout.scriptToolbars) if(toolbar.id == insertTarget.id)
+		{
+			foundInsert = true;
+			insertedPersisted = insertedPersisted && toolbar.items.size() == 4 && toolbar.items[0].separator &&
+				toolbar.items[1].scriptUid == uidA && toolbar.items[2].scriptUid == uidB && toolbar.items[3].scriptUid == uidC;
+		}
+		insertedPersisted = insertedPersisted && foundInsert;
+		std::vector<ScriptToolbarDefinition> beforeDrag, withDrag;
+		for(const auto& toolbar : m_scriptToolbars.Items()) beforeDrag.push_back(toolbar.definition);
+		withDrag = beforeDrag;
+		ScriptToolbarDefinition dragTarget; dragTarget.id = L"navigation-drag-test"; dragTarget.name = L"Drag test"; dragTarget.visible = true;
+		dragTarget.items.push_back(separator); dragTarget.items.push_back(existing); withDrag.push_back(dragTarget);
+		ScriptToolbarDefinition emptyTarget; emptyTarget.id = L"navigation-empty-drag-test"; emptyTarget.name = L"Empty drag test"; emptyTarget.visible = true; withDrag.push_back(emptyTarget);
+		const bool dragSetup = ApplyScriptToolbarDefinitions(beforeDrag, withDrag);
+		const ScriptToolbarRuntime* dragRuntime = m_scriptToolbars.Find(dragTarget.id);
+		RECT firstButton = {}; POINT dragPoint = {};
+		const bool dragGeometry = dragSetup && dragRuntime != NULL && ::IsWindowVisible(dragRuntime->window) &&
+			::SendMessage(dragRuntime->window, TB_GETITEMRECT, 0, reinterpret_cast<LPARAM>(&firstButton));
+		if(dragGeometry) { dragPoint.x = firstButton.left + 1; dragPoint.y = (firstButton.top + firstButton.bottom) / 2; ::ClientToScreen(dragRuntime->window, &dragPoint); ::ScreenToClient(tree.m_hWnd, &dragPoint); }
+		POINT hiddenPoint = dragPoint; if(dragGeometry) ::ClientToScreen(tree.m_hWnd, &hiddenPoint);
+		if(dragGeometry) ::ShowWindow(dragRuntime->window, SW_HIDE);
+		if(dragGeometry) HandleScriptTreeDrag(1, hiddenPoint, std::vector<CString>{ uidA });
+		const bool hiddenDropRejected = dragGeometry && dragRuntime->definition.items.size() == 2;
+		if(dragGeometry) ::ShowWindow(dragRuntime->window, SW_SHOW);
+		a = tree.FindScriptTreeItem(L"a.js"); b = tree.FindScriptTreeItem(L"b.js"); c = tree.FindScriptTreeItem(L"c.js");
+		if(a != NULL) tree.SelectItem(a);
+		if(b != NULL) tree.SetItemState(b, TVIS_SELECTED, TVIS_SELECTED);
+		if(c != NULL) tree.SetItemState(c, TVIS_SELECTED, TVIS_SELECTED);
+		NMTREEVIEW dragEvent = {}; dragEvent.itemNew.hItem = a; BOOL dragEventHandled = FALSE;
+		if(dragGeometry) tree.OnBegindrag(0, reinterpret_cast<LPNMHDR>(&dragEvent), dragEventHandled);
+		BOOL moveHandled = FALSE;
+		if(dragGeometry) tree.OnMouseMove(WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(dragPoint.x, dragPoint.y), moveHandled);
+		TBINSERTMARK mark = {}; mark.iButton = -2;
+		if(dragGeometry) ::SendMessage(dragRuntime->window, TB_GETINSERTMARK, 0, reinterpret_cast<LPARAM>(&mark));
+		const bool dragMark = dragGeometry && dragEventHandled && moveHandled && mark.iButton == 0;
+		const ScriptToolbarRuntime* secondRuntime = m_scriptToolbars.Find(insertTarget.id);
+		RECT secondButton = {}; POINT secondPoint = {};
+		const bool secondGeometry = secondRuntime != NULL && ::IsWindowVisible(secondRuntime->window) &&
+			::SendMessage(secondRuntime->window, TB_GETITEMRECT, 0, reinterpret_cast<LPARAM>(&secondButton));
+		if(secondGeometry) { secondPoint.x = secondButton.left + 1; secondPoint.y = (secondButton.top + secondButton.bottom) / 2; ::ClientToScreen(secondRuntime->window, &secondPoint); ::ScreenToClient(tree.m_hWnd, &secondPoint); tree.OnMouseMove(WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(secondPoint.x, secondPoint.y), moveHandled); }
+		TBINSERTMARK oldMark = {}, newMark = {}; oldMark.iButton = newMark.iButton = -2;
+		if(dragGeometry) ::SendMessage(dragRuntime->window, TB_GETINSERTMARK, 0, reinterpret_cast<LPARAM>(&oldMark));
+		if(secondGeometry) ::SendMessage(secondRuntime->window, TB_GETINSERTMARK, 0, reinterpret_cast<LPARAM>(&newMark));
+		const bool dragSwitched = dragMark && secondGeometry && oldMark.iButton == -1 && newMark.iButton == 0;
+		if(dragGeometry) tree.OnMouseMove(WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(dragPoint.x, dragPoint.y), moveHandled);
+		BOOL cancelHandled = FALSE; if(dragGeometry) tree.OnKeyDown(WM_KEYDOWN, VK_ESCAPE, 0, cancelHandled);
+		if(dragGeometry) ::SendMessage(dragRuntime->window, TB_GETINSERTMARK, 0, reinterpret_cast<LPARAM>(&mark));
+		const bool dragCanceled = dragMark && cancelHandled && mark.iButton == -1 && dragRuntime->definition.items.size() == 2;
+		if(dragGeometry) tree.OnBegindrag(0, reinterpret_cast<LPNMHDR>(&dragEvent), dragEventHandled);
+		if(dragGeometry) tree.OnMouseMove(WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(dragPoint.x, dragPoint.y), moveHandled);
+		if(dragGeometry && ::GetCapture() == tree.m_hWnd) ::ReleaseCapture();
+		if(dragGeometry) ::SendMessage(dragRuntime->window, TB_GETINSERTMARK, 0, reinterpret_cast<LPARAM>(&mark));
+		const bool dragCaptureCanceled = dragGeometry && mark.iButton == -1 && dragRuntime->definition.items.size() == 2;
+		if(dragGeometry) tree.OnBegindrag(0, reinterpret_cast<LPNMHDR>(&dragEvent), dragEventHandled);
+		if(dragGeometry) tree.OnMouseMove(WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(dragPoint.x, dragPoint.y), moveHandled);
+		POINT outside = { -32000, -32000 };
+		if(dragGeometry) tree.OnMouseMove(WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(outside.x, outside.y), moveHandled);
+		if(dragGeometry) ::SendMessage(dragRuntime->window, TB_GETINSERTMARK, 0, reinterpret_cast<LPARAM>(&mark));
+		BOOL outsideHandled = FALSE; if(dragGeometry) tree.OnLButtonUp(WM_LBUTTONUP, 0, MAKELPARAM(outside.x, outside.y), outsideHandled);
+		const bool dragOutsideCanceled = dragGeometry && outsideHandled && mark.iButton == -1 && dragRuntime->definition.items.size() == 2;
+		if(dragGeometry) tree.OnBegindrag(0, reinterpret_cast<LPNMHDR>(&dragEvent), dragEventHandled);
+		BOOL dropHandled = FALSE; if(dragGeometry) tree.OnLButtonUp(WM_LBUTTONUP, 0, MAKELPARAM(dragPoint.x, dragPoint.y), dropHandled);
+		dragRuntime = m_scriptToolbars.Find(dragTarget.id);
+		const bool dragDropped = dragCanceled && dropHandled && dragRuntime != NULL && dragRuntime->definition.items.size() == 4 &&
+			dragRuntime->definition.items[0].scriptUid == uidA && dragRuntime->definition.items[1].scriptUid == uidB &&
+			dragRuntime->definition.items[2].separator && dragRuntime->definition.items[3].scriptUid == uidC;
+		PortableToolbarLayout dragLayout; bool dragPersisted = dragDropped && PortableToolbarStore::Load(dragLayout); bool foundDrag = false;
+		for(const auto& toolbar : dragLayout.scriptToolbars) if(toolbar.id == dragTarget.id)
+		{
+			foundDrag = true; dragPersisted = dragPersisted && toolbar.items.size() == 4 && toolbar.items[0].scriptUid == uidA &&
+				toolbar.items[1].scriptUid == uidB && toolbar.items[2].separator && toolbar.items[3].scriptUid == uidC;
+		}
+		dragPersisted = dragPersisted && foundDrag;
+		const ScriptToolbarRuntime* emptyRuntime = m_scriptToolbars.Find(emptyTarget.id);
+		RECT emptyRect = {};
+		const bool emptyGeometry = emptyRuntime != NULL && ::IsWindowVisible(emptyRuntime->window) &&
+			::GetWindowRect(emptyRuntime->window, &emptyRect) && emptyRect.right > emptyRect.left && emptyRect.bottom > emptyRect.top;
+		POINT emptyPoint = { emptyRect.left + (emptyRect.right - emptyRect.left) / 2, emptyRect.top + (emptyRect.bottom - emptyRect.top) / 2 };
+		if(emptyGeometry) ::ScreenToClient(tree.m_hWnd, &emptyPoint);
+		if(emptyGeometry) tree.OnBegindrag(0, reinterpret_cast<LPNMHDR>(&dragEvent), dragEventHandled);
+		if(emptyGeometry) tree.OnMouseMove(WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(emptyPoint.x, emptyPoint.y), moveHandled);
+		const bool emptyMark = emptyGeometry && ::IsWindow(m_scriptTreeEmptyMarker) && ::IsWindowVisible(m_scriptTreeEmptyMarker) && ::GetParent(m_scriptTreeEmptyMarker) == emptyRuntime->window;
+		const HWND emptyMarkerWindow = m_scriptTreeEmptyMarker;
+		if(emptyGeometry) tree.OnMouseMove(WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(emptyPoint.x, emptyPoint.y), moveHandled);
+		const bool emptyMarkStable = emptyMark && m_scriptTreeEmptyMarker == emptyMarkerWindow && ::IsWindow(emptyMarkerWindow);
+		BOOL emptyCancelHandled = FALSE; if(emptyGeometry) tree.OnKeyDown(WM_KEYDOWN, VK_ESCAPE, 0, emptyCancelHandled);
+		const bool emptyMarkCanceled = emptyMarkStable && emptyCancelHandled && !::IsWindow(emptyMarkerWindow) && m_scriptTreeEmptyMarker == NULL && emptyRuntime->definition.items.empty();
+		if(emptyGeometry) tree.OnBegindrag(0, reinterpret_cast<LPNMHDR>(&dragEvent), dragEventHandled);
+		if(emptyGeometry) tree.OnMouseMove(WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(emptyPoint.x, emptyPoint.y), moveHandled);
+		BOOL emptyDropHandled = FALSE; if(emptyGeometry) tree.OnLButtonUp(WM_LBUTTONUP, 0, MAKELPARAM(emptyPoint.x, emptyPoint.y), emptyDropHandled);
+		emptyRuntime = m_scriptToolbars.Find(emptyTarget.id);
+		const bool emptyDrop = emptyGeometry && emptyDropHandled && emptyRuntime != NULL && emptyRuntime->definition.items.size() == 3 &&
+			emptyRuntime->definition.items[0].scriptUid == uidA && emptyRuntime->definition.items[1].scriptUid == uidB && emptyRuntime->definition.items[2].scriptUid == uidC;
 		const bool removeAction = tree.SelectedScriptsAreAllFavorites();
 		const bool favoritesRemoved = removeAction && tree.ExecuteScriptPopupCommand(NavigationPopupToggleFavorite) &&
 			!tree.IsFavoriteScript(uidA) && !tree.IsFavoriteScript(uidB) && !tree.IsFavoriteScript(uidC);
-		const bool passed = initialized && folderNameExcluded && filenameMatch && threeSelected && rightClickPreserves && keyboardContextPreserves && unsafeDisabled && favoritesAdded && mixedFavoriteAdd && dedicatedImage && iconLightDark && virtualNodesExcluded && duplicateRepresentation && singleMenuDirect && multiMenuNamed && invalidRejected && toolbarOrder && noDuplicates && toolbarPersisted && favoritesRemoved;
-		CStringA report; report.Format("phase=navigation-scripts-multiselect\nfolder-name-excluded=%d\nfilename-match=%d\nthree-selected=%d\nright-click-preserves=%d\nkeyboard-context-preserves=%d\nunsafe-disabled=%d\nfavorites-added=%d\nmixed-favorite-add=%d\ndedicated-image=%d\nicon-light-dark=%d\nvirtual-nodes-excluded=%d\nduplicate-representation=%d\nsingle-menu-direct=%d\nmulti-menu-named=%d\ninvalid-rejected=%d\ntoolbar-order=%d\nno-duplicates=%d\ntoolbar-persisted=%d\nremove-action=%d\nfavorites-removed=%d\nresult=%s\n",
-			folderNameExcluded, filenameMatch, threeSelected, rightClickPreserves, keyboardContextPreserves, unsafeDisabled, favoritesAdded, mixedFavoriteAdd, dedicatedImage, iconLightDark, virtualNodesExcluded, duplicateRepresentation, singleMenuDirect, multiMenuNamed, invalidRejected, toolbarOrder, noDuplicates, toolbarPersisted, removeAction, favoritesRemoved, passed ? "pass" : "fail");
-		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
+		const bool passed = initialized && folderNameExcluded && filenameMatch && threeSelected && rightClickPreserves && keyboardContextPreserves && unsafeDisabled && favoritesAdded && mixedFavoriteAdd && dedicatedImage && iconLightDark && virtualNodesExcluded && duplicateRepresentation && singleMenuDirect && multiMenuNamed && invalidRejected && toolbarOrder && noDuplicates && toolbarPersisted && insertedAtPosition && insertedPersisted && hiddenDropRejected && dragMark && dragSwitched && dragCanceled && dragCaptureCanceled && dragOutsideCanceled && dragDropped && dragPersisted && emptyGeometry && emptyMark && emptyMarkStable && emptyMarkCanceled && emptyDrop && favoritesRemoved;
+		CStringA dragReport; dragReport.Format("drag-geometry=%d\ndrag-hidden-rejected=%d\ndrag-mark=%d\ndrag-switched=%d\ndrag-canceled=%d\ndrag-capture-canceled=%d\ndrag-outside-canceled=%d\ndrag-dropped=%d\ndrag-persisted=%d\n", dragGeometry, hiddenDropRejected, dragMark, dragSwitched, dragCanceled, dragCaptureCanceled, dragOutsideCanceled, dragDropped, dragPersisted);
+		CStringA emptyReport; emptyReport.Format("drag-empty-geometry=%d\ndrag-empty-mark=%d\ndrag-empty-mark-stable=%d\ndrag-empty-canceled=%d\ndrag-empty-drop=%d\n", emptyGeometry, emptyMark, emptyMarkStable, emptyMarkCanceled, emptyDrop); dragReport += emptyReport;
+		CStringA report; report.Format("phase=navigation-scripts-multiselect\nfolder-name-excluded=%d\nfilename-match=%d\nthree-selected=%d\nright-click-preserves=%d\nkeyboard-context-preserves=%d\nunsafe-disabled=%d\nfavorites-added=%d\nmixed-favorite-add=%d\ndedicated-image=%d\nicon-light-dark=%d\nvirtual-nodes-excluded=%d\nduplicate-representation=%d\nsingle-menu-direct=%d\nmulti-menu-named=%d\ninvalid-rejected=%d\ntoolbar-order=%d\nno-duplicates=%d\ntoolbar-persisted=%d\ninsert-position=%d\ninsert-persisted=%d\nremove-action=%d\nfavorites-removed=%d\nresult=%s\n",
+			folderNameExcluded, filenameMatch, threeSelected, rightClickPreserves, keyboardContextPreserves, unsafeDisabled, favoritesAdded, mixedFavoriteAdd, dedicatedImage, iconLightDark, virtualNodesExcluded, duplicateRepresentation, singleMenuDirect, multiMenuNamed, invalidRejected, toolbarOrder, noDuplicates, toolbarPersisted, insertedAtPosition, insertedPersisted, removeAction, favoritesRemoved, passed ? "pass" : "fail");
+		report += dragReport; WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(navigationSearchFavoritesRuntime)
 	{
@@ -1801,6 +1912,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool folderOnly = handled && m_scripts.LastScript() == NULL;
 		NMTREEVIEW drag = {}; drag.itemNew.hItem = child; BOOL dragHandled = FALSE; tree.OnBegindrag(0, reinterpret_cast<LPNMHDR>(&drag), dragHandled);
 		const bool dragGuarded = dragHandled && !tree.IsStructuralDragActive();
+		BOOL cancelDragHandled = FALSE; tree.OnKeyDown(WM_KEYDOWN, VK_ESCAPE, 0, cancelDragHandled);
 		const UINT discoveryBefore = m_scripts.DiscoveryCount();
 		std::vector<ScriptToolbarDefinition> previous = currentDefinitions(), changed = previous;
 		ScriptToolbarDefinition targetA; targetA.id = L"navigation-runtime-toolbar-a"; targetA.name = L"Navigation runtime A"; targetA.visible = true; changed.push_back(targetA);

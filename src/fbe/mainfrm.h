@@ -174,6 +174,8 @@ public:
 	CToolBarCtrl	m_ScriptsToolbar;	// commands toolbar
 	HIMAGELIST		m_scriptsToolbarImages;
 	ScriptToolbarRuntimeCollection m_scriptToolbars;
+	HWND m_scriptTreeDragMarker = NULL;
+	HWND m_scriptTreeEmptyMarker = NULL;
 	ScriptToolbarManager m_scriptToolbarManager;
 	int			m_scriptsToolbarBaseImageCount;
 	CReBarCtrl		m_rebar;			// toolbars
@@ -266,7 +268,8 @@ public:
 	bool ApplyScriptToolbarDefinitions(const std::vector<ScriptToolbarDefinition>& previous, const std::vector<ScriptToolbarDefinition>& current);
 	bool UpdateScriptToolbarItems(const CString& id, const std::vector<PortableToolbarItem>& items);
 	bool AddScriptToToolbar(const CString& scriptUid, const CString& toolbarId);
-	bool AddScriptsToToolbar(const std::vector<CString>& scriptUids, const CString& toolbarId);
+	bool AddScriptsToToolbar(const std::vector<CString>& scriptUids, const CString& toolbarId, int insertBefore = -1);
+	void HandleScriptTreeDrag(int phase, POINT screen, const std::vector<CString>& uids);
 	void RefreshNavigationScriptTree();
 	void ShowScriptCard(const CString& uid);
 	void RefreshNavigationScriptToolbarTargets();
