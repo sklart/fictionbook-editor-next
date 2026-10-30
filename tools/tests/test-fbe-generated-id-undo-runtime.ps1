@@ -18,7 +18,7 @@ try {
     $evidence = Join-Path $PSScriptRoot '../../build/evidence-takir-id-undo/generated'
     New-Item -ItemType Directory -Force -Path $evidence | Out-Null
     [IO.File]::WriteAllText((Join-Path $evidence 'report.txt'), $text, [Text.UTF8Encoding]::new($false))
-    foreach ($key in @('initially-clean','canceled-clean','generated','dirty','undo-after','undo-restored','undo-source-current','redo-enabled','redo-restored','second-generated','second-undone','second-redone','first-retained','source-current','saved','clean-after-save','persisted')) {
+    foreach ($key in @('initially-clean','add-failure-rolled-back','canceled-clean','generated','dirty','undo-after','undo-restored','undo-source-current','redo-enabled','redo-restored','second-generated','undo-failure-value-preserved','undo-failure-history-preserved','second-undone','second-redone','first-retained','source-current','saved','clean-after-save','persisted')) {
         if ($text -notmatch "(?m)^$key=1\r?$") { throw "Generated ID undo failed ($key):`n$text" }
     }
     if ($code -ne 0) { throw "Generated ID undo runtime failed: $code" }

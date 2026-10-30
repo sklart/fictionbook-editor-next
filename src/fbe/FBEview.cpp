@@ -336,7 +336,8 @@ public:
 			const CString& expected = m_restoreBefore ? m_after : m_before;
 			if (previous != expected) return E_UNEXPECTED;
 			field->value = static_cast<LPCWSTR>(m_restoreBefore ? m_before : m_after);
-			const HRESULT result = manager->Add(this);
+			HRESULT result = FbeUndo::Inject(L"description-id-undo-add");
+			if (SUCCEEDED(result)) result = manager->Add(this);
 			if (FAILED(result)) { field->value = static_cast<LPCWSTR>(previous); return result; }
 			m_restoreBefore = !m_restoreBefore;
 			owner->m_body.MarkDescriptionFormChanged();
@@ -374,7 +375,8 @@ HRESULT CFBEView::SetGeneratedDocumentId(BSTR value) {
 		CComPtr<IOleUndoUnit> unit(raw);
 		raw->Initialize(m_ownerDocument->ClipboardIdentity(), before, after);
 		field->value = static_cast<LPCWSTR>(after);
-		result = manager->Add(unit);
+		result = FbeUndo::Inject(L"description-id-add");
+		if (SUCCEEDED(result)) result = manager->Add(unit);
 		if (FAILED(result)) { field->value = static_cast<LPCWSTR>(before); return result; }
 		MarkDescriptionFormChanged();
 		return S_OK;
