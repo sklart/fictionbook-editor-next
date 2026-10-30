@@ -56,6 +56,24 @@ static void TestIdentity()
 	Require(moved[0].uid != first && moved[0].uid != second, "ambiguous fingerprint reused");
 	Reset(); ScriptRegistry rename; auto before = Resolve(rename, Script(L"before.js"));
 	auto after = Resolve(rename, Script(L"after.js")); Require(before[0].uid == after[0].uid, "unique rename lost UID");
+	Reset(); ScriptRegistry ambiguousCopies;
+	auto old = Resolve(ambiguousCopies, Script(L"old.js", L"same content"));
+	PortableToolbarLayout layout; layout.scriptsToolbarPresent = true;
+	PortableToolbarItem item = {}; item.scriptUid = old[0].uid; layout.scripts.push_back(item);
+	Require(FbeScripts::ScriptToolbarPersistence::Save(layout), "save ambiguous assignment");
+	std::vector<ScriptDescriptor> replacements = { Script(L"new-a.js", L"same content"), Script(L"new-b.js", L"same content") };
+	Require(ambiguousCopies.Resolve(replacements), "ambiguous replacements resolve");
+	Require(replacements[0].uid != old[0].uid && replacements[1].uid != old[0].uid &&
+		replacements[0].uid != replacements[1].uid, "ambiguous replacements guessed old UID");
+	Require(ambiguousCopies.FindByUid(old[0].uid) != nullptr, "ambiguous old identity was discarded");
+	const CString firstReplacement = replacements[0].uid, secondReplacement = replacements[1].uid;
+	ScriptRegistry reopened;
+	Require(reopened.Resolve(replacements), "reopen ambiguous replacements");
+	Require(replacements[0].uid == firstReplacement && replacements[1].uid == secondReplacement &&
+		reopened.FindByUid(old[0].uid) != nullptr, "ambiguous identities changed after reopen");
+	PortableToolbarLayout retained;
+	Require(FbeScripts::ScriptToolbarPersistence::Load(retained) && retained.scripts.size() == 1 &&
+		retained.scripts[0].scriptUid == old[0].uid, "ambiguous replacement changed toolbar assignment");
 }
 static void TestStaleAndFailure()
 {

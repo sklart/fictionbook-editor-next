@@ -2,6 +2,7 @@
 #include "ScriptRegistry.h"
 #include "../toolbars/PortableToolbarStore.h"
 #include "..\\..\\common\\DeploymentContext.h"
+#include <map>
 #include <rpc.h>
 
 #pragma comment(lib, "Rpcrt4.lib")
@@ -118,11 +119,20 @@ bool ScriptRegistry::Resolve(std::vector<ScriptDescriptor>& items)
 			for(size_t i = 0; i < next.m_identities.size(); ++i)
 				if(!claimed[i] && next.m_identities[i].relativePath == resolved[index].relativePath)
 				{ matches[index] = i; claimed[i] = true; break; }
+	std::vector<CString> fingerprints(resolved.size());
+	std::map<std::wstring, size_t> unmatchedFingerprintCounts;
+	for(size_t index = 0; index < resolved.size(); ++index)
+	{
+		if(resolved[index].isFolder || resolved[index].relativePath.IsEmpty()) continue;
+		fingerprints[index] = Fingerprint(resolved[index].path);
+		if(matches[index] == unmatched && !fingerprints[index].IsEmpty())
+			++unmatchedFingerprintCounts[std::wstring(fingerprints[index].GetString())];
+	}
 	for(size_t index = 0; index < resolved.size(); ++index) {
 		ScriptDescriptor& script = resolved[index]; if(script.isFolder || script.relativePath.IsEmpty()) continue;
-		const CString fingerprint = Fingerprint(script.path);
+		const CString& fingerprint = fingerprints[index];
 		size_t matched = matches[index];
-		if(matched == unmatched && !fingerprint.IsEmpty())
+		if(matched == unmatched && !fingerprint.IsEmpty() && unmatchedFingerprintCounts[std::wstring(fingerprint.GetString())] == 1)
 		{
 			size_t candidate = next.m_identities.size();
 			for(size_t i = 0; i < next.m_identities.size(); ++i)
