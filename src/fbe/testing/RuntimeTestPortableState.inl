@@ -249,6 +249,22 @@ void CMainFrame::RunPortableStateTestScenario()
 			::SendMessage(insertion, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_CURRENT, LBN_SELCHANGE), reinterpret_cast<LPARAM>(current.m_hWnd));
 			::SendMessage(down, BM_CLICK, 0, 0);
 			inserted = inserted && savedItems.size() == 4 && savedItems[0].command == sample[1].command && savedItems[1].separator && savedItems[2].separator && savedItems[3].command == sample[0].command;
+			// A disjoint selection may have one item at a boundary while another
+			// still moves. Check the model, retained selection and button states.
+			::SendMessage(current, LB_SETSEL, FALSE, -1);
+			::SendMessage(current, LB_SETSEL, TRUE, 0);
+			::SendMessage(current, LB_SETSEL, TRUE, 3);
+			::SendMessage(insertion, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_CURRENT, LBN_SELCHANGE), reinterpret_cast<LPARAM>(current.m_hWnd));
+			inserted = inserted && ::IsWindowEnabled(up) && ::IsWindowEnabled(down);
+			::SendMessage(up, BM_CLICK, 0, 0);
+			inserted = inserted && savedItems.size() == 4 && savedItems[0].command == sample[1].command && savedItems[1].separator && savedItems[2].command == sample[0].command && savedItems[3].separator &&
+				::SendMessage(current, LB_GETSEL, 0, 0) > 0 && ::SendMessage(current, LB_GETSEL, 2, 0) > 0;
+			::SendMessage(down, BM_CLICK, 0, 0);
+			inserted = inserted && savedItems.size() == 4 && savedItems[0].separator && savedItems[1].command == sample[1].command && savedItems[2].separator && savedItems[3].command == sample[0].command &&
+				::SendMessage(current, LB_GETSEL, 1, 0) > 0 && ::SendMessage(current, LB_GETSEL, 3, 0) > 0;
+			::SendMessage(current, LB_SETSEL, TRUE, -1);
+			::SendMessage(insertion, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_CURRENT, LBN_SELCHANGE), reinterpret_cast<LPARAM>(current.m_hWnd));
+			inserted = inserted && !::IsWindowEnabled(up) && !::IsWindowEnabled(down);
 			insertion.DestroyWindow();
 		}
 		ScriptsToolbarCustomizeRuntimeTest::ResetCtrlFSmoke();
