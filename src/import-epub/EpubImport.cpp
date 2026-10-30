@@ -106,6 +106,7 @@ namespace
         int imageReferences = 0, importedImages = 0, skippedImages = 0;
         unsigned indexedElements = 0, structuralLookups = 0;
         unsigned residualFragments = 0, recoveredFragments = 0;
+        std::map<std::wstring, unsigned> xhtmlLoads;
         int generatedBookTitleOffset = -1, generatedBookTitleLength = 0;
     };
     thread_local ContentInventory g_content;
@@ -1233,6 +1234,10 @@ namespace
 
     bool LoadXmlFile(const CStringW& path, MSXML2::IXMLDOMDocument2Ptr& dom, CStringW& errorText)
     {
+        if (IsLikelyHtmlXmlDocumentPath(path)) {
+            CStringW key(path); key.MakeLower();
+            ++g_content.xhtmlLoads[std::wstring(key.GetString())];
+        }
         HRESULT hr = CreateMsxmlDom(dom);
         if (FAILED(hr))
         {
@@ -6854,6 +6859,12 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         g_content.residualFragments, g_content.recoveredFragments, g_content.residualFragments - g_content.recoveredFragments,
         g_content.indexedElements, g_content.structuralLookups);
     log.Add(accounting);
+    unsigned xhtmlLoadTotal = 0, xhtmlLoadMax = 0;
+    for (const auto& entry : g_content.xhtmlLoads) { xhtmlLoadTotal += entry.second; xhtmlLoadMax = max(xhtmlLoadMax, entry.second); }
+    CStringW xhtmlAccounting;
+    xhtmlAccounting.Format(L"XHTML load calls: total=%u unique=%u max-per-file=%u\r\n", xhtmlLoadTotal,
+        static_cast<unsigned>(g_content.xhtmlLoads.size()), xhtmlLoadMax);
+    log.Add(xhtmlAccounting);
 
     if (options.importCover)
     {

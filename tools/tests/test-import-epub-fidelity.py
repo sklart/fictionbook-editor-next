@@ -1431,6 +1431,17 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for metric in ['indexed_elements', 'structural_lookups']:
                 self.assertLessEqual(metrics[1][metric], metrics[0][metric] * 3.1)
 
+    def test_xhtml_load_accounting_reports_distinct_processing_passes(self):
+        extra = {'Text/next.xhtml': ('next', 'application/xhtml+xml', '<p>Second chapter</p>')}
+        for options, expected in (([], (6, 2, 3)), (['--no-notes'], (4, 2, 2))):
+            with self.subTest(options=options):
+                root = self.convert('<p>First chapter</p>', extra=extra, spine=['chapter', 'next'],
+                                    navigation=False, options=options)
+                self.assert_once(root, 'First chapter', 'Second chapter')
+                found = re.search(r'XHTML load calls: total=(\d+) unique=(\d+) max-per-file=(\d+)', self.diagnostics)
+                self.assertIsNotNone(found, self.diagnostics)
+                self.assertEqual(tuple(map(int, found.groups())), expected)
+
     def test_standalone_attribution_preserves_text_and_valid_structure(self):
         root = self.convert('<h1>Chapter</h1><p>Quotation text.</p><p id="attribution" class="text-author"><em>Author Name</em></p><p>Following text. <a href="#attribution">Attribution link</a></p>')
         self.assert_once(root, 'Quotation text.', 'Author Name', 'Following text.')
