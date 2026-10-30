@@ -425,6 +425,62 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		::PostQuitMessage(descriptionCurrent && sourceCurrent ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"description-custom-undo-probe"))
+	{
+		class ProbeUnit : public IOleUndoUnit {
+			ULONG refs = 1;
+			MSHTML::IHTMLInputTextElementPtr input;
+			CString original, generated;
+			bool restoreOriginal = true;
+		public:
+			int calls = 0; bool receivedManager = false;
+			ProbeUnit(MSHTML::IHTMLInputTextElementPtr field, const CString& before, const CString& after)
+				: input(field), original(before), generated(after) {}
+			STDMETHOD(QueryInterface)(REFIID iid, void** result) override {
+				if (!result) return E_POINTER;
+				*result = NULL;
+				if (iid != IID_IUnknown && iid != IID_IOleUndoUnit) return E_NOINTERFACE;
+				*result = static_cast<IOleUndoUnit*>(this); AddRef(); return S_OK;
+			}
+			STDMETHOD_(ULONG, AddRef)() override { return ++refs; }
+			STDMETHOD_(ULONG, Release)() override { const ULONG remaining = --refs; if (!remaining) delete this; return remaining; }
+			STDMETHOD(Do)(IOleUndoManager* manager) override {
+				++calls; receivedManager = manager != NULL;
+				try {
+					input->value = static_cast<LPCWSTR>(restoreOriginal ? original : generated);
+					if (manager) { const HRESULT result = manager->Add(this); if (FAILED(result)) return result; }
+					restoreOriginal = !restoreOriginal; return S_OK;
+				} catch (const _com_error& error) { return error.Error(); }
+			}
+			STDMETHOD(GetDescription)(BSTR* value) override { if (!value) return E_POINTER; *value = SysAllocString(L"ID probe"); return *value ? S_OK : E_OUTOFMEMORY; }
+			STDMETHOD(GetUnitType)(CLSID* clsid, LONG* id) override { if (!clsid || !id) return E_POINTER; *clsid = GUID_NULL; *id = 1; return S_OK; }
+			STDMETHOD(OnNextAdd)() override { return S_OK; }
+		};
+		ShowView(DESC);
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLDocument3Ptr document3(document);
+		MSHTML::IHTMLInputTextElementPtr field(document3 ? document3->getElementById(L"diID") : NULL);
+		IServiceProviderPtr provider(document); CComPtr<IOleUndoManager> manager;
+		const HRESULT service = provider ? provider->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&manager)) : E_NOINTERFACE;
+		const CString original = field ? CString(static_cast<LPCWSTR>(field->value)) : CString();
+		const CString generated(L"probe-generated-id");
+		ProbeUnit* unit = field ? new ProbeUnit(field, original, generated) : NULL;
+		const HRESULT added = manager && unit ? manager->Add(unit) : E_NOINTERFACE;
+		if (SUCCEEDED(added)) field->value = static_cast<LPCWSTR>(generated);
+		OLECMD undo = { IDM_UNDO, 0 }; m_doc->m_body.QueryStatus(&undo, 1);
+		SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
+		const bool restored = field && CString(static_cast<LPCWSTR>(field->value)) == original;
+		OLECMD redo = { IDM_REDO, 0 }; m_doc->m_body.QueryStatus(&redo, 1);
+		SendMessage(WM_COMMAND, ID_EDIT_REDO, 0);
+		const bool redone = field && CString(static_cast<LPCWSTR>(field->value)) == generated;
+		CStringA report; report.Format("service=0x%08lX\nadd=0x%08lX\nundo-enabled=%d\nundo-restored=%d\nredo-enabled=%d\nredo-restored=%d\ncalls=%d\nmanager-received=%d\n",
+			static_cast<unsigned long>(service), static_cast<unsigned long>(added), (undo.cmdf & OLECMDF_ENABLED) != 0, restored,
+			(redo.cmdf & OLECMDF_ENABLED) != 0, redone, unit ? unit->calls : 0, unit && unit->receivedManager);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		if (unit) unit->Release();
+		::PostQuitMessage(SUCCEEDED(service) && SUCCEEDED(added) && restored && redone ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"description-input-undo-probe"))
 	{
 		ShowView(DESC);
