@@ -41,6 +41,9 @@ try {
     # production command must refuse to discard either kind of metadata.
     [void]$book.Append('<section id="merge-owner"><title><p>Merge fixture</p></title><section id="merge-first"><p>First text</p></section><section><p>Second text</p></section></section>')
     [void]$book.Append('<section id="title-unicode"><title><p>СТАДИЯ <strong>ПЕРВАЯ</strong></p><p>Глава <emphasis>первая</emphasis></p></title><p>Text</p></section><section id="title-empty"><title><p> </p></title><p>Text</p></section><section id="title-parent-empty"><section><title><p>Only child title</p></title><p>Text</p></section></section></body></FictionBook>')
+    if($TitlesOnly) {
+        $book.Replace('</body></FictionBook>', ('<section id="long-title"><title><p>' + ('X' * 600) + '</p></title><p>Long title fixture</p></section></body></FictionBook>')) | Out-Null
+    }
     $fixture = Join-Path $iso.Root 'nested.fb2'
     [IO.File]::WriteAllText($fixture, $book.ToString(), [Text.UTF8Encoding]::new($false))
     [ordered]@{

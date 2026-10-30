@@ -61,6 +61,20 @@ if(IsFbeTestScenario(L"document-tree-titles-runtime")) {
             require(caption(L"title-empty")==L"<section>");require(caption(L"title-parent-empty")==L"<section>");
         };
         verify();
+        // A long caption and prefix-only mismatches must survive the bounded
+        // read used when an existing tree node is compared with the DOM.
+        CString longTitle(L'X',600); require(caption(L"long-title")==longTitle);
+        HTREEITEM longItem=NULL;
+        std::function<void(HTREEITEM)> findLong=[&](HTREEITEM item){for(;item && !longItem;item=tree.GetNextSiblingItem(item)){
+            MSHTML::IHTMLElementPtr node(reinterpret_cast<MSHTML::IHTMLElement*>(tree.GetItemData(item)));
+            if(node && CString(static_cast<LPCWSTR>(node->id))==L"long-title") { longItem=item; return; }
+            findLong(tree.GetChildItem(item));
+        }};
+        findLong(tree.GetRootItem()); require(longItem!=NULL);
+        require(tree.SetItemText(longItem,longTitle+L"suffix")!=FALSE);
+        m_document_tree.GetDocumentStructure(document); require(caption(L"long-title")==longTitle);
+        require(tree.SetItemText(longItem,longTitle.Left(300))!=FALSE);
+        m_document_tree.GetDocumentStructure(document); require(caption(L"long-title")==longTitle);
         MSHTML::IHTMLElementPtr probe(document->createElement(L"DIV"));
         const LPCWSTR prefixes[]={L"",L" \r\n",L"<!-- comment -->",L"<DIV class='image'></DIV>",L" \n<!-- comment --><DIV class='image'></DIV> \n"};
         phase="DOM-prefixes";for(LPCWSTR prefix:prefixes){probe->innerHTML=_bstr_t(CString(prefix)+L"<DIV class='title'><P>Введение <EM>книга</EM></P><P>Часть 2</P></DIV>");

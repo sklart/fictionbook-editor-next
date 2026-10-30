@@ -676,9 +676,17 @@ static void  CompareTreesAndSet(TreeNode *n,CTreeItem ii,bool& fDisableRedraw) {
   TreeNode    *ic=n->child;
   CString     text;
   while (ic && nc) {
-    int	  img1,img2;
-    nc.GetImage(img1,img2);
-    nc.GetText(text);
+    int img1=0, img2=0;
+    // Read the caption and image together.  One extra character beyond the
+    // expected caption distinguishes equality from a longer stored caption.
+    const int expectedLength=ic->text.GetLength();
+    if (expectedLength <= INT_MAX-2) {
+      TVITEM item={}; item.hItem=nc; item.mask=TVIF_TEXT|TVIF_IMAGE|TVIF_SELECTEDIMAGE;
+      item.cchTextMax=expectedLength+2; item.pszText=text.GetBufferSetLength(item.cchTextMax); item.pszText[0]=0;
+      const BOOL got=ii.m_pTreeView->GetItem(&item); text.ReleaseBuffer();
+      if (got) { img1=item.iImage; img2=item.iSelectedImage; }
+      else { nc.GetImage(img1,img2); nc.GetText(text); }
+    } else { nc.GetImage(img1,img2); nc.GetText(text); }
     if (text!=ic->text || img1!=ic->img) { // differ
       // copy the item here
       if (!fDisableRedraw) {
