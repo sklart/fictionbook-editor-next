@@ -13,7 +13,7 @@ $oldMode, $oldScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
 try {
     $null = New-IsolatedFbeSettingsSeed $iso
     $fixture = Join-Path $iso.Root 'description-input.fb2'
-    [IO.File]::WriteAllText($fixture, '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><nickname>Tester</nickname></author><book-title>Original title</book-title><lang>en</lang></title-info><document-info><id>original-id</id><version>1.0</version></document-info></description><body><section><p>Body</p></section></body></FictionBook>', [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText($fixture, '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><nickname>Tester</nickname></author><book-title>Original title</book-title><lang>en</lang></title-info><document-info><id>original-id</id><version>1.0</version></document-info></description><body><section><p>Body</p></section></body><binary id="attachment" content-type="application/octet-stream">AQIDBA==</binary></FictionBook>', [Text.UTF8Encoding]::new($false))
     $report = Join-Path $iso.Root 'description-input-report.txt'
     $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'description-input-undo-probe'
     $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Root -ArgumentList @('--portable','-b',$report,$fixture) -WindowStyle Hidden -PassThru
@@ -27,7 +27,7 @@ try {
         $text -notmatch '(?m)^snapshot-before-present=1\r?$' -or $text -notmatch '(?m)^snapshot-changed=1\r?$' -or
         $text -notmatch '(?m)^snapshot-undo-restored=1\r?$' -or $text -notmatch '(?m)^language-changed=1\r?$' -or
         $text -notmatch '(?m)^snapshot-language-changed=1\r?$' -or $text -notmatch '(?m)^saved-clean=1\r?$' -or
-        $text -notmatch '(?m)^saved-undo-restored=1\r?$') { throw "Description input probe failed: $code" }
+        $text -notmatch '(?m)^saved-undo-restored=1\r?$' -or $text -notmatch '(?m)^initial-content-preserved=1\r?$') { throw "Description input probe failed: $code" }
     $passed = $true
 } finally {
     $env:FBE_NEXT_TEST_MODE = $oldMode; $env:FBE_NEXT_TEST_SCENARIO = $oldScenario

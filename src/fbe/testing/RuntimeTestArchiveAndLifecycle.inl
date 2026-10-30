@@ -496,6 +496,22 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		MSHTML::IHTMLDocument2Ptr initialDocument(m_doc->m_body.Document());
 		MSHTML::IHTMLElementPtr initialBody(initialDocument ? initialDocument->all->item(L"fbw_body") : NULL);
 		const CString initialBodyHtml(initialBody ? static_cast<LPCWSTR>(initialBody->innerHTML) : L"");
+		const auto initialXml = m_doc->CreateDOMForAnalysis();
+		auto initialText = [&](const wchar_t* path) -> CString {
+			const MSXML2::IXMLDOMNodePtr node(initialXml ? initialXml->selectSingleNode(path) : NULL);
+			return node ? CString(static_cast<LPCWSTR>(node->text)) : CString();
+		};
+		CString binaryText(initialText(L"/fb:FictionBook/fb:binary"));
+		MSXML2::IXMLDOMElementPtr binaryElement(initialXml ? initialXml->selectSingleNode(L"/fb:FictionBook/fb:binary") : NULL);
+		binaryText.Remove(L' '); binaryText.Remove(L'\r'); binaryText.Remove(L'\n'); binaryText.Remove(L'\t');
+		const bool initialTitle = initialText(L"/fb:FictionBook/fb:description/fb:title-info/fb:book-title") == L"Original title";
+		const bool initialAuthor = initialText(L"/fb:FictionBook/fb:description/fb:title-info/fb:author/fb:nickname") == L"Tester";
+		const bool initialId = initialText(L"/fb:FictionBook/fb:description/fb:document-info/fb:id") == L"original-id";
+		const bool initialBodyText = initialText(L"/fb:FictionBook/fb:body/fb:section/fb:p") == L"Body";
+		const bool initialBinary = binaryElement && binaryText == L"AQIDBA==" &&
+			CString(static_cast<LPCWSTR>(_bstr_t(binaryElement->getAttribute(L"id")))) == L"attachment" &&
+			CString(static_cast<LPCWSTR>(_bstr_t(binaryElement->getAttribute(L"content-type")))) == L"application/octet-stream";
+		const bool initialContentPreserved = initialTitle && initialAuthor && initialId && initialBodyText && initialBinary;
 		ShowView(DESC);
 		const bool initiallyClean = !DocChanged();
 		const bool formInitiallyChanged = m_doc->m_body.IsFormChanged();
@@ -548,8 +564,10 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 			dirtyAfterUndo, (redo.cmdf & OLECMDF_ENABLED) != 0, afterRedo == edited, static_cast<unsigned long>(service), static_cast<unsigned long>(enumerated));
 		report.AppendFormat("clean-immediately=%d\nclean-before-description=%d\ninitially-clean=%d\ninitial-form-changed=%d\nsaved=%d\nsaved-clean=%d\nsaved-edit-changed=%d\nsaved-edit-dirty=%d\nsaved-undo-restored=%d\nsaved-undo-dirty=%d\n", cleanImmediately, cleanBeforeDescription, initiallyClean, formInitiallyChanged, saved, cleanAfterSave, editedAfterSave != afterRedo, dirtyAfterSavedEdit, afterSavedUndo == afterRedo, dirtyAfterSavedUndo);
 		report.AppendFormat("initial-saved-version=%ld\ninitial-current-version=%ld\ninitial-body-equal=%d\ninitial-body-snapshot=%d\n", initialSavepoint.savedVersion, initialVersion, initialSavepoint.hasSaved && initialBodyHtml == initialSavepoint.savedHtml, initialSavepoint.hasSaved);
+		report.AppendFormat("initial-content-preserved=%d\n", initialContentPreserved);
+		report.AppendFormat("initial-title=%d\ninitial-author=%d\ninitial-id=%d\ninitial-body-text=%d\ninitial-binary=%d\n", initialTitle, initialAuthor, initialId, initialBodyText, initialBinary);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(focused && edited != before && dirtyAfterEdit && (status.cmdf & OLECMDF_ENABLED) && unitCount > 0 &&
+		::PostQuitMessage(initialContentPreserved && focused && edited != before && dirtyAfterEdit && (status.cmdf & OLECMDF_ENABLED) && unitCount > 0 &&
 			afterUndo == before && (redo.cmdf & OLECMDF_ENABLED) && afterRedo == edited && saved && cleanAfterSave && editedAfterSave != afterRedo && dirtyAfterSavedEdit && afterSavedUndo == afterRedo && SUCCEEDED(service) && SUCCEEDED(enumerated) ? 0 : 1);
 		return 0;
 	}
