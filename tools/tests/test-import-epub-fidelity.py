@@ -1831,6 +1831,17 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assertIn('made_up_genre', subjects.text)
                 self.assertIn('Unrecognized FB2-like genre', self.diagnostics)
 
+    def test_cover_page_with_multiple_images_keeps_all_images(self):
+        extra = {'Text/cover.xhtml': ('cover-page', 'application/xhtml+xml',
+                 '<div><img src="../images/cover.png"/></div><div><img src="../images/extra.jpg"/></div>'),
+                 'images/cover.png': ('cover-image', 'image/png', PNG),
+                 'images/extra.jpg': ('extra-image', 'image/jpeg', JPEG)}
+        root = self.convert('<p>Following chapter</p>', extra, spine=['cover-page', 'chapter'],
+                            cover_id='cover-page', options=['--skip-service-pages'], navigation=False)
+        binaries = {n.get('id'): base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)}
+        self.assertTrue({PNG, JPEG}.issubset(set(binaries.values())))
+        self.assertIn(JPEG, {binaries[n.get(HREF)[1:]] for n in root.findall('.//f:body//f:image', NS)})
+
     def test_cover_labelled_xhtml_with_text_is_not_discarded(self):
         for version in ('2.0', '3.0'):
             with self.subTest(version=version):

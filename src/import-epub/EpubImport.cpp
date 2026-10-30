@@ -5537,7 +5537,18 @@ namespace
                         imageOnly = false;
                         break;
                     }
-                if (!imageOnly)
+                if (imageOnly)
+                {
+                    std::vector<MSXML2::IXMLDOMNodePtr> images;
+                    CollectElementsByLocalName(body, L"img", images);
+                    CollectElementsByLocalName(body, L"image", images);
+                    CollectElementsByLocalName(body, L"video", images);
+                    CollectElementsByLocalName(body, L"object", images);
+                    imageOnly = images.size() == 1;
+                    if (!imageOnly)
+                        g_content.warnings += L"Cover-labelled XHTML has multiple or unclassified visual resources and was retained.\r\n";
+                }
+                else
                     g_content.warnings += L"Cover-labelled XHTML contains text and was retained.\r\n";
             }
         }
