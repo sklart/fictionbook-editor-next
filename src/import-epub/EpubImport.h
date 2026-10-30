@@ -25,6 +25,8 @@ struct EpubImportOptions
     bool importSubtitles;
     bool separatorSubtitles;
     bool createTitleBlock;
+    bool unifyImageNames;
+    bool separateCoverName;
     bool splitSectionsByHeadings;
     bool preserveLinks;
     bool cleanTypography;
@@ -55,6 +57,8 @@ struct EpubImportOptions
         , importSubtitles(true)
         , separatorSubtitles(false)
         , createTitleBlock(false)
+        , unifyImageNames(false)
+        , separateCoverName(false)
         , splitSectionsByHeadings(true)
         , preserveLinks(true)
         , cleanTypography(true)

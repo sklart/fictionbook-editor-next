@@ -40,6 +40,8 @@ namespace
         IDC_OPT_KEEP_TEMP,
         IDC_OPT_SEPARATOR_SUBTITLES,
         IDC_OPT_TITLE_BLOCK,
+        IDC_OPT_UNIFY_IMAGES,
+        IDC_OPT_COVER_NAME,
         IDC_SVG_LABEL = 2100,
         IDC_SVG_MODE = 2101,
         IDC_DEFAULTS = 2201,
@@ -69,6 +71,8 @@ namespace
         { IDC_OPT_SUBTITLES, IDS_IMPORT_OPTIONS_OPT_SUBTITLES, IDS_IMPORT_OPTIONS_TT_SUBTITLES, &EpubImportOptions::importSubtitles },
         { IDC_OPT_SEPARATOR_SUBTITLES, IDS_IMPORT_OPTIONS_OPT_SEPARATOR_SUBTITLES, IDS_IMPORT_OPTIONS_TT_SEPARATOR_SUBTITLES, &EpubImportOptions::separatorSubtitles },
         { IDC_OPT_TITLE_BLOCK, IDS_IMPORT_OPTIONS_OPT_TITLE_BLOCK, IDS_IMPORT_OPTIONS_TT_TITLE_BLOCK, &EpubImportOptions::createTitleBlock },
+        { IDC_OPT_UNIFY_IMAGES, IDS_IMPORT_OPTIONS_OPT_UNIFY_IMAGES, IDS_IMPORT_OPTIONS_TT_UNIFY_IMAGES, &EpubImportOptions::unifyImageNames },
+        { IDC_OPT_COVER_NAME, IDS_IMPORT_OPTIONS_OPT_COVER_NAME, IDS_IMPORT_OPTIONS_TT_COVER_NAME, &EpubImportOptions::separateCoverName },
         { IDC_OPT_SPLIT_HEADINGS, IDS_IMPORT_OPTIONS_OPT_SPLIT_HEADINGS, IDS_IMPORT_OPTIONS_TT_SPLIT_HEADINGS, &EpubImportOptions::splitSectionsByHeadings },
         { IDC_OPT_LINKS, IDS_IMPORT_OPTIONS_OPT_LINKS, IDS_IMPORT_OPTIONS_TT_LINKS, &EpubImportOptions::preserveLinks },
         { IDC_OPT_CLEAN_TYPOGRAPHY, IDS_IMPORT_OPTIONS_OPT_CLEAN_TYPOGRAPHY, IDS_IMPORT_OPTIONS_TT_CLEAN_TYPOGRAPHY, &EpubImportOptions::cleanTypography },
@@ -105,7 +109,9 @@ namespace
 
     const int kGroupImages[] =
     {
-        IDC_OPT_IMAGES
+        IDC_OPT_IMAGES,
+        IDC_OPT_UNIFY_IMAGES,
+        IDC_OPT_COVER_NAME
     };
 
     const int kGroupLinksNotes[] =
@@ -694,6 +700,8 @@ void LoadImportOptions(EpubImportOptions& options, FbePluginSettings::Revision* 
     LoadBoolValue(key, L"ImportSubtitles", options.importSubtitles);
     LoadBoolValue(key, L"SeparatorSubtitles", options.separatorSubtitles);
     LoadBoolValue(key, L"CreateTitleBlock", options.createTitleBlock);
+    LoadBoolValue(key, L"UnifyImageNames", options.unifyImageNames);
+    LoadBoolValue(key, L"SeparateCoverName", options.separateCoverName);
     LoadBoolValue(key, L"SplitSectionsByHeadings", options.splitSectionsByHeadings);
     LoadBoolValue(key, L"PreserveLinks", options.preserveLinks);
     LoadBoolValue(key, L"CleanTypography", options.cleanTypography);
@@ -736,6 +744,8 @@ HRESULT SaveImportOptions(const EpubImportOptions& options, const FbePluginSetti
     SaveBoolValue(key, L"ImportSubtitles", options.importSubtitles);
     SaveBoolValue(key, L"SeparatorSubtitles", options.separatorSubtitles);
     SaveBoolValue(key, L"CreateTitleBlock", options.createTitleBlock);
+    SaveBoolValue(key, L"UnifyImageNames", options.unifyImageNames);
+    SaveBoolValue(key, L"SeparateCoverName", options.separateCoverName);
     SaveBoolValue(key, L"SplitSectionsByHeadings", options.splitSectionsByHeadings);
     SaveBoolValue(key, L"PreserveLinks", options.preserveLinks);
     SaveBoolValue(key, L"CleanTypography", options.cleanTypography);

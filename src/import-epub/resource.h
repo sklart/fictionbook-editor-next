@@ -169,6 +169,10 @@
 #define IDS_IMPORT_OPTIONS_OPT_TITLE_BLOCK 466
 #define IDS_IMPORT_OPTIONS_TT_TITLE_BLOCK 467
 #define IDS_IMPORT_RUNTIME_TITLE_BLOCK_NOT_INSPECTED 468
+#define IDS_IMPORT_OPTIONS_OPT_UNIFY_IMAGES 469
+#define IDS_IMPORT_OPTIONS_TT_UNIFY_IMAGES 470
+#define IDS_IMPORT_OPTIONS_OPT_COVER_NAME 471
+#define IDS_IMPORT_OPTIONS_TT_COVER_NAME 472
 
 // Resource identifier required by Windows shell to display VersionInfo.
 // Without this define, VS_VERSION_INFO in .rc can become a named resource

@@ -21,18 +21,21 @@ try {
         $entries = @{
             'mimetype' = 'application/epub+zip'
             'META-INF/container.xml' = '<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0"><rootfiles><rootfile full-path="OEBPS/book.opf" media-type="application/oebps-package+xml"/></rootfiles></container>'
-            'OEBPS/book.opf' = '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">fixture</dc:identifier><dc:title>Fixture</dc:title><dc:language>en</dc:language><dc:creator>Tester</dc:creator><meta property="dcterms:modified">2026-10-21T00:00:00Z</meta></metadata><manifest><item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="chapter"/></spine></package>'
-            'OEBPS/chapter.xhtml' = '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Fixture</title></head><body><p>Before</p><p id="divider">* * *</p><p>After</p></body></html>'
+            'OEBPS/book.opf' = '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">fixture</dc:identifier><dc:title>Fixture</dc:title><dc:language>en</dc:language><dc:creator>Tester</dc:creator><meta name="cover" content="coveritem"/><meta property="dcterms:modified">2026-10-21T00:00:00Z</meta></metadata><manifest><item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml"/><item id="coveritem" href="cover.png" media-type="image/png"/></manifest><spine><itemref idref="chapter"/></spine></package>'
+            'OEBPS/chapter.xhtml' = '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Fixture</title></head><body><p>Before</p><p id="divider">* * *</p><p>After<img src="cover.png"/></p></body></html>'
         }
         foreach($entry in $entries.GetEnumerator()) {
             $writer = [IO.StreamWriter]::new($archive.CreateEntry($entry.Key).Open(), [Text.UTF8Encoding]::new($false))
             try { $writer.Write($entry.Value) } finally { $writer.Dispose() }
         }
+        $png = [Convert]::FromBase64String('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=')
+        $stream = $archive.CreateEntry('OEBPS/cover.png').Open()
+        try { $stream.Write($png, 0, $png.Length) } finally { $stream.Dispose() }
     } finally { $archive.Dispose(); $file.Dispose() }
     $settings = Join-Path $iso.DataPath 'Settings\Plugins'; New-Item -ItemType Directory -Force -Path $settings | Out-Null
     foreach($case in @(@{ separator=0; title=0 }, @{ separator=1; title=0 }, @{ separator=0; title=1 }, @{ separator=1; title=1 })) {
         $enabled = $case.separator; $titleEnabled = $case.title
-        $profile = @{ schemaVersion = 1; values = @{ SeparatorSubtitles = $enabled; CreateTitleBlock = $titleEnabled } } | ConvertTo-Json
+        $profile = @{ schemaVersion = 1; values = @{ SeparatorSubtitles = $enabled; CreateTitleBlock = $titleEnabled; UnifyImageNames = $enabled; SeparateCoverName = $titleEnabled } } | ConvertTo-Json
         [IO.File]::WriteAllText((Join-Path $settings 'import-epub.json'), $profile, [Text.UTF8Encoding]::new($false))
         $fb2 = Join-Path $iso.Root "result-$enabled-$titleEnabled.fb2"
         $process = Start-Process -FilePath (Join-Path $iso.Root 'separator-com.exe') -WorkingDirectory $iso.Root -WindowStyle Hidden -PassThru -ArgumentList @('"' + (Join-Path $iso.Root 'Plugins\ImportEPUB.dll') + '"', '"' + $epub + '"', '"' + $fb2 + '"')
@@ -53,7 +56,13 @@ try {
         if($title -ne 1 -or $author -ne $titleEnabled) { throw "Unexpected title block: enabled=$titleEnabled title=$title author=$author" }
         $ids = @($result.SelectNodes('//*[@id]') | ForEach-Object { $_.GetAttribute('id') })
         if(-not ($ids -match 'divider')) { throw 'Separator anchor was lost.' }
+        $binary = $result.SelectSingleNode("//*[local-name()='binary']").GetAttribute('id')
+        $expected = if($enabled -eq 0) { 'coveritem' } elseif($titleEnabled -eq 1) { 'cover.png' } else { 'i_001.png' }
+        if($binary -ne $expected) { throw "Unexpected image ID: $binary, expected $expected" }
+        foreach($image in $result.SelectNodes("//*[local-name()='image']")) {
+            if($image.GetAttribute('href', 'http://www.w3.org/1999/xlink') -ne "#$binary") { throw 'Image reference did not match the binary ID.' }
+        }
     }
     $passed = $true
-    Write-Host 'COM separator/title options independently off/on, anchors and XSD checks passed.'
+    Write-Host 'COM separator/title/image options, anchors and XSD checks passed.'
 } finally { Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed }

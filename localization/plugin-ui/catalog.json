@@ -4378,6 +4378,82 @@
         "bg-BG": "Добавя заглавието и авторите в началото, ако няма подобен заглавен блок. Изключено по подразбиране."
       }
     },
+    "import_epub.option.unify_images": {
+      "component": "import-epub.options",
+      "resourceId": "IDS_IMPORT_OPTIONS_OPT_UNIFY_IMAGES",
+      "source": "Унифицировать имена изображений",
+      "translations": {
+        "en-US": "Unify image names",
+        "ru-RU": "Унифицировать имена изображений",
+        "uk-UA": "Уніфікувати назви зображень",
+        "de-DE": "Bildnamen vereinheitlichen",
+        "fr-FR": "Uniformiser les noms des images",
+        "es-ES": "Unificar nombres de imágenes",
+        "it-IT": "Uniforma i nomi delle immagini",
+        "pl-PL": "Ujednolić nazwy obrazów",
+        "pt-PT": "Uniformizar nomes de imagens",
+        "nl-NL": "Afbeeldingsnamen uniform maken",
+        "cs-CZ": "Sjednotit názvy obrázků",
+        "bg-BG": "Уеднаквяване на имената на изображенията"
+      }
+    },
+    "import_epub.tooltip.unify_images": {
+      "component": "import-epub.options",
+      "resourceId": "IDS_IMPORT_OPTIONS_TT_UNIFY_IMAGES",
+      "source": "Использовать нумерованные имена изображений с сохранением расширений. По умолчанию выключено.",
+      "translations": {
+        "en-US": "Use numbered image names while preserving extensions. Off by default.",
+        "ru-RU": "Использовать нумерованные имена изображений с сохранением расширений. По умолчанию выключено.",
+        "uk-UA": "Використовувати нумеровані назви зображень зі збереженням розширень. Типово вимкнено.",
+        "de-DE": "Nummerierte Bildnamen mit Dateiendungen verwenden. Standardmäßig aus.",
+        "fr-FR": "Utiliser des noms numérotés en conservant les extensions. Désactivé par défaut.",
+        "es-ES": "Usar nombres numerados conservando las extensiones. Desactivado por defecto.",
+        "it-IT": "Usa nomi numerati conservando le estensioni. Disattivato per impostazione predefinita.",
+        "pl-PL": "Użyj numerowanych nazw z zachowaniem rozszerzeń. Domyślnie wyłączone.",
+        "pt-PT": "Usar nomes numerados mantendo as extensões. Desativado por predefinição.",
+        "nl-NL": "Genummerde namen met extensies gebruiken. Standaard uit.",
+        "cs-CZ": "Použít číslované názvy se zachováním přípon. Ve výchozím stavu vypnuto.",
+        "bg-BG": "Използване на номерирани имена със запазени разширения. По подразбиране е изключено."
+      }
+    },
+    "import_epub.option.cover_name": {
+      "component": "import-epub.options",
+      "resourceId": "IDS_IMPORT_OPTIONS_OPT_COVER_NAME",
+      "source": "Отдельное имя для обложки",
+      "translations": {
+        "en-US": "Use a separate cover name",
+        "ru-RU": "Отдельное имя для обложки",
+        "uk-UA": "Окрема назва для обкладинки",
+        "de-DE": "Separaten Namen für das Cover verwenden",
+        "fr-FR": "Utiliser un nom distinct pour la couverture",
+        "es-ES": "Usar un nombre distinto para la portada",
+        "it-IT": "Usa un nome separato per la copertina",
+        "pl-PL": "Użyj osobnej nazwy okładki",
+        "pt-PT": "Usar nome separado para a capa",
+        "nl-NL": "Aparte naam voor omslag gebruiken",
+        "cs-CZ": "Použít samostatný název obálky",
+        "bg-BG": "Отделно име за корицата"
+      }
+    },
+    "import_epub.tooltip.cover_name": {
+      "component": "import-epub.options",
+      "resourceId": "IDS_IMPORT_OPTIONS_TT_COVER_NAME",
+      "source": "Отдельное имя обложки действует только при унификации имён изображений.",
+      "translations": {
+        "en-US": "Name the cover separately when image names are unified.",
+        "ru-RU": "Отдельное имя обложки действует только при унификации имён изображений.",
+        "uk-UA": "Окрема назва обкладинки діє лише за уніфікації назв зображень.",
+        "de-DE": "Separater Covername gilt nur bei vereinheitlichten Bildnamen.",
+        "fr-FR": "Nom distinct pour la couverture uniquement si les noms sont uniformisés.",
+        "es-ES": "Nombre distinto para la portada solo al unificar nombres.",
+        "it-IT": "Nome separato per la copertina solo con nomi uniformati.",
+        "pl-PL": "Osobna nazwa okładki działa tylko przy ujednolicaniu nazw.",
+        "pt-PT": "Nome separado da capa apenas com nomes uniformizados.",
+        "nl-NL": "Aparte omslagnaam alleen bij uniforme afbeeldingsnamen.",
+        "cs-CZ": "Samostatný název obálky pouze při sjednocení názvů.",
+        "bg-BG": "Отделното име на корицата се използва само при уеднаквяване на имената."
+      }
+    },
     "import_epub.runtime.title_block_not_inspected": {
       "component": "import-epub.runtime",
       "resourceId": "IDS_IMPORT_RUNTIME_TITLE_BLOCK_NOT_INSPECTED",

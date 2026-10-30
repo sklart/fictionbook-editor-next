@@ -89,6 +89,8 @@ namespace
     struct ContentInventory
     {
         std::map<std::wstring, CStringW> binaryIds;
+        CStringW coverImageId;
+        unsigned nextImageNumber = 1;
         std::map<std::wstring, ManifestItem> extraImages;
         std::set<std::wstring> reservedIds, emittedIds, noteTargets, requestedNotes;
         std::set<std::wstring> mainDocuments, noteContentAnchors, noteRootDocuments, residualDocuments;
@@ -2046,6 +2048,46 @@ namespace
     {
         const auto found = g_content.binaryIds.find(std::wstring(item.id));
         if (found != g_content.binaryIds.end()) return found->second;
+        if (g_options.unifyImageNames)
+        {
+            CStringW extension = item.href;
+            const int fragment = extension.Find(L'#'); if (fragment >= 0) extension = extension.Left(fragment);
+            const int query = extension.Find(L'?'); if (query >= 0) extension = extension.Left(query);
+            const int slash = max(extension.ReverseFind(L'/'), extension.ReverseFind(L'\\'));
+            const int dot = extension.ReverseFind(L'.');
+            extension = dot > slash ? extension.Mid(dot) : CStringW();
+            if (IsSvgImage(item))
+            {
+                if (g_options.svgConversionMode == SVG_IMPORT_CONVERT_PNG) extension = L".png";
+                else if (g_options.svgConversionMode == SVG_IMPORT_CONVERT_JPEG) extension = L".jpg";
+                else if (extension.CompareNoCase(L".svg") != 0) extension = L".svg";
+            }
+            bool safeExtension = extension.GetLength() >= 2 && extension.GetLength() <= 8;
+            for (int i = 1; safeExtension && i < extension.GetLength(); ++i)
+                safeExtension = (extension[i] >= L'a' && extension[i] <= L'z') || (extension[i] >= L'A' && extension[i] <= L'Z') || (extension[i] >= L'0' && extension[i] <= L'9');
+            if (!safeExtension)
+            {
+                CStringW media(item.mediaType); media.MakeLower();
+                if (media == L"image/jpeg") extension = L".jpg";
+                else if (media == L"image/png") extension = L".png";
+                else if (media == L"image/gif") extension = L".gif";
+                else if (media == L"image/webp") extension = L".webp";
+                else extension = L".bin";
+            }
+            CStringW base;
+            if (g_options.separateCoverName && !g_content.coverImageId.IsEmpty() && item.id == g_content.coverImageId)
+                base = L"cover";
+            else base.Format(L"i_%03u", g_content.nextImageNumber++);
+            CStringW unique = base + extension;
+            for (unsigned suffix = 2; !g_content.reservedIds.emplace(unique.GetString()).second; ++suffix)
+            {
+                CStringW numbered;
+                numbered.Format(L"%s_%u", base.GetString(), suffix);
+                unique = numbered + extension;
+            }
+            g_content.binaryIds.emplace(std::wstring(item.id), unique);
+            return unique;
+        }
         CStringW id = NormalizeBinaryId(item.id, item.href);
         if (IsSvgImage(item))
         {
@@ -2530,7 +2572,7 @@ namespace
             ManifestItem item;
             item.id = UniqueContentId(NormalizeBinaryId(CStringW(), noFragment));
             item.href = noFragment;item.absPath = abs;item.mediaType = GuessImageMediaTypeFromHref(noFragment);
-            g_content.binaryIds.emplace(item.id.GetString(), item.id);
+            if (!g_options.unifyImageNames) g_content.binaryIds.emplace(item.id.GetString(), item.id);
             return &g_content.extraImages.emplace(std::wstring(item.id), item).first->second;
         }
         return nullptr;
@@ -4654,7 +4696,7 @@ namespace
         for (const auto& entry : package.manifest)
         {
             const auto& item = entry.second;
-            if (IsImageMediaType(item.mediaType) || IsImageHrefByExtension(item.href))
+            if (!g_options.unifyImageNames && (IsImageMediaType(item.mediaType) || IsImageHrefByExtension(item.href)))
                 g_content.binaryIds.emplace(entry.first, UniqueContentId(BinaryIdForImageItem(item)));
         }
         for (const auto& entry : package.manifest)
@@ -6317,6 +6359,11 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     int importedSections = 0;
 
     PrepareContentInventory(package, anchorIdMap);
+    if (options.unifyImageNames && options.separateCoverName && options.importCover)
+    {
+        const ManifestItem* cover = ResolveCoverImageItem(package);
+        if (cover) g_content.coverImageId = cover->id;
+    }
     // Inventory retains all spine documents for note discovery and forward links.
     // Record explicit service exclusions separately before rendering any chapter.
     for (const auto& id : package.spine)
@@ -6624,10 +6671,16 @@ namespace
         result.importLists = source.importLists != 0;
         result.importPoemsEpigraphs = source.importPoemsEpigraphs != 0;
         result.importSubtitles = source.importSubtitles != 0;
-        if ((source.version == IMPORT_EPUB_API_VERSION_2 || source.version == IMPORT_EPUB_API_VERSION_3) && source.cbSize >= sizeof(ImportEpubOptionsV2))
+        if ((source.version == IMPORT_EPUB_API_VERSION_2 || source.version == IMPORT_EPUB_API_VERSION_3 || source.version == IMPORT_EPUB_API_VERSION_4) && source.cbSize >= sizeof(ImportEpubOptionsV2))
             result.separatorSubtitles = reinterpret_cast<const ImportEpubOptionsV2&>(source).separatorSubtitles != 0;
-        if (source.version == IMPORT_EPUB_API_VERSION_3 && source.cbSize >= sizeof(ImportEpubOptionsV3))
+        if ((source.version == IMPORT_EPUB_API_VERSION_3 || source.version == IMPORT_EPUB_API_VERSION_4) && source.cbSize >= sizeof(ImportEpubOptionsV3))
             result.createTitleBlock = reinterpret_cast<const ImportEpubOptionsV3&>(source).createTitleBlock != 0;
+        if (source.version == IMPORT_EPUB_API_VERSION_4 && source.cbSize >= sizeof(ImportEpubOptionsV4))
+        {
+            const auto& extended = reinterpret_cast<const ImportEpubOptionsV4&>(source);
+            result.unifyImageNames = extended.unifyImageNames != 0;
+            result.separateCoverName = extended.separateCoverName != 0;
+        }
         result.splitSectionsByHeadings = source.splitSectionsByHeadings != 0;
         result.preserveLinks = source.preserveLinks != 0;
         result.cleanTypography = source.cleanTypography != 0;
@@ -6660,9 +6713,10 @@ extern "C" HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
     *apiFb2Xml = nullptr;
     *apiErrorText = nullptr;
     if (!epubPath || !*epubPath || (apiOptions && (apiOptions->cbSize < sizeof(ImportEpubOptionsV1) ||
-        (apiOptions->version != IMPORT_EPUB_API_VERSION && apiOptions->version != IMPORT_EPUB_API_VERSION_2 && apiOptions->version != IMPORT_EPUB_API_VERSION_3) ||
+        (apiOptions->version != IMPORT_EPUB_API_VERSION && apiOptions->version != IMPORT_EPUB_API_VERSION_2 && apiOptions->version != IMPORT_EPUB_API_VERSION_3 && apiOptions->version != IMPORT_EPUB_API_VERSION_4) ||
         (apiOptions->version == IMPORT_EPUB_API_VERSION_2 && apiOptions->cbSize < sizeof(ImportEpubOptionsV2)) ||
-        (apiOptions->version == IMPORT_EPUB_API_VERSION_3 && apiOptions->cbSize < sizeof(ImportEpubOptionsV3)))) ||
+        (apiOptions->version == IMPORT_EPUB_API_VERSION_3 && apiOptions->cbSize < sizeof(ImportEpubOptionsV3)) ||
+        (apiOptions->version == IMPORT_EPUB_API_VERSION_4 && apiOptions->cbSize < sizeof(ImportEpubOptionsV4)))) ||
         (apiRuntimeStats && apiRuntimeStats->cbSize < sizeof(ImportEpubRuntimeStatsV1)))
         return E_INVALIDARG;
 

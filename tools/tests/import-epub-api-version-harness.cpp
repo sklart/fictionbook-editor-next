@@ -45,8 +45,15 @@ int wmain(int argc, wchar_t** argv)
     third.base.base.cbSize = sizeof(third);
     hr = build(argv[2], &third.base.base, &output, nullptr, &error);
     const bool v3 = SUCCEEDED(hr) && output != nullptr;
+    SysFreeString(output); SysFreeString(error); output = error = nullptr;
+    ImportEpubOptionsV4 fourth = {}; fourth.base = third; fourth.base.base.base.version = IMPORT_EPUB_API_VERSION_4;
+    fourth.base.base.base.cbSize = sizeof(ImportEpubOptionsV3); fourth.unifyImageNames = 1;
+    const bool truncatedV4 = build(argv[2], &fourth.base.base.base, &output, nullptr, &error) == E_INVALIDARG && !output && !error;
+    fourth.base.base.base.cbSize = sizeof(fourth);
+    hr = build(argv[2], &fourth.base.base.base, &output, nullptr, &error);
+    const bool v4 = SUCCEEDED(hr) && output != nullptr;
     SysFreeString(output); SysFreeString(error);
-    std::printf("v1=%d guarded-v1=%d truncated-v2=%d unknown-version=%d v2=%d truncated-v3=%d v3=%d\n", v1, guardedV1, truncated, unknown, v2, truncatedV3, v3);
+    std::printf("v1=%d guarded-v1=%d truncated-v2=%d unknown-version=%d v2=%d truncated-v3=%d v3=%d truncated-v4=%d v4=%d\n", v1, guardedV1, truncated, unknown, v2, truncatedV3, v3, truncatedV4, v4);
     FreeLibrary(dll); CoUninitialize();
-    return v1 && guardedV1 && truncated && unknown && v2 && truncatedV3 && v3 ? 0 : 1;
+    return v1 && guardedV1 && truncated && unknown && v2 && truncatedV3 && v3 && truncatedV4 && v4 ? 0 : 1;
 }

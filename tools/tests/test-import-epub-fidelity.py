@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 NS = {'f': 'http://www.gribuser.ru/xml/fictionbook/2.0'}
 HREF = '{http://www.w3.org/1999/xlink}href'
 PNG = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=')
+JPEG = base64.b64decode('/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD50ooor8MP9Uz/2Q==')
 
 
 class Fidelity(unittest.TestCase):
@@ -55,7 +56,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for folder in cls.folders:
                 folder.cleanup()
 
-    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, identifier='fixture', date='', head='', language='ru', chapter_title='Fixture', creators=('Tester',)):
+    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, identifier='fixture', date='', head='', language='ru', chapter_title='Fixture', creators=('Tester',), cover_id=''):
         extra = extra or {}
         temp = tempfile.TemporaryDirectory(prefix='epub-fidelity-')
         self.folders.append(temp)
@@ -100,6 +101,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 manifest.append(f'<item id="{ident}" href="{quote(path, safe="/")}" media-type="{mime}"{properties}/>')
                 z.writestr('OEBPS/' + path, xhtml(content, ident) if mime == 'application/xhtml+xml' else content)
             modified = '<meta property="dcterms:modified">2026-10-21T00:00:00Z</meta>' if version.startswith('3') else ''
+            if cover_id: modified += f'<meta name="cover" content="{cover_id}"/>'
             toc = '' if version.startswith('3') or navigation is False else ' toc="fixture-ncx"'
             date_xml = f'<dc:date>{date}</dc:date>' if date else ''
             language_xml = f'<dc:language>{language}</dc:language>' if language else ''
@@ -681,6 +683,59 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                             {'a.png': ('а', 'image/png', PNG), 'b.png': ('б', 'image/png', PNG)})
         self.assertEqual(len(root.findall('f:binary', NS)), 2)
         self.assertEqual(len({n.get(HREF) for n in root.findall('.//f:image', NS)}), 2)
+
+    def test_optional_image_names_and_cover_references(self):
+        images = {'one/same.png': ('coveritem', 'image/png', PNG),
+                  'два/same.png': ('other', 'image/png', PNG)}
+        body = '<p><img src="../one/same.png"/><img src="../%D0%B4%D0%B2%D0%B0/same.png"/><img src="../one/same.png"/></p>'
+        for options in ([], ['--unify-image-names'], ['--unify-image-names', '--separate-cover-name'], ['--separate-cover-name']):
+            with self.subTest(options=options):
+                root = self.convert(body, images, options=options, cover_id='coveritem')
+                binaries = {n.get('id'): base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)}
+                cover = root.find('.//f:coverpage/f:image', NS).get(HREF)[1:]
+                references = [n.get(HREF)[1:] for n in root.findall('f:body//f:image', NS)]
+                self.assertEqual(len(binaries), 2)
+                self.assertEqual(references[0], references[2])
+                self.assertEqual(cover, references[0])
+                self.assertTrue(all(binaries[ref] == PNG for ref in references))
+                if '--unify-image-names' in options:
+                    self.assertTrue(all(name.endswith('.png') for name in binaries))
+                    self.assertEqual(cover == 'cover.png', '--separate-cover-name' in options)
+                    self.assertTrue(all(name.startswith('i_') or name == 'cover.png' for name in binaries))
+                else:
+                    self.assertEqual(set(binaries), {'coveritem', 'other'})
+
+    def test_unified_image_names_avoid_anchor_collision_and_cover_all_sources(self):
+        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4"/></svg>'
+        root = self.convert('<p id="i_001.png">Anchor<img src="../same.png"/><img src="../shape.svg"/>'
+                            '<img src="../unlisted.png"/></p>',
+                            {'same.png': ('same', 'image/png', PNG), 'shape.svg': ('shape', 'image/svg+xml', svg)},
+                            raw={'OEBPS/unlisted.png': PNG}, options=['--unify-image-names'], svg='keep')
+        binaries = {n.get('id'): n.get('content-type') for n in root.findall('f:binary', NS)}
+        self.assertEqual(set(binaries), {'i_001_2.png', 'i_002.svg', 'i_003.png'})
+        self.assertEqual(len(root.findall('f:body//f:image', NS)), 3)
+        self.assertIn('image/svg+xml', binaries.values())
+
+    def test_unified_svg_names_follow_converted_format(self):
+        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4"/></svg>'
+        for mode, suffix in [('keep', '.svg'), ('png', '.png'), ('jpg', '.jpg')]:
+            with self.subTest(mode=mode):
+                root = self.convert('<p><img src="../shape.svg"/></p>',
+                                    {'shape.svg': ('shape', 'image/svg+xml', svg)},
+                                    options=['--unify-image-names'], svg=mode)
+                binary, = root.findall('f:binary', NS)
+                self.assertTrue(binary.get('id').endswith(suffix))
+
+    def test_unified_jpeg_preserves_source_bytes_and_extension(self):
+        for extension in ('jpeg', 'JPEG'):
+            with self.subTest(extension=extension):
+                path = 'photo.' + extension
+                root = self.convert('<p><img src="../' + path + '"/></p>',
+                                    {path: ('photo', 'image/jpeg', JPEG)}, options=['--unify-image-names'])
+                binary, = root.findall('f:binary', NS)
+                self.assertEqual(binary.get('id'), 'i_001.' + extension)
+                self.assertEqual(binary.get('content-type'), 'image/jpeg')
+                self.assertEqual(base64.b64decode(binary.text), JPEG)
 
     def test_image_in_note_and_unused_resource(self):
         root = self.convert('<p>Text<a epub:type="noteref" href="../notes.xhtml#n">1</a></p>',

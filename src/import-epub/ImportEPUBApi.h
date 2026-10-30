@@ -12,6 +12,7 @@ extern "C" {
 #define IMPORT_EPUB_API_VERSION 1u
 #define IMPORT_EPUB_API_VERSION_2 2u
 #define IMPORT_EPUB_API_VERSION_3 3u
+#define IMPORT_EPUB_API_VERSION_4 4u
 #define IMPORT_EPUB_SVG_BACKEND_CCH 128u
 
 typedef struct ImportEpubOptionsV1
@@ -59,6 +60,13 @@ typedef struct ImportEpubOptionsV3
     ImportEpubOptionsV2 base;
     DWORD createTitleBlock;
 } ImportEpubOptionsV3;
+
+typedef struct ImportEpubOptionsV4
+{
+    ImportEpubOptionsV3 base;
+    DWORD unifyImageNames;
+    DWORD separateCoverName;
+} ImportEpubOptionsV4;
 
 typedef struct ImportEpubRuntimeStatsV1
 {
