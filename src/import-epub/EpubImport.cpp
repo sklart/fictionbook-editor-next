@@ -3307,7 +3307,7 @@ namespace
     {
         if (!g_options.importImages || !node) return CStringW();
         const CStringW name = LocalName(node);
-        if (inlineElement ? name != L"span" : (name != L"div" && name != L"section" && name != L"figure")) return CStringW();
+        if (inlineElement ? (name != L"span" && name != L"a") : (name != L"div" && name != L"section" && name != L"figure")) return CStringW();
         const auto children = MsxmlGetChildNodes(node);
         const long count = children ? MsxmlGetNodeListLength(children) : 0;
         for (long i = 0; i < count; ++i)
@@ -3521,6 +3521,13 @@ namespace
             InlineLinkScope linkScope;
             CStringW text = ChildrenInlineToFb2(node, ctx, font);
             CStringW visibleText = text;
+            visibleText.Trim();
+            if (visibleText.IsEmpty())
+            {
+                const CStringW backgroundImage = EmptyBackgroundImage(node, ctx, true);
+                if (!backgroundImage.IsEmpty()) text = backgroundImage;
+            }
+            visibleText = text;
             visibleText.Trim();
             if (visibleText.IsEmpty())
                 text = XmlEscape(NormalizeImportedText(Attr(node, L"title")));
@@ -4857,6 +4864,26 @@ namespace
             const CStringW link = InlineToFb2(node, ctx);
             if (!id.IsEmpty() || !link.IsEmpty()) out += L"      <p" + id + L">" + link + L"</p>\r\n";
             return;
+        }
+
+        if (name == L"a" && g_options.importImages && TrimString(NodeText(node)).IsEmpty())
+        {
+            const auto children = MsxmlGetChildNodes(node);
+            bool hasElementChild = false;
+            for (long i = 0, count = children ? MsxmlGetNodeListLength(children) : 0; i < count; ++i)
+                if (MsxmlGetNodeType(MsxmlGetNodeListItem(children, i)) == MSXML2::NODE_ELEMENT)
+                    hasElementChild = true;
+            CStringW href, directory;
+            ResolveCssBackground(node, ctx, href, directory);
+            if (!hasElementChild && !href.IsEmpty())
+            {
+                const CStringW link = InlineToFb2(node, ctx);
+                CStringW extraMarkers;
+                const CStringW id = OptionalIdAttributeAndExtraMarkersIncludingDescendant(node, ctx, extraMarkers);
+                out += extraMarkers;
+                if (!link.IsEmpty() || !id.IsEmpty()) out += L"      <p" + id + L">" + link + L"</p>\r\n";
+                return;
+            }
         }
 
         if (name.CompareNoCase(L"figure") == 0)

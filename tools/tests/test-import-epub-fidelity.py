@@ -1707,6 +1707,37 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                             extra=extra, navigation=False)
         self.assertIsNotNone(root.find('.//f:body//f:p/f:image', NS))
 
+    def test_empty_link_css_background_preserves_image_and_link(self):
+        css = 'a.logo { background-image: url(../images/logo.png); }'
+        root = self.convert('<p>Before <a class="logo" href="https://example.org/"></a> after.</p>',
+                            extra={'Styles/layout.css': ('css', 'text/css', css),
+                                   'images/logo.png': ('logo', 'image/png', PNG)},
+                            head='<link rel="stylesheet" href="../Styles/layout.css"/>', navigation=False)
+        link = root.find('.//f:body//f:a', NS)
+        self.assertIsNotNone(link)
+        self.assertEqual(link.get(HREF), 'https://example.org/')
+        image = link.find('f:image', NS)
+        self.assertIsNotNone(image)
+        binary = next(n for n in root.findall('f:binary', NS) if n.get('id') == image.get(HREF)[1:])
+        self.assertEqual(base64.b64decode(binary.text or ''), PNG)
+        self.assertIn('after.', link.tail)
+        root = self.convert('<div><a class="logo" href="https://example.org/"></a></div><p>After.</p>',
+                            extra={'Styles/layout.css': ('css', 'text/css', css),
+                                   'images/logo.png': ('logo', 'image/png', PNG)},
+                            head='<link rel="stylesheet" href="../Styles/layout.css"/>', navigation=False)
+        link = root.find('.//f:body//f:a', NS)
+        self.assertIsNotNone(link)
+        self.assertEqual(link.get(HREF), 'https://example.org/')
+        self.assertIsNotNone(link.find('f:image', NS))
+        extra = {'Styles/layout.css': ('css', 'text/css', css), 'images/logo.png': ('logo', 'image/png', PNG)}
+        for options, image_expected in ((['--no-images'], False), (['--no-links'], True)):
+            with self.subTest(options=options):
+                root = self.convert('<div><a class="logo" href="https://example.org/"></a></div><p>After.</p>',
+                                    extra=extra, head='<link rel="stylesheet" href="../Styles/layout.css"/>',
+                                    navigation=False, options=options)
+                self.assertEqual(bool(root.findall('.//f:body//f:image', NS)), image_expected)
+                self.assertEqual(root.findall('.//f:body//f:a', NS), [])
+
     def test_aria_hidden_does_not_hide_visual_content(self):
         root = self.convert('<p aria-hidden="true">Visible text for sighted readers.</p>'
                             '<div aria-hidden="true"><img src="../images/ornament.png"/></div>'
