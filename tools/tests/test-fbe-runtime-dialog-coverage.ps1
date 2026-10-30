@@ -97,14 +97,30 @@ function Test-DescriptionRuntimeKey([string]$Key, [string]$ConsumerText) {
     if (-not $Key.StartsWith('fbe.description.')) { return $false }
     if (-not $ConsumerText.Contains('GetLocalizedStringOrDefault("fbe.description." + key, fallback)')) { return $false }
     $suffix = [regex]::Escape($Key.Substring('fbe.description.'.Length))
+    # Attachment table headings are localized from an explicit suffix array.
+    # Require both membership and the consumer loop, not a stray string.
+    $headerArray = [regex]::Match($ConsumerText, '(?s)var\s+headerKeys\s*=\s*\[(?<keys>[^\]]*)\]')
+    $headerBinding = $headerArray.Success -and
+        $headerArray.Groups['keys'].Value -match ('"' + $suffix + '"') -and
+        $ConsumerText -match 'for\s*\(\s*var\s+h\s*=\s*0\s*;\s*h\s*<\s*headerKeys\.length\s*;\s*h\+\+\s*\)\s*\{[^}]*DescriptionText\(headerKeys\[h\],\s*headerDefaults\[h\]\)'
     # Description actions, advisory warnings and legacy button captions all
     # pass a literal suffix through the same production localization helper.
-    return $ConsumerText -match ('DescriptionText\("' + $suffix + '"') -or
+    return $headerBinding -or $ConsumerText -match ('DescriptionText\("' + $suffix + '"') -or
         $ConsumerText -match ('warn\([^;\r\n]*,\s*"' + $suffix + '"') -or
         $ConsumerText -match ('key\s*=\s*"' + $suffix + '"')
 }
+function Test-DescriptionPluralReplacement([string]$ConsumerText) {
+    return (Test-DescriptionRuntimeKey 'fbe.description.binary_file_forms' $ConsumerText) -and
+        $ConsumerText.Contains('summary.innerText = DescriptionFileCount(rows.length)')
+}
 $descriptionConsumer = $consumers['runtime/main.js'].Text
 if (-not (Test-DescriptionRuntimeKey 'fbe.description.add_source' $descriptionConsumer) -or
+    -not (Test-DescriptionRuntimeKey 'fbe.description.binary_id' $descriptionConsumer) -or
+    (Test-DescriptionRuntimeKey 'fbe.description.binary_id' $descriptionConsumer.Replace('"binary_id"', '"fixture.removed.binding"')) -or
+    (Test-DescriptionRuntimeKey 'fbe.description.binary_id' $descriptionConsumer.Replace('DescriptionText(headerKeys[h],headerDefaults[h])', 'fixtureRemovedHeaderBinding()')) -or
+    -not (Test-DescriptionPluralReplacement $descriptionConsumer) -or
+    (Test-DescriptionPluralReplacement $descriptionConsumer.Replace('"binary_file_forms"', '"fixture.removed.binding"')) -or
+    (Test-DescriptionPluralReplacement $descriptionConsumer.Replace('summary.innerText = DescriptionFileCount(rows.length)', 'fixtureRemovedSummary()')) -or
     (Test-DescriptionRuntimeKey 'fbe.description.fixture_unbound' $descriptionConsumer) -or
     (Test-DescriptionRuntimeKey 'fbe.description.add_source' $descriptionConsumer.Replace('"add_source"', '"fixture.removed.binding"')) -or
     (Test-DescriptionRuntimeKey 'fbe.description.add_source' $descriptionConsumer.Replace('"fbe.description." + key', '"fixture.removed.prefix" + key'))) {
@@ -146,9 +162,14 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
     $retainedReplacement = Test-ReplacedDialogKey $key
     $dynamicDescriptionKey = $value.resource -eq 'runtime/main.js' -and
         (Test-DescriptionRuntimeKey $key $consumerText)
+    # Retain the former fixed plural for older clients; the live summary uses
+    # localized plural forms instead. Verify the replacement and its consumer.
+    $retainedDescriptionPlural = $key -eq 'fbe.description.binary_files' -and
+        (Test-DescriptionPluralReplacement $consumerText) -and
+        $null -ne $catalog.strings.PSObject.Properties['fbe.description.binary_file_forms']
     if (-not $genericBinding -and -not $manifestDrivenBackgroundPreset -and -not $dynamicSearchPresetKey -and
         -not $dynamicQualityRuleKey -and -not $dynamicQualityHelpKey -and -not $nativeOverwritePrompt -and
-        -not $retainedReplacement -and -not $dynamicDescriptionKey -and -not $consumerText.Contains($key)) {
+        -not $retainedReplacement -and -not $dynamicDescriptionKey -and -not $retainedDescriptionPlural -and -not $consumerText.Contains($key)) {
         throw "JSON dialog key has no binding in its concrete runtime consumer: $key ($($value.resource))."
     }
 }
