@@ -1467,11 +1467,8 @@ namespace
         if (!Attr(node, L"hidden").IsEmpty())
             return true;
 
-        CStringW ariaHidden = Attr(node, L"aria-hidden");
-        ariaHidden.Trim();
-        if (ariaHidden.CompareNoCase(L"true") == 0 || ariaHidden == L"1")
-            return true;
-
+        // aria-hidden affects the accessibility tree, not visual rendering.
+        // Treating it as CSS visibility discards visible text and images.
         CStringW style = Attr(node, L"style");
         style.MakeLower();
         style.Remove(L' ');
@@ -4011,19 +4008,38 @@ namespace
         }
     }
 
+    void CollectQuoteBlocks(const MSXML2::IXMLDOMNodePtr& node, std::vector<MSXML2::IXMLDOMNodePtr>& blocks)
+    {
+        if (!node || IsHiddenElement(node))
+            return;
+        const CStringW name = LocalName(node);
+        if (name == L"p" || name == L"img" || name == L"image" || name == L"picture" || name == L"object")
+        {
+            blocks.push_back(node);
+            return;
+        }
+        const auto children = MsxmlGetChildNodes(node);
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        for (long i = 0; i < count; ++i)
+            CollectQuoteBlocks(MsxmlGetNodeListItem(children, i), blocks);
+    }
+
     void AppendEpigraphOrCiteNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx, bool epigraph)
     {
         if (!g_options.importPoemsEpigraphs)
             return;
 
         std::vector<MSXML2::IXMLDOMNodePtr> paragraphs;
-        CollectElementsByLocalName(node, L"p", paragraphs);
+        CollectQuoteBlocks(node, paragraphs);
 
         CStringW xml;
         std::vector<CStringW> blocks;
         bool afterAuthor = false;
         int count = 0;
-        if (paragraphs.empty())
+        bool hasParagraph = false;
+        for (const auto& block : paragraphs)
+            if (LocalName(block) == L"p") { hasParagraph = true; break; }
+        if (!hasParagraph)
         {
             CStringW text = ChildrenInlineToFb2(node, ctx);
             text.Trim();
@@ -4037,6 +4053,22 @@ namespace
         {
             for (size_t i = 0; i < paragraphs.size(); ++i)
             {
+                if (LocalName(paragraphs[i]) != L"p")
+                {
+                    const CStringW image = Fb2ImageElementForNode(ctx, paragraphs[i]);
+                    if (!image.IsEmpty())
+                    {
+                        if (afterAuthor)
+                        {
+                            blocks.push_back(xml);
+                            xml.Empty();
+                            afterAuthor = false;
+                        }
+                        xml += L"        <p>" + image + L"</p>\r\n";
+                        ++count;
+                    }
+                    continue;
+                }
                 CStringW text = ChildrenInlineToFb2(paragraphs[i], ctx);
                 text.Trim();
                 if (!text.IsEmpty())

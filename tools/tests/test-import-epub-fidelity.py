@@ -1538,6 +1538,31 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assertLess(text.index('Quoted text'), text.index('Attribution'))
                 self.assertLess(text.index('Attribution'), text.index('After quotation'))
 
+    def test_aria_hidden_does_not_hide_visual_content(self):
+        root = self.convert('<p aria-hidden="true">Visible text for sighted readers.</p>'
+                            '<div aria-hidden="true"><img src="../images/ornament.png"/></div>'
+                            '<p style="display:none">Actually hidden text.</p>',
+                            extra={'images/ornament.png': ('ornament', 'image/png', PNG)}, navigation=False)
+        self.assertIn('Visible text for sighted readers.', self.text(root))
+        self.assertNotIn('Actually hidden text.', self.text(root))
+        self.assertIn(PNG, {base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)})
+
+    def test_sidebar_preserves_images_between_paragraphs(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<aside class="sidebar"><div><img src="../images/before.png"/></div>'
+                                    '<p>Middle text</p><div><img src="../images/after.jpg"/></div></aside>',
+                                    extra={'images/before.png': ('before', 'image/png', PNG),
+                                           'images/after.jpg': ('after', 'image/jpeg', JPEG)},
+                                    version=version, navigation=False)
+                cite = root.find('.//f:cite', NS)
+                self.assertIsNotNone(cite)
+                order = [('image' if p.find('f:image', NS) is not None else ''.join(p.itertext()))
+                         for p in cite.findall('f:p', NS)]
+                self.assertEqual(order, ['image', 'Middle text', 'image'])
+                binaries = {base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)}
+                self.assertTrue({PNG, JPEG}.issubset(binaries))
+
     def test_sidebar_and_late_epigraph_keep_link_targets(self):
         for version in ('2.0', '3.0'):
             with self.subTest(version=version):
