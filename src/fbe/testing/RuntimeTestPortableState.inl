@@ -282,13 +282,37 @@ void CMainFrame::RunPortableStateTestScenario()
 			}
 			insertion.DestroyWindow();
 		}
+		ScriptsToolbarTarget multiTarget = {}; multiTarget.id = L"multi-test"; multiTarget.name = L"multi-test";
+		for (int index : {0, 1}) { PortableToolbarItem item = {}; item.command = sample[index].command; multiTarget.items.push_back(item); }
+		std::vector<PortableToolbarItem> multiSaved;
+		CScriptsToolbarCustomizeDlg multi(NULL, sample, defaults, _Settings, std::vector<ScriptsToolbarTarget>(1, multiTarget),
+			[&multiSaved](const CString&, const std::vector<PortableToolbarItem>& items) { multiSaved = items; return true; }, true, CString());
+		bool multiInsert = multi.Create(m_hWnd) != NULL;
+		if (multiInsert) {
+			CListBox current(multi.GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT));
+			CListBox available(multi.GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE));
+			::SendMessage(current, LB_SETSEL, TRUE, 1);
+			::SendMessage(available, WM_SETFOCUS, 0, 0);
+			::SendMessage(available, LB_SETSEL, TRUE, 1);
+			::SendMessage(available, LB_SETSEL, TRUE, 2);
+			::SendMessage(multi, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_ADD, BN_CLICKED), reinterpret_cast<LPARAM>(multi.GetDlgItem(IDC_SCRIPTS_TOOLBAR_ADD).m_hWnd));
+			multiInsert = multiSaved.size() == 4 && multiSaved[0].command == sample[0].command && multiSaved[1].command == sample[2].command && multiSaved[2].command == sample[3].command && multiSaved[3].command == sample[1].command &&
+				::SendMessage(current, LB_GETSEL, 1, 0) > 0 && ::SendMessage(current, LB_GETSEL, 2, 0) > 0;
+			::SendMessage(multi, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_REMOVE, BN_CLICKED), reinterpret_cast<LPARAM>(multi.GetDlgItem(IDC_SCRIPTS_TOOLBAR_REMOVE).m_hWnd));
+			multiInsert = multiInsert && multiSaved.size() == 2 && multiSaved[0].command == sample[0].command && multiSaved[1].command == sample[1].command &&
+				::SendMessage(available, LB_GETSEL, 1, 0) > 0 && ::SendMessage(available, LB_GETSEL, 2, 0) > 0;
+			::SendMessage(multi, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_ADD, BN_CLICKED), reinterpret_cast<LPARAM>(multi.GetDlgItem(IDC_SCRIPTS_TOOLBAR_ADD).m_hWnd));
+			multiInsert = multiInsert && multiSaved.size() == 4 && multiSaved[0].command == sample[0].command && multiSaved[1].command == sample[1].command && multiSaved[2].command == sample[2].command && multiSaved[3].command == sample[3].command;
+			multi.DestroyWindow();
+		}
 		ScriptsToolbarCustomizeRuntimeTest::ResetCtrlFSmoke();
 		ShowScriptsToolbarCustomizeDialog(m_ScriptsToolbar);
 		CStringA report = ScriptsToolbarCustomizeRuntimeTest::CtrlFSmokeReport();
-		if (!sorted || !inserted || !keyboardMove) report.Replace("result=pass", "result=fail");
+		if (!sorted || !inserted || !keyboardMove || !multiInsert) report.Replace("result=pass", "result=fail");
 		report.AppendFormat("directory-sort=%d\n", sorted);
 		report.AppendFormat("insert-before=%d\n", inserted);
 		report.AppendFormat("keyboard-move=%d\n", keyboardMove);
+		report.AppendFormat("multi-insert-remove=%d\n", multiInsert);
 		WritePortableStateTestText(reportPath, report);
 		PostMessage(WM_CLOSE); return;
 	}
