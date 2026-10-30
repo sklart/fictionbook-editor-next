@@ -1831,6 +1831,32 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assertIn('made_up_genre', subjects.text)
                 self.assertIn('Unrecognized FB2-like genre', self.diagnostics)
 
+    def test_nested_book_cover_is_not_discarded_as_main_cover(self):
+        extra = {'Text/cover.xhtml': ('front-page', 'application/xhtml+xml',
+                 '<img src="../images/cover.png"/>'),
+                 'Text/sub/cover.xhtml': ('nested-page', 'application/xhtml+xml',
+                 '<img src="../../images/nested.jpg"/>'),
+                 'images/cover.png': ('cover-image', 'image/png', PNG),
+                 'images/nested.jpg': ('nested-image', 'image/jpeg', JPEG)}
+        root = self.convert('<p>Following chapter</p>', extra,
+                            spine=['front-page', 'nested-page', 'chapter'], cover_id='cover-image',
+                            options=['--skip-service-pages'], navigation=False)
+        binaries = {n.get('id'): base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)}
+        self.assertIn(JPEG, {binaries[n.get(HREF)[1:]] for n in root.findall('.//f:body//f:image', NS)})
+        self.assertEqual(binaries[root.find('.//f:coverpage/f:image', NS).get(HREF)[1:]], PNG)
+
+    def test_no_cover_still_keeps_nested_book_cover(self):
+        extra = {'Text/cover.xhtml': ('front-page', 'application/xhtml+xml', '<img src="../images/cover.png"/>'),
+                 'Text/sub/cover.xhtml': ('nested-page', 'application/xhtml+xml', '<img src="../../images/nested.jpg"/>'),
+                 'images/cover.png': ('cover-image', 'image/png', PNG),
+                 'images/nested.jpg': ('nested-image', 'image/jpeg', JPEG)}
+        root = self.convert('<p>Following chapter</p>', extra, spine=['front-page', 'nested-page', 'chapter'],
+                            cover_id='cover-image', options=['--skip-service-pages', '--no-cover'], navigation=False)
+        binaries = {base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)}
+        self.assertNotIn(PNG, binaries)
+        self.assertIn(JPEG, binaries)
+        self.assertIsNone(root.find('.//f:coverpage', NS))
+
     def test_cover_page_with_multiple_images_keeps_all_images(self):
         extra = {'Text/cover.xhtml': ('cover-page', 'application/xhtml+xml',
                  '<div><img src="../images/cover.png"/></div><div><img src="../images/extra.jpg"/></div>'),

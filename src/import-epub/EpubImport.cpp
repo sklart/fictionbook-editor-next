@@ -2752,34 +2752,24 @@ namespace
         return candidates.empty() ? CStringW() : Fb2ImageElementForHref(ctx, candidates.front());
     }
 
-    const ManifestItem* ResolveCoverImageItem(const EpubPackage& package)
+    const ManifestItem* FirstImageInXhtml(const ManifestItem& document, const EpubPackage& package)
     {
-        if (package.coverId.IsEmpty())
-            return nullptr;
-
-        const ManifestItem* cover = FindManifestItemById(package, package.coverId);
-        if (!cover)
-            return nullptr;
-
-        if (IsImageMediaType(cover->mediaType) || IsImageHrefByExtension(cover->href))
-            return IsSvgImage(*cover) && g_options.svgConversionMode == SVG_IMPORT_SKIP ? nullptr : cover;
-
-        if (cover->mediaType.CompareNoCase(L"application/xhtml+xml") != 0 &&
-            cover->mediaType.CompareNoCase(L"text/html") != 0 &&
-            cover->href.Right(5).CompareNoCase(L".html") != 0 &&
-            cover->href.Right(6).CompareNoCase(L".xhtml") != 0)
+        if (document.mediaType.CompareNoCase(L"application/xhtml+xml") != 0 &&
+            document.mediaType.CompareNoCase(L"text/html") != 0 &&
+            document.href.Right(5).CompareNoCase(L".html") != 0 &&
+            document.href.Right(6).CompareNoCase(L".xhtml") != 0)
         {
             return nullptr;
         }
 
         MSXML2::IXMLDOMDocument2Ptr doc;
         CStringW error;
-        if (!LoadXmlFile(cover->absPath, doc, error))
+        if (!LoadXmlFile(document.absPath, doc, error))
             return nullptr;
 
         ConvertContext ctx = {};
         ctx.package = &package;
-        ctx.currentXhtmlDir = DirectoryOf(cover->absPath);
+        ctx.currentXhtmlDir = DirectoryOf(document.absPath);
         ctx.usedImageIds = nullptr;
         ctx.noteIds = nullptr;
 
@@ -2795,6 +2785,16 @@ namespace
         }
 
         return nullptr;
+    }
+
+    const ManifestItem* ResolveCoverImageItem(const EpubPackage& package)
+    {
+        if (package.coverId.IsEmpty()) return nullptr;
+        const ManifestItem* cover = FindManifestItemById(package, package.coverId);
+        if (!cover) return nullptr;
+        if (IsImageMediaType(cover->mediaType) || IsImageHrefByExtension(cover->href))
+            return IsSvgImage(*cover) && g_options.svgConversionMode == SVG_IMPORT_SKIP ? nullptr : cover;
+        return FirstImageInXhtml(*cover, package);
     }
 
     bool ReadBinaryFile(const CStringW& path, std::vector<unsigned char>& data)
@@ -5597,7 +5597,11 @@ namespace
             cover = cover || (coverItem && item.href.CompareNoCase(coverItem->href) == 0);
         }
         cover = cover || (stem == L"cover" && (href.Right(6) == L".xhtml" || href.Right(5) == L".html"));
-        return cover && IsImageOnlyCoverPage(item);
+        if (!cover || !IsImageOnlyCoverPage(item)) return false;
+        const ManifestItem* selected = ResolveCoverImageItem(package);
+        const ManifestItem* pageImage = (IsImageMediaType(item.mediaType) || IsImageHrefByExtension(item.href))
+            ? &item : FirstImageInXhtml(item, package);
+        return selected && pageImage && selected->absPath.CompareNoCase(pageImage->absPath) == 0;
     }
 
     CStringW BuildNotesBodyXml(const std::vector<EpubNote>& notes)
@@ -6375,7 +6379,7 @@ namespace
             const CStringW valueAttr = normalizedDate.IsEmpty() ? CStringW() : L" value=\"" + normalizedDate + L"\"";
             xml += L"      <date" + valueAttr + L">" + XmlEscape(package.date) + L"</date>\r\n";
         }
-        if (!package.coverId.IsEmpty())
+        if (g_options.importCover && !package.coverId.IsEmpty())
         {
             const ManifestItem* coverImage = ResolveCoverImageItem(package);
             if (coverImage)
