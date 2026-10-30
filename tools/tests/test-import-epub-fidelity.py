@@ -803,6 +803,27 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         french = ('Le livre raconte une histoire dans laquelle la personne a vu sa maison et son jardin. ' * 16)
         self.assertEqual(lang(self.convert('<p>' + french + '</p>', language='', navigation=False)), 'und')
 
+    def test_language_sample_excludes_retained_navigation_document(self):
+        russian = 'Это история о том как человек увидел свой дом и понял что он был здесь. ' * 16
+        english = 'This is the story of a person who was in the house and saw that it was their home. '
+        root = self.convert('<p>' + russian + '</p>', language='',
+                            navigation=[(english, 'Text/chapter.xhtml', []) for _ in range(40)],
+                            spine=['fixture-nav', 'chapter'], options=['--keep-service-pages'])
+        self.assertEqual(root.find('.//f:title-info/f:lang', NS).text, 'ru')
+        self.assertIn('This is the story', self.text(root))
+        self.assertIn('Это история', self.text(root))
+        root = self.convert('<p>Short.</p>', language='',
+                            navigation=[(english, 'Text/chapter.xhtml', []) for _ in range(40)],
+                            spine=['fixture-nav', 'chapter'], options=['--keep-service-pages'])
+        self.assertEqual(root.find('.//f:title-info/f:lang', NS).text, 'und')
+        root = self.convert('<p>' + russian + '</p>', language='en',
+                            navigation=[(english, 'Text/chapter.xhtml', []) for _ in range(40)],
+                            spine=['fixture-nav', 'chapter'], options=['--keep-service-pages'])
+        self.assertEqual(root.find('.//f:title-info/f:lang', NS).text, 'en')
+        catalog = json.loads((ROOT / 'localization/plugin-ui/catalog.json').read_text(encoding='utf-8-sig'))
+        self.assertTrue(any(message in self.diagnostics for message in
+                            catalog['strings']['import_epub.runtime.language_conflict']['translations'].values()))
+
     def test_source_timestamp_and_uuid(self):
         uuid = 'urn:uuid:12345678-1234-4234-9234-123456789abc'
         stamp = '2020-01-02T23:45:00-05:00'

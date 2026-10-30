@@ -5605,7 +5605,7 @@ namespace
         return s.IsEmpty() ? CStringW(L"und") : s;
     }
 
-    CStringW DetectBodyLanguage(const CStringW& body)
+    CStringW DetectBodyLanguage(const CStringW& body, const std::vector<std::pair<int, int>>& excludedRanges)
     {
         // Inspect only generated body paragraphs, never metadata, titles or
         // epigraphs. A small bounded sample avoids another DOM or book copy.
@@ -5616,6 +5616,7 @@ namespace
         bool paragraph = false, excluded = false, entity = false;
         int excludedDepth = 0;
         std::wstring word;
+        size_t rangeIndex = 0;
         auto finishWord = [&]() {
             if (russian.count(word)) { ++ruWords; ruDistinct.insert(word); }
             if (english.count(word)) { ++enWords; enDistinct.insert(word); }
@@ -5623,6 +5624,14 @@ namespace
         };
         for (int i = 0; i < body.GetLength() && latin + cyrillic < 20000; ++i)
         {
+            if (rangeIndex < excludedRanges.size() && i == excludedRanges[rangeIndex].first)
+            {
+                finishWord();
+                i = excludedRanges[rangeIndex++].second - 1;
+                paragraph = excluded = entity = false;
+                excludedDepth = 0;
+                continue;
+            }
             wchar_t ch = body[i];
             if (ch == L'<')
             {
@@ -6659,6 +6668,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     ParsePackageNavigation(package, log);
 
     CStringW body;
+    std::vector<std::pair<int, int>> languageExcludedRanges;
     CStringW warning = containerWarning;
     std::set<std::wstring> usedImageIds;
     std::set<std::wstring> usedFb2Ids;
@@ -6796,8 +6806,11 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         ctx.currentXhtmlDir = DirectoryOf(xhtmlPath);
         ctx.currentXhtmlPath = xhtmlPath;
 
+        const int bodyStart = body.GetLength();
         if (ConvertXhtmlFileToFb2Section(xhtmlPath, title, ctx, body, warning))
         {
+            if (IsTokenInList(item.properties, L"nav") && body.GetLength() > bodyStart)
+                languageExcludedRanges.emplace_back(bodyStart, body.GetLength());
             ++importedSections;
             log.AddFormat(L"Imported spine item: %s", item.href);
         }
@@ -6852,7 +6865,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         return false;
     }
 
-    const CStringW detectedLanguage = DetectBodyLanguage(body);
+    const CStringW detectedLanguage = DetectBodyLanguage(body, languageExcludedRanges);
     const CStringW declaredLanguage = NormalizeFb2Language(package.language);
     if (package.language.IsEmpty() || declaredLanguage == L"und")
     {
