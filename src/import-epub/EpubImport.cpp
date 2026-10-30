@@ -6092,7 +6092,8 @@ namespace
             // followed by a non-image body block. Promote image-only paragraphs
             // only where the resulting order satisfies that FB2 rule.
             auto soleImage = [](const MSXML2::IXMLDOMNodePtr& paragraph) -> MSXML2::IXMLDOMNodePtr {
-                if (LocalName(paragraph) != L"p" || !Attr(paragraph, L"id").IsEmpty() || !TrimString(NodeText(paragraph)).IsEmpty()) return nullptr;
+                if (LocalName(paragraph) != L"p" || !TrimString(NodeText(paragraph)).IsEmpty() ||
+                    !Attr(paragraph, L"style").IsEmpty() || !Attr(paragraph, L"xml:lang").IsEmpty()) return nullptr;
                 const auto nodes = MsxmlGetChildNodes(paragraph);
                 const long length = nodes ? MsxmlGetNodeListLength(nodes) : 0;
                 MSXML2::IXMLDOMNodePtr image;
@@ -6119,6 +6120,15 @@ namespace
                     break;
                 }
                 if (image && (bodyStarted || (!headerImageUsed && followingBody))) {
+                    // FB2 permits an id on a block image. Transfer the
+                    // paragraph's anchor instead of leaving an otherwise
+                    // standalone picture inline merely because it is linked.
+                    const CStringW paragraphId = Attr(children[i], L"id");
+                    if (!paragraphId.IsEmpty()) {
+                        CComQIPtr<IXMLDOMElement> element(image);
+                        if (!element) CheckError(E_NOINTERFACE);
+                        CheckError(element->setAttribute(CComBSTR(L"id"), CComVariant(paragraphId)));
+                    }
                     IXMLDOMNode* removed = nullptr;
                     CheckError(children[i]->removeChild(image, &removed)); if (removed) removed->Release();
                     IXMLDOMNode* replaced = nullptr;

@@ -46,6 +46,7 @@ try {
         foreach($id in @('figure-anchor','image-anchor','caption-anchor','caption-inner')) {
             if($doc.SelectNodes("//*[@id='$id']").Count -ne 1 -or $doc.SelectNodes("//*[local-name()='a' and @*[local-name()='href']='#$id']").Count -ne 1) { throw "Anchor missing, duplicated or unlinked in ${path}: $id" }
         }
+        if($doc.SelectNodes("//*[local-name()='section']/*[local-name()='image' and @id='image-anchor']").Count -ne 1) { throw "Standalone anchored image is not a block in $path" }
         if($doc.SelectNodes("//*[local-name()='subtitle' and normalize-space(.)='Picture caption']").Count -ne 1) { throw "Caption missing in $path" }
         $bytes = [Convert]::FromBase64String($doc.SelectSingleNode("//*[local-name()='binary']").InnerText)
         if([Convert]::ToBase64String($bytes) -cne [Convert]::ToBase64String($png)) { throw "Image bytes changed in $path" }

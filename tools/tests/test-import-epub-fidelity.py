@@ -342,6 +342,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assert_once(root, 'Picture caption', 'Figure link', 'Caption link', 'Inner link', 'Image link')
                 ids = {node.get('id') for node in root.iter() if node.get('id')}
                 self.assertTrue({'figure-anchor', 'image-anchor', 'caption-anchor', 'caption-inner'} <= ids)
+                self.assertIsNotNone(root.find(".//f:section/f:image[@id='image-anchor']", NS))
                 links = {a.get(HREF) for a in root.findall('.//f:a', NS)}
                 self.assertTrue({'#figure-anchor', '#image-anchor', '#caption-anchor', '#caption-inner'} <= links)
                 self.assertEqual(base64.b64decode(root.find('f:binary', NS).text), PNG)
