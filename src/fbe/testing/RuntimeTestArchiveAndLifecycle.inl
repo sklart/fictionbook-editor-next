@@ -433,10 +433,16 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		MSHTML::IHTMLDocument3Ptr document3(document);
 		MSHTML::IHTMLInputTextElementPtr title(document3 ? document3->getElementById(L"tiTitle") : NULL);
 		CString before = title ? CString(static_cast<LPCWSTR>(title->value)) : CString();
+		auto snapshotXml = [&]() -> CString {
+			const auto snapshot = m_doc->CreateDOMForAnalysis();
+			return snapshot ? CString(static_cast<LPCWSTR>(snapshot->xml)) : CString();
+		};
+		const CString snapshotBefore = snapshotXml();
 		if (title) { MSHTML::IHTMLElement2Ptr element(title); if (element) element->focus(); title->select(); }
 		const HWND focused = ::GetFocus();
 		if (focused) ::SendMessageW(focused, WM_CHAR, L'X', 1);
 		const CString edited = title ? CString(static_cast<LPCWSTR>(title->value)) : CString();
+		const CString snapshotEdited = snapshotXml();
 		OLECMD status = { IDM_UNDO, 0 }; m_doc->m_body.QueryStatus(&status, 1);
 		const bool dirtyAfterEdit = DocChanged();
 		IServiceProviderPtr provider(document); CComPtr<IOleUndoManager> manager;
@@ -446,12 +452,13 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		if (units) while (units->Next(1,&unit,NULL) == S_OK) { ++unitCount; unit.Release(); }
 		SendMessage(WM_COMMAND,ID_EDIT_UNDO,0);
 		const CString afterUndo = title ? CString(static_cast<LPCWSTR>(title->value)) : CString();
+		const CString snapshotUndo = snapshotXml();
 		const bool dirtyAfterUndo = DocChanged();
 		OLECMD redo = { IDM_REDO, 0 }; m_doc->m_body.QueryStatus(&redo, 1);
 		SendMessage(WM_COMMAND,ID_EDIT_REDO,0);
 		const CString afterRedo = title ? CString(static_cast<LPCWSTR>(title->value)) : CString();
-		CStringA report; report.Format("input-focused=%d\ninput-edited=%d\ninput-dirty=%d\nundo-enabled=%d\nundo-units=%d\nundo-restored=%d\nundo-dirty=%d\nredo-enabled=%d\nredo-restored=%d\nservice=0x%08lX\nenumerated=0x%08lX\n",
-			focused != NULL, edited != before, dirtyAfterEdit, (status.cmdf & OLECMDF_ENABLED) != 0, unitCount, afterUndo == before,
+		CStringA report; report.Format("input-focused=%d\ninput-edited=%d\ninput-dirty=%d\nsnapshot-before-present=%d\nsnapshot-changed=%d\nsnapshot-undo-restored=%d\nundo-enabled=%d\nundo-units=%d\nundo-restored=%d\nundo-dirty=%d\nredo-enabled=%d\nredo-restored=%d\nservice=0x%08lX\nenumerated=0x%08lX\n",
+			focused != NULL, edited != before, dirtyAfterEdit, !snapshotBefore.IsEmpty(), snapshotEdited != snapshotBefore, snapshotUndo == snapshotBefore, (status.cmdf & OLECMDF_ENABLED) != 0, unitCount, afterUndo == before,
 			dirtyAfterUndo, (redo.cmdf & OLECMDF_ENABLED) != 0, afterRedo == edited, static_cast<unsigned long>(service), static_cast<unsigned long>(enumerated));
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(focused && edited != before && dirtyAfterEdit && (status.cmdf & OLECMDF_ENABLED) && unitCount > 0 &&
