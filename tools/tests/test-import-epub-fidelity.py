@@ -155,6 +155,42 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertNotIn('First note paragraph', self.text(main))
         self.assertEqual(len(self.notes(root)[0].findall('f:p', NS)), 2)
 
+    def test_removed_backlink_keeps_referenced_anchor(self):
+        for backlink in ('<a id="footnote-042-backlink" epub:type="backlink" href="#ref">Return</a>',
+                         '<p><a id="footnote-042-backlink" epub:type="backlink" href="#ref">Return</a>Note end</p>',
+                         '<p><a id="footnote-042-backlink" epub:type="backlink" href="#ref">Return</a></p>'):
+            with self.subTest(backlink=backlink):
+                root = self.convert('<p><a id="ref" epub:type="noteref" href="#n">1</a> '
+                                    '<a href="#footnote-042-backlink">Go to marker</a></p>'
+                                    '<aside epub:type="footnote" id="n"><p>Note text</p>' + backlink + '</aside>')
+                note, = self.notes(root)
+                self.assertNotIn('Return', self.text(note))
+                link = next(a for a in root.findall('.//f:a', NS) if self.text(a) == 'Go to marker')
+                self.assertTrue(any('#' + node.get('id', '') == link.get(HREF) for node in note.iter()))
+
+    def test_standalone_backlink_is_preserved_when_requested(self):
+        root = self.convert('<p><a id="ref" epub:type="noteref" href="#n">1</a></p>'
+                            '<aside epub:type="footnote" id="n"><p>Note text</p>'
+                            '<a id="footnote-042-backlink" epub:type="backlink" href="#ref">Return</a></aside>',
+                            options=['--keep-footnote-backlinks'])
+        note, = self.notes(root)
+        backlink, = [a for a in note.findall('.//f:a', NS) if self.text(a) == 'Return']
+        self.assertTrue(backlink.get(HREF, '').startswith('#'))
+        self.assertTrue(any('#' + node.get('id', '') == backlink.get(HREF) for node in root.find('f:body', NS).iter()))
+
+    def test_removed_backlink_anchor_in_non_spine_notes_document(self):
+        root = self.convert('<p><a id="ref" epub:type="noteref" href="../notes.xhtml#n">1</a> '
+                            '<a href="../notes.xhtml#back">Marker</a></p>',
+                            {'notes.xhtml': ('notes', 'application/xhtml+xml',
+                                             '<aside epub:type="footnote" id="n"><p>External note</p>'
+                                             '<a id="back" epub:type="backlink" href="Text/chapter.xhtml#ref">'
+                                             '<span id="nested">Return</span></a></aside>')})
+        note, = self.notes(root)
+        link = next(a for a in root.findall('.//f:a', NS) if self.text(a) == 'Marker')
+        self.assertNotIn('Return', self.text(note))
+        self.assertTrue(any('#' + node.get('id', '') == link.get(HREF) for node in note.iter()))
+        self.assertTrue(any(node.get('id', '').endswith('nested') for node in note.iter()))
+
     def test_list_notes(self):
         root = self.convert('<p>Text<a href="../notes.xhtml#n">1</a></p>',
                             {'notes.xhtml': ('notes', 'application/xhtml+xml', '<ol><li id="n"><p>First</p><p><em>Second</em></p></li></ol>')})

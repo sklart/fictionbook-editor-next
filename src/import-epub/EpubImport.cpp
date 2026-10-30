@@ -3566,13 +3566,11 @@ namespace
     {
         CStringW tmp(content);
         tmp.Trim();
-        if (!tmp.IsEmpty())
-        {
-            CStringW extraMarkers;
-            CStringW idAttr = OptionalIdAttributeAndExtraMarkersIncludingDescendant(sourceNode, ctx, extraMarkers);
-            out += extraMarkers;
+        CStringW extraMarkers;
+        CStringW idAttr = OptionalIdAttributeAndExtraMarkersIncludingDescendant(sourceNode, ctx, extraMarkers);
+        out += extraMarkers;
+        if (!tmp.IsEmpty() || !idAttr.IsEmpty())
             out += L"      <p" + idAttr + L">" + tmp + L"</p>\r\n";
-        }
     }
 
     bool IsStandaloneAsteriskSeparator(const MSXML2::IXMLDOMNodePtr& node)
@@ -4283,9 +4281,26 @@ namespace
         if (IsHiddenElement(node))
             return;
 
+        if (IsBacklinkElement(node))
+        {
+            // Keep anchors that can still be targets of other links.
+            out += AnchorMarkerParagraphsFromRawIds(CollectRawAnchorIds(node), 0, ctx);
+            return;
+        }
+
         CStringW name = LocalName(node);
         if (name.CompareNoCase(L"script") == 0 || name.CompareNoCase(L"style") == 0 || name.CompareNoCase(L"head") == 0)
             return;
+
+        if (ctx.collectingNotes && name.CompareNoCase(L"a") == 0)
+        {
+            const std::vector<CStringW> ids = CollectRawAnchorIds(node);
+            const CStringW id = ids.empty() ? CStringW() : OptionalIdAttributeFromRaw(ids.front(), ctx);
+            out += AnchorMarkerParagraphsFromRawIds(ids, 1, ctx);
+            const CStringW link = InlineToFb2(node, ctx);
+            if (!id.IsEmpty() || !link.IsEmpty()) out += L"      <p" + id + L">" + link + L"</p>\r\n";
+            return;
+        }
 
         if (name.CompareNoCase(L"figure") == 0)
         {
@@ -4320,7 +4335,7 @@ namespace
 
         // EPUB notes are moved to a separate FB2 <body name="notes">.
         // Backlinks inside notes are purely navigational and must not pollute text.
-        if (IsBacklinkElement(node) || (g_options.importNotes && !ctx.collectingNotes && IsCollectedNoteNode(node, ctx)))
+        if (g_options.importNotes && !ctx.collectingNotes && IsCollectedNoteNode(node, ctx))
             return;
 
         if (name == L"section" || name == L"article")
@@ -4802,8 +4817,6 @@ namespace
         {
             MSXML2::IXMLDOMNodePtr child = MsxmlGetNodeListItem(children, i);
             if (child.GetInterfacePtr() == firstHeading.GetInterfacePtr())
-                continue;
-            if (IsBacklinkElement(child))
                 continue;
             AppendBlockNode(child, content, noteContext);
         }
