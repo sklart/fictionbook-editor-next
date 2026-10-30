@@ -317,6 +317,76 @@ static CComPtr<IOleUndoManager> GetPasteUndoManager(MSHTML::IHTMLDocument2Ptr do
 	return manager;
 }
 
+class DescriptionIdUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit {
+public:
+	BEGIN_COM_MAP(DescriptionIdUndoUnit)
+		COM_INTERFACE_ENTRY(IOleUndoUnit)
+	END_COM_MAP()
+	void Initialize(const GUID& identity, const CString& before, const CString& after) {
+		m_identity = identity; m_before = before; m_after = after;
+	}
+	STDMETHOD(Do)(IOleUndoManager* manager) {
+		FB::Doc* owner = FB::Doc::BinaryOwner(m_identity);
+		if (!owner || !manager) return E_UNEXPECTED;
+		try {
+			MSHTML::IHTMLDocument3Ptr document(owner->m_body.Document());
+			MSHTML::IHTMLInputTextElementPtr field(document ? document->getElementById(L"diID") : NULL);
+			if (!field) return E_UNEXPECTED;
+			const CString previous(static_cast<LPCWSTR>(field->value));
+			const CString& expected = m_restoreBefore ? m_after : m_before;
+			if (previous != expected) return E_UNEXPECTED;
+			field->value = static_cast<LPCWSTR>(m_restoreBefore ? m_before : m_after);
+			const HRESULT result = manager->Add(this);
+			if (FAILED(result)) { field->value = static_cast<LPCWSTR>(previous); return result; }
+			m_restoreBefore = !m_restoreBefore;
+			owner->m_body.MarkDescriptionFormChanged();
+			return S_OK;
+		} catch (const _com_error& error) { return error.Error(); }
+		catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+	}
+	STDMETHOD(GetDescription)(BSTR* description) {
+		if (!description) return E_POINTER;
+		*description = ::SysAllocString(L"Document ID"); return *description ? S_OK : E_OUTOFMEMORY;
+	}
+	STDMETHOD(GetUnitType)(CLSID* classId, LONG* id) {
+		if (!classId || !id) return E_POINTER;
+		*classId = FbeUndo::UnitClass(); *id = 2; return S_OK;
+	}
+	STDMETHOD(OnNextAdd)() { return S_OK; }
+private:
+	GUID m_identity = GUID_NULL;
+	CString m_before, m_after;
+	bool m_restoreBefore = true;
+};
+
+HRESULT CFBEView::SetGeneratedDocumentId(BSTR value) {
+	if (!m_ownerDocument || !value || !*value) return E_INVALIDARG;
+	try {
+		MSHTML::IHTMLDocument3Ptr document(Document());
+		MSHTML::IHTMLInputTextElementPtr field(document ? document->getElementById(L"diID") : NULL);
+		CComPtr<IOleUndoManager> manager(GetPasteUndoManager(Document()));
+		if (!field || !manager) return E_UNEXPECTED;
+		const CString before(static_cast<LPCWSTR>(field->value)), after(value);
+		if (before == after) return S_FALSE;
+		CComObject<DescriptionIdUndoUnit>* raw = NULL;
+		HRESULT result = CComObject<DescriptionIdUndoUnit>::CreateInstance(&raw);
+		if (FAILED(result)) return result;
+		CComPtr<IOleUndoUnit> unit(raw);
+		raw->Initialize(m_ownerDocument->ClipboardIdentity(), before, after);
+		field->value = static_cast<LPCWSTR>(after);
+		result = manager->Add(unit);
+		if (FAILED(result)) { field->value = static_cast<LPCWSTR>(before); return result; }
+		MarkDescriptionFormChanged();
+		return S_OK;
+	} catch (const _com_error& error) { return error.Error(); }
+	catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+}
+
+void CFBEView::MarkDescriptionFormChanged() {
+	m_form_changed = true; m_form_cp = true;
+	::PostMessage(m_frame, AU::WM_DESCRIPTION_FORM_CHANGED, 0, 0);
+}
+
 // The canceled browser event and the deferred editor command are separate
 // transactions. Remove only the proven empty native event, retaining all
 // previous native units and redo entries before starting the real insertion.

@@ -1035,6 +1035,8 @@ public:
 
   // form changes
   bool	    IsFormChanged();
+  void      MarkDescriptionFormChanged();
+  HRESULT   SetGeneratedDocumentId(BSTR value);
   void	    ResetFormChanged();
   bool	    IsFormCP();
   void	    ResetFormCP();

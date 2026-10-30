@@ -7,6 +7,7 @@
 
 #include "FBE.h"
 #include "ExternalHelper.h"
+#include "FBDoc.h"
 #include <map>
 #include <vector>
 #include <new>
@@ -47,6 +48,7 @@ DISPID ScriptingMethodId(LPCWSTR name)
  if (_wcsicmp(name, L"_BinaryStoreChanged") == 0) return 1002;
  if (_wcsicmp(name, L"_BinaryStoreUniqueId") == 0) return 1003;
  if (_wcsicmp(name, L"_DescriptionAddAttachment") == 0) return 1004;
+ if (_wcsicmp(name, L"_SetGeneratedDocumentId") == 0) return 1005;
  return DISPID_UNKNOWN;
 }
 }
@@ -265,6 +267,14 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 		return DISP_E_UNKNOWNINTERFACE;
 	if (argumentError)
 		*argumentError = UINT_MAX;
+	if (dispid == 1005) {
+		if (!(flags & DISPATCH_METHOD)) return DISP_E_MEMBERNOTFOUND;
+		if (!parameters || parameters->cArgs != 1) return DISP_E_BADPARAMCOUNT;
+		CComVariant value(parameters->rgvarg[0]);
+		if (FAILED(value.ChangeType(VT_BSTR))) return DISP_E_TYPEMISMATCH;
+		FB::Doc* owner = FB::Doc::BinaryOwner(m_binaryDocumentIdentity);
+		return owner ? owner->m_body.SetGeneratedDocumentId(value.bstrVal) : E_UNEXPECTED;
+	}
 	if (dispid == 1004) {
 		if (!(flags & DISPATCH_METHOD)) return DISP_E_MEMBERNOTFOUND;
 		if (parameters && parameters->cArgs != 0) return DISP_E_BADPARAMCOUNT;

@@ -2528,12 +2528,9 @@ function NewDocumentID(msg)
 		if(!id) return;
 		var next=window.external.GetUUID();
 		if(!next || next==id.value) return;
-		// The field is read-only and this assignment is programmatic. Focus it
-		// before changing the value so the editor's existing form-change tracker
-		// captures the old value, then deliver the same notification as an edit.
+		// The native editor records this programmatic edit in its OLE history.
 		id.focus();
-		id.value=next;
-		id.fireEvent("onkeyup");
+		window.external._SetGeneratedDocumentId(next);
 		DescriptionValidate();
 	}
 }
