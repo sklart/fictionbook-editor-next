@@ -4189,6 +4189,8 @@ namespace
         int number = ordered ? ParsePositiveInt(Attr(node, L"start"), 1) : 1;
         CStringW listType = Attr(node, L"type");
         CStringW listStyle = Attr(node, L"style");
+        const CStringW listId = OptionalIdAttribute(node, ctx);
+        if (!listId.IsEmpty()) out += L"      <p" + listId + L"></p>\r\n";
 
         MSXML2::IXMLDOMNodeListPtr children = MsxmlGetChildNodes(node);
         long count = children ? MsxmlGetNodeListLength(children) : 0;
@@ -4205,8 +4207,14 @@ namespace
 
             CStringW text = ChildrenInlineToFb2(child, ctx);
             text.Trim();
+            CStringW markers;
+            const CStringW itemId = OptionalIdAttributeAndExtraMarkersIncludingDescendant(child, ctx, markers);
+            out += markers;
             if (text.IsEmpty())
+            {
+                if (!itemId.IsEmpty()) out += L"      <p" + itemId + L"></p>\r\n";
                 continue;
+            }
 
             CStringW prefix;
             if (ordered)
@@ -4219,7 +4227,7 @@ namespace
                 prefix = L"• ";
             }
 
-            out += L"      <p" + OptionalIdAttribute(child, ctx) + L">" + prefix + text + L"</p>\r\n";
+            out += L"      <p" + itemId + L">" + prefix + text + L"</p>\r\n";
         }
     }
 

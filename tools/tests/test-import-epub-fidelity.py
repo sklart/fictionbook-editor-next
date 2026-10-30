@@ -1556,6 +1556,19 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertTrue(any(n.get('id') == 'quotation' for n in root.iter()))
         self.assertIn('Quoted text', self.text(root))
 
+    def test_list_nested_anchors_remain_linkable(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<p><a href="#list">List</a> <a href="#item">Item</a> '
+                                    '<a href="#nested">Nested</a> <a href="#last">Last</a></p>'
+                                    '<ol id="list"><li id="item"><div id="nested">Item text</div>'
+                                    '<ul><li><p id="last">Nested text</p></li></ul></li></ol>',
+                                    version=version, navigation=False)
+                ids = {n.get('id') for n in root.iter() if n.get('id')}
+                self.assertTrue({'list', 'item', 'nested', 'last'}.issubset(ids))
+                self.assertIn('Item text', self.text(root))
+                self.assertIn('Nested text', self.text(root))
+
     def test_epigraph_attribution_structure_matrix(self):
         cases = (
             '<section><div class="epigraph"><p>First quotation</p><p class="text-author">First author</p></div></section>',
