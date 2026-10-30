@@ -1632,6 +1632,16 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                                'Discovery story content', 'Diary story content'):
                     self.assertEqual(self.text(root).count(phrase), 1)
 
+    def test_copyright_content_is_kept_by_default_and_removable_explicitly(self):
+        extra = {'Text/copyright.xhtml': ('credits', 'application/xhtml+xml', '<p>Publication credits text</p>')}
+        for version in ('2.0', '3.0'):
+            for options, kept in (([], True), (['--remove-service-sections'], False)):
+                with self.subTest(version=version, options=options):
+                    root = self.convert('<p>Opening content</p>', extra, version=version,
+                                        spine=['chapter', 'credits'], options=options)
+                    self.assertEqual('Publication credits text' in self.text(root), kept)
+                    self.assertIn('Opening content', self.text(root))
+
     def test_epigraph_attribution_structure_matrix(self):
         cases = (
             '<section><div class="epigraph"><p>First quotation</p><p class="text-author">First author</p></div></section>',

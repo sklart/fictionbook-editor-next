@@ -76,7 +76,7 @@ struct EpubImportOptions
         , saveFb2Copy(false)
         , useCssSemanticClasses(true)
         , removeFootnoteBacklinks(true)
-        , removeServiceSections(true)
+        , removeServiceSections(false)
         , writeLogOnWarnings(true)
         , saveIntermediateFb2OnError(false)
         , keepTempOnError(false)

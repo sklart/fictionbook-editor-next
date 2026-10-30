@@ -30,7 +30,7 @@ namespace
             : importCover(true), importImages(true), importNotes(true), useNavigationTitles(true), repairEncoding(true), skipServicePages(true)
             , importTables(true), importLists(true), importPoemsEpigraphs(true), importSubtitles(true), splitSectionsByHeadings(true), preserveLinks(true)
             , cleanTypography(true), importPageBreaks(true), skipHiddenElements(true), validateResult(true), addDiagnosticSection(false), writeImportLog(false)
-            , saveFb2Copy(false), useCssSemanticClasses(true), removeFootnoteBacklinks(true), removeServiceSections(true), writeLogOnWarnings(true)
+            , saveFb2Copy(false), useCssSemanticClasses(true), removeFootnoteBacklinks(true), removeServiceSections(false), writeLogOnWarnings(true)
             , saveIntermediateFb2OnError(false), keepTempOnError(false), separatorSubtitles(false), createTitleBlock(false), unifyImageNames(false), separateCoverName(false), unifyNoteNumbers(false), blankBeforeImages(false), blankAfterImages(false), svgConversionMode(SVG_IMPORT_CONVERT_PNG)
         {
         }
