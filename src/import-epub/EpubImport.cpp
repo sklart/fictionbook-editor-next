@@ -3279,11 +3279,11 @@ namespace
         return displayHidden || visibilityHidden;
     }
 
-    CStringW EmptyBlockBackgroundImage(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
+    CStringW EmptyBackgroundImage(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, bool inlineElement)
     {
         if (!g_options.importImages || !node) return CStringW();
         const CStringW name = LocalName(node);
-        if (name != L"div" && name != L"section" && name != L"figure") return CStringW();
+        if (inlineElement ? name != L"span" : (name != L"div" && name != L"section" && name != L"figure")) return CStringW();
         const auto children = MsxmlGetChildNodes(node);
         const long count = children ? MsxmlGetNodeListLength(children) : 0;
         for (long i = 0; i < count; ++i)
@@ -3395,6 +3395,11 @@ namespace
             return CStringW();
 
         CStringW name = LocalName(node);
+        if (name == L"span")
+        {
+            const CStringW backgroundImage = EmptyBackgroundImage(node, ctx, true);
+            if (!backgroundImage.IsEmpty()) return backgroundImage;
+        }
         const CStringW inlineStyle = Attr(node, L"style");
         if (g_options.importImages && ContainsNoCase(inlineStyle, L"background") && !TrimString(NodeText(node)).IsEmpty())
         {
@@ -4832,7 +4837,7 @@ namespace
         if (name.CompareNoCase(L"script") == 0 || name.CompareNoCase(L"style") == 0 || name.CompareNoCase(L"head") == 0)
             return;
 
-        const CStringW backgroundImage = EmptyBlockBackgroundImage(node, ctx);
+        const CStringW backgroundImage = EmptyBackgroundImage(node, ctx, false);
         if (!backgroundImage.IsEmpty())
         {
             out += L"      <p" + OptionalIdAttribute(node, ctx) + L">" + backgroundImage + L"</p>\r\n";

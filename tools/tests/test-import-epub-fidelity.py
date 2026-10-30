@@ -1660,6 +1660,36 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertIn('After', self.text(root))
         self.assertIn('background image on non-empty inline content', self.diagnostics.lower())
 
+    def test_empty_inline_css_background_preserves_image_in_order(self):
+        css = '.ornament { background-image: url(../images/ornament.png); }'
+        extra = {'Styles/layout.css': ('css', 'text/css', css),
+                 'images/ornament.png': ('ornament', 'image/png', PNG)}
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<p>Before <span class="ornament"></span> after.</p>',
+                                    extra=extra, head='<link rel="stylesheet" href="../Styles/layout.css"/>',
+                                    navigation=False, version=version)
+                paragraph = next(p for p in root.findall('.//f:body//f:p', NS) if 'Before' in ''.join(p.itertext()))
+                image = paragraph.find('f:image', NS)
+                self.assertIsNotNone(image)
+                binary = next(n for n in root.findall('f:binary', NS) if n.get('id') == image.get(HREF)[1:])
+                self.assertEqual(base64.b64decode(binary.text or ''), PNG)
+                self.assertIn('Before', paragraph.text)
+                self.assertIn('after.', image.tail)
+        for body, options in (('<p>Before <span class="ornament" style="background:none"></span> after.</p>', []),
+                              ('<p>Before <span class="ornament" hidden=""></span> after.</p>', []),
+                              ('<p>Before <span class="ornament"></span> after.</p>', ['--no-images'])):
+            with self.subTest(body=body, options=options):
+                root = self.convert(body, extra=extra, head='<link rel="stylesheet" href="../Styles/layout.css"/>',
+                                    navigation=False, options=options)
+                self.assertEqual(root.findall('.//f:body//f:image', NS), [])
+        root = self.convert('<p><a href="https://example.org/"><span class="ornament"></span></a></p>',
+                            extra=extra, head='<link rel="stylesheet" href="../Styles/layout.css"/>', navigation=False)
+        self.assertIsNotNone(root.find('.//f:body//f:a/f:image', NS))
+        root = self.convert('<p>Before <span style="background:url(../images/ornament.png)"></span> after.</p>',
+                            extra=extra, navigation=False)
+        self.assertIsNotNone(root.find('.//f:body//f:p/f:image', NS))
+
     def test_aria_hidden_does_not_hide_visual_content(self):
         root = self.convert('<p aria-hidden="true">Visible text for sighted readers.</p>'
                             '<div aria-hidden="true"><img src="../images/ornament.png"/></div>'
