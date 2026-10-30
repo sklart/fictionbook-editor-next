@@ -67,7 +67,7 @@ foreach($forbidden in @('m_script_menu', 'm_script_visuals', 'm_last_script', 'm
     if($mainHeader -match $forbidden) { throw "CMainFrame must not own extension state: $forbidden" }
 }
 if($mainSource -match 'g_pluginManager') { throw 'Bundled plugin manager must not have process-global lifetime.' }
-foreach($required in @('class\s+UiController', 'MenuBuilder\s+m_menu', 'VisualResources\s+m_visuals', 'CString\s+m_lastRelativePath')) {
+foreach($required in @('class\s+UiController', 'MenuBuilder\s+m_menu', 'VisualResources\s+m_visuals', 'CString\s+m_lastUid', 'LastScriptUid\s*\(', 'SetLastScript\s*\(')) {
     if($scriptOwner -notmatch $required) { throw "Script owner is missing: $required" }
 }
 foreach($required in @('PluginManager\s+m_manager', 'CSimpleArray<CLSID>\s+m_importPlugins', 'CSimpleArray<CLSID>\s+m_exportPlugins')) {
