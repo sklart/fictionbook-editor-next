@@ -1181,11 +1181,27 @@ void CMainFrame::RunPortableStateTestScenario()
 		}
 		const bool bitmapOnlyScriptWritten = WritePortableStateTestText(scriptsDirectory + L"BitmapOnly.js", "function Run() {}\n");
 		const bool bitmapOnlyCopied = dualBitmapWritten && ::CopyFileW(scriptsDirectory + L"DualSidecar.bmp", scriptsDirectory + L"BitmapOnly.bmp", FALSE) != FALSE;
+		const bool rectScriptWritten = WritePortableStateTestText(scriptsDirectory + L"RectBitmap.js", "function Run() {}\n");
+		bool rectBitmapWritten = false;
+		{
+			HANDLE file = ::CreateFileW(scriptsDirectory + L"RectBitmap.bmp", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+			if(file != INVALID_HANDLE_VALUE) {
+				BITMAPFILEHEADER header = {}; BITMAPINFOHEADER info = {}; BYTE pixels[16 * 12 * 3] = {};
+				header.bfType = 0x4d42; header.bfOffBits = sizeof(header) + sizeof(info); header.bfSize = header.bfOffBits + sizeof(pixels);
+				info.biSize = sizeof(info); info.biWidth = 16; info.biHeight = 12; info.biPlanes = 1; info.biBitCount = 24; info.biCompression = BI_RGB; info.biSizeImage = sizeof(pixels);
+				for(size_t index=0; index<sizeof(pixels); index+=3) pixels[index+1] = 200;
+				DWORD written = 0;
+				rectBitmapWritten = ::WriteFile(file,&header,sizeof(header),&written,NULL) && written == sizeof(header) &&
+					::WriteFile(file,&info,sizeof(info),&written,NULL) && written == sizeof(info) &&
+					::WriteFile(file,pixels,sizeof(pixels),&written,NULL) && written == sizeof(pixels);
+				::CloseHandle(file);
+			}
+		}
 		const CString iconFolder = scriptsDirectory + L"IconFolder\\";
 		::CreateDirectory(iconFolder, NULL);
 		const bool nestedFixtureWritten = WritePortableStateTestText(iconFolder + L"Nested.js", "function Run() {}\n");
-		if(!fixtureWritten || !fixtureIconCopied || !dualScriptWritten || !dualIconCopied || !dualBitmapWritten || !bitmapOnlyScriptWritten || !bitmapOnlyCopied || !nestedFixtureWritten || !InitializeScripts()) { WritePortableStateTestText(reportPath, "phase=script-toolbar-runtime-size\nreason=initial-reload\nresult=fail\n"); PostMessage(WM_CLOSE); return; }
-		CString scriptUid; UINT scriptCommand = 0, dualCommand = 0, bitmapOnlyCommand = 0;
+		if(!fixtureWritten || !fixtureIconCopied || !dualScriptWritten || !dualIconCopied || !dualBitmapWritten || !bitmapOnlyScriptWritten || !bitmapOnlyCopied || !rectScriptWritten || !rectBitmapWritten || !nestedFixtureWritten || !InitializeScripts()) { WritePortableStateTestText(reportPath, "phase=script-toolbar-runtime-size\nreason=initial-reload\nresult=fail\n"); PostMessage(WM_CLOSE); return; }
+		CString scriptUid; UINT scriptCommand = 0, dualCommand = 0, bitmapOnlyCommand = 0, rectCommand = 0;
 		for(int index = 0; index < m_scripts.Menu().Count(); ++index)
 		{
 			if(m_scripts.Menu().Item(index).relativePath.CompareNoCase(L"RuntimeSize.js") == 0)
@@ -1194,6 +1210,8 @@ void CMainFrame::RunPortableStateTestScenario()
 				dualCommand = ID_SCRIPT_BASE + m_scripts.Menu().Item(index).commandId;
 			if(m_scripts.Menu().Item(index).relativePath.CompareNoCase(L"BitmapOnly.js") == 0)
 				bitmapOnlyCommand = ID_SCRIPT_BASE + m_scripts.Menu().Item(index).commandId;
+			if(m_scripts.Menu().Item(index).relativePath.CompareNoCase(L"RectBitmap.js") == 0)
+				rectCommand = ID_SCRIPT_BASE + m_scripts.Menu().Item(index).commandId;
 		}
 		std::vector<ScriptToolbarDefinition> previous = currentDefinitions(), definitions = previous;
 		for(int index = 1; index <= 8; ++index) { ScriptToolbarDefinition item; item.id.Format(L"runtime-size-%d", index); item.name.Format(L"Runtime size %d", index); item.visible = true; if(index == 1 && !scriptUid.IsEmpty()) { PortableToolbarItem button = {}; button.scriptUid = scriptUid; item.items.push_back(button); } definitions.push_back(item); }
@@ -1235,15 +1253,15 @@ void CMainFrame::RunPortableStateTestScenario()
 		const int duplicateIds = duplicateBandIds();
 		const bool restarted = showOneRow && duplicateIds == 0 && InitializeScripts() && oneRow();
 		CStringA matrixDetails;
-		auto greenBitmapAtNativeSize = [&](HIMAGELIST images, int imageIndex, int size) {
+		auto greenBitmapAtNativeSize = [&](HIMAGELIST images, int imageIndex, int size, int sourceWidth, int sourceHeight) {
 			bool matches = false; HDC screen = ::GetDC(NULL); HDC dc = screen ? ::CreateCompatibleDC(screen) : NULL;
 			HBITMAP bitmap = screen ? ::CreateCompatibleBitmap(screen,size,size) : NULL;
 			if(dc && bitmap && images && imageIndex >= 0 && imageIndex < ::ImageList_GetImageCount(images)) {
 				HGDIOBJ oldBitmap = ::SelectObject(dc,bitmap); RECT cell = {0,0,size,size}; ::FillRect(dc,&cell,static_cast<HBRUSH>(::GetStockObject(BLACK_BRUSH)));
 				matches = ::ImageList_Draw(images,imageIndex,dc,0,0,ILD_TRANSPARENT) != FALSE;
-				const int offset = (size - 16) / 2;
+				const int offsetX = (size - sourceWidth) / 2, offsetY = (size - sourceHeight) / 2;
 				for(int y=0; y<size; ++y) for(int x=0; x<size; ++x) {
-					const bool inSource = x >= offset && x < offset + 16 && y >= offset && y < offset + 16;
+					const bool inSource = x >= offsetX && x < offsetX + sourceWidth && y >= offsetY && y < offsetY + sourceHeight;
 					if(::GetPixel(dc,x,y) != (inSource ? RGB(0,200,0) : RGB(0,0,0))) matches = false;
 				}
 				::SelectObject(dc,oldBitmap);
@@ -1295,30 +1313,36 @@ void CMainFrame::RunPortableStateTestScenario()
 			RECT bounds = {}; ::GetWindowRect(window, &bounds);
 			TBBUTTONS catalog; const bool available = GetAvailableButtons(window, catalog);
 			bool scriptImage = false; int scriptImageIndex = -1;
-			int dualImageIndex = -1, bitmapOnlyIndex = -1;
+			int dualImageIndex = -1, bitmapOnlyIndex = -1, rectIndex = -1;
 			for(int index = 0; available && index < catalog.GetSize(); ++index)
 			{
 				if(catalog[index].idCommand == static_cast<int>(scriptCommand))
 				{ scriptImageIndex = catalog[index].iBitmap; scriptImage = scriptImageIndex >= m_scriptsToolbarBaseImageCount && scriptImageIndex < ::ImageList_GetImageCount(images); }
 				if(catalog[index].idCommand == static_cast<int>(dualCommand)) dualImageIndex = catalog[index].iBitmap;
 				if(catalog[index].idCommand == static_cast<int>(bitmapOnlyCommand)) bitmapOnlyIndex = catalog[index].iBitmap;
+				if(catalog[index].idCommand == static_cast<int>(rectCommand)) rectIndex = catalog[index].iBitmap;
 			}
 			bool scriptPixelsMatch = true;
 			bool dualBitmapPreferred = true;
 			bool bitmapOnlyCorrect = true;
+			bool rectBitmapCorrect = true;
 			if(dpi == 96 && _Settings.GetScriptIconSize() == 16) {
 				scriptPixelsMatch = scriptImage && compareFixturePixels(images, scriptImageIndex, 16);
 				matrixDetails.AppendFormat("fixture-16px-pixels=%d\n", scriptPixelsMatch);
-				dualBitmapPreferred = greenBitmapAtNativeSize(images,dualImageIndex,16);
-				bitmapOnlyCorrect = greenBitmapAtNativeSize(images,bitmapOnlyIndex,16);
+				dualBitmapPreferred = greenBitmapAtNativeSize(images,dualImageIndex,16,16,16);
+				bitmapOnlyCorrect = greenBitmapAtNativeSize(images,bitmapOnlyIndex,16,16,16);
+				rectBitmapCorrect = greenBitmapAtNativeSize(images,rectIndex,16,16,12);
 				matrixDetails.AppendFormat("dual-bitmap-preferred=%d\n", dualBitmapPreferred);
 				matrixDetails.AppendFormat("bitmap-only-16=%d\n", bitmapOnlyCorrect);
+				matrixDetails.AppendFormat("rect-bitmap-16=%d\n", rectBitmapCorrect);
 			}
 			if(dpi == 120 && _Settings.GetScriptIconSize() == 16) {
 				dualBitmapPreferred = compareFixturePixels(images, dualImageIndex, 20);
-				bitmapOnlyCorrect = greenBitmapAtNativeSize(images,bitmapOnlyIndex,20);
+				bitmapOnlyCorrect = greenBitmapAtNativeSize(images,bitmapOnlyIndex,20,16,16);
+				rectBitmapCorrect = greenBitmapAtNativeSize(images,rectIndex,20,16,12);
 				matrixDetails.AppendFormat("dual-larger-ico-preferred=%d\n", dualBitmapPreferred);
 				matrixDetails.AppendFormat("bitmap-only-20=%d\n", bitmapOnlyCorrect);
+				matrixDetails.AppendFormat("rect-bitmap-20=%d\n", rectBitmapCorrect);
 			}
 			// Measure the painted glyph, not only the ImageList cell. The source
 			// has transparent corners but its painted area must grow with DPI.
@@ -1349,7 +1373,7 @@ void CMainFrame::RunPortableStateTestScenario()
 				dpi, width, height, LOWORD(buttonSize), HIWORD(buttonSize), bounds.bottom - bounds.top, available, scriptImage, visibleScript, graphicScaled);
 			return imageSizeRead && width == expected && height == expected &&
 				LOWORD(buttonSize) >= UiMetrics::ScaleForDpi(_Settings.GetScriptIconSize() + 7, dpi) && HIWORD(buttonSize) >= UiMetrics::ScaleForDpi(_Settings.GetScriptIconSize() + 7, dpi) &&
-				bounds.bottom - bounds.top >= HIWORD(buttonSize) && scriptImage && visibleScript && graphicScaled && scriptPixelsMatch && dualBitmapPreferred && bitmapOnlyCorrect;
+				bounds.bottom - bounds.top >= HIWORD(buttonSize) && scriptImage && visibleScript && graphicScaled && scriptPixelsMatch && dualBitmapPreferred && bitmapOnlyCorrect && rectBitmapCorrect;
 		};
 		const UINT dpis[] = { 96, 120, 144, 168, 192 };
 		bool dpiMatrix = restarted && scriptCommand != 0 && !scriptUid.IsEmpty();
@@ -1418,13 +1442,19 @@ void CMainFrame::RunPortableStateTestScenario()
 		const HTREEITEM bitmapOnlyTreeItem = iconTree.FindScriptTreeItem(L"bitmaponly.js");
 		TVITEMW bitmapOnlyTree = {}; bitmapOnlyTree.mask = TVIF_IMAGE; bitmapOnlyTree.hItem = bitmapOnlyTreeItem;
 		const bool treeBitmapOnly16 = bitmapOnlyTreeItem && ::SendMessageW(iconTree,TVM_GETITEMW,0,reinterpret_cast<LPARAM>(&bitmapOnlyTree)) &&
-			greenBitmapAtNativeSize(iconTree.ScriptImageList(),bitmapOnlyTree.iImage,16);
+			greenBitmapAtNativeSize(iconTree.ScriptImageList(),bitmapOnlyTree.iImage,16,16,16);
+		const HTREEITEM rectTreeItem = iconTree.FindScriptTreeItem(L"rectbitmap.js");
+		TVITEMW rectTree = {}; rectTree.mask = TVIF_IMAGE; rectTree.hItem = rectTreeItem;
+		const bool treeRect16 = rectTreeItem && ::SendMessageW(iconTree,TVM_GETITEMW,0,reinterpret_cast<LPARAM>(&rectTree)) &&
+			greenBitmapAtNativeSize(iconTree.ScriptImageList(),rectTree.iImage,16,16,12);
 		iconTree.UpdateScriptDpiMetrics(120);
 		const bool treeLargeIconPreferred = dualTreeItem && ::SendMessageW(iconTree,TVM_GETITEMW,0,reinterpret_cast<LPARAM>(&dualTree)) &&
 			compareFixturePixels(iconTree.ScriptImageList(),dualTree.iImage,20);
 		const bool treeBitmapOnly20 = bitmapOnlyTreeItem && ::SendMessageW(iconTree,TVM_GETITEMW,0,reinterpret_cast<LPARAM>(&bitmapOnlyTree)) &&
-			greenBitmapAtNativeSize(iconTree.ScriptImageList(),bitmapOnlyTree.iImage,20);
-		matrixDetails.AppendFormat("tree-dual-bitmap=%d\ntree-dual-larger-ico=%d\ntree-bitmap-only-16=%d\ntree-bitmap-only-20=%d\n", treeBitmapPreferred, treeLargeIconPreferred, treeBitmapOnly16, treeBitmapOnly20);
+			greenBitmapAtNativeSize(iconTree.ScriptImageList(),bitmapOnlyTree.iImage,20,16,16);
+		const bool treeRect20 = rectTreeItem && ::SendMessageW(iconTree,TVM_GETITEMW,0,reinterpret_cast<LPARAM>(&rectTree)) &&
+			greenBitmapAtNativeSize(iconTree.ScriptImageList(),rectTree.iImage,20,16,12);
+		matrixDetails.AppendFormat("tree-dual-bitmap=%d\ntree-dual-larger-ico=%d\ntree-bitmap-only-16=%d\ntree-bitmap-only-20=%d\ntree-rect-16=%d\ntree-rect-20=%d\n", treeBitmapPreferred, treeLargeIconPreferred, treeBitmapOnly16, treeBitmapOnly20, treeRect16, treeRect20);
 		iconTree.UpdateScriptDpiMetrics(UiMetrics::DpiForWindow(iconTree));
 		iconTree.SelectItem(iconTree.FindScriptTreeItem(L"runtimesize.js"));
 		const bool favoriteReady = iconTree.ExecuteScriptPopupCommand(NavigationPopupToggleFavorite);
@@ -1452,7 +1482,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			return CString(static_cast<LPCWSTR>(m_doc->m_body.Document()->title)) == L"Icon size command passed";
 		};
 		const bool scriptBeforeResize = runScript();
-		bool sizesPassed = fixtureTreePixels && treeBitmapPreferred && treeLargeIconPreferred && treeBitmapOnly16 && treeBitmapOnly20 && scriptItem != NULL && folderItem != NULL && favoriteReady && iconTree.IsFavoriteScript(scriptUid) && scriptBeforeResize;
+		bool sizesPassed = fixtureTreePixels && treeBitmapPreferred && treeLargeIconPreferred && treeBitmapOnly16 && treeBitmapOnly20 && treeRect16 && treeRect20 && scriptItem != NULL && folderItem != NULL && favoriteReady && iconTree.IsFavoriteScript(scriptUid) && scriptBeforeResize;
 		DWORD gdiWarm = 0, userWarm = 0, gdiEnd = 0, userEnd = 0;
 		for(int cycle = 0; cycle < 100; ++cycle) {
 			const int sizes[] = {20, 24, 32, 16}; const int size = sizes[cycle % 4];

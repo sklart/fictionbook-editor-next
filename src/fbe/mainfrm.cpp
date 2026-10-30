@@ -2634,6 +2634,38 @@ HBITMAP FitScriptBitmap(HBITMAP bitmap, int sourceSize, int targetSize)
 	return fitted;
 }
 
+HBITMAP FitRectScriptBitmap(HBITMAP bitmap, int sourceWidth, int sourceHeight, int targetSize)
+{
+	if(!bitmap || sourceWidth <= 0 || sourceHeight <= 0 || sourceWidth > 8192 || sourceHeight > 8192 || targetSize <= 0) return NULL;
+	BITMAPINFO sourceInfo = {}; sourceInfo.bmiHeader.biSize = sizeof(sourceInfo.bmiHeader);
+	sourceInfo.bmiHeader.biWidth = sourceWidth; sourceInfo.bmiHeader.biHeight = -sourceHeight;
+	sourceInfo.bmiHeader.biPlanes = 1; sourceInfo.bmiHeader.biBitCount = 32; sourceInfo.bmiHeader.biCompression = BI_RGB;
+	std::vector<DWORD> source(static_cast<size_t>(sourceWidth) * sourceHeight);
+	HDC screen = ::GetDC(NULL);
+	const int lines = screen ? ::GetDIBits(screen,bitmap,0,sourceHeight,source.data(),&sourceInfo,DIB_RGB_COLORS) : 0;
+	if(screen) ::ReleaseDC(NULL,screen);
+	if(lines != sourceHeight) return NULL;
+	bool hasAlpha = false;
+	for(const DWORD pixel : source) if(pixel & 0xff000000u) { hasAlpha = true; break; }
+	BITMAPINFO targetInfo = {}; targetInfo.bmiHeader.biSize = sizeof(targetInfo.bmiHeader);
+	targetInfo.bmiHeader.biWidth = targetSize; targetInfo.bmiHeader.biHeight = -targetSize;
+	targetInfo.bmiHeader.biPlanes = 1; targetInfo.bmiHeader.biBitCount = 32; targetInfo.bmiHeader.biCompression = BI_RGB;
+	void* bits = NULL; HBITMAP fitted = ::CreateDIBSection(NULL,&targetInfo,DIB_RGB_COLORS,&bits,NULL,0);
+	if(!fitted || !bits) { if(fitted) ::DeleteObject(fitted); return NULL; }
+	DWORD* target = static_cast<DWORD*>(bits);
+	memset(target,0,static_cast<size_t>(targetSize)*targetSize*sizeof(DWORD));
+	const int width = (std::min)(sourceWidth,targetSize), height = (std::min)(sourceHeight,targetSize);
+	const int left = (targetSize-width)/2, top = (targetSize-height)/2;
+	for(int y=0; y<height; ++y) for(int x=0; x<width; ++x) {
+		const DWORD pixel = source[static_cast<size_t>(y * sourceHeight / height)*sourceWidth + x * sourceWidth / width];
+		const DWORD alpha = hasAlpha ? pixel >> 24 : 255;
+		if(!alpha || (pixel & 0x00ffffffu) == 0x00ff00ffu) continue;
+		const DWORD red = ((pixel >> 16) & 255) * alpha, green = ((pixel >> 8) & 255) * alpha, blue = (pixel & 255) * alpha;
+		target[(y+top)*targetSize+x+left] = (alpha<<24) | (((red+127)/255)<<16) | (((green+127)/255)<<8) | ((blue+127)/255);
+	}
+	return fitted;
+}
+
 int AddScriptToolbarImage(HIMAGELIST images, const CString& scriptPath, HICON fallbackIcon, HBITMAP bitmap, int targetSize)
 {
 	if(images == NULL || targetSize <= 0) return -1;
@@ -2642,17 +2674,18 @@ int AddScriptToolbarImage(HIMAGELIST images, const CString& scriptPath, HICON fa
 	iconPath += L".ico";
 	BITMAP bitmapInfo = {};
 	const bool usableBitmap = bitmap != NULL && ::GetObject(bitmap, sizeof(bitmapInfo), &bitmapInfo) == sizeof(bitmapInfo) &&
-		bitmapInfo.bmWidth == bitmapInfo.bmHeight && bitmapInfo.bmWidth > 0;
+		bitmapInfo.bmWidth > 0 && bitmapInfo.bmHeight > 0 && bitmapInfo.bmWidth <= 8192 && bitmapInfo.bmHeight <= 8192;
 	auto addBitmap = [&]() {
 		if(!usableBitmap) return -1;
-		HBITMAP scaled = FitScriptBitmap(bitmap, bitmapInfo.bmWidth, targetSize);
+		HBITMAP scaled = bitmapInfo.bmWidth == bitmapInfo.bmHeight ? FitScriptBitmap(bitmap, bitmapInfo.bmWidth, targetSize) :
+			FitRectScriptBitmap(bitmap, bitmapInfo.bmWidth, bitmapInfo.bmHeight, targetSize);
 		const int index = scaled != NULL ? ::ImageList_Add(images, scaled, NULL) : -1;
 		if(scaled != NULL) ::DeleteObject(scaled);
 		return index;
 	};
 	// Match the tree: a sufficiently large BMP sidecar takes precedence;
 	// a smaller BMP yields to an ICO with a suitable larger frame.
-	if(usableBitmap && bitmapInfo.bmWidth >= targetSize) {
+	if(usableBitmap && bitmapInfo.bmWidth >= targetSize && bitmapInfo.bmHeight >= targetSize) {
 		const int index = addBitmap();
 		if(index >= 0) return index;
 	}
