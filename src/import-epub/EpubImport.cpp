@@ -2800,7 +2800,17 @@ namespace
         return true;
     }
 
-    void ApplyFontDeclarations(CStringW style, InlineFontState& font, const InlineFontState& inherited)
+    bool ExtractCssImportant(CStringW& value)
+    {
+        const int bang = value.ReverseFind(L'!');
+        if (bang < 0) return false;
+        CStringW suffix = value.Mid(bang + 1); suffix.Trim();
+        if (suffix != L"important") return false;
+        value = value.Left(bang); value.Trim();
+        return true;
+    }
+
+    void ApplyFontDeclarations(CStringW style, InlineFontState& font, const InlineFontState& inherited, bool important)
     {
         style.MakeLower();
         int position = 0;
@@ -2811,6 +2821,7 @@ namespace
             if (colon < 0) continue;
             CStringW key = declaration.Left(colon), value = declaration.Mid(colon + 1);
             key.Trim(); value.Trim();
+            if (ExtractCssImportant(value) != important) continue;
             if (key == L"font-style")
             {
                 if (value == L"italic" || value == L"oblique") font.italic = true;
@@ -2843,26 +2854,28 @@ namespace
         CStringW name = LocalName(node);
         if (name.CompareNoCase(L"em") == 0 || name.CompareNoCase(L"i") == 0) font.italic = true;
         if (name.CompareNoCase(L"strong") == 0 || name.CompareNoCase(L"b") == 0) font.bold = true;
-        if (g_cssFontRules)
+        const CStringW inlineStyle = Attr(node, L"style");
+        CStringW supported;
+        if (!inlineStyle.IsEmpty())
         {
-            // Stable sorting preserves source order for selectors of equal specificity.
-            for (const auto& rule : *g_cssFontRules)
+            CStringW warning;
+            supported = SupportedCssFontDeclarations(inlineStyle, warning);
+            if (!warning.IsEmpty() && g_content.warnedInlineCss.emplace(inlineStyle.GetString()).second)
+                g_content.warnings += warning;
+        }
+        // Important declarations override all normal declarations; within each
+        // tier the stylesheet is sorted by specificity and the inline style wins.
+        for (int priority = 0; priority != 2; ++priority)
+        {
+            if (g_cssFontRules) for (const auto& rule : *g_cssFontRules)
             {
                 if (!rule.element.IsEmpty() && rule.element.CompareNoCase(name) != 0) continue;
                 bool matches = true;
                 for (const auto& cssClass : rule.classes)
                     if (!MatchesCssClass(node, cssClass)) { matches = false; break; }
-                if (matches) ApplyFontDeclarations(rule.declarations, font, inherited);
+                if (matches) ApplyFontDeclarations(rule.declarations, font, inherited, priority != 0);
             }
-        }
-        const CStringW inlineStyle = Attr(node, L"style");
-        if (!inlineStyle.IsEmpty())
-        {
-            CStringW warning;
-            const CStringW supported = SupportedCssFontDeclarations(inlineStyle, warning);
-            if (!warning.IsEmpty() && g_content.warnedInlineCss.emplace(inlineStyle.GetString()).second)
-                g_content.warnings += warning;
-            ApplyFontDeclarations(supported, font, inherited);
+            ApplyFontDeclarations(supported, font, inherited, priority != 0);
         }
     }
 
@@ -2892,13 +2905,14 @@ namespace
             key.Trim(); key.MakeLower(); value.Trim(); value.MakeLower();
             if (key != L"font-style" && key != L"font-weight" && key != L"font") continue;
             if (hasFont) *hasFont = true;
+            const bool important = ExtractCssImportant(value);
             int weight = 0;
             const bool numericWeight = ParseCssNumericWeight(value, weight);
             const bool inheritedKeyword = value == L"inherit" || value == L"initial" || value == L"unset";
             const bool valid = (key == L"font-style" && (value == L"italic" || value == L"oblique" || value == L"normal" || inheritedKeyword)) ||
                 (key == L"font-weight" && (value == L"normal" || value == L"bold" || numericWeight || inheritedKeyword));
             if (!valid) { warning += L"Unsupported CSS font declaration: " + key + L"\r\n"; continue; }
-            supported += key + L":" + value + L";";
+            supported += key + L":" + value + (important ? L"!important;" : L";");
         }
         return supported;
     }

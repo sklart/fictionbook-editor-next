@@ -682,10 +682,27 @@ Write-Output 'Independent FB2 XSD validation: PASS'
 
     def test_unsupported_font_declaration_does_not_discard_other_font_property(self):
         root = self.convert('<p class="styled">Keep bold</p>',
-                            head='<style>.styled {font-style: italic !important; font-weight: bold}</style>', navigation=False)
+                            head='<style>.styled {font-style: oblique 20deg; font-weight: bold}</style>', navigation=False)
         paragraph = next(p for p in root.findall('.//f:p', NS) if 'Keep bold' in self.text(p))
         self.assertIsNotNone(paragraph.find('.//f:strong', NS))
         self.assertIn('Unsupported CSS font declaration', self.diagnostics)
+
+    def test_css_important_cascade_and_inline_priority(self):
+        root = self.convert('<p class="a b" style="font-style: normal; font-weight: normal">Sheet priority</p>'
+                            '<p class="a b" style="font-style: normal !important; font-weight: normal !important">Inline priority</p>'
+                            '<p class="a b" style="font-style: italic !important; font-style: normal">Declaration order</p>'
+                            '<p>Plain next</p>',
+                            head='<style>.a {font-style: italic !important; font-weight: bold !important} '
+                                 'p.b {font-style: normal; font-weight: normal} '
+                                 '.b {font-weight: normal !important} .a.b {font-weight: bold !important}</style>',
+                            navigation=False)
+        paragraphs = root.findall('.//f:p', NS)
+        for label, italic, bold in (('Sheet priority', True, True), ('Inline priority', False, False),
+                                    ('Declaration order', True, True), ('Plain next', False, False)):
+            paragraph = next(p for p in paragraphs if label in self.text(p))
+            self.assertEqual(paragraph.find('.//f:emphasis', NS) is not None, italic, label)
+            self.assertEqual(paragraph.find('.//f:strong', NS) is not None, bold, label)
+        self.assertNotIn('Unsupported CSS font declaration', self.diagnostics)
 
     def test_css_quoted_brace_does_not_end_rule_or_consume_next_selector(self):
         root = self.convert('<p class="one">First italic</p><p class="two">Second bold</p>',
