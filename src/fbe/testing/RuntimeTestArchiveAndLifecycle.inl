@@ -483,6 +483,14 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 	}
 	if (IsFbeTestScenario(L"description-input-undo-probe"))
 	{
+		wchar_t requestedLayout[16] = {};
+		const DWORD layoutLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_DESCRIPTION_LAYOUT", requestedLayout, _countof(requestedLayout));
+		const bool layoutApplied = layoutLength && layoutLength < _countof(requestedLayout) && _Settings.GetDescriptionLayout() == requestedLayout;
+		wchar_t requestedMode[16] = {};
+		const DWORD modeLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_DESCRIPTION_MODE", requestedMode, _countof(requestedMode));
+		const bool modeApplied = modeLength && modeLength < _countof(requestedMode) &&
+			((wcscmp(requestedMode, L"portable") == 0 && DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable) ||
+			 (wcscmp(requestedMode, L"installed") == 0 && DeploymentContext::CurrentMode() == DeploymentContext::Mode::Installed));
 		const bool cleanImmediately = !DocChanged();
 		const ULONGLONG pumpUntil = ::GetTickCount64() + 100;
 		while (::GetTickCount64() < pumpUntil) {
@@ -567,6 +575,20 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		const bool keywordRetained = keywords && CString(static_cast<LPCWSTR>(keywords->value)) == L"independent keyword edit";
 		const bool independentFieldPreserved = fieldEditDirty && fieldReconcileDirty && fieldUndoRestored && fieldUndoDirty && keywordRetained;
 		if (keywords) keywords->value = static_cast<LPCWSTR>(originalKeywords);
+		const bool savedBeforeLanguage = m_doc->Save() && !DocChanged();
+		MSHTML::IHTMLSelectElementPtr guardLanguage(document3 ? document3->getElementById(L"tiLang") : NULL);
+		const CString originalLanguage = guardLanguage ? CString(static_cast<LPCWSTR>(guardLanguage->value)) : CString();
+		if (guardLanguage) guardLanguage->value = originalLanguage == L"ru" ? L"en" : L"ru";
+		const CString changedLanguage = guardLanguage ? CString(static_cast<LPCWSTR>(guardLanguage->value)) : CString();
+		if (title) { MSHTML::IHTMLElement2Ptr element(title); if (element) element->focus(); title->select(); }
+		if (::GetFocus()) ::SendMessageW(::GetFocus(), WM_CHAR, L'L', 1);
+		const bool languageEditDirty = DocChanged();
+		m_doc->ReconcileDescriptionSavepoint();
+		const bool languageReconcileDirty = DocChanged();
+		SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
+		const bool independentLanguagePreserved = savedBeforeLanguage && guardLanguage && changedLanguage != originalLanguage && languageEditDirty && languageReconcileDirty &&
+			title && CString(static_cast<LPCWSTR>(title->value)) == afterRedo && CString(static_cast<LPCWSTR>(guardLanguage->value)) == changedLanguage && DocChanged();
+		if (guardLanguage) guardLanguage->value = static_cast<LPCWSTR>(originalLanguage);
 		const bool savedBeforeBinary = m_doc->Save() && !DocChanged();
 		MSHTML::IHTMLElementPtr binaryContainer(document3 ? document3->getElementById(L"binobj") : NULL);
 		MSHTML::IHTMLElementCollectionPtr binaryNodes(binaryContainer ? MSHTML::IHTMLElement2Ptr(binaryContainer)->getElementsByTagName(L"DIV") : NULL);
@@ -618,11 +640,12 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		report.AppendFormat("clean-immediately=%d\nclean-before-description=%d\ninitially-clean=%d\ninitial-form-changed=%d\nsaved=%d\nsaved-clean=%d\nsaved-edit-changed=%d\nsaved-edit-dirty=%d\nsaved-undo-restored=%d\nsaved-undo-dirty=%d\n", cleanImmediately, cleanBeforeDescription, initiallyClean, formInitiallyChanged, saved, cleanAfterSave, editedAfterSave != afterRedo, dirtyAfterSavedEdit, afterSavedUndo == afterRedo, dirtyAfterSavedUndo);
 		report.AppendFormat("initial-saved-version=%ld\ninitial-current-version=%ld\ninitial-body-equal=%d\ninitial-body-snapshot=%d\n", initialSavepoint.savedVersion, initialVersion, initialSavepoint.hasSaved && initialBodyHtml == initialSavepoint.savedHtml, initialSavepoint.hasSaved);
 		report.AppendFormat("initial-content-preserved=%d\n", initialContentPreserved);
+		report.AppendFormat("mode-applied=%d\nlayout-applied=%d\nindependent-language-preserved=%d\n", modeApplied, layoutApplied, independentLanguagePreserved);
 		report.AppendFormat("independent-field-preserved=%d\nindependent-binary-preserved=%d\nindependent-body-preserved=%d\n", independentFieldPreserved, independentBinaryPreserved, independentBodyPreserved);
 		report.AppendFormat("field-undo-restored=%d\nfield-undo-dirty=%d\nkeyword-retained=%d\nsaved-before-binary=%d\nbinary-change=0x%08lX\nbinary-undo-restored=%d\nbinary-undo-dirty=%d\n", fieldUndoRestored, fieldUndoDirty, keywordRetained, savedBeforeBinary, static_cast<unsigned long>(binaryChange), binaryUndoRestored, binaryUndoDirty);
 		report.AppendFormat("initial-title=%d\ninitial-author=%d\ninitial-id=%d\ninitial-body-text=%d\ninitial-binary=%d\n", initialTitle, initialAuthor, initialId, initialBodyText, initialBinary);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(initialContentPreserved && focused && edited != before && dirtyAfterEdit && (status.cmdf & OLECMDF_ENABLED) && unitCount > 0 &&
+		::PostQuitMessage(modeApplied && layoutApplied && initialContentPreserved && independentLanguagePreserved && focused && edited != before && dirtyAfterEdit && (status.cmdf & OLECMDF_ENABLED) && unitCount > 0 &&
 			afterUndo == before && (redo.cmdf & OLECMDF_ENABLED) && afterRedo == edited && saved && cleanAfterSave && editedAfterSave != afterRedo && dirtyAfterSavedEdit && afterSavedUndo == afterRedo && independentFieldPreserved && independentBinaryPreserved && independentBodyPreserved && SUCCEEDED(service) && SUCCEEDED(enumerated) ? 0 : 1);
 		return 0;
 	}
