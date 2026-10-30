@@ -162,6 +162,8 @@
 #define IDS_IMPORT_RUNTIME_FINAL_MSXML_CREATE_FAILED 459
 #define IDS_IMPORT_RUNTIME_FINAL_XML_FAILED 460
 #define IDS_IMPORT_RUNTIME_FINAL_BODY_MISSING 461
+#define IDS_IMPORT_RUNTIME_LANGUAGE_UNDETERMINED 462
+#define IDS_IMPORT_RUNTIME_LANGUAGE_CONFLICT 463
 
 // Resource identifier required by Windows shell to display VersionInfo.
 // Without this define, VS_VERSION_INFO in .rc can become a named resource

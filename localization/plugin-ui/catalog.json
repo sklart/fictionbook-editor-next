@@ -4340,6 +4340,44 @@
         "bg-BG": "      <p>[Текстът на главата не е извлечен]</p>\\r\\n"
       }
     },
+    "import_epub.runtime.language_undetermined": {
+      "component": "import-epub.runtime",
+      "resourceId": "IDS_IMPORT_RUNTIME_LANGUAGE_UNDETERMINED",
+      "source": "Не удалось определить язык книги по достаточной выборке основного текста.",
+      "translations": {
+        "en-US": "Book language could not be determined from a sufficient body sample.",
+        "ru-RU": "Не удалось определить язык книги по достаточной выборке основного текста.",
+        "uk-UA": "Не вдалося визначити мову книги за достатньою вибіркою основного тексту.",
+        "de-DE": "Die Buchsprache konnte anhand einer ausreichenden Textprobe nicht bestimmt werden.",
+        "fr-FR": "La langue du livre n’a pas pu être déterminée à partir d’un échantillon suffisant du texte.",
+        "es-ES": "No se pudo determinar el idioma del libro a partir de una muestra suficiente del texto.",
+        "it-IT": "Impossibile determinare la lingua del libro da un campione sufficiente del testo.",
+        "pl-PL": "Nie udało się określić języka książki na podstawie wystarczającej próbki tekstu.",
+        "pt-PT": "Não foi possível determinar a língua do livro a partir de uma amostra suficiente do texto.",
+        "nl-NL": "De taal van het boek kon niet worden bepaald op basis van een voldoende tekstfragment.",
+        "cs-CZ": "Jazyk knihy se nepodařilo určit z dostatečného vzorku textu.",
+        "bg-BG": "Езикът на книгата не можа да бъде определен от достатъчна извадка от текста."
+      }
+    },
+    "import_epub.runtime.language_conflict": {
+      "component": "import-epub.runtime",
+      "resourceId": "IDS_IMPORT_RUNTIME_LANGUAGE_CONFLICT",
+      "source": "Язык в метаданных противоречит выборке основного текста; метаданные сохранены.",
+      "translations": {
+        "en-US": "Language metadata conflicts with the main text sample; metadata was retained.",
+        "ru-RU": "Язык в метаданных противоречит выборке основного текста; метаданные сохранены.",
+        "uk-UA": "Мова в метаданих суперечить вибірці основного тексту; метадані збережено.",
+        "de-DE": "Die Sprachmetadaten widersprechen der Textprobe; die Metadaten wurden beibehalten.",
+        "fr-FR": "La langue des métadonnées contredit l’échantillon du texte ; les métadonnées ont été conservées.",
+        "es-ES": "El idioma de los metadatos contradice la muestra del texto; se conservaron los metadatos.",
+        "it-IT": "La lingua nei metadati contrasta con il campione del testo; i metadati sono stati mantenuti.",
+        "pl-PL": "Język w metadanych jest sprzeczny z próbką tekstu; metadane zostały zachowane.",
+        "pt-PT": "A língua nos metadados contradiz a amostra do texto; os metadados foram mantidos.",
+        "nl-NL": "De taal in de metadata komt niet overeen met het tekstfragment; de metadata zijn behouden.",
+        "cs-CZ": "Jazyk v metadatech odporuje vzorku textu; metadata byla zachována.",
+        "bg-BG": "Езикът в метаданните противоречи на извадката от текста; метаданните са запазени."
+      }
+    },
     "import_epub.runtime.import_warnings_title": {
       "component": "import-epub.runtime",
       "resourceId": "IDS_IMPORT_RUNTIME_IMPORT_WARNINGS_TITLE",

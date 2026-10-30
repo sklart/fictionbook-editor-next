@@ -55,7 +55,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for folder in cls.folders:
                 folder.cleanup()
 
-    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, identifier='fixture', date='', head=''):
+    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, identifier='fixture', date='', head='', language='ru'):
         extra = extra or {}
         temp = tempfile.TemporaryDirectory(prefix='epub-fidelity-')
         self.folders.append(temp)
@@ -102,7 +102,8 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             modified = '<meta property="dcterms:modified">2026-10-21T00:00:00Z</meta>' if version.startswith('3') else ''
             toc = '' if version.startswith('3') or navigation is False else ' toc="fixture-ncx"'
             date_xml = f'<dc:date>{date}</dc:date>' if date else ''
-            z.writestr('OEBPS/book.opf', f'<package xmlns="http://www.idpf.org/2007/opf" version="{version}" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">{identifier}</dc:identifier><dc:title>Fixture</dc:title><dc:language>ru</dc:language><dc:creator>Tester</dc:creator>' + date_xml + modified + '</metadata><manifest>' + ''.join(manifest) + ''.join(manifest_extra) + f'</manifest><spine{toc}>' + ''.join(f'<itemref idref="{ident}"/>' for ident in (spine or ['chapter'])) + '</spine>' + guide + '</package>')
+            language_xml = f'<dc:language>{language}</dc:language>' if language else ''
+            z.writestr('OEBPS/book.opf', f'<package xmlns="http://www.idpf.org/2007/opf" version="{version}" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">{identifier}</dc:identifier><dc:title>Fixture</dc:title>' + language_xml + '<dc:creator>Tester</dc:creator>' + date_xml + modified + '</metadata><manifest>' + ''.join(manifest) + ''.join(manifest_extra) + f'</manifest><spine{toc}>' + ''.join(f'<itemref idref="{ident}"/>' for ident in (spine or ['chapter'])) + '</spine>' + guide + '</package>')
             for path, content in (raw or {}).items():
                 z.writestr(path, content)
         output = folder / 'case.fb2'
@@ -533,6 +534,22 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             self.assert_once(root, text)
         for text in ('Bold heading', 'Italic quote', 'Bold epigraph', 'Italic caption'):
             self.assert_once(root, text)
+
+    def test_language_fallback_uses_substantial_body_and_preserves_metadata(self):
+        russian = ('Это история о том как человек увидел свой дом и понял что он был здесь. ' * 16)
+        english = ('This is the story of a person who was in the house and saw that it was their home. ' * 16)
+        def lang(root): return root.find('.//f:title-info/f:lang', NS).text
+        self.assertEqual(lang(self.convert('<p>' + russian + '</p>', language='', navigation=False)), 'ru')
+        self.assertEqual(lang(self.convert('<p>' + english + '</p>', language='', navigation=False)), 'en')
+        self.assertEqual(lang(self.convert('<p>' + english + '</p>', language='ru', navigation=False)), 'ru')
+        catalog = json.loads((ROOT / 'localization/plugin-ui/catalog.json').read_text(encoding='utf-8-sig'))
+        self.assertTrue(any(message in self.diagnostics for message in
+                            catalog['strings']['import_epub.runtime.language_conflict']['translations'].values()),
+                        self.diagnostics)
+        self.assertEqual(lang(self.convert('<p>' + russian + english + '</p>', language='', navigation=False)), 'und')
+        self.assertEqual(lang(self.convert('<h1>' + english + '</h1><p>Short.</p>', language='', navigation=False)), 'und')
+        french = ('Le livre raconte une histoire dans laquelle la personne a vu sa maison et son jardin. ' * 16)
+        self.assertEqual(lang(self.convert('<p>' + french + '</p>', language='', navigation=False)), 'und')
 
     def test_source_timestamp_and_uuid(self):
         uuid = 'urn:uuid:12345678-1234-4234-9234-123456789abc'

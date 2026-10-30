@@ -1811,8 +1811,6 @@ namespace
 
         if (package.title.IsEmpty())
             package.title = FileNameOnly(opfPath);
-        if (package.language.IsEmpty())
-            package.language = L"ru";
 
         if (package.spine.empty())
         {
@@ -5395,7 +5393,7 @@ namespace
         CStringW s = NormalizeImportedText(language);
         s.Trim();
         if (s.IsEmpty())
-            return L"ru";
+            return L"und";
 
         int dash = s.Find(L'-');
         int underscore = s.Find(L'_');
@@ -5411,7 +5409,62 @@ namespace
         s.MakeLower();
         if (s.GetLength() > 3)
             s = s.Left(3);
-        return s.IsEmpty() ? CStringW(L"ru") : s;
+        return s.IsEmpty() ? CStringW(L"und") : s;
+    }
+
+    CStringW DetectBodyLanguage(const CStringW& body)
+    {
+        // Inspect only generated body paragraphs, never metadata, titles or
+        // epigraphs. A small bounded sample avoids another DOM or book copy.
+        const std::set<std::wstring> russian = { L"и", L"в", L"на", L"он", L"она", L"что", L"это", L"как", L"был", L"его", L"не", L"с", L"по", L"за", L"его", L"из", L"для" };
+        const std::set<std::wstring> english = { L"the", L"and", L"of", L"to", L"in", L"was", L"is", L"it", L"that", L"he", L"she", L"a", L"with", L"for", L"on", L"his", L"her" };
+        unsigned latin = 0, cyrillic = 0, ruWords = 0, enWords = 0;
+        std::set<std::wstring> ruDistinct, enDistinct;
+        bool paragraph = false, excluded = false, entity = false;
+        int excludedDepth = 0;
+        std::wstring word;
+        auto finishWord = [&]() {
+            if (russian.count(word)) { ++ruWords; ruDistinct.insert(word); }
+            if (english.count(word)) { ++enWords; enDistinct.insert(word); }
+            word.clear();
+        };
+        for (int i = 0; i < body.GetLength() && latin + cyrillic < 20000; ++i)
+        {
+            wchar_t ch = body[i];
+            if (ch == L'<')
+            {
+                finishWord();
+                const int end = body.Find(L'>', i + 1); if (end < 0) break;
+                CStringW tag = body.Mid(i + 1, end - i - 1); tag.Trim();
+                const bool closing = !tag.IsEmpty() && tag[0] == L'/';
+                if (closing) tag = tag.Mid(1);
+                int space = tag.FindOneOf(L" \t\r\n/"); if (space >= 0) tag = tag.Left(space);
+                tag.MakeLower();
+                if (tag == L"title" || tag == L"subtitle" || tag == L"epigraph" || tag == L"text-author")
+                {
+                    if (closing) { if (excludedDepth > 0) --excludedDepth; }
+                    else ++excludedDepth;
+                    excluded = excludedDepth != 0;
+                }
+                if (tag == L"p") paragraph = !closing;
+                i = end; entity = false; continue;
+            }
+            if (!paragraph || excluded) continue;
+            if (ch == L'&') { finishWord(); entity = true; continue; }
+            if (entity) { if (ch == L';') entity = false; continue; }
+            if (ch >= L'A' && ch <= L'Z') ch += L'a' - L'A';
+            if (ch >= L'А' && ch <= L'Я') ch += L'а' - L'А';
+            if (ch == L'Ё') ch = L'ё';
+            if (ch >= L'a' && ch <= L'z') { ++latin; word += ch; }
+            else if ((ch >= L'а' && ch <= L'я') || ch == L'ё') { ++cyrillic; word += ch; }
+            else finishWord();
+        }
+        finishWord();
+        const unsigned letters = latin + cyrillic;
+        if (letters < 400) return CStringW();
+        if (cyrillic * 100 >= letters * 85 && ruWords >= 8 && ruDistinct.size() >= 4) return L"ru";
+        if (latin * 100 >= letters * 85 && enWords >= 8 && enDistinct.size() >= 4) return L"en";
+        return CStringW();
     }
 
     bool HasStringValue(const std::vector<CStringW>& values, const CStringW& value)
@@ -6306,6 +6359,16 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         log.SaveIfRequested(epubPath, options.writeLogOnWarnings);
         return false;
     }
+
+    const CStringW detectedLanguage = DetectBodyLanguage(body);
+    const CStringW declaredLanguage = NormalizeFb2Language(package.language);
+    if (package.language.IsEmpty() || declaredLanguage == L"und")
+    {
+        package.language = detectedLanguage.IsEmpty() ? CStringW(L"und") : detectedLanguage;
+        if (detectedLanguage.IsEmpty()) warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_LANGUAGE_UNDETERMINED, L"Book language could not be determined from a sufficient body sample.") + L"\r\n";
+    }
+    else if (!detectedLanguage.IsEmpty() && (declaredLanguage == L"ru" || declaredLanguage == L"en") && declaredLanguage != detectedLanguage)
+        warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_LANGUAGE_CONFLICT, L"Language metadata conflicts with the main text sample; metadata was retained.") + L"\r\n";
 
     CStringW binariesXml = BuildBinariesXml(package, usedImageIds, warning);
     warning += g_content.warnings;
