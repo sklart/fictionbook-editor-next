@@ -164,6 +164,8 @@
 #define IDS_IMPORT_RUNTIME_FINAL_BODY_MISSING 461
 #define IDS_IMPORT_RUNTIME_LANGUAGE_UNDETERMINED 462
 #define IDS_IMPORT_RUNTIME_LANGUAGE_CONFLICT 463
+#define IDS_IMPORT_OPTIONS_OPT_SEPARATOR_SUBTITLES 464
+#define IDS_IMPORT_OPTIONS_TT_SEPARATOR_SUBTITLES 465
 
 // Resource identifier required by Windows shell to display VersionInfo.
 // Without this define, VS_VERSION_INFO in .rc can become a named resource

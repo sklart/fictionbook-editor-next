@@ -59,6 +59,17 @@ try {
     Probe $iso.Root portable dialogs
     $profileA = Join-Path $iso.Root 'ProfileA/Settings/Plugins'
     $first = Profiles $profileA
+    $importSettings = $first['import-epub'] | ConvertFrom-Json
+    if($null -eq $importSettings.values.SeparatorSubtitles -or $importSettings.values.SeparatorSubtitles -ne 0) { throw 'SeparatorSubtitles must be persisted and disabled by default.' }
+    Probe $iso.Root portable ui-import-separator
+    $enabledSettings = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
+    if($enabledSettings.values.SeparatorSubtitles -ne 1) { throw 'The separator option was not enabled through the dialog.' }
+    Probe $iso.Root portable dialogs
+    $reloadedSettings = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
+    if($reloadedSettings.values.SeparatorSubtitles -ne 1) { throw 'The separator option was not retained after reopening.' }
+    Probe $iso.Root portable ui-import-separator
+    $disabledSettings = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
+    if($disabledSettings.values.SeparatorSubtitles -ne 0) { throw 'The separator option was not disabled through the dialog.' }
     foreach($entry in @(@('export-epub','IncludeCoverPage'), @('export-docx','ExportImages'), @('import-epub','ImportImages'))) {
         $settings = $first[$entry[0]] | ConvertFrom-Json
         if($settings.values.($entry[1]) -ne 1) { throw "Default setting was lost by the dialog: $($entry -join '/')" }

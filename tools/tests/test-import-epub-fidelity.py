@@ -294,6 +294,28 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         for title in root.findall('.//f:title', NS):
             self.assertNotEqual(self.text(title).strip(), 'Текст')
 
+    def test_asterisk_separators_are_optional_and_do_not_change_other_paragraphs(self):
+        body = '<p>Before</p><p>***</p><p>* * *</p><p>2 * 3 = 6</p><p>After</p>'
+        default = self.convert(body, navigation=False)
+        self.assertEqual([self.text(p) for p in default.findall('.//f:p', NS) if self.text(p) in ('***', '* * *')], ['***', '* * *'])
+        self.assertFalse(any(self.text(n) in ('***', '* * *') for n in default.findall('.//f:subtitle', NS)))
+        converted = self.convert(body, navigation=False, options=('--separator-subtitles',))
+        self.assertEqual([self.text(n) for n in converted.findall('.//f:subtitle', NS) if self.text(n) in ('***', '* * *')], ['***', '* * *'])
+        self.assert_once(converted, 'Before', '2 * 3 = 6', 'After')
+
+    def test_separator_conversion_preserves_anchor_and_avoids_quote(self):
+        root = self.convert('<p><a href="#divider">Jump</a></p><p id="divider"><em>* * *</em></p>'
+                            '<blockquote><p>***</p></blockquote><p>End</p>', navigation=False,
+                            options=('--separator-subtitles',))
+        subtitles = [n for n in root.findall('.//f:subtitle', NS) if self.text(n) == '* * *']
+        self.assertEqual(len(subtitles), 1)
+        self.assertIsNotNone(subtitles[0].find('.//f:emphasis', NS))
+        self.assertTrue(subtitles[0].get('id'))
+        link = next(n for n in root.findall('.//f:a', NS) if self.text(n) == 'Jump')
+        self.assertEqual(link.get(HREF), '#' + subtitles[0].get('id'))
+        self.assertFalse(any(self.text(n) == '***' for n in root.findall('.//f:subtitle', NS)))
+        self.assert_once(root, 'End')
+
     def test_inline_style_override_does_not_leak_to_next_paragraph(self):
         root = self.convert('<p><em>Italic <span style="font-style: normal">Normal</span> italic again</em></p>'
                             '<p>Plain following paragraph</p>', navigation=False)

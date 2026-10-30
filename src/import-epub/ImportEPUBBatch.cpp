@@ -23,7 +23,7 @@ namespace
         bool importTables, importLists, importPoemsEpigraphs, importSubtitles, splitSectionsByHeadings, preserveLinks;
         bool cleanTypography, importPageBreaks, skipHiddenElements, validateResult, addDiagnosticSection, writeImportLog;
         bool saveFb2Copy, useCssSemanticClasses, removeFootnoteBacklinks, removeServiceSections, writeLogOnWarnings;
-        bool saveIntermediateFb2OnError, keepTempOnError;
+        bool saveIntermediateFb2OnError, keepTempOnError, separatorSubtitles;
         int svgConversionMode;
 
         ConsoleImportOptions()
@@ -31,7 +31,7 @@ namespace
             , importTables(true), importLists(true), importPoemsEpigraphs(true), importSubtitles(true), splitSectionsByHeadings(true), preserveLinks(true)
             , cleanTypography(true), importPageBreaks(true), skipHiddenElements(true), validateResult(true), addDiagnosticSection(false), writeImportLog(false)
             , saveFb2Copy(false), useCssSemanticClasses(true), removeFootnoteBacklinks(true), removeServiceSections(true), writeLogOnWarnings(true)
-            , saveIntermediateFb2OnError(false), keepTempOnError(false), svgConversionMode(SVG_IMPORT_CONVERT_PNG)
+            , saveIntermediateFb2OnError(false), keepTempOnError(false), separatorSubtitles(false), svgConversionMode(SVG_IMPORT_CONVERT_PNG)
         {
         }
     };
@@ -157,6 +157,7 @@ namespace
         ConsolePrintf(L"  --lists / --no-lists\n");
         ConsolePrintf(L"  --links / --no-links\n");
         ConsolePrintf(L"  --subtitles / --no-subtitles\n");
+        ConsolePrintf(L"  --separator-subtitles / --no-separator-subtitles\n");
         ConsolePrintf(L"  --poems / --no-poems\n");
         ConsolePrintf(L"  --pagebreaks / --no-pagebreaks\n");
         ConsolePrintf(L"  --split-sections / --no-split-sections\n");
@@ -1247,6 +1248,10 @@ namespace
             options.importOptions.importSubtitles = true;
         else if (arg.CompareNoCase(L"--no-subtitles") == 0)
             options.importOptions.importSubtitles = false;
+        else if (arg.CompareNoCase(L"--separator-subtitles") == 0)
+            options.importOptions.separatorSubtitles = true;
+        else if (arg.CompareNoCase(L"--no-separator-subtitles") == 0)
+            options.importOptions.separatorSubtitles = false;
         else if (arg.CompareNoCase(L"--poems") == 0)
             options.importOptions.importPoemsEpigraphs = true;
         else if (arg.CompareNoCase(L"--no-poems") == 0)
@@ -1363,12 +1368,19 @@ namespace
         error.Empty();
         statsSummary.Empty();
         quality = Fb2QualityStats();
-        const ImportEpubOptionsV1 apiOptions = MakeImportEpubApiOptions(options);
+        ImportEpubOptionsV2 apiOptions = {};
+        apiOptions.base = MakeImportEpubApiOptions(options);
+        if (options.separatorSubtitles)
+        {
+            apiOptions.base.cbSize = sizeof(apiOptions);
+            apiOptions.base.version = IMPORT_EPUB_API_VERSION_2;
+            apiOptions.separatorSubtitles = 1;
+        }
         BSTR apiFb2 = nullptr;
         BSTR apiError = nullptr;
         ImportEpubRuntimeStatsV1 runtimeStats = {};
         runtimeStats.cbSize = sizeof(runtimeStats);
-        HRESULT hr = g_importEpubBuild(inputPath, &apiOptions, &apiFb2, &runtimeStats, &apiError);
+        HRESULT hr = g_importEpubBuild(inputPath, &apiOptions.base, &apiFb2, &runtimeStats, &apiError);
         if (FAILED(hr))
         {
             if (apiError)
@@ -1512,6 +1524,7 @@ namespace
         AppendBoolOption(cmd, options.importOptions.importLists, L"--lists", L"--no-lists");
         AppendBoolOption(cmd, options.importOptions.preserveLinks, L"--links", L"--no-links");
         AppendBoolOption(cmd, options.importOptions.importSubtitles, L"--subtitles", L"--no-subtitles");
+        AppendBoolOption(cmd, options.importOptions.separatorSubtitles, L"--separator-subtitles", L"--no-separator-subtitles");
         AppendBoolOption(cmd, options.importOptions.importPoemsEpigraphs, L"--poems", L"--no-poems");
         AppendBoolOption(cmd, options.importOptions.importPageBreaks, L"--pagebreaks", L"--no-pagebreaks");
         AppendBoolOption(cmd, options.importOptions.splitSectionsByHeadings, L"--split-sections", L"--no-split-sections");

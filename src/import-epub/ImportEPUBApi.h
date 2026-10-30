@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 #define IMPORT_EPUB_API_VERSION 1u
+#define IMPORT_EPUB_API_VERSION_2 2u
 #define IMPORT_EPUB_SVG_BACKEND_CCH 128u
 
 typedef struct ImportEpubOptionsV1
@@ -43,6 +44,14 @@ typedef struct ImportEpubOptionsV1
     DWORD keepTempOnError;
     LONG svgConversionMode;
 } ImportEpubOptionsV1;
+
+// V2 is an additive, size-checked extension. V1 callers retain their original
+// layout and defaults; older DLLs reject version 2 instead of silently ignoring it.
+typedef struct ImportEpubOptionsV2
+{
+    ImportEpubOptionsV1 base;
+    DWORD separatorSubtitles;
+} ImportEpubOptionsV2;
 
 typedef struct ImportEpubRuntimeStatsV1
 {

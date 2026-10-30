@@ -27,6 +27,8 @@ inline Palette NativePalette(HWND window) {
 inline Palette (*paletteForWindow)(HWND) = NativePalette;
 enum class Action { Inspect, EditSave, EditCancel, DefaultsCancel, PresetDefault, PresetCompat, PresetRich, ReadOnly, Conflict, Corrupt, PositionDefault, PositionMove, PositionVerify };
 inline int plugin = 0, failedLine = 0, stage = 0, pages = 0;
+inline int targetControlId = 0;
+inline bool targetEdited = false;
 inline Action action = Action::Inspect;
 inline bool PositionProbe() { return action == Action::PositionDefault || action == Action::PositionMove || action == Action::PositionVerify; }
 inline HWND dialog = NULL, errorDialog = NULL, editedControl = NULL;
@@ -277,6 +279,8 @@ inline void Validate(HWND window) {
 inline void EditVisible(HWND window) {
     const auto controls = Snapshot(window);
     for(const auto& control : controls) if(::IsWindowVisible(control.first) && ::IsWindowEnabled(control.first) && Checkbox(control.first)) {
+        if(targetControlId != 0 && ::GetDlgCtrlID(control.first) != targetControlId) continue;
+        if(targetControlId != 0) targetEdited = true;
         editedControl = control.first; editedValue = ::SendMessageW(editedControl, BM_GETCHECK, 0, 0) == BST_CHECKED ? BST_UNCHECKED : BST_CHECKED;
         ::SendMessageW(editedControl, BM_SETCHECK, editedValue, 0); return;
     }
@@ -438,12 +442,14 @@ inline void Start(int index, Action requested, const std::wstring& directory, co
     keyboardStage = 0;
     keyboardHook = ::SetWindowsHookExW(WH_GETMESSAGE, KeyboardMessage, NULL, ::GetCurrentThreadId());
     plugin = index; action = requested; captures = directory; prefix = name; profile = settingsPath;
+    targetControlId = 0; targetEdited = false;
     failedLine = stage = pages = 0; dialog = errorDialog = editedControl = NULL; errorSeen = false; originalAttributes = INVALID_FILE_ATTRIBUTES;
     beforeFile.clear(); editedSnapshot.clear(); errorText.clear(); expectedTitle.clear(); expectedConfirmText.clear(); expectedCancelText.clear(); expectedDarkTabs = false;
 }
 inline bool Passed() {
     const bool expectedError = action == Action::ReadOnly || action == Action::Conflict || action == Action::Corrupt;
-    return !failedLine && pages == (plugin == 2 ? 5 : 4) && errorSeen == expectedError && (!expectedError || stage == 2);
+    return !failedLine && pages == (plugin == 2 ? 5 : 4) && errorSeen == expectedError && (!expectedError || stage == 2) &&
+        (targetControlId == 0 || targetEdited);
 }
 #undef FBE_OPTIONS_CHECK
 }

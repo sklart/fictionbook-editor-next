@@ -23,6 +23,7 @@ struct EpubImportOptions
     bool importLists;
     bool importPoemsEpigraphs;
     bool importSubtitles;
+    bool separatorSubtitles;
     bool splitSectionsByHeadings;
     bool preserveLinks;
     bool cleanTypography;
@@ -51,6 +52,7 @@ struct EpubImportOptions
         , importLists(true)
         , importPoemsEpigraphs(true)
         , importSubtitles(true)
+        , separatorSubtitles(false)
         , splitSectionsByHeadings(true)
         , preserveLinks(true)
         , cleanTypography(true)

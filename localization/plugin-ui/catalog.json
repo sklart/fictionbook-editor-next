@@ -4340,6 +4340,44 @@
         "bg-BG": "      <p>[Текстът на главата не е извлечен]</p>\\r\\n"
       }
     },
+    "import_epub.option.separator_subtitles": {
+      "component": "import-epub.options",
+      "resourceId": "IDS_IMPORT_OPTIONS_OPT_SEPARATOR_SUBTITLES",
+      "source": "Преобразовывать разделители из звёздочек в подзаголовки",
+      "translations": {
+        "en-US": "Convert asterisk separators to subtitles",
+        "ru-RU": "Преобразовывать разделители из звёздочек в подзаголовки",
+        "uk-UA": "Перетворювати роздільники із зірочок на підзаголовки",
+        "de-DE": "Sternchen-Trennzeichen in Untertitel umwandeln",
+        "fr-FR": "Convertir les séparateurs d’astérisques en sous-titres",
+        "es-ES": "Convertir separadores de asteriscos en subtítulos",
+        "it-IT": "Converti i separatori di asterischi in sottotitoli",
+        "pl-PL": "Zamieniaj separatory z gwiazdek na podtytuły",
+        "pt-PT": "Converter separadores de asteriscos em subtítulos",
+        "nl-NL": "Sterretjesscheidingstekens omzetten in ondertitels",
+        "cs-CZ": "Převádět oddělovače z hvězdiček na podnadpisy",
+        "bg-BG": "Преобразуване на разделители от звездички в подзаглавия"
+      }
+    },
+    "import_epub.tooltip.separator_subtitles": {
+      "component": "import-epub.options",
+      "resourceId": "IDS_IMPORT_OPTIONS_TT_SEPARATOR_SUBTITLES",
+      "source": "Преобразует отдельные абзацы *** и * * * в подзаголовки. По умолчанию выключено.",
+      "translations": {
+        "en-US": "Convert standalone *** and * * * paragraphs to subtitles. Off by default.",
+        "ru-RU": "Преобразует отдельные абзацы *** и * * * в подзаголовки. По умолчанию выключено.",
+        "uk-UA": "Перетворює окремі абзаци *** і * * * на підзаголовки. Типово вимкнено.",
+        "de-DE": "Wandelt einzelne Absätze *** und * * * in Untertitel um. Standardmäßig deaktiviert.",
+        "fr-FR": "Convertit les paragraphes isolés *** et * * * en sous-titres. Désactivé par défaut.",
+        "es-ES": "Convierte los párrafos aislados *** y * * * en subtítulos. Desactivado por defecto.",
+        "it-IT": "Converte i paragrafi isolati *** e * * * in sottotitoli. Disattivato per impostazione predefinita.",
+        "pl-PL": "Zamienia osobne akapity *** i * * * na podtytuły. Domyślnie wyłączone.",
+        "pt-PT": "Converte parágrafos isolados *** e * * * em subtítulos. Desativado por defeito.",
+        "nl-NL": "Zet afzonderlijke alinea’s *** en * * * om in ondertitels. Standaard uitgeschakeld.",
+        "cs-CZ": "Převádí samostatné odstavce *** a * * * na podnadpisy. Ve výchozím stavu vypnuto.",
+        "bg-BG": "Преобразува самостоятелни абзаци *** и * * * в подзаглавия. Изключено по подразбиране."
+      }
+    },
     "import_epub.runtime.language_undetermined": {
       "component": "import-epub.runtime",
       "resourceId": "IDS_IMPORT_RUNTIME_LANGUAGE_UNDETERMINED",

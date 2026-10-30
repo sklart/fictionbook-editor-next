@@ -3574,6 +3574,35 @@ namespace
         }
     }
 
+    bool IsStandaloneAsteriskSeparator(const MSXML2::IXMLDOMNodePtr& node)
+    {
+        if (!node) return false;
+        CStringW text = NodeText(node);
+        int stars = 0;
+        for (int i = 0; i < text.GetLength(); ++i)
+        {
+            if (text[i] == L'*') ++stars;
+            else if (text[i] != L' ' && text[i] != L'\t' && text[i] != L'\r' && text[i] != L'\n' && text[i] != 0x00a0) return false;
+        }
+        if (stars != 3) return false;
+        std::vector<MSXML2::IXMLDOMNodePtr> images;
+        CollectElementsByLocalName(node, L"img", images);
+        CollectElementsByLocalName(node, L"image", images);
+        CollectElementsByLocalName(node, L"svg", images);
+        CollectElementsByLocalName(node, L"picture", images);
+        CollectElementsByLocalName(node, L"object", images);
+        if (!images.empty()) return false;
+        MSXML2::IXMLDOMNode* raw = nullptr;
+        node->get_parentNode(&raw);
+        for (MSXML2::IXMLDOMNodePtr parent(raw, false); parent; )
+        {
+            const CStringW name = LocalName(parent);
+            if (name == L"blockquote" || name == L"aside" || name == L"li" || name == L"table" || name == L"figure") return false;
+            raw = nullptr; parent->get_parentNode(&raw); parent = MSXML2::IXMLDOMNodePtr(raw, false);
+        }
+        return true;
+    }
+
     bool HasLineBreakElement(const MSXML2::IXMLDOMNodePtr& node)
     {
         if (!node)
@@ -4384,6 +4413,13 @@ namespace
         {
             CStringW paragraph = ChildrenInlineToFb2(node, ctx);
             paragraph.Trim();
+            if (g_options.separatorSubtitles && !ctx.collectingNotes && IsStandaloneAsteriskSeparator(node) && !paragraph.IsEmpty())
+            {
+                CStringW extraMarkers;
+                const CStringW idAttr = OptionalIdAttributeAndExtraMarkersIncludingDescendant(node, ctx, extraMarkers);
+                out += extraMarkers + L"      <subtitle" + idAttr + L">" + paragraph + L"</subtitle>\r\n";
+                return;
+            }
             AppendParagraphNode(out, node, paragraph, ctx);
             return;
         }
@@ -6474,6 +6510,8 @@ namespace
         result.importLists = source.importLists != 0;
         result.importPoemsEpigraphs = source.importPoemsEpigraphs != 0;
         result.importSubtitles = source.importSubtitles != 0;
+        if (source.version == IMPORT_EPUB_API_VERSION_2 && source.cbSize >= sizeof(ImportEpubOptionsV2))
+            result.separatorSubtitles = reinterpret_cast<const ImportEpubOptionsV2&>(source).separatorSubtitles != 0;
         result.splitSectionsByHeadings = source.splitSectionsByHeadings != 0;
         result.preserveLinks = source.preserveLinks != 0;
         result.cleanTypography = source.cleanTypography != 0;
@@ -6505,7 +6543,9 @@ extern "C" HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
         return E_POINTER;
     *apiFb2Xml = nullptr;
     *apiErrorText = nullptr;
-    if (!epubPath || !*epubPath || (apiOptions && (apiOptions->cbSize < sizeof(ImportEpubOptionsV1) || apiOptions->version != IMPORT_EPUB_API_VERSION)) ||
+    if (!epubPath || !*epubPath || (apiOptions && (apiOptions->cbSize < sizeof(ImportEpubOptionsV1) ||
+        (apiOptions->version != IMPORT_EPUB_API_VERSION && apiOptions->version != IMPORT_EPUB_API_VERSION_2) ||
+        (apiOptions->version == IMPORT_EPUB_API_VERSION_2 && apiOptions->cbSize < sizeof(ImportEpubOptionsV2)))) ||
         (apiRuntimeStats && apiRuntimeStats->cbSize < sizeof(ImportEpubRuntimeStatsV1)))
         return E_INVALIDARG;
 

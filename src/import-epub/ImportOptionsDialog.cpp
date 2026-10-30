@@ -38,6 +38,7 @@ namespace
         IDC_OPT_LOG_ON_WARNINGS,
         IDC_OPT_SAVE_INTERMEDIATE_ON_ERROR,
         IDC_OPT_KEEP_TEMP,
+        IDC_OPT_SEPARATOR_SUBTITLES,
         IDC_SVG_LABEL = 2100,
         IDC_SVG_MODE = 2101,
         IDC_DEFAULTS = 2201,
@@ -65,6 +66,7 @@ namespace
         { IDC_OPT_LISTS, IDS_IMPORT_OPTIONS_OPT_LISTS, IDS_IMPORT_OPTIONS_TT_LISTS, &EpubImportOptions::importLists },
         { IDC_OPT_POEMS, IDS_IMPORT_OPTIONS_OPT_POEMS, IDS_IMPORT_OPTIONS_TT_POEMS, &EpubImportOptions::importPoemsEpigraphs },
         { IDC_OPT_SUBTITLES, IDS_IMPORT_OPTIONS_OPT_SUBTITLES, IDS_IMPORT_OPTIONS_TT_SUBTITLES, &EpubImportOptions::importSubtitles },
+        { IDC_OPT_SEPARATOR_SUBTITLES, IDS_IMPORT_OPTIONS_OPT_SEPARATOR_SUBTITLES, IDS_IMPORT_OPTIONS_TT_SEPARATOR_SUBTITLES, &EpubImportOptions::separatorSubtitles },
         { IDC_OPT_SPLIT_HEADINGS, IDS_IMPORT_OPTIONS_OPT_SPLIT_HEADINGS, IDS_IMPORT_OPTIONS_TT_SPLIT_HEADINGS, &EpubImportOptions::splitSectionsByHeadings },
         { IDC_OPT_LINKS, IDS_IMPORT_OPTIONS_OPT_LINKS, IDS_IMPORT_OPTIONS_TT_LINKS, &EpubImportOptions::preserveLinks },
         { IDC_OPT_CLEAN_TYPOGRAPHY, IDS_IMPORT_OPTIONS_OPT_CLEAN_TYPOGRAPHY, IDS_IMPORT_OPTIONS_TT_CLEAN_TYPOGRAPHY, &EpubImportOptions::cleanTypography },
@@ -94,6 +96,7 @@ namespace
         IDC_OPT_LISTS,
         IDC_OPT_POEMS,
         IDC_OPT_SUBTITLES,
+        IDC_OPT_SEPARATOR_SUBTITLES,
         IDC_OPT_PAGE_BREAKS
     };
 
@@ -686,6 +689,7 @@ void LoadImportOptions(EpubImportOptions& options, FbePluginSettings::Revision* 
     LoadBoolValue(key, L"ImportLists", options.importLists);
     LoadBoolValue(key, L"ImportPoemsEpigraphs", options.importPoemsEpigraphs);
     LoadBoolValue(key, L"ImportSubtitles", options.importSubtitles);
+    LoadBoolValue(key, L"SeparatorSubtitles", options.separatorSubtitles);
     LoadBoolValue(key, L"SplitSectionsByHeadings", options.splitSectionsByHeadings);
     LoadBoolValue(key, L"PreserveLinks", options.preserveLinks);
     LoadBoolValue(key, L"CleanTypography", options.cleanTypography);
@@ -726,6 +730,7 @@ HRESULT SaveImportOptions(const EpubImportOptions& options, const FbePluginSetti
     SaveBoolValue(key, L"ImportLists", options.importLists);
     SaveBoolValue(key, L"ImportPoemsEpigraphs", options.importPoemsEpigraphs);
     SaveBoolValue(key, L"ImportSubtitles", options.importSubtitles);
+    SaveBoolValue(key, L"SeparatorSubtitles", options.separatorSubtitles);
     SaveBoolValue(key, L"SplitSectionsByHeadings", options.splitSectionsByHeadings);
     SaveBoolValue(key, L"PreserveLinks", options.preserveLinks);
     SaveBoolValue(key, L"CleanTypography", options.cleanTypography);
