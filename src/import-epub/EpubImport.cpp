@@ -107,9 +107,17 @@ namespace
         unsigned indexedElements = 0, structuralLookups = 0;
         unsigned residualFragments = 0, recoveredFragments = 0;
         std::map<std::wstring, unsigned> xhtmlLoads;
+        std::map<std::wstring, MSXML2::IXMLDOMDocument2Ptr> xhtmlCache;
+        unsigned long long xhtmlCacheBytes = 0;
+        unsigned xhtmlCacheHits = 0;
         int generatedBookTitleOffset = -1, generatedBookTitleLength = 0;
     };
     thread_local ContentInventory g_content;
+
+    struct XhtmlCacheScope
+    {
+        ~XhtmlCacheScope() { g_content.xhtmlCache.clear(); g_content.xhtmlCacheBytes = 0; }
+    };
 
     CStringW UniqueContentId(const CStringW& base)
     {
@@ -1234,10 +1242,26 @@ namespace
 
     bool LoadXmlFile(const CStringW& path, MSXML2::IXMLDOMDocument2Ptr& dom, CStringW& errorText)
     {
-        if (IsLikelyHtmlXmlDocumentPath(path)) {
-            CStringW key(path); key.MakeLower();
-            ++g_content.xhtmlLoads[std::wstring(key.GetString())];
+        const bool htmlMode = IsLikelyHtmlXmlDocumentPath(path);
+        CStringW key(path); key.MakeLower();
+        const std::wstring cacheKey(key.GetString());
+        if (htmlMode) {
+            const auto cached = g_content.xhtmlCache.find(cacheKey);
+            if (cached != g_content.xhtmlCache.end()) { dom = cached->second; ++g_content.xhtmlCacheHits; return true; }
+            ++g_content.xhtmlLoads[cacheKey];
         }
+        auto remember = [&]() {
+            // The inventory, note and rendering passes only read source DOMs.
+            // Bound both the number of COM documents and their input bytes;
+            // over-budget documents keep the original load-on-each-pass path.
+            const unsigned long long limit = 2ULL * 1024 * 1024;
+            if (!htmlMode || !dom || g_content.xhtmlCache.size() >= 128) return;
+            WIN32_FILE_ATTRIBUTE_DATA attributes = {};
+            if (!::GetFileAttributesExW(path, GetFileExInfoStandard, &attributes)) return;
+            const unsigned long long size = (static_cast<unsigned long long>(attributes.nFileSizeHigh) << 32) | attributes.nFileSizeLow;
+            if (size > limit || g_content.xhtmlCacheBytes > limit - size) return;
+            if (g_content.xhtmlCache.emplace(cacheKey, dom).second) g_content.xhtmlCacheBytes += size;
+        };
         HRESULT hr = CreateMsxmlDom(dom);
         if (FAILED(hr))
         {
@@ -1260,14 +1284,13 @@ namespace
             // loading the file as text and applying a conservative XML-safe
             // normalization. For OPF/container XML the same fallback also fixes
             // common XML 1.1 declarations that MSXML 6.0 rejects as "bad version".
-            const bool htmlMode = IsLikelyHtmlXmlDocumentPath(path);
-            if (LoadXmlFileAfterMarkupSanitizing(path, htmlMode, dom, errorText))
-                return true;
+            if (LoadXmlFileAfterMarkupSanitizing(path, htmlMode, dom, errorText)) { remember(); return true; }
 
             errorText.Format(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_XML_LOAD_FAILED, L"MSXML could not read the XML file:\r\n%s\r\n%s")), path.GetString(), reason.GetString());
             return false;
         }
 
+        remember();
         return true;
     }
 
@@ -6610,6 +6633,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     g_options = options;
     g_runtimeStats = EpubImportRuntimeStats();
     g_content = ContentInventory();
+    XhtmlCacheScope xhtmlCacheScope;
     outFb2Xml.Empty();
     errorText.Empty();
 
@@ -6865,6 +6889,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     xhtmlAccounting.Format(L"XHTML load calls: total=%u unique=%u max-per-file=%u\r\n", xhtmlLoadTotal,
         static_cast<unsigned>(g_content.xhtmlLoads.size()), xhtmlLoadMax);
     log.Add(xhtmlAccounting);
+    log.AddFormatInt(L"XHTML cache hits: %d", static_cast<int>(g_content.xhtmlCacheHits));
 
     if (options.importCover)
     {

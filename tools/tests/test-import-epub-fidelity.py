@@ -4,6 +4,7 @@ import base64
 import json
 import os
 import re
+import shutil
 from pathlib import Path
 import subprocess
 import tempfile
@@ -744,10 +745,11 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertIsNotNone(paragraph.find('.//f:emphasis', NS))
 
     def test_unsupported_inline_font_value_warns_without_losing_supported_property(self):
-        root = self.convert('<p><span style="font-style: italic !important; font-weight: 700">'
+        root = self.convert('<p><span style="font-style: oblique 20deg; font-weight: 700">'
                             'Text retained</span></p>', navigation=False)
         paragraph = next(p for p in root.findall('.//f:p', NS) if 'Text retained' in self.text(p))
         self.assertIsNotNone(paragraph.find('.//f:strong', NS))
+        self.assertIsNone(paragraph.find('.//f:emphasis', NS))
         self.assertIn('Unsupported CSS font declaration', self.diagnostics)
 
     def test_formatted_inline_link_image_and_reset_preserve_content(self):
@@ -1433,7 +1435,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
 
     def test_xhtml_load_accounting_reports_distinct_processing_passes(self):
         extra = {'Text/next.xhtml': ('next', 'application/xhtml+xml', '<p>Second chapter</p>')}
-        for options, expected in (([], (6, 2, 3)), (['--no-notes'], (4, 2, 2))):
+        for options, expected, hits in (([], (2, 2, 1), 4), (['--no-notes'], (2, 2, 1), 2)):
             with self.subTest(options=options):
                 root = self.convert('<p>First chapter</p>', extra=extra, spine=['chapter', 'next'],
                                     navigation=False, options=options)
@@ -1441,6 +1443,44 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 found = re.search(r'XHTML load calls: total=(\d+) unique=(\d+) max-per-file=(\d+)', self.diagnostics)
                 self.assertIsNotNone(found, self.diagnostics)
                 self.assertEqual(tuple(map(int, found.groups())), expected)
+                self.assertIn(f'XHTML cache hits: {hits}', self.diagnostics)
+
+    def test_xhtml_cache_document_limit_falls_back_without_content_loss(self):
+        extra = {f'Text/chapter-{i}.xhtml': (f'part{i}', 'application/xhtml+xml', f'<p>Unique chapter {i:03d} end.</p>')
+                 for i in range(129)}
+        root = self.convert('<p>First chapter</p>', extra=extra,
+                            spine=['chapter'] + [f'part{i}' for i in range(129)],
+                            navigation=False, options=['--no-notes'])
+        self.assert_once(root, 'First chapter', 'Unique chapter 128 end.')
+        found = re.search(r'XHTML load calls: total=(\d+) unique=(\d+) max-per-file=(\d+)', self.diagnostics)
+        self.assertIsNotNone(found, self.diagnostics)
+        self.assertEqual(tuple(map(int, found.groups())), (132, 130, 2))
+        self.assertIn('XHTML cache hits: 128', self.diagnostics)
+
+    def test_xhtml_cache_byte_limit_falls_back_without_content_loss(self):
+        root = self.convert('<p>Large source remains.</p><!--' + ('a' * (2 * 1024 * 1024)) + '-->',
+                            navigation=False, options=['--no-notes'])
+        self.assert_once(root, 'Large source remains.')
+        self.assertIn('XHTML load calls: total=2 unique=1 max-per-file=2', self.diagnostics)
+        self.assertIn('XHTML cache hits: 0', self.diagnostics)
+
+    def test_xhtml_cache_does_not_leak_between_batch_imports(self):
+        temp = tempfile.TemporaryDirectory(prefix='epub-cache-batch-')
+        self.folders.append(temp)
+        inputs = Path(temp.name) / 'input'; inputs.mkdir()
+        outputs = Path(temp.name) / 'output'; outputs.mkdir()
+        for index, text in enumerate(('First unique body.', 'Second unique body.')):
+            self.convert(f'<p>{text}</p>', navigation=False)
+            shutil.copyfile(self.last_folder / 'case.epub', inputs / f'book-{index}.epub')
+        result = subprocess.run([str(BATCH), '--batch', str(inputs), str(outputs), '--no-report'],
+                                capture_output=True, encoding='utf-8', errors='replace', timeout=45)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        for index, expected in enumerate(('First unique body.', 'Second unique body.')):
+            path = outputs / f'book-{index}.fb2'
+            root = ET.parse(path).getroot()
+            self.outputs.append(path)
+            self.assert_once(root, expected)
+            self.assertNotIn('Second unique body.' if index == 0 else 'First unique body.', self.text(root))
 
     def test_standalone_attribution_preserves_text_and_valid_structure(self):
         root = self.convert('<h1>Chapter</h1><p>Quotation text.</p><p id="attribution" class="text-author"><em>Author Name</em></p><p>Following text. <a href="#attribution">Attribution link</a></p>')
