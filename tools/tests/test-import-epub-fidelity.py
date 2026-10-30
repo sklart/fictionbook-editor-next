@@ -785,6 +785,18 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assertEqual(date.text, stamp)
                 self.assertIsNone(date.get('value'))
 
+    def test_publication_year_requires_a_valid_source_date(self):
+        for version in ('2.0', '3.0'):
+            for stamp, expected in (('2020', '2020'), ('2020-02', '2020'),
+                                    ('2020-02-29T23:59:59-05:00', '2020'),
+                                    ('circa 1999', None), ('2020garbage', None),
+                                    ('2020-13', None), ('2021-02-29', None), ('0000', None)):
+                with self.subTest(version=version, stamp=stamp):
+                    root = self.convert('<p>Content</p>', date=stamp, version=version)
+                    self.assertEqual(root.find('.//f:title-info/f:date', NS).text, stamp)
+                    year = root.find('.//f:publish-info/f:year', NS)
+                    self.assertEqual(year.text if year is not None else None, expected)
+
     def test_relative_encoded_images(self):
         root = self.convert('<p>Image<img src="../Images/%D1%80%D0%B8%D1%81%20one.png"/></p>',
                             {'Images/рис one.png': ('pic', 'image/png', PNG)})

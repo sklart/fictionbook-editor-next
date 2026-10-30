@@ -5420,6 +5420,22 @@ namespace
         return date;
     }
 
+    CStringW PublicationYear(const CStringW& source)
+    {
+        CStringW value(source); value.Trim();
+        const int length = value.GetLength();
+        if (length < 4) return CStringW();
+        for (int i = 0; i < 4; ++i)
+            if (value[i] < L'0' || value[i] > L'9') return CStringW();
+        if (_wtoi(value.Left(4)) == 0) return CStringW();
+        if (length == 4) return value;
+        if (length == 7 && value[4] == L'-' && value[5] >= L'0' && value[5] <= L'9' && value[6] >= L'0' && value[6] <= L'9') {
+            const int month = _wtoi(value.Mid(5, 2));
+            return month >= 1 && month <= 12 ? value.Left(4) : CStringW();
+        }
+        return IsoCalendarDate(value).IsEmpty() ? CStringW() : value.Left(4);
+    }
+
     void SplitPersonName(const CStringW& fullName, std::vector<CStringW>& parts)
     {
         parts.clear();
@@ -5761,13 +5777,14 @@ namespace
             xml += L"      <id>" + GuidString() + L"</id>\r\n";
         xml += L"      <version>1.0</version>\r\n";
         xml += L"    </document-info>\r\n";
-        if (!package.publisher.IsEmpty() || !package.date.IsEmpty() || !package.isbn.IsEmpty())
+        const CStringW publicationYear = PublicationYear(package.date);
+        if (!package.publisher.IsEmpty() || !publicationYear.IsEmpty() || !package.isbn.IsEmpty())
         {
             xml += L"    <publish-info>\r\n";
             if (!package.publisher.IsEmpty())
                 xml += L"      <publisher>" + XmlEscape(package.publisher) + L"</publisher>\r\n";
-            if (!package.date.IsEmpty() && package.date.GetLength() >= 4)
-                xml += L"      <year>" + XmlEscape(package.date.Left(4)) + L"</year>\r\n";
+            if (!publicationYear.IsEmpty())
+                xml += L"      <year>" + publicationYear + L"</year>\r\n";
             if (!package.isbn.IsEmpty())
                 xml += L"      <isbn>" + XmlEscape(package.isbn) + L"</isbn>\r\n";
             xml += L"    </publish-info>\r\n";
