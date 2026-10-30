@@ -1616,6 +1616,22 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assertEqual(positions, sorted(positions))
                 self.assertTrue(any(n.get('id') == 'quotation' for n in cites))
 
+    def test_content_filenames_containing_service_words_are_not_skipped(self):
+        extra = {
+            'Text/navigator.xhtml': ('navchapter', 'application/xhtml+xml', '<p>Navigation story content</p>'),
+            'Text/stockroom.xhtml': ('tocchapter', 'application/xhtml+xml', '<p>Stockroom story content</p>'),
+            'Text/discovery.xhtml': ('coverchapter', 'application/xhtml+xml', '<p>Discovery story content</p>'),
+            'Text/titlepage-diary.xhtml': ('titlechapter', 'application/xhtml+xml', '<p>Diary story content</p>'),
+        }
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                root = self.convert('<p>Opening content</p>', extra, version=version,
+                                    spine=['chapter', 'navchapter', 'tocchapter', 'coverchapter', 'titlechapter'],
+                                    options=['--skip-service-pages', '--remove-service-sections'])
+                for phrase in ('Opening content', 'Navigation story content', 'Stockroom story content',
+                               'Discovery story content', 'Diary story content'):
+                    self.assertEqual(self.text(root).count(phrase), 1)
+
     def test_epigraph_attribution_structure_matrix(self):
         cases = (
             '<section><div class="epigraph"><p>First quotation</p><p class="text-author">First author</p></div></section>',

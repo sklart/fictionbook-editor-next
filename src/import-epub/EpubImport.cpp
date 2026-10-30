@@ -5137,6 +5137,9 @@ namespace
         props.MakeLower();
         CStringW id = item.id;
         id.MakeLower();
+        CStringW stem = FileNameOnly(href);
+        const int extension = stem.ReverseFind(L'.');
+        if (extension >= 0) stem = stem.Left(extension);
 
         if (g_options.removeServiceSections &&
             package.guideServiceDocuments.find(std::wstring(item.absPath.GetString())) != package.guideServiceDocuments.end())
@@ -5148,22 +5151,19 @@ namespace
             return true;
         if (item.mediaType.CompareNoCase(L"application/x-dtbncx+xml") == 0)
             return true;
-        if (href.Find(L"nav") >= 0 || href.Find(L"toc") >= 0 || href.Find(L"contents") >= 0)
+        if (stem == L"nav" || stem == L"toc" || stem == L"contents")
             return true;
 
         if (g_options.removeServiceSections)
         {
-            if (href.Find(L"titlepage") >= 0 || href.Find(L"title-page") >= 0 ||
-                href.Find(L"landmarks") >= 0 || href.Find(L"page-list") >= 0 ||
-                href.Find(L"copyright") >= 0 || href.Find(L"calibre") >= 0)
+            if (stem == L"titlepage" || stem == L"title-page" || stem == L"landmarks" ||
+                stem == L"page-list" || stem == L"copyright" || stem == L"calibre")
                 return true;
-            if (id.Find(L"titlepage") >= 0 || id.Find(L"landmarks") >= 0 || id.Find(L"pagelist") >= 0)
+            if (id == L"titlepage" || id == L"landmarks" || id == L"pagelist")
                 return true;
         }
 
         if (item.id.CompareNoCase(L"cover") == 0)
-            return true;
-        if (item.properties.Find(L"cover") >= 0)
             return true;
         if (!package.coverId.IsEmpty())
         {
@@ -5171,7 +5171,7 @@ namespace
             if (cover && item.href.CompareNoCase(cover->href) == 0)
                 return true;
         }
-        return href.Find(L"cover") >= 0 && (href.Right(6) == L".xhtml" || href.Right(5) == L".html");
+        return stem == L"cover" && (href.Right(6) == L".xhtml" || href.Right(5) == L".html");
     }
 
     CStringW BuildNotesBodyXml(const std::vector<EpubNote>& notes)
