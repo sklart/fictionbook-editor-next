@@ -4,6 +4,7 @@
 #include "../../utils/utils.h"
 #include "..\\..\\Settings.h"
 #include "SettingsDlg.h"
+#include "EditorFontFamilies.h"
 #include "../SettingsEditSession.h"
 #include "../SettingsStore.h"
 #include "../SettingsPaths.h"
@@ -53,10 +54,22 @@ CSettingsDlg::~CSettingsDlg()
 
 LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
+	const bool measure = RuntimeTests::IsScenario(L"community-settings-search-performance");
+	LARGE_INTEGER frequency = {}, last = {};
+	CStringA measurements;
+	if (measure) { ::QueryPerformanceFrequency(&frequency); ::QueryPerformanceCounter(&last); }
+	auto stage = [&](const char* name) {
+		if (!measure) return;
+		LARGE_INTEGER now = {}; ::QueryPerformanceCounter(&now);
+		measurements.AppendFormat("%s\t%.3f\r\n", name, (now.QuadPart - last.QuadPart) * 1000.0 / frequency.QuadPart);
+		last = now;
+	};
 	CAxDialogImpl<CSettingsDlg>::OnInitDialog(uMsg, wParam, lParam, bHandled);
 	ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	ThemeManager::ApplyToWindow(m_hWnd);
+	stage("dialog_theme");
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_TOOLS_SETTINGS);
+	stage("dialog_localization");
 	m_navigation = GetDlgItem(IDC_SETTINGS_NAV);
 	::SetWindowSubclass(m_navigation, NavigationKeysSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
 	const struct { LPCWSTR key; LPCWSTR fallback; } navigationItems[] = {
@@ -72,22 +85,31 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	for(int i = 0; i < _countof(navigationItems); ++i)
 		m_navigation.AddString(FbeLoadRuntimeStringByKey(navigationItems[i].key, navigationItems[i].fallback));
 
+	EditorFontFamilies::ScopedCache fontCache;
 	m_generalPage = new CSettingsGeneralPage;
 	m_generalPage->Create(m_hWnd);
+	stage("general_page");
 	m_advancedPage = new CSettingsAdvancedPage;
 	m_advancedPage->Create(m_hWnd);
+	stage("advanced_page");
 	m_editorPage = new CSettingsEditorPage;
 	m_editorPage->Create(m_hWnd);
+	stage("editor_page");
 	m_spellingPage = new CSettingsSpellingPage(m_legacyDictionaryDirectory);
 	m_spellingPage->Create(m_hWnd);
+	stage("spelling_page");
 	m_imagesPage = new CSettingsImagesPage;
 	m_imagesPage->Create(m_hWnd);
+	stage("images_page");
 	m_sourcePage = new CSettingsSourcePage;
 	m_sourcePage->Create(m_hWnd);
+	stage("source_page");
 	m_hotkeysPage = new CSettingsHotkeysDlg;
 	m_hotkeysPage->Create(m_hWnd);
+	stage("hotkeys_page");
 	m_wordsPage = new CSettingsWordsDlg;
 	m_wordsPage->Create(m_hWnd);
+	stage("words_page");
 	// The pages are created after the dialog itself.  Apply the selected
 	// interface palette before any page becomes visible, preventing the light
 	// system background from flashing before a later theme refresh.
@@ -98,6 +120,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	};
 	for(HWND page : pagesToTheme)
 		ThemeManager::ApplyToWindow(page);
+	stage("page_themes");
 
 	m_pages[PageIndex(SettingsPageId::General)] = m_generalPage;
 	m_pages[PageIndex(SettingsPageId::Editor)] = m_editorPage;
@@ -187,6 +210,17 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	// Establish the modal dialog's initial focus once, after all pages/layouts
 	// are ready; FALSE prevents the dialog manager from assigning it again.
 	m_navigation.SetFocus();
+	stage("layout_and_focus");
+	if (measure)
+	{
+		wchar_t path[32768] = {};
+		const DWORD length = ::GetEnvironmentVariableW(L"FBE_SETTINGS_PERF_STAGE_FILE", path, _countof(path));
+		if (length && length < _countof(path))
+		{
+			const HANDLE file = ::CreateFileW(path, FILE_APPEND_DATA, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+			if (file != INVALID_HANDLE_VALUE) { DWORD written = 0; ::WriteFile(file, static_cast<LPCSTR>(measurements), measurements.GetLength(), &written, NULL); ::CloseHandle(file); }
+		}
+	}
 	return 0;
 }
 
