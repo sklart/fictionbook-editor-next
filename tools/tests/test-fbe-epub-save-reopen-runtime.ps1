@@ -2,9 +2,10 @@
 param(
     [Parameter(Mandatory)][string]$InputFb2,
     [Parameter(Mandatory)][string]$OutputFb2,
-    [string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe')
+    [string]$FbeExe
 )
 $ErrorActionPreference = 'Stop'
+if (-not $FbeExe) { $FbeExe = Join-Path $PSScriptRoot '../../out/Release/FBE.exe' }
 $inputPath = (Resolve-Path -LiteralPath $InputFb2).Path
 $outputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputFb2)
 if ($inputPath -eq $outputPath -or (Test-Path -LiteralPath $outputPath)) { throw 'Output must be a new file distinct from the input.' }
