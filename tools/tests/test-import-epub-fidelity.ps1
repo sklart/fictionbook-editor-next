@@ -1,6 +1,7 @@
 [CmdletBinding()]
-param([string]$BatchPath=(Join-Path $PSScriptRoot '../../out/Release/ImportEPUBBatch.exe'))
+param([string]$BatchPath)
 $ErrorActionPreference='Stop'
+if (!$BatchPath) { $BatchPath = Join-Path $PSScriptRoot '../../out/Release/ImportEPUBBatch.exe' }
 if (!(Test-Path -LiteralPath $BatchPath -PathType Leaf)) {throw "Missing ImportEPUBBatch.exe: $BatchPath"}
 $launcher=Get-Command py.exe -ErrorAction SilentlyContinue
 if (!$launcher) {throw 'The short EPUB fixtures require the Windows Python 3 launcher (py.exe)'}
