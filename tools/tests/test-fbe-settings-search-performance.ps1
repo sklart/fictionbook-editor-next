@@ -1,13 +1,15 @@
 [CmdletBinding()]
 param(
-    [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
-    [string]$EvidenceDirectory = (Join-Path $PSScriptRoot '..\..\build\settings-search-performance'),
+    [string]$FbeExe,
+    [string]$EvidenceDirectory,
     [int[]]$ParagraphCounts = @(100, 3000, 12000),
     [string]$InputFb2,
     [switch]$AllowMissingStageMeasurements,
     [ValidateRange(1,600)][int]$TimeoutSeconds = 180
 )
 $ErrorActionPreference = 'Stop'
+if (-not $FbeExe) { $FbeExe = Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe' }
+if (-not $EvidenceDirectory) { $EvidenceDirectory = Join-Path $PSScriptRoot '..\..\build\settings-search-performance' }
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $evidence = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EvidenceDirectory)
 New-Item -ItemType Directory -Path $evidence -Force | Out-Null
