@@ -2,9 +2,10 @@
 param([Parameter(Mandatory)][string]$FbeExe,
       [ValidateSet('square', 'small-square', 'circle', 'none')][string[]]$Modes = @('square', 'small-square', 'circle', 'none'),
       [ValidateSet('plain', 'emphasis', 'link')][string]$Context = 'plain',
-      [string]$ArtifactDirectory = (Join-Path $PSScriptRoot '..\..\build\community-feedback-nbsp'))
+      [string]$ArtifactDirectory)
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+if (-not $ArtifactDirectory) { $ArtifactDirectory = Join-Path $root 'build\community-feedback-nbsp' }
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $ArtifactDirectory = [IO.Path]::GetFullPath($ArtifactDirectory)
 New-Item -ItemType Directory -Force -Path $ArtifactDirectory | Out-Null
@@ -37,7 +38,7 @@ try {
             if (Test-Path -LiteralPath $saved) { Copy-Item -LiteralPath $saved -Destination (Join-Path $ArtifactDirectory "$Context-$name.fb2") -Force }
             $expectedMode = '{0:X4}' -f [int]$marker
             if (-not (Test-Path -LiteralPath $saved)) { throw "$name failed before save: $text" }
-            [xml]$xml = Get-Content -Raw -LiteralPath $saved
+            $xml = [Xml.XmlDocument]::new(); $xml.Load($saved)
             $ns = [Xml.XmlNamespaceManager]::new($xml.NameTable); $ns.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
             $value = $xml.SelectSingleNode('//fb:p[@id="nbsp-probe"]', $ns).InnerText
             if ($Context -eq 'emphasis' -and -not $xml.SelectSingleNode('//fb:p[@id="nbsp-probe"]/fb:emphasis', $ns)) { throw 'Emphasis was lost.' }
