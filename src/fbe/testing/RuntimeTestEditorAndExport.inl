@@ -2519,7 +2519,7 @@
 				abs(static_cast<int>((value >> 8) & 255) - 50) <= 1 && abs(static_cast<int>(value & 255) - 20) <= 1 && partialAlphaPassed;
 		}
 		if(partialScaled) ::DeleteObject(partialScaled); if(partialSource) ::DeleteObject(partialSource);
-		CStringA header("dpi\tsize\ttransparent_corners\tvisible_pixels\topaque_black_pixels\tmagenta_pixels\tinvalid_premultiplied_pixels\tmax_color_error\tcolor_fidelity_passed\tstandard_icons_passed\tstandard_failure\tstandard_intermediate_alpha_pixels\tstandard_silhouette_passed\tstandard_thin_line_width\tstandard_image_list_has_mask\tpartial_alpha_passed\tpassed\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		CStringA header("dpi\tsize\ttransparent_corners\tvisible_pixels\topaque_black_pixels\tmagenta_pixels\tinvalid_premultiplied_pixels\tmax_color_error\tcolor_fidelity_passed\tstandard_icons_passed\tstandard_failure\tstandard_intermediate_alpha_pixels\tstandard_silhouette_passed\tstandard_thin_line_width\tstandard_image_list_has_mask\tpartial_alpha_passed\tdark_supported\thigh_contrast\tpassed\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		const UINT dpis[] = { 96, 120, 144, 168, 192 }; bool passed = true;
 		for(size_t index = 0; index < _countof(dpis); ++index)
 		{
@@ -2528,7 +2528,7 @@
 			long visible = 0, opaqueBlack = 0, magenta = 0, invalidPremultiplied = 0; bool transparentCorners = ready;
 			if(ready) { const DWORD* pixels = static_cast<const DWORD*>(scaledInfo.dsBm.bmBits); const int corners[] = { 0, targetSize - 1, targetSize * (targetSize - 1), targetSize * targetSize - 1 }; for(size_t corner = 0; corner < _countof(corners); ++corner) transparentCorners = transparentCorners && (pixels[corners[corner]] >> 24) == 0; for(int pixel = 0; pixel < targetSize * targetSize; ++pixel) { const DWORD value = pixels[pixel], rgb = value & 0x00FFFFFF, alpha = value >> 24; if(alpha) ++visible; if(alpha == 0xFF && rgb == 0) ++opaqueBlack; if(alpha && rgb == 0x00FF00FF) ++magenta; if(alpha > 0 && alpha < 0xFF && (((rgb >> 16) & 0xFF) > alpha || ((rgb >> 8) & 0xFF) > alpha || (rgb & 0xFF) > alpha)) ++invalidPremultiplied; } }
 			const DWORD center = ready ? static_cast<const DWORD*>(scaledInfo.dsBm.bmBits)[(targetSize / 2) * targetSize + targetSize / 2] : 0; const int centerAlpha = center >> 24, centerRed = (center >> 16) & 0xFF, centerGreen = (center >> 8) & 0xFF, centerBlue = center & 0xFF; const int maxColorError = max(abs(centerRed - 210), max(abs(centerGreen - 150), abs(centerBlue - 80))); const bool colorFidelity = centerAlpha == 0xFF && maxColorError <= 2 && (center & 0x00FFFFFF) != 0x00FFFFFF; int standardFailure = 0, standardSilhouettePassed = 0, standardImageListHasMask = -1, standardThinLineWidth = -1; long standardIntermediateAlpha = -1; const bool standardIconsPassed = standardIconsPass(dpis[index], standardFailure, standardIntermediateAlpha, standardSilhouettePassed, standardImageListHasMask, standardThinLineWidth); const bool scriptsIconsPassed = compactAndScriptIconsPass(dpis[index], IDR_SCRIPTS, 24, 1, L"scripts"); const bool bottomIconsPassed = compactAndScriptIconsPass(dpis[index], IDR_DOCUMENT_TREE, 24, 5, L"document-tree"); const bool rowPassed = ready && transparentCorners && visible > 0 && opaqueBlack == 0 && magenta == 0 && invalidPremultiplied == 0 && colorFidelity && standardIconsPassed && scriptsIconsPassed && bottomIconsPassed && standardSilhouettePassed && standardImageListHasMask == 0;
-			CStringA row; row.Format("%u\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%d\t%d\t%d\t%d\t%d\r\n", dpis[index], targetSize, transparentCorners ? 1 : 0, visible, opaqueBlack, magenta, invalidPremultiplied, maxColorError, colorFidelity ? 1 : 0, standardIconsPassed ? 1 : 0, standardFailure, standardIntermediateAlpha, standardSilhouettePassed, standardThinLineWidth, standardImageListHasMask, partialAlphaPassed ? 1 : 0, rowPassed && partialAlphaPassed ? 1 : 0); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); if(scaled) ::DeleteObject(scaled); passed = passed && rowPassed && partialAlphaPassed;
+			CStringA row; row.Format("%u\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%d\t%d\t%d\t%d\t%d\t%d\t%d\r\n", dpis[index], targetSize, transparentCorners ? 1 : 0, visible, opaqueBlack, magenta, invalidPremultiplied, maxColorError, colorFidelity ? 1 : 0, standardIconsPassed ? 1 : 0, standardFailure, standardIntermediateAlpha, standardSilhouettePassed, standardThinLineWidth, standardImageListHasMask, partialAlphaPassed ? 1 : 0, ThemeManager::IsDarkModeSupported() ? 1 : 0, ThemeManager::IsHighContrast() ? 1 : 0, rowPassed && partialAlphaPassed ? 1 : 0); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); if(scaled) ::DeleteObject(scaled); passed = passed && rowPassed && partialAlphaPassed;
 		}
 		for(InterfaceTheme theme : {INTERFACE_THEME_LIGHT, INTERFACE_THEME_DARK}) {
 			if(theme == INTERFACE_THEME_DARK && !ThemeManager::IsDarkModeSupported()) continue;
@@ -2540,6 +2540,18 @@
 				const bool saved = created && saveStandardToolbarSheet(images, size, dpi,
 					theme == INTERFACE_THEME_DARK ? L"toolbar-32-dark" : L"toolbar-32-light", ThemeManager::ControlColor());
 				passed = saved && passed;
+				if(images) images.Destroy();
+			}
+		}
+		if(ThemeManager::IsDarkModeSupported() && !ThemeManager::IsHighContrast()) {
+			for(int index = 0; index < INTERFACE_PALETTE_COUNT; ++index) {
+				const InterfacePalette palette = static_cast<InterfacePalette>(index);
+				if(!ThemeManager::NamedPaletteIsDark(palette)) continue;
+				const bool applied = ThemeManager::SetNamedPalette(palette);
+				CImageList images;
+				const bool created = applied && ToolbarFactory::CreateCommandToolbarImages(images, IDR_MAINFRAME, 96, 32);
+				CString name; name.Format(L"toolbar-32-named-%s", ThemeManager::NamedPaletteId(palette));
+				passed = created && saveStandardToolbarSheet(images, 32, 96, name, ThemeManager::ControlColor()) && passed;
 				if(images) images.Destroy();
 			}
 		}

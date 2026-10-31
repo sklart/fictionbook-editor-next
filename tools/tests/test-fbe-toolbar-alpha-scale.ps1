@@ -27,6 +27,7 @@ try {
     $rows = @(Import-Csv -LiteralPath $report -Delimiter "`t")
     $expected = @{ 96 = 24; 120 = 30; 144 = 36; 168 = 42; 192 = 48 }
     if($rows.Count -ne $expected.Count) { throw "Expected $($expected.Count) alpha-scale rows, got $($rows.Count)." }
+    if($rows[0].dark_supported -notin @('0','1') -or $rows[0].high_contrast -notin @('0','1')) { throw 'Missing platform or high-contrast state in alpha-scale report.' }
     foreach($dpi in $expected.Keys) {
         $row = @($rows | Where-Object dpi -eq $dpi)
         if($row.Count -ne 1 -or [int]$row[0].size -ne $expected[$dpi] -or [int]$row[0].transparent_corners -ne 1 -or [int]$row[0].visible_pixels -le 0 -or [int]$row[0].opaque_black_pixels -ne 0 -or [int]$row[0].magenta_pixels -ne 0 -or [int]$row[0].invalid_premultiplied_pixels -ne 0 -or [int]$row[0].max_color_error -gt 2 -or [int]$row[0].color_fidelity_passed -ne 1 -or [int]$row[0].standard_icons_passed -ne 1 -or [int]$row[0].standard_failure -ne 0 -or [int]$row[0].standard_intermediate_alpha_pixels -ne 0 -or [int]$row[0].standard_silhouette_passed -ne 1 -or [int]$row[0].standard_thin_line_width -le 0 -or [int]$row[0].standard_thin_line_width -gt [math]::Ceiling($expected[$dpi] / 24.0) -or [int]$row[0].standard_image_list_has_mask -ne 0 -or [int]$row[0].partial_alpha_passed -ne 1 -or [int]$row[0].passed -ne 1) { throw "ARGB alpha-scale contract failed at $dpi DPI." }
@@ -43,15 +44,19 @@ try {
             if(-not (Test-Path -LiteralPath (Join-Path $ArtifactDirectory "toolbar-32-light-$dpi.bmp"))) { throw "Missing 32px toolbar screenshot for $dpi DPI." }
         }
         $darkSheet = Join-Path $ArtifactDirectory 'toolbar-32-dark-96.bmp'
-        if(Test-Path -LiteralPath $darkSheet) {
+        if($rows[0].dark_supported -eq '1' -and $rows[0].high_contrast -eq '0') {
+            if(-not (Test-Path -LiteralPath $darkSheet)) { throw 'Missing classic dark toolbar screenshot.' }
             $rc = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\..\src\fbe\FBE.rc') -Raw
             $toolbar = [regex]::Match($rc, '(?ms)^IDR_MAINFRAME TOOLBAR.*?^END').Value
             $buttons = @([regex]::Matches($toolbar, '(?m)^\s*BUTTON\s+(\S+)') | ForEach-Object { $_.Groups[1].Value })
             $subtitleIndex = [Array]::IndexOf($buttons, 'ID_STYLE_SUBTITLE')
             if($subtitleIndex -lt 0) { throw 'Subtitle command missing from the toolbar resource.' }
             Add-Type -AssemblyName System.Drawing
-            $bitmap = [Drawing.Bitmap]::new($darkSheet)
-            try {
+            $namedSheets = @(Get-ChildItem -LiteralPath $ArtifactDirectory -Filter 'toolbar-32-named-*-96.bmp')
+            if($namedSheets.Count -ne 9) { throw "Expected nine named dark palette screenshots, got $($namedSheets.Count)." }
+            foreach($imagePath in @($darkSheet) + @($namedSheets | ForEach-Object { $_.FullName })) {
+              $bitmap = [Drawing.Bitmap]::new($imagePath)
+              try {
                 $luminance = { param($color) $values = @($color.R, $color.G, $color.B) | ForEach-Object { $s = $_ / 255.0; if($s -le 0.04045) { $s / 12.92 } else { [Math]::Pow(($s + 0.055) / 1.055, 2.4) } }; 0.2126 * $values[0] + 0.7152 * $values[1] + 0.0722 * $values[2] }
                 $background = & $luminance ($bitmap.GetPixel($subtitleIndex * 32, 0))
                 $greenPixels = 0; $bestContrast = 0.0
@@ -62,8 +67,9 @@ try {
                         $bestContrast = [Math]::Max($bestContrast, ([Math]::Max($value, $background) + 0.05) / ([Math]::Min($value, $background) + 0.05))
                     }
                 } }
-                if($greenPixels -lt 5 -or $bestContrast -lt 3.0) { throw "Dark subtitle icon is not recognizably green and readable (pixels=$greenPixels, contrast=$bestContrast)." }
-            } finally { $bitmap.Dispose() }
+                if($greenPixels -lt 5 -or $bestContrast -lt 3.0) { throw "Dark subtitle icon is not recognizably green and readable in $imagePath (pixels=$greenPixels, contrast=$bestContrast)." }
+              } finally { $bitmap.Dispose() }
+            }
         }
     }
     $passed = $true

@@ -16,9 +16,18 @@ void AdaptSubtitleGlyph(HBITMAP bitmap)
 	for(int i = 0; i < count; ++i) {
 		const DWORD pixel = pixels[i], alpha = pixel >> 24;
 		if(!alpha) continue;
-		const DWORD red = (((pixel >> 16) & 255) + 2 * ((GetRValue(foreground) * alpha + 127) / 255) + 1) / 3;
-		const DWORD green = (((pixel >> 8) & 255) + 2 * ((GetGValue(foreground) * alpha + 127) / 255) + 1) / 3;
-		const DWORD blue = ((pixel & 255) + 2 * ((GetBValue(foreground) * alpha + 127) / 255) + 1) / 3;
+		DWORD red = (((pixel >> 16) & 255) + 4 * ((GetRValue(foreground) * alpha + 127) / 255) + 2) / 5;
+		DWORD green = (((pixel >> 8) & 255) + 4 * ((GetGValue(foreground) * alpha + 127) / 255) + 2) / 5;
+		DWORD blue = ((pixel & 255) + 4 * ((GetBValue(foreground) * alpha + 127) / 255) + 2) / 5;
+		const DWORD sourceRed = (pixel >> 16) & 255, sourceGreen = (pixel >> 8) & 255, sourceBlue = pixel & 255;
+		const DWORD sourceMargin = (alpha * 10 + 127) / 255;
+		if(sourceGreen > sourceRed + sourceMargin && sourceGreen > sourceBlue + sourceMargin) {
+			const DWORD brightForeground = (std::max)(static_cast<DWORD>(220), static_cast<DWORD>((std::max)({GetRValue(foreground), GetGValue(foreground), GetBValue(foreground)})));
+			green = (std::max)((brightForeground * alpha + 127) / 255, (std::max)(green, (std::max)(red, blue)));
+			const DWORD margin = (alpha * 24 + 127) / 255;
+			const DWORD ceiling = green > margin ? green - margin : 0;
+			red = (std::min)(red, ceiling); blue = (std::min)(blue, ceiling);
+		}
 		pixels[i] = (alpha << 24) | (red << 16) | (green << 8) | blue;
 	}
 }
