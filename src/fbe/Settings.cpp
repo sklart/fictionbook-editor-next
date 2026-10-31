@@ -1151,6 +1151,11 @@ void CSettings::SetNBSPChar(const ATL::CString &value, bool apply)
 	}
 }
 
+void CSettings::AcknowledgeNBSPChange()
+{
+	m_old_nbsp = m_nbsp_char;
+}
+
 void CSettings::SetChangeKeybLayout(const bool value, bool apply)
 {
 	m_change_kbd_layout_check = value;

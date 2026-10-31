@@ -4,9 +4,12 @@ param([Parameter(Mandatory)][string]$FbeExe,
       [ValidateSet('plain', 'emphasis', 'strong', 'link')][string]$Context = 'plain',
       [string]$ArtifactDirectory,
       [switch]$CheckDisplayToggle,
-      [switch]$ToggleControl)
+      [switch]$ToggleControl,
+      [switch]$CheckRepeatedApply,
+      [ValidateSet('none','small-square')][string]$RepeatDisplay = 'none')
 $ErrorActionPreference = 'Stop'
-if($CheckDisplayToggle -and $ToggleControl) { throw 'Choose either the display-toggle test or its unchanged-display control.' }
+if(@(@($CheckDisplayToggle, $ToggleControl, $CheckRepeatedApply) | Where-Object { $_ }).Count -gt 1) { throw 'Choose only one NBSP diagnostic mode.' }
+if($CheckRepeatedApply -and (@($Modes).Count -ne 1 -or $Modes[0] -ne 'square')) { throw 'Repeated-apply regression requires -Modes square.' }
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if (-not $ArtifactDirectory) { $ArtifactDirectory = Join-Path $root 'build\community-feedback-nbsp' }
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
@@ -32,7 +35,7 @@ try {
             $saved = Join-Path $iso.DataPath 'saved.fb2'
             $report = Join-Path $iso.DataPath 'report.txt'
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'nbsp-input-runtime'
-            $env:FBE_NEXT_TEST_NBSP_TOGGLE = if($CheckDisplayToggle) { '1' } elseif($ToggleControl) { '2' } else { $null }
+            $env:FBE_NEXT_TEST_NBSP_TOGGLE = if($CheckDisplayToggle) { '1' } elseif($ToggleControl) { '2' } elseif($CheckRepeatedApply -and $RepeatDisplay -eq 'small-square') { '4' } elseif($CheckRepeatedApply) { '3' } else { $null }
             $env:FBE_NEXT_TEST_NBSP_OUTPUT = $saved
             $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime `
                 -ArgumentList @('--portable', '-b', ('"' + $report + '"'), ('"' + $fixture + '"')) -PassThru
@@ -40,6 +43,7 @@ try {
             $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
             if (Test-Path -LiteralPath $report) { Copy-Item -LiteralPath $report -Destination (Join-Path $ArtifactDirectory "$Context-$name.txt") -Force }
             if (Test-Path -LiteralPath $saved) { Copy-Item -LiteralPath $saved -Destination (Join-Path $ArtifactDirectory "$Context-$name.fb2") -Force }
+            if ($CheckRepeatedApply -and (Test-Path -LiteralPath "$saved.repeat.fb2")) { Copy-Item -LiteralPath "$saved.repeat.fb2" -Destination (Join-Path $ArtifactDirectory "$Context-$name-repeat.fb2") -Force }
             $expectedMode = '{0:X4}' -f [int]$marker
             if (-not (Test-Path -LiteralPath $saved)) { throw "$name failed before save: $text" }
             $xml = [Xml.XmlDocument]::new(); $xml.Load($saved)
@@ -65,14 +69,25 @@ try {
             [void]$readerSettings.Schemas.Add('http://www.gribuser.ru/xml/fictionbook/2.0', (Join-Path $root 'runtime\FictionBook.xsd'))
             $reader = [Xml.XmlReader]::Create($saved, $readerSettings)
             try { while ($reader.Read()) {} } finally { $reader.Dispose() }
+            if($CheckRepeatedApply) {
+                $repeatPath = "$saved.repeat.fb2"
+                $repeatXml = [Xml.XmlDocument]::new(); $repeatXml.Load($repeatPath)
+                $repeatNs = [Xml.XmlNamespaceManager]::new($repeatXml.NameTable); $repeatNs.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
+                $repeatText = $repeatXml.SelectSingleNode('//fb:p[@id="nbsp-probe"]', $repeatNs).InnerText
+                if(-not $repeatText.EndsWith([string][char]0x25A1)) { throw 'The typed square was not preserved in the saved FB2.' }
+                $repeatReader = [Xml.XmlReader]::Create($repeatPath, $readerSettings)
+                try { while($repeatReader.Read()) {} } finally { $repeatReader.Dispose() }
+            }
             Write-Host "NBSP saved XML and independent XSD: PASS ($Context/$name)."
             $toggleExpected = if($CheckDisplayToggle -or $ToggleControl) { '1' } else { '0' }
             if($text -notmatch "(?m)^toggle-tested=$toggleExpected\r?$") { throw "$name did not report the requested display-toggle mode: $text" }
             $appliedExpected = if($CheckDisplayToggle) { '1' } else { '0' }
             if($text -notmatch "(?m)^toggle-applied=$appliedExpected\r?$") { throw "$name did not report the requested display change: $text" }
+            if($CheckRepeatedApply -and $text -notmatch '(?m)^repeat-applied=1\r?$') { throw "$name did not run the repeated-settings diagnostic: $text" }
             if ($code -ne 0 -or $text -notmatch "(?m)^mode=$expectedMode\r?$" -or $text -notmatch '(?m)^result=pass\r?$') { throw "$name failed: $text" }
             $passed = $true
-            Write-Host "NBSP input/Undo/Redo: PASS ($Context/$name)."
+            if($CheckRepeatedApply) { Write-Host "Repeated settings preserve typed marker and save/reopen: PASS ($Context/$name/$RepeatDisplay)." }
+            else { Write-Host "NBSP input/Undo/Redo: PASS ($Context/$name)." }
         } catch {
             $failures += "$name`: $($_.Exception.Message)"
             Write-Warning $failures[-1]

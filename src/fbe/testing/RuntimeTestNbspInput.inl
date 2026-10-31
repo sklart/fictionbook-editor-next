@@ -23,6 +23,7 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 	try {
 		wchar_t target[MAX_PATH] = {};
 		if (!::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_OUTPUT", target, _countof(target))) CheckError(E_INVALIDARG);
+		const CString configuredMarker = _Settings.GetNBSPChar();
 		ShowView(BODY); m_doc->m_body.SetFocus(); pump();
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		auto paragraph = [&]() -> MSHTML::IHTMLElementPtr {
@@ -141,7 +142,9 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump(); thirdUndo = thirdUndo && state() == second;
 		}
 		wchar_t toggleFlag[2] = {};
-		const bool toggleTested = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_TOGGLE", toggleFlag, _countof(toggleFlag)) == 1 && (toggleFlag[0] == L'1' || toggleFlag[0] == L'2');
+		const DWORD toggleLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_TOGGLE", toggleFlag, _countof(toggleFlag));
+		const bool toggleTested = toggleLength == 1 && (toggleFlag[0] == L'1' || toggleFlag[0] == L'2');
+		const bool repeatTested = toggleLength == 1 && (toggleFlag[0] == L'3' || toggleFlag[0] == L'4');
 		const bool toggleApplied = toggleTested && toggleFlag[0] == L'1';
 		bool changedDisplay = true, unchangedOther = true, toggleRestored = true, toggleUndoRedo = true;
 		CStringA toggleReport; toggleReport.Format("toggle-tested=%d\ntoggle-applied=%d\n", toggleTested, toggleApplied);
@@ -184,16 +187,40 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		const bool reopened = saved && LoadFile(target) == OK; pump();
 		const CString reopenedXml(reopened ? static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml) : L"");
 		const bool xmlMatches = reopened && xml == reopenedXml;
+		bool repeatPreserved = true, repeatInserted = true, repeatRoundTrip = true;
+		if(repeatTested && reopened) {
+			stage = "repeat-settings";
+			const CString previousMarker = _Settings.GetNBSPChar();
+			if(previousMarker != L"\u25a1") CheckError(E_INVALIDARG);
+			_Settings.SetNBSPChar(toggleFlag[0] == L'4' ? L"\u25ab" : L"\u00a0"); ApplyConfChanges(false, false); pump();
+			document = m_doc->m_body.Document(); ShowView(BODY); m_doc->m_body.SetFocus(); pump();
+			MSHTML::IHTMLTxtRangePtr literal(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+			literal->moveToElementText(paragraph()); literal->collapse(VARIANT_FALSE); literal->select(); pump();
+			const HWND literalFocus = ::GetFocus();
+			if(!literalFocus || (literalFocus != m_doc->m_body.m_hWnd && !::IsChild(m_doc->m_body.m_hWnd, literalFocus))) CheckError(E_FAIL);
+			::SendMessageW(literalFocus, WM_CHAR, L'\u25a1', 1); pump();
+			const CString literalBefore = text(), stateBeforeRepeat = state();
+			const CString xmlBeforeRepeat(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+			repeatInserted = literalBefore.Right(1) == L"\u25a1" && xmlBeforeRepeat.Find(L"\u25a1") >= 0;
+			ApplyConfChanges(false, false); pump();
+			const CString xmlAfterRepeat(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+			repeatPreserved = state() == stateBeforeRepeat && text() == literalBefore && xmlAfterRepeat == xmlBeforeRepeat;
+			const CString repeatPath = CString(target) + L".repeat.fb2";
+			const bool repeatSaved = m_doc->Save(repeatPath); pump();
+			const bool repeatOpened = repeatSaved && LoadFile(repeatPath) == OK; pump();
+			repeatRoundTrip = repeatOpened && xmlBeforeRepeat == CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+		}
 		report.Format("mode=%s\nfocus=%d\nundo-focus-routed=%d\nundo-count-before=%d\nundo-count-first=%d\nundo-count-second=%d\nfirst-text=%s\nsecond-text=%s\nundo-steps=%d\nrestored=%d\nreplay=%d\nvalid-text=%d\nsaved=%d\nreopened=%d\nxml-matches=%d\n",
-			static_cast<LPCSTR>(codepoints(_Settings.GetNBSPChar())), focusInside, routedFocus, initialUndo, firstUndo, secondUndo, static_cast<LPCSTR>(codepoints(firstText)),
+			static_cast<LPCSTR>(codepoints(configuredMarker)), focusInside, routedFocus, initialUndo, firstUndo, secondUndo, static_cast<LPCSTR>(codepoints(firstText)),
 			static_cast<LPCSTR>(codepoints(secondText)), steps, restored, replay, validText, saved, reopened, xmlMatches);
 		CStringA history; history.Format("undo1-text=%s\nundo2-text=%s\nredo1-text=%s\nredo2-text=%s\ncaret-position=%d\nprior-history=%d\nselection-input=%d\nselection-undo=%d\nthird-tested=%d\nthird-input=%d\nthird-undo=%d\nthird-redo=%d\n",
 			static_cast<LPCSTR>(codepoints(undo1Text)), static_cast<LPCSTR>(codepoints(undo2Text)),
 			static_cast<LPCSTR>(codepoints(redo1Text)), static_cast<LPCSTR>(codepoints(redo2Text)), caretPosition, priorHistory, selectionInput, selectionUndo, thirdTested, thirdInput, thirdUndo, thirdRedo); report += history;
 		report += toggleReport;
+		CStringA repeatReport; repeatReport.Format("repeat-applied=%d\nrepeat-inserted=%d\nrepeat-preserved=%d\nrepeat-roundtrip=%d\n", repeatTested, repeatInserted, repeatPreserved, repeatRoundTrip); report += repeatReport;
 		CStringA counts; counts.Format("undo-count-after-undo=%d\nredo-count-after-undo=%d\n", afterUndo, afterUndoRedo); report += counts;
 		passed = focusInside && caretPosition && priorHistory && restored && replay && selectionInput && selectionUndo &&
-			(!thirdTested || (thirdInput && thirdUndo && thirdRedo)) && changedDisplay && unchangedOther && toggleRestored && toggleUndoRedo && validText && saved && reopened && xmlMatches;
+			(!thirdTested || (thirdInput && thirdUndo && thirdRedo)) && changedDisplay && unchangedOther && toggleRestored && toggleUndoRedo && repeatInserted && repeatPreserved && repeatRoundTrip && validText && saved && reopened && xmlMatches;
 	}
 	catch (const _com_error& error) { CStringA line; line.Format("stage=%s\nerror=0x%08lX\n", stage, static_cast<unsigned long>(error.Error())); report += line; }
 	report += passed ? "result=pass\n" : "result=fail\n";

@@ -8047,6 +8047,9 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles, bool saveSettings)
 		}
 	}
 
+	// A converted marker must not be treated as pending again when unrelated
+	// settings are applied; the user may subsequently type the old character.
+	_Settings.AcknowledgeNBSPChange();
 	if(saveSettings) { _Settings.SaveHotkeyGroups(); _Settings.Save(); _Settings.SaveWords(); }
 	RebuildRuntimeHotkeys();
 	if (!m_document_session.HasDocument()) {

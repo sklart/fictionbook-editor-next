@@ -479,6 +479,7 @@ public:
 	void	SetCustomDict(const ATL::CString &value, bool apply = false);
 	void	SetCustomDictCodepage(const DWORD value, bool apply = false);
 	void	SetNBSPChar(const ATL::CString &value, bool apply = false);
+	void	AcknowledgeNBSPChange();
 	void	SetChangeKeybLayout(const bool value, bool apply = false);
 	void	SetKeybLayout(const DWORD value, bool apply = false);
 	void	SetKeyboardLayoutId(const CString& value, bool apply = false);
