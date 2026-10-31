@@ -1029,6 +1029,24 @@ void CMainFrame::RunPortableStateTestScenario()
 				cleaningValues = cleaningValues && captureWindow(m_script_card_window.m_hWnd, L"cleaning-card-settings.bmp");
 			}
 		}
+		for(const wchar_t* filename : { L"01_Генеральная уборка.js", L"09_Генеральная уборка_(ИНОСТРАНКА).js" })
+		{
+			const CString path = runtimePath + L"\\Scripts\\06_Чистка\\" + filename;
+			const ScriptCards::Card parsed = ScriptCards::LoadFile(path);
+			const wchar_t* expectedVersion = wcscmp(filename, L"01_Генеральная уборка.js") == 0 ? L"2.10" : L"2.11";
+			ScriptDescriptor cleaning = {};
+			cleaning.name = L"Генеральная уборка";
+			cleaning.path = path;
+			cleaning.relativePath = CString(L"06_Чистка/") + filename;
+			cleaning.uid = filename;
+			const bool shown = m_script_card_window.ShowScript(m_hWnd, cleaning, runtimePath,
+				[&commentRunCount](const CString&) { ++commentRunCount; }) && awaitCard();
+			wchar_t cleaningHeader[1024] = {};
+			::GetWindowTextW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_HEADER), cleaningHeader, _countof(cleaningHeader));
+			cleaningValues = cleaningValues && shown && parsed.state == ScriptCards::State::Current &&
+				parsed.version == expectedVersion && !parsed.changelog.empty() &&
+				CString(cleaningHeader).Find(expectedVersion) >= 0 && m_script_card_window.BodyText().Find(L"правило №67") >= 0;
+		}
 		ScriptDescriptor symbols = {};
 		symbols.name = L"Спецсимволы";
 		symbols.path = runtimePath + L"\\Scripts\\07_Символы\\01_Спецсимволы.js";
