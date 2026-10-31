@@ -686,6 +686,36 @@ void CScriptCardDlg::ScrollTo(int offset)
 	LayoutVisualBlocks(bounds.right - bounds.left, bounds.bottom - bounds.top);
 }
 
+bool CScriptCardDlg::SettingsLastLineFits() const
+{
+	bool found = false;
+	RECT viewport = {};
+	if (!m_viewport || !::GetWindowRect(m_viewport, &viewport)) return false;
+	for (const VisualBlock& block : m_blocks)
+	{
+		if (!block.settings || !::IsWindow(block.body)) continue;
+		found = true;
+		const int length = ::GetWindowTextLengthW(block.body);
+		if (length <= 0) return false;
+		POINTL point = { -1, -1 };
+		::SendMessageW(block.body, EM_POSFROMCHAR, reinterpret_cast<WPARAM>(&point), length - 1);
+		RECT format = {}; ::SendMessageW(block.body, EM_GETRECT, 0, reinterpret_cast<LPARAM>(&format));
+		HDC dc = ::GetDC(block.body);
+		if (!dc) return false;
+		HFONT font = reinterpret_cast<HFONT>(::SendMessageW(block.body, WM_GETFONT, 0, 0));
+		HGDIOBJ previous = font ? ::SelectObject(dc, font) : NULL;
+		TEXTMETRICW metrics = {}; const bool measured = ::GetTextMetricsW(dc, &metrics) != FALSE;
+		if (previous) ::SelectObject(dc, previous);
+		::ReleaseDC(block.body, dc);
+		RECT bodyBounds = {};
+		if (!measured || !::GetWindowRect(block.body, &bodyBounds) || point.y < 0 ||
+			point.y + metrics.tmHeight + metrics.tmExternalLeading > format.bottom ||
+			bodyBounds.top + point.y < viewport.top ||
+			bodyBounds.top + point.y + metrics.tmHeight + metrics.tmExternalLeading > viewport.bottom) return false;
+	}
+	return found;
+}
+
 void CScriptCardDlg::HandleViewportScroll(WPARAM command)
 {
 	SCROLLINFO info = { sizeof(info), SIF_TRACKPOS };
@@ -703,7 +733,14 @@ void CScriptCardDlg::HandleViewportScroll(WPARAM command)
 	case SB_PAGEDOWN: target += page; break;
 	case SB_TOP: target = 0; break;
 	case SB_BOTTOM: target = m_contentHeight; break;
-	case SB_THUMBTRACK: case SB_THUMBPOSITION: target = info.nTrackPos; break;
+	case SB_THUMBTRACK: target = info.nTrackPos; break;
+	case SB_THUMBPOSITION:
+		// nTrackPos retains the full 32-bit value while tracking; for a posted
+		// position without an active tracker, Windows supplies the 16-bit value
+		// in the message itself.
+		target = (static_cast<UINT>(info.nTrackPos) & 0xffffU) == HIWORD(command)
+			? info.nTrackPos : static_cast<int>(HIWORD(command));
+		break;
 	default: break;
 	}
 	ScrollTo(target);

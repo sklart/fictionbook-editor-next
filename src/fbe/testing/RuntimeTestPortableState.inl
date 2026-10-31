@@ -523,6 +523,10 @@ void CMainFrame::RunPortableStateTestScenario()
 		const int pagePosition = m_script_card_window.ScrollPosition();
 		::SendMessageW(viewport, WM_VSCROLL, SB_BOTTOM, 0);
 		const int bottomPosition = m_script_card_window.ScrollPosition();
+		const int thumbTarget = bottomPosition / 2;
+		::SendMessageW(viewport, WM_VSCROLL, MAKEWPARAM(SB_THUMBPOSITION, thumbTarget), 0);
+		const bool thumbPosition = thumbTarget > 0 && m_script_card_window.ScrollPosition() == thumbTarget;
+		::SendMessageW(viewport, WM_VSCROLL, SB_BOTTOM, 0);
 		HWND richBlock = ::GetWindow(viewport, GW_CHILD);
 		if(richBlock) ::SendMessageW(richBlock, WM_MOUSEWHEEL, MAKEWPARAM(0, WHEEL_DELTA), 0);
 		const int wheelPosition = m_script_card_window.ScrollPosition();
@@ -532,7 +536,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		const int endPosition = m_script_card_window.ScrollPosition();
 		if(richBlock) ::SendMessageW(richBlock, WM_KEYDOWN, VK_PRIOR, 0);
 		const int pageUpPosition = m_script_card_window.ScrollPosition();
-		const bool responsive = canScroll && linePosition > 0 && pagePosition > linePosition &&
+		const bool responsive = thumbPosition && canScroll && linePosition > 0 && pagePosition > linePosition &&
 			bottomPosition >= pagePosition && wheelPosition < bottomPosition &&
 			homePosition == 0 && endPosition == bottomPosition && pageUpPosition < endPosition;
 		::SetWindowPos(m_script_card_window.m_hWnd, NULL, originalCardBounds.left, originalCardBounds.top,
@@ -1047,6 +1051,15 @@ void CMainFrame::RunPortableStateTestScenario()
 				parsed.version == expectedVersion && !parsed.changelog.empty() &&
 				CString(cleaningHeader).Find(expectedVersion) >= 0 && m_script_card_window.BodyText().Find(L"правило №67") >= 0;
 		}
+		ScriptDescriptor longCard = {};
+		longCard.name = L"Проверить правильность нумерации заголовков";
+		longCard.relativePath = L"13_Заголовки, подзаголовки, пустые строки/615_Проверить правильность нумерации заголовков.js";
+		longCard.path = runtimePath + L"\\Scripts\\" + longCard.relativePath;
+		longCard.uid = L"long-heading-card";
+		const bool longCardOpened = m_script_card_window.ShowScript(m_hWnd, longCard, runtimePath,
+			[&commentRunCount](const CString&) { ++commentRunCount; }) && awaitCard();
+		if (longCardOpened) ::SendMessageW(m_script_card_window.ViewportWindow(), WM_VSCROLL, SB_BOTTOM, 0);
+		const bool longSettingsFit = longCardOpened && m_script_card_window.CanScroll() && m_script_card_window.SettingsLastLineFits();
 		ScriptDescriptor symbols = {};
 		symbols.name = L"Спецсимволы";
 		symbols.path = runtimePath + L"\\Scripts\\07_Символы\\01_Спецсимволы.js";
@@ -1089,7 +1102,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			m_script_card_window.BodyText().Find(L"Изменения можно отменить одним действием (Ctrl+Z)") >= 0;
 		const bool metadataSemantics = unknownShown && unverifiedHidden && verifiedShown;
 		const bool passed = metadataSemantics && openedMissing && missingFallback && reused && rendered && structured && responsive && optionalRendered &&
-			characteristicLayout && characteristicDpiMatrix && standardValues && cleaningValues && categoryFormatted &&
+			characteristicLayout && characteristicDpiMatrix && standardValues && cleaningValues && longSettingsFit && categoryFormatted &&
 			hashesHidden && originHidden && originStates && technicalAbsent && windowIcons && boldHeading &&
 			copiedDetails && categoryShown && previewDelayed && previewShown && previewReusable && previewBridge &&
 			previewBridgeTimer && previewBridgeExit && previewPointerLink && previewPointerExit && previewPointerCrossing && previewDeactivated &&
@@ -1115,6 +1128,8 @@ void CMainFrame::RunPortableStateTestScenario()
 		report.AppendFormat("characteristic-layout=%d\ncharacteristic-dpi-matrix=%d\ncharacteristic-wide=%d\ncharacteristic-paired=%d\ncharacteristic-narrow=%d\nstandard-values=%d\ncleaning-values=%d\n",
 			characteristicLayout, characteristicDpiMatrix, wideCharacteristics, pairedCharacteristics, narrowCharacteristics,
 			standardValues, cleaningValues);
+		report.AppendFormat("thumb-position=%d\n", thumbPosition);
+		report.AppendFormat("long-settings-fit=%d\n", longSettingsFit);
 		report.AppendFormat("category-formatted=%d\nmetadata-semantics=%d\nunknown-author=%d\nunverified-undo-hidden=%d\nverified-undo=%d\n", categoryFormatted, metadataSemantics, unknownShown, unverifiedHidden, verifiedShown);
 		report.AppendFormat("preview-bridge-timer=%d\npreview-bridge-exit=%d\npreview-pointer-link=%d\npreview-pointer-exit=%d\npreview-pointer-crossing=%d\npreview-deactivated=%d\n",
 			previewBridgeTimer, previewBridgeExit, previewPointerLink, previewPointerExit, previewPointerCrossing, previewDeactivated);

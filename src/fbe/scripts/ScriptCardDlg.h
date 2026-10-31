@@ -32,6 +32,7 @@ public:
 	bool CanScroll() const { RECT bounds = {}; return m_viewport && ::GetClientRect(m_viewport, &bounds) &&
 		m_contentHeight > bounds.bottom - bounds.top; }
 	int CharacteristicLayoutRows() const;
+	bool SettingsLastLineFits() const;
 
 	BEGIN_MSG_MAP(CScriptCardDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInit)
