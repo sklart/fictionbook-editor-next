@@ -50,8 +50,9 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 			if (!selected->findText(scopeSelection ? L"blank.fb2" : L"9", 0, 0)) CheckError(E_FAIL);
 			selected->select(); pump();
 		}
-		const wchar_t* replacement = (formatItalic || wcscmp(fault, L"format-italic-command") == 0) ? L"\\E+\\Q" : (formatSuccess || wcscmp(fault, L"format") == 0 || wcscmp(fault, L"format-command") == 0) ? L"\\S+\\Q" : crossInline ? L"xy" : L"+";
-		const wchar_t* pattern = noMatch ? L"THIS_PATTERN_IS_ABSENT_8472" : formatSuccess ? L"9" : crossInline ? L"AB" : literal ? L"2" : zeroLength ? L"(?=blank)" : L"\\d";
+		const bool formatPartial = wcscmp(fault, L"format-partial") == 0;
+		const wchar_t* replacement = formatPartial ? L"\\S\\E+\\Q" : (formatItalic || wcscmp(fault, L"format-italic-command") == 0) ? L"\\E+\\Q" : (formatSuccess || wcscmp(fault, L"format") == 0 || wcscmp(fault, L"format-command") == 0) ? L"\\S+\\Q" : crossInline ? L"xy" : L"+";
+		const wchar_t* pattern = noMatch ? L"THIS_PATTERN_IS_ABSENT_8472" : (formatSuccess || formatPartial) ? L"9" : crossInline ? L"AB" : literal ? L"2" : zeroLength ? L"(?=blank)" : L"\\d";
 		if (!m_doc->m_body.ConfigureReplaceAllRuntimeTest(pattern, replacement, !literal && !crossInline)) CheckError(E_FAIL);
 		static MSHTML::IHTMLTxtRangePtr modalMutation;
 		static bool modalChanged = false;

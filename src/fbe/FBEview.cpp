@@ -3538,7 +3538,7 @@ static CString PrepareRegexReplacementText(const CString& replacementTemplate, A
 	return replacement;
 }
 
-static void ApplyReplacementFormatting(MSHTML::IHTMLTxtRangePtr sel, const CString& repl, const std::vector<AU::Search::ReplacementFormattingRun>& rl, bool injectFailure = false, bool injectCommandFailure = false, bool checkCommandResult = false)
+static void ApplyReplacementFormatting(MSHTML::IHTMLTxtRangePtr sel, const CString& repl, const std::vector<AU::Search::ReplacementFormattingRun>& rl, bool injectFailure = false, bool injectCommandFailure = false, bool checkCommandResult = false, bool injectItalicOnly = false)
 {
 	for (std::size_t i = 0; i < rl.size(); ++i)
 	{
@@ -3548,7 +3548,7 @@ static void ApplyReplacementFormatting(MSHTML::IHTMLTxtRangePtr sel, const CStri
 		range->moveEnd(L"character", rr.Length);
 		if (injectFailure) throw _com_error(E_FAIL);
 		if (rr.Flags & AU::Search::ReplacementFormatStrong) {
-			const VARIANT_BOOL applied = range->execCommand(injectCommandFailure ? L"FBE_Test_Unsupported_Command" : L"Bold", VARIANT_FALSE);
+			const VARIANT_BOOL applied = range->execCommand(injectCommandFailure && !injectItalicOnly ? L"FBE_Test_Unsupported_Command" : L"Bold", VARIANT_FALSE);
 			if (checkCommandResult && applied == VARIANT_FALSE) throw _com_error(E_FAIL);
 		}
 		if (rr.Flags & AU::Search::ReplacementFormatEmphasis) {
@@ -3723,7 +3723,8 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	const bool faultAfterOne = ReplaceAllRuntimeFault(L"after-one");
 	const bool faultMiddle = ReplaceAllRuntimeFault(L"middle");
 	const bool faultFormatting = ReplaceAllRuntimeFault(L"format");
-	const bool faultFormattingCommand = ReplaceAllRuntimeFault(L"format-command") || ReplaceAllRuntimeFault(L"format-italic-command");
+	const bool faultFormattingPartial = ReplaceAllRuntimeFault(L"format-partial");
+	const bool faultFormattingCommand = ReplaceAllRuntimeFault(L"format-command") || ReplaceAllRuntimeFault(L"format-italic-command") || faultFormattingPartial;
 	const bool faultEnd = ReplaceAllRuntimeFault(L"end");
 	struct ControlledMutationScope
 	{
@@ -3779,7 +3780,7 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 			ranges[index]->text = static_cast<LPCWSTR>(replacement);
 			if (m_fo.fRegexp)
 			{
-				ApplyReplacementFormatting(ranges[index], replacement, formatting, faultFormatting, faultFormattingCommand, true);
+				ApplyReplacementFormatting(ranges[index], replacement, formatting, faultFormatting, faultFormattingCommand, true, faultFormattingPartial);
 			}
 			++replaced;
 			if ((replaced == 1 && faultAfterOne) ||
