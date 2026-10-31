@@ -1,3 +1,4 @@
+#Requires -Version 7.0
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$FbeExe,
       [ValidateSet('none', 'before-first', 'after-one', 'middle', 'format', 'end')][string]$Fault = 'none',
