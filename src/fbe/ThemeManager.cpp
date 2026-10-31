@@ -997,7 +997,7 @@ bool ProfilePalettePath(const std::wstring& id, CString& path, bool createDirect
 }
 }
 
-bool SaveCustomPaletteToProfile(const CustomPalette& palette, bool overwrite, std::wstring& error)
+bool PrepareCustomPaletteSave(const CustomPalette& palette, bool overwrite, SettingsFileTransaction& transaction, std::wstring& error)
 {
 	error.clear(); CustomPalette checked;
 	const std::wstring json = SerializeCustomPalette(palette);
@@ -1010,7 +1010,6 @@ bool SaveCustomPaletteToProfile(const CustomPalette& palette, bool overwrite, st
 	if(length <= 0) { error = L"Cannot encode theme as UTF-8."; return false; }
 	std::vector<char> bytes(static_cast<size_t>(length));
 	if(::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, json.data(), static_cast<int>(json.size()), bytes.data(), length, NULL, NULL) != length) { error = L"Cannot encode theme as UTF-8."; return false; }
-	SettingsFileTransaction transaction;
 	const CString temporary = SettingsFileTransaction::Temporary(path);
 	if(temporary.IsEmpty()) { error = L"Cannot create temporary theme file."; return false; }
 	transaction.Add(path, temporary, !overwrite);
@@ -1020,6 +1019,13 @@ bool SaveCustomPaletteToProfile(const CustomPalette& palette, bool overwrite, st
 	const BOOL ok = ::WriteFile(file, bytes.data(), static_cast<DWORD>(bytes.size()), &written, NULL);
 	::CloseHandle(file);
 	if(!ok || written != bytes.size()) { error = L"Cannot write theme file."; return false; }
+	return true;
+}
+
+bool SaveCustomPaletteToProfile(const CustomPalette& palette, bool overwrite, std::wstring& error)
+{
+	SettingsFileTransaction transaction;
+	if(!PrepareCustomPaletteSave(palette, overwrite, transaction, error)) return false;
 	if(!transaction.Commit()) { error = L"Cannot save theme file."; return false; }
 	return true;
 }

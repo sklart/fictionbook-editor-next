@@ -861,7 +861,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        271
 #define _APS_NEXT_COMMAND_VALUE         58003
-#define _APS_NEXT_CONTROL_VALUE         1829
+#define _APS_NEXT_CONTROL_VALUE         1830
 #define _APS_NEXT_SYMED_VALUE           133
 #endif
 #endif
@@ -903,3 +903,5 @@
 #define IDC_MAIN_TOOLBAR_ICON_SIZE 1826
 #define IDC_INTERFACE_PALETTE_LABEL 1827
 #define IDC_INTERFACE_PALETTE 1828
+
+#define IDC_INTERFACE_PALETTE_COPY 1829

@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 
+class SettingsFileTransaction;
+
 // Interface theme is deliberately independent from BODY editor colours.
 enum InterfaceTheme
 {
@@ -58,6 +60,7 @@ namespace ThemeManager
 	};
 	bool ParseCustomPalette(const std::wstring& json, CustomPalette& result, std::wstring& error);
 	std::wstring SerializeCustomPalette(const CustomPalette& palette);
+	bool PrepareCustomPaletteSave(const CustomPalette& palette, bool overwrite, SettingsFileTransaction& transaction, std::wstring& error);
 	bool SaveCustomPaletteToProfile(const CustomPalette& palette, bool overwrite, std::wstring& error);
 	bool IsValidCustomPaletteId(const std::wstring& id);
 	bool LoadCustomPaletteFromProfile(const std::wstring& id, CustomPalette& palette, std::wstring& error);

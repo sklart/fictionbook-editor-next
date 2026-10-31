@@ -12,6 +12,7 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	CComboBox m_interfaceTheme;
 	CComboBox m_interfacePalette;
 	std::vector<ThemeManager::CustomPalette> m_customPalettes;
+	std::vector<ThemeManager::CustomPalette> m_pendingPalettes;
 	CComboBox m_scriptIconSize;
 	CComboBox m_mainToolbarIconSize;
 	CComboBox m_genreCatalog;
@@ -43,6 +44,7 @@ public:
 		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_SELCHANGE, OnInterfaceThemeChanged)
 		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_SELENDOK, OnInterfaceThemeChanged)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_SELCHANGE, OnInterfacePaletteChanged)
+		COMMAND_HANDLER(IDC_INTERFACE_PALETTE_COPY, BN_CLICKED, OnCopyPalette)
 		CHAIN_MSG_MAP(CAxDialogImpl<CSettingsGeneralPage>)
 	END_MSG_MAP()
 
@@ -51,6 +53,8 @@ public:
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnInterfaceThemeChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&);
+	LRESULT OnCopyPalette(WORD, WORD, HWND, BOOL&);
+	bool StagePaletteCopy(const CString& name);
 	void ConfigureInterfaceTheme(bool darkThemeSupported);
-	bool Validate(); void Commit(); bool CancelChanges();
+	bool Validate(); bool PrepareCommit(SettingsFileTransaction&, CString&); void Commit(); void FinishCommit(); bool CancelChanges();
 };

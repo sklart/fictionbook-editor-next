@@ -128,6 +128,10 @@ void CMainFrame::RunPortableStateTestScenario()
             BOOL handled = FALSE;
             passed = choice && ::SendMessage(choice, CB_GETCOUNT, 0, 0) == INTERFACE_PALETTE_COUNT + 1 &&
                 ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_COUNT && passed;
+            passed = page.StagePaletteCopy(L"Derived copy") && passed;
+            ThemeManager::CustomPalette derived;
+            passed = ThemeManager::GetCustomPalette(derived) && derived.id != L"restart-test" && derived.base == ThemeManager::CustomPaletteBase::Sepia &&
+                derived.present[THEME_COLOR_WINDOW] && derived.colors[THEME_COLOR_WINDOW] == RGB(17, 34, 51) && page.CancelChanges() && passed;
             ::SendMessage(choice, CB_SETCURSEL, INTERFACE_PALETTE_SEPIA, 0);
             page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, choice, handled);
             passed = !ThemeManager::IsCustomPaletteActive() && page.CancelChanges() && ThemeManager::IsCustomPaletteActive() && passed;
@@ -156,6 +160,45 @@ void CMainFrame::RunPortableStateTestScenario()
             PostMessage(WM_CLOSE);
         }
         return;
+    }
+    if(IsFbeTestScenario(L"custom-palette-copy")) {
+        bool passed = ThemeManager::ListCustomPalettesInProfile().empty();
+        {
+            CSettingsGeneralPage page;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
+                passed = page.StagePaletteCopy(L"Cancelled copy") && ThemeManager::IsCustomPaletteActive() && passed;
+                {
+                    SettingsFileTransaction transaction; CString error;
+                    passed = page.PrepareCommit(transaction, error) && ThemeManager::ListCustomPalettesInProfile().empty() && passed;
+                }
+                passed = page.CancelChanges() && !ThemeManager::IsCustomPaletteActive() && ThemeManager::ListCustomPalettesInProfile().empty() && passed;
+                page.DestroyWindow();
+            }
+        }
+        {
+            CSettingsGeneralPage page;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
+                passed = !page.StagePaletteCopy(L"") && page.StagePaletteCopy(L"My copy") && passed;
+                SettingsFileTransaction transaction; CString error;
+                passed = page.PrepareCommit(transaction, error) && ThemeManager::ListCustomPalettesInProfile().empty() && passed;
+                page.Commit();
+                passed = transaction.Commit() && passed;
+                page.FinishCommit();
+                const CString id = _Settings.GetInterfacePalette();
+                const auto palettes = ThemeManager::ListCustomPalettesInProfile();
+                passed = id.Left(7) == L"custom:" && palettes.size() == 1 && palettes[0].name == L"My copy" &&
+                    ThemeManager::IsCustomPaletteActive() && _Settings.GetInterfacePaletteError().IsEmpty() && passed;
+                page.DestroyWindow();
+                _Settings.SetInterfacePalette(L"classic");
+                std::wstring deletionError;
+                passed = ThemeManager::DeleteCustomPaletteFromProfile(static_cast<LPCWSTR>(id.Mid(7)), deletionError) && passed;
+            }
+        }
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
+            passed ? "custom-palette-copy=1\nresult=pass\n" : "custom-palette-copy=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
     }
     if(IsFbeTestScenario(L"named-palette-settings-write")) {
         const InterfaceTheme original = _Settings.GetInterfaceTheme();

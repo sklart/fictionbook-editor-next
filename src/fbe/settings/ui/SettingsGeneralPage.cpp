@@ -5,6 +5,7 @@
 #include "..\\..\\UiMetrics.h"
 #include "..\\..\\RuntimeLocalization.h"
 #include "..\\..\\res1.h"
+#include "..\\..\\apputils.h"
 #include <initializer_list>
 
 extern CSettings _Settings;
@@ -73,6 +74,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Add(m_interfaceTheme, L"fbe.settings.tooltip.general.interface_theme", L"Automatic follows the Windows app theme.");
 	for(HWND control : {m_interfacePalette.m_hWnd, GetDlgItem(IDC_INTERFACE_PALETTE_LABEL).m_hWnd})
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.interface_palette", L"Choose interface colours independently of the Windows mode. High Contrast uses system colours.");
+	m_tooltips.Add(GetDlgItem(IDC_INTERFACE_PALETTE_COPY), L"fbe.settings.tooltip.general.palette_copy", L"Create a copy of the selected palette. It is saved when you confirm settings.");
 	for(HWND control : {m_descriptionLayout.m_hWnd, GetDlgItem(IDC_DESCRIPTION_LAYOUT_LABEL).m_hWnd})
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.description_layout", L"Choose the Description layout. Modern uses compact, collapsible sections; Classic keeps the familiar FictionBook Editor field order. This does not change FB2 data.");
 	for(HWND control : {m_scriptIconSize.m_hWnd, GetDlgItem(IDC_SCRIPT_ICON_SIZE_LABEL).m_hWnd})
@@ -91,6 +93,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	SetText(m_hWnd, IDC_OPTIONS_LANGUAGE_LABEL, L"fbe.dialog.idd_options.language", L"Language:");
 	SetText(m_hWnd, IDC_INTERFACE_THEME_LABEL, L"fbe.dialog.idd_options.interface_theme", L"Interface theme:");
 	SetText(m_hWnd, IDC_INTERFACE_PALETTE_LABEL, L"fbe.settings.interface_palette", L"Interface palette:");
+	SetText(m_hWnd, IDC_INTERFACE_PALETTE_COPY, L"fbe.settings.palette.copy", L"Create copy...");
 	SetText(m_hWnd, IDC_SCRIPT_ICON_SIZE_LABEL, L"fbe.settings.script_icon_size", L"Script icon size:");
 	SetText(m_hWnd, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, L"fbe.settings.main_toolbar_icon_size", L"Main toolbar icon size:");
 	SetText(m_hWnd, IDC_OPTIONS_GENRE_CATALOG_LABEL, L"fbe.dialog.idd_options.genre_catalog", L"Genre catalog:");
@@ -256,7 +259,7 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	};
 	shift(IDC_OPTIONS_INTERFACE_GROUP, { IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG,
 		IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME,
-		IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
+		IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE, IDC_INTERFACE_PALETTE_COPY, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
 	const CRect interfaceGroup = bounds(IDC_OPTIONS_INTERFACE_GROUP);
 	int comboLeft = bounds(IDC_LANG).left;
 	for(int id : { IDC_OPTIONS_LANGUAGE_LABEL, IDC_OPTIONS_GENRE_CATALOG_LABEL,
@@ -274,7 +277,14 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	separateRows(IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG, IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG);
 	separateRows(IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME);
 	separateRows(IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME, IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE);
-	separateRows(IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE);
+	CRect copyButton = bounds(IDC_INTERFACE_PALETTE_COPY);
+	const int copyButtonHeight = copyButton.Height();
+	copyButton.left = comboLeft;
+	copyButton.right = interfaceComboRight;
+	copyButton.top = max(bounds(IDC_INTERFACE_PALETTE_LABEL).bottom, bounds(IDC_INTERFACE_PALETTE).bottom) + rowGap;
+	copyButton.bottom = copyButton.top + max(copyButtonHeight, measure(IDC_INTERFACE_PALETTE_COPY, copyButton.Width(), false).cy + padding);
+	place(IDC_INTERFACE_PALETTE_COPY, copyButton);
+	separateRows(IDC_INTERFACE_PALETTE_COPY, IDC_INTERFACE_PALETTE_COPY, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE);
 	separateRows(IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE);
 	separateRows(IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT);
 	grow(IDC_OPTIONS_INTERFACE_GROUP, { IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
@@ -378,7 +388,10 @@ LRESULT CSettingsGeneralPage::OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&)
 	} else {
 		ThemeManager::CustomPalette palette; std::wstring error;
 		const std::wstring& id = m_customPalettes[selection - INTERFACE_PALETTE_COUNT].id;
-		if(!ThemeManager::LoadCustomPaletteFromProfile(id, palette, error)) {
+		bool loaded = false;
+		for(const auto& pending : m_pendingPalettes) if(pending.id == id) { palette = pending; loaded = true; break; }
+		if(!loaded) loaded = ThemeManager::LoadCustomPaletteFromProfile(id, palette, error);
+		if(!loaded) {
 			m_interfacePalette.SetCurSel(m_acceptedPaletteIndex);
 			CString message = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.load_failed", L"Could not load the selected interface palette.");
 			if(!error.empty()) { message += L"\n\n"; message += error.c_str(); }
@@ -400,12 +413,69 @@ LRESULT CSettingsGeneralPage::OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
+bool CSettingsGeneralPage::StagePaletteCopy(const CString& name)
+{
+	const int selection = m_interfacePalette.GetCurSel();
+	if(selection < 0 || selection >= INTERFACE_PALETTE_COUNT + static_cast<int>(m_customPalettes.size())) return false;
+	ThemeManager::CustomPalette copy;
+	if(selection >= INTERFACE_PALETTE_COUNT) { if(!ThemeManager::GetCustomPalette(copy)) return false; }
+	else copy.base = selection == INTERFACE_PALETTE_GRAPHITE ? ThemeManager::CustomPaletteBase::Graphite :
+		selection == INTERFACE_PALETTE_NAVY ? ThemeManager::CustomPaletteBase::Navy :
+		selection == INTERFACE_PALETTE_SEPIA ? ThemeManager::CustomPaletteBase::Sepia :
+		ThemeManager::IsDark() ? ThemeManager::CustomPaletteBase::Dark : ThemeManager::CustomPaletteBase::Light;
+	GUID guid = {};
+	wchar_t text[40] = {};
+	if(FAILED(::CoCreateGuid(&guid)) || !::StringFromGUID2(guid, text, _countof(text))) return false;
+	CString id(text); id.Trim(L"{}"); id.MakeLower(); id = L"copy-" + id;
+	copy.id = static_cast<LPCWSTR>(id); copy.name = static_cast<LPCWSTR>(name);
+	ThemeManager::CustomPalette validated; std::wstring error;
+	if(!ThemeManager::ParseCustomPalette(ThemeManager::SerializeCustomPalette(copy), validated, error) || validated.name != copy.name) return false;
+	const CString label = name + L" (" + id + L")";
+	const int index = m_interfacePalette.AddString(label);
+	if(index < 0) return false;
+	m_customPalettes.push_back(copy); m_pendingPalettes.push_back(copy);
+	m_interfacePalette.SetCurSel(index);
+	BOOL handled = FALSE;
+	OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, m_interfacePalette, handled);
+	return m_acceptedPaletteIndex == index;
+}
+
+LRESULT CSettingsGeneralPage::OnCopyPalette(WORD, WORD, HWND, BOOL&)
+{
+	CString name;
+	if(AU::InputBoxOwned(name, FbeLoadRuntimeStringByKey(L"fbe.settings.palette.copy", L"Create copy..."),
+		FbeLoadRuntimeStringByKey(L"fbe.settings.palette.copy_name", L"Name of the new interface palette:"), m_hWnd) != IDYES) return 0;
+	name.Trim();
+	if(!StagePaletteCopy(name)) MessageBox(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.invalid_name", L"Could not create the palette. Enter a name of up to 100 characters without control characters."),
+		FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONWARNING);
+	return 0;
+}
+
+bool CSettingsGeneralPage::PrepareCommit(SettingsFileTransaction& files, CString& error)
+{
+	for(const auto& palette : m_pendingPalettes) {
+		std::wstring detail;
+		if(!ThemeManager::PrepareCustomPaletteSave(palette, false, files, detail)) { error = detail.c_str(); return false; }
+	}
+	return true;
+}
+
+void CSettingsGeneralPage::FinishCommit()
+{
+	if(m_paletteChanged && m_acceptedPaletteIndex >= INTERFACE_PALETTE_COUNT)
+		_Settings.SetInterfacePalette(CString(L"custom:") + m_customPalettes[m_acceptedPaletteIndex - INTERFACE_PALETTE_COUNT].id.c_str());
+}
+
 bool CSettingsGeneralPage::Validate() { return true; }
 void CSettingsGeneralPage::Commit()
 {
 	if(m_paletteChanged) {
 		if(m_acceptedPaletteIndex < INTERFACE_PALETTE_COUNT) _Settings.SetInterfacePalette(PaletteId(m_acceptedPaletteIndex));
-		else _Settings.SetInterfacePalette(CString(L"custom:") + m_customPalettes[m_acceptedPaletteIndex - INTERFACE_PALETTE_COUNT].id.c_str());
+		else {
+			const auto& selected = m_customPalettes[m_acceptedPaletteIndex - INTERFACE_PALETTE_COUNT];
+			_Settings.SetInterfacePalette(CString(L"custom:") + selected.id.c_str());
+			for(const auto& pending : m_pendingPalettes) if(pending.id == selected.id) { ThemeManager::SetCustomPalette(pending); break; }
+		}
 	}
 	const int iconSize = m_scriptIconSize.GetCurSel();
 	if(iconSize != CB_ERR) _Settings.SetScriptIconSize(static_cast<int>(m_scriptIconSize.GetItemData(iconSize)));

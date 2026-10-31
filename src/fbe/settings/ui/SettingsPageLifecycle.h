@@ -10,6 +10,7 @@ public:
 	virtual bool Validate() = 0;
 	virtual bool PrepareCommit(SettingsFileTransaction&, CString&) { return true; }
 	virtual void Commit() = 0;
+	virtual void FinishCommit() {}
 	virtual bool CancelChanges() = 0;
 };
 

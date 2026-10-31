@@ -358,6 +358,8 @@ bool CSettingsDlg::TryCommit(CString& error)
 		if(files.RollbackFailed()) error += L"\n" + FbeLoadRuntimeStringByKey(L"fbe.settings.rollback_failed", L"Some files could not be restored. Their recovery copies have been retained beside the original files.");
 		return false;
 	}
+	for(int i = 0; i < _countof(m_pageLifecycle); ++i)
+		if(m_pageLifecycle[i]) m_pageLifecycle[i]->FinishCommit();
 	edit.Accept();
 	return true;
 }
