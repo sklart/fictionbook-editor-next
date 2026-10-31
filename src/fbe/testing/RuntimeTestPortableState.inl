@@ -815,6 +815,46 @@ void CMainFrame::RunPortableStateTestScenario()
                 }
             }
         }
+        // Exercise the two independent image lists while changing the effective palette.
+        const bool documentDirtyBefore = DocChanged();
+        const InterfacePalette paletteBefore = ThemeManager::GetNamedPalette();
+        const InterfaceTheme themeBefore = ThemeManager::GetSelectedTheme();
+        ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
+        ThemeManager::CustomPalette combinedCustom;
+        combinedCustom.id = L"combined-test"; combinedCustom.name = L"Combined test";
+        combinedCustom.base = ThemeManager::CustomPaletteBase::Light;
+        combinedCustom.present[THEME_COLOR_WINDOW] = true;
+        combinedCustom.colors[THEME_COLOR_WINDOW] = RGB(240, 236, 225);
+        struct CombinedAppearance { int mainSize; int scriptSize; InterfacePalette palette; bool custom; };
+        const CombinedAppearance combinations[] = {
+            {16, 32, INTERFACE_PALETTE_CLASSIC, false},
+            {32, 16, INTERFACE_PALETTE_GRAPHITE, false},
+            {24, 20, INTERFACE_PALETTE_SEPIA, false},
+            {32, 32, INTERFACE_PALETTE_CLASSIC, true}
+        };
+        for(const auto& combination : combinations) {
+            if(combination.palette == INTERFACE_PALETTE_GRAPHITE && !ThemeManager::IsDarkModeSupported()) continue;
+            _Settings.SetMainToolbarIconSize(combination.mainSize);
+            _Settings.SetScriptIconSize(combination.scriptSize);
+            const bool paletteApplied = combination.custom ? ThemeManager::SetCustomPalette(combinedCustom) : ThemeManager::SetNamedPalette(combination.palette);
+            ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+            const bool mainApplied = RebuildCommandToolbarImages(actualDpi);
+            const bool scriptsApplied = ApplyScriptIconSize();
+            int mainWidth = 0, mainHeight = 0, scriptActualWidth = 0, scriptActualHeight = 0;
+            passed = paletteApplied && mainApplied && scriptsApplied &&
+                ::ImageList_GetIconSize(m_commandToolbarImages, &mainWidth, &mainHeight) &&
+                ::ImageList_GetIconSize(m_scriptsToolbarImages, &scriptActualWidth, &scriptActualHeight) &&
+                mainWidth == UiMetrics::ScaleForDpi(combination.mainSize, actualDpi) && mainHeight == mainWidth &&
+                scriptActualWidth == UiMetrics::ScaleForDpi(combination.scriptSize, actualDpi) && scriptActualHeight == scriptActualWidth &&
+                DocChanged() == documentDirtyBefore && m_CmdToolbar.GetButtonCount() == static_cast<int>(commands.size()) && passed;
+            for(int i = 0; i < m_CmdToolbar.GetButtonCount() && i < static_cast<int>(commands.size()); ++i) {
+                TBBUTTON button = {}; passed = m_CmdToolbar.GetButton(i, &button) && button.idCommand == commands[i] && passed;
+            }
+        }
+        passed = ThemeManager::SetNamedPalette(paletteBefore) && passed;
+        ThemeManager::SetSelectedTheme(themeBefore);
+        ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+        _Settings.SetScriptIconSize(16); passed = ApplyScriptIconSize() && passed;
         _Settings.SetMainToolbarIconSize(24); passed = RebuildCommandToolbarImages(actualDpi) && passed;
         const DWORD gdiBefore = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
         for(int i = 0; i < 20; ++i) { _Settings.SetMainToolbarIconSize(i % 2 ? 24 : 32); passed = RebuildCommandToolbarImages(actualDpi) && passed; }
