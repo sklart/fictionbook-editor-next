@@ -2662,8 +2662,7 @@ HBITMAP FitRectScriptBitmap(HBITMAP bitmap, int sourceWidth, int sourceHeight, i
 		const DWORD pixel = source[static_cast<size_t>(y * sourceHeight / height)*sourceWidth + x * sourceWidth / width];
 		const DWORD alpha = hasAlpha ? pixel >> 24 : 255;
 		if(!alpha || (pixel & 0x00ffffffu) == 0x00ff00ffu) continue;
-		const DWORD red = ((pixel >> 16) & 255) * alpha, green = ((pixel >> 8) & 255) * alpha, blue = (pixel & 255) * alpha;
-		target[(y+top)*targetSize+x+left] = (alpha<<24) | (((red+127)/255)<<16) | (((green+127)/255)<<8) | ((blue+127)/255);
+		target[(y+top)*targetSize+x+left] = (alpha << 24) | (pixel & 0x00ffffffu);
 	}
 	return fitted;
 }
