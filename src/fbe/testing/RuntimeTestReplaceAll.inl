@@ -25,6 +25,7 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 		const bool stalePreview = wcscmp(mode, L"stale-preview") == 0;
 		const bool scopeSelection = wcscmp(mode, L"scope-selection") == 0;
 		const bool scopeSection = wcscmp(mode, L"scope-section") == 0;
+		const bool crossInline = wcscmp(mode, L"cross-inline") == 0;
 		const bool expectedFailure = fault[0] != 0;
 		const bool expectedMutation = expectedFailure && wcscmp(fault, L"before-first") != 0;
 		ShowView(BODY); m_doc->m_body.SetFocus(); pump();
@@ -47,9 +48,9 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 			if (!selected->findText(scopeSelection ? L"blank.fb2" : L"9", 0, 0)) CheckError(E_FAIL);
 			selected->select(); pump();
 		}
-		const wchar_t* replacement = wcscmp(fault, L"format") == 0 ? L"\\S+\\Q" : L"+";
-		const wchar_t* pattern = noMatch ? L"THIS_PATTERN_IS_ABSENT_8472" : literal ? L"2" : zeroLength ? L"(?=blank)" : L"\\d";
-		if (!m_doc->m_body.ConfigureReplaceAllRuntimeTest(pattern, replacement, !literal)) CheckError(E_FAIL);
+		const wchar_t* replacement = wcscmp(fault, L"format") == 0 ? L"\\S+\\Q" : crossInline ? L"xy" : L"+";
+		const wchar_t* pattern = noMatch ? L"THIS_PATTERN_IS_ABSENT_8472" : crossInline ? L"AB" : literal ? L"2" : zeroLength ? L"(?=blank)" : L"\\d";
+		if (!m_doc->m_body.ConfigureReplaceAllRuntimeTest(pattern, replacement, !literal && !crossInline)) CheckError(E_FAIL);
 		static MSHTML::IHTMLTxtRangePtr modalMutation;
 		static bool modalChanged = false;
 		modalMutation = NULL; modalChanged = false;
