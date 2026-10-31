@@ -101,6 +101,23 @@ void CMainFrame::RunPortableStateTestScenario()
         for(const wchar_t* invalid : { L"{}", L"{\"schemaVersion\":2}", L"{\"schemaVersion\":1,\"id\":\"../x\",\"name\":\"x\",\"base\":\"light\"}",
             L"{\"schemaVersion\":1,\"id\":\"my-theme\",\"name\":\"x\",\"base\":\"light\",\"colors\":{\"text\":\"#GG0000\"}}", L"[]" })
             jsonPassed = !ThemeManager::ParseCustomPalette(invalid, roundTrip, parseError) && !parseError.empty() && jsonPassed;
+        jsonPassed = ThemeManager::SaveCustomPaletteToProfile(custom, false, parseError) && jsonPassed;
+        jsonPassed = !ThemeManager::SaveCustomPaletteToProfile(custom, false, parseError) && !parseError.empty() && jsonPassed;
+        ThemeManager::CustomPalette fromFile;
+        jsonPassed = ThemeManager::LoadCustomPaletteFromProfile(custom.id, fromFile, parseError) && fromFile.name == custom.name &&
+            fromFile.colors[THEME_COLOR_WINDOW] == custom.colors[THEME_COLOR_WINDOW] && jsonPassed;
+        ThemeManager::CustomPalette updated = custom; updated.name = L"Updated";
+        jsonPassed = ThemeManager::SaveCustomPaletteToProfile(updated, true, parseError) &&
+            ThemeManager::LoadCustomPaletteFromProfile(updated.id, fromFile, parseError) && fromFile.name == L"Updated" && jsonPassed;
+        jsonPassed = !ThemeManager::DeleteCustomPaletteFromProfile(L"../bad", parseError) && jsonPassed;
+        CString corruptPath(DeploymentContext::SettingsDirectory().c_str());
+        if(corruptPath.Right(1) != L"\\") corruptPath += L"\\";
+        corruptPath += L"InterfaceThemes\\my-theme.json";
+        HANDLE corrupt = ::CreateFileW(corruptPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if(corrupt == INVALID_HANDLE_VALUE) jsonPassed = false;
+        else { const char bad[] = "{broken"; DWORD written = 0; jsonPassed = ::WriteFile(corrupt, bad, sizeof(bad) - 1, &written, NULL) && written == sizeof(bad) - 1 && jsonPassed; ::CloseHandle(corrupt); }
+        jsonPassed = !ThemeManager::LoadCustomPaletteFromProfile(custom.id, fromFile, parseError) && fromFile.name == L"Updated" && jsonPassed;
+        jsonPassed = ThemeManager::DeleteCustomPaletteFromProfile(custom.id, parseError) && jsonPassed;
         const InterfaceTheme initialTheme = ThemeManager::GetSelectedTheme();
         const InterfacePalette initialPalette = ThemeManager::GetNamedPalette();
         const COLORREF classicWindow = ThemeManager::WindowColor();

@@ -6,6 +6,8 @@
 #include "scripts/ScriptMenuBitmap.h"
 #include "../common/ModernFileDialog.h"
 #include "../common/RuntimeLocalizationCommon.h"
+#include "settings/SettingsFileTransaction.h"
+#include "../common/DeploymentContext.h"
 #include <map>
 #include <array>
 #include <set>
@@ -960,6 +962,77 @@ std::wstring SerializeCustomPalette(const CustomPalette& palette)
 		json += L"\""; json += kCustomRoleNames[role]; json += L"\":\""; json += color; json += L"\"";
 	}
 	return json + L"}}";
+}
+
+namespace {
+bool ProfilePalettePath(const std::wstring& id, CString& path, bool createDirectory, std::wstring& error)
+{
+	CustomPalette probe; probe.id = id; probe.name = L"validation";
+	CustomPalette checked; std::wstring parseError;
+	if(!ParseCustomPalette(SerializeCustomPalette(probe), checked, parseError) || checked.id != id) { error = L"Invalid theme id."; return false; }
+	CString directory(DeploymentContext::SettingsDirectory().c_str());
+	if(directory.IsEmpty()) { error = L"Settings directory is unavailable."; return false; }
+	if(createDirectory && !::CreateDirectoryW(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) { error = L"Settings directory is unavailable."; return false; }
+	if(directory.Right(1) != L"\\") directory += L"\\";
+	directory += L"InterfaceThemes";
+	if(createDirectory && !::CreateDirectoryW(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) { error = L"Cannot create theme directory."; return false; }
+	const DWORD attributes = ::GetFileAttributesW(directory);
+	if(attributes == INVALID_FILE_ATTRIBUTES || !(attributes & FILE_ATTRIBUTE_DIRECTORY) || (attributes & FILE_ATTRIBUTE_REPARSE_POINT)) { error = L"Theme directory is unavailable or unsafe."; return false; }
+	path = directory + L"\\" + id.c_str() + L".json";
+	const DWORD fileAttributes = ::GetFileAttributesW(path);
+	if(fileAttributes != INVALID_FILE_ATTRIBUTES && (fileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT))) { error = L"Theme file is not a regular file."; return false; }
+	return true;
+}
+}
+
+bool SaveCustomPaletteToProfile(const CustomPalette& palette, bool overwrite, std::wstring& error)
+{
+	error.clear(); CustomPalette checked;
+	const std::wstring json = SerializeCustomPalette(palette);
+	if(!ParseCustomPalette(json, checked, error) || checked.id != palette.id || checked.name != palette.name || checked.base != palette.base) return false;
+	for(int role = 0; role < THEME_COLOR_COUNT; ++role)
+		if(checked.present[role] != palette.present[role] || (palette.present[role] && checked.colors[role] != palette.colors[role])) { error = L"Invalid theme colour."; return false; }
+	CString path;
+	if(!ProfilePalettePath(palette.id, path, true, error)) return false;
+	const int length = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, json.data(), static_cast<int>(json.size()), NULL, 0, NULL, NULL);
+	if(length <= 0) { error = L"Cannot encode theme as UTF-8."; return false; }
+	std::vector<char> bytes(static_cast<size_t>(length));
+	if(::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, json.data(), static_cast<int>(json.size()), bytes.data(), length, NULL, NULL) != length) { error = L"Cannot encode theme as UTF-8."; return false; }
+	SettingsFileTransaction transaction;
+	const CString temporary = SettingsFileTransaction::Temporary(path);
+	if(temporary.IsEmpty()) { error = L"Cannot create temporary theme file."; return false; }
+	transaction.Add(path, temporary, !overwrite);
+	HANDLE file = ::CreateFileW(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(file == INVALID_HANDLE_VALUE) { error = L"Cannot write theme file."; return false; }
+	DWORD written = 0;
+	const BOOL ok = ::WriteFile(file, bytes.data(), static_cast<DWORD>(bytes.size()), &written, NULL);
+	::CloseHandle(file);
+	if(!ok || written != bytes.size()) { error = L"Cannot write theme file."; return false; }
+	if(!transaction.Commit()) { error = L"Cannot save theme file."; return false; }
+	return true;
+}
+
+bool LoadCustomPaletteFromProfile(const std::wstring& id, CustomPalette& palette, std::wstring& error)
+{
+	error.clear(); CString path;
+	if(!ProfilePalettePath(id, path, false, error)) return false;
+	WIN32_FILE_ATTRIBUTE_DATA attributes = {};
+	if(!::GetFileAttributesExW(path, GetFileExInfoStandard, &attributes) || attributes.nFileSizeHigh || attributes.nFileSizeLow > 65536) { error = L"Cannot read theme file or file is too large."; return false; }
+	std::wstring json; CustomPalette loaded;
+	if(!FbeRuntimeLocalization::ReadUtf8TextFile(path, json) || !ParseCustomPalette(json, loaded, error)) { if(error.empty()) error = L"Invalid UTF-8 theme file."; return false; }
+	if(loaded.id != id) { error = L"Theme id does not match its filename."; return false; }
+	palette = loaded;
+	return true;
+}
+
+bool DeleteCustomPaletteFromProfile(const std::wstring& id, std::wstring& error)
+{
+	error.clear(); CString path;
+	if(!ProfilePalettePath(id, path, false, error)) return false;
+	if(::GetFileAttributesW(path) == INVALID_FILE_ATTRIBUTES) { error = L"Theme file does not exist."; return false; }
+	SettingsFileTransaction transaction; transaction.Add(path);
+	if(!transaction.Commit()) { error = L"Cannot delete theme file."; return false; }
+	return true;
 }
 namespace
 {
