@@ -25,11 +25,24 @@ try {
                 if ($code -ne 0 -or $text -notmatch '(?m)^opened=1\r?$' -or $text -notmatch '(?m)^first=1\r?$' -or $text -notmatch '(?m)^ordered=1\r?$' -or $text -notmatch '(?m)^deduplicated=1\r?$' -or $text -notmatch '(?m)^close-button=1\r?$' -or $text -notmatch '(?m)^escape=1\r?$') { throw "$mode/$phase failed: $text" }
             }
             if ($mode -eq 'portable') {
-                $moved = Join-Path $iso.Root 'moved-profile'
-                Move-Item -LiteralPath $iso.DataPath -Destination $moved
-                $settings = Join-Path $moved 'Settings'
-                $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = $settings
-                [IO.File]::WriteAllText((Join-Path $iso.Root 'portable.ini'), "[Portable]`r`nDataPath=moved-profile`r`n", [Text.UTF8Encoding]::new($false))
+                # Rename the owned temporary root as a unit. Its ownership marker,
+                # executable and data stay together, so interrupted-run cleanup can
+                # still find the process and remove the whole relocated installation.
+                $oldRoot = [IO.Path]::GetFullPath($iso.Root)
+                $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\')
+                if ((Split-Path -Parent $oldRoot) -ne $tempRoot -or
+                    [IO.Path]::GetFileName($oldRoot) -notmatch '^fr-[0-9a-f]{32}$' -or
+                    ((Get-Item -LiteralPath $oldRoot).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "Unexpected disposable runtime: $oldRoot" }
+                $dataName = [IO.Path]::GetFileName($iso.DataPath)
+                $movedRuntime = Join-Path $tempRoot ('fr-' + [guid]::NewGuid().ToString('N'))
+                Move-Item -LiteralPath $oldRoot -Destination $movedRuntime -ErrorAction Stop
+                $iso.Root = $movedRuntime
+                $iso.Runtime = $movedRuntime
+                $iso.Exe = Join-Path $movedRuntime 'FBE.exe'
+                $iso.DataPath = Join-Path $movedRuntime $dataName
+                $iso.StagePath = Join-Path $movedRuntime 'test-stage.txt'
+                $settings = Join-Path $iso.DataPath 'Settings'
+                $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = $null
                 $env:FBE_NEXT_TEST_SCENARIO = 'search-history-read'
                 $report = Join-Path $iso.Root 'history-moved.txt'
                 $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -WindowStyle Hidden `
@@ -37,6 +50,7 @@ try {
                 $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds 120
                 $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
                 if ($code -ne 0 -or $text -notmatch '(?m)^first=1\r?$' -or $text -notmatch '(?m)^ordered=1\r?$' -or $text -notmatch '(?m)^deduplicated=1\r?$') { throw "portable/moved failed: $text" }
+                $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = $settings
             }
             $env:FBE_NEXT_TEST_SCENARIO = 'search-history-find'
             $report = Join-Path $iso.Root 'history-find.txt'
@@ -84,7 +98,7 @@ try {
                 }
             }
             $passed = $true
-            Write-Host "Search/replace history: PASS ($mode; close paths, find/miss, Find to Replace, reopen, restart, read-only and corrupt files preserved$(if ($mode -eq 'portable') { ', moved profile' } else { ', isolated registry migration' }))."
+            Write-Host "Search/replace history: PASS ($mode; close paths, find/miss, Find to Replace, reopen, restart, read-only and corrupt files preserved$(if ($mode -eq 'portable') { ', relocated installation and profile without path override' } else { ', isolated registry migration' }))."
         } finally { Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed }
     }
 } finally { foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $old[$name]) } }
