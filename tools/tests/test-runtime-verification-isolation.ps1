@@ -31,7 +31,7 @@ Require 'tools\tests\test-fbe-editor-view-lifecycle-runtime.ps1' 'FBE_NEXT_TEST_
 
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 # Exercise the real process bookkeeping without opening a GUI or modifying FBE.
-$waitRoot = Join-Path ([IO.Path]::GetTempPath()) ('fbe-wait-contract-' + [guid]::NewGuid().ToString('N'))
+$waitRoot = Join-Path ([IO.Path]::GetTempPath()) ('fr-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $waitRoot | Out-Null
 $pwsh = (Get-Process -Id $PID).Path
 $waitIsolation = [pscustomobject]@{Root=$waitRoot;Runtime=$waitRoot;Exe=$pwsh;DataPath=$waitRoot;StagePath=(Join-Path $waitRoot 'stage.txt')}
@@ -57,5 +57,65 @@ try {
     if ($code -ne 7) { throw 'Nonzero child exit was hidden.' }
 } finally {
     if ($child -and !$child.HasExited) { Stop-Process -Id $child.Id -Force -ErrorAction SilentlyContinue; $child.WaitForExit() }
+}
+$savedArtifacts = $env:FBE_RUNTIME_FAILURE_ARTIFACTS
+$testArtifacts = Join-Path $root ('build\isolation-test-' + [guid]::NewGuid().ToString('N'))
+try {
+    $fixtureSource = Join-Path $testArtifacts 'source'
+    New-Item -ItemType Directory -Path $fixtureSource -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $fixtureSource 'FBE.exe') -Value 'fixture'
+    $before = @(Get-ChildItem -LiteralPath ([IO.Path]::GetTempPath()) -Directory -Filter 'fr-*' | Select-Object -ExpandProperty FullName)
+    $creationFailed = $false
+    try { New-IsolatedFbeRuntime -FbeExe (Join-Path $fixtureSource 'FBE.exe') -Name 'invalid|name' | Out-Null } catch { $creationFailed = $true }
+    $newRoots = @(Get-ChildItem -LiteralPath ([IO.Path]::GetTempPath()) -Directory -Filter 'fr-*' | Where-Object { $_.FullName -notin $before })
+    if (!$creationFailed -or $newRoots.Count) { throw 'A failed runtime creation must remove its partial copy.' }
+    $env:FBE_RUNTIME_FAILURE_ARTIFACTS = $testArtifacts
+    $kept = New-IsolatedFbeRuntime -FbeExe (Join-Path $fixtureSource 'FBE.exe') -Name 'kept'
+    try {
+        Complete-IsolatedFbeRuntime -Isolation $kept -Passed $true -KeepArtifacts
+        if (Test-Path -LiteralPath (Join-Path $kept.Root '.fbe-runtime-owner.json')) { throw 'Explicitly retained artifacts must not be marked for cleanup.' }
+        Remove-AbandonedIsolatedFbeRuntimes
+        if (!(Test-Path -LiteralPath $kept.Root)) { throw 'Explicitly retained artifacts were removed.' }
+    } finally { if (Test-Path -LiteralPath $kept.Root) { Remove-Item -LiteralPath $kept.Root -Recurse -Force } }
+    $ready = Join-Path $testArtifacts 'child-ready.txt'
+    $helper = (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1').Replace("'", "''")
+    $exe = (Join-Path $fixtureSource 'FBE.exe').Replace("'", "''")
+    $readyQuoted = $ready.Replace("'", "''")
+    $command = ". '$helper'; `$iso = New-IsolatedFbeRuntime -FbeExe '$exe' -Name interrupted; Set-Content -LiteralPath (Join-Path `$iso.Root 'test-stage.txt') -Value 'interrupted'; [IO.File]::WriteAllText('$readyQuoted', `$iso.Root); Start-Sleep -Seconds 60"
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
+    $child = Start-Process $pwsh -ArgumentList "-NoProfile -EncodedCommand $encoded" -WindowStyle Hidden -PassThru
+    try {
+        for ($i = 0; $i -lt 100 -and !(Test-Path -LiteralPath $ready) -and !$child.HasExited; $i++) { Start-Sleep -Milliseconds 100 }
+        if (!(Test-Path -LiteralPath $ready)) { throw 'Child did not create its test runtime.' }
+        $orphan = [IO.File]::ReadAllText($ready)
+        Remove-AbandonedIsolatedFbeRuntimes
+        if (!(Test-Path -LiteralPath $orphan)) { throw 'A live owner must protect its runtime.' }
+        Stop-Process -Id $child.Id -Force
+        $child.WaitForExit()
+        Remove-AbandonedIsolatedFbeRuntimes
+        $orphanArtifacts = Join-Path $testArtifacts (Split-Path -Leaf $orphan)
+        if ((Test-Path -LiteralPath $orphan) -or !(Test-Path -LiteralPath (Join-Path $orphanArtifacts 'test-stage.txt'))) { throw 'The next cleanup must preserve diagnostics and remove the killed child runtime.' }
+    } finally {
+        if (!$child.HasExited) { Stop-Process -Id $child.Id -Force -ErrorAction SilentlyContinue; $child.WaitForExit() }
+    }
+    New-Item -ItemType Directory -Path $waitRoot | Out-Null
+    Set-Content -LiteralPath (Join-Path $waitRoot 'test-stage.txt') -Value 'failed stage'
+    New-Item -ItemType Directory -Path (Join-Path $waitRoot 'Recovery') | Out-Null
+    Set-Content -LiteralPath (Join-Path $waitRoot 'Recovery\fixture.fb2') -Value 'recovery'
+    Complete-IsolatedFbeRuntime -Isolation $waitIsolation -Passed $false
+    $saved = Join-Path $testArtifacts (Split-Path -Leaf $waitRoot)
+    if ((Test-Path $waitRoot) -or !(Test-Path (Join-Path $saved 'test-stage.txt')) -or !(Test-Path (Join-Path $saved 'Recovery\fixture.fb2'))) { throw 'Failure must save diagnostics and remove the disposable runtime.' }
+    New-Item -ItemType Directory -Path $waitRoot | Out-Null
+    Complete-IsolatedFbeRuntime -Isolation $waitIsolation -Passed $false -KeepArtifacts
+    if (!(Test-Path $waitRoot)) { throw 'Explicit KeepArtifacts must retain the runtime.' }
+    $env:FBE_RUNTIME_FAILURE_ARTIFACTS = Join-Path $waitRoot 'nested'
+    $rejected = $false
+    try { Complete-IsolatedFbeRuntime -Isolation $waitIsolation -Passed $false } catch { $rejected = $true }
+    if (!$rejected -or !(Test-Path $waitRoot)) { throw 'Invalid diagnostics location must leave the runtime intact.' }
+    Complete-IsolatedFbeRuntime -Isolation $waitIsolation -Passed $true
+} finally {
+    $env:FBE_RUNTIME_FAILURE_ARTIFACTS = $savedArtifacts
+    if (Test-Path $waitRoot) { Remove-Item -LiteralPath $waitRoot -Recurse -Force }
+    if (Test-Path $testArtifacts) { Remove-Item -LiteralPath $testArtifacts -Recurse -Force }
 }
 Write-Host 'Runtime verification isolation contract and controlled timeout/nonzero-exit regressions passed.'

@@ -57,7 +57,6 @@ try {
     $passed = $true
 }
 finally {
-    if($KeepArtifacts) { Write-Host "Artifacts: $directory" }
-    else { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed }
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -KeepArtifacts:$KeepArtifacts
 }
 Write-Host 'Visual DOM normalizer production runtime passed.'

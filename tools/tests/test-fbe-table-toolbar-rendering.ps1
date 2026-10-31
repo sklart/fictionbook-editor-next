@@ -61,5 +61,5 @@ try {
     }    $passed = $true
     Write-Host 'FBE table toolbar state and rendering transitions passed.'
 } finally {
-    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed ($passed -and -not $KeepArtifacts)
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -KeepArtifacts:$KeepArtifacts
 }

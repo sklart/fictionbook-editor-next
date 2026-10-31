@@ -164,6 +164,5 @@ try {
     $suitePassed = $true
 }
 finally {
-    if($KeepArtifacts) { Write-Host "Artifacts: $directory" }
-    else { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $suitePassed }
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $suitePassed -KeepArtifacts:$KeepArtifacts
 }

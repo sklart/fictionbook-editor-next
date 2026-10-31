@@ -42,5 +42,5 @@ try {
     $passed = $true
     Write-Host 'FBE toolbar ARGB scaling contract passed.'
 } finally {
-    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed ($passed -and -not $KeepArtifacts)
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -KeepArtifacts:$KeepArtifacts
 }

@@ -34,6 +34,5 @@ try {
     }
     $passed = $true
 } finally {
-    if($KeepArtifacts) { Write-Host "Artifacts: $($isolation.Root)" }
-    else { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed }
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -KeepArtifacts:$KeepArtifacts
 }
