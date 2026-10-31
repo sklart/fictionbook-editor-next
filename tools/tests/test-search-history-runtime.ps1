@@ -38,6 +38,13 @@ try {
                 $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
                 if ($code -ne 0 -or $text -notmatch '(?m)^first=1\r?$' -or $text -notmatch '(?m)^ordered=1\r?$' -or $text -notmatch '(?m)^deduplicated=1\r?$') { throw "portable/moved failed: $text" }
             }
+            $env:FBE_NEXT_TEST_SCENARIO = 'search-history-find'
+            $report = Join-Path $iso.Root 'history-find.txt'
+            $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -WindowStyle Hidden `
+                -ArgumentList @("--$mode", '-b', ('"' + $report + '"'), ('"' + $document + '"')) -PassThru
+            $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds 45
+            $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
+            if ($code -ne 0 -or $text -notmatch '(?m)^found=1\r?$' -or $text -notmatch '(?m)^missing=1\r?$' -or $text -notmatch '(?m)^switched=1\r?$') { throw "$mode/find failed: $text" }
             [IO.File]::WriteAllBytes((Join-Path $settings 'SearchHistory.dat'), [byte[]](1,2,3,4,5,6,7,8))
             $env:FBE_NEXT_TEST_SCENARIO = 'search-history-corrupt'
             $report = Join-Path $iso.Root 'history-corrupt.txt'
@@ -47,7 +54,7 @@ try {
             $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
             if ($code -ne 0 -or $text -notmatch '(?m)^opened=1\r?$' -or $text -notmatch '(?m)^empty=1\r?$' -or $text -notmatch '(?m)^preserved=1\r?$') { throw "$mode/corrupt failed: $text" }
             $passed = $true
-            Write-Host "Search/replace history: PASS ($mode; reopen, restart, corrupt file preserved$(if ($mode -eq 'portable') { ', moved profile' }))."
+            Write-Host "Search/replace history: PASS ($mode; close paths, find/miss, Find to Replace, reopen, restart, corrupt file preserved$(if ($mode -eq 'portable') { ', moved profile' }))."
         } finally { Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed }
     }
 } finally { foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $old[$name]) } }

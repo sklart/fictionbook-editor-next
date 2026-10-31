@@ -7,6 +7,53 @@
 #include "RuntimeTestNbspInput.inl"
 #include "RuntimeTestReplaceAll.inl"
 if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
+	if (IsFbeTestScenario(L"search-history-find"))
+	{
+		auto stage = [&](const char* value) { DWORD bytes = 0; output.Write(value, static_cast<DWORD>(strlen(value)), &bytes); output.Flush(); };
+		stage("stage=start\n");
+		BOOL handled = FALSE;
+		ShowView(BODY); m_doc->m_body.SetFocus();
+		stage("stage=body\n");
+		m_doc->m_body.OnFind(0, ID_EDIT_FIND, m_doc->m_body, handled);
+		stage("stage=find-open\n");
+		HWND find = m_doc->m_body.m_find_dlg ? m_doc->m_body.m_find_dlg->m_hWnd : NULL;
+		static int dismissed = 0; dismissed = 0;
+		const UINT_PTR timer = ::SetTimer(NULL, 0, 30, [](HWND, UINT, UINT_PTR, DWORD) {
+			::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
+				wchar_t name[64] = {}; ::GetClassNameW(window, name, _countof(name));
+				if ((wcscmp(name, L"#32770") == 0 || wcscmp(name, L"FBEThemedMessageDialog") == 0) && !::GetDlgItem(window, IDC_TEXT)) {
+					const int button = ::GetDlgItem(window, IDOK) ? IDOK : ::GetDlgItem(window, IDCANCEL) ? IDCANCEL : 0;
+					if (button) { ++dismissed; ::PostMessageW(window, WM_COMMAND, button, 0); }
+				}
+				return TRUE;
+			}, 0);
+		});
+		bool found = false, missing = false, switched = false;
+		if (find && timer) {
+			::CheckDlgButton(find, IDC_REGEXP, BST_UNCHECKED);
+			::SetWindowTextW(::GetDlgItem(find, IDC_TEXT), L"blank.fb2");
+			stage("stage=before-found\n");
+			::SendMessageW(find, WM_COMMAND, IDC_FIND_FROM_START, 0);
+			stage("stage=after-found\n");
+			found = dismissed == 0 && ::SendMessageW(::GetDlgItem(find, IDC_TEXT), CB_FINDSTRINGEXACT, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(L"blank.fb2")) == 0;
+			::SetWindowTextW(::GetDlgItem(find, IDC_TEXT), L"ABSENT_HISTORY_PATTERN_8472");
+			stage("stage=before-missing\n");
+			::SendMessageW(find, WM_COMMAND, IDC_FIND_FROM_START, 0);
+			stage("stage=after-missing\n");
+			missing = dismissed > 0;
+			::SendMessageW(find, WM_CLOSE, 0, 0);
+			m_doc->m_body.OnReplace(0, ID_EDIT_REPLACE, m_doc->m_body, handled);
+			HWND replace = m_doc->m_body.m_replace_dlg ? m_doc->m_body.m_replace_dlg->m_hWnd : NULL;
+			HWND combo = replace ? ::GetDlgItem(replace, IDC_TEXT) : NULL;
+			switched = combo && ::SendMessageW(combo, CB_FINDSTRINGEXACT, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(L"ABSENT_HISTORY_PATTERN_8472")) == 0 &&
+				::SendMessageW(combo, CB_FINDSTRINGEXACT, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(L"blank.fb2")) == 1;
+			if (replace) ::SendMessageW(replace, WM_CLOSE, 0, 0);
+		}
+		if (timer) ::KillTimer(NULL, timer);
+		CStringA report; report.Format("found=%d\nmissing=%d\nswitched=%d\n", found, missing, switched);
+		DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close();
+		::PostQuitMessage(found && missing && switched ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"search-history-corrupt"))
 	{
 		const CString path = U::GetSettingsDir() + L"SearchHistory.dat";
