@@ -7,6 +7,29 @@
 #include "RuntimeTestNbspInput.inl"
 #include "RuntimeTestReplaceAll.inl"
 if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
+	if (IsFbeTestScenario(L"search-history-corrupt"))
+	{
+		const CString path = U::GetSettingsDir() + L"SearchHistory.dat";
+		CAtlFile beforeFile;
+		char before[8] = {}; DWORD read = 0;
+		const bool beforeOk = SUCCEEDED(beforeFile.Create(path, GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING)) &&
+			SUCCEEDED(beforeFile.Read(before, sizeof(before), read)) && read == sizeof(before);
+		beforeFile.Close();
+		BOOL handled = FALSE;
+		m_doc->m_body.OnReplace(0, ID_EDIT_REPLACE, m_doc->m_body, handled);
+		HWND dialog = m_doc->m_body.m_replace_dlg ? m_doc->m_body.m_replace_dlg->m_hWnd : NULL;
+		const bool empty = dialog && ::SendMessageW(::GetDlgItem(dialog, IDC_TEXT), CB_GETCOUNT, 0, 0) == 0;
+		if (dialog) {
+			::SetWindowTextW(::GetDlgItem(dialog, IDC_TEXT), L"new history entry");
+			::SendMessageW(dialog, WM_COMMAND, IDCANCEL, 0);
+		}
+		CAtlFile afterFile; char after[8] = {}; read = 0;
+		const bool preserved = beforeOk && SUCCEEDED(afterFile.Create(path, GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING)) &&
+			SUCCEEDED(afterFile.Read(after, sizeof(after), read)) && read == sizeof(after) && memcmp(before, after, sizeof(before)) == 0;
+		CStringA report; report.Format("opened=%d\nempty=%d\npreserved=%d\n", dialog != NULL, empty, preserved);
+		DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close();
+		::PostQuitMessage(dialog && empty && preserved ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"search-history-write") || IsFbeTestScenario(L"search-history-read"))
 	{
 		const bool write = IsFbeTestScenario(L"search-history-write");
