@@ -35,6 +35,7 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	void UpdateThemeNotice();
 	void FitLocalizedLayout();
 	void UpdatePaletteColorControls();
+	void UpdatePaletteContrast();
 
 public:
 	explicit CSettingsGeneralPage(bool darkThemeSupported = ThemeManager::IsDarkModeSupported()) : m_darkThemeSupported(darkThemeSupported) {}
@@ -42,6 +43,7 @@ public:
 
 	BEGIN_MSG_MAP(CSettingsGeneralPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnPaletteThemeChanged)
 		COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
 		COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_SELCHANGE, OnInterfaceThemeChanged)
@@ -54,6 +56,7 @@ public:
 	END_MSG_MAP()
 
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnPaletteThemeChanged(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnClickedOK(WORD, WORD, HWND, BOOL&);
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnInterfaceThemeChanged(WORD, WORD, HWND, BOOL&);

@@ -861,7 +861,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        271
 #define _APS_NEXT_COMMAND_VALUE         58003
-#define _APS_NEXT_CONTROL_VALUE         1834
+#define _APS_NEXT_CONTROL_VALUE         1835
 #define _APS_NEXT_SYMED_VALUE           133
 #endif
 #endif
@@ -910,3 +910,5 @@
 #define IDC_PALETTE_ROLE 1831
 #define IDC_PALETTE_CHOOSE_COLOR 1832
 #define IDC_PALETTE_RESET_COLOR 1833
+
+#define IDC_PALETTE_CONTRAST 1834

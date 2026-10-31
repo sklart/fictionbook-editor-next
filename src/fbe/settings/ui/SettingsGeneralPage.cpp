@@ -8,6 +8,7 @@
 #include "..\\..\\apputils.h"
 #include <initializer_list>
 #include <algorithm>
+#include <cmath>
 
 extern CSettings _Settings;
 
@@ -79,6 +80,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Add(GetDlgItem(IDC_INTERFACE_PALETTE_COPY), L"fbe.settings.tooltip.general.palette_copy", L"Create a copy of the selected palette. It is saved when you confirm settings.");
 	for(HWND control : {m_paletteRole.m_hWnd, GetDlgItem(IDC_PALETTE_ROLE_LABEL).m_hWnd, GetDlgItem(IDC_PALETTE_CHOOSE_COLOR).m_hWnd, GetDlgItem(IDC_PALETTE_RESET_COLOR).m_hWnd})
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.palette_color", L"Edit a colour in a custom palette. Use the base colour to restore inheritance; Cancel discards changes.");
+	m_tooltips.Add(GetDlgItem(IDC_PALETTE_CONTRAST), L"fbe.settings.tooltip.general.palette_contrast", L"Checks text against window, control, selection, hover and pressed backgrounds. Disabled text uses a 3:1 threshold.");
 	for(HWND control : {m_descriptionLayout.m_hWnd, GetDlgItem(IDC_DESCRIPTION_LAYOUT_LABEL).m_hWnd})
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.description_layout", L"Choose the Description layout. Modern uses compact, collapsible sections; Classic keeps the familiar FictionBook Editor field order. This does not change FB2 data.");
 	for(HWND control : {m_scriptIconSize.m_hWnd, GetDlgItem(IDC_SCRIPT_ICON_SIZE_LABEL).m_hWnd})
@@ -271,7 +273,7 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	};
 	shift(IDC_OPTIONS_INTERFACE_GROUP, { IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG,
 		IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME,
-		IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE, IDC_INTERFACE_PALETTE_COPY, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
+		IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE, IDC_INTERFACE_PALETTE_COPY, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR, IDC_PALETTE_CONTRAST, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
 	const CRect interfaceGroup = bounds(IDC_OPTIONS_INTERFACE_GROUP);
 	int comboLeft = bounds(IDC_LANG).left;
 	for(int id : { IDC_OPTIONS_LANGUAGE_LABEL, IDC_OPTIONS_GENRE_CATALOG_LABEL,
@@ -304,7 +306,11 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	choose.SetRect(comboLeft, buttonTop, interfaceComboRight, buttonTop + buttonHeight);
 	reset.SetRect(comboLeft, choose.bottom + rowGap, interfaceComboRight, choose.bottom + rowGap + buttonHeight);
 	place(IDC_PALETTE_CHOOSE_COLOR, choose); place(IDC_PALETTE_RESET_COLOR, reset);
-	separateRows(IDC_PALETTE_RESET_COLOR, IDC_PALETTE_RESET_COLOR, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE);
+	CRect contrast = bounds(IDC_PALETTE_CONTRAST);
+	contrast.left = interfaceGroup.left + margin; contrast.right = interfaceComboRight;
+	contrast.top = reset.bottom + rowGap; contrast.bottom = contrast.top + 3 * minimumTextHeight + padding;
+	place(IDC_PALETTE_CONTRAST, contrast);
+	separateRows(IDC_PALETTE_CONTRAST, IDC_PALETTE_CONTRAST, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE);
 	separateRows(IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE);
 	separateRows(IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT);
 	grow(IDC_OPTIONS_INTERFACE_GROUP, { IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
@@ -434,10 +440,37 @@ LRESULT CSettingsGeneralPage::OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
+LRESULT CSettingsGeneralPage::OnPaletteThemeChanged(UINT, WPARAM, LPARAM, BOOL& handled)
+{
+	if(GetDlgItem(IDC_PALETTE_CONTRAST).IsWindow()) UpdatePaletteContrast();
+	handled = FALSE;
+	return 0;
+}
+
 void CSettingsGeneralPage::UpdatePaletteColorControls()
 {
 	const bool editable = m_acceptedPaletteIndex >= INTERFACE_PALETTE_COUNT && ThemeManager::IsCustomPaletteActive();
 	for(int id : {IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR}) GetDlgItem(id).EnableWindow(editable);
+	UpdatePaletteContrast();
+}
+
+void CSettingsGeneralPage::UpdatePaletteContrast()
+{
+	if(!ThemeManager::IsCustomPaletteActive()) { SetDlgItemText(IDC_PALETTE_CONTRAST, L""); return; }
+	auto luminance = [](COLORREF color) {
+		auto channel = [](BYTE value) { const double v = value / 255.0; return v <= 0.04045 ? v / 12.92 : std::pow((v + 0.055) / 1.055, 2.4); };
+		return 0.2126 * channel(GetRValue(color)) + 0.7152 * channel(GetGValue(color)) + 0.0722 * channel(GetBValue(color));
+	};
+	auto enough = [&](ThemeColorRole foreground, ThemeColorRole background, double threshold) {
+		const double a = luminance(ThemeManager::Color(foreground)), b = luminance(ThemeManager::Color(background));
+		return ((std::max)(a, b) + 0.05) / ((std::min)(a, b) + 0.05) >= threshold;
+	};
+	const bool readable = enough(THEME_COLOR_TEXT, THEME_COLOR_WINDOW, 4.5) && enough(THEME_COLOR_TEXT, THEME_COLOR_CONTROL, 4.5) &&
+		enough(THEME_COLOR_SELECTION_TEXT, THEME_COLOR_SELECTION_BACKGROUND, 4.5) && enough(THEME_COLOR_TEXT, THEME_COLOR_HOVER, 4.5) &&
+		enough(THEME_COLOR_TEXT, THEME_COLOR_PRESSED, 4.5) && enough(THEME_COLOR_DISABLED_TEXT, THEME_COLOR_CONTROL, 3.0);
+	SetDlgItemText(IDC_PALETTE_CONTRAST, readable ?
+		FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_ok", L"Text contrast check passed.") :
+		FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_low", L"Warning: some text may be difficult to read against its background."));
 }
 
 LRESULT CSettingsGeneralPage::OnChoosePaletteColor(WORD, WORD, HWND, BOOL&)
@@ -501,6 +534,7 @@ bool CSettingsGeneralPage::StagePaletteColor(ThemeColorRole role, COLORREF color
 	if(!found) m_pendingPalettes.push_back(draft);
 	m_customPalettes[index] = draft;
 	m_paletteChanged = true;
+	UpdatePaletteContrast();
 	ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 	return true;
 }

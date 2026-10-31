@@ -143,8 +143,26 @@ void CMainFrame::RunPortableStateTestScenario()
         PostMessage(WM_CLOSE); return;
     }
     if(IsFbeTestScenario(L"custom-palette-edit")) {
+        bool contrastPassed = true;
+        if(!ThemeManager::IsHighContrast()) {
+            CSettingsGeneralPage contrastPage;
+            contrastPassed = contrastPage.Create(m_hWnd) != NULL;
+            if(contrastPage.m_hWnd) {
+                for(ThemeColorRole role : {THEME_COLOR_WINDOW, THEME_COLOR_CONTROL, THEME_COLOR_SELECTION_BACKGROUND, THEME_COLOR_HOVER, THEME_COLOR_PRESSED})
+                    contrastPassed = contrastPage.StagePaletteColor(role, RGB(255, 255, 255), true) && contrastPassed;
+                for(ThemeColorRole role : {THEME_COLOR_TEXT, THEME_COLOR_SELECTION_TEXT, THEME_COLOR_DISABLED_TEXT})
+                    contrastPassed = contrastPage.StagePaletteColor(role, RGB(0, 0, 0), true) && contrastPassed;
+                CString label; contrastPage.GetDlgItemText(IDC_PALETTE_CONTRAST, label);
+                contrastPassed = label == FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_ok", L"Text contrast check passed.") && contrastPassed;
+                contrastPassed = contrastPage.StagePaletteColor(THEME_COLOR_TEXT, RGB(255, 255, 255), true) && contrastPassed;
+                contrastPage.GetDlgItemText(IDC_PALETTE_CONTRAST, label);
+                contrastPassed = label == FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_low", L"Warning: some text may be difficult to read against its background.") && contrastPassed;
+                contrastPassed = contrastPage.CancelChanges() && contrastPassed;
+                contrastPage.DestroyWindow();
+            }
+        }
         CSettingsGeneralPage page;
-        bool passed = page.Create(m_hWnd) != NULL && ThemeManager::IsCustomPaletteActive();
+        bool passed = page.Create(m_hWnd) != NULL && ThemeManager::IsCustomPaletteActive() && contrastPassed;
         std::wstring error; ThemeManager::CustomPalette stored;
         if(page.m_hWnd) {
             const HWND roleChoice = page.GetDlgItem(IDC_PALETTE_ROLE);
