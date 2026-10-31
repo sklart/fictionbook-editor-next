@@ -17,6 +17,8 @@
 #include "search\\ui\\RegexQuickReferencePopup.h"
 #include <vector>
 #include <map>
+#include "search/SearchHistoryStore.h"
+#include "../common/DeploymentContext.h"
 
 inline CString MakePresetPreviewValue(const CString& source, int limit = 112)
 {
@@ -998,9 +1000,21 @@ public:
   void	LoadHistoryImp(const TCHAR *path,CRegKey& rk,HWND hCB) {
     if (!hCB)
       return;
+	const CString historyPath = U::GetSettingsDir() + path + L".dat";
+	if (::GetFileAttributesW(historyPath) != INVALID_FILE_ATTRIBUTES)
+	{
+		std::vector<CString> entries;
+		if (FbeSearchHistory::Load(historyPath, entries))
+			for (const CString& entry : entries)
+				if (::SendMessage(hCB, CB_FINDSTRINGEXACT, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(entry))) == CB_ERR)
+					::SendMessage(hCB, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(entry)));
+		return;
+	}
+	// An isolated installed-mode test profile must not read the user's real registry.
+	if (!DeploymentContext::TestSettingsDirectory().empty()) return;
 
     // open history key
-    if (rk.Create(_Settings.GetKey(), path)!=ERROR_SUCCESS)
+    if (rk.Open(_Settings.GetKey(), path, KEY_READ)!=ERROR_SUCCESS)
       return;
     
     // get number of entries
@@ -1017,7 +1031,7 @@ public:
 	{
       ps.Format(_T("%d"), static_cast<int>(i));
       str=U::QuerySV(rk,ps);
-      if (!str.IsEmpty()) 
+      if (!str.IsEmpty() && ::SendMessage(hCB, CB_FINDSTRINGEXACT, static_cast<WPARAM>(-1), (LPARAM)(const TCHAR*)str) == CB_ERR)
 	  {
 		::SendMessage(hCB,CB_ADDSTRING,0,(LPARAM)(const TCHAR *)str);
       }
@@ -1183,33 +1197,37 @@ public:
 		SaveStringImp(GetDlgItem(IDC_REPLACE));
 	}
 
-	void SaveHistoryImp(CRegKey& rk,HWND hCB)
+	void SaveHistoryImp(const wchar_t* name, HWND hCB)
 	{
-		if(!rk && !hCB)
+		if(!hCB)
 			return;
-
+		const CString historyPath = U::GetSettingsDir() + name + L".dat";
+		// Never replace an unreadable or damaged previous history with an empty list.
+		if (::GetFileAttributesW(historyPath) != INVALID_FILE_ATTRIBUTES) {
+			std::vector<CString> previous;
+			if (!FbeSearchHistory::Load(historyPath, previous)) return;
+		}
 		LRESULT lCount = ::SendMessage(hCB, CB_GETCOUNT, 0, 0);
 		if(lCount > 100)
 			lCount = 100;
-
-		CString path;
+		std::vector<CString> entries;
 		for (int i = 0; i < lCount; ++i)
 		{
 			CString cur(U::GetCBString(hCB, i));
 			if(cur.IsEmpty())
 				continue;
-			path.Format(L"%d", i);
-			rk.SetStringValue(path, cur);
+			bool duplicate = false;
+			for (const CString& entry : entries) if (entry.CompareNoCase(cur) == 0) { duplicate = true; break; }
+			if (!duplicate) entries.push_back(cur);
 		}
-
-		rk.SetDWORDValue(L"", lCount);
+		FbeSearchHistory::Save(historyPath, entries);
 	}
 
 	void SaveHistory() 
 	{
 		SaveSearchOptions();
-		SaveHistoryImp(m_fh,GetDlgItem(IDC_TEXT));
-		SaveHistoryImp(m_rh,GetDlgItem(IDC_REPLACE));
+		SaveHistoryImp(L"SearchHistory",GetDlgItem(IDC_TEXT));
+		SaveHistoryImp(L"ReplaceHistory",GetDlgItem(IDC_REPLACE));
 	}
 
 	void SaveSearchOptions()
@@ -1288,7 +1306,7 @@ public:
 	{
 		::KillTimer(m_hWnd, 0x4F01);
 		GetData();
-		SaveSearchOptions();
+		SaveString(); SaveHistory();
 		m_view->CloseFindDialog(this);
 		return 0;
 	}
@@ -1297,7 +1315,7 @@ public:
 	{
 		::KillTimer(m_hWnd, 0x4F01);
 		GetData();
-		SaveSearchOptions();
+		SaveString(); SaveHistory();
 		m_view->CloseFindDialog(this);
 		return 0;
 	}
@@ -1446,13 +1464,13 @@ public:
 
   LRESULT OnCancel(WORD, WORD /* unused: wID */, HWND, BOOL&) {
 	  GetData();
-	  SaveSearchOptions();
+	  SaveString(); SaveHistory();
 	  m_view->CloseFindDialog(this);
     return 0;
   }
 	LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&) {
 		GetData();
-		SaveSearchOptions();
+		SaveString(); SaveHistory();
 		m_view->CloseFindDialog(this);
 		return 0;
 	}

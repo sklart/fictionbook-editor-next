@@ -5,6 +5,56 @@
 #include "RuntimeTestNewDocument.inl"
 #include "RuntimeTestUiDefects.inl"
 if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
+	if (IsFbeTestScenario(L"search-history-write") || IsFbeTestScenario(L"search-history-read"))
+	{
+		const bool write = IsFbeTestScenario(L"search-history-write");
+		bool opened = false, first = false, ordered = false, deduplicated = false;
+		BOOL handled = FALSE;
+		auto openDialog = [&]() -> HWND {
+			m_doc->m_body.OnReplace(0, ID_EDIT_REPLACE, m_doc->m_body, handled);
+			return m_doc->m_body.m_replace_dlg ? m_doc->m_body.m_replace_dlg->m_hWnd : NULL;
+		};
+		auto hasEntry = [](HWND dialog, int id, LPCWSTR value, int index) {
+			HWND combo = ::GetDlgItem(dialog, id);
+			return combo && ::SendMessageW(combo, CB_FINDSTRINGEXACT, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(value)) == index;
+		};
+		HWND dialog = openDialog(); opened = dialog != NULL;
+		if (dialog && write)
+		{
+			::SetWindowTextW(::GetDlgItem(dialog, IDC_TEXT), L"шаблон\\d+");
+			::SetWindowTextW(::GetDlgItem(dialog, IDC_REPLACE), L"замена<&>");
+			::SendMessageW(dialog, WM_COMMAND, IDCANCEL, 0);
+			dialog = openDialog();
+			first = dialog && hasEntry(dialog, IDC_TEXT, L"шаблон\\d+", 0) && hasEntry(dialog, IDC_REPLACE, L"замена<&>", 0);
+			if (dialog) {
+				::SetWindowTextW(::GetDlgItem(dialog, IDC_TEXT), L"второй");
+				::SendMessageW(dialog, WM_CLOSE, 0, 0);
+				dialog = openDialog();
+			}
+			ordered = dialog && hasEntry(dialog, IDC_TEXT, L"второй", 0) && hasEntry(dialog, IDC_TEXT, L"шаблон\\d+", 1) &&
+				hasEntry(dialog, IDC_REPLACE, L"замена<&>", 0);
+			if (dialog) {
+				::SetWindowTextW(::GetDlgItem(dialog, IDC_TEXT), L"шаблон\\d+");
+				::SetWindowTextW(::GetDlgItem(dialog, IDC_REPLACE), L"");
+				::SendMessageW(dialog, WM_COMMAND, IDCANCEL, 0);
+				dialog = openDialog();
+			}
+			deduplicated = dialog && hasEntry(dialog, IDC_TEXT, L"шаблон\\d+", 0) && hasEntry(dialog, IDC_TEXT, L"второй", 1) &&
+				::SendMessageW(::GetDlgItem(dialog, IDC_TEXT), CB_GETCOUNT, 0, 0) == 2 &&
+				::SendMessageW(::GetDlgItem(dialog, IDC_REPLACE), CB_GETCOUNT, 0, 0) == 1;
+		}
+		else if (dialog)
+		{
+			first = hasEntry(dialog, IDC_TEXT, L"шаблон\\d+", 0) && hasEntry(dialog, IDC_TEXT, L"второй", 1);
+			ordered = hasEntry(dialog, IDC_REPLACE, L"замена<&>", 0);
+			deduplicated = ::SendMessageW(::GetDlgItem(dialog, IDC_TEXT), CB_GETCOUNT, 0, 0) == 2 &&
+				::SendMessageW(::GetDlgItem(dialog, IDC_REPLACE), CB_GETCOUNT, 0, 0) == 1;
+		}
+		if (dialog) ::SendMessageW(dialog, WM_CLOSE, 0, 0);
+		CStringA report; report.Format("opened=%d\nfirst=%d\nordered=%d\ndeduplicated=%d\n", opened, first, ordered, deduplicated);
+		DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Flush(); output.Close();
+		::PostQuitMessage(opened && first && ordered && deduplicated ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"script-card-block-runtime"))
 	{
 		const BYTE ascii[] = "\xEF\xBB\xBF/*<FBE-SCRIPT-CARD version=\"1\">\r\n{}\r\n</FBE-SCRIPT-CARD>*/\r\nABC";

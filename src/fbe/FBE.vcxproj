@@ -604,6 +604,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <ClInclude Include="search\SearchPreset.h" />
     <ClInclude Include="search\SearchPresetCatalog.h" />
     <ClInclude Include="search\SearchPresetStore.h" />
+    <ClInclude Include="search\SearchHistoryStore.h" />
     <ClInclude Include="search\ui\RegexHelpLauncher.h" />
     <ClInclude Include="search\ui\ComboBoxEdit.h" />
     <ClInclude Include="search\ui\RegexQuickReferencePopup.h" />
