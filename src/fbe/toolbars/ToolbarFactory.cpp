@@ -106,10 +106,10 @@ HBITMAP ScaleAlphaBitmap(HBITMAP alpha, int sourceSize, int targetSize)
 		const DWORD samples[] = { sourcePixels[top * sourceSize + left], sourcePixels[top * sourceSize + right], sourcePixels[bottom * sourceSize + left], sourcePixels[bottom * sourceSize + right] };
 		const double weights[] = { (1.0 - fx) * (1.0 - fy), fx * (1.0 - fy), (1.0 - fx) * fy, fx * fy };
 		double a = 0.0, r = 0.0, g = 0.0, b = 0.0;
-		for(int sample = 0; sample < 4; ++sample) { const double sampleAlpha = (samples[sample] >> 24) & 0xFF; a += sampleAlpha * weights[sample]; r += ((samples[sample] >> 16) & 0xFF) * sampleAlpha * weights[sample]; g += ((samples[sample] >> 8) & 0xFF) * sampleAlpha * weights[sample]; b += (samples[sample] & 0xFF) * sampleAlpha * weights[sample]; }
+		for(int sample = 0; sample < 4; ++sample) { a += ((samples[sample] >> 24) & 0xFF) * weights[sample]; r += ((samples[sample] >> 16) & 0xFF) * weights[sample]; g += ((samples[sample] >> 8) & 0xFF) * weights[sample]; b += (samples[sample] & 0xFF) * weights[sample]; }
 		const int alphaValue = max(0, min(255, static_cast<int>(a + 0.5)));
 		if(alphaValue == 0) targetPixels[y * targetSize + x] = 0;
-		else { const int red = max(0, min(alphaValue, static_cast<int>(r / 255.0 + 0.5))); const int green = max(0, min(alphaValue, static_cast<int>(g / 255.0 + 0.5))); const int blue = max(0, min(alphaValue, static_cast<int>(b / 255.0 + 0.5))); targetPixels[y * targetSize + x] = (static_cast<DWORD>(alphaValue) << 24) | (static_cast<DWORD>(red) << 16) | (static_cast<DWORD>(green) << 8) | static_cast<DWORD>(blue); }
+		else { const int red = max(0, min(alphaValue, static_cast<int>(r + 0.5))); const int green = max(0, min(alphaValue, static_cast<int>(g + 0.5))); const int blue = max(0, min(alphaValue, static_cast<int>(b + 0.5))); targetPixels[y * targetSize + x] = (static_cast<DWORD>(alphaValue) << 24) | (static_cast<DWORD>(red) << 16) | (static_cast<DWORD>(green) << 8) | static_cast<DWORD>(blue); }
 	}
 	::DeleteObject(alpha);
 	return scaled;
