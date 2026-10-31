@@ -344,6 +344,12 @@ CSize CSettings::GetScriptsToolbarCustomizeSize() const
 	return CSize(static_cast<int>(m_scripts_toolbar_customize_width), static_cast<int>(m_scripts_toolbar_customize_height));
 }
 int CSettings::GetScriptIconSize() const { return static_cast<int>(m_script_icon_size); }
+int CSettings::GetMainToolbarIconSize() const { return static_cast<int>(m_main_toolbar_icon_size); }
+void CSettings::SetMainToolbarIconSize(int size, bool apply)
+{
+	m_main_toolbar_icon_size = size == 16 || size == 20 || size == 32 ? size : 24;
+	if(apply) Save();
+}
 void CSettings::SetScriptIconSize(int size, bool apply)
 {
 	m_script_icon_size = size == 20 || size == 24 || size == 32 ? size : 16;

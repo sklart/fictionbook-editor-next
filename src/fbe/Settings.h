@@ -222,6 +222,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	CString		m_script_command_ids;
 	CString		m_favorite_scripts;
 	DWORD m_script_icon_size;
+	DWORD m_main_toolbar_icon_size;
 	DWORD		m_scripts_toolbar_customize_width;
 	DWORD		m_scripts_toolbar_customize_height;
 
@@ -351,6 +352,8 @@ public:
 	CString GetFavoriteScripts() const;
 	int GetScriptIconSize() const;
 	void SetScriptIconSize(int size, bool apply = false);
+	int GetMainToolbarIconSize() const;
+	void SetMainToolbarIconSize(int size, bool apply = false);
 	CSize GetScriptsToolbarCustomizeSize() const;
 	bool GetScriptsToolbarCustomizePlacement(WINDOWPLACEMENT& wpl) const;
 	const CRegKey& GetKey()const;

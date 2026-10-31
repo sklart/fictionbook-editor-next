@@ -98,6 +98,27 @@ void CMainFrame::RunPortableStateTestScenario()
             passed ? "theme-preference-restart=1\nresult=pass\n" : "theme-preference-restart=0\nresult=fail\n");
         PostMessage(WM_CLOSE); return;
     }
+    if(IsFbeTestScenario(L"main-toolbar-size-setting-write")) {
+        bool passed = _Settings.GetMainToolbarIconSize() == 24 && _Settings.GetScriptIconSize() == 16;
+        for(int size : {16, 20, 24, 32}) {
+            _Settings.SetMainToolbarIconSize(size);
+            passed = passed && _Settings.GetMainToolbarIconSize() == size && _Settings.GetScriptIconSize() == 16;
+        }
+        _Settings.SetMainToolbarIconSize(-1);
+        passed = passed && _Settings.GetMainToolbarIconSize() == 24;
+        _Settings.SetMainToolbarIconSize(32);
+        _Settings.SetScriptIconSize(20);
+        _Settings.Save();
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
+            passed ? "main-toolbar-setting-write=1\nresult=pass\n" : "main-toolbar-setting-write=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
+    }
+    if(IsFbeTestScenario(L"main-toolbar-size-setting-read")) {
+        const bool passed = _Settings.GetMainToolbarIconSize() == 32 && _Settings.GetScriptIconSize() == 20;
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
+            passed ? "main-toolbar-setting-restart=1\nresult=pass\n" : "main-toolbar-setting-restart=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
+    }
     if(IsFbeTestScenario(L"script-icon-size-read")) {
         int width = 0, height = 0;
         const int expected = UiMetrics::ScaleForDpi(32, UiMetrics::DpiForWindow(m_hWnd));
