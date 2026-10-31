@@ -5,6 +5,7 @@
 | Файл | SHA-256 исходных байтов |
 | --- | --- |
 | [note-creation-lint-metadata-results.json](../note-creation-lint-metadata-results.json) | `24acc193b77ed40ae0666002098f1666afdabb1df53a337a6ff32d946331fc69` |
+| [note-creation-runtime-followup-2026-10-31.json](../note-creation-runtime-followup-2026-10-31.json) | `4a359bbbf712ecebcb3f8a9cf7d7ff1af18164d9ca7e879c9ea164fcc4b726a0` |
 | [note-creation-undo-stage1-results.json](../note-creation-undo-stage1-results.json) | `41eca965617b16b9357f17476ee7b4f6ed07e2f2ce2a83fa2c825c3b6c427e3f` |
 | [script-card-code-baseline.json](../script-card-code-baseline.json) | `d299a7e2593f4f9e82716cca9095b9359f22b16540fd39efc13bac09ec7aabd9` |
 | [script-card-reviewed-proposals.json](../script-card-reviewed-proposals.json) | `c10aa540eea838847a33724dc258fc5e22c2e20bb25532b9b8e8f71548a19b1b` |
@@ -17,3 +18,5 @@
 ## Новые редакции контрольной базы
 
 Исторический SHA baseline в таблице сохранён. Редакция после разрешённого исправления двух уборок в `c0f33532` имеет SHA-256 `ce7446f629154ef242514186e40ace7bcea71512f26b0140651c55f04dd2c7e0`. Следующая редакция, учитывающая 12 известных цепочек примечаний и комментариев, имеет SHA-256 `5205462f7ecdf991edfb5c76e9ebd75d82334fa811ede23076f53d8e0e94454a`. Каждая промежуточная и текущая ревизия, коммиты и пределы подтверждения описаны в [цепочке ревизий](../community-feedback-note-revisions.md). Файл исторических предложений ревью не изменялся; его SHA в таблице остаётся действительным. Исторические результаты не подтверждают запуск старого набора сценариев на новых редакциях.
+
+Новая запись `note-creation-runtime-followup-2026-10-31.json` отдельно фиксирует повтор двух обычных сценариев на ревизии `7265a355`, её FBE.exe и новый хеш диспетчера. Предыдущий хеш и исторические результаты остаются в исходном файле; повтор двух случаев не подтверждает остальные 92 исторических случая на текущем коде.

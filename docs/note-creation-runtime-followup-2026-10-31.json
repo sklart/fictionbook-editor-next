@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "date": "2026-10-31",
+  "purpose": "Repeat the two ordinary scenarios after the portable runtime dispatcher changed; historical results remain unchanged.",
+  "previousEvidence": "note-creation-lint-metadata-results.json",
+  "sourceCommit": "7265a355ac0ae74a9026e7deaf094eb934cc53ed",
+  "fbeExeSha256": "3ddc7790d923acb0c7f3186c458492e7abb5280db9eff5f7d8d43a56d008fe48",
+  "dispatcherPath": "src/fbe/testing/RuntimeTestPortableState.inl",
+  "previousDispatcherSha256": "2c32539e9e78b4614f655dc1bc3cf70c605309ffb6aa15999556e41cd2485ad2",
+  "dispatcherSha256": "aa079062d701ae774a628290b3f4959c298dafa80d092195aa3ebb46485e3a37",
+  "runtimeResults": {
+    "fixtures": "2",
+    "notes-02-ordinary": "1",
+    "notes-02-ordinary-behavior": "1",
+    "notes-02-ordinary-closed": "1",
+    "notes-02-ordinary-undo": "1",
+    "notes-02-ordinary-redo": "1",
+    "comments-02-ordinary": "1",
+    "comments-02-ordinary-behavior": "1",
+    "comments-02-ordinary-closed": "1",
+    "comments-02-ordinary-undo": "1",
+    "comments-02-ordinary-redo": "1",
+    "result": "pass"
+  }
+}
