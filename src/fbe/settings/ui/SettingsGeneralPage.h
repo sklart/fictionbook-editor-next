@@ -10,6 +10,7 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 {
 	CComboBox m_language;
 	CComboBox m_interfaceTheme;
+	CComboBox m_interfacePalette;
 	CComboBox m_scriptIconSize;
 	CComboBox m_mainToolbarIconSize;
 	CComboBox m_genreCatalog;
@@ -20,6 +21,9 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	CComboBox m_updateChannel;
 	CSettingsTooltips m_tooltips;
 	InterfaceTheme m_originalTheme;
+	InterfacePalette m_originalPalette = INTERFACE_PALETTE_CLASSIC;
+	int m_acceptedPaletteIndex = 0;
+	bool m_paletteChanged = false;
 	bool m_preserveUnavailableDark = false;
 	bool m_darkThemeSupported = true;
 	void UpdateThemeNotice();
@@ -35,6 +39,7 @@ public:
 		COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_SELCHANGE, OnInterfaceThemeChanged)
 		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_SELENDOK, OnInterfaceThemeChanged)
+		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_SELCHANGE, OnInterfacePaletteChanged)
 		CHAIN_MSG_MAP(CAxDialogImpl<CSettingsGeneralPage>)
 	END_MSG_MAP()
 
@@ -42,6 +47,7 @@ public:
 	LRESULT OnClickedOK(WORD, WORD, HWND, BOOL&);
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnInterfaceThemeChanged(WORD, WORD, HWND, BOOL&);
+	LRESULT OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&);
 	void ConfigureInterfaceTheme(bool darkThemeSupported);
 	bool Validate(); void Commit(); bool CancelChanges();
 };

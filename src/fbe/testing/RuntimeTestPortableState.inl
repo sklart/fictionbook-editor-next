@@ -92,6 +92,26 @@ void CMainFrame::RunPortableStateTestScenario()
         const COLORREF classicWindow = ThemeManager::WindowColor();
         const bool highContrast = ThemeManager::IsHighContrast();
         bool passed = initialPalette == INTERFACE_PALETTE_CLASSIC;
+        CSettingsGeneralPage palettePage;
+        const bool pageCreated = palettePage.Create(m_hWnd) != NULL;
+        passed = pageCreated && passed;
+        if(pageCreated) {
+            const HWND choice = palettePage.GetDlgItem(IDC_INTERFACE_PALETTE);
+            BOOL handled = FALSE;
+            passed = choice && ::SendMessage(choice, CB_GETCOUNT, 0, 0) == INTERFACE_PALETTE_COUNT &&
+                ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CLASSIC && passed;
+            ::SendMessage(choice, CB_SETCURSEL, INTERFACE_PALETTE_SEPIA, 0);
+            palettePage.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, choice, handled);
+            passed = ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA && _Settings.GetInterfacePalette() == L"classic" && passed;
+            passed = palettePage.CancelChanges() && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CLASSIC && passed;
+            ::SendMessage(choice, CB_SETCURSEL, INTERFACE_PALETTE_SEPIA, 0);
+            palettePage.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, choice, handled);
+            palettePage.Commit();
+            passed = _Settings.GetInterfacePalette() == L"sepia" && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA && passed;
+            palettePage.DestroyWindow();
+            _Settings.SetInterfacePalette(L"classic");
+            ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+        }
         auto contrast = [](COLORREF first, COLORREF second) {
             auto luminance = [](COLORREF color) {
                 auto linear = [](BYTE value) { const double channel = value / 255.0; return channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4); };
