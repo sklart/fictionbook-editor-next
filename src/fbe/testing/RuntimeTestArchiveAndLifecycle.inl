@@ -34,6 +34,7 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 	{
 		const bool write = IsFbeTestScenario(L"search-history-write");
 		bool opened = false, first = false, ordered = false, deduplicated = false;
+		bool closeButton = !write, escape = !write;
 		BOOL handled = FALSE;
 		auto openDialog = [&]() -> HWND {
 			m_doc->m_body.OnReplace(0, ID_EDIT_REPLACE, m_doc->m_body, handled);
@@ -48,7 +49,9 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		{
 			::SetWindowTextW(::GetDlgItem(dialog, IDC_TEXT), L"шаблон\\d+");
 			::SetWindowTextW(::GetDlgItem(dialog, IDC_REPLACE), L"замена<&>");
-			::SendMessageW(dialog, WM_COMMAND, IDCANCEL, 0);
+			HWND close = ::GetDlgItem(dialog, IDCANCEL);
+			if (close) ::SendMessageW(close, BM_CLICK, 0, 0);
+			closeButton = close && !::IsWindow(dialog);
 			dialog = openDialog();
 			first = dialog && hasEntry(dialog, IDC_TEXT, L"шаблон\\d+", 0) && hasEntry(dialog, IDC_REPLACE, L"замена<&>", 0);
 			if (dialog) {
@@ -61,7 +64,9 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 			if (dialog) {
 				::SetWindowTextW(::GetDlgItem(dialog, IDC_TEXT), L"шаблон\\d+");
 				::SetWindowTextW(::GetDlgItem(dialog, IDC_REPLACE), L"");
-				::SendMessageW(dialog, WM_COMMAND, IDCANCEL, 0);
+				MSG key = {}; key.hwnd = ::GetDlgItem(dialog, IDC_TEXT); key.message = WM_KEYDOWN; key.wParam = VK_ESCAPE;
+				const bool dispatched = ::IsDialogMessageW(dialog, &key) != FALSE;
+				escape = dispatched && !::IsWindow(dialog);
 				dialog = openDialog();
 			}
 			deduplicated = dialog && hasEntry(dialog, IDC_TEXT, L"шаблон\\d+", 0) && hasEntry(dialog, IDC_TEXT, L"второй", 1) &&
@@ -76,9 +81,9 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 				::SendMessageW(::GetDlgItem(dialog, IDC_REPLACE), CB_GETCOUNT, 0, 0) == 1;
 		}
 		if (dialog) ::SendMessageW(dialog, WM_CLOSE, 0, 0);
-		CStringA report; report.Format("opened=%d\nfirst=%d\nordered=%d\ndeduplicated=%d\n", opened, first, ordered, deduplicated);
+		CStringA report; report.Format("opened=%d\nfirst=%d\nordered=%d\ndeduplicated=%d\nclose-button=%d\nescape=%d\n", opened, first, ordered, deduplicated, closeButton, escape);
 		DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Flush(); output.Close();
-		::PostQuitMessage(opened && first && ordered && deduplicated ? 0 : 1); return 0;
+		::PostQuitMessage(opened && first && ordered && deduplicated && closeButton && escape ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"script-card-block-runtime"))
 	{

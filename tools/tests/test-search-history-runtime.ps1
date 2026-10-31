@@ -22,7 +22,7 @@ try {
                     -ArgumentList @("--$mode", '-b', ('"' + $report + '"'), ('"' + $document + '"')) -PassThru
                 $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds 120
                 $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
-                if ($code -ne 0 -or $text -notmatch '(?m)^opened=1\r?$' -or $text -notmatch '(?m)^first=1\r?$' -or $text -notmatch '(?m)^ordered=1\r?$' -or $text -notmatch '(?m)^deduplicated=1\r?$') { throw "$mode/$phase failed: $text" }
+                if ($code -ne 0 -or $text -notmatch '(?m)^opened=1\r?$' -or $text -notmatch '(?m)^first=1\r?$' -or $text -notmatch '(?m)^ordered=1\r?$' -or $text -notmatch '(?m)^deduplicated=1\r?$' -or $text -notmatch '(?m)^close-button=1\r?$' -or $text -notmatch '(?m)^escape=1\r?$') { throw "$mode/$phase failed: $text" }
             }
             if ($mode -eq 'portable') {
                 $moved = Join-Path $iso.Root 'moved-profile'
