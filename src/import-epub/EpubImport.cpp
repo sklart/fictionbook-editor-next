@@ -2467,6 +2467,117 @@ namespace
 
     bool ReadBinaryFile(const CStringW& path, std::vector<unsigned char>& data);
 
+    CStringW Base64Encode(const std::vector<unsigned char>& data);
+
+    bool WriteSvgUtf8File(const CStringW& path, const CStringW& text)
+    {
+        const int size = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, text.GetString(), text.GetLength(), nullptr, 0, nullptr, nullptr);
+        if (size <= 0) return false;
+        std::vector<char> bytes(static_cast<size_t>(size));
+        if (WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, text.GetString(), text.GetLength(), bytes.data(), size, nullptr, nullptr) != size)
+            return false;
+        HANDLE file = CreateFileW(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (file == INVALID_HANDLE_VALUE) return false;
+        DWORD written = 0;
+        const BOOL ok = WriteFile(file, bytes.data(), static_cast<DWORD>(bytes.size()), &written, nullptr);
+        CloseHandle(file);
+        return ok && written == bytes.size();
+    }
+
+    bool PrepareSvgImageResources(const CStringW& svgPath, const CStringW& preparedPath, CStringW& renderPath, CStringW& warning)
+    {
+        renderPath = svgPath;
+        std::vector<unsigned char> source;
+        CStringW sourceText;
+        if (!ReadBinaryFile(svgPath, source) || !DecodeTextFileBytes(source, sourceText))
+            return false;
+        if (!ContainsNoCase(sourceText, L"<image") && !ContainsNoCase(sourceText, L":image"))
+            return true;
+
+        MSXML2::IXMLDOMDocument2Ptr dom;
+        CStringW error;
+        if (!LoadXmlFile(svgPath, dom, error))
+        {
+            warning += L"SVG image resources could not be inspected safely.\r\n";
+            return false;
+        }
+        std::vector<MSXML2::IXMLDOMNodePtr> images;
+        CollectElementsByLocalName(MsxmlGetDocumentElement(dom), L"image", images);
+        bool changed = false;
+        size_t totalBytes = 0;
+        for (const auto& image : images)
+        {
+            const auto attributes = MsxmlGetAttributes(image);
+            const long count = attributes ? MsxmlGetNamedNodeMapLength(attributes) : 0;
+            for (long i = 0; i < count; ++i)
+            {
+                const auto attr = MsxmlGetNamedNodeMapItem(attributes, i);
+                if (LocalName(attr).CompareNoCase(L"href") != 0) continue;
+                CStringW href = MsxmlGetNodeText(attr);
+                href.Trim();
+                if (href.IsEmpty() || href.Left(5).CompareNoCase(L"data:") == 0) continue;
+                for (MSXML2::IXMLDOMNodePtr current = image; current; )
+                {
+                    if (!Attr(current, L"xml:base").IsEmpty())
+                    {
+                        warning += L"SVG raster resource with xml:base could not be embedded safely.\r\n";
+                        return false;
+                    }
+                    MSXML2::IXMLDOMNode* parent = nullptr;
+                    current->get_parentNode(&parent);
+                    current = MSXML2::IXMLDOMNodePtr(parent, false);
+                }
+                const int fragment = href.Find(L'#');
+                const int query = href.Find(L'?');
+                if (fragment >= 0 || query >= 0)
+                {
+                    warning += L"SVG raster resource with query or fragment could not be embedded safely.\r\n";
+                    return false;
+                }
+                const CStringW path = CombineAndCanonicalizePath(DirectoryOf(svgPath), href);
+                const CStringW media = GuessImageMediaTypeFromHref(href);
+                if (path.IsEmpty() || (media != L"image/png" && media != L"image/jpeg" && media != L"image/gif" && media != L"image/webp" && media != L"image/bmp"))
+                {
+                    warning += L"SVG raster resource is external, unsupported or outside the EPUB.\r\n";
+                    return false;
+                }
+                std::vector<unsigned char> bytes;
+                WIN32_FILE_ATTRIBUTE_DATA info = {};
+                if (!GetFileAttributesExW(path, GetFileExInfoStandard, &info))
+                {
+                    warning += L"SVG raster resource could not be read or exceeds the embedding limit.\r\n";
+                    return false;
+                }
+                const unsigned long long resourceSize = (static_cast<unsigned long long>(info.nFileSizeHigh) << 32) | info.nFileSizeLow;
+                const unsigned long long limit = 16ULL * 1024 * 1024;
+                if (!resourceSize || resourceSize > limit || totalBytes > limit - resourceSize ||
+                    !ReadBinaryFile(path, bytes) || bytes.size() != resourceSize)
+                {
+                    warning += L"SVG raster resource could not be read or exceeds the embedding limit.\r\n";
+                    return false;
+                }
+                totalBytes += bytes.size();
+                const CStringW uri = L"data:" + media + L";base64," + Base64Encode(bytes);
+                if (FAILED(attr->put_nodeValue(CComVariant(uri)))) return false;
+                changed = true;
+            }
+        }
+        if (!changed) return true;
+        CComBSTR serialized;
+        if (FAILED(dom->get_xml(&serialized)) || !serialized) return false;
+        CStringW xml(serialized);
+        xml.TrimLeft();
+        if (xml.Left(5).CompareNoCase(L"<?xml") == 0)
+        {
+            const int end = xml.Find(L"?>");
+            if (end < 0) return false;
+            xml = xml.Mid(end + 2);
+        }
+        if (!WriteSvgUtf8File(preparedPath, xml)) return false;
+        renderPath = preparedPath;
+        return true;
+    }
+
     bool ReadSvgImageData(const ManifestItem& item, std::vector<unsigned char>& data, CStringW& contentType, CStringW& warning)
     {
         if (!IsSvgImage(item))
@@ -2500,7 +2611,9 @@ namespace
         CreateDirectoryRecursive(tempDir);
 
         CStringW pngPath = CombinePathLocal(tempDir, L"rendered.png");
-        bool rendered = RenderSvgToPngFile(item.absPath, pngPath, warning);
+        CStringW renderPath;
+        bool rendered = PrepareSvgImageResources(item.absPath, CombinePathLocal(tempDir, L"prepared.svg"), renderPath, warning) &&
+            RenderSvgToPngFile(renderPath, pngPath, warning);
         bool ok = false;
 
         if (!rendered)

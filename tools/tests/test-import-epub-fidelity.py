@@ -912,6 +912,51 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertEqual(len(root.findall('.//f:image', NS)), 4)
         self.assertEqual(len(root.findall('f:binary', NS)), 2)
 
+    def test_svg_relative_raster_image_matches_embedded_image(self):
+        template = ('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+                    'width="8" height="8"><image width="8" height="8" xlink:href="%s"/></svg>')
+        relative = template % '../images/pixel.png'
+        embedded = template % ('data:image/png;base64,' + base64.b64encode(PNG).decode('ascii'))
+        empty = '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"></svg>'
+        def render(svg):
+            root = self.convert('<p><img src="../art/image.svg"/></p>',
+                                extra={'art/image.svg': ('drawing', 'image/svg+xml', svg),
+                                       'images/pixel.png': ('pixel', 'image/png', PNG)}, navigation=False, svg='png')
+            return base64.b64decode(root.find('f:binary', NS).text or '')
+        expected, blank, actual = render(embedded), render(empty), render(relative)
+        self.assertNotEqual(expected, blank, 'embedded control image was not rendered')
+        self.assertEqual(actual, expected, 'relative raster image was not rendered in SVG: ' + self.diagnostics)
+
+    def test_svg_external_raster_cannot_escape_epub_root(self):
+        svg = ('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+               'width="8" height="8"><image width="8" height="8" xlink:href="../../../outside.png"/></svg>')
+        root = self.convert('<p><img src="../art/image.svg"/></p>',
+                            extra={'art/image.svg': ('drawing', 'image/svg+xml', svg)},
+                            outside={'outside.png': PNG}, navigation=False, svg='png')
+        self.assertIn('svg raster resource is external, unsupported or outside the epub', self.diagnostics.lower())
+        self.assertIn('1 placeholders', self.public_diagnostics.lower())
+        self.assertNotEqual(base64.b64decode(root.find('f:binary', NS).text or ''), PNG)
+
+    def test_svg_xml_base_is_reported_instead_of_guessing(self):
+        svg = ('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+               'xml:base="../images/" width="8" height="8">'
+               '<image width="8" height="8" xlink:href="pixel.png"/></svg>')
+        self.convert('<p><img src="../art/image.svg"/></p>',
+                     extra={'art/image.svg': ('drawing', 'image/svg+xml', svg),
+                            'images/pixel.png': ('pixel', 'image/png', PNG)}, navigation=False, svg='png')
+        self.assertIn('svg raster resource with xml:base', self.diagnostics.lower())
+        self.assertIn('1 placeholders', self.public_diagnostics.lower())
+
+    def test_svg_large_raster_resource_is_reported(self):
+        svg = ('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+               'width="8" height="8"><image width="8" height="8" xlink:href="big.png"/></svg>')
+        self.convert('<p><img src="../art/image.svg"/></p>',
+                     extra={'art/image.svg': ('drawing', 'image/svg+xml', svg),
+                            'art/big.png': ('big', 'image/png', b'\x00' * (16 * 1024 * 1024 + 1))},
+                     navigation=False, svg='png')
+        self.assertIn('exceeds the embedding limit', self.diagnostics.lower())
+        self.assertIn('1 placeholders', self.public_diagnostics.lower())
+
     def test_binary_id_collisions(self):
         root = self.convert('<p><img src="../a.png"/><img src="../b.png"/></p>',
                             {'a.png': ('а', 'image/png', PNG), 'b.png': ('б', 'image/png', PNG)})
