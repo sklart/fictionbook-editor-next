@@ -59,6 +59,23 @@ namespace DeploymentContext
         return result;
     }
 
+    // A disposable installed-mode runtime must never write the real profile.
+    // The runtime owner marker and the test hive share the fr-<guid> identity.
+    inline std::wstring TestRegistryPath()
+    {
+        if (TestSettingsDirectory().empty()) return std::wstring();
+        std::wstring directory = ExecutableDirectory();
+        while (!directory.empty() && (directory.back() == L'\\' || directory.back() == L'/')) directory.pop_back();
+        const std::wstring::size_type separator = directory.find_last_of(L"\\/");
+        const std::wstring name = directory.substr(separator == std::wstring::npos ? 0 : separator + 1);
+        if (name.size() != 35 || name.compare(0, 3, L"fr-") != 0) return std::wstring();
+        for (size_t index = 3; index < name.size(); ++index) {
+            const wchar_t ch = name[index];
+            if (!((ch >= L'0' && ch <= L'9') || (ch >= L'a' && ch <= L'f'))) return std::wstring();
+        }
+        return L"Software\\FBE-Next-Test-Runtimes\\" + name;
+    }
+
     inline std::wstring DataRoot()
     {
         if (CurrentMode() != Mode::Portable) return std::wstring();

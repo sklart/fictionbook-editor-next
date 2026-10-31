@@ -1,6 +1,10 @@
 ﻿[CmdletBinding()]
 param([string]$Executable = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'), [ValidateSet('All','Basic','Active')][string]$Scenario='All')
 $ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $Executable -Name 'diagnostic-installed'
+$Executable = $isolation.Exe
+$isolationPassed = $false
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $root=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $work=Join-Path $root ('build/diagnostic-session-test-'+[guid]::NewGuid().ToString('N'))
@@ -59,11 +63,11 @@ try {
  $base=Run-Export 'basic' $false
  Assert-True ($base.Contents.ContainsKey('trace/absent.txt')) 'Basic package must explicitly report missing trace'
  Assert-True ($base.Contents['plugin-and-error-events.txt'] -match 'FD203.*hr=0x80070005') 'Host did not collect plug-in error'
- if($Scenario -eq 'Basic'){Write-Host 'PASS: basic package without extended trace';return}
+ if($Scenario -eq 'Basic'){Write-Host 'PASS: basic package without extended trace';$isolationPassed=$true;return}
  $active=Run-Export 'active' $true
  Assert-True ($base.Id -ne $active.Id) 'Session ID reused'
  Assert-True (@($active.Contents.Keys | Where-Object {$_ -like 'trace/*.log'}).Count -eq 1) 'Selected trace missing'
- if($Scenario -eq 'Active'){Write-Host 'PASS: active session and preview/ZIP identity';return}
+ if($Scenario -eq 'Active'){Write-Host 'PASS: active session and preview/ZIP identity';$isolationPassed=$true;return}
  $diagnostics=Join-Path $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY 'Diagnostics'
  $activeLog=Get-ChildItem $diagnostics -Filter 'fbe-trace-*.log' | Select-Object -First 1
  $text=[IO.File]::ReadAllText($activeLog.FullName)
@@ -146,4 +150,5 @@ try {
  Assert-True (Test-Path -LiteralPath $sentinel) 'Cleanup crossed the diagnostic allowlist'
  Assert-True (Test-Path -LiteralPath (Join-Path $diagnostics ('fbe-session-'+$cleanup.Id+'.txt'))) 'Cleanup deleted current session'
  Write-Host "PASS: basic, selected session, crash identity, typed privacy, plug-in routing, immutable preview/ZIP, manifest sizes. Evidence: $work"
-} finally {foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name])}}
+$isolationPassed=$true
+} finally {foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name])}; Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $isolationPassed}

@@ -9,6 +9,8 @@ namespace FbeSettings { namespace Store {
 void InitializeRegistry(CRegKey& key, CString& keyPath)
 {
 	keyPath = L"Software\\FBETeam\\FictionBook Editor Next";
+	const std::wstring testPath = DeploymentContext::TestRegistryPath();
+	if (!testPath.empty()) keyPath = testPath.c_str();
 	if(DeploymentContext::RegistryPersistenceAllowed()) key.Create(HKEY_CURRENT_USER, keyPath);
 }
 void CloseRegistry(CRegKey& key) { key.Close(); }

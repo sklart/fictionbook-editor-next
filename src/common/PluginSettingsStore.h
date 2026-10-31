@@ -138,7 +138,12 @@ class Store {
     }
 public:
     Store(LPCWSTR fileName, LPCWSTR key) : portable(!DeploymentContext::RegistryPersistenceAllowed()), registryPath(key) {
-        if(!portable) { registry.Open(HKEY_CURRENT_USER, key, KEY_READ); return; }
+        const std::wstring testRoot = DeploymentContext::TestRegistryPath();
+        if(!portable && !DeploymentContext::TestSettingsDirectory().empty() && testRoot.empty()) {
+            error = E_ACCESSDENIED; return;
+        }
+        if(!testRoot.empty()) registryPath = testRoot + L"\\" + key;
+        if(!portable) { registry.Open(HKEY_CURRENT_USER, registryPath.c_str(), KEY_READ); return; }
         path = DeploymentContext::SettingsDirectory() + L"Plugins\\" + fileName + L".json";
         const HRESULT read = ReadFile(path, original);
         if(read == S_FALSE) return;

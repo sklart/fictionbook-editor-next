@@ -126,6 +126,10 @@ function Complete-IsolatedFbeRuntime {
         if (@(Get-IsolatedRuntimeProcesses $Isolation).Count -gt 0) { throw "Could not stop FBE.exe; runtime retained: $root" }
         $Passed = $false
     }
+    # The installed-mode test hive is named from this validated runtime root.
+    # Delete only this runtime's subtree, including after an interrupted owner.
+    $testRegistryPath = 'Software\FBE-Next-Test-Runtimes\' + (Split-Path -Leaf $root)
+    [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($testRegistryPath, $false)
     if ($KeepArtifacts) {
         $marker = Join-Path $root '.fbe-runtime-owner.json'
         if (Test-Path -LiteralPath $marker) { Remove-Item -LiteralPath $marker -Force -ErrorAction Stop }

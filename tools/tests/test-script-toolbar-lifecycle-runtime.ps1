@@ -3,8 +3,11 @@
 param([Parameter(Mandatory)][string]$FbeExe, [switch]$IncludeInstalled, [ValidateRange(30, 300)][int]$TimeoutSeconds = 120)
 
 $ErrorActionPreference = 'Stop'
-$FbeExe = (Resolve-Path -LiteralPath $FbeExe).Path
-$exeDirectory = Split-Path -Parent $FbeExe
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'toolbar-lifecycle'
+$isolationPassed = $false
+$FbeExe = $isolation.Exe
+$exeDirectory = $isolation.Runtime
 
 function Invoke-Lifecycle([string]$Mode, [string]$Scenario, [string]$ReportDirectory) {
     $savedMode = $env:FBE_NEXT_TEST_MODE; $savedScenario = $env:FBE_NEXT_TEST_SCENARIO
@@ -25,18 +28,21 @@ $portableIni = Join-Path $exeDirectory 'portable.ini'; $hadIni = Test-Path -Lite
 $oldIni = if($hadIni) { Get-Content -LiteralPath $portableIni -Raw } else { $null }
 $portableData = [IO.Path]::GetFullPath((Join-Path $exeDirectory 'ScriptToolbarLifecyclePortable'))
 if((Split-Path -Parent $portableData) -ne [IO.Path]::GetFullPath($exeDirectory)) { throw 'Unsafe portable lifecycle test directory.' }
-if($IncludeInstalled -and $env:FBE_CI_ISOLATED_PROFILE -ne '1') {
-    throw 'Installed lifecycle test requires FBE_CI_ISOLATED_PROFILE=1 and must not run against a developer profile.'
-}
 function Reset-PortableLifecycleState {
     # `$portableData` is validated as a direct child of `$exeDirectory` above.
-    if(Test-Path -LiteralPath $portableData) { Remove-Item -LiteralPath $portableData -Recurse -Force }
+    if(Test-Path -LiteralPath $portableData) {
+        if((Get-Item -LiteralPath $portableData).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Linked portable test directory.' }
+        Remove-Item -LiteralPath $portableData -Recurse -Force
+    }
     New-Item -ItemType Directory -Path $portableData -Force | Out-Null
 }
-$installedProfile = Join-Path ([IO.Path]::GetTempPath()) ('fbe-script-toolbar-lifecycle-' + [guid]::NewGuid().ToString('N'))
+$installedProfile = Join-Path $isolation.DataPath 'InstalledSettings'
 $savedTestSettingsDirectory = $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY
 function Reset-InstalledLifecycleState {
-    if(Test-Path -LiteralPath $installedProfile) { Remove-Item -LiteralPath $installedProfile -Recurse -Force }
+    if(Test-Path -LiteralPath $installedProfile) {
+        if((Get-Item -LiteralPath $installedProfile).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Linked installed test directory.' }
+        Remove-Item -LiteralPath $installedProfile -Recurse -Force
+    }
     New-Item -ItemType Directory -Path $installedProfile -Force | Out-Null
 }
 try {
@@ -75,10 +81,10 @@ try {
         Reset-InstalledLifecycleState
         Invoke-Lifecycle '--installed' 'script-toolbar-rollback-partial-runtime' $installedDiagnostics
     }
+    $isolationPassed = $true
     Write-Host ('Script toolbar lifecycle runtime regression passed ({0}).' -f $(if($IncludeInstalled) { 'portable + installed' } else { 'portable' }))
 } finally {
     $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = $savedTestSettingsDirectory
     if($hadIni) { [IO.File]::WriteAllText($portableIni, $oldIni, [Text.UTF8Encoding]::new($false)) } else { Remove-Item -LiteralPath $portableIni -Force -ErrorAction SilentlyContinue }
-    if(Test-Path -LiteralPath $portableData) { Remove-Item -LiteralPath $portableData -Recurse -Force -ErrorAction SilentlyContinue }
-    if(Test-Path -LiteralPath $installedProfile) { Remove-Item -LiteralPath $installedProfile -Recurse -Force -ErrorAction SilentlyContinue }
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $isolationPassed
 }

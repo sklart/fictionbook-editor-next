@@ -7,8 +7,11 @@ param(
 $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "FBE not found: $FbeExe" }
-$root = Join-Path ([IO.Path]::GetTempPath()) ('fbe-tooltip-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $root | Out-Null
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'tooltip-installed'
+$FbeExe = $isolation.Exe
+$root = $isolation.DataPath
+$isolationPassed = $false
 $oldMode, $oldScenario, $oldSettings = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY
 try {
     $fixture = Join-Path $root 'fixture.fb2'
@@ -29,12 +32,9 @@ try {
         if ($rows[$key] -ne '1') { throw "Script toolbar tooltip regression: $key=$($rows[$key])" }
     }
     if ($rows['result'] -ne 'pass') { throw "Script toolbar tooltip result=$($rows['result'])" }
+    $isolationPassed = $true
     Write-Host 'Script toolbar tooltip runtime passed.'
 } finally {
     $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = $oldMode, $oldScenario, $oldSettings
-    $resolved = [IO.Path]::GetFullPath($root)
-    $temp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
-    if ($resolved.StartsWith($temp, [StringComparison]::OrdinalIgnoreCase)) {
-        Remove-Item -LiteralPath $resolved -Recurse -Force -ErrorAction SilentlyContinue
-    }
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $isolationPassed
 }

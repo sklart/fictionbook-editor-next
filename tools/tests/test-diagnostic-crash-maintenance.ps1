@@ -1,6 +1,10 @@
 [CmdletBinding()]
 param([string]$Executable=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'))
 $ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $Executable -Name 'diagnostic-installed'
+$Executable = $isolation.Exe
+$isolationPassed = $false
 $repo=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $work=Join-Path $repo ('build/diagnostic-catalog-test-'+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $work | Out-Null
@@ -36,4 +40,5 @@ try {
  if($catalogEvidence -notmatch 'lock_release_guards=1'){throw 'Catalog lock release regression did not run'}
  Write-Host $catalogEvidence
  Write-Host "PASS: indexed large catalog; background discovery; damaged review persists without changing bytes; replacement notification; safe TXT/DMP cleanup. Evidence: $work"
-} finally {foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name])}}
+$isolationPassed=$true
+} finally {foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name])}; Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $isolationPassed}

@@ -401,9 +401,9 @@ static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
 	// A portable launch must not inspect or repair the registered typelib.  The
 	// editor loads its embedded typelib directly (REGKIND_NONE), so registration
 	// is neither necessary nor compatible with portable registry isolation.
-	if (!DeploymentContext::RegistryPersistenceAllowed())
+	if (!DeploymentContext::RegistryPersistenceAllowed() || !DeploymentContext::TestSettingsDirectory().empty())
 	{
-		StartupTrace::Event(L"typelib", L"TL101", L"portable launch: per-user typelib registration skipped");
+		StartupTrace::Event(L"typelib", L"TL101", L"portable or isolated test launch: per-user typelib registration skipped");
 		return S_OK;
 	}
 
@@ -667,6 +667,15 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 	}
 	if (PrintRuntimePaths()) return 0;
 	if (PrintUpdateArtifact()) return 0;
+
+	wchar_t isolatedTestMode[2] = {};
+	const bool isolatedTestLaunch = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", isolatedTestMode, _countof(isolatedTestMode)) == 1 && isolatedTestMode[0] == L'1';
+	if (DeploymentContext::CurrentMode() == DeploymentContext::Mode::Installed && isolatedTestLaunch &&
+		(DeploymentContext::TestSettingsDirectory().empty() || DeploymentContext::TestRegistryPath().empty()))
+	{
+		WriteStandardError(L"FBE: isolated installed tests require an owned fr-<guid> runtime.\r\n");
+		return 2;
+	}
 
   ConfigureDllSearchPath();
 	StartupTrace::AppendTestStartupBreadcrumb("dll-search-configured");

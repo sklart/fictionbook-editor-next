@@ -1,7 +1,8 @@
 <# Checks actual MSHTML BODY/table colors and document invariants across theme switches. #>
 [CmdletBinding()]
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 90,
-      [ValidateSet('ru-RU','en-US')][string]$Locale = 'ru-RU')
+      [ValidateSet('ru-RU','en-US')][string]$Locale = 'ru-RU',
+      [ValidateSet('portable','installed')][string]$Mode = 'portable')
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
@@ -20,18 +21,19 @@ try {
     [IO.File]::WriteAllText($fixture, $fb2, [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText("$fixture.open.fb2", $fb2.Replace('Theme target paragraph', 'Opened second paragraph'), [Text.UTF8Encoding]::new($false))
     $before = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
-    $savedMode, $savedScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
+    $savedMode, $savedScenario, $savedSettings = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY
     try {
         $env:FBE_NEXT_TEST_MODE = '1'
+        $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = if($Mode -eq 'installed') { Join-Path $isolation.DataPath 'Settings' } else { $null }
         $env:FBE_NEXT_TEST_SCENARIO = 'body-theme-runtime'
-        $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('-b', $report, '--portable', $fixture) -PassThru
+        $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('-b', $report, "--$Mode", $fixture) -PassThru
         $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'body-theme-runtime' -Report $report -TimeoutSeconds $TimeoutSeconds
         if($exitCode -ne 0) { throw "BODY theme scenario exited with $exitCode." }
     } finally {
-        $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $savedMode, $savedScenario
+        $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = $savedMode, $savedScenario, $savedSettings
     }
     $appearance = Get-Content -Raw -LiteralPath "$report.appearance"
-    Write-Host "Combined appearance Undo/Redo ($Locale):`n$appearance"
+    Write-Host "Combined appearance Undo/Redo ($Mode/$Locale):`n$appearance"
     if($appearance -notmatch ("(?m)^interface-language=" + $expectedLanguageId + "\r?$")) { throw "Requested interface language not active: $appearance" }
     foreach($case in @('light-16-32', 'sepia-24-20', 'custom-32-32')) {
         if($appearance -notmatch ("(?m)^" + [regex]::Escape($case) + "=1\r?$")) { throw "Combined appearance Undo/Redo failed: $case`n$appearance" }
