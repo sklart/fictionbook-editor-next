@@ -4898,9 +4898,9 @@ namespace
             CStringW link = InlineToFb2(node, ctx);
             if (link.Left(3) == L"<a " && link.Right(5) == L"></a>" && link.Find(L'>') == link.GetLength() - 5)
                 link.Empty();
-            CStringW extraMarkers;
-            const CStringW id = OptionalIdAttributeAndExtraMarkersIncludingDescendant(node, ctx, extraMarkers);
-            out += extraMarkers;
+            const std::vector<CStringW> ids = CollectRawAnchorIds(node);
+            const CStringW id = ids.empty() ? CStringW() : OptionalIdAttributeFromRaw(ids.front(), ctx);
+            out += AnchorMarkerParagraphsFromRawIds(ids, 1, ctx);
             if (!link.IsEmpty() || !id.IsEmpty()) out += L"      <p" + id + L">" + link + L"</p>\r\n";
             return;
         }

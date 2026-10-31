@@ -1705,6 +1705,14 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertTrue(any('Second block.' in text for text in paragraphs))
         self.assertIn('block hyperlink could not be preserved', self.diagnostics.lower())
 
+    def test_standalone_link_preserves_descendant_image_anchor(self):
+        body = ('<div><a href="https://example.org/"><img id="image-target" src="../images/logo.png"/></a></div>'
+                '<p><a href="#image-target">Go to image</a></p>')
+        root = self.convert(body, extra={'images/logo.png': ('logo', 'image/png', PNG)}, navigation=False)
+        ids = {node.get('id') for node in root.iter() if node.get('id')}
+        link = next(node for node in root.findall('.//f:body//f:a', NS) if ''.join(node.itertext()) == 'Go to image')
+        self.assertIn(link.get(HREF)[1:], ids)
+
     def test_empty_inline_css_background_preserves_image_in_order(self):
         css = '.ornament { background-image: url(../images/ornament.png); }'
         extra = {'Styles/layout.css': ('css', 'text/css', css),
