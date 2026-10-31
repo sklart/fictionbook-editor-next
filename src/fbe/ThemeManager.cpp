@@ -997,15 +997,13 @@ bool ProfilePalettePath(const std::wstring& id, CString& path, bool createDirect
 }
 }
 
-bool PrepareCustomPaletteSave(const CustomPalette& palette, bool overwrite, SettingsFileTransaction& transaction, std::wstring& error)
+static bool PrepareCustomPaletteFile(const CString& path, const CustomPalette& palette, bool overwrite, SettingsFileTransaction& transaction, std::wstring& error)
 {
 	error.clear(); CustomPalette checked;
 	const std::wstring json = SerializeCustomPalette(palette);
 	if(!ParseCustomPalette(json, checked, error) || checked.id != palette.id || checked.name != palette.name || checked.base != palette.base) return false;
 	for(int role = 0; role < THEME_COLOR_COUNT; ++role)
 		if(checked.present[role] != palette.present[role] || (palette.present[role] && checked.colors[role] != palette.colors[role])) { error = L"Invalid theme colour."; return false; }
-	CString path;
-	if(!ProfilePalettePath(palette.id, path, true, error)) return false;
 	const int length = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, json.data(), static_cast<int>(json.size()), NULL, 0, NULL, NULL);
 	if(length <= 0) { error = L"Cannot encode theme as UTF-8."; return false; }
 	std::vector<char> bytes(static_cast<size_t>(length));
@@ -1022,6 +1020,38 @@ bool PrepareCustomPaletteSave(const CustomPalette& palette, bool overwrite, Sett
 	return true;
 }
 
+bool PrepareCustomPaletteSave(const CustomPalette& palette, bool overwrite, SettingsFileTransaction& transaction, std::wstring& error)
+{
+	CString path;
+	if(!ProfilePalettePath(palette.id, path, true, error)) return false;
+	return PrepareCustomPaletteFile(path, palette, overwrite, transaction, error);
+}
+
+bool ExportCustomPaletteToFile(const CString& path, const CustomPalette& palette, std::wstring& error)
+{
+	SettingsFileTransaction transaction;
+	if(!PrepareCustomPaletteFile(path, palette, true, transaction, error)) return false;
+	if(!transaction.Commit()) { error = L"Cannot export theme file."; return false; }
+	return true;
+}
+
+bool CustomPaletteIdAvailable(const std::wstring& id)
+{
+	CString directory; std::wstring error;
+	if(!IsValidCustomPaletteId(id)) return false;
+	if(!ProfilePaletteDirectory(directory, false, error)) {
+		const CString settings(DeploymentContext::SettingsDirectory().c_str());
+		if(settings.IsEmpty()) return false;
+		CString themes(settings); if(themes.Right(1) != L"\\") themes += L"\\";
+		themes += L"InterfaceThemes";
+		if(::GetFileAttributesW(themes) != INVALID_FILE_ATTRIBUTES) return false;
+		const DWORD missing = ::GetLastError();
+		return missing == ERROR_FILE_NOT_FOUND || missing == ERROR_PATH_NOT_FOUND;
+	}
+	const CString path = directory + L"\\" + id.c_str() + L".json";
+	return ::GetFileAttributesW(path) == INVALID_FILE_ATTRIBUTES && ::GetLastError() == ERROR_FILE_NOT_FOUND;
+}
+
 bool SaveCustomPaletteToProfile(const CustomPalette& palette, bool overwrite, std::wstring& error)
 {
 	SettingsFileTransaction transaction;
@@ -1030,14 +1060,23 @@ bool SaveCustomPaletteToProfile(const CustomPalette& palette, bool overwrite, st
 	return true;
 }
 
+bool LoadCustomPaletteFromFile(const CString& path, CustomPalette& palette, std::wstring& error)
+{
+	error.clear();
+	WIN32_FILE_ATTRIBUTE_DATA attributes = {};
+	if(!::GetFileAttributesExW(path, GetFileExInfoStandard, &attributes) || (attributes.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || attributes.nFileSizeHigh || attributes.nFileSizeLow > 65536) { error = L"Cannot read theme file or file is too large."; return false; }
+	std::wstring json; CustomPalette loaded;
+	if(!FbeRuntimeLocalization::ReadUtf8TextFile(path, json) || !ParseCustomPalette(json, loaded, error)) { if(error.empty()) error = L"Invalid UTF-8 theme file."; return false; }
+	palette = loaded;
+	return true;
+}
+
 bool LoadCustomPaletteFromProfile(const std::wstring& id, CustomPalette& palette, std::wstring& error)
 {
 	error.clear(); CString path;
 	if(!ProfilePalettePath(id, path, false, error)) return false;
-	WIN32_FILE_ATTRIBUTE_DATA attributes = {};
-	if(!::GetFileAttributesExW(path, GetFileExInfoStandard, &attributes) || attributes.nFileSizeHigh || attributes.nFileSizeLow > 65536) { error = L"Cannot read theme file or file is too large."; return false; }
-	std::wstring json; CustomPalette loaded;
-	if(!FbeRuntimeLocalization::ReadUtf8TextFile(path, json) || !ParseCustomPalette(json, loaded, error)) { if(error.empty()) error = L"Invalid UTF-8 theme file."; return false; }
+	CustomPalette loaded;
+	if(!LoadCustomPaletteFromFile(path, loaded, error)) return false;
 	if(loaded.id != id) { error = L"Theme id does not match its filename."; return false; }
 	palette = loaded;
 	return true;

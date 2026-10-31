@@ -6,6 +6,7 @@
 #include "..\\..\\RuntimeLocalization.h"
 #include "..\\..\\res1.h"
 #include "..\\..\\apputils.h"
+#include "..\\..\\..\\common\\ModernFileDialog.h"
 #include <initializer_list>
 #include <algorithm>
 #include <cmath>
@@ -78,6 +79,8 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	for(HWND control : {m_interfacePalette.m_hWnd, GetDlgItem(IDC_INTERFACE_PALETTE_LABEL).m_hWnd})
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.interface_palette", L"Choose interface colours independently of the Windows mode. High Contrast uses system colours.");
 	m_tooltips.Add(GetDlgItem(IDC_INTERFACE_PALETTE_COPY), L"fbe.settings.tooltip.general.palette_copy", L"Create a copy of the selected palette. It is saved when you confirm settings.");
+	m_tooltips.Add(GetDlgItem(IDC_PALETTE_IMPORT), L"fbe.settings.tooltip.general.palette_import", L"Import a JSON palette. It is saved when you confirm settings.");
+	m_tooltips.Add(GetDlgItem(IDC_PALETTE_EXPORT), L"fbe.settings.tooltip.general.palette_export", L"Export the selected custom palette to a JSON file.");
 	for(HWND control : {m_paletteRole.m_hWnd, GetDlgItem(IDC_PALETTE_ROLE_LABEL).m_hWnd, GetDlgItem(IDC_PALETTE_CHOOSE_COLOR).m_hWnd, GetDlgItem(IDC_PALETTE_RESET_COLOR).m_hWnd})
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.palette_color", L"Edit a colour in a custom palette. Use the base colour to restore inheritance; Cancel discards changes.");
 	m_tooltips.Add(GetDlgItem(IDC_PALETTE_CONTRAST), L"fbe.settings.tooltip.general.palette_contrast", L"Checks text against window, control, selection, hover and pressed backgrounds. Disabled text uses a 3:1 threshold.");
@@ -100,6 +103,8 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	SetText(m_hWnd, IDC_INTERFACE_THEME_LABEL, L"fbe.dialog.idd_options.interface_theme", L"Interface theme:");
 	SetText(m_hWnd, IDC_INTERFACE_PALETTE_LABEL, L"fbe.settings.interface_palette", L"Interface palette:");
 	SetText(m_hWnd, IDC_INTERFACE_PALETTE_COPY, L"fbe.settings.palette.copy", L"Create copy...");
+	SetText(m_hWnd, IDC_PALETTE_IMPORT, L"fbe.settings.palette.import", L"Import...");
+	SetText(m_hWnd, IDC_PALETTE_EXPORT, L"fbe.settings.palette.export", L"Export...");
 	SetText(m_hWnd, IDC_PALETTE_ROLE_LABEL, L"fbe.settings.palette.role", L"Colour role:");
 	SetText(m_hWnd, IDC_PALETTE_CHOOSE_COLOR, L"fbe.settings.palette.choose_color", L"Choose colour...");
 	SetText(m_hWnd, IDC_PALETTE_RESET_COLOR, L"fbe.settings.palette.reset_color", L"Use base colour");
@@ -273,7 +278,7 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	};
 	shift(IDC_OPTIONS_INTERFACE_GROUP, { IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG,
 		IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME,
-		IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE, IDC_INTERFACE_PALETTE_COPY, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR, IDC_PALETTE_CONTRAST, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
+		IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE, IDC_INTERFACE_PALETTE_COPY, IDC_PALETTE_IMPORT, IDC_PALETTE_EXPORT, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR, IDC_PALETTE_CONTRAST, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
 	const CRect interfaceGroup = bounds(IDC_OPTIONS_INTERFACE_GROUP);
 	int comboLeft = bounds(IDC_LANG).left;
 	for(int id : { IDC_OPTIONS_LANGUAGE_LABEL, IDC_OPTIONS_GENRE_CATALOG_LABEL,
@@ -299,7 +304,14 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	copyButton.top = max(bounds(IDC_INTERFACE_PALETTE_LABEL).bottom, bounds(IDC_INTERFACE_PALETTE).bottom) + rowGap;
 	copyButton.bottom = copyButton.top + max(copyButtonHeight, measure(IDC_INTERFACE_PALETTE_COPY, copyButton.Width(), false).cy + padding);
 	place(IDC_INTERFACE_PALETTE_COPY, copyButton);
-	separateRows(IDC_INTERFACE_PALETTE_COPY, IDC_INTERFACE_PALETTE_COPY, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE);
+	CRect importButton = bounds(IDC_PALETTE_IMPORT), exportButton = bounds(IDC_PALETTE_EXPORT);
+	const int actionHeight = max(importButton.Height(), exportButton.Height());
+	const int actionTop = copyButton.bottom + rowGap;
+	const int actionMiddle = comboLeft + (interfaceComboRight - comboLeft) / 2;
+	importButton.SetRect(comboLeft, actionTop, actionMiddle - gap / 2, actionTop + actionHeight);
+	exportButton.SetRect(actionMiddle + gap / 2, actionTop, interfaceComboRight, actionTop + actionHeight);
+	place(IDC_PALETTE_IMPORT, importButton); place(IDC_PALETTE_EXPORT, exportButton);
+	separateRows(IDC_PALETTE_IMPORT, IDC_PALETTE_EXPORT, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE);
 	CRect choose = bounds(IDC_PALETTE_CHOOSE_COLOR), reset = bounds(IDC_PALETTE_RESET_COLOR);
 	const int buttonHeight = max(choose.Height(), reset.Height());
 	const int buttonTop = max(bounds(IDC_PALETTE_ROLE_LABEL).bottom, bounds(IDC_PALETTE_ROLE).bottom) + rowGap;
@@ -450,7 +462,7 @@ LRESULT CSettingsGeneralPage::OnPaletteThemeChanged(UINT, WPARAM, LPARAM, BOOL& 
 void CSettingsGeneralPage::UpdatePaletteColorControls()
 {
 	const bool editable = m_acceptedPaletteIndex >= INTERFACE_PALETTE_COUNT && ThemeManager::IsCustomPaletteActive();
-	for(int id : {IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR}) GetDlgItem(id).EnableWindow(editable);
+	for(int id : {IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR, IDC_PALETTE_EXPORT}) GetDlgItem(id).EnableWindow(editable);
 	UpdatePaletteContrast();
 }
 
@@ -537,6 +549,78 @@ bool CSettingsGeneralPage::StagePaletteColor(ThemeColorRole role, COLORREF color
 	UpdatePaletteContrast();
 	ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 	return true;
+}
+
+bool CSettingsGeneralPage::StagePaletteImport(const CString& path, CString& error)
+{
+	ThemeManager::CustomPalette imported; std::wstring detail;
+	if(!ThemeManager::LoadCustomPaletteFromFile(path, imported, detail)) { error = detail.c_str(); return false; }
+	for(const auto& palette : m_customPalettes) if(palette.id == imported.id) {
+		error = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.id_exists", L"A palette with this ID already exists."); return false;
+	}
+	if(!ThemeManager::CustomPaletteIdAvailable(imported.id)) {
+		error = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.id_exists", L"A palette with this ID already exists or its destination is unavailable."); return false;
+	}
+	const bool dark = imported.base == ThemeManager::CustomPaletteBase::Dark || imported.base == ThemeManager::CustomPaletteBase::Graphite || imported.base == ThemeManager::CustomPaletteBase::Navy;
+	if(dark && !m_darkThemeSupported) {
+		error = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.unavailable", L"This dark palette requires Windows 10 (1809) or newer."); return false;
+	}
+	const CString label = CString(imported.name.c_str()) + L" (" + imported.id.c_str() + L")";
+	const int index = m_interfacePalette.AddString(label);
+	if(index < 0) { error = L"Cannot add palette to the list."; return false; }
+	if(!ThemeManager::SetCustomPalette(imported)) {
+		m_interfacePalette.DeleteString(index);
+		error = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.unavailable", L"This dark palette requires Windows 10 (1809) or newer."); return false;
+	}
+	m_customPalettes.push_back(imported); m_pendingPalettes.push_back(imported); m_newPaletteIds.push_back(imported.id);
+	m_interfacePalette.SetCurSel(index); m_acceptedPaletteIndex = index; m_paletteChanged = true;
+	UpdatePaletteColorControls(); ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+	return true;
+}
+
+LRESULT CSettingsGeneralPage::OnImportPalette(WORD, WORD, HWND, BOOL&)
+{
+	const CString filter = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.json_filter", L"Interface palettes (*.json)");
+	const COMDLG_FILTERSPEC filters[] = {{filter, L"*.json"}};
+	ModernFileDialog::Request request; request.fileMustExist = true; request.pathMustExist = true; request.filters = filters; request.filterCount = _countof(filters);
+	const auto result = ModernFileDialog::Show(m_hWnd, request);
+	if(result.outcome == ModernFileDialog::Outcome::Failed) {
+		CString detail; detail.Format(L"0x%08X", static_cast<unsigned>(result.error));
+		MessageBox(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.load_failed", L"Could not load the selected interface palette.") + L"\n\n" + detail,
+			FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR); return 0;
+	}
+	if(result.outcome != ModernFileDialog::Outcome::Accepted || result.paths.empty()) return 0;
+	CString error;
+	if(!StagePaletteImport(result.paths.front().c_str(), error)) {
+		CString message = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.load_failed", L"Could not load the selected interface palette.");
+		if(!error.IsEmpty()) message += L"\n\n" + error;
+		MessageBox(message, FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONWARNING);
+	}
+	return 0;
+}
+
+LRESULT CSettingsGeneralPage::OnExportPalette(WORD, WORD, HWND, BOOL&)
+{
+	ThemeManager::CustomPalette palette;
+	if(!ThemeManager::GetCustomPalette(palette)) return 0;
+	const CString filter = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.json_filter", L"Interface palettes (*.json)");
+	const COMDLG_FILTERSPEC filters[] = {{filter, L"*.json"}};
+	ModernFileDialog::Request request; request.save = true; request.pathMustExist = true; request.overwritePrompt = true;
+	request.defaultExtension = L"json"; request.initialFileName = palette.id + L".json"; request.filters = filters; request.filterCount = _countof(filters);
+	const auto result = ModernFileDialog::Show(m_hWnd, request);
+	if(result.outcome == ModernFileDialog::Outcome::Failed) {
+		CString detail; detail.Format(L"0x%08X", static_cast<unsigned>(result.error));
+		MessageBox(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.export_failed", L"Could not export the interface palette.") + L"\n\n" + detail,
+			FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR); return 0;
+	}
+	if(result.outcome != ModernFileDialog::Outcome::Accepted || result.paths.empty()) return 0;
+	std::wstring error;
+	if(!ThemeManager::ExportCustomPaletteToFile(result.paths.front().c_str(), palette, error)) {
+		CString message = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.export_failed", L"Could not export the interface palette.");
+		if(!error.empty()) { message += L"\n\n"; message += error.c_str(); }
+		MessageBox(message, FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
+	}
+	return 0;
 }
 
 LRESULT CSettingsGeneralPage::OnCopyPalette(WORD, WORD, HWND, BOOL&)

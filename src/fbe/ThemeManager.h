@@ -1,4 +1,5 @@
 #pragma once
+#include <atlstr.h>
 #include <string>
 #include <vector>
 
@@ -60,6 +61,9 @@ namespace ThemeManager
 	};
 	bool ParseCustomPalette(const std::wstring& json, CustomPalette& result, std::wstring& error);
 	std::wstring SerializeCustomPalette(const CustomPalette& palette);
+	bool LoadCustomPaletteFromFile(const CString& path, CustomPalette& palette, std::wstring& error);
+	bool ExportCustomPaletteToFile(const CString& path, const CustomPalette& palette, std::wstring& error);
+	bool CustomPaletteIdAvailable(const std::wstring& id);
 	bool PrepareCustomPaletteSave(const CustomPalette& palette, bool overwrite, SettingsFileTransaction& transaction, std::wstring& error);
 	bool SaveCustomPaletteToProfile(const CustomPalette& palette, bool overwrite, std::wstring& error);
 	bool IsValidCustomPaletteId(const std::wstring& id);

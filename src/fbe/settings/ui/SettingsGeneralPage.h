@@ -50,6 +50,8 @@ public:
 		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_SELENDOK, OnInterfaceThemeChanged)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_SELCHANGE, OnInterfacePaletteChanged)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE_COPY, BN_CLICKED, OnCopyPalette)
+		COMMAND_HANDLER(IDC_PALETTE_IMPORT, BN_CLICKED, OnImportPalette)
+		COMMAND_HANDLER(IDC_PALETTE_EXPORT, BN_CLICKED, OnExportPalette)
 		COMMAND_HANDLER(IDC_PALETTE_CHOOSE_COLOR, BN_CLICKED, OnChoosePaletteColor)
 		COMMAND_HANDLER(IDC_PALETTE_RESET_COLOR, BN_CLICKED, OnResetPaletteColor)
 		CHAIN_MSG_MAP(CAxDialogImpl<CSettingsGeneralPage>)
@@ -62,6 +64,9 @@ public:
 	LRESULT OnInterfaceThemeChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnCopyPalette(WORD, WORD, HWND, BOOL&);
+	LRESULT OnImportPalette(WORD, WORD, HWND, BOOL&);
+	LRESULT OnExportPalette(WORD, WORD, HWND, BOOL&);
+	bool StagePaletteImport(const CString& path, CString& error);
 	LRESULT OnChoosePaletteColor(WORD, WORD, HWND, BOOL&);
 	LRESULT OnResetPaletteColor(WORD, WORD, HWND, BOOL&);
 	bool StagePaletteCopy(const CString& name);

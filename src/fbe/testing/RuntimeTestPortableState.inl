@@ -245,6 +245,44 @@ void CMainFrame::RunPortableStateTestScenario()
     }
     if(IsFbeTestScenario(L"custom-palette-copy")) {
         bool passed = ThemeManager::ListCustomPalettesInProfile().empty();
+        ThemeManager::CustomPalette exported; exported.id = L"import-test"; exported.name = L"Import test";
+        exported.base = ThemeManager::CustomPaletteBase::Sepia;
+        exported.present[THEME_COLOR_WINDOW] = true; exported.colors[THEME_COLOR_WINDOW] = RGB(20, 30, 40);
+        exported.present[THEME_COLOR_TEXT] = true; exported.colors[THEME_COLOR_TEXT] = RGB(230, 220, 210);
+        const CString exportPath = CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"palette-export.json";
+        std::wstring ioError; ThemeManager::CustomPalette imported;
+        passed = ThemeManager::ExportCustomPaletteToFile(exportPath, exported, ioError) &&
+            ThemeManager::LoadCustomPaletteFromFile(exportPath, imported, ioError) && imported.id == exported.id &&
+            imported.name == exported.name && imported.base == exported.base && passed;
+        for(int role = 0; role < THEME_COLOR_COUNT; ++role)
+            passed = imported.present[role] == exported.present[role] && (!exported.present[role] || imported.colors[role] == exported.colors[role]) && passed;
+        {
+            CSettingsGeneralPage page; CString error;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
+                passed = page.StagePaletteImport(exportPath, error) && ThemeManager::IsCustomPaletteActive() && passed;
+                passed = !page.StagePaletteImport(exportPath, error) && !error.IsEmpty() && passed;
+                passed = page.CancelChanges() && ThemeManager::ListCustomPalettesInProfile().empty() && passed;
+                page.DestroyWindow();
+            }
+        }
+        {
+            CSettingsGeneralPage page; CString error;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
+                passed = page.StagePaletteImport(exportPath, error) && passed;
+                SettingsFileTransaction transaction; CString detail;
+                passed = page.PrepareCommit(transaction, detail) && passed; page.Commit(); passed = transaction.Commit() && passed; page.FinishCommit();
+                passed = _Settings.GetInterfacePalette() == L"custom:import-test" && ThemeManager::LoadCustomPaletteFromProfile(exported.id, imported, ioError) &&
+                    imported.colors[THEME_COLOR_WINDOW] == exported.colors[THEME_COLOR_WINDOW] && passed;
+                page.DestroyWindow(); _Settings.SetInterfacePalette(L"classic");
+                passed = ThemeManager::DeleteCustomPaletteFromProfile(exported.id, ioError) && passed;
+            }
+        }
+        HANDLE invalidFile = ::CreateFileW(exportPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if(invalidFile == INVALID_HANDLE_VALUE) passed = false;
+        else { const char invalid[] = "{bad"; DWORD written = 0; passed = ::WriteFile(invalidFile, invalid, sizeof(invalid) - 1, &written, NULL) && written == sizeof(invalid) - 1 && passed; ::CloseHandle(invalidFile); }
+        passed = !ThemeManager::LoadCustomPaletteFromFile(exportPath, imported, ioError) && !ioError.empty() && passed;
         {
             CSettingsGeneralPage page;
             passed = page.Create(m_hWnd) != NULL && passed;
