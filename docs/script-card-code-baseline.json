@@ -924,10 +924,10 @@
     },
     {
       "path": "06_Чистка/01_Генеральная уборка.js",
-      "codeSha256": "bb53493213735dbd03d53238259e6699ed787a212defaa69e28ee6b4f6ce8729",
+      "codeSha256": "a92541bb038accf677639952e0c7e704284a123239a2e961ac7bb037ca38b101",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 76233,
+      "codeBytes": 76397,
       "lineEnding": "CRLF"
     },
     {
@@ -988,10 +988,10 @@
     },
     {
       "path": "06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
-      "codeSha256": "c9409f9afcef3839ab50d4a0e68c9bfcb35597a6ddda436bb3618505e917508f",
+      "codeSha256": "e5a1e22376208195e0ab397bf837cc142dadb8916955decc6353a2a804d47dd1",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 77518,
+      "codeBytes": 77680,
       "lineEnding": "CRLF"
     },
     {
@@ -4743,6 +4743,26 @@
       "codeSha256": "550b52b2fdcd816929ddb2a4fc6fcd49e584f457bcca7cea6835a462e4ac818c",
       "basisCommit": "8d3080e502b875fdf4903779137d6f91dd35f113",
       "reason": "Этап 1 Undo: подготовка и ввод до мутаций, план ссылок/ID, закрытие своей группы и очистка созданных элементов."
+    },
+    {
+      "path": "06_Чистка/01_Генеральная уборка.js",
+      "previousCodeSha256": "bb53493213735dbd03d53238259e6699ed787a212defaa69e28ee6b4f6ce8729",
+      "codeSha256": "a92541bb038accf677639952e0c7e704284a123239a2e961ac7bb037ca38b101",
+      "basisCommit": "5c7aeb51",
+      "previousVersion": "2.9",
+      "version": "2.10",
+      "reason": "Уточнение правила №67 предотвращает ложное распознавание числительных как температуры.",
+      "verification": "test-cleanup-rule67.js; изолированный FBE, сохранение форматирования и повторный запуск; docs/community-feedback-2026-10-28.md"
+    },
+    {
+      "path": "06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+      "previousCodeSha256": "c9409f9afcef3839ab50d4a0e68c9bfcb35597a6ddda436bb3618505e917508f",
+      "codeSha256": "e5a1e22376208195e0ab397bf837cc142dadb8916955decc6353a2a804d47dd1",
+      "basisCommit": "5c7aeb51",
+      "previousVersion": "2.10",
+      "version": "2.11",
+      "reason": "Уточнение правила №67 предотвращает ложное распознавание числительных как температуры.",
+      "verification": "test-cleanup-rule67.js; изолированный FBE, сохранение форматирования и повторный запуск; docs/community-feedback-2026-10-28.md"
     }
   ]
 }
