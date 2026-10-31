@@ -100,10 +100,37 @@ void CMainFrame::RunPortableStateTestScenario()
     }
     if(IsFbeTestScenario(L"main-toolbar-size-setting-write")) {
         bool passed = _Settings.GetMainToolbarIconSize() == 24 && _Settings.GetScriptIconSize() == 16;
+        const UINT actualDpi = UiMetrics::DpiForWindow(m_hWnd);
+        int scriptWidth = 0, scriptHeight = 0;
+        passed = ::ImageList_GetIconSize(m_scriptsToolbarImages, &scriptWidth, &scriptHeight) && passed;
+        std::vector<int> commands;
+        for(int i = 0; i < m_CmdToolbar.GetButtonCount(); ++i) { TBBUTTON button = {}; if(!m_CmdToolbar.GetButton(i, &button)) passed = false; commands.push_back(button.idCommand); }
         for(int size : {16, 20, 24, 32}) {
             _Settings.SetMainToolbarIconSize(size);
             passed = passed && _Settings.GetMainToolbarIconSize() == size && _Settings.GetScriptIconSize() == 16;
+            for(UINT dpi : {96U, 120U, 144U, 192U}) {
+                int width = 0, height = 0, sw = 0, sh = 0;
+                const bool rebuilt = RebuildCommandToolbarImages(dpi);
+                passed = rebuilt && ::ImageList_GetIconSize(m_commandToolbarImages, &width, &height) &&
+                    width == UiMetrics::ScaleForDpi(size, dpi) && height == width &&
+                    ::ImageList_GetIconSize(m_scriptsToolbarImages, &sw, &sh) && sw == scriptWidth && sh == scriptHeight && passed;
+                passed = m_CmdToolbar.GetButtonCount() == static_cast<int>(commands.size()) && passed;
+                for(int i = 0; i < m_CmdToolbar.GetButtonCount() && i < static_cast<int>(commands.size()); ++i) {
+                    TBBUTTON button = {}; passed = m_CmdToolbar.GetButton(i, &button) && button.idCommand == commands[i] && passed;
+                }
+            }
         }
+        _Settings.SetMainToolbarIconSize(24); passed = RebuildCommandToolbarImages(actualDpi) && passed;
+        const DWORD gdiBefore = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+        for(int i = 0; i < 20; ++i) { _Settings.SetMainToolbarIconSize(i % 2 ? 24 : 32); passed = RebuildCommandToolbarImages(actualDpi) && passed; }
+        const DWORD gdiAfter = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+        passed = gdiAfter <= gdiBefore + 2 && passed;
+        const HIMAGELIST previous = m_CmdToolbar.GetImageList();
+        _Settings.SetMainToolbarIconSize(32);
+        ToolbarFactory::RebuildFailurePoint() = ToolbarFactory::RebuildFailure::Prepared;
+        const bool rejected = !RebuildCommandToolbarImages(actualDpi);
+        ToolbarFactory::RebuildFailurePoint() = ToolbarFactory::RebuildFailure::None;
+        passed = rejected && m_CmdToolbar.GetImageList() == previous && passed;
         _Settings.SetMainToolbarIconSize(-1);
         passed = passed && _Settings.GetMainToolbarIconSize() == 24;
         _Settings.SetMainToolbarIconSize(32);
@@ -114,7 +141,10 @@ void CMainFrame::RunPortableStateTestScenario()
         PostMessage(WM_CLOSE); return;
     }
     if(IsFbeTestScenario(L"main-toolbar-size-setting-read")) {
-        const bool passed = _Settings.GetMainToolbarIconSize() == 32 && _Settings.GetScriptIconSize() == 20;
+        int width = 0, height = 0;
+        const int expected = UiMetrics::ScaleForDpi(32, UiMetrics::DpiForWindow(m_hWnd));
+        const bool passed = _Settings.GetMainToolbarIconSize() == 32 && _Settings.GetScriptIconSize() == 20 &&
+            ::ImageList_GetIconSize(m_commandToolbarImages, &width, &height) && width == expected && height == expected;
         WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
             passed ? "main-toolbar-setting-restart=1\nresult=pass\n" : "main-toolbar-setting-restart=0\nresult=fail\n");
         PostMessage(WM_CLOSE); return;

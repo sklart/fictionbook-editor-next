@@ -236,7 +236,7 @@ bool ToolbarFactory::CreateCommandToolbarImages(CImageList& ownedImages, UINT to
 	ToolbarResourceData* toolbarData = resourceData != NULL ? static_cast<ToolbarResourceData*>(::LockResource(resourceData)) : NULL;
 	if(toolbarData == NULL || toolbarData->version != 1 || toolbarData->width != toolbarData->height ||
 		(toolbarData->width != 16 && toolbarData->width != 24) ||
-		(baseImageSize != 16 && baseImageSize != 24 && !(toolbarResourceId == IDR_SCRIPTS && (baseImageSize == 20 || baseImageSize == 32)))) return false;
+		(baseImageSize != 16 && baseImageSize != 24 && !((toolbarResourceId == IDR_SCRIPTS || toolbarResourceId == IDR_MAINFRAME) && (baseImageSize == 20 || baseImageSize == 32)))) return false;
 	int standardImageCount = 0;
 	for(int index = 0; index < toolbarData->itemCount; ++index) if(toolbarData->Items()[index] != 0) ++standardImageCount;
 	const int imageSize = UiMetrics::ScaleForDpi(baseImageSize, dpi ? dpi : 96);
@@ -260,7 +260,7 @@ bool ToolbarFactory::CreateCommandToolbarImages(CImageList& ownedImages, UINT to
 		if(toolbarResourceId == IDR_MAINFRAME) AdaptMonochromeGlyph(alpha,
 			command == ID_EDIT_BOLD || command == ID_EDIT_ITALIC || command == ID_EDIT_STRIK ||
 			command == ID_EDIT_SUP || command == ID_EDIT_SUB || command == ID_EDIT_CODE);
-		HBITMAP scaled = lastScriptHighResolution || documentTreeHighResolution
+		HBITMAP scaled = lastScriptHighResolution || documentTreeHighResolution || (toolbarResourceId == IDR_MAINFRAME && baseImageSize != 24)
 			? ScaleHighResolutionAlphaBitmap(alpha, sourceSize, imageSize)
 			: sourceSize == 24 && baseImageSize == 24
 			? ScaleLegacyToolbarAlphaBitmap(alpha, sourceSize, imageSize)

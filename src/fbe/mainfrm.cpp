@@ -3915,7 +3915,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 		RegisterOwnedNativeMenuBitmap(applicationModule, nativeTableMenuBitmaps[index].bitmap, nativeTableMenuBitmaps[index].command, UiMetrics::DpiForWindow(m_hWnd));
 
 	m_CmdToolbar = ToolbarFactory::CreateCommandToolbarCtrl(m_hWnd, m_commandToolbarImages, IDR_MAINFRAME, UiMetrics::DpiForWindow(m_hWnd),
-		ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
+		ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE, ATL_IDW_TOOLBAR, _Settings.GetMainToolbarIconSize());
 	if (!m_CmdToolbar || !InitToolBar(m_CmdToolbar, IDR_MAINFRAME))
 	{
 		StartupTrace::Error(L"toolbar", L"TB209", L"failed to create the application-owned command toolbar image list");
@@ -3925,7 +3925,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 		return -1;
 	}
 	m_CmdToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
-	const int qualityImageSize = ToolbarFactory::CommandToolbarImageSize(UiMetrics::DpiForWindow(m_hWnd));
+	const int qualityImageSize = UiMetrics::ScaleForDpi(_Settings.GetMainToolbarIconSize(), UiMetrics::DpiForWindow(m_hWnd));
 	HICON qualityToolbarIcon = static_cast<HICON>(::LoadImageW(applicationModule, MAKEINTRESOURCEW(IDI_FB2_QUALITY),
 		IMAGE_ICON, qualityImageSize, qualityImageSize, LR_DEFAULTCOLOR));
 	const int qualityImageIndex = qualityToolbarIcon ? ::ImageList_AddIcon(m_commandToolbarImages, qualityToolbarIcon) : -1;
@@ -3956,7 +3956,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   for (size_t index = 0; index < kTableToolbarCommandCount; ++index)
   {
     const TableToolbarCommand& command = kTableToolbarCommands[index];
-		const int imageIndex = ToolbarFactory::AddBitmapFromModule(static_cast<HIMAGELIST>(m_commandToolbarImages), applicationModule, command.bitmapResourceId, ToolbarFactory::CommandToolbarImageSize(UiMetrics::DpiForWindow(m_hWnd)));
+		const int imageIndex = ToolbarFactory::AddBitmapFromModule(static_cast<HIMAGELIST>(m_commandToolbarImages), applicationModule, command.bitmapResourceId, qualityImageSize);
     m_table_toolbar_image_indices[index] = imageIndex;
     if (imageIndex < 0) continue;
     TBBUTTON button = {};
@@ -4648,9 +4648,9 @@ bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
     } prepared;
     CImageList& replacement=prepared.images;
     if(ToolbarFactory::RebuildFailurePoint()==ToolbarFactory::RebuildFailure::Create ||
-        !ToolbarFactory::CreateCommandToolbarImages(replacement,IDR_MAINFRAME,dpi)) return false;
+        !ToolbarFactory::CreateCommandToolbarImages(replacement,IDR_MAINFRAME,dpi,_Settings.GetMainToolbarIconSize())) return false;
     const HINSTANCE module=ATL::_AtlBaseModule.GetModuleInstance();
-    const int imageSize=ToolbarFactory::CommandToolbarImageSize(dpi);
+    const int imageSize=UiMetrics::ScaleForDpi(_Settings.GetMainToolbarIconSize(),dpi ? dpi : 96);
     HICON qualityIcon=static_cast<HICON>(::LoadImageW(module,MAKEINTRESOURCEW(IDI_FB2_QUALITY),IMAGE_ICON,imageSize,imageSize,LR_DEFAULTCOLOR));
     const int qualityImage=qualityIcon ? ::ImageList_AddIcon(replacement,qualityIcon) : -1;
     if(qualityIcon) ::DestroyIcon(qualityIcon);
@@ -4704,7 +4704,7 @@ bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
     // image storage. Read back TB_GETIMAGELIST; TB_SETIMAGELIST returns the OLD list.
     m_CmdToolbar.SetImageList(NULL);
     if(m_CmdToolbar.GetImageList()!=NULL) return rollback();
-    ToolbarFactory::ApplyCommandToolbarMetrics(m_CmdToolbar,IDR_MAINFRAME,dpi);
+    ToolbarFactory::ApplyCommandToolbarMetrics(m_CmdToolbar,IDR_MAINFRAME,dpi,_Settings.GetMainToolbarIconSize());
     m_CmdToolbar.SetImageList(next);
     if(m_CmdToolbar.GetImageList()!=next) return rollback();
     TBBUTTONINFO info={};info.cbSize=sizeof(info);info.dwMask=TBIF_IMAGE;info.iImage=qualityImage;
