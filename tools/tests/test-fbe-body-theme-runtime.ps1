@@ -30,8 +30,12 @@ try {
         @('dark-ui-light-body', '0', '0', '16777215'),
         @('light-ui-dark-body', '1', '16777215', '1315860'),
         @('light-auto-again', '0', '4278190080', '4278190080'),
-        @('dark-explicit-again', '0', '0', '16777215')
+        @('dark-explicit-again', '0', '0', '16777215'),
+        @('named-sepia', '0', '0', '16777215'),
+        @('named-latte', '0', '0', '16777215'),
+        @('named-custom', '0', '0', '16777215')
     )
+    if(@($rows | Where-Object phase -eq 'named-graphite').Count) { $expected += ,@('named-graphite', '0', '0', '16777215') }
     if($rows.Count -ne $expected.Count) { throw "Expected $($expected.Count) BODY phases, got $($rows.Count)." }
     foreach($phase in $expected) {
         $matching = @($rows | Where-Object phase -eq $phase[0])
@@ -46,7 +50,7 @@ try {
     $after = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
     if($after -ne $before) { throw 'Theme-only changes modified the FB2 file.' }
     $passed = $true
-    Write-Host 'BODY/table palette, Automatic/explicit transitions, document state, selection and scroll invariants passed.'
+    Write-Host 'BODY/table palette, named themes, document state, selection, scroll and edit Undo/Redo invariants passed.'
 } finally {
     Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed
 }

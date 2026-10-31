@@ -2591,6 +2591,40 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 		_Settings.SetColorFG(RGB(0, 0, 0)); _Settings.SetColorBG(RGB(255, 255, 255));
 		m_doc->ApplyConfChanges(); append("dark-explicit-again");
+		bool namedPalettesApplied = true;
+		auto applyNamed = [&](InterfacePalette palette, const char* phase) {
+			const bool applied = ThemeManager::SetNamedPalette(palette);
+			namedPalettesApplied = applied && namedPalettesApplied;
+			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+			append(phase);
+		};
+		applyNamed(INTERFACE_PALETTE_SEPIA, "named-sepia");
+		applyNamed(INTERFACE_PALETTE_CATPPUCCIN_LATTE, "named-latte");
+		if(ThemeManager::IsDarkModeSupported()) applyNamed(INTERFACE_PALETTE_GRAPHITE, "named-graphite");
+		ThemeManager::CustomPalette customPalette;
+		customPalette.id = L"document-invariant"; customPalette.name = L"Document invariant";
+		customPalette.base = ThemeManager::CustomPaletteBase::Light;
+		customPalette.present[THEME_COLOR_WINDOW] = true; customPalette.colors[THEME_COLOR_WINDOW] = RGB(236, 230, 218);
+		namedPalettesApplied = ThemeManager::SetCustomPalette(customPalette) && namedPalettesApplied;
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId()); append("named-custom");
+		if(!namedPalettesApplied) { output.Close(); ::PostQuitMessage(1); return 0; }
+		// The undo stack must still operate on the document after a palette switch.
+		MSHTML::IHTMLTxtRangePtr edit(bodyElement->createTextRange());
+		if(!edit || !edit->findText(L"Theme target", 0, 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
+		m_doc->m_body.BeginUndoUnit(L"Theme invariant edit");
+		try { edit->text = L"Edited target"; }
+		catch (...) { m_doc->m_body.EndUndoUnit(); throw; }
+		m_doc->m_body.EndUndoUnit();
+		const CString editedBeforePalette(static_cast<LPCWSTR>(body->innerHTML));
+		const bool editDirty = m_doc->DocChanged();
+		const bool restoredPalette = ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SEPIA);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const bool editPreserved = editDirty && m_doc->DocChanged() && editedBeforePalette == CString(static_cast<LPCWSTR>(body->innerHTML));
+		m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
+		const bool undoRestored = baselineHtml == CString(static_cast<LPCWSTR>(body->innerHTML));
+		m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_REDO, 0);
+		const bool redoRestored = editedBeforePalette == CString(static_cast<LPCWSTR>(body->innerHTML));
+		if(!restoredPalette || !editPreserved || !undoRestored || !redoRestored) { output.Close(); ::PostQuitMessage(1); return 0; }
 		// A later palette switch must not accidentally acknowledge a real edit.
 		body->insertAdjacentHTML(L"beforeEnd", L"<p>Unsent user edit.</p>");
 		const CString editedHtml(static_cast<LPCWSTR>(body->innerHTML));
