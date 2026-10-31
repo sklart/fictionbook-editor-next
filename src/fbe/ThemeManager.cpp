@@ -668,7 +668,7 @@ void ApplyNativeControlPalette(HWND window)
 		::SendMessage(window, TTM_SETTIPTEXTCOLOR, dark ? ThemeManager::TextColor() : ::GetSysColor(COLOR_INFOTEXT), 0);
 		return;
 	}
-	if(IsHighContrastEnabled()) return;
+	if(IsHighContrastEnabled()) { ThemeManager::RestoreSystemControlColors(window); return; }
 	if(IsClass(window, WC_TREEVIEWW))
 	{
 		::SendMessage(window, TVM_SETBKCOLOR, 0, ThemeManager::WindowColor());
@@ -1611,6 +1611,32 @@ public:
 		return repostQuit ? 0 : m_result;
 	}
 };
+}
+
+void RestoreSystemControlColors(HWND window)
+{
+	if(IsClass(window, WC_TREEVIEWW)) {
+		::SendMessage(window, TVM_SETBKCOLOR, 0, ::GetSysColor(COLOR_WINDOW));
+		::SendMessage(window, TVM_SETTEXTCOLOR, 0, ::GetSysColor(COLOR_WINDOWTEXT));
+		::SendMessage(window, TVM_SETLINECOLOR, 0, ::GetSysColor(COLOR_3DSHADOW));
+	} else if(IsClass(window, WC_LISTVIEWW)) {
+		::SendMessage(window, LVM_SETBKCOLOR, 0, ::GetSysColor(COLOR_WINDOW));
+		::SendMessage(window, LVM_SETTEXTBKCOLOR, 0, ::GetSysColor(COLOR_WINDOW));
+		::SendMessage(window, LVM_SETTEXTCOLOR, 0, ::GetSysColor(COLOR_WINDOWTEXT));
+	} else if(IsClass(window, WC_TABCONTROLW)) {
+		::SendMessage(window, CCM_SETBKCOLOR, 0, CLR_DEFAULT);
+	} else if(IsClass(window, TOOLBARCLASSNAMEW)) {
+		COLORSCHEME colors = {}; colors.dwSize = sizeof(colors);
+		colors.clrBtnHighlight = ::GetSysColor(COLOR_BTNHIGHLIGHT);
+		colors.clrBtnShadow = ::GetSysColor(COLOR_BTNSHADOW);
+		::SendMessage(window, TB_SETCOLORSCHEME, 0, reinterpret_cast<LPARAM>(&colors));
+	} else if(IsClass(window, L"Edit")) {
+		::SendMessage(window, EM_SETBKGNDCOLOR, TRUE, 0);
+	} else if(IsClass(window, STATUSCLASSNAMEW)) {
+		::SendMessage(window, SB_SETBKCOLOR, 0, CLR_DEFAULT);
+	} else if(IsClass(window, REBARCLASSNAMEW)) {
+		::SendMessage(window, RB_SETBKCOLOR, 0, CLR_DEFAULT);
+	}
 }
 
 UINT TrackPopupMenu(HMENU menu, UINT flags, int x, int y, HWND owner)

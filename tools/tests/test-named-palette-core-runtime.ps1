@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param([string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
-    [ValidateSet('portable','installed')][string]$Mode = 'portable')
+    [ValidateSet('portable','installed')][string]$Mode = 'portable',
+    [switch]$CoreOnly)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'named-palette-core'
@@ -13,7 +14,8 @@ try {
     $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = if($Mode -eq 'installed') { $iso.DataPath } else { $null }
     $report = Join-Path $iso.DataPath 'Diagnostics/portable-state-report.txt'
     $missingRuns = 0
-    foreach($scenario in @('named-palette-core-runtime','custom-palette-copy','named-palette-settings-write','named-palette-settings-read','popular-palette-write','popular-palette-read','custom-palette-settings-write','custom-palette-manage','custom-palette-edit','custom-palette-settings-read','custom-palette-settings-missing','custom-palette-settings-missing')) {
+    $scenarios = if($CoreOnly) { @('named-palette-core-runtime') } else { @('named-palette-core-runtime','custom-palette-copy','named-palette-settings-write','named-palette-settings-read','popular-palette-write','popular-palette-read','custom-palette-settings-write','custom-palette-manage','custom-palette-edit','custom-palette-settings-read','custom-palette-settings-missing','custom-palette-settings-missing') }
+    foreach($scenario in $scenarios) {
         if($scenario -eq 'custom-palette-settings-missing' -and ++$missingRuns -eq 2) {
             $settingsRoot = if($Mode -eq 'portable') { Join-Path $iso.DataPath 'Settings' } else { $iso.DataPath }
             $themeDirectory = Join-Path $settingsRoot 'InterfaceThemes'
@@ -29,7 +31,8 @@ try {
         if($code -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw "Named palette core failed ($Mode/$scenario): $text" }
     }
     $passed = $true
-    Write-Host "Named palette roles, classic restoration, persistence and resource lifetime: PASS ($Mode)."
+    if($CoreOnly) { Write-Host "Named palette core and system control colours: PASS ($Mode)." }
+    else { Write-Host "Named palette roles, classic restoration, persistence and resource lifetime: PASS ($Mode)." }
 } finally {
     foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $saved[$name], 'Process') }
     Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed

@@ -147,6 +147,8 @@ namespace ThemeManager
 	// Applies the appropriate system theme, DWM title-bar attribute and colours
 	// to a window and all its children.  Safe to call on Windows 7.
 	void ApplyToWindow(HWND window);
+	// Remove application palette overrides when system accessibility colours take precedence.
+	void RestoreSystemControlColors(HWND window);
 	void ApplyToAllThreadWindows(DWORD threadId);
 	// Returns true when the effective theme, contrast mode, or system colours changed.
 	bool RefreshSystemTheme();

@@ -576,6 +576,26 @@ void CMainFrame::RunPortableStateTestScenario()
         PostMessage(WM_CLOSE); return;
     }
     if(IsFbeTestScenario(L"named-palette-core-runtime")) {
+        HWND contrastTree = ::CreateWindowExW(0, WC_TREEVIEWW, L"", WS_CHILD, 0, 0, 40, 40, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+        HWND contrastList = ::CreateWindowExW(0, WC_LISTVIEWW, L"", WS_CHILD, 0, 0, 40, 40, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+        bool systemColorsRestored = contrastTree && contrastList;
+        if(systemColorsRestored) {
+            const COLORREF sentinel = RGB(13, 57, 91);
+            ::SendMessage(contrastTree, TVM_SETBKCOLOR, 0, sentinel);
+            ::SendMessage(contrastTree, TVM_SETTEXTCOLOR, 0, sentinel);
+            ::SendMessage(contrastList, LVM_SETBKCOLOR, 0, sentinel);
+            ::SendMessage(contrastList, LVM_SETTEXTBKCOLOR, 0, sentinel);
+            ::SendMessage(contrastList, LVM_SETTEXTCOLOR, 0, sentinel);
+            ThemeManager::RestoreSystemControlColors(contrastTree);
+            ThemeManager::RestoreSystemControlColors(contrastList);
+            systemColorsRestored = static_cast<COLORREF>(::SendMessage(contrastTree, TVM_GETBKCOLOR, 0, 0)) == ::GetSysColor(COLOR_WINDOW) &&
+                static_cast<COLORREF>(::SendMessage(contrastTree, TVM_GETTEXTCOLOR, 0, 0)) == ::GetSysColor(COLOR_WINDOWTEXT) &&
+                static_cast<COLORREF>(::SendMessage(contrastList, LVM_GETBKCOLOR, 0, 0)) == ::GetSysColor(COLOR_WINDOW) &&
+                static_cast<COLORREF>(::SendMessage(contrastList, LVM_GETTEXTBKCOLOR, 0, 0)) == ::GetSysColor(COLOR_WINDOW) &&
+                static_cast<COLORREF>(::SendMessage(contrastList, LVM_GETTEXTCOLOR, 0, 0)) == ::GetSysColor(COLOR_WINDOWTEXT);
+        }
+        if(contrastTree) ::DestroyWindow(contrastTree);
+        if(contrastList) ::DestroyWindow(contrastList);
         ThemeManager::CustomPalette custom, roundTrip;
         std::wstring parseError;
         const std::wstring input = L"{\"schemaVersion\":1,\"id\":\"my-theme\",\"name\":\"Моя тема\",\"base\":\"sepia\",\"colors\":{\"window\":\"#F4F1EA\",\"unknown\":\"ignored\",\"selectionText\":\"#172637\"},\"unknown\":{\"path\":\"ignored\"}}";
@@ -612,7 +632,7 @@ void CMainFrame::RunPortableStateTestScenario()
         const InterfacePalette initialPalette = ThemeManager::GetNamedPalette();
         const COLORREF classicWindow = ThemeManager::WindowColor();
         const bool highContrast = ThemeManager::IsHighContrast();
-        bool passed = initialPalette == INTERFACE_PALETTE_CLASSIC && jsonPassed;
+        bool passed = initialPalette == INTERFACE_PALETTE_CLASSIC && jsonPassed && systemColorsRestored;
         passed = ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SEPIA) && passed;
         const COLORREF inheritedControl = ThemeManager::ControlColor();
         passed = ThemeManager::SetCustomPalette(custom) && ThemeManager::IsCustomPaletteActive() && passed;
