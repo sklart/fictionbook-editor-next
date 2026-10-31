@@ -1435,6 +1435,13 @@ void CMainFrame::RunPortableStateTestScenario()
 			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 		const bool canScroll = m_script_card_window.CanScroll();
 		const HWND viewport = m_script_card_window.ViewportWindow();
+		SCROLLBARINFO scrollBar = { sizeof(scrollBar) };
+		const bool scrollGeometry = viewport && ::GetScrollBarInfo(viewport, OBJID_VSCROLL, &scrollBar) &&
+			scrollBar.xyThumbBottom > scrollBar.xyThumbTop && !(scrollBar.rgstate[0] & STATE_SYSTEM_INVISIBLE);
+		const POINT thumbPoint = { (scrollBar.rcScrollBar.left + scrollBar.rcScrollBar.right) / 2,
+			scrollBar.rcScrollBar.top + (scrollBar.xyThumbTop + scrollBar.xyThumbBottom) / 2 };
+		const bool thumbHitTest = scrollGeometry && ::SendMessageW(viewport, WM_NCHITTEST, 0,
+			MAKELPARAM(thumbPoint.x, thumbPoint.y)) == HTVSCROLL;
 		::SendMessageW(viewport, WM_VSCROLL, SB_LINEDOWN, 0);
 		const int linePosition = m_script_card_window.ScrollPosition();
 		::SendMessageW(viewport, WM_VSCROLL, SB_PAGEDOWN, 0);
@@ -1454,7 +1461,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		const int endPosition = m_script_card_window.ScrollPosition();
 		if(richBlock) ::SendMessageW(richBlock, WM_KEYDOWN, VK_PRIOR, 0);
 		const int pageUpPosition = m_script_card_window.ScrollPosition();
-		const bool responsive = thumbPosition && canScroll && linePosition > 0 && pagePosition > linePosition &&
+		const bool responsive = thumbHitTest && thumbPosition && canScroll && linePosition > 0 && pagePosition > linePosition &&
 			bottomPosition >= pagePosition && wheelPosition < bottomPosition &&
 			homePosition == 0 && endPosition == bottomPosition && pageUpPosition < endPosition;
 		::SetWindowPos(m_script_card_window.m_hWnd, NULL, originalCardBounds.left, originalCardBounds.top,
@@ -2081,7 +2088,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			characteristicLayout, characteristicDpiMatrix, wideCharacteristics, pairedCharacteristics, narrowCharacteristics,
 			standardValues, cleaningValues);
 		report += characteristicDpiDetails;
-		report.AppendFormat("thumb-position=%d\n", thumbPosition);
+		report.AppendFormat("thumb-position=%d\nthumb-hit-test=%d\n", thumbPosition, thumbHitTest);
 		report.AppendFormat("clipboard-skipped=%d\nclipboard-captured=%d\nclipboard-restored=%d\nclipboard-copy-sequence=%lu\nclipboard-read-sequence=%lu\n",
 			clipboardSkipped, clipboardCaptured, clipboardRestored, static_cast<unsigned long>(copySequence), static_cast<unsigned long>(afterReadSequence));
 		report.AppendFormat("long-settings-fit=%d\n", longSettingsFit);

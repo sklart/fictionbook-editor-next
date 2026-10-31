@@ -426,6 +426,16 @@ LRESULT CALLBACK CScriptCardDlg::ViewportSubclass(HWND window, UINT message, WPA
 	UINT_PTR, DWORD_PTR context)
 {
 	CScriptCardDlg* card = reinterpret_cast<CScriptCardDlg*>(context);
+	// STATIC normally lets mouse hit-testing fall through to its parent.
+	// Make the non-client scrollbar reachable and let Windows track its drag.
+	if(message == WM_NCHITTEST) {
+		SCROLLBARINFO bar = { sizeof(bar) };
+		const POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+		if(::GetScrollBarInfo(window, OBJID_VSCROLL, &bar) &&
+			!(bar.rgstate[0] & STATE_SYSTEM_INVISIBLE) && ::PtInRect(&bar.rcScrollBar, point)) return HTVSCROLL;
+	}
+	if(message == WM_NCLBUTTONDOWN && wParam == HTVSCROLL)
+		return ::DefWindowProcW(window, message, wParam, lParam);
 	if(message == WM_VSCROLL) { card->HandleViewportScroll(wParam); return 0; }
 	if(message == WM_MOUSEWHEEL)
 		return ::SendMessageW(card->m_hWnd, message, wParam, lParam);
