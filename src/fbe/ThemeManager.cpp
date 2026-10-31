@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "ThemeManager.h"
+#include "InterfacePopularPalettes.h"
 #include "RuntimeLocalization.h"
 #include "resource.h"
 #include "UiMetrics.h"
@@ -917,6 +918,8 @@ bool ParseCustomPalette(const std::wstring& json, CustomPalette& result, std::ws
 	CustomPalette candidate; std::wstring base;
 	if(!JsonStringMember(json, start, L"id", candidate.id) || candidate.id.empty() || candidate.id.size() > 64) { error = L"Invalid theme id."; return false; }
 	for(wchar_t c : candidate.id) if(!((c >= L'a' && c <= L'z') || (c >= L'0' && c <= L'9') || c == L'-' || c == L'_')) { error = L"Invalid theme id."; return false; }
+	// Existing custom IDs remain valid even if a new built-in palette uses the
+	// same ID: persisted custom selections are separately prefixed with custom:.
 	if(candidate.id == L"classic" || candidate.id == L"graphite" || candidate.id == L"navy" || candidate.id == L"sepia") { error = L"Reserved theme id."; return false; }
 	if(!JsonStringMember(json, start, L"name", candidate.name) || candidate.name.empty() || candidate.name.size() > 100) { error = L"Invalid theme name."; return false; }
 	for(wchar_t c : candidate.name) if(c < 0x20 || c == 0x7f) { error = L"Invalid theme name."; return false; }
@@ -1682,14 +1685,47 @@ void SetSelectedTheme(InterfaceTheme theme)
 	}
 }
 
+const wchar_t* NamedPaletteId(InterfacePalette palette)
+{
+	static const wchar_t* const legacy[] = { L"classic", L"graphite", L"navy", L"sepia" };
+	if(palette >= INTERFACE_PALETTE_CLASSIC && palette < INTERFACE_PALETTE_CATPPUCCIN_LATTE) return legacy[palette];
+	const int index = static_cast<int>(palette) - INTERFACE_PALETTE_CATPPUCCIN_LATTE;
+	return index >= 0 && index < static_cast<int>(_countof(kPopularInterfacePalettes)) ? kPopularInterfacePalettes[index].id : L"classic";
+}
+const wchar_t* NamedPaletteName(InterfacePalette palette)
+{
+	const int index = static_cast<int>(palette) - INTERFACE_PALETTE_CATPPUCCIN_LATTE;
+	return index >= 0 && index < static_cast<int>(_countof(kPopularInterfacePalettes)) ? kPopularInterfacePalettes[index].name : NamedPaletteId(palette);
+}
+bool FindNamedPalette(const CString& id, InterfacePalette& palette)
+{
+	for(int index = 0; index < INTERFACE_PALETTE_COUNT; ++index) if(id == NamedPaletteId(static_cast<InterfacePalette>(index))) {
+		palette = static_cast<InterfacePalette>(index); return true;
+	}
+	return false;
+}
+bool NamedPaletteIsDark(InterfacePalette palette)
+{
+	if(palette == INTERFACE_PALETTE_GRAPHITE || palette == INTERFACE_PALETTE_NAVY) return true;
+	const int index = static_cast<int>(palette) - INTERFACE_PALETTE_CATPPUCCIN_LATTE;
+	return index >= 0 && index < static_cast<int>(_countof(kPopularInterfacePalettes)) && kPopularInterfacePalettes[index].dark;
+}
+bool CopyNamedPaletteColors(InterfacePalette palette, CustomPalette& destination)
+{
+	const int index = static_cast<int>(palette) - INTERFACE_PALETTE_CATPPUCCIN_LATTE;
+	if(index < 0 || index >= static_cast<int>(_countof(kPopularInterfacePalettes))) return false;
+	destination.base = kPopularInterfacePalettes[index].dark ? CustomPaletteBase::Dark : CustomPaletteBase::Light;
+	for(int role = 0; role < THEME_COLOR_COUNT; ++role) { destination.present[role] = true; destination.colors[role] = kPopularInterfacePalettes[index].colors[role]; }
+	return true;
+}
+
 InterfaceTheme GetSelectedTheme() { return g_selected; }
 bool IsDarkModeSupported() { return SupportsDarkMode(); }
 bool IsDark() {
 	if(!SupportsDarkMode()) return false;
 	if(g_customPaletteActive && g_customPalette.base == CustomPaletteBase::Dark) return true;
 	if(g_customPaletteActive && g_customPalette.base == CustomPaletteBase::Light) return false;
-	if(g_namedPalette == INTERFACE_PALETTE_GRAPHITE || g_namedPalette == INTERFACE_PALETTE_NAVY) return true;
-	if(g_namedPalette == INTERFACE_PALETTE_SEPIA) return false;
+	if(g_namedPalette != INTERFACE_PALETTE_CLASSIC) return NamedPaletteIsDark(g_namedPalette);
 	return g_selected == INTERFACE_THEME_DARK || (g_selected == INTERFACE_THEME_AUTOMATIC && g_systemDark);
 }
 InterfacePalette GetNamedPalette() { return g_namedPalette; }
@@ -1698,7 +1734,7 @@ bool GetCustomPalette(CustomPalette& palette) { if(!g_customPaletteActive) retur
 bool SetNamedPalette(InterfacePalette palette)
 {
 	if(palette < INTERFACE_PALETTE_CLASSIC || palette >= INTERFACE_PALETTE_COUNT) return false;
-	if(!SupportsDarkMode() && (palette == INTERFACE_PALETTE_GRAPHITE || palette == INTERFACE_PALETTE_NAVY)) return false;
+	if(!SupportsDarkMode() && NamedPaletteIsDark(palette)) return false;
 	if(palette == g_namedPalette && !g_customPaletteActive) return true;
 	const bool wasDark = IsDark();
 	g_customPaletteActive = false;
@@ -1751,6 +1787,8 @@ COLORREF Color(ThemeColorRole role)
 	}
 	if(role >= THEME_COLOR_WINDOW && role < THEME_COLOR_COUNT && g_customPaletteActive && g_customPalette.present[role])
 		return g_customPalette.colors[role];
+	if(role >= THEME_COLOR_WINDOW && role < THEME_COLOR_COUNT && g_namedPalette >= INTERFACE_PALETTE_CATPPUCCIN_LATTE && g_namedPalette < INTERFACE_PALETTE_COUNT)
+		return kPopularInterfacePalettes[g_namedPalette - INTERFACE_PALETTE_CATPPUCCIN_LATTE].colors[role];
 	if(role >= THEME_COLOR_WINDOW && role < THEME_COLOR_COUNT && g_namedPalette != INTERFACE_PALETTE_CLASSIC)
 	{
 		// Role order is fixed by ThemeColorRole; preserve the legacy enum values.

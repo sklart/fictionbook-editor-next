@@ -29,6 +29,10 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	ThemeManager::CustomPalette m_originalCustomPalette;
 	bool m_originalCustomPaletteActive = false;
 	int m_acceptedPaletteIndex = 0;
+	int m_paletteDropdownStart = -1;
+	bool m_paletteChangedBeforeDropdown = false;
+	bool m_reopeningPaletteDropdown = false;
+	bool m_cancellingPaletteDropdown = false;
 	bool m_paletteChanged = false;
 	bool m_preserveUnavailableDark = false;
 	bool m_darkThemeSupported = true;
@@ -49,6 +53,8 @@ public:
 		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_SELCHANGE, OnInterfaceThemeChanged)
 		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_SELENDOK, OnInterfaceThemeChanged)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_SELCHANGE, OnInterfacePaletteChanged)
+		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_DROPDOWN, OnPaletteDropdown)
+		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_SELENDCANCEL, OnPaletteDropdownCancel)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE_COPY, BN_CLICKED, OnCopyPalette)
 		COMMAND_HANDLER(IDC_PALETTE_IMPORT, BN_CLICKED, OnImportPalette)
 		COMMAND_HANDLER(IDC_PALETTE_EXPORT, BN_CLICKED, OnExportPalette)
@@ -63,6 +69,8 @@ public:
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnInterfaceThemeChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&);
+	LRESULT OnPaletteDropdown(WORD, WORD, HWND, BOOL&);
+	LRESULT OnPaletteDropdownCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnCopyPalette(WORD, WORD, HWND, BOOL&);
 	LRESULT OnImportPalette(WORD, WORD, HWND, BOOL&);
 	LRESULT OnExportPalette(WORD, WORD, HWND, BOOL&);

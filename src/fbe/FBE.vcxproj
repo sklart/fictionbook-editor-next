@@ -621,6 +621,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
 	<ClInclude Include="ScriptToolbarManagerDlg.h" />
     <ClInclude Include="XmlSourceThemes.h" />
 	<ClInclude Include="ThemeManager.h" />
+	<ClInclude Include="InterfacePopularPalettes.h" />
 	<ClInclude Include="XmlTagMatcher.h" />
     <ClInclude Include="SearchReplace.h" />
 	<ClInclude Include="search\SearchDocumentAdapter.h" />

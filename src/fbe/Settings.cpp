@@ -996,9 +996,9 @@ void CSettings::SetInterfaceTheme(InterfaceTheme theme, bool apply)
 void CSettings::SetInterfacePalette(const CString& value, bool apply)
 {
 	const bool custom = value.Left(7) == L"custom:" && ThemeManager::IsValidCustomPaletteId(static_cast<LPCWSTR>(value.Mid(7)));
-	const CString normalized = custom || value == L"graphite" || value == L"navy" || value == L"sepia" ? value : L"classic";
-	const InterfacePalette palette = normalized == L"graphite" ? INTERFACE_PALETTE_GRAPHITE :
-		normalized == L"navy" ? INTERFACE_PALETTE_NAVY : normalized == L"sepia" ? INTERFACE_PALETTE_SEPIA : INTERFACE_PALETTE_CLASSIC;
+	InterfacePalette palette = INTERFACE_PALETTE_CLASSIC;
+	const bool named = ThemeManager::FindNamedPalette(value, palette);
+	const CString normalized = custom || named ? value : L"classic";
 	m_interface_palette = normalized;
 	m_interface_palette_error.Empty();
 	if(this == &_Settings)

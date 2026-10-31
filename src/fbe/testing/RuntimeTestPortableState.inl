@@ -125,6 +125,128 @@ static VOID CALLBACK CheckPaletteWarningForTest(HWND owner, UINT, UINT_PTR timer
 
 void CMainFrame::RunPortableStateTestScenario()
 {
+    if(IsFbeTestScenario(L"popular-palette-write")) {
+        const InterfaceTheme mode = _Settings.GetInterfaceTheme();
+        const CString xmlThemeBefore = _Settings.GetStoredXmlSrcThemeId();
+        const bool dirtyBefore = DocChanged();
+        bool passed = INTERFACE_PALETTE_COUNT - INTERFACE_PALETTE_CATPPUCCIN_LATTE == 10;
+        auto luminance = [](COLORREF color) {
+            auto linear = [](BYTE value) { const double v = value / 255.0; return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4); };
+            return 0.2126 * linear(GetRValue(color)) + 0.7152 * linear(GetGValue(color)) + 0.0722 * linear(GetBValue(color));
+        };
+        auto ratio = [&](COLORREF a, COLORREF b) { const double x = luminance(a), y = luminance(b); return ((std::max)(x,y) + 0.05) / ((std::min)(x,y) + 0.05); };
+        for(int index = INTERFACE_PALETTE_CATPPUCCIN_LATTE; index < INTERFACE_PALETTE_COUNT; ++index) {
+            const InterfacePalette palette = static_cast<InterfacePalette>(index);
+            InterfacePalette parsed = INTERFACE_PALETTE_CLASSIC;
+            passed = ThemeManager::FindNamedPalette(ThemeManager::NamedPaletteId(palette), parsed) && parsed == palette && passed;
+            ThemeManager::CustomPalette copy; copy.id = L"palette-test"; copy.name = L"Palette test";
+            passed = ThemeManager::CopyNamedPaletteColors(palette, copy) && passed;
+            for(int role = 0; role < THEME_COLOR_COUNT; ++role) passed = copy.present[role] && passed;
+            passed = ratio(copy.colors[THEME_COLOR_TEXT], copy.colors[THEME_COLOR_WINDOW]) >= 4.5 &&
+                ratio(copy.colors[THEME_COLOR_TEXT], copy.colors[THEME_COLOR_CONTROL]) >= 4.5 &&
+                ratio(copy.colors[THEME_COLOR_SELECTION_TEXT], copy.colors[THEME_COLOR_SELECTION_BACKGROUND]) >= 4.5 && passed;
+            if(!ThemeManager::IsDarkModeSupported() && ThemeManager::NamedPaletteIsDark(palette))
+                passed = !ThemeManager::SetNamedPalette(palette) && passed;
+            else {
+                passed = ThemeManager::SetNamedPalette(palette) && ThemeManager::GetNamedPalette() == palette &&
+                    ThemeManager::IsDark() == ThemeManager::NamedPaletteIsDark(palette) && passed;
+                if(!ThemeManager::IsHighContrast()) passed = ThemeManager::Color(THEME_COLOR_WINDOW) == copy.colors[THEME_COLOR_WINDOW] && passed;
+                ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+                passed = DocChanged() == dirtyBefore && _Settings.GetStoredXmlSrcThemeId() == xmlThemeBefore && passed;
+            }
+            ThemeManager::CustomPalette sameId, parsedCustom; std::wstring error;
+            sameId.id = ThemeManager::NamedPaletteId(palette); sameId.name = L"Existing custom";
+            passed = ThemeManager::ParseCustomPalette(ThemeManager::SerializeCustomPalette(sameId), parsedCustom, error) && parsedCustom.id == sameId.id && passed;
+        }
+        const DWORD gdiBefore = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+        for(int iteration = 0; iteration < 20; ++iteration) {
+            InterfacePalette palette = static_cast<InterfacePalette>(INTERFACE_PALETTE_CATPPUCCIN_LATTE + iteration % 10);
+            if(!ThemeManager::IsDarkModeSupported() && ThemeManager::NamedPaletteIsDark(palette)) palette = INTERFACE_PALETTE_CATPPUCCIN_LATTE;
+            passed = ThemeManager::SetNamedPalette(palette) && passed;
+            for(int role = 0; role < THEME_COLOR_COUNT; ++role) passed = ThemeManager::Brush(static_cast<ThemeColorRole>(role)) != NULL && passed;
+        }
+        const DWORD gdiAfter = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+        passed = gdiAfter <= gdiBefore + 2 && passed;
+        ThemeManager::CustomPalette existingCustom; existingCustom.id = L"dracula"; existingCustom.name = L"Existing custom";
+        std::wstring customError;
+        passed = ThemeManager::SaveCustomPaletteToProfile(existingCustom, false, customError) && passed;
+        _Settings.SetInterfacePalette(L"custom:dracula");
+        passed = _Settings.GetInterfacePalette() == L"custom:dracula" && ThemeManager::IsCustomPaletteActive() && passed;
+        passed = ThemeManager::DeleteCustomPaletteFromProfile(existingCustom.id, customError) && passed;
+        _Settings.SetInterfacePalette(L"catppuccin-latte");
+        CSettingsGeneralPage page;
+        const bool corePassed = passed;
+        bool focused = false, opened = true, downPreview = true, escaped = true, entered = true, returned = true, copiedOk = true;
+        int droppedAfterDown = -1, selectedAfterEscape = -1, themeAfterEscape = -1, selectedAfterEnter = -1, themeAfterEnter = -1;
+        const bool pageCreated = page.Create(m_hWnd) != NULL;
+        passed = pageCreated && passed;
+        if(pageCreated) {
+            const HWND choice = page.GetDlgItem(IDC_INTERFACE_PALETTE);
+            ::ShowWindow(m_hWnd, SW_SHOWNORMAL);
+            ::ShowWindow(page.m_hWnd, SW_SHOW);
+            ::SetForegroundWindow(m_hWnd);
+            ::SetFocus(choice);
+            focused = ::GetFocus() == choice && ::IsWindowVisible(choice);
+            passed = focused && ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CATPPUCCIN_LATTE && passed;
+            if(ThemeManager::IsDarkModeSupported()) {
+                ::SendMessageW(choice, CB_SHOWDROPDOWN, TRUE, 0);
+                opened = ::SendMessageW(choice, CB_GETDROPPEDSTATE, 0, 0) != FALSE;
+                passed = opened && passed;
+                ::SendMessageW(choice, WM_KEYDOWN, VK_DOWN, 0);
+                ::SendMessageW(choice, WM_KEYUP, VK_DOWN, 0);
+                downPreview = ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CATPPUCCIN_MOCHA &&
+                    ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_MOCHA && _Settings.GetInterfacePalette() == L"catppuccin-latte" && ::GetFocus() == choice;
+                passed = downPreview && passed;
+                droppedAfterDown = static_cast<int>(::SendMessageW(choice, CB_GETDROPPEDSTATE, 0, 0));
+                ::SendMessageW(choice, WM_KEYDOWN, VK_ESCAPE, 0);
+                ::SendMessageW(choice, WM_KEYUP, VK_ESCAPE, 0);
+                selectedAfterEscape = static_cast<int>(::SendMessage(choice, CB_GETCURSEL, 0, 0));
+                themeAfterEscape = static_cast<int>(ThemeManager::GetNamedPalette());
+                escaped = selectedAfterEscape == INTERFACE_PALETTE_CATPPUCCIN_LATTE &&
+                    ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE;
+                passed = escaped && passed;
+                ::SendMessageW(choice, CB_SHOWDROPDOWN, TRUE, 0);
+                ::SendMessageW(choice, WM_KEYDOWN, VK_DOWN, 0);
+                ::SendMessageW(choice, WM_KEYUP, VK_DOWN, 0);
+                ::SendMessageW(choice, WM_KEYDOWN, VK_RETURN, 0);
+                ::SendMessageW(choice, WM_KEYUP, VK_RETURN, 0);
+                selectedAfterEnter = static_cast<int>(::SendMessage(choice, CB_GETCURSEL, 0, 0));
+                themeAfterEnter = static_cast<int>(ThemeManager::GetNamedPalette());
+                entered = selectedAfterEnter == INTERFACE_PALETTE_CATPPUCCIN_MOCHA &&
+                    ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_MOCHA;
+                passed = entered && passed;
+                ::SendMessageW(choice, CB_SHOWDROPDOWN, TRUE, 0);
+                ::SendMessageW(choice, WM_KEYDOWN, VK_UP, 0);
+                ::SendMessageW(choice, WM_KEYUP, VK_UP, 0);
+                ::SendMessageW(choice, WM_KEYDOWN, VK_RETURN, 0);
+                ::SendMessageW(choice, WM_KEYUP, VK_RETURN, 0);
+                returned = ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CATPPUCCIN_LATTE &&
+                    ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE;
+                passed = returned && passed;
+            }
+            copiedOk = page.StagePaletteCopy(L"Catppuccin copy");
+            passed = copiedOk && passed;
+            ThemeManager::CustomPalette copied, expected;
+            passed = ThemeManager::GetCustomPalette(copied) && ThemeManager::CopyNamedPaletteColors(INTERFACE_PALETTE_CATPPUCCIN_LATTE, expected) && passed;
+            for(int role = 0; role < THEME_COLOR_COUNT; ++role) passed = copied.present[role] && copied.colors[role] == expected.colors[role] && passed;
+            passed = page.CancelChanges() && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE && passed;
+            page.DestroyWindow();
+        }
+        _Settings.SetInterfacePalette(L"solarized-light");
+        passed = _Settings.GetInterfacePalette() == L"solarized-light" && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SOLARIZED_LIGHT &&
+            _Settings.GetInterfaceTheme() == mode && passed;
+        _Settings.Save();
+        CStringA report;
+        report.Format("core=%d\npage=%d\nfocused=%d\nopened=%d\ndown=%d\ndropped-after-down=%d\nescape=%d\nselection-after-escape=%d\ntheme-after-escape=%d\nenter=%d\nselection-after-enter=%d\ntheme-after-enter=%d\nreturn=%d\ncopy=%d\nresult=%s\n", corePassed, pageCreated, focused, opened, downPreview, droppedAfterDown, escaped, selectedAfterEscape, themeAfterEscape, entered, selectedAfterEnter, themeAfterEnter, returned, copiedOk, passed ? "pass" : "fail");
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
+        PostMessage(WM_CLOSE); return;
+    }
+    if(IsFbeTestScenario(L"popular-palette-read")) {
+        const bool passed = _Settings.GetInterfacePalette() == L"solarized-light" && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SOLARIZED_LIGHT &&
+            _Settings.GetInterfaceTheme() == INTERFACE_THEME_AUTOMATIC;
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", passed ? "popular-palette-read=1\nresult=pass\n" : "popular-palette-read=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
+    }
     if(IsFbeTestScenario(L"custom-palette-settings-write")) {
         ThemeManager::CustomPalette custom;
         custom.id = L"restart-test"; custom.name = L"Restart test";

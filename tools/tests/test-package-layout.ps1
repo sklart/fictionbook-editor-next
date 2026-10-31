@@ -24,6 +24,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $repoRoot 'runtime\Resources\Words.x
 if ($manifest.core.runtimeDirectories -notcontains 'Resources') {
     throw 'Core manifest must preserve immutable runtime Resources.'
 }
+if ($manifest.core.required -notcontains 'THIRD-PARTY-LICENSES\Theme-palettes-MIT.txt') { throw 'Core manifest must require the interface palette license.' }
 if ($manifest.core.runtimeDirectories -notcontains 'Utilities') { throw 'Core manifest must preserve Utilities for remaining supported utilities.' }
 $wordsResource = @($layout.core.copy | Where-Object { $_.sourceRoot -eq 'runtime' -and $_.source -eq 'Resources/Words.xml' -and $_.destination -eq 'Resources/Words.xml' })
 if ($wordsResource.Count -ne 1 -or -not $wordsResource[0].required) {

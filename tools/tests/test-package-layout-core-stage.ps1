@@ -25,7 +25,7 @@ try {
     & (Join-Path $repoRoot 'tools\build\build-provenance.ps1') -Action Write -Kind Runtime -Configuration $configuration -ProfileDirectory $editorRuntime -BatchDirectory $batch -ProvenanceDirectory $provenance
     & (Join-Path $repoRoot 'tools\build\stage-core.ps1') -Configuration $configuration -OutputDirectory $stage -EditorRuntimeDirectory $editorRuntime -BatchOutputDirectory $batch -ProvenanceDirectory $provenance -BuildOutputDirectory $common
 
-    foreach ($relativePath in @('FBE.exe', 'FBV.exe', 'Plugins\ImportEPUB.dll', 'LICENSE', 'genres.librusec.txt', 'Resources\Words.xml', 'THIRD-PARTY-LICENSES\PCRE2.txt', 'Utilities\Save Sections As Separate Documents\SaveSectionsAsSeparateDocuments.hta')) {
+    foreach ($relativePath in @('FBE.exe', 'FBV.exe', 'Plugins\ImportEPUB.dll', 'LICENSE', 'genres.librusec.txt', 'Resources\Words.xml', 'THIRD-PARTY-LICENSES\PCRE2.txt', 'THIRD-PARTY-LICENSES\Theme-palettes-MIT.txt', 'Utilities\Save Sections As Separate Documents\SaveSectionsAsSeparateDocuments.hta')) {
         if (-not (Test-Path -LiteralPath (Join-Path $stage $relativePath) -PathType Leaf)) {
             throw "Layout-driven Core stage omitted: $relativePath"
         }
@@ -36,6 +36,9 @@ try {
     foreach ($relativePath in @('Utilities\Save Sections As Separate Documents\SaveSectionsAsSeparateDocuments.hta', 'portable.ini', 'Data\Settings\.keep')) {
         if (-not (Test-Path -LiteralPath (Join-Path $portable $relativePath))) { throw "Portable layout omitted: $relativePath" }
     }
+    $license = 'THIRD-PARTY-LICENSES\Theme-palettes-MIT.txt'
+    if (-not (Test-Path -LiteralPath (Join-Path $portable $license) -PathType Leaf)) { throw 'Portable package omitted the interface palette license.' }
+    if ((Get-FileHash -LiteralPath (Join-Path $portable $license)).Hash -ne (Get-FileHash -LiteralPath (Join-Path $repoRoot $license)).Hash) { throw 'Portable palette license differs from its source.' }
     if (Test-Path -LiteralPath (Join-Path $portable 'Utilities\fb2recode')) { throw 'Portable stage must not contain retired Utilities\fb2recode.' }
     if (Test-Path -LiteralPath (Join-Path $portable 'Utilities\FB2CheckContentTypes')) { throw 'Portable stage must not contain retired Utilities\FB2CheckContentTypes.' }
     foreach ($legacyUserFile in @('Settings.xml', 'Hotkeys.xml', 'Words.xml')) {

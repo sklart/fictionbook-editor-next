@@ -35,7 +35,7 @@
 
       "genres.txt", "genres.rus.txt", "genres.ukr.txt", "genres.librusec.txt", "genres.rus.librusec.txt",
       "Dict\\de_DE.aff", "Dict\\de_DE.dic", "Dict\\en_US.aff", "Dict\\en_US.dic", "Dict\\ru_RU.aff", "Dict\\ru_RU.dic", "Dict\\uk_UA.aff", "Dict\\uk_UA.dic", "Dict\\sources.json",
-      "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\\Fluent-UI-System-Icons-MIT.txt", "THIRD-PARTY-LICENSES\\Dictionary-de_DE.txt", "THIRD-PARTY-LICENSES\\Dictionary-en_US.txt", "THIRD-PARTY-LICENSES\\Dictionary-ru_RU.txt", "THIRD-PARTY-LICENSES\\Dictionary-uk_UA.txt"
+      "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\\Theme-palettes-MIT.txt", "THIRD-PARTY-LICENSES\\Fluent-UI-System-Icons-MIT.txt", "THIRD-PARTY-LICENSES\\Dictionary-de_DE.txt", "THIRD-PARTY-LICENSES\\Dictionary-en_US.txt", "THIRD-PARTY-LICENSES\\Dictionary-ru_RU.txt", "THIRD-PARTY-LICENSES\\Dictionary-uk_UA.txt"
     ],
     "optional": [],
     "forbidden": ["FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc", "InstallerTools", "Utilities\\ArchHandler", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll", "Lang\\ru-RU\\res_rus.pdb", "Lang\\uk-UA\\res_ukr.pdb", "dict", "EditorBackgrounds", "ArchiveMruRuntimeData"],

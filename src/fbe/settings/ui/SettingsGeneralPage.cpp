@@ -44,8 +44,7 @@ void SetText(HWND window, int controlId, LPCWSTR key, LPCWSTR fallback)
 }
 const wchar_t* PaletteId(int index)
 {
-	static const wchar_t* const ids[] = { L"classic", L"graphite", L"navy", L"sepia" };
-	return index >= 0 && index < _countof(ids) ? ids[index] : ids[0];
+	return ThemeManager::NamedPaletteId(static_cast<InterfacePalette>(index));
 }
 }
 
@@ -127,6 +126,8 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_interfacePalette.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.graphite", L"Graphite"));
 	m_interfacePalette.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.navy", L"Dark blue"));
 	m_interfacePalette.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.sepia", L"Sepia"));
+	for(int index = INTERFACE_PALETTE_CATPPUCCIN_LATTE; index < INTERFACE_PALETTE_COUNT; ++index)
+		m_interfacePalette.AddString(ThemeManager::NamedPaletteName(static_cast<InterfacePalette>(index)));
 	for(const ThemeManager::CustomPalette& palette : ThemeManager::ListCustomPalettesInProfile()) {
 		const CString label = CString(palette.name.c_str()) + L" (" + palette.id.c_str() + L")";
 		const int index = m_interfacePalette.AddString(label);
@@ -415,13 +416,37 @@ LRESULT CSettingsGeneralPage::OnInterfaceThemeChanged(WORD notification, WORD, H
 	return 0;
 }
 
+LRESULT CSettingsGeneralPage::OnPaletteDropdown(WORD, WORD, HWND, BOOL&)
+{
+	if(!m_reopeningPaletteDropdown) {
+		m_paletteDropdownStart = m_acceptedPaletteIndex;
+		m_paletteChangedBeforeDropdown = m_paletteChanged;
+	}
+	return 0;
+}
+
+LRESULT CSettingsGeneralPage::OnPaletteDropdownCancel(WORD, WORD, HWND, BOOL&)
+{
+	if(m_paletteDropdownStart < 0 || m_paletteDropdownStart >= m_interfacePalette.GetCount()) return 0;
+	m_interfacePalette.SetCurSel(m_paletteDropdownStart);
+	BOOL handled = FALSE;
+	m_cancellingPaletteDropdown = true;
+	OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, m_interfacePalette, handled);
+	m_cancellingPaletteDropdown = false;
+	m_paletteChanged = m_paletteChangedBeforeDropdown;
+	m_paletteDropdownStart = -1;
+	return 0;
+}
+
 LRESULT CSettingsGeneralPage::OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&)
 {
 	const int selection = m_interfacePalette.GetCurSel();
 	if(selection < 0 || selection >= INTERFACE_PALETTE_COUNT + static_cast<int>(m_customPalettes.size())) return 0;
+	const bool keepDropdown = !m_cancellingPaletteDropdown && m_interfacePalette.GetDroppedState() != FALSE;
+	const bool hadFocus = ::GetFocus() == m_interfacePalette.m_hWnd;
 	bool applied = false;
 	if(selection < INTERFACE_PALETTE_COUNT) {
-		if(m_darkThemeSupported || (selection != INTERFACE_PALETTE_GRAPHITE && selection != INTERFACE_PALETTE_NAVY))
+		if(m_darkThemeSupported || !ThemeManager::NamedPaletteIsDark(static_cast<InterfacePalette>(selection)))
 			applied = ThemeManager::SetNamedPalette(static_cast<InterfacePalette>(selection));
 	} else {
 		ThemeManager::CustomPalette palette; std::wstring error;
@@ -449,6 +474,14 @@ LRESULT CSettingsGeneralPage::OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&)
 	UpdatePaletteColorControls();
 	m_paletteChanged = true;
 	ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+	// Retheming native controls can close an open combo popup. Keep keyboard
+	// navigation active without replacing the selection captured on opening.
+	if(keepDropdown && !m_interfacePalette.GetDroppedState()) {
+		if(hadFocus) m_interfacePalette.SetFocus();
+		m_reopeningPaletteDropdown = true;
+		m_interfacePalette.ShowDropDown(TRUE);
+		m_reopeningPaletteDropdown = false;
+	}
 	return 0;
 }
 
@@ -511,6 +544,7 @@ bool CSettingsGeneralPage::StagePaletteCopy(const CString& name)
 	if(selection < 0 || selection >= INTERFACE_PALETTE_COUNT + static_cast<int>(m_customPalettes.size())) return false;
 	ThemeManager::CustomPalette copy;
 	if(selection >= INTERFACE_PALETTE_COUNT) { if(!ThemeManager::GetCustomPalette(copy)) return false; }
+	else if(ThemeManager::CopyNamedPaletteColors(static_cast<InterfacePalette>(selection), copy)) {}
 	else copy.base = selection == INTERFACE_PALETTE_GRAPHITE ? ThemeManager::CustomPaletteBase::Graphite :
 		selection == INTERFACE_PALETTE_NAVY ? ThemeManager::CustomPaletteBase::Navy :
 		selection == INTERFACE_PALETTE_SEPIA ? ThemeManager::CustomPaletteBase::Sepia :

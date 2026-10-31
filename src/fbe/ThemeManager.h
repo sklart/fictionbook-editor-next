@@ -46,6 +46,16 @@ enum InterfacePalette
 	INTERFACE_PALETTE_GRAPHITE,
 	INTERFACE_PALETTE_NAVY,
 	INTERFACE_PALETTE_SEPIA,
+	INTERFACE_PALETTE_CATPPUCCIN_LATTE,
+	INTERFACE_PALETTE_CATPPUCCIN_MOCHA,
+	INTERFACE_PALETTE_SOLARIZED_DARK,
+	INTERFACE_PALETTE_SOLARIZED_LIGHT,
+	INTERFACE_PALETTE_EVERFOREST_DARK,
+	INTERFACE_PALETTE_EVERFOREST_LIGHT,
+	INTERFACE_PALETTE_ROSE_PINE_MOON,
+	INTERFACE_PALETTE_DRACULA,
+	INTERFACE_PALETTE_CATPPUCCIN_FRAPPE,
+	INTERFACE_PALETTE_CATPPUCCIN_MACCHIATO,
 	INTERFACE_PALETTE_COUNT
 };
 
@@ -84,6 +94,11 @@ namespace ThemeManager
 	ApplyDiagnostics GetApplyDiagnostics();
 	void SetSelectedTheme(InterfaceTheme theme);
 	InterfaceTheme GetSelectedTheme();
+	const wchar_t* NamedPaletteId(InterfacePalette palette);
+	const wchar_t* NamedPaletteName(InterfacePalette palette);
+	bool FindNamedPalette(const CString& id, InterfacePalette& palette);
+	bool NamedPaletteIsDark(InterfacePalette palette);
+	bool CopyNamedPaletteColors(InterfacePalette palette, CustomPalette& destination);
 	bool SetNamedPalette(InterfacePalette palette);
 	InterfacePalette GetNamedPalette();
 	bool SetCustomPalette(const CustomPalette& palette);

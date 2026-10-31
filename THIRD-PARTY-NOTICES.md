@@ -52,6 +52,22 @@ complete text is shipped as `THIRD-PARTY-LICENSES/Theme-palettes-MIT.txt`.
 | Night Owl (<https://github.com/sdras/night-owl-vscode-theme>) | main | Night Owl |
 | GitHub Theme for VS Code (<https://github.com/github/github-vscode-theme>) | main | GitHub Light Default, GitHub Dark Default |
 
+## Bundled interface palette adaptations
+
+The interface includes Catppuccin Latte, Frappé, Macchiato and Mocha;
+Solarized Light and Dark; Everforest Light Medium and Dark Medium;
+Rosé Pine Moon; and Dracula. These palettes adapt the colors of the upstream
+MIT-licensed projects to FBE Next interface roles. The interface and XML
+source-editor palettes are selected and stored independently. Some text colors
+are adjusted for contrast on FBE interface surfaces.
+
+Sources: [Catppuccin palette](https://github.com/catppuccin/palette),
+[Solarized](https://github.com/altercation/solarized),
+[Everforest](https://github.com/sainnhe/everforest),
+[Rosé Pine for VS Code](https://github.com/rose-pine/vscode), and
+[Dracula Theme](https://github.com/dracula/dracula-theme). Copyright notices
+and the MIT permission text are in `THIRD-PARTY-LICENSES/Theme-palettes-MIT.txt`.
+
 ## License texts in source and releases
 
 The repository preserves upstream license material alongside source trees:

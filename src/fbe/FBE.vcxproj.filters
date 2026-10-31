@@ -498,6 +498,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
 	<ClInclude Include="ThemeManager.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="InterfacePopularPalettes.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="SearchReplace.h">
       <Filter>Header Files</Filter>
     </ClInclude>
