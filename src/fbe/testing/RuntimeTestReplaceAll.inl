@@ -20,6 +20,11 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 		wchar_t mode[64] = {};
 		::GetEnvironmentVariableW(L"FBE_NEXT_TEST_REPLACE_MODE", mode, _countof(mode));
 		const bool noMatch = wcscmp(mode, L"no-match") == 0;
+		const bool literal = wcscmp(mode, L"literal") == 0;
+		const bool zeroLength = wcscmp(mode, L"zero-length") == 0;
+		const bool stalePreview = wcscmp(mode, L"stale-preview") == 0;
+		const bool scopeSelection = wcscmp(mode, L"scope-selection") == 0;
+		const bool scopeSection = wcscmp(mode, L"scope-section") == 0;
 		const bool expectedFailure = fault[0] != 0;
 		const bool expectedMutation = expectedFailure && wcscmp(fault, L"before-first") != 0;
 		ShowView(BODY); m_doc->m_body.SetFocus(); pump();
@@ -37,13 +42,33 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 		if (!body || !m_doc->Save(beforePath)) CheckError(E_FAIL);
 		const CString beforeHtml(static_cast<LPCWSTR>(body->innerHTML));
 		const CString beforeXml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+		if (scopeSelection || scopeSection) {
+			MSHTML::IHTMLTxtRangePtr selected = MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange();
+			if (!selected->findText(scopeSelection ? L"blank.fb2" : L"9", 0, 0)) CheckError(E_FAIL);
+			selected->select(); pump();
+		}
 		const wchar_t* replacement = wcscmp(fault, L"format") == 0 ? L"\\S+\\Q" : L"+";
-		if (!m_doc->m_body.ConfigureReplaceAllRuntimeTest(noMatch ? L"THIS_PATTERN_IS_ABSENT_8472" : L"\\d", replacement, true)) CheckError(E_FAIL);
+		const wchar_t* pattern = noMatch ? L"THIS_PATTERN_IS_ABSENT_8472" : literal ? L"2" : zeroLength ? L"(?=blank)" : L"\\d";
+		if (!m_doc->m_body.ConfigureReplaceAllRuntimeTest(pattern, replacement, !literal)) CheckError(E_FAIL);
+		static MSHTML::IHTMLTxtRangePtr modalMutation;
+		static bool modalChanged = false;
+		modalMutation = NULL; modalChanged = false;
+		if (stalePreview) {
+			MSHTML::IHTMLBodyElementPtr bodyElement(document->body);
+			modalMutation = bodyElement->createTextRange();
+			modalMutation->moveToElementText(MSHTML::IHTMLDocument3Ptr(document)->getElementById(L"main-p"));
+			if (!modalMutation->findText(L"blank.fb2", 0, 0)) CheckError(E_FAIL);
+			modalMutation->collapse(VARIANT_TRUE);
+		}
 		const UINT_PTR timer = ::SetTimer(NULL, 0, 30, [](HWND, UINT, UINT_PTR, DWORD) {
 			::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
 				wchar_t name[64] = {}; ::GetClassNameW(window, name, _countof(name));
-				if ((wcscmp(name, L"#32770") == 0 || wcscmp(name, L"FBEThemedMessageDialog") == 0) && ::GetDlgItem(window, IDYES))
+				if ((wcscmp(name, L"#32770") == 0 || wcscmp(name, L"FBEThemedMessageDialog") == 0) && ::GetDlgItem(window, IDYES)) {
+					if (modalMutation && !modalChanged) {
+						try { modalMutation->text = L"!"; modalChanged = true; } catch (const _com_error&) {}
+					}
 					::PostMessageW(window, WM_COMMAND, IDYES, 0);
+				}
 				return TRUE;
 			}, 0);
 		});
@@ -58,7 +83,7 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 		const int undoAvailable = historyCount(false);
 		int redoAvailable = 0;
 		bool undo = false, redo = false;
-		if (changed) {
+		if (changed && !stalePreview) {
 			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
 			const CString undoHtml(static_cast<LPCWSTR>(body->innerHTML));
 			const CString undoXml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
@@ -81,11 +106,14 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 			savedCopyRecovery = LoadFile(beforePath) == OK; pump();
 			savedCopyRecovery = savedCopyRecovery && CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == beforeXml;
 		}
-		report.Format("fault=%S\ncount=%d\nerror-empty=%d\npartial-warning=%d\nchanged=%d\nundo-tested=%d\nundo-available=%d\nredo-available=%d\nundo=%d\nredo=%d\nsaved=%d\nreopened=%d\nxml-matches=%d\nsaved-copy-recovery=%d\n",
-			fault, count, error.IsEmpty(), partialWarning, changed, changed, undoAvailable, redoAvailable, undo, redo, saved, reopened, xmlMatches, savedCopyRecovery);
+		const CString staleError = FbeLoadRuntimeStringByKey(L"fbe.replace.preview.changed", L"The document changed before Replace All could be applied.");
+		const bool rejectedStale = stalePreview && modalChanged && count == -1 && error == staleError;
+		report.Format("fault=%S\ncount=%d\nerror-empty=%d\npartial-warning=%d\nchanged=%d\nstale-rejected=%d\nmodal-changed=%d\nundo-tested=%d\nundo-available=%d\nredo-available=%d\nundo=%d\nredo=%d\nsaved=%d\nreopened=%d\nxml-matches=%d\nsaved-copy-recovery=%d\n",
+			fault, count, error.IsEmpty(), partialWarning, changed, rejectedStale, modalChanged, changed && !stalePreview, undoAvailable, redoAvailable, undo, redo, saved, reopened, xmlMatches, savedCopyRecovery);
 		const bool operation = expectedFailure ? count == -1 && !error.IsEmpty() && partialWarning == expectedMutation && changed == expectedMutation
-			: noMatch ? count == 0 && error.IsEmpty() && !changed && beforeXml == afterXml : count > 0 && error.IsEmpty() && changed;
-		passed = operation && (!changed || (undo && redo && undoAvailable > 0 && redoAvailable > 0)) && saved && reopened && xmlMatches && savedCopyRecovery;
+			: stalePreview ? rejectedStale && changed : noMatch ? count == 0 && error.IsEmpty() && !changed && beforeXml == afterXml : count > 0 && error.IsEmpty() && changed;
+		passed = operation && (!changed || stalePreview || (undo && redo && undoAvailable > 0 && redoAvailable > 0)) && saved && reopened && xmlMatches && savedCopyRecovery;
+		modalMutation = NULL;
 	}
 	catch (const _com_error& error) { CStringA line; line.Format("error=0x%08lX\n", static_cast<unsigned long>(error.Error())); report += line; }
 	report += passed ? "result=pass\n" : "result=fail\n";

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$FbeExe,
       [ValidateSet('none', 'before-first', 'after-one', 'middle', 'format', 'end')][string]$Fault = 'none',
-      [ValidateSet('digits', 'no-match')][string]$Mode = 'digits',
+      [ValidateSet('digits', 'no-match', 'literal', 'zero-length', 'stale-preview', 'scope-selection', 'scope-section')][string]$Mode = 'digits',
       [string]$ArtifactDirectory)
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -32,7 +32,7 @@ try {
     $env:FBE_NEXT_TEST_REPLACE_OUTPUT = $iso.DataPath
     $env:FBE_NEXT_TEST_REPLACE_FAULT = if ($Fault -eq 'none') { $null } else { $Fault }
     $env:FBE_NEXT_TEST_REPLACE_MODE = $Mode
-    if ($Mode -eq 'no-match' -and $Fault -ne 'none') { throw 'Fault injection requires digits mode.' }
+    if ($Mode -ne 'digits' -and $Fault -ne 'none') { throw 'Fault injection requires digits mode.' }
     $report = Join-Path $iso.DataPath 'report.txt'
     $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -WindowStyle Hidden `
         -ArgumentList @('--portable', '-b', ('"' + $report + '"'), ('"' + $fixture + '"')) -PassThru
@@ -51,19 +51,34 @@ try {
     $afterNs = [Xml.XmlNamespaceManager]::new($after.NameTable); $afterNs.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
     $beforeText = @($before.SelectNodes('/fb:FictionBook/fb:body//text()', $ns))
     $afterText = @($after.SelectNodes('/fb:FictionBook/fb:body//text()', $afterNs))
+    if ($Mode -eq 'stale-preview') {
+        $target = $before.SelectSingleNode('//fb:p[@id="main-p"]/text()[contains(., "blank.fb2")]', $ns)
+        if (-not $target) { throw 'Missing stale preview fixture text.' }
+        $target.Value = $target.Value.Replace('blank.fb2', '!blank.fb2')
+    }
     if ($beforeText.Count -ne $afterText.Count) { throw 'Text-node structure changed.' }
     $replaced = 0
     for ($i = 0; $i -lt $beforeText.Count; ++$i) {
         $original = $beforeText[$i].Value; $actual = $afterText[$i].Value
+        if ($Mode -eq 'zero-length') {
+            $expected = $original.Replace('blank', '+blank')
+            if ($actual -cne $expected) { throw 'Unexpected zero-length replacement.' }
+            if ($expected -cne $original) { ++$replaced }
+            $beforeText[$i].Value = $expected
+            continue
+        }
         if ($original.Length -ne $actual.Length) { throw 'Text length changed unexpectedly.' }
         for ($j = 0; $j -lt $original.Length; ++$j) {
             if ($original[$j] -ceq $actual[$j]) { continue }
             if ($original[$j] -notmatch '[0-9]' -or $actual[$j] -cne '+') { throw 'Unexpected text mutation.' }
+            if ($Mode -eq 'literal' -and $original[$j] -cne '2') { throw 'Literal mode changed a different digit.' }
+            if ($Mode -eq 'scope-selection' -and ($original[$j] -cne '2' -or $original -notlike '*blank.fb2*')) { throw 'Replacement escaped selected text.' }
+            if ($Mode -eq 'scope-section' -and ($original[$j] -cne '9' -or $original -notlike '9*')) { throw 'Replacement escaped current section.' }
             ++$replaced
         }
         $beforeText[$i].Value = $actual
     }
-    $expectedCount = if ($Mode -eq 'no-match') { 0 } else { switch ($Fault) { 'before-first' { 0 } 'after-one' { 1 } 'middle' { 9 } 'format' { 1 } default { 18 } } }
+    $expectedCount = switch ($Mode) { 'no-match' { 0 } 'stale-preview' { 0 } 'literal' { 3 } 'zero-length' { 1 } 'scope-selection' { 1 } 'scope-section' { 1 } default { switch ($Fault) { 'before-first' { 0 } 'after-one' { 1 } 'middle' { 9 } 'format' { 1 } default { 18 } } } }
     if ($replaced -ne $expectedCount) { throw "Expected $expectedCount replacements, got $replaced." }
     if ($before.OuterXml -cne $after.OuterXml) { throw 'Saved FB2 differs from independently transformed original DOM.' }
     if ($Mode -eq 'digits' -and $Fault -in @('none', 'end') -and ($after.SelectSingleNode('//fb:title/fb:p', $afterNs).InnerText -cne '+.+ — создание файла' -or
@@ -71,7 +86,7 @@ try {
     $reader = [Xml.XmlReader]::Create((Join-Path $iso.DataPath 'after.fb2'), $settings)
     try { while ($reader.Read()) {} } finally { $reader.Dispose() }
     $passed = $true
-    $history = if ($Fault -eq 'before-first' -or $Mode -eq 'no-match') { 'Undo/Redo not needed without mutation' } else { 'Undo/Redo verified' }
+    $history = if ($Mode -eq 'stale-preview') { 'Undo/Redo not tested for external edit' } elseif ($Fault -eq 'before-first' -or $Mode -eq 'no-match') { 'Undo/Redo not needed without mutation' } else { 'Undo/Redo verified' }
     [IO.File]::AppendAllText((Join-Path $ArtifactDirectory 'report.txt'), "validated-replacements=$replaced`nindependent-xml=1`nxsd=1`n")
     Write-Host "Replace All native DOM/XML, $history, Save/Reopen and XSD: PASS ($Fault; replacements=$replaced)."
 } finally {

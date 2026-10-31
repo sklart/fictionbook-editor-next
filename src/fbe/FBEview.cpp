@@ -3633,6 +3633,10 @@ bool CFBEView::ConfigureReplaceAllRuntimeTest(const CString& pattern, const CStr
 	m_fo.fRegexp = regexp;
 	m_fo.flags = 0;
 	m_fo.scope = AU::Search::SearchScope::WholeDocument;
+	wchar_t mode[64] = {};
+	::GetEnvironmentVariableW(L"FBE_NEXT_TEST_REPLACE_MODE", mode, _countof(mode));
+	if (wcscmp(mode, L"scope-selection") == 0) m_fo.scope = AU::Search::SearchScope::Selection;
+	if (wcscmp(mode, L"scope-section") == 0) m_fo.scope = AU::Search::SearchScope::CurrentSection;
 	return true;
 }
 
