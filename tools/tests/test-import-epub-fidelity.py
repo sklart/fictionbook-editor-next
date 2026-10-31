@@ -1713,6 +1713,20 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         link = next(node for node in root.findall('.//f:body//f:a', NS) if ''.join(node.itertext()) == 'Go to image')
         self.assertIn(link.get(HREF)[1:], ids)
 
+    def test_block_wrapped_single_image_preserves_link_and_anchors(self):
+        body = ('<div><a href="https://example.org/"><div id="wrapper-target">'
+                '<img id="image-target" src="../images/logo.png"/></div></a></div>'
+                '<p><a href="#wrapper-target">Wrapper</a> <a href="#image-target">Image</a></p>')
+        root = self.convert(body, extra={'images/logo.png': ('logo', 'image/png', PNG)}, navigation=False)
+        image = root.find('.//f:body//f:a[@l:href="https://example.org/"]/f:image',
+                          {'f': NS['f'], 'l': 'http://www.w3.org/1999/xlink'})
+        self.assertIsNotNone(image)
+        ids = {node.get('id') for node in root.iter() if node.get('id')}
+        targets = [node.get(HREF)[1:] for node in root.findall('.//f:body//f:a', NS)
+                   if (node.get(HREF) or '').startswith('#')]
+        self.assertEqual(len(targets), 2)
+        self.assertTrue(all(target in ids for target in targets))
+
     def test_empty_inline_css_background_preserves_image_in_order(self):
         css = '.ornament { background-image: url(../images/ornament.png); }'
         extra = {'Styles/layout.css': ('css', 'text/css', css),

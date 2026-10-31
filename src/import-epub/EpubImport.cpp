@@ -4813,6 +4813,35 @@ namespace
         return false;
     }
 
+    bool LinkContainsSingleWrappedImage(const MSXML2::IXMLDOMNodePtr& node)
+    {
+        std::vector<MSXML2::IXMLDOMNodePtr> pending;
+        pending.push_back(node);
+        size_t images = 0;
+        while (!pending.empty())
+        {
+            const auto current = pending.back();
+            pending.pop_back();
+            const auto children = MsxmlGetChildNodes(current);
+            for (long i = 0, count = children ? MsxmlGetNodeListLength(children) : 0; i < count; ++i)
+            {
+                const auto child = MsxmlGetNodeListItem(children, i);
+                const MSXML2::DOMNodeType type = MsxmlGetNodeType(child);
+                if (type == MSXML2::NODE_TEXT || type == MSXML2::NODE_CDATA_SECTION)
+                {
+                    if (!TrimString(MsxmlGetNodeText(child)).IsEmpty()) return false;
+                    continue;
+                }
+                if (type != MSXML2::NODE_ELEMENT) continue;
+                const CStringW name = LocalName(child);
+                if (name == L"img") ++images;
+                else if (name != L"div" && name != L"span") return false;
+                pending.push_back(child);
+            }
+        }
+        return images == 1;
+    }
+
     void AppendSpecialSectionNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx, LPCWSTR title)
     {
         CStringW content;
@@ -4893,7 +4922,7 @@ namespace
             return;
         }
 
-        if (name == L"a" && !LinkContainsBlockContent(node))
+        if (name == L"a" && (!LinkContainsBlockContent(node) || LinkContainsSingleWrappedImage(node)))
         {
             CStringW link = InlineToFb2(node, ctx);
             if (link.Left(3) == L"<a " && link.Right(5) == L"></a>" && link.Find(L'>') == link.GetLength() - 5)
