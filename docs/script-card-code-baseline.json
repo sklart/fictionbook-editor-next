@@ -100,50 +100,50 @@
     },
     {
       "path": "02_Примечания/01_Добавить примечание, остаться на его ссылке.js",
-      "codeSha256": "1ffb0ab10dc5d58596ca72f2274a98dea368445952ca89593ab4800321c1887b",
+      "codeSha256": "b62037d2bfb3338ea7639a5419deeada3e73055a899b6ee5d69e383e6a6b21dc",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 20681,
+      "codeBytes": 19800,
       "lineEnding": "CRLF"
     },
     {
       "path": "02_Примечания/02_Добавить примечание, введя его текст в окошке.js",
-      "codeSha256": "eaea5bfe01d0b0a92854c55a0b54baf8561edb0eec21af0bf206277f4b0643b6",
+      "codeSha256": "44d15a814e9059c7c42cb8085956bf51908f3e739dd884c9e9da77b10b78eeec",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 20680,
+      "codeBytes": 19799,
       "lineEnding": "CRLF"
     },
     {
       "path": "02_Примечания/03_Добавить примечание, перейти на его раздел.js",
-      "codeSha256": "11636b5d430fa28a300478f2f20a313a8761a9a72617099d883c1a92f2a55e46",
+      "codeSha256": "0b727ff47b885404f67eb716d8f66d6dfa35d30e20a0a4617a8529cfc04f09ec",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 20681,
+      "codeBytes": 19800,
       "lineEnding": "CRLF"
     },
     {
       "path": "02_Примечания/04_Добавить последнее примечание, остаться на его ссылке.js",
-      "codeSha256": "580c70ddfd370078dfdf84ce64c10221eeb7d31d8066d8e54cfca847439d137f",
+      "codeSha256": "22efdb9baf9c63adba630fdab4585d88631ba75e9fa740a006e3cfc2279d3346",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 20680,
+      "codeBytes": 19799,
       "lineEnding": "CRLF"
     },
     {
       "path": "02_Примечания/05_Добавить последнее примечание, введя его текст в окошке.js",
-      "codeSha256": "44ef64fbbdc2df6d45cdc92cd3d443ae34f2e9f7d4b1758478d4b0776f6cd7b4",
+      "codeSha256": "09443abfa8eba73a33069b21e56304a15502ad440a5f5ecdb44f3312f898c4cb",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 20679,
+      "codeBytes": 19798,
       "lineEnding": "CRLF"
     },
     {
       "path": "02_Примечания/06_Добавить последнее примечание, перейти на его раздел.js",
-      "codeSha256": "b19424d27a69a247018193269c9a5a8db7fdfba4a11ee8ded6b394ca76b1895a",
+      "codeSha256": "a5ca945600c7994200cdad94e1636cb74a6a9b6fe0b2206fa75e1de063ac46f6",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 20680,
+      "codeBytes": 19799,
       "lineEnding": "CRLF"
     },
     {
@@ -324,50 +324,50 @@
     },
     {
       "path": "03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js",
-      "codeSha256": "0af15d9f6dbf5e0d213b1c667e87d6e4d7354563f0d8633649368310f6fb59ff",
+      "codeSha256": "bf709b0d645b147dbbe9114feb32db35a8c8e8d9731ef78046a31bbdedd982f8",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 20694,
+      "codeBytes": 19813,
       "lineEnding": "CRLF"
     },
     {
       "path": "03_Комментарии/02_Добавить комментарий, введя его текст в окошке.js",
-      "codeSha256": "97e5d5d239f6d45e2ebdb8640ebdfb9ae27342dba506cf8a37e4448d98a684a2",
+      "codeSha256": "cbf0dca7a86ab7c41cc1021005688d5416bbaf146ae11de27d482ecb1d594eee",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 20693,
+      "codeBytes": 19812,
       "lineEnding": "CRLF"
     },
     {
       "path": "03_Комментарии/03_Добавить комментарий, перейти на его раздел.js",
-      "codeSha256": "1c9d9e8b0d9fdbc03e4fd40b87f170c36228729ae0655569e11af1c95d952afa",
+      "codeSha256": "aa796185b02dc80c526c98e3263627959bc74af934a7ecec92d61d9dbf16521c",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 20693,
+      "codeBytes": 19812,
       "lineEnding": "CRLF"
     },
     {
       "path": "03_Комментарии/04_Добавить последний комментарий, остаться на его ссылке.js",
-      "codeSha256": "afd2dc38d9c296e9d5159aea932d21257ee65bace616e1d174bb2ee6c57d695b",
+      "codeSha256": "c217928eacc4d4e3121145a52ee33f797385f5e80b19280036a67d5573d16a3e",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 20692,
+      "codeBytes": 19811,
       "lineEnding": "CRLF"
     },
     {
       "path": "03_Комментарии/05_Добавить последний комментарий, введя его текст в окошке.js",
-      "codeSha256": "03e0146c6e152df0347610175de534c9681e75ddb84997ba9822140b5b7c47cc",
+      "codeSha256": "48684eb555cc8638405dbe991f23e9246f589ec0bade1a59e22c7ff01e642c96",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 20691,
+      "codeBytes": 19810,
       "lineEnding": "CRLF"
     },
     {
       "path": "03_Комментарии/06_Добавить последний комментарий, перейти на его раздел.js",
-      "codeSha256": "550b52b2fdcd816929ddb2a4fc6fcd49e584f457bcca7cea6835a462e4ac818c",
+      "codeSha256": "94ea34839723123d96f8289b53d8e93f61c6442e40168bfb5e02df21a4a60040",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 20692,
+      "codeBytes": 19811,
       "lineEnding": "CRLF"
     },
     {
@@ -4763,6 +4763,198 @@
       "version": "2.11",
       "reason": "Уточнение правила №67 предотвращает ложное распознавание числительных как температуры.",
       "verification": "test-cleanup-rule67.js; изолированный FBE, сохранение форматирования и повторный запуск; docs/community-feedback-2026-10-28.md"
+    },
+    {
+      "path": "02_Примечания/01_Добавить примечание, остаться на его ссылке.js",
+      "previousCodeSha256": "1ffb0ab10dc5d58596ca72f2274a98dea368445952ca89593ab4800321c1887b",
+      "codeSha256": "f9a8fba6f75e431bb3475dc2e86b17f13595a8f08e612f01d337a764425beece",
+      "basisCommit": "ca4a777066c6786fbd75a4cfbc03637dd924b6d3",
+      "reason": "Исправление синтаксиса JScript; доступ к inflateBlock ещё не менялся.",
+      "verification": "Историческая ревизия; docs/community-feedback-note-revisions.md."
+    },
+    {
+      "path": "02_Примечания/01_Добавить примечание, остаться на его ссылке.js",
+      "previousCodeSha256": "f9a8fba6f75e431bb3475dc2e86b17f13595a8f08e612f01d337a764425beece",
+      "codeSha256": "b62037d2bfb3338ea7639a5419deeada3e73055a899b6ee5d69e383e6a6b21dc",
+      "basisCommit": "ea1f9115c7a194fec5f023315f9e4c5e12692b01",
+      "reason": "Исправление доступа к COM-свойству window.external.inflateBlock.",
+      "verification": "docs/note-creation-lint-metadata-results.json: два обычных сценария; прежние 94 относятся к предыдущей ревизии."
+    },
+    {
+      "path": "02_Примечания/02_Добавить примечание, введя его текст в окошке.js",
+      "previousCodeSha256": "eaea5bfe01d0b0a92854c55a0b54baf8561edb0eec21af0bf206277f4b0643b6",
+      "codeSha256": "8d80a4c6cf39c5dfb73337e2287a24528bc1a3ec58910d8a3cf9b88946fa16cd",
+      "basisCommit": "ca4a777066c6786fbd75a4cfbc03637dd924b6d3",
+      "reason": "Исправление синтаксиса JScript; доступ к inflateBlock ещё не менялся.",
+      "verification": "Историческая ревизия; docs/community-feedback-note-revisions.md."
+    },
+    {
+      "path": "02_Примечания/02_Добавить примечание, введя его текст в окошке.js",
+      "previousCodeSha256": "8d80a4c6cf39c5dfb73337e2287a24528bc1a3ec58910d8a3cf9b88946fa16cd",
+      "codeSha256": "44d15a814e9059c7c42cb8085956bf51908f3e739dd884c9e9da77b10b78eeec",
+      "basisCommit": "ea1f9115c7a194fec5f023315f9e4c5e12692b01",
+      "reason": "Исправление доступа к COM-свойству window.external.inflateBlock.",
+      "verification": "docs/note-creation-lint-metadata-results.json: два обычных сценария; прежние 94 относятся к предыдущей ревизии."
+    },
+    {
+      "path": "02_Примечания/03_Добавить примечание, перейти на его раздел.js",
+      "previousCodeSha256": "11636b5d430fa28a300478f2f20a313a8761a9a72617099d883c1a92f2a55e46",
+      "codeSha256": "30c49a402a24ca3e4f2b24980373c53bdf2d240a43a7d6b3825e20ceb9ef2457",
+      "basisCommit": "ca4a777066c6786fbd75a4cfbc03637dd924b6d3",
+      "reason": "Исправление синтаксиса JScript; доступ к inflateBlock ещё не менялся.",
+      "verification": "Историческая ревизия; docs/community-feedback-note-revisions.md."
+    },
+    {
+      "path": "02_Примечания/03_Добавить примечание, перейти на его раздел.js",
+      "previousCodeSha256": "30c49a402a24ca3e4f2b24980373c53bdf2d240a43a7d6b3825e20ceb9ef2457",
+      "codeSha256": "0b727ff47b885404f67eb716d8f66d6dfa35d30e20a0a4617a8529cfc04f09ec",
+      "basisCommit": "ea1f9115c7a194fec5f023315f9e4c5e12692b01",
+      "reason": "Исправление доступа к COM-свойству window.external.inflateBlock.",
+      "verification": "docs/note-creation-lint-metadata-results.json: два обычных сценария; прежние 94 относятся к предыдущей ревизии."
+    },
+    {
+      "path": "02_Примечания/04_Добавить последнее примечание, остаться на его ссылке.js",
+      "previousCodeSha256": "580c70ddfd370078dfdf84ce64c10221eeb7d31d8066d8e54cfca847439d137f",
+      "codeSha256": "cf102abd3f947029c47914164580da0f6f9ce35142d02f705ad323571ea23023",
+      "basisCommit": "ca4a777066c6786fbd75a4cfbc03637dd924b6d3",
+      "reason": "Исправление синтаксиса JScript; доступ к inflateBlock ещё не менялся.",
+      "verification": "Историческая ревизия; docs/community-feedback-note-revisions.md."
+    },
+    {
+      "path": "02_Примечания/04_Добавить последнее примечание, остаться на его ссылке.js",
+      "previousCodeSha256": "cf102abd3f947029c47914164580da0f6f9ce35142d02f705ad323571ea23023",
+      "codeSha256": "22efdb9baf9c63adba630fdab4585d88631ba75e9fa740a006e3cfc2279d3346",
+      "basisCommit": "ea1f9115c7a194fec5f023315f9e4c5e12692b01",
+      "reason": "Исправление доступа к COM-свойству window.external.inflateBlock.",
+      "verification": "docs/note-creation-lint-metadata-results.json: два обычных сценария; прежние 94 относятся к предыдущей ревизии."
+    },
+    {
+      "path": "02_Примечания/05_Добавить последнее примечание, введя его текст в окошке.js",
+      "previousCodeSha256": "44ef64fbbdc2df6d45cdc92cd3d443ae34f2e9f7d4b1758478d4b0776f6cd7b4",
+      "codeSha256": "97d330d0a61daf7b18229bfab6c616440a5b3826e93d5135990522ad2e7b2dd9",
+      "basisCommit": "ca4a777066c6786fbd75a4cfbc03637dd924b6d3",
+      "reason": "Исправление синтаксиса JScript; доступ к inflateBlock ещё не менялся.",
+      "verification": "Историческая ревизия; docs/community-feedback-note-revisions.md."
+    },
+    {
+      "path": "02_Примечания/05_Добавить последнее примечание, введя его текст в окошке.js",
+      "previousCodeSha256": "97d330d0a61daf7b18229bfab6c616440a5b3826e93d5135990522ad2e7b2dd9",
+      "codeSha256": "09443abfa8eba73a33069b21e56304a15502ad440a5f5ecdb44f3312f898c4cb",
+      "basisCommit": "ea1f9115c7a194fec5f023315f9e4c5e12692b01",
+      "reason": "Исправление доступа к COM-свойству window.external.inflateBlock.",
+      "verification": "docs/note-creation-lint-metadata-results.json: два обычных сценария; прежние 94 относятся к предыдущей ревизии."
+    },
+    {
+      "path": "02_Примечания/06_Добавить последнее примечание, перейти на его раздел.js",
+      "previousCodeSha256": "b19424d27a69a247018193269c9a5a8db7fdfba4a11ee8ded6b394ca76b1895a",
+      "codeSha256": "ccbd0f54ff5748b3df0a2a85debe03122a4ac2dda0dc9f7d7ee6985acbd1670b",
+      "basisCommit": "ca4a777066c6786fbd75a4cfbc03637dd924b6d3",
+      "reason": "Исправление синтаксиса JScript; доступ к inflateBlock ещё не менялся.",
+      "verification": "Историческая ревизия; docs/community-feedback-note-revisions.md."
+    },
+    {
+      "path": "02_Примечания/06_Добавить последнее примечание, перейти на его раздел.js",
+      "previousCodeSha256": "ccbd0f54ff5748b3df0a2a85debe03122a4ac2dda0dc9f7d7ee6985acbd1670b",
+      "codeSha256": "a5ca945600c7994200cdad94e1636cb74a6a9b6fe0b2206fa75e1de063ac46f6",
+      "basisCommit": "ea1f9115c7a194fec5f023315f9e4c5e12692b01",
+      "reason": "Исправление доступа к COM-свойству window.external.inflateBlock.",
+      "verification": "docs/note-creation-lint-metadata-results.json: два обычных сценария; прежние 94 относятся к предыдущей ревизии."
+    },
+    {
+      "path": "03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js",
+      "previousCodeSha256": "0af15d9f6dbf5e0d213b1c667e87d6e4d7354563f0d8633649368310f6fb59ff",
+      "codeSha256": "d7a593c4c51123cdae88250bd17894d4d5b00c82bb410ab7d6e353fafe8f95b8",
+      "basisCommit": "ca4a777066c6786fbd75a4cfbc03637dd924b6d3",
+      "reason": "Исправление синтаксиса JScript; доступ к inflateBlock ещё не менялся.",
+      "verification": "Историческая ревизия; docs/community-feedback-note-revisions.md."
+    },
+    {
+      "path": "03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js",
+      "previousCodeSha256": "d7a593c4c51123cdae88250bd17894d4d5b00c82bb410ab7d6e353fafe8f95b8",
+      "codeSha256": "bf709b0d645b147dbbe9114feb32db35a8c8e8d9731ef78046a31bbdedd982f8",
+      "basisCommit": "ea1f9115c7a194fec5f023315f9e4c5e12692b01",
+      "reason": "Исправление доступа к COM-свойству window.external.inflateBlock.",
+      "verification": "docs/note-creation-lint-metadata-results.json: два обычных сценария; прежние 94 относятся к предыдущей ревизии."
+    },
+    {
+      "path": "03_Комментарии/02_Добавить комментарий, введя его текст в окошке.js",
+      "previousCodeSha256": "97e5d5d239f6d45e2ebdb8640ebdfb9ae27342dba506cf8a37e4448d98a684a2",
+      "codeSha256": "7722d8d07f524e91fc1d74895e9636e1fedb85b116443a7ded309277e93b65c6",
+      "basisCommit": "ca4a777066c6786fbd75a4cfbc03637dd924b6d3",
+      "reason": "Исправление синтаксиса JScript; доступ к inflateBlock ещё не менялся.",
+      "verification": "Историческая ревизия; docs/community-feedback-note-revisions.md."
+    },
+    {
+      "path": "03_Комментарии/02_Добавить комментарий, введя его текст в окошке.js",
+      "previousCodeSha256": "7722d8d07f524e91fc1d74895e9636e1fedb85b116443a7ded309277e93b65c6",
+      "codeSha256": "cbf0dca7a86ab7c41cc1021005688d5416bbaf146ae11de27d482ecb1d594eee",
+      "basisCommit": "ea1f9115c7a194fec5f023315f9e4c5e12692b01",
+      "reason": "Исправление доступа к COM-свойству window.external.inflateBlock.",
+      "verification": "docs/note-creation-lint-metadata-results.json: два обычных сценария; прежние 94 относятся к предыдущей ревизии."
+    },
+    {
+      "path": "03_Комментарии/03_Добавить комментарий, перейти на его раздел.js",
+      "previousCodeSha256": "1c9d9e8b0d9fdbc03e4fd40b87f170c36228729ae0655569e11af1c95d952afa",
+      "codeSha256": "95eb4df1846e3273f92b78323fb6d286518ab0c7f363c5e736f0c3d36e039189",
+      "basisCommit": "ca4a777066c6786fbd75a4cfbc03637dd924b6d3",
+      "reason": "Исправление синтаксиса JScript; доступ к inflateBlock ещё не менялся.",
+      "verification": "Историческая ревизия; docs/community-feedback-note-revisions.md."
+    },
+    {
+      "path": "03_Комментарии/03_Добавить комментарий, перейти на его раздел.js",
+      "previousCodeSha256": "95eb4df1846e3273f92b78323fb6d286518ab0c7f363c5e736f0c3d36e039189",
+      "codeSha256": "aa796185b02dc80c526c98e3263627959bc74af934a7ecec92d61d9dbf16521c",
+      "basisCommit": "ea1f9115c7a194fec5f023315f9e4c5e12692b01",
+      "reason": "Исправление доступа к COM-свойству window.external.inflateBlock.",
+      "verification": "docs/note-creation-lint-metadata-results.json: два обычных сценария; прежние 94 относятся к предыдущей ревизии."
+    },
+    {
+      "path": "03_Комментарии/04_Добавить последний комментарий, остаться на его ссылке.js",
+      "previousCodeSha256": "afd2dc38d9c296e9d5159aea932d21257ee65bace616e1d174bb2ee6c57d695b",
+      "codeSha256": "ef4d2044531c62042c03250030a2fe9f5f8b0b4bdb578b4a4830f5160b372505",
+      "basisCommit": "ca4a777066c6786fbd75a4cfbc03637dd924b6d3",
+      "reason": "Исправление синтаксиса JScript; доступ к inflateBlock ещё не менялся.",
+      "verification": "Историческая ревизия; docs/community-feedback-note-revisions.md."
+    },
+    {
+      "path": "03_Комментарии/04_Добавить последний комментарий, остаться на его ссылке.js",
+      "previousCodeSha256": "ef4d2044531c62042c03250030a2fe9f5f8b0b4bdb578b4a4830f5160b372505",
+      "codeSha256": "c217928eacc4d4e3121145a52ee33f797385f5e80b19280036a67d5573d16a3e",
+      "basisCommit": "ea1f9115c7a194fec5f023315f9e4c5e12692b01",
+      "reason": "Исправление доступа к COM-свойству window.external.inflateBlock.",
+      "verification": "docs/note-creation-lint-metadata-results.json: два обычных сценария; прежние 94 относятся к предыдущей ревизии."
+    },
+    {
+      "path": "03_Комментарии/05_Добавить последний комментарий, введя его текст в окошке.js",
+      "previousCodeSha256": "03e0146c6e152df0347610175de534c9681e75ddb84997ba9822140b5b7c47cc",
+      "codeSha256": "80f07e2a3f1b7d3cf9ebbc5ee4b792203adac2c01391dbadb3b9d8c38f5df23e",
+      "basisCommit": "ca4a777066c6786fbd75a4cfbc03637dd924b6d3",
+      "reason": "Исправление синтаксиса JScript; доступ к inflateBlock ещё не менялся.",
+      "verification": "Историческая ревизия; docs/community-feedback-note-revisions.md."
+    },
+    {
+      "path": "03_Комментарии/05_Добавить последний комментарий, введя его текст в окошке.js",
+      "previousCodeSha256": "80f07e2a3f1b7d3cf9ebbc5ee4b792203adac2c01391dbadb3b9d8c38f5df23e",
+      "codeSha256": "48684eb555cc8638405dbe991f23e9246f589ec0bade1a59e22c7ff01e642c96",
+      "basisCommit": "ea1f9115c7a194fec5f023315f9e4c5e12692b01",
+      "reason": "Исправление доступа к COM-свойству window.external.inflateBlock.",
+      "verification": "docs/note-creation-lint-metadata-results.json: два обычных сценария; прежние 94 относятся к предыдущей ревизии."
+    },
+    {
+      "path": "03_Комментарии/06_Добавить последний комментарий, перейти на его раздел.js",
+      "previousCodeSha256": "550b52b2fdcd816929ddb2a4fc6fcd49e584f457bcca7cea6835a462e4ac818c",
+      "codeSha256": "7a3078b9f0e05173184cef823dfb7340ef635841439a53056c51f955c8c22a62",
+      "basisCommit": "ca4a777066c6786fbd75a4cfbc03637dd924b6d3",
+      "reason": "Исправление синтаксиса JScript; доступ к inflateBlock ещё не менялся.",
+      "verification": "Историческая ревизия; docs/community-feedback-note-revisions.md."
+    },
+    {
+      "path": "03_Комментарии/06_Добавить последний комментарий, перейти на его раздел.js",
+      "previousCodeSha256": "7a3078b9f0e05173184cef823dfb7340ef635841439a53056c51f955c8c22a62",
+      "codeSha256": "94ea34839723123d96f8289b53d8e93f61c6442e40168bfb5e02df21a4a60040",
+      "basisCommit": "ea1f9115c7a194fec5f023315f9e4c5e12692b01",
+      "reason": "Исправление доступа к COM-свойству window.external.inflateBlock.",
+      "verification": "docs/note-creation-lint-metadata-results.json: два обычных сценария; прежние 94 относятся к предыдущей ревизии."
     }
   ]
 }

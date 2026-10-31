@@ -476,6 +476,47 @@ def apply_proposals(proposals: list[dict], records: list[dict]) -> int:
     return len(pending)
 
 
+def reviewed_revision(proposal: dict, document, executable_changes: list[dict]) -> dict:
+    """Validate a review against its actual revision, preserving its history.
+
+    A changed executable is accepted only through an unambiguous recorded
+    chain for this path. The historical review remains historical; it is not
+    evidence that the new executable was reviewed or runtime-tested.
+    """
+    revision = proposal["codeSha256"]
+    current = document.sha256
+    chain = []
+    seen = set()
+    while revision != current:
+        if revision in seen:
+            raise ValueError(f"cyclic executable revision chain: {proposal['path']}")
+        seen.add(revision)
+        candidates = [change for change in executable_changes
+                      if change.get("path") == proposal["path"] and
+                      change.get("previousCodeSha256") == revision]
+        if len(candidates) != 1 or not candidates[0].get("basisCommit"):
+            raise ValueError(f"unknown or ambiguous reviewed revision: {proposal['path']}")
+        chain.append(candidates[0])
+        revision = candidates[0]["codeSha256"]
+
+    for change in proposal["changes"]:
+        actual = document.card.get(change["field"])
+        expected = change["after"]
+        if chain and change["field"] == "sourceRevision":
+            # Only the digest may advance. Preserve algorithm and review status.
+            if not isinstance(expected, dict) or not isinstance(actual, dict):
+                raise ValueError(f"invalid source revision: {proposal['path']}")
+            if expected.get("sha256") != proposal["codeSha256"]:
+                raise ValueError(f"historical source revision differs from review: {proposal['path']}")
+            expected = dict(expected, sha256=current)
+        if actual != expected:
+            raise ValueError(f"reviewed proposal differs from current card: {proposal['path']}")
+
+    return dict(proposal, revisionStatus="historical" if chain else "current",
+                currentCodeSha256=current,
+                revisionCommits=[change["basisCommit"] for change in chain])
+
+
 def write_reports(records: list[dict], output: Path, baseline: str,
                   reviewed: list[dict]) -> None:
     def write_utf8(path: Path, content: str) -> None:
@@ -508,7 +549,8 @@ def write_reports(records: list[dict], output: Path, baseline: str,
     reviewed_rows = []
     for proposal in reviewed:
         for change in proposal["changes"]:
-            reviewed_rows.append("<tr><td>" + source_link(proposal["path"]) + "</td><td>"
+            reviewed_rows.append("<tr><td>" + source_link(proposal["path"]) + "<br>"
+                                 + html.escape(proposal["revisionStatus"] + ": " + proposal["codeSha256"]) + "</td><td>"
                                  + html.escape(change["field"]) + "</td><td>"
                                  + html.escape(str(change["before"])) + "</td><td>"
                                  + html.escape(str(change["after"])) + "</td><td>"
@@ -533,14 +575,15 @@ def write_reports(records: list[dict], output: Path, baseline: str,
                "ни одна карточка не помечена достоверной только из-за отсутствия срабатываний эвристик.", "",
                "Подробности по каждому файлу и строкам исходника: [JSON](script-card-content-audit.json),",
                "[HTML](script-card-content-audit.html).", "", "## Проверенные исправления", "",
-               f"Изменено карточек: **{len(reviewed)}**. Исполняемый код не изменён.", ""]
+               f"Исторических записей ревью: **{len(reviewed)}**; из них относятся к прежней редакции кода: **{sum(item['revisionStatus'] == 'historical' for item in reviewed)}**.",
+               "Ревью прежней редакции не подтверждает текущий исполняемый код.", ""]
     summary.extend(f"- `{key}`: {value}" for key, value in sorted(reviewed_counts.items()))
     summary += ["", "Подтверждённые результаты:", ""]
     summary.extend(f"- `{key}`: {value}" for key, value in sorted(metrics.items()))
-    code_issues = [(proposal["path"], issue) for proposal in reviewed
+    code_issues = [(proposal, issue) for proposal in reviewed
                    for issue in proposal.get("codeIssues", [])]
-    summary += ["", f"Скриптов с записями анализа исполняемого кода (включая вопросы для проверки): **{len(set(path for path, _ in code_issues))}**.", ""]
-    summary.extend(f"- `{path}:{issue['line']}` — {issue['issue']}" for path, issue in code_issues)
+    summary += ["", f"Скриптов с записями анализа исполняемого кода (включая вопросы для проверки): **{len(set(proposal['path'] for proposal, _ in code_issues))}**.", ""]
+    summary.extend(f"- `{proposal['path']}:{issue['line']}` ({proposal['revisionStatus']}, `{proposal['codeSha256']}`) — {issue['issue']}" for proposal, issue in code_issues)
     summary += ["", "## Замечания автоматического прохода", ""]
     summary.extend(f"- `{key}`: {value}" for key, value in sorted(counts.items()))
     summary += ["", "## Границы проверки", "", "Поиск вызовов учитывает комментарии и строки отдельно,",
@@ -581,6 +624,7 @@ def main() -> int:
     baseline = subprocess.check_output([git, "rev-parse", "HEAD"],
                                        cwd=ROOT, text=True).strip()
     records = [inspect(path) for path in sorted(SCRIPTS.rglob("*.js"))]
+    baseline_data = {}
     if args.baseline.is_file():
         baseline_data = json.loads(args.baseline.read_text(encoding="utf-8"))
         baseline = baseline_data["baseCommit"]
@@ -593,13 +637,12 @@ def main() -> int:
         changed = apply_proposals(load_proposals(args.apply), records)
         records = [inspect(path) for path in sorted(SCRIPTS.rglob("*.js"))]
         print(f"Applied {changed} reviewed card changes; code bytes checked.")
-    reviewed = load_proposals(args.reviewed_proposals) if args.reviewed_proposals.is_file() else []
-    for proposal in reviewed:
+    proposals = load_proposals(args.reviewed_proposals) if args.reviewed_proposals.is_file() else []
+    reviewed = []
+    for proposal in proposals:
         path = SCRIPTS / Path(proposal["path"])
         document = read_document(path.read_bytes())
-        if document.sha256 != proposal["codeSha256"] or any(
-                document.card.get(change["field"]) != change["after"] for change in proposal["changes"]):
-            raise ValueError(f"reviewed proposal differs from current card: {proposal['path']}")
+        reviewed.append(reviewed_revision(proposal, document, baseline_data.get("executableChanges", [])))
     write_reports(records, args.output_dir, baseline, reviewed)
     print(f"Audited {len(records)} files; detailed report: {args.output_dir / 'script-card-content-audit.json'}")
     return 0

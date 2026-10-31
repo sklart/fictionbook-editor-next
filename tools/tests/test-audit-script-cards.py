@@ -132,6 +132,9 @@ def main() -> None:
     assert {proposal["path"] for proposal in proposals} == files
     previous_notes = json.loads((ROOT / "docs/note-creation-undo-stage1-results.json").read_text(encoding="utf-8"))["sources"]
     current_notes = json.loads((ROOT / "docs/note-creation-lint-metadata-results.json").read_text(encoding="utf-8"))["sources"]
+    baseline = json.loads((ROOT / "docs/script-card-code-baseline.json").read_text(encoding="utf-8"))
+    executable_changes = baseline["executableChanges"]
+    resolved = []
     for proposal in proposals:
         assert isinstance(proposal["codeIssues"], list), proposal["path"]
         document = card_tool["read_document"]((scripts_root / proposal["path"]).read_bytes())
@@ -140,8 +143,7 @@ def main() -> None:
             # The newer COM fix has only two rerun scenarios, not the prior 94.
             assert proposal["codeSha256"] == previous_notes[proposal["path"]]["codeSha256"], proposal["path"]
             assert document.sha256 == current_notes[proposal["path"]]["codeSha256"], proposal["path"]
-        else:
-            assert proposal["codeSha256"] == document.sha256, proposal["path"]
+        resolved.append(audit["reviewed_revision"](proposal, document, executable_changes))
         for setting in document.card.get("settings", []):
             assert setting.get("title", "").strip(), (proposal["path"], setting)
             assert setting["name"] not in audit["INTERNAL_SETTINGS"], (proposal["path"], setting)
@@ -154,7 +156,43 @@ def main() -> None:
         for issue in proposal["codeIssues"]:
             assert isinstance(issue["line"], int) and 1 <= issue["line"] <= line_count
             assert isinstance(issue["issue"], str) and issue["issue"].strip()
-    print("Script card audit tests passed.")
+    historical = [item for item in resolved if item["revisionStatus"] == "historical"]
+    assert len(historical) == 14
+    cleanup = [item for item in historical if item["path"].startswith("06_Чистка/")]
+    assert len(cleanup) == 2 and all(item["revisionCommits"] == ["5c7aeb51"] for item in cleanup)
+    assert len([item for item in historical if item["path"] in current_notes]) == 12
+    for item in historical:
+        if item["path"] in current_notes:
+            assert item["revisionCommits"] == ["ca4a777066c6786fbd75a4cfbc03637dd924b6d3", "ea1f9115c7a194fec5f023315f9e4c5e12692b01"], item["path"]
+            assert item["currentCodeSha256"] == current_notes[item["path"]]["codeSha256"]
+    historical_proposal = next(item for item in proposals if item["path"] in current_notes)
+    historical_document = card_tool["read_document"]((scripts_root / historical_proposal["path"]).read_bytes())
+    for changed_chain in ([], executable_changes + [next(item for item in executable_changes
+                            if item["path"] == historical_proposal["path"] and
+                            item["previousCodeSha256"] == historical_proposal["codeSha256"]) ]):
+        try:
+            audit["reviewed_revision"](historical_proposal, historical_document, changed_chain)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("unknown or ambiguous historical revision was accepted")
+    stale = copy.deepcopy(historical_proposal)
+    next(change for change in stale["changes"] if change["field"] == "sourceRevision")["after"]["reviewStatus"] = "verified"
+    try:
+        audit["reviewed_revision"](stale, historical_document, executable_changes)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("changed review status was accepted")
+    wrong_digest = copy.deepcopy(historical_proposal)
+    next(change for change in wrong_digest["changes"] if change["field"] == "sourceRevision")["after"]["sha256"] = "0" * 64
+    try:
+        audit["reviewed_revision"](wrong_digest, historical_document, executable_changes)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("incorrect historical source revision was accepted")
+    print("Script card audit tests passed, including historical and unknown revisions.")
 
     classification = json.loads((ROOT / "docs" / "script-card-undo-classification.json").read_text(encoding="utf-8"))
     undo_source = (ROOT / "docs" / "script-card-undo-defects.md").read_bytes()
@@ -204,7 +242,6 @@ def main() -> None:
     assert results["numeric-order-actual"] == "1"
     code64 = card_tool["read_document"](script64.read_bytes()).code_bytes.decode("utf-8")
     assert not re.search(r"\b(?:eval|Function)\s*\(", audit["mask_non_code"](code64))
-    baseline = json.loads((ROOT / "docs/script-card-code-baseline.json").read_text(encoding="utf-8"))
     script64_changes = [item for item in baseline["executableChanges"]
                         if item["path"] == script64.relative_to(scripts_root).as_posix()]
     update = script64_changes[-1]
