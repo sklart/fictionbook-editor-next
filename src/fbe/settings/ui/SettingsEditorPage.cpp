@@ -130,7 +130,8 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Add(m_fontSize, L"fbe.settings.tooltip.editor.font_size", L"Font size used in the visual editor.");
 	m_tooltips.Add(m_foreground, L"fbe.settings.tooltip.editor.foreground", L"Text color in the visual editor.");
 	m_tooltips.Add(m_background, L"fbe.settings.tooltip.editor.background", L"Background color in the visual editor.");
-	m_tooltips.Add(m_nbspCharacter, L"fbe.settings.tooltip.editor.nbsp", L"Changes only the visual representation of non-breaking spaces; document content is not changed.");
+	for(HWND control : {m_nbspCharacter.m_hWnd, GetDlgItem(IDC_SETTINGS_OTHER_NBSP_LABEL).m_hWnd})
+		m_tooltips.Add(control, L"fbe.settings.tooltip.editor.nbsp", L"Changes the display of non-breaking spaces. Changing it after editing can disrupt Undo; save the document first.");
 	m_tooltips.Add(m_backgroundImage, L"fbe.settings.tooltip.editor.background_image", L"An optional local image used behind the editor text.");
 	m_tooltips.Add(m_backgroundLayout, L"fbe.settings.tooltip.editor.background_layout", L"How the selected background image is placed.");
 	m_tooltips.Add(m_backgroundPreview, L"fbe.settings.tooltip.editor.background_preview", L"Preview of the selected editor background.");

@@ -14,7 +14,7 @@ try {
     $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'settings-residual-runtime' -Report $report -TimeoutSeconds $TimeoutSeconds
     $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<no report>' }
     if($exitCode -ne 0) { throw "Settings errors/NBSP failed: exit=$exitCode; $text" }
-    foreach($line in 'single_error=1', 'nbsp_rollback=1', 'nbsp_retry=1') {
+    foreach($line in 'single_error=1', 'nbsp_rollback=1', 'nbsp_retry=1', 'nbsp_tooltip=1') {
         if($text -notmatch [regex]::Escape($line)) { throw "Missing ${line}: $text" }
     }
     Write-Host 'Settings errors/NBSP: one preparation error with reason, complete NBSP rollback and successful retry passed.'

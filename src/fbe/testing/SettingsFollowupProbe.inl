@@ -286,6 +286,23 @@ int CSettingsDlg::ProbeResidual()
             if(text == L"first\u25ABsecond" && FollowupRead(settingsPath) != before) result |= 4;
         }
     }
+    struct NbspTooltipProbe { HWND page; HWND tooltip; } tips{m_editorPage->m_hWnd, NULL};
+    ::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM data) -> BOOL {
+        auto& probe = *reinterpret_cast<NbspTooltipProbe*>(data);
+        wchar_t className[64] = {}; ::GetClassNameW(window, className, _countof(className));
+        if(wcscmp(className, TOOLTIPS_CLASSW) != 0) return TRUE;
+        wchar_t text[2048] = {}; CToolInfo info(TTF_IDISHWND, ::GetDlgItem(probe.page, IDC_NBSP_CHAR), 0, NULL, text);
+        if(!::SendMessageW(window, TTM_GETTOOLINFOW, 0, reinterpret_cast<LPARAM>(&info))) return TRUE;
+        probe.tooltip = window; return FALSE;
+    }, reinterpret_cast<LPARAM>(&tips));
+    const CString expected = FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.editor.nbsp");
+    bool nbspTooltip = tips.tooltip && !expected.IsEmpty();
+    for(int id : {IDC_NBSP_CHAR, IDC_SETTINGS_OTHER_NBSP_LABEL}) {
+        wchar_t text[2048] = {}; CToolInfo info(TTF_IDISHWND, m_editorPage->GetDlgItem(id), 0, NULL, text);
+        nbspTooltip = tips.tooltip && ::SendMessageW(tips.tooltip, TTM_GETTOOLINFOW, 0, reinterpret_cast<LPARAM>(&info)) &&
+            info.lpszText && expected == info.lpszText && nbspTooltip;
+    }
+    if(nbspTooltip) result |= 8;
     return result;
 }
 

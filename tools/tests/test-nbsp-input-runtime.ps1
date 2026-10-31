@@ -3,8 +3,10 @@ param([Parameter(Mandatory)][string]$FbeExe,
       [ValidateSet('square', 'small-square', 'circle', 'none')][string[]]$Modes = @('square', 'small-square', 'circle', 'none'),
       [ValidateSet('plain', 'emphasis', 'strong', 'link')][string]$Context = 'plain',
       [string]$ArtifactDirectory,
-      [switch]$CheckDisplayToggle)
+      [switch]$CheckDisplayToggle,
+      [switch]$ToggleControl)
 $ErrorActionPreference = 'Stop'
+if($CheckDisplayToggle -and $ToggleControl) { throw 'Choose either the display-toggle test or its unchanged-display control.' }
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if (-not $ArtifactDirectory) { $ArtifactDirectory = Join-Path $root 'build\community-feedback-nbsp' }
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
@@ -30,7 +32,7 @@ try {
             $saved = Join-Path $iso.DataPath 'saved.fb2'
             $report = Join-Path $iso.DataPath 'report.txt'
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'nbsp-input-runtime'
-            $env:FBE_NEXT_TEST_NBSP_TOGGLE = if($CheckDisplayToggle) { '1' } else { $null }
+            $env:FBE_NEXT_TEST_NBSP_TOGGLE = if($CheckDisplayToggle) { '1' } elseif($ToggleControl) { '2' } else { $null }
             $env:FBE_NEXT_TEST_NBSP_OUTPUT = $saved
             $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime `
                 -ArgumentList @('--portable', '-b', ('"' + $report + '"'), ('"' + $fixture + '"')) -PassThru
@@ -64,8 +66,10 @@ try {
             $reader = [Xml.XmlReader]::Create($saved, $readerSettings)
             try { while ($reader.Read()) {} } finally { $reader.Dispose() }
             Write-Host "NBSP saved XML and independent XSD: PASS ($Context/$name)."
-            $toggleExpected = if($CheckDisplayToggle) { '1' } else { '0' }
+            $toggleExpected = if($CheckDisplayToggle -or $ToggleControl) { '1' } else { '0' }
             if($text -notmatch "(?m)^toggle-tested=$toggleExpected\r?$") { throw "$name did not report the requested display-toggle mode: $text" }
+            $appliedExpected = if($CheckDisplayToggle) { '1' } else { '0' }
+            if($text -notmatch "(?m)^toggle-applied=$appliedExpected\r?$") { throw "$name did not report the requested display change: $text" }
             if ($code -ne 0 -or $text -notmatch "(?m)^mode=$expectedMode\r?$" -or $text -notmatch '(?m)^result=pass\r?$') { throw "$name failed: $text" }
             $passed = $true
             Write-Host "NBSP input/Undo/Redo: PASS ($Context/$name)."
