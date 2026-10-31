@@ -12,6 +12,7 @@ try {
     $paragraphs = (1..100 | ForEach-Object { "<p>Theme target paragraph $_.</p>" }) -join ''
     $fb2 = '<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Body theme</book-title><lang>en</lang></title-info><document-info><author><first-name>T</first-name><last-name>T</last-name></author><date>2026</date><id>body-theme-test</id><version>1.0</version></document-info></description><body><section>' + $paragraphs + '<table><tr><th>Heading</th><td>Cell</td></tr></table></section></body></FictionBook>'
     [IO.File]::WriteAllText($fixture, $fb2, [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText("$fixture.open.fb2", $fb2.Replace('Theme target paragraph', 'Opened second paragraph'), [Text.UTF8Encoding]::new($false))
     $before = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
     $savedMode, $savedScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
     try {
@@ -62,7 +63,7 @@ try {
     $reader = [Xml.XmlReader]::Create($fixture, $readerSettings)
     try { while($reader.Read()) {} } finally { $reader.Dispose() }
     $passed = $true
-    Write-Host 'BODY themes, document invariants, toolbar Save, search, modes and Undo/Redo passed.'
+    Write-Host 'BODY themes, document invariants, toolbar Open, Save, search, modes and Undo/Redo passed.'
 } finally {
     Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed
 }

@@ -3,8 +3,8 @@
 #include <shobjidl.h>
 #include <atomic>
 
-// Observe the real Shell dialog only in file-close-runtime. Acceptance and
-// overwrite confirmation still use the native dialog and its normal handlers.
+// Observe the real Shell dialog only in explicitly selected runtime scenarios.
+// Acceptance and overwrite confirmation still use the native dialog handlers.
 namespace FileCloseSaveDialogProbe {
 struct State {
     bool active = false;

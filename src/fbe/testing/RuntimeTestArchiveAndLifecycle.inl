@@ -2718,6 +2718,25 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 			CStringA detail; detail.Format("size=%d rebuilt=%d find-click=%d find-open=%d source-click=%d source-open=%d body-click=%d body-open=%d\n", size, rebuilt, findClicked, findOpened, sourceClicked, sourceOpened, bodyClicked, bodyOpened); toolbarDetails += detail;
 			toolbarCommands = rebuilt && findClicked && findOpened && sourceClicked && sourceOpened && bodyClicked && bodyOpened && m_doc == toolbarDocument && toolbarCommands;
 		}
+		const CString secondBook = m_doc->m_filename + L".open.fb2";
+		auto& openProbe = FileCloseSaveDialogProbe::Current();
+		openProbe.active = true; openProbe.ready = false; openProbe.target = secondBook;
+		static bool openSubmitted = false; openSubmitted = false;
+		const UINT_PTR openTimer = ::SetTimer(NULL, 0, 30, [](HWND, UINT, UINT_PTR, DWORD) {
+			if(!openSubmitted && FileCloseSaveDialogProbe::Current().ready.load()) {
+				const HWND dialog = ModernFileDialog::DialogWindowOnThread();
+				const HWND button = dialog ? ::GetDlgItem(dialog, IDOK) : NULL;
+				if(button && ::IsWindowVisible(dialog)) { openSubmitted = true; ::PostMessageW(button, BM_CLICK, 0, 0); }
+			}
+		});
+		const bool cleanBeforeOpen = !DocChanged();
+		const bool openClicked = openTimer && cleanBeforeOpen && clickToolbar(ID_FILE_OPEN);
+		if(openTimer) ::KillTimer(NULL, openTimer);
+		const bool openReady = openProbe.ready.load(); openProbe.active = false; openProbe.target.Empty();
+		const bool secondOpened = openClicked && openReady && openSubmitted && m_doc && m_doc->m_filename.CompareNoCase(secondBook) == 0 &&
+			CString(static_cast<LPCWSTR>(m_doc->m_body.Document()->body->innerText)).Find(L"Opened second paragraph 1.") >= 0;
+		CStringA openDetail; openDetail.Format("open-clean=%d click=%d ready=%d submitted=%d opened=%d\n", cleanBeforeOpen, openClicked, openReady, openSubmitted, secondOpened); toolbarDetails += openDetail;
+		toolbarCommands = secondOpened && toolbarCommands;
 		if(!toolbarCommands) { DWORD detailWritten = 0; output.Write(toolbarDetails, static_cast<DWORD>(toolbarDetails.GetLength()), &detailWritten); output.Close(); ::PostQuitMessage(1); return 0; }
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
 		output.Close(); PostMessage(WM_CLOSE); return 0;

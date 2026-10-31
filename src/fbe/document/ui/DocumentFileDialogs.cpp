@@ -16,6 +16,8 @@ namespace DocumentFileDialogs
 		const CString allFiles = FbeLoadRuntimeStringByKey(L"fbe.file_filter.all", L"All files");
 		const COMDLG_FILTERSPEC filters[] = {{booksAndArchives, L"*.fb2;*.fbd;*.zip;*.rar"}, {books, L"*.fb2;*.fbd"}, {archives, L"*.zip;*.rar"}, {allFiles, L"*.*"}};
 		ModernFileDialog::Request request; request.fileMustExist = true; request.pathMustExist = true; request.defaultExtension = L"fb2"; request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = 1;
+		FileCloseSaveDialogProbe::Events probe;
+		if (RuntimeTests::IsScenario(L"body-theme-runtime") && FileCloseSaveDialogProbe::Current().active) request.events = &probe;
 		const ModernFileDialog::Result result = ModernFileDialog::Show(owner, request);
 		if (result.outcome == ModernFileDialog::Outcome::Failed) StartupTrace::HResult(L"file-dialog", L"FD101", result.error, L"Open FictionBook dialog");
 		OpenResult open; if (result.outcome == ModernFileDialog::Outcome::Accepted) { open.accepted = true; open.path = result.paths.front().c_str(); } return open;
