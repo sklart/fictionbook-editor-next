@@ -2810,6 +2810,7 @@ namespace
         std::set<std::wstring>* usedFb2Ids;
         std::map<std::wstring, std::wstring>* anchorIdMap;
         bool collectingNotes;
+        bool inlinePageBreaks = false;
     };
 
     const ManifestItem* FindManifestItemById(const EpubPackage& package, const CStringW& id)
@@ -3554,6 +3555,8 @@ namespace
         InlineLinkScope() { ++g_inlineLinkDepth; }
         ~InlineLinkScope() { --g_inlineLinkDepth; }
     };
+    bool LooksLikePageBreak(const MSXML2::IXMLDOMNodePtr& node);
+    bool PageBreakHasContent(const MSXML2::IXMLDOMNodePtr& node);
     CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, InlineFontState font);
     CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
     {
@@ -3600,6 +3603,16 @@ namespace
 
         if (IsHiddenElement(node))
             return CStringW();
+
+        if (ctx.inlinePageBreaks && LooksLikePageBreak(node) && !PageBreakHasContent(node))
+        {
+            if (!g_options.importPageBreaks) return CStringW();
+            CStringW label = NormalizeImportedText(Attr(node, L"title"));
+            if (label.IsEmpty()) label = NormalizeImportedText(Attr(node, L"aria-label"));
+            if (label.IsEmpty()) label = NodeText(node);
+            label.Trim();
+            return label.IsEmpty() ? CStringW() : L"<sub>" + XmlEscape(label) + L"</sub>";
+        }
 
         if (g_options.importNotes && !ctx.collectingNotes &&
             g_content.noteTargets.count(std::wstring(PathAnchorMapKey(ctx.currentXhtmlPath, Attr(node, L"id")))))
@@ -5047,10 +5060,40 @@ namespace
     void AppendSpecialSectionNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx, LPCWSTR title)
     {
         CStringW content;
-        MSXML2::IXMLDOMNodeListPtr children = MsxmlGetChildNodes(node);
-        long count = children ? MsxmlGetNodeListLength(children) : 0;
-        for (long i = 0; i < count; ++i)
-            AppendBlockNode(MsxmlGetNodeListItem(children, i), content, ctx);
+        if (LocalName(node) == L"p" && !LinkContainsBlockContent(node))
+        {
+            // A dedication can itself be a paragraph. Its children are inline
+            // content, but standalone page markers still need block handling.
+            CStringW text;
+            const InlineFontState font = InheritedInlineFont(node);
+            ConvertContext inlineContext = ctx;
+            inlineContext.inlinePageBreaks = true;
+            auto flush = [&]() {
+                text.Trim();
+                if (!text.IsEmpty()) content += L"      <p>" + text + L"</p>\r\n";
+                text.Empty();
+            };
+            const auto children = MsxmlGetChildNodes(node);
+            const long count = children ? MsxmlGetNodeListLength(children) : 0;
+            for (long i = 0; i < count; ++i)
+            {
+                const auto child = MsxmlGetNodeListItem(children, i);
+                if (MsxmlGetNodeType(child) == MSXML2::NODE_ELEMENT && LooksLikePageBreak(child) && !PageBreakHasContent(child))
+                {
+                    flush();
+                    AppendBlockNode(child, content, ctx);
+                }
+                else text += InlineToFb2(child, inlineContext, font);
+            }
+            flush();
+        }
+        else
+        {
+            MSXML2::IXMLDOMNodeListPtr children = MsxmlGetChildNodes(node);
+            long count = children ? MsxmlGetNodeListLength(children) : 0;
+            for (long i = 0; i < count; ++i)
+                AppendBlockNode(MsxmlGetNodeListItem(children, i), content, ctx);
+        }
 
         content.Trim();
         if (content.IsEmpty())

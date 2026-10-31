@@ -1709,6 +1709,64 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.convert('<p>&nbsp;<b>Unclosed</p>', navigation=False, fail=True)
         self.assertIn('html fallback:', self.diagnostics.lower())
 
+    def test_dedication_paragraph_preserves_inline_font_and_normal_neighbors(self):
+        root = self.convert('<p>Before dedication.</p>'
+                            '<p class="dedication"><em>Entire italic dedication</em> '
+                            '<strong>bold dedication</strong></p>'
+                            '<p>After dedication.</p>', navigation=False)
+        paragraphs = root.findall('.//f:body//f:p', NS)
+        dedication = next(p for p in paragraphs if 'Entire italic dedication' in ''.join(p.itertext()))
+        self.assertIn('Entire italic dedication', ''.join(dedication.find('f:emphasis', NS).itertext()))
+        self.assertIn('bold dedication', ''.join(dedication.find('f:strong', NS).itertext()))
+        after = next(p for p in paragraphs if 'After dedication.' in ''.join(p.itertext()))
+        self.assertIsNone(after.find('.//f:emphasis', NS))
+        self.assertIsNone(after.find('.//f:strong', NS))
+
+    def test_dedication_paragraph_keeps_pagebreak_labels_and_anchors(self):
+        for version in ('2.0', '3.0'):
+            for option in ('--pagebreaks', '--no-pagebreaks'):
+                with self.subTest(version=version, option=option):
+                    root = self.convert('<p><a href="#pg1">First page</a> <a href="#pg2">Second page</a></p>'
+                                        '<p class="dedication"><span epub:type="pagebreak" id="pg1" title="PageMarkerOne"/>'
+                                        '<em>Italic dedication</em><span epub:type="pagebreak" id="pg2" title="PageMarkerTwo"/>'
+                                        '<strong>Bold dedication</strong></p>',
+                                        version=version, options=[option], navigation=False)
+                    self.assertIn('Italic dedication', ''.join(root.find('.//f:emphasis', NS).itertext()))
+                    self.assertIn('Bold dedication', ''.join(root.find('.//f:strong', NS).itertext()))
+                    for page in ('pg1', 'pg2'):
+                        self.assertTrue(any(n.get('id') == page for n in root.iter()))
+                    text = self.text(root)
+                    self.assertLess(text.index('Italic dedication'), text.index('Bold dedication'))
+                    if option == '--pagebreaks':
+                        self.assertLess(text.index('PageMarkerOne'), text.index('Italic dedication'))
+                        self.assertLess(text.index('Italic dedication'), text.index('PageMarkerTwo'))
+                        self.assertLess(text.index('PageMarkerTwo'), text.index('Bold dedication'))
+                    else:
+                        self.assertNotIn('PageMarkerOne', text)
+                        self.assertNotIn('PageMarkerTwo', text)
+
+    def test_dedication_nested_pagebreak_keeps_label_and_emphasis(self):
+        for version, option in (('2.0', '--pagebreaks'), ('2.0', '--no-pagebreaks'),
+                                ('3.0', '--pagebreaks'), ('3.0', '--no-pagebreaks')):
+            with self.subTest(version=version, option=option):
+                root = self.convert('<p><a href="#pg">Page</a></p>'
+                                    '<p class="dedication"><em>Before '
+                                    '<span epub:type="pagebreak" id="pg" title="NestedMarker"/>'
+                                    ' after</em></p>', version=version, options=[option], navigation=False)
+                self.assertTrue(any(n.get('id') == 'pg' for n in root.iter()))
+                text = self.text(root)
+                self.assertLess(text.index('Before'), text.index('after'))
+                italic = ''.join(''.join(e.itertext()) for e in root.findall('.//f:body//f:emphasis', NS))
+                self.assertIn('Before', italic)
+                self.assertIn('after', italic)
+                if option == '--pagebreaks':
+                    self.assertIn('NestedMarker', text)
+                    self.assertLess(text.index('Before'), text.index('NestedMarker'))
+                    self.assertLess(text.index('NestedMarker'), text.index('after'))
+                    self.assertTrue(any('NestedMarker' in ''.join(e.itertext()) for e in root.findall('.//f:sub', NS)))
+                else:
+                    self.assertNotIn('NestedMarker', text)
+
     def test_orphan_closing_tags_preserve_text_and_links_with_warning(self):
         root = self.convert('<p>Before</a><a href="#target">Link</a> after</p>'
                             '<!-- </div> --><p id="target">Target</p></div>', navigation=False)
