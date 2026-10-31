@@ -2688,9 +2688,16 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		const bool toolbarUndoRestored = !baselineBook.IsEmpty() && baselineBook == bookAfterToolbarUndo;
 		const bool toolbarRedoRestored = !editedBook.IsEmpty() && editedBook == bookAfterToolbarRedo;
 		toolbarCommands = undoToolbarRebuilt && focusReady && undoClicked && redoClicked && toolbarUndoRestored && toolbarRedoRestored;
+		const CString beforeSavePath = m_doc->m_filename + L".before-save";
+		const bool snapshotSaved = !m_doc->m_filename.IsEmpty() && ::CopyFileW(m_doc->m_filename, beforeSavePath, FALSE) != FALSE;
+		const bool dirtyBeforeSave = m_doc->DocChanged();
+		const bool saveClicked = clickToolbar(ID_FILE_SAVE); pumpToolbar();
+		const bool savedClean = !m_doc->DocChanged() && m_doc == toolbarDocument;
+		toolbarCommands = snapshotSaved && dirtyBeforeSave && saveClicked && savedClean && toolbarCommands;
 		CStringA undoDetail; undoDetail.Format("undo-click=%d undo-state=%d redo-click=%d redo-state=%d focus-in-body=%d\n", undoClicked, toolbarUndoRestored, redoClicked, toolbarRedoRestored,
 			::GetFocus() == m_doc->m_body.m_hWnd || ::IsChild(m_doc->m_body.m_hWnd, ::GetFocus()));
 		toolbarDetails += undoDetail;
+		CStringA saveDetail; saveDetail.Format("snapshot=%d dirty-before-save=%d save-click=%d saved-clean=%d\n", snapshotSaved, dirtyBeforeSave, saveClicked, savedClean); toolbarDetails += saveDetail;
 		if(!toolbarCommands) {
 			toolbarDetails += "baseline="; toolbarDetails += CStringA(CW2A(baselineHtml, CP_UTF8));
 			toolbarDetails += "\nafter-undo="; toolbarDetails += CStringA(CW2A(afterToolbarUndo, CP_UTF8));
