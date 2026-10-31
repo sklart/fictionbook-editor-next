@@ -55,6 +55,9 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_originalTheme = _Settings.GetInterfaceTheme();
 	m_interfaceTheme = GetDlgItem(IDC_INTERFACE_THEME);
 	m_interfacePalette = GetDlgItem(IDC_INTERFACE_PALETTE);
+	::SetWindowSubclass(m_interfaceTheme, ThemeComboSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
+	::SetWindowSubclass(m_interfacePalette, ThemeComboSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
+	UpdateThemeComboItemHeight(m_interfaceTheme); UpdateThemeComboItemHeight(m_interfacePalette);
 	m_paletteRole = GetDlgItem(IDC_PALETTE_ROLE);
 	m_originalPalette = ThemeManager::GetNamedPalette();
 	m_originalCustomPaletteActive = ThemeManager::GetCustomPalette(m_originalCustomPalette);
@@ -74,7 +77,8 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_updateChannel = GetDlgItem(IDC_UPDATE_CHANNEL);
 	m_tooltips.Initialize(m_hWnd);
 	m_tooltips.Add(m_language, L"fbe.settings.tooltip.general.language", L"Interface language. System default uses the Windows language.");
-	m_tooltips.Add(m_interfaceTheme, L"fbe.settings.tooltip.general.interface_theme", L"Automatic follows the Windows app theme.");
+	for(HWND control : {m_interfaceTheme.m_hWnd, GetDlgItem(IDC_INTERFACE_THEME_LABEL).m_hWnd})
+		m_tooltips.Add(control, L"fbe.settings.tooltip.general.interface_theme", L"Automatic follows the Windows app theme.");
 	for(HWND control : {m_interfacePalette.m_hWnd, GetDlgItem(IDC_INTERFACE_PALETTE_LABEL).m_hWnd})
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.interface_palette", L"Choose interface colours independently of the Windows mode. High Contrast uses system colours.");
 	m_tooltips.Add(GetDlgItem(IDC_INTERFACE_PALETTE_COPY), L"fbe.settings.tooltip.general.palette_copy", L"Create a copy of the selected palette. It is saved when you confirm settings.");
@@ -141,6 +145,8 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 		m_customPalettes.push_back(palette);
 		if(_Settings.GetInterfacePalette() == CString(L"custom:") + palette.id.c_str()) m_acceptedPaletteIndex = index;
 	}
+	// Keep an unavailable stored preference untouched while showing the usable fallback.
+	if(!PaletteItemAvailable(m_acceptedPaletteIndex)) m_acceptedPaletteIndex = INTERFACE_PALETTE_CLASSIC;
 	m_interfacePalette.SetCurSel(m_acceptedPaletteIndex);
 	CString roles = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.roles", L"Window|Control|Text|Border|Separator|Secondary text|Disabled text|Selection background|Selection text|Hover|Pressed|Focus|Accent|Error|Warning|Success");
 	int rolePosition = 0;
@@ -388,6 +394,77 @@ LRESULT CSettingsGeneralPage::OnClickedCancel(WORD, WORD, HWND, BOOL&)
 	return ForwardSettingsDialogCommand(m_hWnd, IDCANCEL);
 }
 
+void CSettingsGeneralPage::UpdateThemeComboItemHeight(HWND window)
+{
+	HDC dc = ::GetDC(window); if(!dc) return;
+	HFONT font = reinterpret_cast<HFONT>(::SendMessage(window, WM_GETFONT, 0, 0));
+	HGDIOBJ previous = font ? ::SelectObject(dc, font) : NULL;
+	TEXTMETRICW metrics = {}; const bool measured = ::GetTextMetricsW(dc, &metrics) != FALSE;
+	if(previous) ::SelectObject(dc, previous);
+	::ReleaseDC(window, dc);
+	if(measured) ::SendMessage(window, CB_SETITEMHEIGHT, 0, metrics.tmHeight + UiMetrics::ScaleForDpi(6, UiMetrics::DpiForWindow(window)));
+}
+
+LRESULT CALLBACK CSettingsGeneralPage::ThemeComboSubclassProc(HWND window, UINT message, WPARAM key, LPARAM parameter, UINT_PTR id, DWORD_PTR data)
+{
+	CSettingsGeneralPage* page = reinterpret_cast<CSettingsGeneralPage*>(data);
+	if(message == WM_NCDESTROY) {
+		::RemoveWindowSubclass(window, ThemeComboSubclassProc, id);
+		return ::DefSubclassProc(window, message, key, parameter);
+	}
+	if(message == WM_SETFONT) {
+		const LRESULT result = ::DefSubclassProc(window, message, key, parameter);
+		UpdateThemeComboItemHeight(window);
+		return result;
+	}
+	if(page && !page->m_darkThemeSupported && message == WM_KEYDOWN && (key == VK_UP || key == VK_DOWN)) {
+		const int count = static_cast<int>(::SendMessage(window, CB_GETCOUNT, 0, 0));
+		const int current = static_cast<int>(::SendMessage(window, CB_GETCURSEL, 0, 0));
+		const int step = key == VK_DOWN ? 1 : -1;
+		const bool mode = window == page->m_interfaceTheme.m_hWnd;
+		for(int index = current + step; index >= 0 && index < count; index += step) {
+			if(mode ? index != INTERFACE_THEME_DARK : page->PaletteItemAvailable(index)) {
+				::SendMessage(window, CB_SETCURSEL, index, 0);
+				::SendMessage(page->m_hWnd, WM_COMMAND, MAKEWPARAM(::GetDlgCtrlID(window), CBN_SELCHANGE), reinterpret_cast<LPARAM>(window));
+				break;
+			}
+		}
+		return 0;
+	}
+	return ::DefSubclassProc(window, message, key, parameter);
+}
+
+bool CSettingsGeneralPage::PaletteItemAvailable(int index) const
+{
+	if(m_darkThemeSupported) return true;
+	if(index >= 0 && index < INTERFACE_PALETTE_COUNT)
+		return !ThemeManager::NamedPaletteIsDark(static_cast<InterfacePalette>(index));
+	const int custom = index - INTERFACE_PALETTE_COUNT;
+	if(custom < 0 || custom >= static_cast<int>(m_customPalettes.size())) return false;
+	const auto base = m_customPalettes[custom].base;
+	return base != ThemeManager::CustomPaletteBase::Dark && base != ThemeManager::CustomPaletteBase::Graphite && base != ThemeManager::CustomPaletteBase::Navy;
+}
+
+LRESULT CSettingsGeneralPage::OnDrawThemeItem(UINT, WPARAM, LPARAM parameter, BOOL& handled)
+{
+	const DRAWITEMSTRUCT* item = reinterpret_cast<const DRAWITEMSTRUCT*>(parameter);
+	if(!item || (item->CtlID != IDC_INTERFACE_THEME && item->CtlID != IDC_INTERFACE_PALETTE)) { handled = FALSE; return 0; }
+	const bool selected = (item->itemState & ODS_SELECTED) != 0;
+	const int index = item->itemID == static_cast<UINT>(-1) ? -1 : static_cast<int>(item->itemID);
+	const bool available = index < 0 || (item->CtlID == IDC_INTERFACE_THEME ? m_darkThemeSupported || index != INTERFACE_THEME_DARK : PaletteItemAvailable(index));
+	const COLORREF background = selected ? ThemeManager::SelectionBackgroundColor() : ThemeManager::ControlColor();
+	const COLORREF foreground = !available ? ThemeManager::DisabledTextColor() : selected ? ThemeManager::SelectionTextColor() : ThemeManager::TextColor();
+	::SetBkColor(item->hDC, background); ::SetTextColor(item->hDC, foreground);
+	::ExtTextOutW(item->hDC, 0, 0, ETO_OPAQUE, &item->rcItem, NULL, 0, NULL);
+	if(index >= 0) {
+		CComboBox combo(item->hwndItem); CString text; combo.GetLBText(index, text);
+		RECT rect = item->rcItem; rect.left += UiMetrics::ScaleForDpi(4, UiMetrics::DpiForWindow(m_hWnd)); rect.right -= 2;
+		::DrawTextW(item->hDC, text, text.GetLength(), &rect, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+	}
+	if(item->itemState & ODS_FOCUS) ::DrawFocusRect(item->hDC, &item->rcItem);
+	return TRUE;
+}
+
 void CSettingsGeneralPage::ConfigureInterfaceTheme(bool darkThemeSupported)
 {
 	m_darkThemeSupported = darkThemeSupported;
@@ -396,8 +473,9 @@ void CSettingsGeneralPage::ConfigureInterfaceTheme(bool darkThemeSupported)
 	m_interfaceTheme.ResetContent();
 	m_interfaceTheme.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.automatic", L"Automatic \x2014 follow Windows"));
 	m_interfaceTheme.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.light", L"Light"));
-	if(darkThemeSupported) m_interfaceTheme.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.dark", L"Dark"));
-	m_interfaceTheme.SetCurSel(m_preserveUnavailableDark ? INTERFACE_THEME_LIGHT : static_cast<int>(m_originalTheme));
+	m_interfaceTheme.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.dark", L"Dark"));
+	m_acceptedThemeIndex = m_preserveUnavailableDark ? INTERFACE_THEME_LIGHT : static_cast<int>(m_originalTheme);
+	m_interfaceTheme.SetCurSel(m_acceptedThemeIndex);
 	UpdateThemeNotice();
 }
 
@@ -411,13 +489,32 @@ void CSettingsGeneralPage::UpdateThemeNotice()
 	}
 	::SetDlgItemText(m_hWnd, IDC_INTERFACE_THEME_NOTE, notice);
 	::ShowWindow(GetDlgItem(IDC_INTERFACE_THEME_NOTE), supported ? SW_HIDE : SW_SHOW);
+	CString themeTip = FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.general.interface_theme", L"Automatic follows the Windows app theme.");
+	CString paletteTip = FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.general.interface_palette", L"Choose interface colours independently of the Windows mode. High Contrast uses system colours.");
+	if(!supported) {
+		themeTip += L" " + FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.unavailable", L"The dark interface theme requires Windows 10 (1809) or newer. This system uses the standard light appearance.");
+		paletteTip += L" " + FbeLoadRuntimeStringByKey(L"fbe.settings.palette.unavailable", L"This dark palette requires Windows 10 (1809) or newer.");
+		if(!m_unavailableListTooltips) {
+			for(HWND combo : {m_interfaceTheme.m_hWnd, m_interfacePalette.m_hWnd}) {
+				COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
+				if(::GetComboBoxInfo(combo, &info) && info.hwndList)
+					m_tooltips.Add(info.hwndList, L"fbe.settings.palette.unavailable", L"This dark palette requires Windows 10 (1809) or newer.");
+			}
+			m_unavailableListTooltips = true;
+		}
+	}
+	for(HWND control : {m_interfaceTheme.m_hWnd, GetDlgItem(IDC_INTERFACE_THEME_LABEL).m_hWnd}) m_tooltips.UpdateText(control, themeTip);
+	for(HWND control : {m_interfacePalette.m_hWnd, GetDlgItem(IDC_INTERFACE_PALETTE_LABEL).m_hWnd}) m_tooltips.UpdateText(control, paletteTip);
+	m_interfaceTheme.Invalidate(); m_interfacePalette.Invalidate();
 }
 
 LRESULT CSettingsGeneralPage::OnInterfaceThemeChanged(WORD notification, WORD, HWND, BOOL&)
 {
 	const int selection = m_interfaceTheme.GetCurSel();
+	if(!m_darkThemeSupported && selection == INTERFACE_THEME_DARK) { m_interfaceTheme.SetCurSel(m_acceptedThemeIndex); return 0; }
 	if(selection >= INTERFACE_THEME_AUTOMATIC && selection <= INTERFACE_THEME_DARK)
 	{
+		m_acceptedThemeIndex = selection;
 		if(notification == CBN_SELENDOK || !m_interfaceTheme.GetDroppedState()) {
 			m_preserveUnavailableDark = false;
 			UpdateThemeNotice();
@@ -478,8 +575,6 @@ LRESULT CSettingsGeneralPage::OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&)
 	}
 	if(!applied) {
 		m_interfacePalette.SetCurSel(m_acceptedPaletteIndex);
-		MessageBox(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.unavailable", L"This dark palette requires Windows 10 (1809) or newer."),
-			FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONINFORMATION);
 		return 0;
 	}
 	m_acceptedPaletteIndex = selection;

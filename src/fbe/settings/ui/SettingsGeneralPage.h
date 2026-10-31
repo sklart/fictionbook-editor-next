@@ -30,6 +30,7 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	ThemeManager::CustomPalette m_originalCustomPalette;
 	bool m_originalCustomPaletteActive = false;
 	int m_acceptedPaletteIndex = 0;
+	int m_acceptedThemeIndex = INTERFACE_THEME_AUTOMATIC;
 	int m_paletteDropdownStart = -1;
 	bool m_paletteChangedBeforeDropdown = false;
 	bool m_reopeningPaletteDropdown = false;
@@ -37,10 +38,14 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	bool m_paletteChanged = false;
 	bool m_preserveUnavailableDark = false;
 	bool m_darkThemeSupported = true;
+	bool m_unavailableListTooltips = false;
 	void UpdateThemeNotice();
 	void FitLocalizedLayout();
 	void UpdatePaletteColorControls();
 	void UpdatePaletteContrast();
+	bool PaletteItemAvailable(int index) const;
+	static LRESULT CALLBACK ThemeComboSubclassProc(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR);
+	static void UpdateThemeComboItemHeight(HWND window);
 
 public:
 	explicit CSettingsGeneralPage(bool darkThemeSupported = ThemeManager::IsDarkModeSupported()) : m_darkThemeSupported(darkThemeSupported) {}
@@ -48,6 +53,7 @@ public:
 
 	BEGIN_MSG_MAP(CSettingsGeneralPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		MESSAGE_HANDLER(WM_DRAWITEM, OnDrawThemeItem)
 		MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnPaletteThemeChanged)
 		COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
 		COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
@@ -67,6 +73,7 @@ public:
 	END_MSG_MAP()
 
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnDrawThemeItem(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnPaletteThemeChanged(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnClickedOK(WORD, WORD, HWND, BOOL&);
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);

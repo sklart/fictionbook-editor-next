@@ -182,7 +182,7 @@ if($generalPage -notlike '*OnInterfaceThemeChanged*' -or $generalPage -notlike '
     $generalPage -notlike '*ThemeManager::SetSelectedTheme(m_originalTheme)*' -or $generalPageHeader -notlike '*CBN_SELCHANGE, OnInterfaceThemeChanged*') {
     throw 'Settings interface-theme live preview and Cancel rollback are missing.'
 }
-foreach($required in @('ConfigureInterfaceTheme(m_darkThemeSupported)', 'if(darkThemeSupported)', 'm_preserveUnavailableDark',
+foreach($required in @('ConfigureInterfaceTheme(m_darkThemeSupported)', '!m_darkThemeSupported && selection == INTERFACE_THEME_DARK', 'm_preserveUnavailableDark',
     '(!m_preserveUnavailableDark || interfaceTheme != INTERFACE_THEME_LIGHT)', 'IDC_INTERFACE_THEME_NOTE')) {
     if($generalPage -notlike "*$required*") { throw "Unsupported theme choice policy is missing: $required" }
 }

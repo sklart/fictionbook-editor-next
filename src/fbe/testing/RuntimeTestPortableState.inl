@@ -708,12 +708,22 @@ void CMainFrame::RunPortableStateTestScenario()
     }
     if(IsFbeTestScenario(L"interface-theme-policy-runtime")) {
         _Settings.SetInterfaceTheme(INTERFACE_THEME_DARK);
+        _Settings.SetInterfacePalette(L"graphite");
+        CSettingsGeneralPage fallbackPage(false);
+        bool fallbackPreserved = fallbackPage.Create(m_hWnd) != NULL;
+        if(fallbackPreserved) {
+            fallbackPreserved = ::SendMessage(fallbackPage.GetDlgItem(IDC_INTERFACE_PALETTE), CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CLASSIC;
+            fallbackPage.Commit();
+            fallbackPreserved = _Settings.GetInterfacePalette() == L"graphite" && fallbackPreserved;
+            fallbackPage.DestroyWindow();
+        }
+        _Settings.SetInterfacePalette(L"classic");
         CSettingsGeneralPage page(false);
-        bool passed = page.Create(m_hWnd) != NULL;
+        bool passed = page.Create(m_hWnd) != NULL && fallbackPreserved;
         if(passed) {
             page.ConfigureInterfaceTheme(false);
             const HWND choice = page.GetDlgItem(IDC_INTERFACE_THEME);
-            passed = ::SendMessage(choice, CB_GETCOUNT, 0, 0) == 2 && ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT &&
+            passed = ::SendMessage(choice, CB_GETCOUNT, 0, 0) == 3 && ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT &&
                 ::GetWindowTextLength(page.GetDlgItem(IDC_INTERFACE_THEME_NOTE)) > 0;
             RECT notice = {}, openGroup = {}, interfaceGroup = {};
             ::GetWindowRect(page.GetDlgItem(IDC_INTERFACE_THEME_NOTE), &notice);
@@ -729,6 +739,70 @@ void CMainFrame::RunPortableStateTestScenario()
             page.Commit(); passed = passed && _Settings.GetInterfaceTheme() == INTERFACE_THEME_LIGHT;
             _Settings.SetInterfaceTheme(INTERFACE_THEME_DARK); page.ConfigureInterfaceTheme(true);
             passed = passed && ::SendMessage(choice, CB_GETCOUNT, 0, 0) == 3 && ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_DARK;
+            page.ConfigureInterfaceTheme(false);
+            const HWND paletteChoice = page.GetDlgItem(IDC_INTERFACE_PALETTE);
+            BOOL handled = FALSE;
+            const HFONT originalFont = reinterpret_cast<HFONT>(::SendMessage(paletteChoice, WM_GETFONT, 0, 0));
+            const HFONT largeFont = ::CreateFontW(-28, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+            if(largeFont) {
+                ::SendMessage(paletteChoice, WM_SETFONT, reinterpret_cast<WPARAM>(largeFont), FALSE);
+                HDC fontDc = ::GetDC(paletteChoice); HGDIOBJ oldFont = fontDc ? ::SelectObject(fontDc, largeFont) : NULL;
+                TEXTMETRICW fontMetrics = {}; const bool measuredFont = fontDc && ::GetTextMetricsW(fontDc, &fontMetrics);
+                passed = measuredFont && ::SendMessage(paletteChoice, CB_GETITEMHEIGHT, 0, 0) > fontMetrics.tmHeight && passed;
+                if(oldFont) ::SelectObject(fontDc, oldFont); if(fontDc) ::ReleaseDC(paletteChoice, fontDc);
+                ::SendMessage(paletteChoice, WM_SETFONT, reinterpret_cast<WPARAM>(originalFont), FALSE);
+                ::DeleteObject(largeFont);
+            } else passed = false;
+            HDC display = ::GetDC(page.m_hWnd), memory = display ? ::CreateCompatibleDC(display) : NULL;
+            HBITMAP canvas = display ? ::CreateCompatibleBitmap(display, 300, 30) : NULL;
+            HGDIOBJ oldCanvas = memory && canvas ? ::SelectObject(memory, canvas) : NULL;
+            if(!memory || !canvas) passed = false;
+            else {
+                DRAWITEMSTRUCT draw = {}; draw.CtlType = ODT_COMBOBOX; draw.hwndItem = paletteChoice; draw.CtlID = IDC_INTERFACE_PALETTE;
+                draw.hDC = memory; draw.rcItem = {0, 0, 300, 30};
+                draw.itemID = INTERFACE_PALETTE_GRAPHITE; page.OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
+                passed = ::GetTextColor(memory) == ThemeManager::DisabledTextColor() && passed;
+                draw.itemID = INTERFACE_PALETTE_SEPIA; page.OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
+                passed = ::GetTextColor(memory) == ThemeManager::TextColor() && passed;
+                draw.CtlID = IDC_INTERFACE_THEME; draw.hwndItem = choice; draw.itemID = INTERFACE_THEME_DARK;
+                page.OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
+                passed = ::GetTextColor(memory) == ThemeManager::DisabledTextColor() && passed;
+            }
+            if(oldCanvas) ::SelectObject(memory, oldCanvas);
+            if(canvas) ::DeleteObject(canvas); if(memory) ::DeleteDC(memory); if(display) ::ReleaseDC(page.m_hWnd, display);
+            struct PolicyTip { HWND control; CString text; } tip{paletteChoice, CString()};
+            ::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM data) -> BOOL {
+                auto& target = *reinterpret_cast<PolicyTip*>(data);
+                wchar_t name[64] = {}; ::GetClassNameW(window, name, _countof(name));
+                if(wcscmp(name, TOOLTIPS_CLASSW) != 0) return TRUE;
+                wchar_t value[2048] = {}; CToolInfo info(TTF_IDISHWND, target.control, 0, NULL, value);
+                if(!::SendMessageW(window, TTM_GETTOOLINFOW, 0, reinterpret_cast<LPARAM>(&info))) return TRUE;
+                target.text = info.lpszText; return FALSE;
+            }, reinterpret_cast<LPARAM>(&tip));
+            const CString unavailableTip = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.unavailable", L"This dark palette requires Windows 10 (1809) or newer.");
+            passed = tip.text.Find(unavailableTip) >= 0 && passed;
+            ::SendMessage(paletteChoice, CB_SETCURSEL, INTERFACE_PALETTE_CLASSIC, 0);
+            page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, paletteChoice, handled);
+            ::SendMessage(paletteChoice, WM_KEYDOWN, VK_DOWN, 0);
+            passed = ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_SEPIA && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA && passed;
+            ::SendMessage(paletteChoice, WM_KEYDOWN, VK_UP, 0);
+            passed = ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CLASSIC && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CLASSIC && passed;
+            for(InterfacePalette light : {INTERFACE_PALETTE_SEPIA, INTERFACE_PALETTE_CATPPUCCIN_LATTE}) {
+                ::SendMessage(paletteChoice, CB_SETCURSEL, light, 0);
+                page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, paletteChoice, handled);
+                passed = ThemeManager::GetNamedPalette() == light && ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == light && passed;
+            }
+            ::SendMessage(choice, CB_SETCURSEL, INTERFACE_THEME_DARK, 0);
+            page.OnInterfaceThemeChanged(CBN_SELCHANGE, IDC_INTERFACE_THEME, choice, handled);
+            passed = ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT && passed;
+            for(InterfacePalette dark : {INTERFACE_PALETTE_GRAPHITE, INTERFACE_PALETTE_NAVY, INTERFACE_PALETTE_DRACULA}) {
+                ::SendMessage(paletteChoice, CB_SETCURSEL, dark, 0);
+                page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, paletteChoice, handled);
+                passed = ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE &&
+                    ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CATPPUCCIN_LATTE && passed;
+            }
+            passed = page.CancelChanges() && passed;
             page.DestroyWindow();
         }
         _Settings.SetInterfaceTheme(INTERFACE_THEME_DARK, true);
