@@ -106,6 +106,26 @@ void CMainFrame::RunPortableStateTestScenario()
         const COLORREF classicWindow = ThemeManager::WindowColor();
         const bool highContrast = ThemeManager::IsHighContrast();
         bool passed = initialPalette == INTERFACE_PALETTE_CLASSIC && jsonPassed;
+        passed = ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SEPIA) && passed;
+        const COLORREF inheritedControl = ThemeManager::ControlColor();
+        passed = ThemeManager::SetCustomPalette(custom) && ThemeManager::IsCustomPaletteActive() && passed;
+        if(!highContrast) passed = ThemeManager::WindowColor() == RGB(244, 241, 234) && ThemeManager::ControlColor() == inheritedControl && passed;
+        CSettingsGeneralPage customPage;
+        const bool customPageCreated = customPage.Create(m_hWnd) != NULL;
+        passed = customPageCreated && passed;
+        if(customPageCreated) {
+            const HWND choice = customPage.GetDlgItem(IDC_INTERFACE_PALETTE);
+            ::SendMessage(choice, CB_SETCURSEL, INTERFACE_PALETTE_CLASSIC, 0);
+            BOOL handled = FALSE;
+            customPage.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, choice, handled);
+            passed = !ThemeManager::IsCustomPaletteActive() && customPage.CancelChanges() && ThemeManager::IsCustomPaletteActive() && passed;
+            if(!highContrast) passed = ThemeManager::WindowColor() == RGB(244, 241, 234) && passed;
+            customPage.DestroyWindow();
+        }
+        ThemeManager::CustomPalette invalidCustom = custom; invalidCustom.id = L"../bad";
+        passed = !ThemeManager::SetCustomPalette(invalidCustom) && ThemeManager::IsCustomPaletteActive() && passed;
+        passed = ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CLASSIC) && !ThemeManager::IsCustomPaletteActive() &&
+            ThemeManager::WindowColor() == classicWindow && ThemeManager::GetSelectedTheme() == initialTheme && passed;
         CSettingsGeneralPage palettePage;
         const bool pageCreated = palettePage.Create(m_hWnd) != NULL;
         passed = pageCreated && passed;

@@ -73,6 +73,9 @@ namespace ThemeManager
 	InterfaceTheme GetSelectedTheme();
 	bool SetNamedPalette(InterfacePalette palette);
 	InterfacePalette GetNamedPalette();
+	bool SetCustomPalette(const CustomPalette& palette);
+	bool IsCustomPaletteActive();
+	bool GetCustomPalette(CustomPalette& palette);
 	bool IsDark();
 	bool IsDarkModeSupported();
 	bool IsHighContrast();

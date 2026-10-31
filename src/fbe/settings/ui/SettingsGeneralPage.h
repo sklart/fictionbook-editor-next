@@ -22,6 +22,8 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	CSettingsTooltips m_tooltips;
 	InterfaceTheme m_originalTheme;
 	InterfacePalette m_originalPalette = INTERFACE_PALETTE_CLASSIC;
+	ThemeManager::CustomPalette m_originalCustomPalette;
+	bool m_originalCustomPaletteActive = false;
 	int m_acceptedPaletteIndex = 0;
 	bool m_paletteChanged = false;
 	bool m_preserveUnavailableDark = false;

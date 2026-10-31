@@ -15,6 +15,8 @@ namespace
 {
 InterfaceTheme g_selected = INTERFACE_THEME_AUTOMATIC;
 InterfacePalette g_namedPalette = INTERFACE_PALETTE_CLASSIC;
+ThemeManager::CustomPalette g_customPalette;
+bool g_customPaletteActive = false;
 bool g_systemDark = false;
 bool g_highContrast = false;
 HHOOK g_themeCbtHook = NULL;
@@ -1532,18 +1534,43 @@ InterfaceTheme GetSelectedTheme() { return g_selected; }
 bool IsDarkModeSupported() { return SupportsDarkMode(); }
 bool IsDark() {
 	if(!SupportsDarkMode()) return false;
+	if(g_customPaletteActive && g_customPalette.base == CustomPaletteBase::Dark) return true;
+	if(g_customPaletteActive && g_customPalette.base == CustomPaletteBase::Light) return false;
 	if(g_namedPalette == INTERFACE_PALETTE_GRAPHITE || g_namedPalette == INTERFACE_PALETTE_NAVY) return true;
 	if(g_namedPalette == INTERFACE_PALETTE_SEPIA) return false;
 	return g_selected == INTERFACE_THEME_DARK || (g_selected == INTERFACE_THEME_AUTOMATIC && g_systemDark);
 }
 InterfacePalette GetNamedPalette() { return g_namedPalette; }
+bool IsCustomPaletteActive() { return g_customPaletteActive; }
+bool GetCustomPalette(CustomPalette& palette) { if(!g_customPaletteActive) return false; palette = g_customPalette; return true; }
 bool SetNamedPalette(InterfacePalette palette)
 {
 	if(palette < INTERFACE_PALETTE_CLASSIC || palette >= INTERFACE_PALETTE_COUNT) return false;
 	if(!SupportsDarkMode() && (palette == INTERFACE_PALETTE_GRAPHITE || palette == INTERFACE_PALETTE_NAVY)) return false;
-	if(palette == g_namedPalette) return true;
+	if(palette == g_namedPalette && !g_customPaletteActive) return true;
 	const bool wasDark = IsDark();
+	g_customPaletteActive = false;
 	g_namedPalette = palette;
+	if(wasDark != IsDark()) ApplyPreferredAppMode(IsDark(), g_highContrast);
+	AdvanceThemeGeneration();
+	RebuildBrushes();
+	return true;
+}
+bool SetCustomPalette(const CustomPalette& palette)
+{
+	CustomPalette validated; std::wstring error;
+	if(!ParseCustomPalette(SerializeCustomPalette(palette), validated, error) || validated.id != palette.id ||
+		validated.name != palette.name || validated.base != palette.base) return false;
+	for(int role = 0; role < THEME_COLOR_COUNT; ++role)
+		if(validated.present[role] != palette.present[role] || (palette.present[role] && validated.colors[role] != palette.colors[role])) return false;
+	const bool dark = palette.base == CustomPaletteBase::Dark || palette.base == CustomPaletteBase::Graphite || palette.base == CustomPaletteBase::Navy;
+	if(dark && !SupportsDarkMode()) return false;
+	const bool wasDark = IsDark();
+	g_namedPalette = palette.base == CustomPaletteBase::Graphite ? INTERFACE_PALETTE_GRAPHITE :
+		palette.base == CustomPaletteBase::Navy ? INTERFACE_PALETTE_NAVY :
+		palette.base == CustomPaletteBase::Sepia ? INTERFACE_PALETTE_SEPIA : INTERFACE_PALETTE_CLASSIC;
+	g_customPalette = validated;
+	g_customPaletteActive = true;
 	if(wasDark != IsDark()) ApplyPreferredAppMode(IsDark(), g_highContrast);
 	AdvanceThemeGeneration();
 	RebuildBrushes();
@@ -1570,6 +1597,8 @@ COLORREF Color(ThemeColorRole role)
 		default: return ::GetSysColor(COLOR_WINDOWTEXT);
 		}
 	}
+	if(role >= THEME_COLOR_WINDOW && role < THEME_COLOR_COUNT && g_customPaletteActive && g_customPalette.present[role])
+		return g_customPalette.colors[role];
 	if(role >= THEME_COLOR_WINDOW && role < THEME_COLOR_COUNT && g_namedPalette != INTERFACE_PALETTE_CLASSIC)
 	{
 		// Role order is fixed by ThemeColorRole; preserve the legacy enum values.

@@ -53,6 +53,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_interfaceTheme = GetDlgItem(IDC_INTERFACE_THEME);
 	m_interfacePalette = GetDlgItem(IDC_INTERFACE_PALETTE);
 	m_originalPalette = ThemeManager::GetNamedPalette();
+	m_originalCustomPaletteActive = ThemeManager::GetCustomPalette(m_originalCustomPalette);
 	for(int index = 0; index < INTERFACE_PALETTE_COUNT; ++index)
 		if(_Settings.GetInterfacePalette() == PaletteId(index)) m_acceptedPaletteIndex = index;
 	m_scriptIconSize = GetDlgItem(IDC_SCRIPT_ICON_SIZE);
@@ -412,7 +413,8 @@ void CSettingsGeneralPage::Commit()
 }
 bool CSettingsGeneralPage::CancelChanges()
 {
-	ThemeManager::SetNamedPalette(m_originalPalette);
+	if(m_originalCustomPaletteActive) ThemeManager::SetCustomPalette(m_originalCustomPalette);
+	else ThemeManager::SetNamedPalette(m_originalPalette);
 	ThemeManager::SetSelectedTheme(m_originalTheme);
 	ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 	return true;
