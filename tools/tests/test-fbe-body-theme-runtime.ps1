@@ -1,12 +1,18 @@
 <# Checks actual MSHTML BODY/table colors and document invariants across theme switches. #>
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 90)
+param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 90,
+      [ValidateSet('ru-RU','en-US')][string]$Locale = 'ru-RU')
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'body-theme'
 $passed = $false
 try {
+    $seed = New-IsolatedFbeSettingsSeed -Isolation $isolation
+    $languageId = if($Locale -eq 'ru-RU') { 1049 } else { 1033 }
+    $expectedLanguageId = if($Locale -eq 'ru-RU') { 0xFBE002 } else { 0xFBE001 }
+    $settingsXml = [IO.File]::ReadAllText($seed).Replace('</Settings>', "<IntefaceLangID>$languageId</IntefaceLangID></Settings>")
+    [IO.File]::WriteAllText($seed, $settingsXml, [Text.UTF8Encoding]::new($false))
     $fixture = Join-Path $isolation.Root 'body-theme.fb2'
     $report = Join-Path $isolation.Root 'body-theme.tsv'
     $paragraphs = (1..100 | ForEach-Object { "<p>Theme target paragraph $_.</p>" }) -join ''
@@ -25,7 +31,8 @@ try {
         $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $savedMode, $savedScenario
     }
     $appearance = Get-Content -Raw -LiteralPath "$report.appearance"
-    Write-Host "Combined appearance Undo/Redo:`n$appearance"
+    Write-Host "Combined appearance Undo/Redo ($Locale):`n$appearance"
+    if($appearance -notmatch ("(?m)^interface-language=" + $expectedLanguageId + "\r?$")) { throw "Requested interface language not active: $appearance" }
     foreach($case in @('light-16-32', 'sepia-24-20', 'custom-32-32')) {
         if($appearance -notmatch ("(?m)^" + [regex]::Escape($case) + "=1\r?$")) { throw "Combined appearance Undo/Redo failed: $case`n$appearance" }
     }

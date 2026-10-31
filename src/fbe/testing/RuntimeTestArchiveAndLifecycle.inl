@@ -2630,6 +2630,7 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		};
 		const int previousMainSize = _Settings.GetMainToolbarIconSize(), previousScriptSize = _Settings.GetScriptIconSize();
 		CStringA appearanceReport;
+		appearanceReport.AppendFormat("interface-language=%lu\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()));
 		bool appearanceUndoOk = true;
 		for(const auto& test : appearanceCases) {
 			if(test.palette == INTERFACE_PALETTE_GRAPHITE && !ThemeManager::IsDarkModeSupported()) {
