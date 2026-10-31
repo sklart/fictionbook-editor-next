@@ -53,7 +53,7 @@ try {
     New-Item -ItemType Directory -Path $ArtifactDirectory -Force | Out-Null
     $env:FBE_NEXT_TEST_ARTIFACT_DIR=(Resolve-Path $ArtifactDirectory).Path;$env:FBE_NEXT_TEST_REQUESTED_THEME="$requestedTheme"
     @{exe=(Get-FileHash $iso.Exe -Algorithm SHA256).Hash;os=[Environment]::OSVersion.VersionString;theme=$Theme;locale=$Locale;cycles=$MenuCycles;profile=$seed} | ConvertTo-Json | Set-Content (Join-Path $ArtifactDirectory 'inputs.json') -Encoding utf8
-    $process=Start-Process $iso.Exe -WorkingDirectory $iso.Root -ArgumentList @('--portable','-b',$report,$fixture) -WindowStyle Hidden -PassThru
+    $process=Start-Process $iso.Exe -WorkingDirectory $iso.Root -ArgumentList @('--portable','-b',$report,$fixture) -PassThru
     $code=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'ui-defects' -Report $report -TimeoutSeconds $TimeoutSeconds
     $text=if(Test-Path $report){Get-Content $report -Raw}else{'missing report'}
     [IO.File]::WriteAllText((Join-Path $ArtifactDirectory 'ui-defects.txt'),$text,[Text.UTF8Encoding]::new($false))

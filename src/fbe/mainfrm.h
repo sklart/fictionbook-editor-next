@@ -715,6 +715,7 @@ public:
   LRESULT OnPaletteLoadWarning(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT RunIssue64Runtime(CAtlFile& output);
+  LRESULT RunUiDefectsRuntime(CAtlFile& output);
   LRESULT RunLegacyRuntimeScenarios(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT RunBinaryStoreRuntime(CAtlFile& output);
 #ifdef FBE_BINARY_STORE_DIAGNOSTICS

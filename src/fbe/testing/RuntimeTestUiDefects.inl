@@ -1,5 +1,6 @@
 if (IsFbeTestScenario(L"ui-defects-runtime")) {
     bool passed = true; CStringA report;
+    auto stage = [&](const char* name, int iteration) { CStringA line; line.Format("stage=%s:%d\n",name,iteration); DWORD written=0; output.Write(line,line.GetLength(),&written); output.Flush(); };
     auto check = [&](const char* name, bool ok) {report.AppendFormat("%s=%d\n",name,ok);passed=ok&&passed;};
     ShowWindow(SW_SHOWNORMAL);
     wchar_t requested[16]={};::GetEnvironmentVariableW(L"FBE_NEXT_TEST_REQUESTED_THEME",requested,_countof(requested));
@@ -63,15 +64,21 @@ if (IsFbeTestScenario(L"ui-defects-runtime")) {
     const InterfaceTheme sequence[]={INTERFACE_THEME_LIGHT,INTERFACE_THEME_DARK,INTERFACE_THEME_LIGHT,INTERFACE_THEME_DARK,INTERFACE_THEME_LIGHT,INTERFACE_THEME_DARK,INTERFACE_THEME_AUTOMATIC,INTERFACE_THEME_LIGHT,INTERFACE_THEME_DARK,INTERFACE_THEME_AUTOMATIC};
     const DWORD savedLanguage=_Settings.GetInterfaceLanguageID();
     for(int iteration=0;iteration<40;++iteration) {
+        stage("refresh-before",iteration);
         if(iteration%2==0)SendMessage(WM_COMMAND,ID_TOOLS_REFRESH_SCRIPTS);
+        stage("theme",iteration);
         ThemeManager::SetSelectedTheme(sequence[iteration%_countof(sequence)]);ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+        stage("locale",iteration);
         _Settings.SetInterfaceLanguage(iteration%3==1?1033:1049);FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName());FbeResetRuntimeLocalization();RefreshLocalizedMainFrameUi();RebuildRuntimeHotkeys();
+        stage("refresh-after",iteration);
         if(iteration%2)SendMessage(WM_COMMAND,ID_TOOLS_REFRESH_SCRIPTS);
+        stage("menu",iteration);
         toolsMenu();const auto now=metadata();
         check("menu_metadata_preserved",now.wID==original.wID&&now.fType==original.fType&&now.dwItemData==original.dwItemData&&now.hSubMenu==original.hSubMenu&&now.hbmpItem==original.hbmpItem);
         check("refresh_enabled",!(now.fState&(MFS_DISABLED|MFS_GRAYED)));
         if(iteration<10)showTools(tools,L"cycle-"+std::to_wstring(iteration));
     }
+    stage("restore",0);
     _Settings.SetInterfaceLanguage(savedLanguage);FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName());FbeResetRuntimeLocalization();RefreshLocalizedMainFrameUi();
     ThemeManager::SetSelectedTheme(static_cast<InterfaceTheme>(_wtoi(requested)));ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
     check("theme_document_preserved",initialXml==CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml))&&initialDirty==DocChanged());
@@ -92,11 +99,13 @@ if (IsFbeTestScenario(L"ui-defects-runtime")) {
     FbeResetRuntimeLocalization();RefreshLocalizedMainFrameUi();RebuildRuntimeHotkeys();toolsMenu();
     _Settings.SetInterfaceLanguage(language);FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName());FbeResetRuntimeLocalization();RefreshLocalizedMainFrameUi();
     for(int reopen=0;reopen<2;++reopen) {
+        stage("settings",reopen);
         ::RemovePropW(m_hWnd,L"FBE_UI_DEFECTS_SETTINGS");
         BOOL handled=FALSE;OnViewOptions(0,ID_VIEW_OPTIONS,NULL,handled);
         check("settings_caret",::GetPropW(m_hWnd,L"FBE_UI_DEFECTS_SETTINGS")==reinterpret_cast<HANDLE>(1));
     }
     m_doc->MarkSavePoint();m_source.SendMessage(SCI_SETSAVEPOINT);
+    stage("close",0);
     SendMessage(WM_COMMAND,ID_FILE_CLOSE);OnIdle();
     check("closed_session",!m_document_session.HasDocument());
     for(UINT command:{ID_VIEW_DESC,ID_VIEW_BODY,ID_VIEW_SOURCE}) {

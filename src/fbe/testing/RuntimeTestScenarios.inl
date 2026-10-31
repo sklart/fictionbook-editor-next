@@ -28,9 +28,21 @@ static PluginOptionsProbe::Palette EditorPluginProbePalette(HWND window) {
 #include "XmlUndoLifetimeProbe.h"
 #include "RuntimeTestXmlScriptBackend.inl"
 
+__declspec(noinline) LRESULT CMainFrame::RunUiDefectsRuntime(CAtlFile& output)
+{
+#include "RuntimeTestUiDefects.inl"
+    return 0;
+}
+
 // Keep new script/COM probes outside the large legacy scenario stack frame.
 LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT message, WPARAM wparam, LPARAM lparam, BOOL& handled)
 {
+    if (RuntimeTests::IsScenario(L"ui-defects-runtime")) {
+        PluginOptionsProbe::paletteForWindow = EditorPluginProbePalette;
+        CAtlFile output;
+        if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS))) return 0;
+        return RunUiDefectsRuntime(output);
+    }
 #ifdef FBE_BINARY_STORE_DIAGNOSTICS
 #ifdef FBE_BINARY_STORE_MEMORY_ATTRIBUTION
 #ifdef FBE_SOURCE_MEMORY_BENCHMARK

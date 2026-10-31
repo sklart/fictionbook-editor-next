@@ -3,7 +3,6 @@
 		return 0;
 #include "RuntimeTestFileClose.inl"
 #include "RuntimeTestNewDocument.inl"
-#include "RuntimeTestUiDefects.inl"
 #include "RuntimeTestNbspInput.inl"
 #include "RuntimeTestReplaceAll.inl"
 if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
