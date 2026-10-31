@@ -2536,6 +2536,17 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		scrollable->scrollTop = 160;
 		const long baselineScroll = scrollable->scrollTop;
 		const CString baselineHtml(static_cast<LPCWSTR>(body->innerHTML));
+		auto bookHtml = [&]() {
+			CString result;
+			MSHTML::IHTMLElementCollectionPtr divs(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV"));
+			for(long index = 0; divs && index < divs->length; ++index) {
+				MSHTML::IHTMLElementPtr div(divs->item(_variant_t(index), _variant_t()));
+				if(div && CString(static_cast<LPCWSTR>(div->className)).CompareNoCase(L"body") == 0)
+					result += static_cast<LPCWSTR>(div->outerHTML);
+			}
+			return result;
+		};
+		const CString baselineBook = bookHtml();
 		const bool baselineDirty = m_doc->DocChanged();
 		OLECMD baselineCommands[] = { { IDM_UNDO, 0 }, { IDM_REDO, 0 } };
 		m_doc->m_body.QueryStatus(baselineCommands, _countof(baselineCommands));
@@ -2627,6 +2638,7 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		if(!restoredPalette || !editPreserved || !undoRestored || !redoRestored) { output.Close(); ::PostQuitMessage(1); return 0; }
 		// A later palette switch must not accidentally acknowledge a real edit.
 		const CString editedHtml(static_cast<LPCWSTR>(body->innerHTML));
+		const CString editedBook = bookHtml();
 		const bool dirtyBeforeTheme = m_doc->DocChanged();
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
@@ -2652,6 +2664,39 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		FB::Doc* const toolbarDocument = m_doc;
 		bool toolbarCommands = true;
 		CStringA toolbarDetails;
+		_Settings.SetMainToolbarIconSize(32);
+		const bool undoToolbarRebuilt = RebuildCommandToolbarImages(UiMetrics::DpiForWindow(m_hWnd));
+		UpdateLayout(); m_doc->m_body.SetFocus();
+		InvalidateUi(UiDirtySelection | UiDirtyDocument | UiDirtyToolbar); OnIdle();
+		const HWND toolbarTestFocus = ::GetFocus();
+		const bool focusReady = toolbarTestFocus && (toolbarTestFocus == m_doc->m_body.m_hWnd || ::IsChild(m_doc->m_body.m_hWnd, toolbarTestFocus));
+		auto pumpToolbar = [&]() {
+			const ULONGLONG until = ::GetTickCount64() + 100;
+			while(::GetTickCount64() < until) {
+				MSG message = {};
+				while(::PeekMessageW(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessageW(&message); }
+				::Sleep(1);
+			}
+			OnIdle();
+		};
+		const bool undoClicked = clickToolbar(ID_EDIT_UNDO); pumpToolbar();
+		const CString afterToolbarUndo(static_cast<LPCWSTR>(body->innerHTML));
+		const CString bookAfterToolbarUndo = bookHtml();
+		const bool redoClicked = clickToolbar(ID_EDIT_REDO); pumpToolbar();
+		const CString afterToolbarRedo(static_cast<LPCWSTR>(body->innerHTML));
+		const CString bookAfterToolbarRedo = bookHtml();
+		const bool toolbarUndoRestored = !baselineBook.IsEmpty() && baselineBook == bookAfterToolbarUndo;
+		const bool toolbarRedoRestored = !editedBook.IsEmpty() && editedBook == bookAfterToolbarRedo;
+		toolbarCommands = undoToolbarRebuilt && focusReady && undoClicked && redoClicked && toolbarUndoRestored && toolbarRedoRestored;
+		CStringA undoDetail; undoDetail.Format("undo-click=%d undo-state=%d redo-click=%d redo-state=%d focus-in-body=%d\n", undoClicked, toolbarUndoRestored, redoClicked, toolbarRedoRestored,
+			::GetFocus() == m_doc->m_body.m_hWnd || ::IsChild(m_doc->m_body.m_hWnd, ::GetFocus()));
+		toolbarDetails += undoDetail;
+		if(!toolbarCommands) {
+			toolbarDetails += "baseline="; toolbarDetails += CStringA(CW2A(baselineHtml, CP_UTF8));
+			toolbarDetails += "\nafter-undo="; toolbarDetails += CStringA(CW2A(afterToolbarUndo, CP_UTF8));
+			toolbarDetails += "\nedited="; toolbarDetails += CStringA(CW2A(editedHtml, CP_UTF8));
+			toolbarDetails += "\nafter-redo="; toolbarDetails += CStringA(CW2A(afterToolbarRedo, CP_UTF8)); toolbarDetails += "\n";
+		}
 		for(int size : {16, 20, 24, 32}) {
 			_Settings.SetMainToolbarIconSize(size);
 			const bool rebuilt = RebuildCommandToolbarImages(UiMetrics::DpiForWindow(m_hWnd));
