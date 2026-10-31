@@ -2619,6 +2619,50 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		namedPalettesApplied = ThemeManager::SetCustomPalette(customPalette) && namedPalettesApplied;
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId()); append("named-custom");
 		if(!namedPalettesApplied) { output.Close(); ::PostQuitMessage(1); return 0; }
+		// Test the combined icon-size and palette changes against real document
+		// edits, comparing the book DOM before and after both Undo and Redo.
+		struct AppearanceUndoCase { int mainSize; int scriptSize; InterfacePalette palette; bool custom; const char* name; };
+		const AppearanceUndoCase appearanceCases[] = {
+			{ 16, 32, INTERFACE_PALETTE_CLASSIC, false, "light-16-32" },
+			{ 32, 16, INTERFACE_PALETTE_GRAPHITE, false, "dark-32-16" },
+			{ 24, 20, INTERFACE_PALETTE_SEPIA, false, "sepia-24-20" },
+			{ 32, 32, INTERFACE_PALETTE_CLASSIC, true, "custom-32-32" }
+		};
+		const int previousMainSize = _Settings.GetMainToolbarIconSize(), previousScriptSize = _Settings.GetScriptIconSize();
+		CStringA appearanceReport;
+		bool appearanceUndoOk = true;
+		for(const auto& test : appearanceCases) {
+			if(test.palette == INTERFACE_PALETTE_GRAPHITE && !ThemeManager::IsDarkModeSupported()) {
+				appearanceReport.AppendFormat("%s=unsupported\n", test.name); continue;
+			}
+			const CString beforeEdit = bookHtml();
+			MSHTML::IHTMLTxtRangePtr range(bodyElement->createTextRange());
+			if(!range || !range->findText(L"Theme target", 0, 0)) { appearanceUndoOk = false; break; }
+			m_doc->m_body.BeginUndoUnit(L"Combined appearance edit");
+			try { range->text = L"Matrix target"; }
+			catch (...) { m_doc->m_body.EndUndoUnit(); throw; }
+			m_doc->m_body.EndUndoUnit();
+			const CString afterEdit = bookHtml();
+			_Settings.SetMainToolbarIconSize(test.mainSize); _Settings.SetScriptIconSize(test.scriptSize);
+			const bool paletteOk = test.custom ? ThemeManager::SetCustomPalette(customPalette) : ThemeManager::SetNamedPalette(test.palette);
+			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+			const bool mainOk = RebuildCommandToolbarImages(UiMetrics::DpiForWindow(m_hWnd));
+			const bool scriptsOk = ApplyScriptIconSize();
+			const bool preserved = beforeEdit != afterEdit && m_doc->DocChanged() && bookHtml() == afterEdit;
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
+			const bool undoOk = bookHtml() == beforeEdit;
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_REDO, 0);
+			const bool redoOk = bookHtml() == afterEdit;
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
+			const bool resetOk = bookHtml() == beforeEdit;
+			const bool caseOk = paletteOk && mainOk && scriptsOk && preserved && undoOk && redoOk && resetOk;
+			appearanceReport.AppendFormat("%s=%d\n", test.name, caseOk); appearanceUndoOk = caseOk && appearanceUndoOk;
+		}
+		_Settings.SetMainToolbarIconSize(previousMainSize); _Settings.SetScriptIconSize(previousScriptSize);
+		appearanceUndoOk = RebuildCommandToolbarImages(UiMetrics::DpiForWindow(m_hWnd)) && ApplyScriptIconSize() && appearanceUndoOk;
+		const CString appearanceReportPath = CString(AU::_ARGS.source_memory_benchmark_path) + L".appearance";
+		WritePortableStateTestText(appearanceReportPath, appearanceReport);
+		if(!appearanceUndoOk) { output.Close(); ::PostQuitMessage(1); return 0; }
 		// The undo stack must still operate on the document after a palette switch.
 		MSHTML::IHTMLTxtRangePtr edit(bodyElement->createTextRange());
 		if(!edit || !edit->findText(L"Theme target", 0, 0)) { output.Close(); ::PostQuitMessage(1); return 0; }

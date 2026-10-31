@@ -24,6 +24,12 @@ try {
     } finally {
         $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $savedMode, $savedScenario
     }
+    $appearance = Get-Content -Raw -LiteralPath "$report.appearance"
+    Write-Host "Combined appearance Undo/Redo:`n$appearance"
+    foreach($case in @('light-16-32', 'sepia-24-20', 'custom-32-32')) {
+        if($appearance -notmatch ("(?m)^" + [regex]::Escape($case) + "=1\r?$")) { throw "Combined appearance Undo/Redo failed: $case`n$appearance" }
+    }
+    if($appearance -notmatch '(?m)^dark-32-16=(1|unsupported)\r?$') { throw "Dark combined appearance Undo/Redo failed:`n$appearance" }
     $rows = @(Import-Csv -LiteralPath $report -Delimiter "`t")
     $expected = @(
         @('light-auto', '0', '4278190080', '4278190080'),
