@@ -1085,12 +1085,18 @@ bool LoadCustomPaletteFromProfile(const std::wstring& id, CustomPalette& palette
 	return true;
 }
 
-bool DeleteCustomPaletteFromProfile(const std::wstring& id, std::wstring& error)
+bool PrepareCustomPaletteDelete(const std::wstring& id, SettingsFileTransaction& transaction, std::wstring& error)
 {
 	error.clear(); CString path;
 	if(!ProfilePalettePath(id, path, false, error)) return false;
 	if(::GetFileAttributesW(path) == INVALID_FILE_ATTRIBUTES) { error = L"Theme file does not exist."; return false; }
-	SettingsFileTransaction transaction; transaction.Add(path);
+	transaction.Add(path);
+	return true;
+}
+bool DeleteCustomPaletteFromProfile(const std::wstring& id, std::wstring& error)
+{
+	SettingsFileTransaction transaction;
+	if(!PrepareCustomPaletteDelete(id, transaction, error)) return false;
 	if(!transaction.Commit()) { error = L"Cannot delete theme file."; return false; }
 	return true;
 }

@@ -13,7 +13,7 @@ try {
     $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = if($Mode -eq 'installed') { $iso.DataPath } else { $null }
     $report = Join-Path $iso.DataPath 'Diagnostics/portable-state-report.txt'
     $missingRuns = 0
-    foreach($scenario in @('named-palette-core-runtime','custom-palette-copy','named-palette-settings-write','named-palette-settings-read','popular-palette-write','popular-palette-read','custom-palette-settings-write','custom-palette-edit','custom-palette-settings-read','custom-palette-settings-missing','custom-palette-settings-missing')) {
+    foreach($scenario in @('named-palette-core-runtime','custom-palette-copy','named-palette-settings-write','named-palette-settings-read','popular-palette-write','popular-palette-read','custom-palette-settings-write','custom-palette-manage','custom-palette-edit','custom-palette-settings-read','custom-palette-settings-missing','custom-palette-settings-missing')) {
         if($scenario -eq 'custom-palette-settings-missing' -and ++$missingRuns -eq 2) {
             $settingsRoot = if($Mode -eq 'portable') { Join-Path $iso.DataPath 'Settings' } else { $iso.DataPath }
             $themeDirectory = Join-Path $settingsRoot 'InterfaceThemes'

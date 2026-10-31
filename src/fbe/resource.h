@@ -861,7 +861,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        271
 #define _APS_NEXT_COMMAND_VALUE         58003
-#define _APS_NEXT_CONTROL_VALUE         1837
+#define _APS_NEXT_CONTROL_VALUE         1839
 #define _APS_NEXT_SYMED_VALUE           133
 #endif
 #endif
@@ -915,3 +915,6 @@
 
 #define IDC_PALETTE_IMPORT 1835
 #define IDC_PALETTE_EXPORT 1836
+
+#define IDC_PALETTE_RENAME 1837
+#define IDC_PALETTE_DELETE 1838

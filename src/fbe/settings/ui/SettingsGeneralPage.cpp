@@ -80,6 +80,10 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Add(GetDlgItem(IDC_INTERFACE_PALETTE_COPY), L"fbe.settings.tooltip.general.palette_copy", L"Create a copy of the selected palette. It is saved when you confirm settings.");
 	m_tooltips.Add(GetDlgItem(IDC_PALETTE_IMPORT), L"fbe.settings.tooltip.general.palette_import", L"Import a JSON palette. It is saved when you confirm settings.");
 	m_tooltips.Add(GetDlgItem(IDC_PALETTE_EXPORT), L"fbe.settings.tooltip.general.palette_export", L"Export the selected custom palette to a JSON file.");
+	m_tooltips.Add(GetDlgItem(IDC_PALETTE_RENAME), L"fbe.settings.tooltip.general.palette_rename", L"Rename the selected custom palette. The change is saved when you confirm settings.");
+	m_tooltips.Add(GetDlgItem(IDC_PALETTE_DELETE), L"fbe.settings.tooltip.general.palette_delete", L"Delete the selected custom palette when you confirm settings. Cancel keeps it.");
+	m_tooltips.AddDisabledControlArea(GetDlgItem(IDC_PALETTE_RENAME), L"fbe.settings.tooltip.general.palette_rename", L"Rename the selected custom palette. The change is saved when you confirm settings.");
+	m_tooltips.AddDisabledControlArea(GetDlgItem(IDC_PALETTE_DELETE), L"fbe.settings.tooltip.general.palette_delete", L"Delete the selected custom palette when you confirm settings. Cancel keeps it.");
 	for(HWND control : {m_paletteRole.m_hWnd, GetDlgItem(IDC_PALETTE_ROLE_LABEL).m_hWnd, GetDlgItem(IDC_PALETTE_CHOOSE_COLOR).m_hWnd, GetDlgItem(IDC_PALETTE_RESET_COLOR).m_hWnd})
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.palette_color", L"Edit a colour in a custom palette. Use the base colour to restore inheritance; Cancel discards changes.");
 	m_tooltips.Add(GetDlgItem(IDC_PALETTE_CONTRAST), L"fbe.settings.tooltip.general.palette_contrast", L"Checks text against window, control, selection, hover and pressed backgrounds. Disabled text uses a 3:1 threshold.");
@@ -104,6 +108,8 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	SetText(m_hWnd, IDC_INTERFACE_PALETTE_COPY, L"fbe.settings.palette.copy", L"Create copy...");
 	SetText(m_hWnd, IDC_PALETTE_IMPORT, L"fbe.settings.palette.import", L"Import...");
 	SetText(m_hWnd, IDC_PALETTE_EXPORT, L"fbe.settings.palette.export", L"Export...");
+	SetText(m_hWnd, IDC_PALETTE_RENAME, L"fbe.settings.palette.rename", L"Rename...");
+	SetText(m_hWnd, IDC_PALETTE_DELETE, L"fbe.settings.palette.delete", L"Delete");
 	SetText(m_hWnd, IDC_PALETTE_ROLE_LABEL, L"fbe.settings.palette.role", L"Colour role:");
 	SetText(m_hWnd, IDC_PALETTE_CHOOSE_COLOR, L"fbe.settings.palette.choose_color", L"Choose colour...");
 	SetText(m_hWnd, IDC_PALETTE_RESET_COLOR, L"fbe.settings.palette.reset_color", L"Use base colour");
@@ -279,7 +285,7 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	};
 	shift(IDC_OPTIONS_INTERFACE_GROUP, { IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG,
 		IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME,
-		IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE, IDC_INTERFACE_PALETTE_COPY, IDC_PALETTE_IMPORT, IDC_PALETTE_EXPORT, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR, IDC_PALETTE_CONTRAST, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
+		IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE, IDC_INTERFACE_PALETTE_COPY, IDC_PALETTE_IMPORT, IDC_PALETTE_EXPORT, IDC_PALETTE_RENAME, IDC_PALETTE_DELETE, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR, IDC_PALETTE_CONTRAST, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
 	const CRect interfaceGroup = bounds(IDC_OPTIONS_INTERFACE_GROUP);
 	int comboLeft = bounds(IDC_LANG).left;
 	for(int id : { IDC_OPTIONS_LANGUAGE_LABEL, IDC_OPTIONS_GENRE_CATALOG_LABEL,
@@ -312,7 +318,13 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	importButton.SetRect(comboLeft, actionTop, actionMiddle - gap / 2, actionTop + actionHeight);
 	exportButton.SetRect(actionMiddle + gap / 2, actionTop, interfaceComboRight, actionTop + actionHeight);
 	place(IDC_PALETTE_IMPORT, importButton); place(IDC_PALETTE_EXPORT, exportButton);
-	separateRows(IDC_PALETTE_IMPORT, IDC_PALETTE_EXPORT, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE);
+	CRect renameButton = bounds(IDC_PALETTE_RENAME), deleteButton = bounds(IDC_PALETTE_DELETE);
+	const int editHeight = max(renameButton.Height(), deleteButton.Height());
+	const int editTop = max(importButton.bottom, exportButton.bottom) + rowGap;
+	renameButton.SetRect(comboLeft, editTop, actionMiddle - gap / 2, editTop + editHeight);
+	deleteButton.SetRect(actionMiddle + gap / 2, editTop, interfaceComboRight, editTop + editHeight);
+	place(IDC_PALETTE_RENAME, renameButton); place(IDC_PALETTE_DELETE, deleteButton);
+	separateRows(IDC_PALETTE_RENAME, IDC_PALETTE_DELETE, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE);
 	CRect choose = bounds(IDC_PALETTE_CHOOSE_COLOR), reset = bounds(IDC_PALETTE_RESET_COLOR);
 	const int buttonHeight = max(choose.Height(), reset.Height());
 	const int buttonTop = max(bounds(IDC_PALETTE_ROLE_LABEL).bottom, bounds(IDC_PALETTE_ROLE).bottom) + rowGap;
@@ -495,7 +507,7 @@ LRESULT CSettingsGeneralPage::OnPaletteThemeChanged(UINT, WPARAM, LPARAM, BOOL& 
 void CSettingsGeneralPage::UpdatePaletteColorControls()
 {
 	const bool editable = m_acceptedPaletteIndex >= INTERFACE_PALETTE_COUNT && ThemeManager::IsCustomPaletteActive();
-	for(int id : {IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR, IDC_PALETTE_EXPORT}) GetDlgItem(id).EnableWindow(editable);
+	for(int id : {IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR, IDC_PALETTE_EXPORT, IDC_PALETTE_RENAME, IDC_PALETTE_DELETE}) GetDlgItem(id).EnableWindow(editable);
 	UpdatePaletteContrast();
 }
 
@@ -657,6 +669,72 @@ LRESULT CSettingsGeneralPage::OnExportPalette(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
+bool CSettingsGeneralPage::StagePaletteRename(const CString& name)
+{
+	const int selection = m_interfacePalette.GetCurSel();
+	const int index = selection - INTERFACE_PALETTE_COUNT;
+	if(index < 0 || index >= static_cast<int>(m_customPalettes.size())) return false;
+	ThemeManager::CustomPalette previous;
+	if(!ThemeManager::GetCustomPalette(previous) || previous.id != m_customPalettes[index].id) return false;
+	ThemeManager::CustomPalette draft = previous; draft.name = static_cast<LPCWSTR>(name);
+	ThemeManager::CustomPalette validated; std::wstring error;
+	if(!ThemeManager::ParseCustomPalette(ThemeManager::SerializeCustomPalette(draft), validated, error) || validated.name != draft.name) return false;
+	if(previous.name == draft.name) return true;
+	const CString oldLabel = CString(previous.name.c_str()) + L" (" + previous.id.c_str() + L")";
+	const CString label = name + L" (" + draft.id.c_str() + L")";
+	m_interfacePalette.DeleteString(selection);
+	const int inserted = m_interfacePalette.InsertString(selection, label);
+	if(inserted != selection || !ThemeManager::SetCustomPalette(draft)) {
+		if(inserted >= 0) m_interfacePalette.DeleteString(inserted);
+		m_interfacePalette.InsertString(selection, oldLabel); m_interfacePalette.SetCurSel(selection);
+		return false;
+	}
+	m_interfacePalette.SetCurSel(selection);
+	m_customPalettes[index] = draft;
+	bool found = false;
+	for(auto& pending : m_pendingPalettes) if(pending.id == draft.id) { pending = draft; found = true; break; }
+	if(!found) m_pendingPalettes.push_back(draft);
+	m_paletteChanged = true;
+	return true;
+}
+
+bool CSettingsGeneralPage::StagePaletteDelete()
+{
+	const int selection = m_interfacePalette.GetCurSel();
+	const int index = selection - INTERFACE_PALETTE_COUNT;
+	if(index < 0 || index >= static_cast<int>(m_customPalettes.size())) return false;
+	const std::wstring id = m_customPalettes[index].id;
+	const auto created = std::find(m_newPaletteIds.begin(), m_newPaletteIds.end(), id);
+	if(created == m_newPaletteIds.end()) m_deletedPaletteIds.push_back(id);
+	else m_newPaletteIds.erase(created);
+	m_pendingPalettes.erase(std::remove_if(m_pendingPalettes.begin(), m_pendingPalettes.end(), [&](const ThemeManager::CustomPalette& value) { return value.id == id; }), m_pendingPalettes.end());
+	m_customPalettes.erase(m_customPalettes.begin() + index);
+	m_interfacePalette.DeleteString(selection);
+	m_interfacePalette.SetCurSel(INTERFACE_PALETTE_CLASSIC);
+	BOOL handled = FALSE;
+	OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, m_interfacePalette, handled);
+	return true;
+}
+
+LRESULT CSettingsGeneralPage::OnRenamePalette(WORD, WORD, HWND, BOOL&)
+{
+	ThemeManager::CustomPalette palette;
+	if(!ThemeManager::GetCustomPalette(palette)) return 0;
+	CString name(palette.name.c_str());
+	if(AU::InputBoxOwned(name, FbeLoadRuntimeStringByKey(L"fbe.settings.palette.rename", L"Rename..."),
+		FbeLoadRuntimeStringByKey(L"fbe.settings.palette.rename_name", L"New name of the interface palette:"), m_hWnd) != IDYES) return 0;
+	name.Trim();
+	if(!StagePaletteRename(name)) MessageBox(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.rename_failed", L"Could not rename the palette. Enter a name of up to 100 characters without control characters."),
+		FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONWARNING);
+	return 0;
+}
+
+LRESULT CSettingsGeneralPage::OnDeletePalette(WORD, WORD, HWND, BOOL&)
+{
+	StagePaletteDelete();
+	return 0;
+}
+
 LRESULT CSettingsGeneralPage::OnCopyPalette(WORD, WORD, HWND, BOOL&)
 {
 	CString name;
@@ -670,6 +748,10 @@ LRESULT CSettingsGeneralPage::OnCopyPalette(WORD, WORD, HWND, BOOL&)
 
 bool CSettingsGeneralPage::PrepareCommit(SettingsFileTransaction& files, CString& error)
 {
+	for(const auto& id : m_deletedPaletteIds) {
+		std::wstring detail;
+		if(!ThemeManager::PrepareCustomPaletteDelete(id, files, detail)) { error = detail.c_str(); return false; }
+	}
 	for(const auto& palette : m_pendingPalettes) {
 		std::wstring detail;
 		const bool created = std::find(m_newPaletteIds.begin(), m_newPaletteIds.end(), palette.id) != m_newPaletteIds.end();

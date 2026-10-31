@@ -15,6 +15,7 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	std::vector<ThemeManager::CustomPalette> m_customPalettes;
 	std::vector<ThemeManager::CustomPalette> m_pendingPalettes;
 	std::vector<std::wstring> m_newPaletteIds;
+	std::vector<std::wstring> m_deletedPaletteIds;
 	CComboBox m_scriptIconSize;
 	CComboBox m_mainToolbarIconSize;
 	CComboBox m_genreCatalog;
@@ -58,6 +59,8 @@ public:
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE_COPY, BN_CLICKED, OnCopyPalette)
 		COMMAND_HANDLER(IDC_PALETTE_IMPORT, BN_CLICKED, OnImportPalette)
 		COMMAND_HANDLER(IDC_PALETTE_EXPORT, BN_CLICKED, OnExportPalette)
+		COMMAND_HANDLER(IDC_PALETTE_RENAME, BN_CLICKED, OnRenamePalette)
+		COMMAND_HANDLER(IDC_PALETTE_DELETE, BN_CLICKED, OnDeletePalette)
 		COMMAND_HANDLER(IDC_PALETTE_CHOOSE_COLOR, BN_CLICKED, OnChoosePaletteColor)
 		COMMAND_HANDLER(IDC_PALETTE_RESET_COLOR, BN_CLICKED, OnResetPaletteColor)
 		CHAIN_MSG_MAP(CAxDialogImpl<CSettingsGeneralPage>)
@@ -74,6 +77,10 @@ public:
 	LRESULT OnCopyPalette(WORD, WORD, HWND, BOOL&);
 	LRESULT OnImportPalette(WORD, WORD, HWND, BOOL&);
 	LRESULT OnExportPalette(WORD, WORD, HWND, BOOL&);
+	LRESULT OnRenamePalette(WORD, WORD, HWND, BOOL&);
+	LRESULT OnDeletePalette(WORD, WORD, HWND, BOOL&);
+	bool StagePaletteRename(const CString& name);
+	bool StagePaletteDelete();
 	bool StagePaletteImport(const CString& path, CString& error);
 	LRESULT OnChoosePaletteColor(WORD, WORD, HWND, BOOL&);
 	LRESULT OnResetPaletteColor(WORD, WORD, HWND, BOOL&);

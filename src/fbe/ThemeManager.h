@@ -78,6 +78,7 @@ namespace ThemeManager
 	bool SaveCustomPaletteToProfile(const CustomPalette& palette, bool overwrite, std::wstring& error);
 	bool IsValidCustomPaletteId(const std::wstring& id);
 	bool LoadCustomPaletteFromProfile(const std::wstring& id, CustomPalette& palette, std::wstring& error);
+	bool PrepareCustomPaletteDelete(const std::wstring& id, SettingsFileTransaction& transaction, std::wstring& error);
 	bool DeleteCustomPaletteFromProfile(const std::wstring& id, std::wstring& error);
 	std::vector<CustomPalette> ListCustomPalettesInProfile();
 	struct ApplyDiagnostics

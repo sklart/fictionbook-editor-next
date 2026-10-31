@@ -264,6 +264,86 @@ void CMainFrame::RunPortableStateTestScenario()
             passed ? "custom-palette-settings-write=1\nresult=pass\n" : "custom-palette-settings-write=0\nresult=fail\n");
         PostMessage(WM_CLOSE); return;
     }
+    if(IsFbeTestScenario(L"custom-palette-manage")) {
+        bool passed = _Settings.GetInterfacePalette() == L"custom:restart-test" && ThemeManager::IsCustomPaletteActive();
+        ThemeManager::CustomPalette original, stored; std::wstring error;
+        passed = ThemeManager::LoadCustomPaletteFromProfile(L"restart-test", original, error) && passed;
+        {
+            CSettingsGeneralPage page;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
+                passed = page.StagePaletteCopy(L"Temporary copy") && page.StagePaletteDelete() && passed;
+                SettingsFileTransaction files; CString detail;
+                passed = page.PrepareCommit(files, detail) && files.Commit() && page.CancelChanges() &&
+                    ThemeManager::ListCustomPalettesInProfile().size() == 1 && passed;
+                page.DestroyWindow();
+            }
+        }
+        {
+            CSettingsGeneralPage page;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
+                passed = ::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_RENAME)) && ::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_DELETE)) &&
+                    !page.StagePaletteRename(L"") && page.StagePaletteRename(L"Renamed") && passed;
+                passed = ThemeManager::LoadCustomPaletteFromProfile(original.id, stored, error) && stored.name == original.name && passed;
+                { SettingsFileTransaction files; CString detail; passed = page.PrepareCommit(files, detail) && passed; }
+                passed = page.CancelChanges() && ThemeManager::LoadCustomPaletteFromProfile(original.id, stored, error) && stored.name == original.name && passed;
+                page.DestroyWindow();
+            }
+        }
+        {
+            CSettingsGeneralPage page;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
+                passed = page.StagePaletteRename(L"Renamed") && passed;
+                SettingsFileTransaction files; CString detail;
+                passed = page.PrepareCommit(files, detail) && passed; page.Commit(); passed = files.Commit() && passed; page.FinishCommit();
+                passed = _Settings.GetInterfacePalette() == L"custom:restart-test" && ThemeManager::LoadCustomPaletteFromProfile(original.id, stored, error) &&
+                    stored.id == original.id && stored.name == L"Renamed" && stored.colors[THEME_COLOR_WINDOW] == original.colors[THEME_COLOR_WINDOW] && passed;
+                page.DestroyWindow();
+            }
+        }
+        {
+            CSettingsGeneralPage page;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
+                passed = page.StagePaletteDelete() && !ThemeManager::IsCustomPaletteActive() &&
+                    !::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_DELETE)) && ThemeManager::LoadCustomPaletteFromProfile(original.id, stored, error) && passed;
+                passed = page.CancelChanges() && ThemeManager::IsCustomPaletteActive() && ThemeManager::LoadCustomPaletteFromProfile(original.id, stored, error) && stored.name == L"Renamed" && passed;
+                page.DestroyWindow();
+            }
+        }
+        {
+            CSettingsGeneralPage page;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
+                passed = page.StagePaletteDelete() && passed;
+                SettingsFileTransaction files; CString detail;
+                passed = page.PrepareCommit(files, detail) && passed;
+                const CString existing = CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"delete-rollback-probe.txt";
+                passed = WritePortableStateTestText(existing, "existing") && passed;
+                files.Add(existing, CString(), true);
+                passed = !files.Commit() && !files.RollbackFailed() && ThemeManager::LoadCustomPaletteFromProfile(original.id, stored, error) && stored.name == L"Renamed" && passed;
+                passed = page.CancelChanges() && passed;
+                page.DestroyWindow();
+            }
+        }
+        {
+            CSettingsGeneralPage page;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
+                passed = page.StagePaletteDelete() && passed;
+                SettingsFileTransaction files; CString detail;
+                passed = page.PrepareCommit(files, detail) && passed; page.Commit(); passed = files.Commit() && passed; page.FinishCommit();
+                passed = _Settings.GetInterfacePalette() == L"classic" && !ThemeManager::LoadCustomPaletteFromProfile(original.id, stored, error) && passed;
+                page.DestroyWindow();
+            }
+        }
+        passed = ThemeManager::SaveCustomPaletteToProfile(original, false, error) && passed;
+        _Settings.SetInterfacePalette(L"custom:restart-test"); _Settings.Save();
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", passed ? "custom-palette-manage=1\nresult=pass\n" : "custom-palette-manage=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
+    }
     if(IsFbeTestScenario(L"custom-palette-edit")) {
         bool contrastPassed = true;
         if(!ThemeManager::IsHighContrast()) {
@@ -409,7 +489,35 @@ void CMainFrame::RunPortableStateTestScenario()
             CSettingsGeneralPage page;
             passed = page.Create(m_hWnd) != NULL && passed;
             if(page.m_hWnd) {
-                passed = !::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_ROLE)) && !::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_CHOOSE_COLOR)) && passed;
+                passed = !::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_ROLE)) && !::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_CHOOSE_COLOR)) &&
+                    !::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_RENAME)) && !::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_DELETE)) &&
+                    !page.StagePaletteRename(L"Built-in") && !page.StagePaletteDelete() && passed;
+                struct PaletteTooltipSearch { HWND page; HWND found; } tooltipSearch{page.m_hWnd, NULL};
+                ::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM data) -> BOOL {
+                    PaletteTooltipSearch& search = *reinterpret_cast<PaletteTooltipSearch*>(data);
+                    wchar_t name[64] = {}; ::GetClassNameW(window, name, _countof(name));
+                    if(wcscmp(name, TOOLTIPS_CLASSW) == 0) {
+                        wchar_t text[2048] = {}; CToolInfo info(TTF_IDISHWND, ::GetDlgItem(search.page, IDC_PALETTE_RENAME), 0, NULL, text);
+                        if(::SendMessageW(window, TTM_GETTOOLINFOW, 0, reinterpret_cast<LPARAM>(&info))) { search.found = window; return FALSE; }
+                    }
+                    return TRUE;
+                }, reinterpret_cast<LPARAM>(&tooltipSearch));
+                for(int id : {IDC_PALETTE_RENAME, IDC_PALETTE_DELETE}) {
+                    const CString expected = FbeLoadRuntimeStringByKey(id == IDC_PALETTE_RENAME ? L"fbe.settings.tooltip.general.palette_rename" : L"fbe.settings.tooltip.general.palette_delete");
+                    wchar_t text[2048] = {}; CToolInfo info(TTF_IDISHWND, page.GetDlgItem(id), 0, NULL, text);
+                    passed = tooltipSearch.found && ::SendMessageW(tooltipSearch.found, TTM_GETTOOLINFOW, 0, reinterpret_cast<LPARAM>(&info)) &&
+                        info.lpszText && !expected.IsEmpty() && expected == info.lpszText && passed;
+                    RECT expectedRect = {}; ::GetWindowRect(page.GetDlgItem(id), &expectedRect);
+                    ::MapWindowPoints(NULL, page.m_hWnd, reinterpret_cast<POINT*>(&expectedRect), 2);
+                    bool areaFound = false;
+                    const int count = tooltipSearch.found ? static_cast<int>(::SendMessageW(tooltipSearch.found, TTM_GETTOOLCOUNT, 0, 0)) : 0;
+                    for(int tool = 0; tool < count; ++tool) {
+                        wchar_t areaText[2048] = {}; TOOLINFOW area = {}; area.cbSize = sizeof(area); area.lpszText = areaText;
+                        if(::SendMessageW(tooltipSearch.found, TTM_ENUMTOOLSW, tool, reinterpret_cast<LPARAM>(&area)) && area.hwnd == page.m_hWnd &&
+                            !(area.uFlags & TTF_IDISHWND) && ::EqualRect(&area.rect, &expectedRect) && area.lpszText && expected == area.lpszText) areaFound = true;
+                    }
+                    passed = areaFound && passed;
+                }
                 passed = page.StagePaletteCopy(L"Cancelled copy") && ThemeManager::IsCustomPaletteActive() && ::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_ROLE)) && passed;
                 {
                     SettingsFileTransaction transaction; CString error;
