@@ -2654,7 +2654,9 @@ HBITMAP FitRectScriptBitmap(HBITMAP bitmap, int sourceWidth, int sourceHeight, i
 	if(!fitted || !bits) { if(fitted) ::DeleteObject(fitted); return NULL; }
 	DWORD* target = static_cast<DWORD*>(bits);
 	memset(target,0,static_cast<size_t>(targetSize)*targetSize*sizeof(DWORD));
-	const int width = (std::min)(sourceWidth,targetSize), height = (std::min)(sourceHeight,targetSize);
+	const int largest = (std::max)(sourceWidth, sourceHeight);
+	const int width = largest > targetSize ? (std::max)(1, sourceWidth * targetSize / largest) : sourceWidth;
+	const int height = largest > targetSize ? (std::max)(1, sourceHeight * targetSize / largest) : sourceHeight;
 	const int left = (targetSize-width)/2, top = (targetSize-height)/2;
 	for(int y=0; y<height; ++y) for(int x=0; x<width; ++x) {
 		const DWORD pixel = source[static_cast<size_t>(y * sourceHeight / height)*sourceWidth + x * sourceWidth / width];

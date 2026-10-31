@@ -31,6 +31,7 @@ try {
         if($scenario -eq 'script-toolbar-runtime-size' -and (($text -notmatch '(?m)^bitmap-only-16=1\r?$') -or ($text -match '(?m)^bitmap-only-16=0\r?$') -or ($text -notmatch '(?m)^bitmap-only-20=1\r?$') -or ($text -match '(?m)^bitmap-only-20=0\r?$'))) { throw 'BMP-only icon rendering or native-size centering failed.' }
         if($scenario -eq 'script-toolbar-runtime-size' -and (($text -notmatch '(?m)^tree-bitmap-only-16=1\r?$') -or ($text -notmatch '(?m)^tree-bitmap-only-20=1\r?$'))) { throw 'BMP-only tree icon rendering or native-size centering failed.' }
         if($scenario -eq 'script-toolbar-runtime-size' -and (($text -notmatch '(?m)^rect-bitmap-16=1\r?$') -or ($text -match '(?m)^rect-bitmap-16=0\r?$') -or ($text -notmatch '(?m)^rect-bitmap-20=1\r?$') -or ($text -match '(?m)^rect-bitmap-20=0\r?$') -or ($text -notmatch '(?m)^tree-rect-16=1\r?$') -or ($text -notmatch '(?m)^tree-rect-20=1\r?$'))) { throw 'Rectangular BMP icon rendering or centering failed.' }
+        if($scenario -eq 'script-toolbar-runtime-size') { foreach($key in @('large-rect-16','large-rect-20','tree-large-rect-16','tree-large-rect-20')) { if($text -notmatch "(?m)^$key=1\r?$" -or $text -match "(?m)^$key=0\r?$") { throw "Large rectangular BMP aspect ratio failed: $key" } } }
     }
     $passed = $true
     Write-Host "Script icon size runtime: PASS ($Mode)."

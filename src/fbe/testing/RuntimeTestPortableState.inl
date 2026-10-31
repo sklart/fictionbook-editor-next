@@ -1216,10 +1216,26 @@ void CMainFrame::RunPortableStateTestScenario()
 			}
 		}
 		const CString iconFolder = scriptsDirectory + L"IconFolder\\";
+		const bool largeRectScriptWritten = WritePortableStateTestText(scriptsDirectory + L"LargeRect.js", "function Run() {}\n");
+		bool largeRectWritten = false;
+		{
+			HANDLE file = ::CreateFileW(scriptsDirectory + L"LargeRect.bmp", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+			if(file != INVALID_HANDLE_VALUE) {
+				BITMAPFILEHEADER header = {}; BITMAPINFOHEADER info = {}; BYTE pixels[32 * 24 * 3] = {};
+				header.bfType = 0x4d42; header.bfOffBits = sizeof(header) + sizeof(info); header.bfSize = header.bfOffBits + sizeof(pixels);
+				info.biSize = sizeof(info); info.biWidth = 32; info.biHeight = 24; info.biPlanes = 1; info.biBitCount = 24; info.biCompression = BI_RGB; info.biSizeImage = sizeof(pixels);
+				for(size_t index=0; index<sizeof(pixels); index+=3) pixels[index+1] = 200;
+				DWORD written = 0;
+				largeRectWritten = ::WriteFile(file,&header,sizeof(header),&written,NULL) && written == sizeof(header) &&
+					::WriteFile(file,&info,sizeof(info),&written,NULL) && written == sizeof(info) &&
+					::WriteFile(file,pixels,sizeof(pixels),&written,NULL) && written == sizeof(pixels);
+				::CloseHandle(file);
+			}
+		}
 		::CreateDirectory(iconFolder, NULL);
 		const bool nestedFixtureWritten = WritePortableStateTestText(iconFolder + L"Nested.js", "function Run() {}\n");
-		if(!fixtureWritten || !fixtureIconCopied || !dualScriptWritten || !dualIconCopied || !dualBitmapWritten || !bitmapOnlyScriptWritten || !bitmapOnlyCopied || !rectScriptWritten || !rectBitmapWritten || !nestedFixtureWritten || !InitializeScripts()) { WritePortableStateTestText(reportPath, "phase=script-toolbar-runtime-size\nreason=initial-reload\nresult=fail\n"); PostMessage(WM_CLOSE); return; }
-		CString scriptUid; UINT scriptCommand = 0, dualCommand = 0, bitmapOnlyCommand = 0, rectCommand = 0;
+		if(!fixtureWritten || !fixtureIconCopied || !dualScriptWritten || !dualIconCopied || !dualBitmapWritten || !bitmapOnlyScriptWritten || !bitmapOnlyCopied || !rectScriptWritten || !rectBitmapWritten || !largeRectScriptWritten || !largeRectWritten || !nestedFixtureWritten || !InitializeScripts()) { WritePortableStateTestText(reportPath, "phase=script-toolbar-runtime-size\nreason=initial-reload\nresult=fail\n"); PostMessage(WM_CLOSE); return; }
+		CString scriptUid; UINT scriptCommand = 0, dualCommand = 0, bitmapOnlyCommand = 0, rectCommand = 0, largeRectCommand = 0;
 		for(int index = 0; index < m_scripts.Menu().Count(); ++index)
 		{
 			if(m_scripts.Menu().Item(index).relativePath.CompareNoCase(L"RuntimeSize.js") == 0)
@@ -1230,6 +1246,8 @@ void CMainFrame::RunPortableStateTestScenario()
 				bitmapOnlyCommand = ID_SCRIPT_BASE + m_scripts.Menu().Item(index).commandId;
 			if(m_scripts.Menu().Item(index).relativePath.CompareNoCase(L"RectBitmap.js") == 0)
 				rectCommand = ID_SCRIPT_BASE + m_scripts.Menu().Item(index).commandId;
+			if(m_scripts.Menu().Item(index).relativePath.CompareNoCase(L"LargeRect.js") == 0)
+				largeRectCommand = ID_SCRIPT_BASE + m_scripts.Menu().Item(index).commandId;
 		}
 		std::vector<ScriptToolbarDefinition> previous = currentDefinitions(), definitions = previous;
 		for(int index = 1; index <= 8; ++index) { ScriptToolbarDefinition item; item.id.Format(L"runtime-size-%d", index); item.name.Format(L"Runtime size %d", index); item.visible = true; if(index == 1 && !scriptUid.IsEmpty()) { PortableToolbarItem button = {}; button.scriptUid = scriptUid; item.items.push_back(button); } definitions.push_back(item); }
@@ -1331,7 +1349,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			RECT bounds = {}; ::GetWindowRect(window, &bounds);
 			TBBUTTONS catalog; const bool available = GetAvailableButtons(window, catalog);
 			bool scriptImage = false; int scriptImageIndex = -1;
-			int dualImageIndex = -1, bitmapOnlyIndex = -1, rectIndex = -1;
+			int dualImageIndex = -1, bitmapOnlyIndex = -1, rectIndex = -1, largeRectIndex = -1;
 			for(int index = 0; available && index < catalog.GetSize(); ++index)
 			{
 				if(catalog[index].idCommand == static_cast<int>(scriptCommand))
@@ -1339,6 +1357,7 @@ void CMainFrame::RunPortableStateTestScenario()
 				if(catalog[index].idCommand == static_cast<int>(dualCommand)) dualImageIndex = catalog[index].iBitmap;
 				if(catalog[index].idCommand == static_cast<int>(bitmapOnlyCommand)) bitmapOnlyIndex = catalog[index].iBitmap;
 				if(catalog[index].idCommand == static_cast<int>(rectCommand)) rectIndex = catalog[index].iBitmap;
+				if(catalog[index].idCommand == static_cast<int>(largeRectCommand)) largeRectIndex = catalog[index].iBitmap;
 			}
 			bool scriptPixelsMatch = true;
 			bool dualBitmapPreferred = true;
@@ -1353,6 +1372,7 @@ void CMainFrame::RunPortableStateTestScenario()
 				matrixDetails.AppendFormat("dual-bitmap-preferred=%d\n", dualBitmapPreferred);
 				matrixDetails.AppendFormat("bitmap-only-16=%d\n", bitmapOnlyCorrect);
 				matrixDetails.AppendFormat("rect-bitmap-16=%d\n", rectBitmapCorrect);
+				matrixDetails.AppendFormat("large-rect-16=%d\n", greenBitmapAtNativeSize(images,largeRectIndex,16,16,12));
 			}
 			if(dpi == 120 && _Settings.GetScriptIconSize() == 16) {
 				dualBitmapPreferred = compareFixturePixels(images, dualImageIndex, 20);
@@ -1361,6 +1381,7 @@ void CMainFrame::RunPortableStateTestScenario()
 				matrixDetails.AppendFormat("dual-larger-ico-preferred=%d\n", dualBitmapPreferred);
 				matrixDetails.AppendFormat("bitmap-only-20=%d\n", bitmapOnlyCorrect);
 				matrixDetails.AppendFormat("rect-bitmap-20=%d\n", rectBitmapCorrect);
+				matrixDetails.AppendFormat("large-rect-20=%d\n", greenBitmapAtNativeSize(images,largeRectIndex,20,20,15));
 			}
 			// Measure the painted glyph, not only the ImageList cell. The source
 			// has transparent corners but its painted area must grow with DPI.
@@ -1465,6 +1486,10 @@ void CMainFrame::RunPortableStateTestScenario()
 		TVITEMW rectTree = {}; rectTree.mask = TVIF_IMAGE; rectTree.hItem = rectTreeItem;
 		const bool treeRect16 = rectTreeItem && ::SendMessageW(iconTree,TVM_GETITEMW,0,reinterpret_cast<LPARAM>(&rectTree)) &&
 			greenBitmapAtNativeSize(iconTree.ScriptImageList(),rectTree.iImage,16,16,12);
+		const HTREEITEM largeRectTreeItem = iconTree.FindScriptTreeItem(L"largerect.js");
+		TVITEMW largeRectTree = {}; largeRectTree.mask = TVIF_IMAGE; largeRectTree.hItem = largeRectTreeItem;
+		const bool treeLargeRect16 = largeRectTreeItem && ::SendMessageW(iconTree,TVM_GETITEMW,0,reinterpret_cast<LPARAM>(&largeRectTree)) &&
+			greenBitmapAtNativeSize(iconTree.ScriptImageList(),largeRectTree.iImage,16,16,12);
 		iconTree.UpdateScriptDpiMetrics(120);
 		const bool treeLargeIconPreferred = dualTreeItem && ::SendMessageW(iconTree,TVM_GETITEMW,0,reinterpret_cast<LPARAM>(&dualTree)) &&
 			compareFixturePixels(iconTree.ScriptImageList(),dualTree.iImage,20);
@@ -1472,6 +1497,9 @@ void CMainFrame::RunPortableStateTestScenario()
 			greenBitmapAtNativeSize(iconTree.ScriptImageList(),bitmapOnlyTree.iImage,20,16,16);
 		const bool treeRect20 = rectTreeItem && ::SendMessageW(iconTree,TVM_GETITEMW,0,reinterpret_cast<LPARAM>(&rectTree)) &&
 			greenBitmapAtNativeSize(iconTree.ScriptImageList(),rectTree.iImage,20,16,12);
+		const bool treeLargeRect20 = largeRectTreeItem && ::SendMessageW(iconTree,TVM_GETITEMW,0,reinterpret_cast<LPARAM>(&largeRectTree)) &&
+			greenBitmapAtNativeSize(iconTree.ScriptImageList(),largeRectTree.iImage,20,20,15);
+		matrixDetails.AppendFormat("tree-large-rect-16=%d\ntree-large-rect-20=%d\n", treeLargeRect16, treeLargeRect20);
 		matrixDetails.AppendFormat("tree-dual-bitmap=%d\ntree-dual-larger-ico=%d\ntree-bitmap-only-16=%d\ntree-bitmap-only-20=%d\ntree-rect-16=%d\ntree-rect-20=%d\n", treeBitmapPreferred, treeLargeIconPreferred, treeBitmapOnly16, treeBitmapOnly20, treeRect16, treeRect20);
 		iconTree.UpdateScriptDpiMetrics(UiMetrics::DpiForWindow(iconTree));
 		iconTree.SelectItem(iconTree.FindScriptTreeItem(L"runtimesize.js"));

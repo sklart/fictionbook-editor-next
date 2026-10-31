@@ -1789,8 +1789,9 @@ int CTreeView::AddScriptImage(HBITMAP bitmap)
 		return m_scriptImageList.Add(bitmap, RGB(255, 0, 255));
 	// Keep small bitmap sidecars at their native resolution. Upscaling a 16px
 	// drawing to the tree's DPI cell produces an indistinct icon.
-	const int width = (std::min)(static_cast<int>(source.bmWidth), m_script_image_size);
-	const int height = (std::min)(static_cast<int>(source.bmHeight), m_script_image_size);
+	const int largest = (std::max)(static_cast<int>(source.bmWidth), static_cast<int>(source.bmHeight));
+	const int width = largest > m_script_image_size ? (std::max)(1, static_cast<int>(source.bmWidth) * m_script_image_size / largest) : source.bmWidth;
+	const int height = largest > m_script_image_size ? (std::max)(1, static_cast<int>(source.bmHeight) * m_script_image_size / largest) : source.bmHeight;
 	BITMAPINFO sourceInfo = {}; sourceInfo.bmiHeader.biSize = sizeof(sourceInfo.bmiHeader);
 	sourceInfo.bmiHeader.biWidth = source.bmWidth; sourceInfo.bmiHeader.biHeight = -source.bmHeight;
 	sourceInfo.bmiHeader.biPlanes = 1; sourceInfo.bmiHeader.biBitCount = 32; sourceInfo.bmiHeader.biCompression = BI_RGB;
