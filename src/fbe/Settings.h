@@ -231,6 +231,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	DWORD		m_interface_lang_id;
 	InterfaceTheme m_interface_theme;
 	CString m_interface_palette;
+	CString m_interface_palette_error;
 	CString m_description_layout;
 	GenreCatalog	m_genre_catalog;
 
@@ -382,6 +383,7 @@ public:
 	DWORD	GetInterfaceLanguageID()const;
 	InterfaceTheme GetInterfaceTheme()const;
 	CString GetInterfacePalette()const { return m_interface_palette; }
+	CString GetInterfacePaletteError()const { return m_interface_palette_error; }
 	void SetInterfacePalette(const CString& value, bool apply = false);
 	CString GetDescriptionLayout()const { return m_description_layout; }
 	void SetDescriptionLayout(const CString& value) { m_description_layout = value == L"classic" ? L"classic" : L"modern"; }

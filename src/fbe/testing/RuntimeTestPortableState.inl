@@ -62,6 +62,42 @@ static VOID CALLBACK CloseNavigationPopupForTest(HWND, UINT, UINT_PTR timer, DWO
 
 void CMainFrame::RunPortableStateTestScenario()
 {
+    if(IsFbeTestScenario(L"custom-palette-settings-write")) {
+        ThemeManager::CustomPalette custom;
+        custom.id = L"restart-test"; custom.name = L"Restart test";
+        custom.base = ThemeManager::CustomPaletteBase::Sepia;
+        custom.present[THEME_COLOR_WINDOW] = true; custom.colors[THEME_COLOR_WINDOW] = RGB(17, 34, 51);
+        std::wstring error;
+        bool passed = ThemeManager::SaveCustomPaletteToProfile(custom, true, error);
+        _Settings.SetInterfacePalette(L"custom:restart-test");
+        passed = _Settings.GetInterfacePalette() == L"custom:restart-test" && _Settings.GetInterfacePaletteError().IsEmpty() &&
+            ThemeManager::IsCustomPaletteActive() && ThemeManager::Color(THEME_COLOR_WINDOW) == RGB(17, 34, 51) && passed;
+        CSettings candidate; candidate.SetDefaults(); candidate.SetInterfacePalette(L"custom:absent");
+        passed = candidate.GetInterfacePalette() == L"custom:absent" && ThemeManager::IsCustomPaletteActive() && passed;
+        _Settings.Save();
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
+            passed ? "custom-palette-settings-write=1\nresult=pass\n" : "custom-palette-settings-write=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
+    }
+    if(IsFbeTestScenario(L"custom-palette-settings-read")) {
+        bool passed = _Settings.GetInterfacePalette() == L"custom:restart-test" && _Settings.GetInterfacePaletteError().IsEmpty() &&
+            ThemeManager::IsCustomPaletteActive() && ThemeManager::Color(THEME_COLOR_WINDOW) == RGB(17, 34, 51);
+        std::wstring error;
+        passed = ThemeManager::DeleteCustomPaletteFromProfile(L"restart-test", error) && passed;
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
+            passed ? "custom-palette-settings-read=1\nresult=pass\n" : "custom-palette-settings-read=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
+    }
+    if(IsFbeTestScenario(L"custom-palette-settings-missing")) {
+        bool passed = _Settings.GetInterfacePalette() == L"custom:restart-test" && !_Settings.GetInterfacePaletteError().IsEmpty() &&
+            !ThemeManager::IsCustomPaletteActive() && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CLASSIC &&
+            _Settings.GetInterfaceTheme() == INTERFACE_THEME_AUTOMATIC;
+        _Settings.SetInterfacePalette(L"custom:../invalid");
+        passed = _Settings.GetInterfacePalette() == L"classic" && _Settings.GetInterfacePaletteError().IsEmpty() && passed;
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
+            passed ? "custom-palette-settings-missing=1\nresult=pass\n" : "custom-palette-settings-missing=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
+    }
     if(IsFbeTestScenario(L"named-palette-settings-write")) {
         const InterfaceTheme original = _Settings.GetInterfaceTheme();
         bool passed = _Settings.GetInterfacePalette() == L"classic" && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CLASSIC;

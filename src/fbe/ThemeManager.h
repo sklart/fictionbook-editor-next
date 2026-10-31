@@ -58,6 +58,7 @@ namespace ThemeManager
 	bool ParseCustomPalette(const std::wstring& json, CustomPalette& result, std::wstring& error);
 	std::wstring SerializeCustomPalette(const CustomPalette& palette);
 	bool SaveCustomPaletteToProfile(const CustomPalette& palette, bool overwrite, std::wstring& error);
+	bool IsValidCustomPaletteId(const std::wstring& id);
 	bool LoadCustomPaletteFromProfile(const std::wstring& id, CustomPalette& palette, std::wstring& error);
 	bool DeleteCustomPaletteFromProfile(const std::wstring& id, std::wstring& error);
 	struct ApplyDiagnostics

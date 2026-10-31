@@ -995,13 +995,30 @@ void CSettings::SetInterfaceTheme(InterfaceTheme theme, bool apply)
 
 void CSettings::SetInterfacePalette(const CString& value, bool apply)
 {
-	const CString normalized = value == L"graphite" || value == L"navy" || value == L"sepia" ? value : L"classic";
+	const bool custom = value.Left(7) == L"custom:" && ThemeManager::IsValidCustomPaletteId(static_cast<LPCWSTR>(value.Mid(7)));
+	const CString normalized = custom || value == L"graphite" || value == L"navy" || value == L"sepia" ? value : L"classic";
 	const InterfacePalette palette = normalized == L"graphite" ? INTERFACE_PALETTE_GRAPHITE :
 		normalized == L"navy" ? INTERFACE_PALETTE_NAVY : normalized == L"sepia" ? INTERFACE_PALETTE_SEPIA : INTERFACE_PALETTE_CLASSIC;
 	m_interface_palette = normalized;
-	// Keep an unsupported dark preference for migration, but render the safe
-	// classic palette on systems without the required Windows dark support.
-	if(this == &_Settings && !ThemeManager::SetNamedPalette(palette)) ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CLASSIC);
+	m_interface_palette_error.Empty();
+	if(this == &_Settings)
+	{
+		bool applied = false;
+		if(custom)
+		{
+			ThemeManager::CustomPalette loaded;
+			std::wstring error;
+			if(ThemeManager::LoadCustomPaletteFromProfile(static_cast<LPCWSTR>(value.Mid(7)), loaded, error))
+			{
+				applied = ThemeManager::SetCustomPalette(loaded);
+				if(!applied) error = L"This theme is not supported on this version of Windows.";
+			}
+			if(!applied) m_interface_palette_error = error.c_str();
+		}
+		else applied = ThemeManager::SetNamedPalette(palette);
+		// Preserve the preference so a temporarily unavailable theme can recover.
+		if(!applied) ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CLASSIC);
+	}
 	if(apply) Save();
 }
 

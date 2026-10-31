@@ -964,12 +964,17 @@ std::wstring SerializeCustomPalette(const CustomPalette& palette)
 	return json + L"}}";
 }
 
+bool IsValidCustomPaletteId(const std::wstring& id)
+{
+	CustomPalette probe; probe.id = id; probe.name = L"validation";
+	CustomPalette checked; std::wstring error;
+	return ParseCustomPalette(SerializeCustomPalette(probe), checked, error) && checked.id == id;
+}
+
 namespace {
 bool ProfilePalettePath(const std::wstring& id, CString& path, bool createDirectory, std::wstring& error)
 {
-	CustomPalette probe; probe.id = id; probe.name = L"validation";
-	CustomPalette checked; std::wstring parseError;
-	if(!ParseCustomPalette(SerializeCustomPalette(probe), checked, parseError) || checked.id != id) { error = L"Invalid theme id."; return false; }
+	if(!IsValidCustomPaletteId(id)) { error = L"Invalid theme id."; return false; }
 	CString directory(DeploymentContext::SettingsDirectory().c_str());
 	if(directory.IsEmpty()) { error = L"Settings directory is unavailable."; return false; }
 	if(createDirectory && !::CreateDirectoryW(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) { error = L"Settings directory is unavailable."; return false; }

@@ -12,7 +12,7 @@ try {
     $env:FBE_NEXT_TEST_MODE = '1'
     $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = if($Mode -eq 'installed') { $iso.DataPath } else { $null }
     $report = Join-Path $iso.DataPath 'Diagnostics/portable-state-report.txt'
-    foreach($scenario in @('named-palette-core-runtime','named-palette-settings-write','named-palette-settings-read')) {
+    foreach($scenario in @('named-palette-core-runtime','named-palette-settings-write','named-palette-settings-read','custom-palette-settings-write','custom-palette-settings-read','custom-palette-settings-missing')) {
         $env:FBE_NEXT_TEST_SCENARIO = $scenario
         Remove-Item -LiteralPath $report -Force -ErrorAction SilentlyContinue
         $process = Start-Process $iso.Exe -ArgumentList "--$Mode" -WorkingDirectory $iso.Root -WindowStyle Hidden -PassThru

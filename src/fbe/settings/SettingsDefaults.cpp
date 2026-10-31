@@ -60,6 +60,7 @@ void CSettings::SetDefaults()
 	m_interface_lang_id		= FBE_INTERFACE_LANGUAGE_AUTO;
 	m_interface_theme = INTERFACE_THEME_AUTOMATIC;
 	m_interface_palette = L"classic";
+	m_interface_palette_error.Empty();
 	if(this == &_Settings) ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CLASSIC);
 	m_description_layout = L"modern";
 	ThemeManager::SetSelectedTheme(m_interface_theme);
