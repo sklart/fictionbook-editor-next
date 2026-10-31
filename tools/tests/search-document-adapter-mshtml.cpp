@@ -226,6 +226,44 @@ static int VerifyEmptyParagraphRegexAnchors()
 		return 135;
 	return 0;
 }
+static int VerifyDigitReplacementAtParagraphStart()
+{
+	MSHTML::IHTMLDocument2Ptr doc;
+	doc.CreateInstance(L"htmlfile");
+	IPersistStreamInitPtr persist(doc);
+	if (!doc || !persist || FAILED(persist->InitNew()) || !WriteHtml(doc,
+		L"<html><body><div id='fbw_body'><div class='annotation'><p>Annotation</p></div><div class='history'><p id='version'>1.0 — создание файла</p></div><div class='body'><div class='section'><p id='file'>blank.fb2</p><p id='inline'><em id='em'>4</em><strong id='strong'>5</strong></p></div></div></div></body></html>")) return 150;
+	MSHTML::IHTMLDocument3Ptr editableDoc(doc);
+	editableDoc->getElementById(L"fbw_body")->setAttribute(L"contentEditable", _variant_t(L"true"), 0);
+	SearchDocumentAdapter adapter;
+	const AU::Search::SearchTextSnapshot snapshot = adapter.BuildSnapshot(doc, 150);
+	std::vector<MSHTML::IHTMLTxtRangePtr> ranges;
+	for (std::size_t i = 0; i < snapshot.Text.size(); ++i)
+	{
+		if (snapshot.Text[i] < L'0' || snapshot.Text[i] > L'9') continue;
+		MSHTML::IHTMLTxtRangePtr range;
+		if (!adapter.CreateHitRange(doc, snapshot, AU::Search::SearchHit(i, 1), range) || !range) return 151;
+		ranges.push_back(range);
+	}
+	if (ranges.size() != 5) return 152;
+	for (std::size_t i = ranges.size(); i-- > 0;) ranges[i]->text = L"+";
+	MSHTML::IHTMLDocument3Ptr doc3(doc);
+	MSHTML::IHTMLElementPtr version(doc3->getElementById(L"version"));
+	MSHTML::IHTMLElementPtr file(doc3->getElementById(L"file"));
+	if (!version || !file || CString(static_cast<LPCWSTR>(version->innerText)) != L"+.+ — создание файла" || CString(static_cast<LPCWSTR>(file->innerText)) != L"blank.fb+") {
+		fwprintf(stderr, L"version=[%s], file=[%s]\n", version ? static_cast<LPCWSTR>(version->innerText) : L"<missing>", file ? static_cast<LPCWSTR>(file->innerText) : L"<missing>");
+		return 153;
+	}
+	MSHTML::IHTMLElementPtr em(doc3->getElementById(L"em"));
+	MSHTML::IHTMLElementPtr strong(doc3->getElementById(L"strong"));
+	if (!em || !strong || CString(static_cast<LPCWSTR>(em->innerText)) != L"+" || CString(static_cast<LPCWSTR>(strong->innerText)) != L"+") {
+		MSHTML::IHTMLElementPtr para(doc3->getElementById(L"inline"));
+		fwprintf(stderr, L"inline HTML=[%s]\n", para ? static_cast<LPCWSTR>(para->innerHTML) : L"<missing>");
+		return 154;
+	}
+	return 0;
+}
+
 int wmain()
 {
 	if (FAILED(CoInitialize(NULL))) { fprintf(stderr, "FAIL: CoInitialize\n"); return 1; }
@@ -581,6 +619,8 @@ int wmain()
 		result = VerifyZeroLengthRegexReplaceSemantics();
 	if (!result)
 		result = VerifyEmptyParagraphRegexAnchors();
+	if (!result)
+		result = VerifyDigitReplacementAtParagraphStart();
 
 	persist = NULL;
 	document = NULL;

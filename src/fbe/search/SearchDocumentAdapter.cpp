@@ -267,6 +267,22 @@ bool SearchDocumentAdapter::CreateHitRange(
 		if (!MoveRangeStartToTextOffset(body, endSource->Element, end.SourceOffset, endRange, true))
 			return false;
 		range->setEndPoint(L"EndToEnd", endRange);
+		// At block and inline boundaries MSHTML can represent the same visible
+		// text with a start outside its container. Assigning text then inserts
+		// it in the preceding container. Reconstruct from the end only when the
+		// resulting text and markup are identical; ambiguous ranges retain the
+		// original representation.
+		if (start.SourceId == end.SourceId && hit.Length <= static_cast<std::size_t>(LONG_MAX))
+		{
+			MSHTML::IHTMLTxtRangePtr inside(range->duplicate());
+			if (inside)
+			{
+				inside->collapse(VARIANT_FALSE);
+				inside->moveStart(L"character", -static_cast<long>(hit.Length));
+				if (_bstr_t(inside->text) == _bstr_t(range->text) && _bstr_t(inside->htmlText) == _bstr_t(range->htmlText))
+					range = inside;
+			}
+		}
 	}
 	return true;
 }
