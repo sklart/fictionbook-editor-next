@@ -85,6 +85,7 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		stage = "first-space";
 		::SendMessageW(focus, WM_CHAR, L' ', 1); pump();
 		const CString first = state(), firstText = text(); const int firstUndo = historyCount(false);
+		const CString firstXml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
 		stage = "second-space";
 		::SendMessageW(focus, WM_CHAR, L' ', 1); pump();
 		const CString second = state(), secondText = text(); const int secondUndo = historyCount(false);
@@ -143,9 +144,25 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		}
 		wchar_t toggleFlag[2] = {};
 		const DWORD toggleLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_TOGGLE", toggleFlag, _countof(toggleFlag));
-		const bool toggleTested = toggleLength == 1 && (toggleFlag[0] == L'1' || toggleFlag[0] == L'2' || toggleFlag[0] == L'5');
+		const bool toggleTested = toggleLength == 1 && (toggleFlag[0] == L'1' || toggleFlag[0] == L'2' || toggleFlag[0] == L'5' || toggleFlag[0] == L'6' || toggleFlag[0] == L'7');
 		const bool repeatTested = toggleLength == 1 && (toggleFlag[0] == L'3' || toggleFlag[0] == L'4');
-		const bool toggleApplied = toggleTested && (toggleFlag[0] == L'1' || toggleFlag[0] == L'5');
+		const bool toggleApplied = toggleTested && (toggleFlag[0] == L'1' || toggleFlag[0] == L'5' || toggleFlag[0] == L'6');
+		const bool emptyRedoTest = toggleLength == 1 && (toggleFlag[0] == L'6' || toggleFlag[0] == L'7');
+		CString beforeEmptyRedoXml, editedEmptyRedoXml;
+		bool emptyRedoReady = true;
+		if(emptyRedoTest) {
+			stage = "empty-redo-edit";
+			beforeEmptyRedoXml = static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml);
+			MSHTML::IHTMLTxtRangePtr replacement(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+			replacement->moveToElementText(paragraph()); replacement->collapse(VARIANT_TRUE);
+			replacement->move(L"character", 8); replacement->moveEnd(L"character", 1); replacement->select(); pump();
+			m_doc->m_body.BeginUndoUnit(L"empty redo test edit");
+			try { replacement->text = L"O"; }
+			catch (...) { m_doc->m_body.EndUndoUnit(); throw; }
+			m_doc->m_body.EndUndoUnit(); pump();
+			editedEmptyRedoXml = static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml);
+			emptyRedoReady = historyCount(true) == 0 && beforeEmptyRedoXml != editedEmptyRedoXml && text().Right(5) == L"wOrd2";
+		}
 		bool changedDisplay = true, unchangedOther = true, toggleRestored = true, toggleUndoRedo = true;
 		CStringA toggleReport; toggleReport.Format("toggle-tested=%d\ntoggle-applied=%d\n", toggleTested, toggleApplied);
 		if(toggleTested) {
@@ -161,19 +178,36 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 			const CString textOther = text();
 			const CString xmlOther(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
 			changedDisplay = textOther.Find(markerOther) >= 0 && textOther.Find(markerBefore) < 0;
-			if(toggleFlag[0] == L'5') expectedAfterToggle = state();
+			if(toggleFlag[0] == L'5' || toggleFlag[0] == L'6') expectedAfterToggle = state();
 			unchangedOther = xmlOther == xmlBeforeToggle && m_doc->DocChanged() == dirtyBeforeToggle;
-			if(toggleFlag[0] != L'5') { _Settings.SetNBSPChar(markerBefore); ApplyConfChanges(false, false); pump(); }
+			if(toggleFlag[0] != L'5' && toggleFlag[0] != L'6') { _Settings.SetNBSPChar(markerBefore); ApplyConfChanges(false, false); pump(); }
 		}
 		const CString xmlAfterToggle(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
 		toggleRestored = state() == expectedAfterToggle && xmlAfterToggle == xmlBeforeToggle && m_doc->DocChanged() == dirtyBeforeToggle;
 		const int toggleUndoCount = historyCount(false), toggleRedoCount = historyCount(true);
 		m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
 		const CString toggleUndo = state(), toggleUndoText = text();
+		const CString toggleUndoXml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
 		const int toggleUndoCountAfter = historyCount(false), toggleRedoCountAfter = historyCount(true);
 		m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_REDO, 0); pump();
 		const CString toggleRedo = state(), toggleRedoText = text();
-		toggleUndoRedo = toggleUndo == (steps == 2 ? first : original) && toggleRedo == expectedAfterToggle;
+		toggleUndoRedo = emptyRedoTest ?
+			emptyRedoReady && toggleUndoXml == beforeEmptyRedoXml &&
+				CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == editedEmptyRedoXml && toggleRedo == expectedAfterToggle :
+			toggleUndo == (steps == 2 ? first : original) && toggleRedo == expectedAfterToggle;
+		bool earlierUndo = true, earlierRedo = true;
+		if(emptyRedoTest) {
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
+			const bool latestUndoAgain = CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == beforeEmptyRedoXml;
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
+			earlierUndo = latestUndoAgain && CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == firstXml;
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_REDO, 0); pump();
+			const bool earlierRedoStep = CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == beforeEmptyRedoXml;
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_REDO, 0); pump();
+			earlierRedo = earlierRedoStep && CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == editedEmptyRedoXml;
+			toggleUndoRedo = toggleUndoRedo && toggleRedoCount == 0 && earlierUndo && earlierRedo;
+		}
+		CStringA emptyRedoReport; emptyRedoReport.Format("empty-redo-tested=%d\nempty-redo-ready=%d\nearlier-undo=%d\nearlier-redo=%d\n", emptyRedoTest, emptyRedoReady, earlierUndo, earlierRedo); toggleReport += emptyRedoReport;
 		CStringA toggleDetail; toggleDetail.Format("toggle-display=%d\ntoggle-xml-unchanged=%d\ntoggle-restored=%d\ntoggle-undo-redo=%d\ntoggle-undo-text=%s\ntoggle-redo-text=%s\ntoggle-undo-count=%d\ntoggle-redo-count=%d\ntoggle-undo-count-after=%d\ntoggle-redo-count-after=%d\n",
 			changedDisplay, unchangedOther, toggleRestored, toggleUndoRedo, static_cast<LPCSTR>(codepoints(toggleUndoText)), static_cast<LPCSTR>(codepoints(toggleRedoText)),
 			toggleUndoCount, toggleRedoCount, toggleUndoCountAfter, toggleRedoCountAfter);
