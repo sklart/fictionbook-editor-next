@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$FbeExe,
       [ValidateSet('square', 'small-square', 'circle', 'none')][string[]]$Modes = @('square', 'small-square', 'circle', 'none'),
-      [ValidateSet('plain', 'emphasis', 'link')][string]$Context = 'plain',
+      [ValidateSet('plain', 'emphasis', 'strong', 'link')][string]$Context = 'plain',
       [string]$ArtifactDirectory)
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -23,14 +23,14 @@ try {
             $settings = [IO.File]::ReadAllText($settingsFile).Replace('</Settings>', "<NBSPChar>$marker</NBSPChar></Settings>")
             [IO.File]::WriteAllText($settingsFile, $settings, [Text.UTF8Encoding]::new($false))
             $fixture = Join-Path $iso.DataPath 'input.fb2'
-            $markup = switch ($Context) { 'plain' { 'word1word2' } 'emphasis' { '<emphasis>word1word2</emphasis>' } 'link' { '<a l:href="#nbsp-probe">word1word2</a>' } }
+            $markup = switch ($Context) { 'plain' { 'word1word2' } 'emphasis' { '<emphasis>word1word2</emphasis>' } 'strong' { '<strong>word1word2</strong>' } 'link' { '<a l:href="#nbsp-probe">word1word2</a>' } }
             $fb2 = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><first-name>Test</first-name><last-name>Author</last-name></author><book-title>NBSP test</book-title><lang>en</lang></title-info><document-info><author><first-name>Test</first-name><last-name>Author</last-name></author><date>2026</date><id>nbsp-test</id><version>1.0</version></document-info></description><body><section><p id="nbsp-prior">prior</p><p id="nbsp-probe">' + $markup + '</p></section></body></FictionBook>'
             [IO.File]::WriteAllText($fixture, $fb2, [Text.UTF8Encoding]::new($false))
             $saved = Join-Path $iso.DataPath 'saved.fb2'
             $report = Join-Path $iso.DataPath 'report.txt'
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'nbsp-input-runtime'
             $env:FBE_NEXT_TEST_NBSP_OUTPUT = $saved
-            $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -WindowStyle Hidden `
+            $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime `
                 -ArgumentList @('--portable', '-b', ('"' + $report + '"'), ('"' + $fixture + '"')) -PassThru
             $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'nbsp-input-runtime' -Report $report -TimeoutSeconds 120
             $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
@@ -42,6 +42,10 @@ try {
             $ns = [Xml.XmlNamespaceManager]::new($xml.NameTable); $ns.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
             $value = $xml.SelectSingleNode('//fb:p[@id="nbsp-probe"]', $ns).InnerText
             if ($Context -eq 'emphasis' -and -not $xml.SelectSingleNode('//fb:p[@id="nbsp-probe"]/fb:emphasis', $ns)) { throw 'Emphasis was lost.' }
+            if ($Context -eq 'strong') {
+                $strong = $xml.SelectSingleNode('//fb:p[@id="nbsp-probe"]/fb:strong', $ns)
+                if (-not $strong -or $strong.InnerText -cne $value) { throw 'Strong formatting did not retain the complete text.' }
+            }
             if ($Context -eq 'link') {
                 $link = $xml.SelectSingleNode('//fb:p[@id="nbsp-probe"]/fb:a', $ns)
                 if (-not $link -or $link.GetAttribute('href', 'http://www.w3.org/1999/xlink') -cne '#nbsp-probe') { throw 'Link or target was lost.' }
