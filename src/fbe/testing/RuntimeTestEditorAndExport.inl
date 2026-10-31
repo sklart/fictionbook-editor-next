@@ -3,6 +3,7 @@
 #include "RuntimeTestSettingsSearchPerformance.inl"
 #include "RuntimeTestCommunityHref.inl"
 #include "RuntimeTestCommunitySelection.inl"
+#include "RuntimeTestCommunityBodyInput.inl"
 #include "RuntimeTestCommunityClipboard.inl"
 #include "RuntimeTestScriptingStage2.inl"
 #include "RuntimeTestScriptingStage3A.inl"

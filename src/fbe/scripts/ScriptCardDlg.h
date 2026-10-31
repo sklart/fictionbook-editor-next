@@ -29,6 +29,7 @@ public:
 	size_t VisualBlockCount() const { return m_blocks.size(); }
 	HWND ViewportWindow() const { return m_viewport; }
 	int ScrollPosition() const { return m_scrollY; }
+	UINT LayoutDpi() const { return m_dpi; }
 	bool CanScroll() const { RECT bounds = {}; return m_viewport && ::GetClientRect(m_viewport, &bounds) &&
 		m_contentHeight > bounds.bottom - bounds.top; }
 	int CharacteristicLayoutRows() const;

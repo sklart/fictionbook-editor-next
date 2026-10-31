@@ -582,18 +582,31 @@ void CMainFrame::RunPortableStateTestScenario()
 			narrowCharacteristics == 3 &&
 			(::GetWindowLongPtrW(m_script_card_window.ViewportWindow(), GWL_STYLE) & WS_HSCROLL) == 0;
 		bool characteristicDpiMatrix = true;
+		CStringA characteristicDpiDetails;
 		for(const UINT dpi : { 96U, 120U, 144U, 192U })
 		{
-			::SendMessageW(m_script_card_window.m_hWnd, WM_DPICHANGED, MAKELONG(dpi, dpi), 0);
+			RECT suggested = {}; ::GetWindowRect(m_script_card_window.m_hWnd, &suggested);
+			::SendMessageW(m_script_card_window.m_hWnd, WM_DPICHANGED, MAKELONG(dpi, dpi), reinterpret_cast<LPARAM>(&suggested));
+			const HWND sample = m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_RUN);
+			const HFONT sampleFont = sample ? reinterpret_cast<HFONT>(::SendMessageW(sample, WM_GETFONT, 0, 0)) : NULL;
+			LOGFONTW fontInfo = {}; if(sampleFont) ::GetObjectW(sampleFont, sizeof(fontInfo), &fontInfo);
+			characteristicDpiDetails.AppendFormat("dpi-%u-font-height=%ld;window-dpi=%u;layout-dpi=%u\n", dpi, fontInfo.lfHeight,
+				UiMetrics::DpiForWindow(m_script_card_window.m_hWnd), m_script_card_window.LayoutDpi());
+			characteristicDpiMatrix = characteristicDpiMatrix && m_script_card_window.LayoutDpi() == dpi;
 			for(const int logicalWidth : { 1200, 420, 260 })
 			{
-				characteristicDpiMatrix = characteristicDpiMatrix &&
-					layoutAtViewportWidth(logicalWidth, dpi) ==
-					(logicalWidth == 1200 ? 1 : logicalWidth == 420 ? 2 : 3);
+				const int actualRows = layoutAtViewportWidth(logicalWidth, dpi);
+				const int expectedRows = logicalWidth == 1200 ? 1 : logicalWidth == 420 ? 2 : 3;
+				RECT actualViewport = {}; ::GetClientRect(characteristicViewport, &actualViewport);
+				characteristicDpiDetails.AppendFormat("dpi-%u-width-%d=%d/%d;client=%ld;scroll=%d\n",
+					dpi, logicalWidth, actualRows, expectedRows, actualViewport.right - actualViewport.left,
+					m_script_card_window.ScrollPosition());
+				characteristicDpiMatrix = characteristicDpiMatrix && actualRows == expectedRows;
 			}
 		}
+		RECT restoredDpiBounds = {}; ::GetWindowRect(m_script_card_window.m_hWnd, &restoredDpiBounds);
 		::SendMessageW(m_script_card_window.m_hWnd, WM_DPICHANGED,
-			MAKELONG(cardDpi, cardDpi), 0);
+			MAKELONG(cardDpi, cardDpi), reinterpret_cast<LPARAM>(&restoredDpiBounds));
 		::SetWindowPos(m_script_card_window.m_hWnd, NULL, originalCardBounds.left, originalCardBounds.top,
 			originalCardBounds.right - originalCardBounds.left, originalCardBounds.bottom - originalCardBounds.top,
 			SWP_NOZORDER | SWP_NOACTIVATE);
@@ -622,9 +635,30 @@ void CMainFrame::RunPortableStateTestScenario()
 			}
 			return value;
 		};
-		::SendMessageW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_COPY), BM_CLICK, 0, 0);
-		const CString copied = clipboardText();
-		const bool copiedDetails = copied.Find(L"Card test") >= 0 && copied.Find(L"Card runtime summary") >= 0 &&
+		CComPtr<IDataObject> clipboardBefore, clipboardCopy;
+		wchar_t skipClipboardValue[4] = {};
+		const bool clipboardSkipped = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SKIP_CLIPBOARD", skipClipboardValue, _countof(skipClipboardValue)) == 1 && skipClipboardValue[0] == L'1';
+		const bool clipboardCaptured = !clipboardSkipped && SUCCEEDED(::OleGetClipboard(&clipboardBefore));
+		const DWORD beforeCopySequence = ::GetClipboardSequenceNumber();
+		if (clipboardCaptured) ::SendMessageW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_COPY), BM_CLICK, 0, 0);
+		const DWORD copySequence = ::GetClipboardSequenceNumber();
+		const HWND clipboardOwner = ::GetClipboardOwner(); DWORD clipboardOwnerProcess = 0;
+		if (clipboardOwner) ::GetWindowThreadProcessId(clipboardOwner, &clipboardOwnerProcess);
+		if (clipboardCaptured && copySequence != beforeCopySequence) ::OleGetClipboard(&clipboardCopy);
+		const CString copied = clipboardCaptured ? clipboardText() : CString();
+		const DWORD afterReadSequence = ::GetClipboardSequenceNumber();
+		const HWND currentClipboardOwner = ::GetClipboardOwner(); DWORD currentClipboardOwnerProcess = 0;
+		if (currentClipboardOwner) ::GetWindowThreadProcessId(currentClipboardOwner, &currentClipboardOwnerProcess);
+		const bool clipboardStillOurs = copySequence != beforeCopySequence &&
+			(afterReadSequence == copySequence || (clipboardOwner && currentClipboardOwner == clipboardOwner &&
+				clipboardOwnerProcess == ::GetCurrentProcessId() && currentClipboardOwnerProcess == ::GetCurrentProcessId()) ||
+				(clipboardCopy && ::OleIsCurrentClipboard(clipboardCopy) == S_OK));
+		bool clipboardRestored = false;
+		if (clipboardCaptured && clipboardStillOurs) {
+			const HRESULT restore = ::OleSetClipboard(clipboardBefore);
+			clipboardRestored = SUCCEEDED(restore) && (!clipboardBefore || SUCCEEDED(::OleFlushClipboard()));
+		}
+		const bool copiedDetails = clipboardRestored && copied.Find(L"Card test") >= 0 && copied.Find(L"Card runtime summary") >= 0 &&
 			copied.Find(L"Tester — ") >= 0 && copied.Find(L"Second author — ") >= 0 &&
 			copied.Find(L"Modifier — ") >= 0 && copied.Find(L"Another — ") >= 0 &&
 			copied.Find(cardPath) >= 0 && copied.Find(L"b93000a4f6") < 0 &&
@@ -824,6 +858,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool infoOpened = initialized && rowVisible && awaitCard() &&
 			m_script_card_window.CurrentUid() == infoUid && tree.GetSelectedItem() == selectedItem &&
 			m_script_card_window.m_hWnd == firstWindow;
+		const bool infoSelectionMatched = tree.GetSelectedItem() == selectedItem;
 		if(rowVisible) ::SendMessageW(tree.m_hWnd, WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(infoX, infoY));
 		const bool infoDoubleClickSafe = runCount == 0;
 		if(infoItem != NULL) tree.SelectItem(infoItem);
@@ -884,7 +919,6 @@ void CMainFrame::RunPortableStateTestScenario()
 		ThemeManager::SetSelectedTheme(originalTheme);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 		const bool infoUidMatched = m_script_card_window.CurrentUid() == infoUid;
-		const bool infoSelectionMatched = tree.GetSelectedItem() == selectedItem;
 		const int infoRunCount = runCount;
 		int commentRunCount = 0;
 		wchar_t executable[MAX_PATH] = {};
@@ -1108,7 +1142,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			previewBridgeTimer && previewBridgeExit && previewPointerLink && previewPointerExit && previewPointerCrossing && previewDeactivated &&
 			previewCrossing && previewSwitch && previewSurface && previewLink &&
 			previewFallback && previewScrollHidden && uidUpdated &&
-			changedWarning && buttons && infoOpened && infoDoubleClickSafe && contextOpened && multiCardDisabled &&
+			changedWarning && buttons && infoOpened && infoSelectionMatched && infoDoubleClickSafe && contextOpened && multiCardDisabled &&
 			cardScreenshot && treeScreenshot && darkCardScreenshot && darkTreeScreenshot &&
 			commentContent && commentNarrow && commentSettings && commentDark &&
 			commentWarning && commentTooltip && commentWide && commentChangedDark &&
@@ -1128,7 +1162,10 @@ void CMainFrame::RunPortableStateTestScenario()
 		report.AppendFormat("characteristic-layout=%d\ncharacteristic-dpi-matrix=%d\ncharacteristic-wide=%d\ncharacteristic-paired=%d\ncharacteristic-narrow=%d\nstandard-values=%d\ncleaning-values=%d\n",
 			characteristicLayout, characteristicDpiMatrix, wideCharacteristics, pairedCharacteristics, narrowCharacteristics,
 			standardValues, cleaningValues);
+		report += characteristicDpiDetails;
 		report.AppendFormat("thumb-position=%d\n", thumbPosition);
+		report.AppendFormat("clipboard-skipped=%d\nclipboard-captured=%d\nclipboard-restored=%d\nclipboard-copy-sequence=%lu\nclipboard-read-sequence=%lu\n",
+			clipboardSkipped, clipboardCaptured, clipboardRestored, static_cast<unsigned long>(copySequence), static_cast<unsigned long>(afterReadSequence));
 		report.AppendFormat("long-settings-fit=%d\n", longSettingsFit);
 		report.AppendFormat("category-formatted=%d\nmetadata-semantics=%d\nunknown-author=%d\nunverified-undo-hidden=%d\nverified-undo=%d\n", categoryFormatted, metadataSemantics, unknownShown, unverifiedHidden, verifiedShown);
 		report.AppendFormat("preview-bridge-timer=%d\npreview-bridge-exit=%d\npreview-pointer-link=%d\npreview-pointer-exit=%d\npreview-pointer-crossing=%d\npreview-deactivated=%d\n",
