@@ -7,6 +7,7 @@
 #include "..\\..\\res1.h"
 #include "..\\..\\apputils.h"
 #include <initializer_list>
+#include <algorithm>
 
 extern CSettings _Settings;
 
@@ -433,11 +434,29 @@ bool CSettingsGeneralPage::StagePaletteCopy(const CString& name)
 	const CString label = name + L" (" + id + L")";
 	const int index = m_interfacePalette.AddString(label);
 	if(index < 0) return false;
-	m_customPalettes.push_back(copy); m_pendingPalettes.push_back(copy);
+	m_customPalettes.push_back(copy); m_pendingPalettes.push_back(copy); m_newPaletteIds.push_back(copy.id);
 	m_interfacePalette.SetCurSel(index);
 	BOOL handled = FALSE;
 	OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, m_interfacePalette, handled);
 	return m_acceptedPaletteIndex == index;
+}
+
+bool CSettingsGeneralPage::StagePaletteColor(ThemeColorRole role, COLORREF color, bool custom)
+{
+	const int index = m_interfacePalette.GetCurSel() - INTERFACE_PALETTE_COUNT;
+	if(index < 0 || index >= static_cast<int>(m_customPalettes.size()) || role < 0 || role >= THEME_COLOR_COUNT) return false;
+	ThemeManager::CustomPalette draft;
+	if(!ThemeManager::GetCustomPalette(draft) || draft.id != m_customPalettes[index].id) return false;
+	draft.present[role] = custom;
+	draft.colors[role] = color;
+	if(!ThemeManager::SetCustomPalette(draft)) return false;
+	bool found = false;
+	for(auto& pending : m_pendingPalettes) if(pending.id == draft.id) { pending = draft; found = true; break; }
+	if(!found) m_pendingPalettes.push_back(draft);
+	m_customPalettes[index] = draft;
+	m_paletteChanged = true;
+	ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+	return true;
 }
 
 LRESULT CSettingsGeneralPage::OnCopyPalette(WORD, WORD, HWND, BOOL&)
@@ -455,7 +474,8 @@ bool CSettingsGeneralPage::PrepareCommit(SettingsFileTransaction& files, CString
 {
 	for(const auto& palette : m_pendingPalettes) {
 		std::wstring detail;
-		if(!ThemeManager::PrepareCustomPaletteSave(palette, false, files, detail)) { error = detail.c_str(); return false; }
+		const bool created = std::find(m_newPaletteIds.begin(), m_newPaletteIds.end(), palette.id) != m_newPaletteIds.end();
+		if(!ThemeManager::PrepareCustomPaletteSave(palette, !created, files, detail)) { error = detail.c_str(); return false; }
 	}
 	return true;
 }

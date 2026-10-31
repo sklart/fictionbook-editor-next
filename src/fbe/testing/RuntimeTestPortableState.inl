@@ -117,6 +117,27 @@ void CMainFrame::RunPortableStateTestScenario()
             passed ? "custom-palette-settings-write=1\nresult=pass\n" : "custom-palette-settings-write=0\nresult=fail\n");
         PostMessage(WM_CLOSE); return;
     }
+    if(IsFbeTestScenario(L"custom-palette-edit")) {
+        CSettingsGeneralPage page;
+        bool passed = page.Create(m_hWnd) != NULL && ThemeManager::IsCustomPaletteActive();
+        std::wstring error; ThemeManager::CustomPalette stored;
+        if(page.m_hWnd) {
+            passed = page.StagePaletteColor(THEME_COLOR_WINDOW, RGB(80, 90, 100), true) && passed;
+            passed = ThemeManager::LoadCustomPaletteFromProfile(L"restart-test", stored, error) && stored.colors[THEME_COLOR_WINDOW] == RGB(17, 34, 51) && passed;
+            { SettingsFileTransaction files; CString detail; passed = page.PrepareCommit(files, detail) && passed; }
+            passed = page.CancelChanges() && ThemeManager::Color(THEME_COLOR_WINDOW) == RGB(17, 34, 51) && passed;
+            passed = ThemeManager::LoadCustomPaletteFromProfile(L"restart-test", stored, error) && stored.colors[THEME_COLOR_WINDOW] == RGB(17, 34, 51) && passed;
+            passed = page.StagePaletteColor(THEME_COLOR_WINDOW, RGB(80, 90, 100), true) && passed;
+            { SettingsFileTransaction files; CString detail; passed = page.PrepareCommit(files, detail) && passed; page.Commit(); passed = files.Commit() && passed; page.FinishCommit(); }
+            passed = ThemeManager::LoadCustomPaletteFromProfile(L"restart-test", stored, error) && stored.colors[THEME_COLOR_WINDOW] == RGB(80, 90, 100) && passed;
+            passed = page.StagePaletteColor(THEME_COLOR_WINDOW, RGB(17, 34, 51), true) && passed;
+            { SettingsFileTransaction files; CString detail; passed = page.PrepareCommit(files, detail) && passed; page.Commit(); passed = files.Commit() && passed; page.FinishCommit(); }
+            passed = ThemeManager::LoadCustomPaletteFromProfile(L"restart-test", stored, error) && stored.colors[THEME_COLOR_WINDOW] == RGB(17, 34, 51) && passed;
+            page.DestroyWindow();
+        }
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", passed ? "custom-palette-edit=1\nresult=pass\n" : "custom-palette-edit=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
+    }
     if(IsFbeTestScenario(L"custom-palette-settings-read")) {
         bool passed = _Settings.GetInterfacePalette() == L"custom:restart-test" && _Settings.GetInterfacePaletteError().IsEmpty() &&
             ThemeManager::IsCustomPaletteActive() && ThemeManager::Color(THEME_COLOR_WINDOW) == RGB(17, 34, 51);

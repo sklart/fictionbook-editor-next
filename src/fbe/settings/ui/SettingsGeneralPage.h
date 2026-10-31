@@ -13,6 +13,7 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	CComboBox m_interfacePalette;
 	std::vector<ThemeManager::CustomPalette> m_customPalettes;
 	std::vector<ThemeManager::CustomPalette> m_pendingPalettes;
+	std::vector<std::wstring> m_newPaletteIds;
 	CComboBox m_scriptIconSize;
 	CComboBox m_mainToolbarIconSize;
 	CComboBox m_genreCatalog;
@@ -55,6 +56,7 @@ public:
 	LRESULT OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnCopyPalette(WORD, WORD, HWND, BOOL&);
 	bool StagePaletteCopy(const CString& name);
+	bool StagePaletteColor(ThemeColorRole role, COLORREF color, bool custom);
 	void ConfigureInterfaceTheme(bool darkThemeSupported);
 	bool Validate(); bool PrepareCommit(SettingsFileTransaction&, CString&); void Commit(); void FinishCommit(); bool CancelChanges();
 };
