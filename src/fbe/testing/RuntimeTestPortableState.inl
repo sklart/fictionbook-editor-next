@@ -87,11 +87,25 @@ void CMainFrame::RunPortableStateTestScenario()
         PostMessage(WM_CLOSE); return;
     }
     if(IsFbeTestScenario(L"named-palette-core-runtime")) {
+        ThemeManager::CustomPalette custom, roundTrip;
+        std::wstring parseError;
+        const std::wstring input = L"{\"schemaVersion\":1,\"id\":\"my-theme\",\"name\":\"Моя тема\",\"base\":\"sepia\",\"colors\":{\"window\":\"#F4F1EA\",\"unknown\":\"ignored\",\"selectionText\":\"#172637\"},\"unknown\":{\"path\":\"ignored\"}}";
+        bool jsonPassed = ThemeManager::ParseCustomPalette(input, custom, parseError) && custom.id == L"my-theme" &&
+            custom.name == L"Моя тема" && custom.base == ThemeManager::CustomPaletteBase::Sepia &&
+            custom.present[THEME_COLOR_WINDOW] && custom.colors[THEME_COLOR_WINDOW] == RGB(244, 241, 234) &&
+            !custom.present[THEME_COLOR_CONTROL] && custom.present[THEME_COLOR_SELECTION_TEXT];
+        jsonPassed = ThemeManager::ParseCustomPalette(ThemeManager::SerializeCustomPalette(custom), roundTrip, parseError) &&
+            roundTrip.id == custom.id && roundTrip.name == custom.name && roundTrip.base == custom.base && jsonPassed;
+        for(int role = 0; role < THEME_COLOR_COUNT; ++role)
+            jsonPassed = roundTrip.present[role] == custom.present[role] && (!custom.present[role] || roundTrip.colors[role] == custom.colors[role]) && jsonPassed;
+        for(const wchar_t* invalid : { L"{}", L"{\"schemaVersion\":2}", L"{\"schemaVersion\":1,\"id\":\"../x\",\"name\":\"x\",\"base\":\"light\"}",
+            L"{\"schemaVersion\":1,\"id\":\"my-theme\",\"name\":\"x\",\"base\":\"light\",\"colors\":{\"text\":\"#GG0000\"}}", L"[]" })
+            jsonPassed = !ThemeManager::ParseCustomPalette(invalid, roundTrip, parseError) && !parseError.empty() && jsonPassed;
         const InterfaceTheme initialTheme = ThemeManager::GetSelectedTheme();
         const InterfacePalette initialPalette = ThemeManager::GetNamedPalette();
         const COLORREF classicWindow = ThemeManager::WindowColor();
         const bool highContrast = ThemeManager::IsHighContrast();
-        bool passed = initialPalette == INTERFACE_PALETTE_CLASSIC;
+        bool passed = initialPalette == INTERFACE_PALETTE_CLASSIC && jsonPassed;
         CSettingsGeneralPage palettePage;
         const bool pageCreated = palettePage.Create(m_hWnd) != NULL;
         passed = pageCreated && passed;

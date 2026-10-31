@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 
 // Interface theme is deliberately independent from BODY editor colours.
 enum InterfaceTheme
@@ -46,6 +47,16 @@ enum InterfacePalette
 
 namespace ThemeManager
 {
+	enum class CustomPaletteBase { Light, Dark, Graphite, Navy, Sepia };
+	struct CustomPalette
+	{
+		std::wstring id, name;
+		CustomPaletteBase base = CustomPaletteBase::Light;
+		bool present[THEME_COLOR_COUNT] = {};
+		COLORREF colors[THEME_COLOR_COUNT] = {};
+	};
+	bool ParseCustomPalette(const std::wstring& json, CustomPalette& result, std::wstring& error);
+	std::wstring SerializeCustomPalette(const CustomPalette& palette);
 	struct ApplyDiagnostics
 	{
 		ULONGLONG applied;

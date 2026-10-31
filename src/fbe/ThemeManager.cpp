@@ -5,6 +5,7 @@
 #include "UiMetrics.h"
 #include "scripts/ScriptMenuBitmap.h"
 #include "../common/ModernFileDialog.h"
+#include "../common/RuntimeLocalizationCommon.h"
 #include <map>
 #include <array>
 #include <set>
@@ -864,6 +865,100 @@ void EnsureThemeCbtHook()
 
 namespace ThemeManager
 {
+namespace {
+const wchar_t* const kCustomRoleNames[THEME_COLOR_COUNT] = {
+	L"window", L"control", L"text", L"border", L"separator", L"secondaryText", L"disabledText",
+	L"selectionBackground", L"selectionText", L"hover", L"pressed", L"focus", L"accent", L"error", L"warning", L"success"
+};
+bool JsonStringMember(const std::wstring& text, size_t object, const wchar_t* key, std::wstring& value)
+{
+	size_t position = 0;
+	return FbeRuntimeLocalization::JsonFindObjectMember(text, object, key, position) && FbeRuntimeLocalization::JsonParseString(text, position, value);
+}
+std::wstring EscapePaletteString(const std::wstring& text)
+{
+	std::wstring escaped;
+	for(wchar_t c : text) {
+		if(c == L'\\' || c == L'"') { escaped += L'\\'; escaped += c; }
+		else if(c >= 0x20 && c != 0x7f) escaped += c;
+	}
+	return escaped;
+}
+}
+
+bool ParseCustomPalette(const std::wstring& json, CustomPalette& result, std::wstring& error)
+{
+	error.clear();
+	if(json.empty() || json.size() > 65536) { error = L"Theme JSON is empty or too large."; return false; }
+	// Bound nesting before invoking the shared recursive JSON parser.
+	int depth = 0; bool quoted = false, escaped = false;
+	for(wchar_t c : json) {
+		if(quoted) { if(escaped) escaped = false; else if(c == L'\\') escaped = true; else if(c == L'"') quoted = false; }
+		else if(c == L'"') quoted = true;
+		else if(c == L'{' || c == L'[') { if(++depth > 64) { error = L"Theme JSON is too deeply nested."; return false; } }
+		else if(c == L'}' || c == L']') { if(--depth < 0) { error = L"Invalid theme JSON."; return false; } }
+	}
+	size_t end = 0, start = 0;
+	FbeRuntimeLocalization::JsonSkipWhitespace(json, start);
+	if(start >= json.size() || json[start] != L'{' || !FbeRuntimeLocalization::JsonSkipValue(json, end)) { error = L"Invalid theme JSON."; return false; }
+	FbeRuntimeLocalization::JsonSkipWhitespace(json, end);
+	if(end != json.size()) { error = L"Unexpected data after theme JSON."; return false; }
+	size_t version = 0;
+	if(!FbeRuntimeLocalization::JsonFindObjectMember(json, start, L"schemaVersion", version)) { error = L"Missing schema version."; return false; }
+	FbeRuntimeLocalization::JsonSkipWhitespace(json, version);
+	if(version >= json.size() || json[version++] != L'1') { error = L"Unsupported schema version."; return false; }
+	FbeRuntimeLocalization::JsonSkipWhitespace(json, version);
+	if(version >= json.size() || (json[version] != L',' && json[version] != L'}')) { error = L"Invalid schema version."; return false; }
+	CustomPalette candidate; std::wstring base;
+	if(!JsonStringMember(json, start, L"id", candidate.id) || candidate.id.empty() || candidate.id.size() > 64) { error = L"Invalid theme id."; return false; }
+	for(wchar_t c : candidate.id) if(!((c >= L'a' && c <= L'z') || (c >= L'0' && c <= L'9') || c == L'-' || c == L'_')) { error = L"Invalid theme id."; return false; }
+	if(candidate.id == L"classic" || candidate.id == L"graphite" || candidate.id == L"navy" || candidate.id == L"sepia") { error = L"Reserved theme id."; return false; }
+	if(!JsonStringMember(json, start, L"name", candidate.name) || candidate.name.empty() || candidate.name.size() > 100) { error = L"Invalid theme name."; return false; }
+	for(wchar_t c : candidate.name) if(c < 0x20 || c == 0x7f) { error = L"Invalid theme name."; return false; }
+	if(!JsonStringMember(json, start, L"base", base)) { error = L"Missing base theme."; return false; }
+	if(base == L"light") candidate.base = CustomPaletteBase::Light;
+	else if(base == L"dark") candidate.base = CustomPaletteBase::Dark;
+	else if(base == L"graphite") candidate.base = CustomPaletteBase::Graphite;
+	else if(base == L"navy") candidate.base = CustomPaletteBase::Navy;
+	else if(base == L"sepia") candidate.base = CustomPaletteBase::Sepia;
+	else { error = L"Unknown base theme."; return false; }
+	size_t colors = 0;
+	if(FbeRuntimeLocalization::JsonFindObjectMember(json, start, L"colors", colors)) {
+		FbeRuntimeLocalization::JsonSkipWhitespace(json, colors);
+		if(colors >= json.size() || json[colors] != L'{') { error = L"Theme colors must be an object."; return false; }
+		for(int role = 0; role < THEME_COLOR_COUNT; ++role) {
+			size_t value = 0;
+			if(!FbeRuntimeLocalization::JsonFindObjectMember(json, colors, kCustomRoleNames[role], value)) continue;
+			std::wstring hex;
+			if(!FbeRuntimeLocalization::JsonParseString(json, value, hex) || hex.size() != 7 || hex[0] != L'#') { error = L"Invalid theme colour."; return false; }
+			int channels[3] = {};
+			for(int i = 0; i < 3; ++i) {
+				const int hi = FbeRuntimeLocalization::JsonHexValue(hex[1 + 2 * i]), lo = FbeRuntimeLocalization::JsonHexValue(hex[2 + 2 * i]);
+				if(hi < 0 || lo < 0) { error = L"Invalid theme colour."; return false; }
+				channels[i] = hi * 16 + lo;
+			}
+			candidate.present[role] = true;
+			candidate.colors[role] = RGB(channels[0], channels[1], channels[2]);
+		}
+	}
+	result = candidate;
+	return true;
+}
+
+std::wstring SerializeCustomPalette(const CustomPalette& palette)
+{
+	const wchar_t* base = palette.base == CustomPaletteBase::Dark ? L"dark" : palette.base == CustomPaletteBase::Graphite ? L"graphite" :
+		palette.base == CustomPaletteBase::Navy ? L"navy" : palette.base == CustomPaletteBase::Sepia ? L"sepia" : L"light";
+	std::wstring json = L"{\"schemaVersion\":1,\"id\":\"" + EscapePaletteString(palette.id) + L"\",\"name\":\"" + EscapePaletteString(palette.name) + L"\",\"base\":\"" + base + L"\",\"colors\":{";
+	bool first = true;
+	for(int role = 0; role < THEME_COLOR_COUNT; ++role) if(palette.present[role]) {
+		wchar_t color[8] = {}; swprintf_s(color, L"#%02X%02X%02X", GetRValue(palette.colors[role]), GetGValue(palette.colors[role]), GetBValue(palette.colors[role]));
+		if(!first) json += L",";
+		first = false;
+		json += L"\""; json += kCustomRoleNames[role]; json += L"\":\""; json += color; json += L"\"";
+	}
+	return json + L"}}";
+}
 namespace
 {
 struct TaskDialogCallbackState
