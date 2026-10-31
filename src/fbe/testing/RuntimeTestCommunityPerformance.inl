@@ -1,3 +1,41 @@
+if(IsFbeTestScenario(L"real-book-source-selection")) {
+ CStringA report;
+ bool passed = true;
+ for(const wchar_t* id : {L"perf-mid", L"perf-last"}) {
+  ShowView(BODY);
+  MSHTML::IHTMLDocument2Ptr html(m_doc->m_body.Document());
+  MSHTML::IHTMLElementPtr target(html ? MSHTML::IHTMLDocument3Ptr(html)->getElementById(id) : NULL);
+  MSHTML::IHTMLBodyElementPtr body(html ? html->body : NULL);
+  MSHTML::IHTMLTxtRangePtr range(body ? body->createTextRange() : NULL);
+  bool selected = false, transferred = false, textMatches = false, focus = false, typed = false, undone = false, returned = false;
+  if(target && range) {
+   range->moveToElementText(target); range->collapse(VARIANT_TRUE); range->move(L"character",3); range->moveEnd(L"character",8);
+   CString before(static_cast<LPCWSTR>(range->text)); selected = before.GetLength() == 8;
+   m_doc->m_body.SetFocus(); range->select(); ShowView(SOURCE);
+   const sptr_t start = m_source.SendMessage(SCI_GETSELECTIONSTART), end = m_source.SendMessage(SCI_GETSELECTIONEND);
+   const std::string source = FbeScripts::SourceBytes(m_source);
+   transferred = IsSourceActive() && m_editor_selection_state.BodySource().bodyToSourceTransferred && start >= 0 && end > start && static_cast<size_t>(end) <= source.size();
+   const CStringA expected(CW2A(before, CP_UTF8));
+   textMatches = transferred && source.substr(static_cast<size_t>(start), static_cast<size_t>(end-start)) == static_cast<LPCSTR>(expected);
+   focus = ::GetFocus() == m_source.m_hWnd;
+   if(transferred) {
+    std::string changed(source); changed.replace(static_cast<size_t>(start), static_cast<size_t>(end-start), "X");
+    ::SendMessageW(m_source, WM_CHAR, L'X', 1); typed = FbeScripts::SourceBytes(m_source) == changed;
+    m_source.SendMessage(SCI_UNDO); undone = FbeScripts::SourceBytes(m_source) == source;
+    m_source.SendMessage(SCI_SETSEL, start, end);
+   }
+   ShowView(BODY);
+   MSHTML::IHTMLDocument2Ptr restored(m_doc->m_body.Document());
+   MSHTML::IHTMLSelectionObjectPtr selection(restored ? restored->selection : NULL);
+   MSHTML::IHTMLTxtRangePtr restoredRange(selection ? selection->createRange() : NULL);
+   returned = restoredRange && CString(static_cast<LPCWSTR>(restoredRange->text)) == before;
+  }
+  report.AppendFormat("%S=%d/%d/%d/%d/%d/%d/%d\n", id,selected,transferred,textMatches,focus,typed,undone,returned);
+  passed = passed && selected && transferred && textMatches && focus && typed && undone && returned;
+ }
+ DWORD written=0; output.Write(report,static_cast<DWORD>(report.GetLength()),&written); output.Flush(); output.Close();
+ ::PostQuitMessage(passed ? 0 : 1); return 0;
+}
 if(IsFbeTestScenario(L"community-transition-performance")) {
  CStringA report("kind\trepeat\tbody_source_ms\tsource_body_ms\tindex_ms\tmap_body_ms\tmap_source_ms\tprivate_bytes\tpeak_private_bytes\tindex_live_delta\theartbeat_max_ms\theartbeat_timeouts\r\n");
  auto flush=[&](){DWORD written=0;output.Seek(0,FILE_BEGIN);output.Write(report,static_cast<DWORD>(report.GetLength()),&written);output.Flush();};
