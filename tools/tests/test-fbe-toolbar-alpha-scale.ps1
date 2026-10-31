@@ -11,7 +11,8 @@ if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найд
 $isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'toolbar-alpha-scale'
 $passed = $false
 try {
-    if($ArtifactDirectory) { $ArtifactDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ArtifactDirectory); New-Item -ItemType Directory -Path $ArtifactDirectory -Force | Out-Null }
+    if(-not $ArtifactDirectory) { $ArtifactDirectory = Join-Path $isolation.Root 'toolbar-images' }
+    $ArtifactDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ArtifactDirectory); New-Item -ItemType Directory -Path $ArtifactDirectory -Force | Out-Null
     $fixture = Join-Path $isolation.Root 'alpha-scale.fb2'
     $report = Join-Path $isolation.Root 'alpha-scale.tsv'
     $xml = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>alpha</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>alpha-scale-test</id><version>1.0</version></document-info></description><body><section><p>alpha scale</p></section></body></FictionBook>'
@@ -37,6 +38,32 @@ try {
             foreach($name in $names) {
                 if(-not (Test-Path -LiteralPath (Join-Path $ArtifactDirectory "$name-$dpi.bmp"))) { throw "Missing $name screenshot for $dpi DPI." }
             }
+        }
+        foreach($dpi in 96,120,144,192) {
+            if(-not (Test-Path -LiteralPath (Join-Path $ArtifactDirectory "toolbar-32-light-$dpi.bmp"))) { throw "Missing 32px toolbar screenshot for $dpi DPI." }
+        }
+        $darkSheet = Join-Path $ArtifactDirectory 'toolbar-32-dark-96.bmp'
+        if(Test-Path -LiteralPath $darkSheet) {
+            $rc = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\..\src\fbe\FBE.rc') -Raw
+            $toolbar = [regex]::Match($rc, '(?ms)^IDR_MAINFRAME TOOLBAR.*?^END').Value
+            $buttons = @([regex]::Matches($toolbar, '(?m)^\s*BUTTON\s+(\S+)') | ForEach-Object { $_.Groups[1].Value })
+            $subtitleIndex = [Array]::IndexOf($buttons, 'ID_STYLE_SUBTITLE')
+            if($subtitleIndex -lt 0) { throw 'Subtitle command missing from the toolbar resource.' }
+            Add-Type -AssemblyName System.Drawing
+            $bitmap = [Drawing.Bitmap]::new($darkSheet)
+            try {
+                $luminance = { param($color) $values = @($color.R, $color.G, $color.B) | ForEach-Object { $s = $_ / 255.0; if($s -le 0.04045) { $s / 12.92 } else { [Math]::Pow(($s + 0.055) / 1.055, 2.4) } }; 0.2126 * $values[0] + 0.7152 * $values[1] + 0.0722 * $values[2] }
+                $background = & $luminance ($bitmap.GetPixel($subtitleIndex * 32, 0))
+                $greenPixels = 0; $bestContrast = 0.0
+                for($y = 0; $y -lt 32; ++$y) { for($x = 0; $x -lt 32; ++$x) {
+                    $color = $bitmap.GetPixel($subtitleIndex * 32 + $x, $y)
+                    if($color.G -gt $color.R + 10 -and $color.G -gt $color.B + 10) {
+                        ++$greenPixels; $value = & $luminance $color
+                        $bestContrast = [Math]::Max($bestContrast, ([Math]::Max($value, $background) + 0.05) / ([Math]::Min($value, $background) + 0.05))
+                    }
+                } }
+                if($greenPixels -lt 5 -or $bestContrast -lt 3.0) { throw "Dark subtitle icon is not recognizably green and readable (pixels=$greenPixels, contrast=$bestContrast)." }
+            } finally { $bitmap.Dispose() }
         }
     }
     $passed = $true

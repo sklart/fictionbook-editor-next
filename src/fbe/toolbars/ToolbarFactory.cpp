@@ -5,6 +5,24 @@
 #include "..\\UiMetrics.h"
 #include "../ThemeManager.h"
 namespace {
+void AdaptSubtitleGlyph(HBITMAP bitmap)
+{
+	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast()) return;
+	DIBSECTION data = {};
+	if(::GetObject(bitmap, sizeof(data), &data) != sizeof(data) || !data.dsBm.bmBits || data.dsBm.bmBitsPixel != 32) return;
+	DWORD* pixels = static_cast<DWORD*>(data.dsBm.bmBits);
+	const COLORREF foreground = ThemeManager::TextColor();
+	const int count = data.dsBm.bmWidth * abs(data.dsBmih.biHeight);
+	for(int i = 0; i < count; ++i) {
+		const DWORD pixel = pixels[i], alpha = pixel >> 24;
+		if(!alpha) continue;
+		const DWORD red = (((pixel >> 16) & 255) + 2 * ((GetRValue(foreground) * alpha + 127) / 255) + 1) / 3;
+		const DWORD green = (((pixel >> 8) & 255) + 2 * ((GetGValue(foreground) * alpha + 127) / 255) + 1) / 3;
+		const DWORD blue = ((pixel & 255) + 2 * ((GetBValue(foreground) * alpha + 127) / 255) + 1) / 3;
+		pixels[i] = (alpha << 24) | (red << 16) | (green << 8) | blue;
+	}
+}
+
 void AdaptMonochromeGlyph(HBITMAP bitmap, bool formattingGlyph)
 {
 	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast()) return;
@@ -257,6 +275,7 @@ bool ToolbarFactory::CreateCommandToolbarImages(CImageList& ownedImages, UINT to
 		while(toolbarData->Items()[commandSlot] == 0) ++commandSlot;
 		const WORD command = toolbarData->Items()[commandSlot++];
 		HBITMAP alpha = CreateAlphaBitmapCell(source, sourceSize, index);
+		if(toolbarResourceId == IDR_MAINFRAME && command == ID_STYLE_SUBTITLE) AdaptSubtitleGlyph(alpha);
 		if(toolbarResourceId == IDR_MAINFRAME) AdaptMonochromeGlyph(alpha,
 			command == ID_EDIT_BOLD || command == ID_EDIT_ITALIC || command == ID_EDIT_STRIK ||
 			command == ID_EDIT_SUP || command == ID_EDIT_SUB || command == ID_EDIT_CODE);
