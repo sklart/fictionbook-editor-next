@@ -2,14 +2,15 @@
 param([Parameter(Mandatory)][string]$FbeExe,
       [ValidateSet('square', 'small-square', 'circle', 'none')][string[]]$Modes = @('square', 'small-square', 'circle', 'none'),
       [ValidateSet('plain', 'emphasis', 'strong', 'link')][string]$Context = 'plain',
-      [string]$ArtifactDirectory)
+      [string]$ArtifactDirectory,
+      [switch]$CheckDisplayToggle)
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if (-not $ArtifactDirectory) { $ArtifactDirectory = Join-Path $root 'build\community-feedback-nbsp' }
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $ArtifactDirectory = [IO.Path]::GetFullPath($ArtifactDirectory)
 New-Item -ItemType Directory -Force -Path $ArtifactDirectory | Out-Null
-$names = @('FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_NBSP_OUTPUT')
+$names = @('FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_NBSP_OUTPUT', 'FBE_NEXT_TEST_NBSP_TOGGLE')
 $old = @{}; foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name) }
 $failures = @()
 try {
@@ -29,6 +30,7 @@ try {
             $saved = Join-Path $iso.DataPath 'saved.fb2'
             $report = Join-Path $iso.DataPath 'report.txt'
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'nbsp-input-runtime'
+            $env:FBE_NEXT_TEST_NBSP_TOGGLE = if($CheckDisplayToggle) { '1' } else { $null }
             $env:FBE_NEXT_TEST_NBSP_OUTPUT = $saved
             $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime `
                 -ArgumentList @('--portable', '-b', ('"' + $report + '"'), ('"' + $fixture + '"')) -PassThru
@@ -62,6 +64,8 @@ try {
             $reader = [Xml.XmlReader]::Create($saved, $readerSettings)
             try { while ($reader.Read()) {} } finally { $reader.Dispose() }
             Write-Host "NBSP saved XML and independent XSD: PASS ($Context/$name)."
+            $toggleExpected = if($CheckDisplayToggle) { '1' } else { '0' }
+            if($text -notmatch "(?m)^toggle-tested=$toggleExpected\r?$") { throw "$name did not report the requested display-toggle mode: $text" }
             if ($code -ne 0 -or $text -notmatch "(?m)^mode=$expectedMode\r?$" -or $text -notmatch '(?m)^result=pass\r?$') { throw "$name failed: $text" }
             $passed = $true
             Write-Host "NBSP input/Undo/Redo: PASS ($Context/$name)."

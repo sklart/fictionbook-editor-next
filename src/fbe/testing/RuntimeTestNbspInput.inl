@@ -140,6 +140,37 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_REDO, 0); pump(); thirdRedo = state() == third;
 			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump(); thirdUndo = thirdUndo && state() == second;
 		}
+		wchar_t toggleFlag[2] = {};
+		const bool toggleTested = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_TOGGLE", toggleFlag, _countof(toggleFlag)) == 1 && toggleFlag[0] == L'1';
+		bool changedDisplay = true, unchangedOther = true, toggleRestored = true, toggleUndoRedo = true;
+		CStringA toggleReport; toggleReport.Format("toggle-tested=%d\n", toggleTested);
+		if(toggleTested) {
+		stage = "toggle-display";
+		const CString markerBefore = _Settings.GetNBSPChar();
+		const CString markerOther = markerBefore == L"\u00a0" ? CString(L"\u25a1") : CString(L"\u00a0");
+		const CString beforeToggle = state();
+		const CString xmlBeforeToggle(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+		const bool dirtyBeforeToggle = m_doc->DocChanged();
+		_Settings.SetNBSPChar(markerOther); ApplyConfChanges(false, false); pump();
+		const CString textOther = text();
+		const CString xmlOther(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+		changedDisplay = textOther.Find(markerOther) >= 0 && textOther.Find(markerBefore) < 0;
+		unchangedOther = xmlOther == xmlBeforeToggle && m_doc->DocChanged() == dirtyBeforeToggle;
+		_Settings.SetNBSPChar(markerBefore); ApplyConfChanges(false, false); pump();
+		const CString xmlAfterToggle(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+		toggleRestored = state() == beforeToggle && xmlAfterToggle == xmlBeforeToggle && m_doc->DocChanged() == dirtyBeforeToggle;
+		const int toggleUndoCount = historyCount(false), toggleRedoCount = historyCount(true);
+		m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
+		const CString toggleUndo = state(), toggleUndoText = text();
+		const int toggleUndoCountAfter = historyCount(false), toggleRedoCountAfter = historyCount(true);
+		m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_REDO, 0); pump();
+		const CString toggleRedo = state(), toggleRedoText = text();
+		toggleUndoRedo = toggleUndo != beforeToggle && toggleRedo == beforeToggle;
+		CStringA toggleDetail; toggleDetail.Format("toggle-display=%d\ntoggle-xml-unchanged=%d\ntoggle-restored=%d\ntoggle-undo-redo=%d\ntoggle-undo-text=%s\ntoggle-redo-text=%s\ntoggle-undo-count=%d\ntoggle-redo-count=%d\ntoggle-undo-count-after=%d\ntoggle-redo-count-after=%d\n",
+			changedDisplay, unchangedOther, toggleRestored, toggleUndoRedo, static_cast<LPCSTR>(codepoints(toggleUndoText)), static_cast<LPCSTR>(codepoints(toggleRedoText)),
+			toggleUndoCount, toggleRedoCount, toggleUndoCountAfter, toggleRedoCountAfter);
+		toggleReport += toggleDetail;
+		}
 		stage = "save-reopen";
 		const CString xml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
 		const bool validText = firstText == L"word1 word2" && secondText.GetLength() == 12 &&
@@ -156,9 +187,10 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		CStringA history; history.Format("undo1-text=%s\nundo2-text=%s\nredo1-text=%s\nredo2-text=%s\ncaret-position=%d\nprior-history=%d\nselection-input=%d\nselection-undo=%d\nthird-tested=%d\nthird-input=%d\nthird-undo=%d\nthird-redo=%d\n",
 			static_cast<LPCSTR>(codepoints(undo1Text)), static_cast<LPCSTR>(codepoints(undo2Text)),
 			static_cast<LPCSTR>(codepoints(redo1Text)), static_cast<LPCSTR>(codepoints(redo2Text)), caretPosition, priorHistory, selectionInput, selectionUndo, thirdTested, thirdInput, thirdUndo, thirdRedo); report += history;
+		report += toggleReport;
 		CStringA counts; counts.Format("undo-count-after-undo=%d\nredo-count-after-undo=%d\n", afterUndo, afterUndoRedo); report += counts;
 		passed = focusInside && caretPosition && priorHistory && restored && replay && selectionInput && selectionUndo &&
-			(!thirdTested || (thirdInput && thirdUndo && thirdRedo)) && validText && saved && reopened && xmlMatches;
+			(!thirdTested || (thirdInput && thirdUndo && thirdRedo)) && changedDisplay && unchangedOther && toggleRestored && toggleUndoRedo && validText && saved && reopened && xmlMatches;
 	}
 	catch (const _com_error& error) { CStringA line; line.Format("stage=%s\nerror=0x%08lX\n", stage, static_cast<unsigned long>(error.Error())); report += line; }
 	report += passed ? "result=pass\n" : "result=fail\n";
