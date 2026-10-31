@@ -5022,6 +5022,7 @@ LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 		RunScriptHotkeyManagementTest(); return 0;
 	}
 	RunPortableStateTestScenario();
+	if (!_Settings.GetInterfacePaletteError().IsEmpty()) PostMessage(WM_APP + 0x173);
 	StartupTrace::AppendTestStartupBreadcrumb("postcreate-before-runtime-dispatch");
     m_ui_watchdog.Start(m_hWnd);
     // Reconcile command-band height after initial theme and rebar setup.
@@ -5039,6 +5040,17 @@ LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 		}
 	}
 	StartupTrace::AppendTestStartupBreadcrumb("postcreate-exit");
+	return 0;
+}
+
+LRESULT CMainFrame::OnPaletteLoadWarning(UINT, WPARAM, LPARAM, BOOL&)
+{
+	const CString reason = _Settings.GetInterfacePaletteError();
+	if(reason.IsEmpty()) return 0;
+	CString message = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.startup_error", L"The selected interface palette could not be loaded. The classic palette is being used.");
+	message += L"\n\n";
+	message += reason;
+	U::MessageBox(m_hWnd, message, FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONWARNING);
 	return 0;
 }
 

@@ -60,6 +60,44 @@ static VOID CALLBACK CloseNavigationPopupForTest(HWND, UINT, UINT_PTR timer, DWO
 	::EndMenu();
 }
 
+static bool g_paletteWarningInitialState = false;
+static bool g_paletteWarningReasonFound = false;
+static unsigned g_paletteWarningTicks = 0;
+
+static BOOL CALLBACK FindPaletteWarningText(HWND child, LPARAM)
+{
+    const int length = ::GetWindowTextLengthW(child);
+    if(length > 0 && length < 4096) {
+        std::vector<wchar_t> text(static_cast<size_t>(length) + 1);
+        ::GetWindowTextW(child, text.data(), length + 1);
+        if(CString(text.data()).Find(_Settings.GetInterfacePaletteError()) >= 0) g_paletteWarningReasonFound = true;
+    }
+    return TRUE;
+}
+
+static BOOL CALLBACK FindPaletteWarningWindow(HWND window, LPARAM context)
+{
+    const HWND owner = reinterpret_cast<HWND>(context);
+    wchar_t className[32] = {};
+    ::GetClassNameW(window, className, _countof(className));
+    if(::GetWindow(window, GW_OWNER) != owner || wcscmp(className, L"#32770") != 0) return TRUE;
+    ::EnumChildWindows(window, FindPaletteWarningText, 0);
+    if(!g_paletteWarningReasonFound) return TRUE;
+    ::PostMessageW(window, WM_COMMAND, IDOK, 0);
+    return FALSE;
+}
+
+static VOID CALLBACK CheckPaletteWarningForTest(HWND owner, UINT, UINT_PTR timer, DWORD)
+{
+    ::EnumThreadWindows(::GetCurrentThreadId(), FindPaletteWarningWindow, reinterpret_cast<LPARAM>(owner));
+    if(!g_paletteWarningReasonFound && ++g_paletteWarningTicks < 100) return;
+    ::KillTimer(owner, timer);
+    const bool passed = g_paletteWarningInitialState && g_paletteWarningReasonFound;
+    WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
+        passed ? "custom-palette-settings-missing=1\npalette-warning=1\nresult=pass\n" : "custom-palette-settings-missing=0\npalette-warning=0\nresult=fail\n");
+    ::PostMessageW(owner, WM_CLOSE, 0, 0);
+}
+
 void CMainFrame::RunPortableStateTestScenario()
 {
     if(IsFbeTestScenario(L"custom-palette-settings-write")) {
@@ -109,14 +147,15 @@ void CMainFrame::RunPortableStateTestScenario()
         PostMessage(WM_CLOSE); return;
     }
     if(IsFbeTestScenario(L"custom-palette-settings-missing")) {
-        bool passed = _Settings.GetInterfacePalette() == L"custom:restart-test" && !_Settings.GetInterfacePaletteError().IsEmpty() &&
+        g_paletteWarningInitialState = _Settings.GetInterfacePalette() == L"custom:restart-test" && !_Settings.GetInterfacePaletteError().IsEmpty() &&
             !ThemeManager::IsCustomPaletteActive() && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CLASSIC &&
             _Settings.GetInterfaceTheme() == INTERFACE_THEME_AUTOMATIC;
-        _Settings.SetInterfacePalette(L"custom:../invalid");
-        passed = _Settings.GetInterfacePalette() == L"classic" && _Settings.GetInterfacePaletteError().IsEmpty() && passed;
-        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
-            passed ? "custom-palette-settings-missing=1\nresult=pass\n" : "custom-palette-settings-missing=0\nresult=fail\n");
-        PostMessage(WM_CLOSE); return;
+        ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
+        if(!::SetTimer(m_hWnd, 0x7421, 100, CheckPaletteWarningForTest)) {
+            WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", "result=fail\n");
+            PostMessage(WM_CLOSE);
+        }
+        return;
     }
     if(IsFbeTestScenario(L"named-palette-settings-write")) {
         const InterfaceTheme original = _Settings.GetInterfaceTheme();
