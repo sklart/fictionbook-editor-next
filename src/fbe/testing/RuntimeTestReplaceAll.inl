@@ -98,6 +98,32 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 			undo = undoHtml == beforeHtml && undoXml == beforeXml;
 			redo = redoHtml == afterHtml && redoXml == afterXml;
 		}
+		// A recovered history must also accept the next user edit, not merely
+		// replay the failed operation. Exercise a separate native undo unit and
+		// compare the complete DOM and serialized document after each action.
+		bool subsequentEdit = true, subsequentChanged = false, subsequentUndo = false, subsequentRedo = false, subsequentRestore = false;
+		if (expectedFailure && changed && undo && redo) {
+			MSHTML::IHTMLTxtRangePtr edit = MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange();
+			edit->moveToElementText(MSHTML::IHTMLDocument3Ptr(document)->getElementById(L"main-p"));
+			edit->collapse(VARIANT_FALSE);
+			edit->select(); m_doc->m_body.SetFocus(); pump();
+			HWND focus = ::GetFocus();
+			if (!focus || (focus != m_doc->m_body.m_hWnd && !::IsChild(m_doc->m_body.m_hWnd, focus))) CheckError(E_FAIL);
+			::SendMessageW(focus, WM_CHAR, L'Z', 1); pump();
+			const CString editedHtml(static_cast<LPCWSTR>(body->innerHTML));
+			const CString editedXml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
+			subsequentUndo = CString(static_cast<LPCWSTR>(body->innerHTML)) == afterHtml &&
+				CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == afterXml;
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_REDO, 0); pump();
+			subsequentRedo = CString(static_cast<LPCWSTR>(body->innerHTML)) == editedHtml &&
+				CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == editedXml;
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
+			subsequentChanged = editedHtml != afterHtml;
+			subsequentRestore = CString(static_cast<LPCWSTR>(body->innerHTML)) == afterHtml &&
+				CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == afterXml;
+			subsequentEdit = subsequentChanged && subsequentUndo && subsequentRedo && subsequentRestore;
+		}
 		const CString warning = FbeLoadRuntimeStringByKey(L"fbe.replace.partial_failure",
 			L"Replace All may have partially changed the document. Do not overwrite the original file. Reopen the last saved copy to restore it; unsaved changes will be lost.");
 		const bool partialWarning = error.Find(warning) >= 0;
@@ -112,11 +138,11 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 		}
 		const CString staleError = FbeLoadRuntimeStringByKey(L"fbe.replace.preview.changed", L"The document changed before Replace All could be applied.");
 		const bool rejectedStale = stalePreview && modalChanged && count == -1 && error == staleError;
-		report.Format("fault=%S\ncount=%d\nerror-empty=%d\npartial-warning=%d\nchanged=%d\nstale-rejected=%d\nmodal-changed=%d\nundo-tested=%d\nundo-available=%d\nredo-available=%d\nundo=%d\nredo=%d\nsaved=%d\nreopened=%d\nxml-matches=%d\nsaved-copy-recovery=%d\n",
-			fault, count, error.IsEmpty(), partialWarning, changed, rejectedStale, modalChanged, changed && !stalePreview, undoAvailable, redoAvailable, undo, redo, saved, reopened, xmlMatches, savedCopyRecovery);
+		report.Format("fault=%S\ncount=%d\nerror-empty=%d\npartial-warning=%d\nchanged=%d\nstale-rejected=%d\nmodal-changed=%d\nundo-tested=%d\nundo-available=%d\nredo-available=%d\nundo=%d\nredo=%d\nsubsequent-edit=%d\nsubsequent-changed=%d\nsubsequent-undo=%d\nsubsequent-redo=%d\nsubsequent-restore=%d\nsaved=%d\nreopened=%d\nxml-matches=%d\nsaved-copy-recovery=%d\n",
+			fault, count, error.IsEmpty(), partialWarning, changed, rejectedStale, modalChanged, changed && !stalePreview, undoAvailable, redoAvailable, undo, redo, subsequentEdit, subsequentChanged, subsequentUndo, subsequentRedo, subsequentRestore, saved, reopened, xmlMatches, savedCopyRecovery);
 		const bool operation = expectedFailure ? count == -1 && !error.IsEmpty() && partialWarning == expectedMutation && changed == expectedMutation
 			: stalePreview ? rejectedStale && changed : noMatch ? count == 0 && error.IsEmpty() && !changed && beforeXml == afterXml : count > 0 && error.IsEmpty() && changed;
-		passed = operation && (!changed || stalePreview || (undo && redo && undoAvailable > 0 && redoAvailable > 0)) && saved && reopened && xmlMatches && savedCopyRecovery;
+		passed = operation && (!changed || stalePreview || (undo && redo && undoAvailable > 0 && redoAvailable > 0)) && subsequentEdit && saved && reopened && xmlMatches && savedCopyRecovery;
 		modalMutation = NULL;
 	}
 	catch (const _com_error& error) { CStringA line; line.Format("error=0x%08lX\n", static_cast<unsigned long>(error.Error())); report += line; }

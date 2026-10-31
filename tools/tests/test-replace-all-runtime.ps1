@@ -35,7 +35,7 @@ try {
     $env:FBE_NEXT_TEST_REPLACE_MODE = $Mode
     if ($Mode -ne 'digits' -and $Fault -ne 'none') { throw 'Fault injection requires digits mode.' }
     $report = Join-Path $iso.DataPath 'report.txt'
-    $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -WindowStyle Hidden `
+    $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime `
         -ArgumentList @('--portable', '-b', ('"' + $report + '"'), ('"' + $fixture + '"')) -PassThru
     $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'replace-all-runtime' -Report $report -TimeoutSeconds 120
     $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
