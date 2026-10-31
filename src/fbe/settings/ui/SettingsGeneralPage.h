@@ -11,6 +11,7 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	CComboBox m_language;
 	CComboBox m_interfaceTheme;
 	CComboBox m_interfacePalette;
+	std::vector<ThemeManager::CustomPalette> m_customPalettes;
 	CComboBox m_scriptIconSize;
 	CComboBox m_mainToolbarIconSize;
 	CComboBox m_genreCatalog;

@@ -110,6 +110,13 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_interfacePalette.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.graphite", L"Graphite"));
 	m_interfacePalette.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.navy", L"Dark blue"));
 	m_interfacePalette.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.sepia", L"Sepia"));
+	for(const ThemeManager::CustomPalette& palette : ThemeManager::ListCustomPalettesInProfile()) {
+		const CString label = CString(palette.name.c_str()) + L" (" + palette.id.c_str() + L")";
+		const int index = m_interfacePalette.AddString(label);
+		if(index < 0) break;
+		m_customPalettes.push_back(palette);
+		if(_Settings.GetInterfacePalette() == CString(L"custom:") + palette.id.c_str()) m_acceptedPaletteIndex = index;
+	}
 	m_interfacePalette.SetCurSel(m_acceptedPaletteIndex);
 	FitLocalizedLayout();
 
@@ -363,9 +370,25 @@ LRESULT CSettingsGeneralPage::OnInterfaceThemeChanged(WORD notification, WORD, H
 LRESULT CSettingsGeneralPage::OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&)
 {
 	const int selection = m_interfacePalette.GetCurSel();
-	if(selection < 0 || selection >= INTERFACE_PALETTE_COUNT) return 0;
-	if((!m_darkThemeSupported && (selection == INTERFACE_PALETTE_GRAPHITE || selection == INTERFACE_PALETTE_NAVY)) ||
-		!ThemeManager::SetNamedPalette(static_cast<InterfacePalette>(selection))) {
+	if(selection < 0 || selection >= INTERFACE_PALETTE_COUNT + static_cast<int>(m_customPalettes.size())) return 0;
+	bool applied = false;
+	if(selection < INTERFACE_PALETTE_COUNT) {
+		if(m_darkThemeSupported || (selection != INTERFACE_PALETTE_GRAPHITE && selection != INTERFACE_PALETTE_NAVY))
+			applied = ThemeManager::SetNamedPalette(static_cast<InterfacePalette>(selection));
+	} else {
+		ThemeManager::CustomPalette palette; std::wstring error;
+		const std::wstring& id = m_customPalettes[selection - INTERFACE_PALETTE_COUNT].id;
+		if(!ThemeManager::LoadCustomPaletteFromProfile(id, palette, error)) {
+			m_interfacePalette.SetCurSel(m_acceptedPaletteIndex);
+			CString message = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.load_failed", L"Could not load the selected interface palette.");
+			if(!error.empty()) { message += L"\n\n"; message += error.c_str(); }
+			MessageBox(message, FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONWARNING);
+			return 0;
+		}
+		const bool dark = palette.base == ThemeManager::CustomPaletteBase::Dark || palette.base == ThemeManager::CustomPaletteBase::Graphite || palette.base == ThemeManager::CustomPaletteBase::Navy;
+		if(m_darkThemeSupported || !dark) applied = ThemeManager::SetCustomPalette(palette);
+	}
+	if(!applied) {
 		m_interfacePalette.SetCurSel(m_acceptedPaletteIndex);
 		MessageBox(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.unavailable", L"This dark palette requires Windows 10 (1809) or newer."),
 			FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONINFORMATION);
@@ -380,7 +403,10 @@ LRESULT CSettingsGeneralPage::OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&)
 bool CSettingsGeneralPage::Validate() { return true; }
 void CSettingsGeneralPage::Commit()
 {
-	if(m_paletteChanged) _Settings.SetInterfacePalette(PaletteId(m_acceptedPaletteIndex));
+	if(m_paletteChanged) {
+		if(m_acceptedPaletteIndex < INTERFACE_PALETTE_COUNT) _Settings.SetInterfacePalette(PaletteId(m_acceptedPaletteIndex));
+		else _Settings.SetInterfacePalette(CString(L"custom:") + m_customPalettes[m_acceptedPaletteIndex - INTERFACE_PALETTE_COUNT].id.c_str());
+	}
 	const int iconSize = m_scriptIconSize.GetCurSel();
 	if(iconSize != CB_ERR) _Settings.SetScriptIconSize(static_cast<int>(m_scriptIconSize.GetItemData(iconSize)));
 	const int mainIconSize = m_mainToolbarIconSize.GetCurSel();

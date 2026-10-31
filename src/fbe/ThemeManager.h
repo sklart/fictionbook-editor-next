@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <vector>
 
 // Interface theme is deliberately independent from BODY editor colours.
 enum InterfaceTheme
@@ -61,6 +62,7 @@ namespace ThemeManager
 	bool IsValidCustomPaletteId(const std::wstring& id);
 	bool LoadCustomPaletteFromProfile(const std::wstring& id, CustomPalette& palette, std::wstring& error);
 	bool DeleteCustomPaletteFromProfile(const std::wstring& id, std::wstring& error);
+	std::vector<CustomPalette> ListCustomPalettesInProfile();
 	struct ApplyDiagnostics
 	{
 		ULONGLONG applied;

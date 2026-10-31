@@ -82,6 +82,26 @@ void CMainFrame::RunPortableStateTestScenario()
     if(IsFbeTestScenario(L"custom-palette-settings-read")) {
         bool passed = _Settings.GetInterfacePalette() == L"custom:restart-test" && _Settings.GetInterfacePaletteError().IsEmpty() &&
             ThemeManager::IsCustomPaletteActive() && ThemeManager::Color(THEME_COLOR_WINDOW) == RGB(17, 34, 51);
+        CSettingsGeneralPage page;
+        const bool created = page.Create(m_hWnd) != NULL;
+        passed = created && passed;
+        if(created) {
+            const HWND choice = page.GetDlgItem(IDC_INTERFACE_PALETTE);
+            BOOL handled = FALSE;
+            passed = choice && ::SendMessage(choice, CB_GETCOUNT, 0, 0) == INTERFACE_PALETTE_COUNT + 1 &&
+                ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_COUNT && passed;
+            ::SendMessage(choice, CB_SETCURSEL, INTERFACE_PALETTE_SEPIA, 0);
+            page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, choice, handled);
+            passed = !ThemeManager::IsCustomPaletteActive() && page.CancelChanges() && ThemeManager::IsCustomPaletteActive() && passed;
+            ::SendMessage(choice, CB_SETCURSEL, INTERFACE_PALETTE_SEPIA, 0);
+            page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, choice, handled);
+            ::SendMessage(choice, CB_SETCURSEL, INTERFACE_PALETTE_COUNT, 0);
+            page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, choice, handled);
+            passed = ThemeManager::IsCustomPaletteActive() && passed;
+            page.Commit();
+            passed = _Settings.GetInterfacePalette() == L"custom:restart-test" && ThemeManager::IsCustomPaletteActive() && passed;
+            page.DestroyWindow();
+        }
         std::wstring error;
         passed = ThemeManager::DeleteCustomPaletteFromProfile(L"restart-test", error) && passed;
         WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
@@ -153,6 +173,7 @@ void CMainFrame::RunPortableStateTestScenario()
         if(corrupt == INVALID_HANDLE_VALUE) jsonPassed = false;
         else { const char bad[] = "{broken"; DWORD written = 0; jsonPassed = ::WriteFile(corrupt, bad, sizeof(bad) - 1, &written, NULL) && written == sizeof(bad) - 1 && jsonPassed; ::CloseHandle(corrupt); }
         jsonPassed = !ThemeManager::LoadCustomPaletteFromProfile(custom.id, fromFile, parseError) && fromFile.name == L"Updated" && jsonPassed;
+        jsonPassed = ThemeManager::ListCustomPalettesInProfile().empty() && jsonPassed;
         jsonPassed = ThemeManager::DeleteCustomPaletteFromProfile(custom.id, parseError) && jsonPassed;
         const InterfaceTheme initialTheme = ThemeManager::GetSelectedTheme();
         const InterfacePalette initialPalette = ThemeManager::GetNamedPalette();

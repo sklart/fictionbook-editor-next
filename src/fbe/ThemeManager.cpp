@@ -8,6 +8,7 @@
 #include "../common/RuntimeLocalizationCommon.h"
 #include "settings/SettingsFileTransaction.h"
 #include "../common/DeploymentContext.h"
+#include <algorithm>
 #include <map>
 #include <array>
 #include <set>
@@ -972,10 +973,9 @@ bool IsValidCustomPaletteId(const std::wstring& id)
 }
 
 namespace {
-bool ProfilePalettePath(const std::wstring& id, CString& path, bool createDirectory, std::wstring& error)
+bool ProfilePaletteDirectory(CString& directory, bool createDirectory, std::wstring& error)
 {
-	if(!IsValidCustomPaletteId(id)) { error = L"Invalid theme id."; return false; }
-	CString directory(DeploymentContext::SettingsDirectory().c_str());
+	directory = DeploymentContext::SettingsDirectory().c_str();
 	if(directory.IsEmpty()) { error = L"Settings directory is unavailable."; return false; }
 	if(createDirectory && !::CreateDirectoryW(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) { error = L"Settings directory is unavailable."; return false; }
 	if(directory.Right(1) != L"\\") directory += L"\\";
@@ -983,6 +983,13 @@ bool ProfilePalettePath(const std::wstring& id, CString& path, bool createDirect
 	if(createDirectory && !::CreateDirectoryW(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) { error = L"Cannot create theme directory."; return false; }
 	const DWORD attributes = ::GetFileAttributesW(directory);
 	if(attributes == INVALID_FILE_ATTRIBUTES || !(attributes & FILE_ATTRIBUTE_DIRECTORY) || (attributes & FILE_ATTRIBUTE_REPARSE_POINT)) { error = L"Theme directory is unavailable or unsafe."; return false; }
+	return true;
+}
+bool ProfilePalettePath(const std::wstring& id, CString& path, bool createDirectory, std::wstring& error)
+{
+	if(!IsValidCustomPaletteId(id)) { error = L"Invalid theme id."; return false; }
+	CString directory;
+	if(!ProfilePaletteDirectory(directory, createDirectory, error)) return false;
 	path = directory + L"\\" + id.c_str() + L".json";
 	const DWORD fileAttributes = ::GetFileAttributesW(path);
 	if(fileAttributes != INVALID_FILE_ATTRIBUTES && (fileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT))) { error = L"Theme file is not a regular file."; return false; }
@@ -1039,6 +1046,28 @@ bool DeleteCustomPaletteFromProfile(const std::wstring& id, std::wstring& error)
 	if(!transaction.Commit()) { error = L"Cannot delete theme file."; return false; }
 	return true;
 }
+std::vector<CustomPalette> ListCustomPalettesInProfile()
+{
+	std::vector<CustomPalette> result;
+	CString directory; std::wstring error;
+	if(!ProfilePaletteDirectory(directory, false, error)) return result;
+	const CString pattern = directory + L"\\*.json";
+	WIN32_FIND_DATAW item = {};
+	HANDLE search = ::FindFirstFileW(pattern, &item);
+	if(search == INVALID_HANDLE_VALUE) return result;
+	do {
+		if(item.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) continue;
+		const std::wstring name(item.cFileName);
+		if(name.size() <= 5 || name.compare(name.size() - 5, 5, L".json") != 0) continue;
+		const std::wstring id = name.substr(0, name.size() - 5);
+		CustomPalette palette;
+		if(LoadCustomPaletteFromProfile(id, palette, error)) result.push_back(palette);
+	} while(::FindNextFileW(search, &item));
+	::FindClose(search);
+	std::sort(result.begin(), result.end(), [](const CustomPalette& first, const CustomPalette& second) { return first.id < second.id; });
+	return result;
+}
+
 namespace
 {
 struct TaskDialogCallbackState
