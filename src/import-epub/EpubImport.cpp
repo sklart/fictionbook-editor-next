@@ -2811,6 +2811,7 @@ namespace
         std::map<std::wstring, std::wstring>* anchorIdMap;
         bool collectingNotes;
         bool inlinePageBreaks = false;
+        bool inlineLineBreaks = false;
     };
 
     const ManifestItem* FindManifestItemById(const EpubPackage& package, const CStringW& id)
@@ -3664,7 +3665,7 @@ namespace
         if (name.CompareNoCase(L"rp") == 0)
             return CStringW();
         if (name.CompareNoCase(L"br") == 0)
-            return L" ";
+            return ctx.inlineLineBreaks ? L"<!--fbe-dedication-line-break-->" : L" ";
         if (name.CompareNoCase(L"a") == 0)
         {
             if (IsBacklinkElement(node))
@@ -5057,6 +5058,70 @@ namespace
         return images == 1;
     }
 
+    void AppendDedicationInlineLines(const CStringW& source, CStringW& out)
+    {
+        const CStringW marker = L"<!--fbe-dedication-line-break-->";
+        struct OpenTag { CStringW opening; CStringW closing; };
+        std::vector<OpenTag> tags;
+        CStringW line;
+        bool hasContent = false;
+        auto finishLine = [&](bool explicitBreak) {
+            CStringW closed = line;
+            for (auto it = tags.rbegin(); it != tags.rend(); ++it) closed += it->closing;
+            closed.Trim();
+            if (hasContent) out += L"      <p>" + closed + L"</p>\r\n";
+            else if (explicitBreak) out += L"      <empty-line/>\r\n";
+            line.Empty();
+            for (const auto& tag : tags) line += tag.opening;
+            hasContent = false;
+        };
+        for (int pos = 0; pos < source.GetLength(); )
+        {
+            if (source.Mid(pos, marker.GetLength()) == marker)
+            {
+                finishLine(true);
+                pos += marker.GetLength();
+                continue;
+            }
+            if (source[pos] != L'<')
+            {
+                int end = source.Find(L'<', pos);
+                if (end < 0) end = source.GetLength();
+                const CStringW part = source.Mid(pos, end - pos);
+                line += part;
+                if (!TrimString(part).IsEmpty()) hasContent = true;
+                pos = end;
+                continue;
+            }
+            int end = pos + 1;
+            wchar_t quote = 0;
+            for (; end < source.GetLength(); ++end)
+            {
+                const wchar_t ch = source[end];
+                if (quote) { if (ch == quote) quote = 0; }
+                else if (ch == L'\'' || ch == L'"') quote = ch;
+                else if (ch == L'>') break;
+            }
+            if (end == source.GetLength()) { line += source.Mid(pos); hasContent = true; break; }
+            const CStringW token = source.Mid(pos, end - pos + 1);
+            line += token;
+            if (token.GetLength() > 2 && token[1] == L'/')
+            {
+                if (!tags.empty()) tags.pop_back();
+            }
+            else if (token.GetLength() > 2 && token[token.GetLength() - 2] == L'/')
+                hasContent = true;
+            else if (token.GetLength() > 2 && token[1] != L'!' && token[1] != L'?')
+            {
+                int nameEnd = 1;
+                while (nameEnd < token.GetLength() && !iswspace(token[nameEnd]) && token[nameEnd] != L'>') ++nameEnd;
+                tags.push_back({token, L"</" + token.Mid(1, nameEnd - 1) + L">"});
+            }
+            pos = end + 1;
+        }
+        finishLine(false);
+    }
+
     void AppendSpecialSectionNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx, LPCWSTR title)
     {
         CStringW content;
@@ -5068,9 +5133,10 @@ namespace
             const InlineFontState font = InheritedInlineFont(node);
             ConvertContext inlineContext = ctx;
             inlineContext.inlinePageBreaks = true;
+            inlineContext.inlineLineBreaks = true;
             auto flush = [&]() {
                 text.Trim();
-                if (!text.IsEmpty()) content += L"      <p>" + text + L"</p>\r\n";
+                if (!text.IsEmpty()) AppendDedicationInlineLines(text, content);
                 text.Empty();
             };
             const auto children = MsxmlGetChildNodes(node);

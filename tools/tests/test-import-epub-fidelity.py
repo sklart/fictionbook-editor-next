@@ -1767,6 +1767,34 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 else:
                     self.assertNotIn('NestedMarker', text)
 
+    def test_dedication_nested_breaks_preserve_lines_and_inline_styles(self):
+        root = self.convert('<p class="dedication"><em>First line<br/>Second line</em>'
+                            '<br/><a href="https://example.org/"><strong>Third line<br/>Fourth line</strong></a></p>',
+                            navigation=False)
+        lines = [p for p in root.findall('.//f:body//f:p', NS)
+                 if any(s in ''.join(p.itertext()) for s in ('First line', 'Second line', 'Third line', 'Fourth line'))]
+        self.assertEqual([''.join(p.itertext()).strip() for p in lines],
+                         ['First line', 'Second line', 'Third line', 'Fourth line'])
+        for p in lines[:2]: self.assertIsNotNone(p.find('.//f:emphasis', NS))
+        for p in lines[2:]:
+            self.assertIsNotNone(p.find('.//f:strong', NS))
+            self.assertTrue(any(n.get('{http://www.w3.org/1999/xlink}href') == 'https://example.org/'
+                                for n in p.findall('.//f:a', NS)))
+
+    def test_dedication_breaks_keep_blank_line_and_nested_page_marker(self):
+        root = self.convert('<p><a href="#pg">Page</a></p>'
+                            '<p class="dedication"><em>One<br/><br/>'
+                            '<span epub:type="pagebreak" id="pg" title="PageMark"/>Two</em></p>',
+                            options=['--pagebreaks'], navigation=False)
+        section = next(s for s in root.findall('.//f:body//f:section', NS)
+                       if any('One' in ''.join(p.itertext()) for p in s.findall('./f:p', NS)))
+        lines = [p for p in section.findall('./f:p', NS) if ''.join(p.itertext()).strip()]
+        self.assertEqual([''.join(p.itertext()).strip() for p in lines], ['One', 'PageMarkTwo'])
+        self.assertIsNotNone(section.find('./f:empty-line', NS))
+        self.assertTrue(any(n.get('id') == 'pg' for n in root.iter()))
+        self.assertIsNotNone(lines[1].find('.//f:sub', NS))
+        self.assertIn('Two', ''.join(lines[1].find('.//f:emphasis', NS).itertext()))
+
     def test_orphan_closing_tags_preserve_text_and_links_with_warning(self):
         root = self.convert('<p>Before</a><a href="#target">Link</a> after</p>'
                             '<!-- </div> --><p id="target">Target</p></div>', navigation=False)
