@@ -98,8 +98,79 @@ void CMainFrame::RunPortableStateTestScenario()
             passed ? "theme-preference-restart=1\nresult=pass\n" : "theme-preference-restart=0\nresult=fail\n");
         PostMessage(WM_CLOSE); return;
     }
+    if(IsFbeTestScenario(L"main-toolbar-size-dialog-runtime")) {
+        static HWND testOwner = NULL;
+        static int testAction = 0;
+        static bool errorDismissed = false;
+        testOwner = m_hWnd;
+        ShowWindow(SW_SHOWNORMAL);
+        auto tick = [](HWND, UINT, UINT_PTR, DWORD) {
+            ::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
+                if(::GetWindow(window, GW_OWNER) != testOwner || !::IsWindowVisible(window)) return TRUE;
+                const int dismissId = ::GetDlgItem(window, IDOK) ? IDOK : IDCANCEL;
+                if(testAction == 3 && !::GetDlgItem(window, IDC_SETTINGS_NAV) && ::GetDlgItem(window, dismissId)) {
+                    errorDismissed = true;
+                    ::PostMessageW(window, WM_COMMAND, MAKEWPARAM(dismissId, BN_CLICKED), reinterpret_cast<LPARAM>(::GetDlgItem(window, dismissId)));
+                }
+                return TRUE;
+            }, 0);
+        };
+        bool passed = _Settings.GetMainToolbarIconSize() == 32 && _Settings.GetScriptIconSize() == 20;
+        for(testAction = 1; testAction <= 3; ++testAction) {
+            errorDismissed = false;
+            ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_TOOLBAR_DIALOG_ACTION", testAction == 1 ? L"cancel" : testAction == 3 ? L"failure" : L"apply");
+            ToolbarFactory::RebuildFailurePoint() = testAction == 3 ? ToolbarFactory::RebuildFailure::Prepared : ToolbarFactory::RebuildFailure::None;
+            const UINT_PTR timer = ::SetTimer(NULL, 0, 30, tick);
+            if(!timer) { passed = false; break; }
+            const bool accepted = ShowSettingsDialog(m_hWnd);
+            ::KillTimer(NULL, timer);
+            ToolbarFactory::RebuildFailurePoint() = ToolbarFactory::RebuildFailure::None;
+            const int expected = testAction == 1 ? 32 : 16;
+            int width = 0, height = 0;
+            passed = accepted == (testAction != 1) && _Settings.GetMainToolbarIconSize() == expected &&
+                _Settings.GetScriptIconSize() == 20 && ::ImageList_GetIconSize(m_commandToolbarImages, &width, &height) &&
+                width == UiMetrics::ScaleForDpi(expected, UiMetrics::DpiForWindow(m_hWnd)) && height == width &&
+                (testAction != 3 || errorDismissed) && passed;
+        }
+        ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_TOOLBAR_DIALOG_ACTION", NULL);
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
+            passed ? "main-toolbar-dialog=1\nresult=pass\n" : "main-toolbar-dialog=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
+    }
     if(IsFbeTestScenario(L"main-toolbar-size-setting-write")) {
         bool passed = _Settings.GetMainToolbarIconSize() == 24 && _Settings.GetScriptIconSize() == 16;
+        CSettingsGeneralPage page;
+        const bool pageCreated = page.Create(m_hWnd) != NULL;
+        passed = pageCreated && passed;
+        if(pageCreated) {
+            const HWND mainChoice = page.GetDlgItem(IDC_MAIN_TOOLBAR_ICON_SIZE);
+            const HWND scriptChoice = page.GetDlgItem(IDC_SCRIPT_ICON_SIZE);
+            struct TooltipSearch { HWND page; HWND found; } tooltipSearch{page.m_hWnd, NULL};
+            ::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM data) -> BOOL {
+                TooltipSearch& search = *reinterpret_cast<TooltipSearch*>(data);
+                wchar_t name[64] = {}; ::GetClassNameW(window, name, _countof(name));
+                if(wcscmp(name, TOOLTIPS_CLASSW) == 0) {
+                    wchar_t text[2048] = {}; CToolInfo info(TTF_IDISHWND, ::GetDlgItem(search.page, IDC_MAIN_TOOLBAR_ICON_SIZE), 0, NULL, text);
+                    if(::SendMessageW(window, TTM_GETTOOLINFOW, 0, reinterpret_cast<LPARAM>(&info))) { search.found = window; return FALSE; }
+                }
+                return TRUE;
+            }, reinterpret_cast<LPARAM>(&tooltipSearch));
+            const CString expectedTip = FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.general.main_toolbar_icon_size");
+            for(int id : {IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL}) {
+                wchar_t text[2048] = {}; CToolInfo info(TTF_IDISHWND, page.GetDlgItem(id), 0, NULL, text);
+                passed = tooltipSearch.found && ::SendMessageW(tooltipSearch.found, TTM_GETTOOLINFOW, 0, reinterpret_cast<LPARAM>(&info)) &&
+                    info.lpszText && !expectedTip.IsEmpty() && expectedTip == info.lpszText && passed;
+            }
+            passed = mainChoice && scriptChoice && ::SendMessage(mainChoice, CB_GETCOUNT, 0, 0) == 4 &&
+                ::SendMessage(mainChoice, CB_GETCURSEL, 0, 0) == 2 && ::SendMessage(scriptChoice, CB_GETCURSEL, 0, 0) == 0 && passed;
+            ::SendMessage(mainChoice, CB_SETCURSEL, 0, 0);
+            passed = page.CancelChanges() && _Settings.GetMainToolbarIconSize() == 24 && passed;
+            ::SendMessage(mainChoice, CB_SETCURSEL, 3, 0);
+            page.Commit();
+            passed = _Settings.GetMainToolbarIconSize() == 32 && _Settings.GetScriptIconSize() == 16 && passed;
+            page.DestroyWindow();
+            _Settings.SetMainToolbarIconSize(24);
+        }
         const UINT actualDpi = UiMetrics::DpiForWindow(m_hWnd);
         int scriptWidth = 0, scriptHeight = 0;
         passed = ::ImageList_GetIconSize(m_scriptsToolbarImages, &scriptWidth, &scriptHeight) && passed;

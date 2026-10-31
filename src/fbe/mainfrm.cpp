@@ -7890,8 +7890,20 @@ void CMainFrame::GoTo(int selected_pos)
 
 bool CMainFrame::ShowSettingsDialog(HWND parent)
 {
+	const int oldMainIconSize = _Settings.GetMainToolbarIconSize();
 	CSettingsDlg dlg(m_doc ? m_doc->m_body.m_file_path : CString());
 	if(dlg.DoModal(parent) != IDOK) return false;
+	if(oldMainIconSize != _Settings.GetMainToolbarIconSize() && !RebuildCommandToolbarImages(UiMetrics::DpiForWindow(m_hWnd))) {
+		_Settings.SetMainToolbarIconSize(oldMainIconSize);
+		_Settings.Save();
+		const bool restoreFailed = ::GetPropW(m_CmdToolbar, L"FBE.Toolbar.ImageRestoreFailed") != NULL;
+		const CString message = restoreFailed
+			? FbeLoadRuntimeStringByKey(L"fbe.settings.main_toolbar_icon_size.restore_failed", L"Could not restore the previous toolbar appearance. Restart FBE to reload the saved size.")
+			: FbeLoadRuntimeStringByKey(L"fbe.settings.main_toolbar_icon_size.failed", L"Could not change the main toolbar icon size. The previous size was restored.");
+		MessageBox(message,
+			FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
+	}
+	if(m_rebar.IsWindow()) { m_rebar.SendMessage(WM_SIZE); UpdateLayout(); }
 	ApplyScriptIconSize();
 	return true;
 }

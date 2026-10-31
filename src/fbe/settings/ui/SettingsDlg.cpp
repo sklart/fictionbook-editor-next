@@ -187,6 +187,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_navigation.SetCurSel(0);
 	SelectPage(SettingsPageId::General);
 	if(RuntimeTests::IsScenario(L"ui-defects-runtime")) SetTimer(0x55494446, 1);
+	if(RuntimeTests::IsScenario(L"main-toolbar-size-dialog-runtime")) SetTimer(0x5442535a, 1);
 	if (IsSettingsDialogRuntimeTest())
 	{
 		::SetPropW(::GetParent(m_hWnd), L"FBE_CARET_INITIAL_SYSTEM",
@@ -226,6 +227,14 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 
 LRESULT CSettingsDlg::OnTimer(UINT, WPARAM timerId, LPARAM, BOOL&)
 {
+	if(timerId == 0x5442535a && RuntimeTests::IsScenario(L"main-toolbar-size-dialog-runtime")) {
+		KillTimer(timerId);
+		wchar_t action[16] = {};
+		::GetEnvironmentVariableW(L"FBE_NEXT_TEST_TOOLBAR_DIALOG_ACTION", action, _countof(action));
+		m_generalPage->SendDlgItemMessage(IDC_MAIN_TOOLBAR_ICON_SIZE, CB_SETCURSEL, wcscmp(action, L"failure") == 0 ? 3 : 0, 0);
+		BOOL handled = FALSE;
+		return wcscmp(action, L"cancel") == 0 ? OnClickedCancel(0, IDCANCEL, NULL, handled) : OnClickedOK(BN_CLICKED, IDOK, GetDlgItem(IDOK), handled);
+	}
 	if(timerId == 0x55494446 && RuntimeTests::IsScenario(L"ui-defects-runtime")) {
 		KillTimer(timerId);
 		wchar_t menuTheme[16]={};

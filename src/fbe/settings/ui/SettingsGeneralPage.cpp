@@ -47,6 +47,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_originalTheme = _Settings.GetInterfaceTheme();
 	m_interfaceTheme = GetDlgItem(IDC_INTERFACE_THEME);
 	m_scriptIconSize = GetDlgItem(IDC_SCRIPT_ICON_SIZE);
+	m_mainToolbarIconSize = GetDlgItem(IDC_MAIN_TOOLBAR_ICON_SIZE);
 	m_genreCatalog = GetDlgItem(IDC_GENRE_CATALOG);
 	m_descriptionLayout = GetDlgItem(IDC_DESCRIPTION_LAYOUT);
 	SetText(m_hWnd, IDC_DESCRIPTION_LAYOUT_LABEL, L"fbe.description.layout", L"Description layout:");
@@ -64,6 +65,8 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.description_layout", L"Choose the Description layout. Modern uses compact, collapsible sections; Classic keeps the familiar FictionBook Editor field order. This does not change FB2 data.");
 	for(HWND control : {m_scriptIconSize.m_hWnd, GetDlgItem(IDC_SCRIPT_ICON_SIZE_LABEL).m_hWnd})
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.script_icon_size", L"Sets the icon size in the script tree and script toolbars. Available sizes: 16, 20, 24 and 32 pixels (scaled for DPI).");
+	for(HWND control : {m_mainToolbarIconSize.m_hWnd, GetDlgItem(IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL).m_hWnd})
+		m_tooltips.Add(control, L"fbe.settings.tooltip.general.main_toolbar_icon_size", L"Sets the main toolbar icon size independently of script icons. Windows DPI scaling is applied.");
 	m_tooltips.Add(m_genreCatalog, L"fbe.settings.tooltip.general.genre_catalog", L"Selects genres available when editing book metadata.");
 	m_tooltips.Add(m_restorePosition, L"fbe.settings.tooltip.general.restore_position", L"Restores the saved reading or editing position when reopening a document.");
 	m_tooltips.Add(m_defaultEncoding, L"fbe.settings.tooltip.general.default_encoding", L"Encoding used when saving if the original encoding is not kept.");
@@ -76,6 +79,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	SetText(m_hWnd, IDC_OPTIONS_LANGUAGE_LABEL, L"fbe.dialog.idd_options.language", L"Language:");
 	SetText(m_hWnd, IDC_INTERFACE_THEME_LABEL, L"fbe.dialog.idd_options.interface_theme", L"Interface theme:");
 	SetText(m_hWnd, IDC_SCRIPT_ICON_SIZE_LABEL, L"fbe.settings.script_icon_size", L"Script icon size:");
+	SetText(m_hWnd, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, L"fbe.settings.main_toolbar_icon_size", L"Main toolbar icon size:");
 	SetText(m_hWnd, IDC_OPTIONS_GENRE_CATALOG_LABEL, L"fbe.dialog.idd_options.genre_catalog", L"Genre catalog:");
 	SetText(m_hWnd, IDC_SETTINGS_OTHER_OPEN_GROUP, L"fbe.dialog.idd_setting_other.open_file", L"Open file");
 	SetText(m_hWnd, IDC_RESTORE_POS, L"fbe.dialog.idd_setting_other.restore_position", L"Restore position");
@@ -122,6 +126,8 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 		CString iconText; iconText.Format(L"%d \x00d7 %d", size, size);
 		const int index = m_scriptIconSize.AddString(iconText); m_scriptIconSize.SetItemData(index, size);
 		if(size == _Settings.GetScriptIconSize()) m_scriptIconSize.SetCurSel(index);
+		const int mainIndex = m_mainToolbarIconSize.AddString(iconText); m_mainToolbarIconSize.SetItemData(mainIndex, size);
+		if(size == _Settings.GetMainToolbarIconSize()) m_mainToolbarIconSize.SetCurSel(mainIndex);
 	}
 	m_genreCatalog.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.genre_catalog.standard", L"Standard"));
 	m_genreCatalog.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.genre_catalog.librusec", L"Librusec"));
@@ -225,22 +231,24 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	};
 	shift(IDC_OPTIONS_INTERFACE_GROUP, { IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG,
 		IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME,
-		IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
+		IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
 	const CRect interfaceGroup = bounds(IDC_OPTIONS_INTERFACE_GROUP);
 	int comboLeft = bounds(IDC_LANG).left;
 	for(int id : { IDC_OPTIONS_LANGUAGE_LABEL, IDC_OPTIONS_GENRE_CATALOG_LABEL,
-		IDC_INTERFACE_THEME_LABEL, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_SETTINGS_OTHER_ENCODING, IDC_UPDATE_CHANNEL_LABEL })
+		IDC_INTERFACE_THEME_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_SETTINGS_OTHER_ENCODING, IDC_UPDATE_CHANNEL_LABEL })
 		comboLeft = max(comboLeft, bounds(id).left + measure(id, 10000, false).cx + gap);
 	comboLeft = min(comboLeft, interfaceGroup.right - margin - UiMetrics::ScaleForDpi(130, dpi));
 	const int interfaceComboRight = interfaceGroup.right - margin;
 	fitLabelCombo(IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG, comboLeft, interfaceComboRight);
 	fitLabelCombo(IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, comboLeft, interfaceComboRight);
 	fitLabelCombo(IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME, comboLeft, interfaceComboRight);
+	fitLabelCombo(IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, comboLeft, interfaceComboRight);
 	fitLabelCombo(IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, comboLeft, interfaceComboRight);
 	fitLabelCombo(IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT, comboLeft, interfaceComboRight);
 	separateRows(IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG, IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG);
 	separateRows(IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME);
-	separateRows(IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE);
+	separateRows(IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE);
+	separateRows(IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE);
 	separateRows(IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT);
 	grow(IDC_OPTIONS_INTERFACE_GROUP, { IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
 	if(!m_darkThemeSupported) {
@@ -337,6 +345,8 @@ void CSettingsGeneralPage::Commit()
 {
 	const int iconSize = m_scriptIconSize.GetCurSel();
 	if(iconSize != CB_ERR) _Settings.SetScriptIconSize(static_cast<int>(m_scriptIconSize.GetItemData(iconSize)));
+	const int mainIconSize = m_mainToolbarIconSize.GetCurSel();
+	if(mainIconSize != CB_ERR) _Settings.SetMainToolbarIconSize(static_cast<int>(m_mainToolbarIconSize.GetItemData(mainIconSize)));
 	const int interfaceTheme = m_interfaceTheme.GetCurSel();
 	if(interfaceTheme >= INTERFACE_THEME_AUTOMATIC && interfaceTheme <= INTERFACE_THEME_DARK &&
 		(!m_preserveUnavailableDark || interfaceTheme != INTERFACE_THEME_LIGHT))

@@ -310,6 +310,13 @@ bool CSettingsDlg::ProbeUiDefects()
             info.lpszText&&expectedTip==info.lpszText&&!expectedTip.IsEmpty();
         report.AppendFormat("tooltip_%d=%d\n",id,ok);passed=ok&&passed;
     }
+    const CString expectedMainTip=FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.general.main_toolbar_icon_size");
+    for(int id:{IDC_MAIN_TOOLBAR_ICON_SIZE,IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL}) {
+        wchar_t text[2048]={};CToolInfo info(TTF_IDISHWND,m_generalPage->GetDlgItem(id),0,NULL,text);
+        const bool ok=tips.tooltip&&::SendMessageW(tips.tooltip,TTM_GETTOOLINFOW,0,reinterpret_cast<LPARAM>(&info))&&
+            info.lpszText&&expectedMainTip==info.lpszText&&!expectedMainTip.IsEmpty();
+        report.AppendFormat("tooltip_%d=%d\n",id,ok);passed=ok&&passed;
+    }
     auto caret = [&](const char* phase, HWND expected) {
         GUITHREADINFO info = {}; info.cbSize = sizeof(info);
         const bool got = ::GetGUIThreadInfo(::GetCurrentThreadId(), &info) != FALSE;
