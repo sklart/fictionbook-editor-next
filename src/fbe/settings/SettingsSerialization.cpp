@@ -106,6 +106,7 @@ const wchar_t SCRIPTS_TOOLBAR_CUSTOMIZE_PLACEMENT_KEY[] = L"ScriptsToolbarCustom
 const wchar_t RESTORE_FILE_POS_KEY[]	= L"RestoreFilePosition";
 const wchar_t INTERFACE_LANG_KEY[]		= L"IntefaceLangID";
 const wchar_t INTERFACE_THEME_KEY[] = L"InterfaceTheme";
+const wchar_t INTERFACE_PALETTE_KEY[] = L"InterfacePalette";
 const wchar_t DESCRIPTION_LAYOUT_KEY[] = L"DescriptionLayout";
 const wchar_t GENRE_CATALOG_KEY[]       = L"GenreCatalog";
 const wchar_t SCRIPTS_FOLDER_KEY[]		= L"ScriptsFolder";
@@ -196,6 +197,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(RESTORE_FILE_POS_KEY);
 	properties.push_back(INTERFACE_LANG_KEY);
 	properties.push_back(INTERFACE_THEME_KEY);
+	properties.push_back(INTERFACE_PALETTE_KEY);
 	properties.push_back(DESCRIPTION_LAYOUT_KEY);
 	properties.push_back(GENRE_CATALOG_KEY);
 	properties.push_back(SCRIPTS_FOLDER_KEY);
@@ -438,6 +440,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == INTERFACE_THEME_KEY)
 	{
 		property = GetStringedProperty(&m_interface_theme, KEY_INT);
+		return true;
+	}
+	else if(sProperty == INTERFACE_PALETTE_KEY)
+	{
+		property = m_interface_palette;
 		return true;
 	}
 	else if(sProperty == STATUS_BAR_PANES_KEY)
@@ -844,6 +851,11 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 		m_interface_theme = value >= INTERFACE_THEME_AUTOMATIC && value <= INTERFACE_THEME_DARK
 			? static_cast<InterfaceTheme>(value) : INTERFACE_THEME_AUTOMATIC;
 		ThemeManager::SetSelectedTheme(m_interface_theme);
+		return true;
+	}
+	else if(sProperty == INTERFACE_PALETTE_KEY)
+	{
+		SetInterfacePalette(sValue.GetStringValue());
 		return true;
 	}
 	else if(sProperty == STATUS_BAR_PANES_KEY)

@@ -4,6 +4,8 @@
 #include "SettingsDefaults.h"
 #include "..\XmlSourceThemes.h"
 
+extern CSettings _Settings;
+
 const wchar_t DEFAULT_ENCODING[] = L"utf-8";
 const wchar_t DEFAULT_FONT[] = L"Trebuchet MS";
 const wchar_t DEFAULT_SRCFONT[] = L"Lucida Console";
@@ -57,6 +59,8 @@ void CSettings::SetDefaults()
 	m_restore_file_position	= false;
 	m_interface_lang_id		= FBE_INTERFACE_LANGUAGE_AUTO;
 	m_interface_theme = INTERFACE_THEME_AUTOMATIC;
+	m_interface_palette = L"classic";
+	if(this == &_Settings) ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CLASSIC);
 	m_description_layout = L"modern";
 	ThemeManager::SetSelectedTheme(m_interface_theme);
 	m_genre_catalog			= GenreCatalog::Standard;

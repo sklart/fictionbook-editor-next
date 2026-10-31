@@ -1,5 +1,6 @@
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'))
+param([string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
+    [ValidateSet('portable','installed')][string]$Mode = 'portable')
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'named-palette-core'
@@ -8,15 +9,19 @@ $saved = @{}; foreach ($name in $names) { $saved[$name] = [Environment]::GetEnvi
 $passed = $false
 try {
     New-IsolatedFbeSettingsSeed -Isolation $iso | Out-Null
-    $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'named-palette-core-runtime'
-    $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = $null
+    $env:FBE_NEXT_TEST_MODE = '1'
+    $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = if($Mode -eq 'installed') { $iso.DataPath } else { $null }
     $report = Join-Path $iso.DataPath 'Diagnostics/portable-state-report.txt'
-    $process = Start-Process $iso.Exe -ArgumentList '--portable' -WorkingDirectory $iso.Root -WindowStyle Hidden -PassThru
-    $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'named-palette-core-runtime' -Report $report -TimeoutSeconds 120
-    $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<missing report>' }
-    if($code -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw "Named palette core failed: $text" }
+    foreach($scenario in @('named-palette-core-runtime','named-palette-settings-write','named-palette-settings-read')) {
+        $env:FBE_NEXT_TEST_SCENARIO = $scenario
+        Remove-Item -LiteralPath $report -Force -ErrorAction SilentlyContinue
+        $process = Start-Process $iso.Exe -ArgumentList "--$Mode" -WorkingDirectory $iso.Root -WindowStyle Hidden -PassThru
+        $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario $scenario -Report $report -TimeoutSeconds 120
+        $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<missing report>' }
+        if($code -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw "Named palette core failed ($Mode/$scenario): $text" }
+    }
     $passed = $true
-    Write-Host 'Named palette roles, classic restoration and resource lifetime: PASS.'
+    Write-Host "Named palette roles, classic restoration, persistence and resource lifetime: PASS ($Mode)."
 } finally {
     foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $saved[$name], 'Process') }
     Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed

@@ -10,6 +10,8 @@
 #include "Settings.h"
 #include "RuntimeLocalization.h"
 
+extern CSettings _Settings;
+
 CSettings::CSettings():m_need_restart(false), keycodes(0)
 {
 
@@ -989,6 +991,18 @@ void CSettings::SetInterfaceTheme(InterfaceTheme theme, bool apply)
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 		if(apply) Save();
 	}
+}
+
+void CSettings::SetInterfacePalette(const CString& value, bool apply)
+{
+	const CString normalized = value == L"graphite" || value == L"navy" || value == L"sepia" ? value : L"classic";
+	const InterfacePalette palette = normalized == L"graphite" ? INTERFACE_PALETTE_GRAPHITE :
+		normalized == L"navy" ? INTERFACE_PALETTE_NAVY : normalized == L"sepia" ? INTERFACE_PALETTE_SEPIA : INTERFACE_PALETTE_CLASSIC;
+	m_interface_palette = normalized;
+	// Keep an unsupported dark preference for migration, but render the safe
+	// classic palette on systems without the required Windows dark support.
+	if(this == &_Settings && !ThemeManager::SetNamedPalette(palette)) ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CLASSIC);
+	if(apply) Save();
 }
 
 void CSettings::SetStatusBarPanes(DWORD panes, bool apply)

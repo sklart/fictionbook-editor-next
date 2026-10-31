@@ -62,6 +62,30 @@ static VOID CALLBACK CloseNavigationPopupForTest(HWND, UINT, UINT_PTR timer, DWO
 
 void CMainFrame::RunPortableStateTestScenario()
 {
+    if(IsFbeTestScenario(L"named-palette-settings-write")) {
+        const InterfaceTheme original = _Settings.GetInterfaceTheme();
+        bool passed = _Settings.GetInterfacePalette() == L"classic" && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CLASSIC;
+        _Settings.SetInterfacePalette(L"invalid/path");
+        passed = _Settings.GetInterfacePalette() == L"classic" && passed;
+        _Settings.SetInterfacePalette(L"sepia");
+        passed = _Settings.GetInterfacePalette() == L"sepia" && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA &&
+            _Settings.GetInterfaceTheme() == original && passed;
+        CSettings candidate;
+        candidate.SetDefaults();
+        candidate.SetInterfacePalette(L"graphite");
+        passed = candidate.GetInterfacePalette() == L"graphite" && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA && passed;
+        _Settings.Save();
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
+            passed ? "named-palette-settings-write=1\nresult=pass\n" : "named-palette-settings-write=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
+    }
+    if(IsFbeTestScenario(L"named-palette-settings-read")) {
+        const bool passed = _Settings.GetInterfacePalette() == L"sepia" && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA &&
+            _Settings.GetInterfaceTheme() == INTERFACE_THEME_AUTOMATIC;
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
+            passed ? "named-palette-settings-restart=1\nresult=pass\n" : "named-palette-settings-restart=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
+    }
     if(IsFbeTestScenario(L"named-palette-core-runtime")) {
         const InterfaceTheme initialTheme = ThemeManager::GetSelectedTheme();
         const InterfacePalette initialPalette = ThemeManager::GetNamedPalette();
