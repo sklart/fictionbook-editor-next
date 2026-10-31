@@ -122,6 +122,16 @@ void CMainFrame::RunPortableStateTestScenario()
         bool passed = page.Create(m_hWnd) != NULL && ThemeManager::IsCustomPaletteActive();
         std::wstring error; ThemeManager::CustomPalette stored;
         if(page.m_hWnd) {
+            const HWND roleChoice = page.GetDlgItem(IDC_PALETTE_ROLE);
+            const HWND chooseButton = page.GetDlgItem(IDC_PALETTE_CHOOSE_COLOR);
+            const HWND resetButton = page.GetDlgItem(IDC_PALETTE_RESET_COLOR);
+            passed = roleChoice && chooseButton && resetButton && ::IsWindowEnabled(roleChoice) && ::IsWindowEnabled(chooseButton) &&
+                ::SendMessage(roleChoice, CB_GETCOUNT, 0, 0) == THEME_COLOR_COUNT && passed;
+            ::SendMessage(roleChoice, CB_SETCURSEL, THEME_COLOR_WINDOW, 0);
+            BOOL handled = FALSE;
+            page.OnResetPaletteColor(BN_CLICKED, IDC_PALETTE_RESET_COLOR, resetButton, handled);
+            ThemeManager::CustomPalette inherited;
+            passed = ThemeManager::GetCustomPalette(inherited) && !inherited.present[THEME_COLOR_WINDOW] && passed;
             passed = page.StagePaletteColor(THEME_COLOR_WINDOW, RGB(80, 90, 100), true) && passed;
             passed = ThemeManager::LoadCustomPaletteFromProfile(L"restart-test", stored, error) && stored.colors[THEME_COLOR_WINDOW] == RGB(17, 34, 51) && passed;
             { SettingsFileTransaction files; CString detail; passed = page.PrepareCommit(files, detail) && passed; }
@@ -188,7 +198,8 @@ void CMainFrame::RunPortableStateTestScenario()
             CSettingsGeneralPage page;
             passed = page.Create(m_hWnd) != NULL && passed;
             if(page.m_hWnd) {
-                passed = page.StagePaletteCopy(L"Cancelled copy") && ThemeManager::IsCustomPaletteActive() && passed;
+                passed = !::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_ROLE)) && !::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_CHOOSE_COLOR)) && passed;
+                passed = page.StagePaletteCopy(L"Cancelled copy") && ThemeManager::IsCustomPaletteActive() && ::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_ROLE)) && passed;
                 {
                     SettingsFileTransaction transaction; CString error;
                     passed = page.PrepareCommit(transaction, error) && ThemeManager::ListCustomPalettesInProfile().empty() && passed;

@@ -11,6 +11,7 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	CComboBox m_language;
 	CComboBox m_interfaceTheme;
 	CComboBox m_interfacePalette;
+	CComboBox m_paletteRole;
 	std::vector<ThemeManager::CustomPalette> m_customPalettes;
 	std::vector<ThemeManager::CustomPalette> m_pendingPalettes;
 	std::vector<std::wstring> m_newPaletteIds;
@@ -33,6 +34,7 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	bool m_darkThemeSupported = true;
 	void UpdateThemeNotice();
 	void FitLocalizedLayout();
+	void UpdatePaletteColorControls();
 
 public:
 	explicit CSettingsGeneralPage(bool darkThemeSupported = ThemeManager::IsDarkModeSupported()) : m_darkThemeSupported(darkThemeSupported) {}
@@ -46,6 +48,8 @@ public:
 		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_SELENDOK, OnInterfaceThemeChanged)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_SELCHANGE, OnInterfacePaletteChanged)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE_COPY, BN_CLICKED, OnCopyPalette)
+		COMMAND_HANDLER(IDC_PALETTE_CHOOSE_COLOR, BN_CLICKED, OnChoosePaletteColor)
+		COMMAND_HANDLER(IDC_PALETTE_RESET_COLOR, BN_CLICKED, OnResetPaletteColor)
 		CHAIN_MSG_MAP(CAxDialogImpl<CSettingsGeneralPage>)
 	END_MSG_MAP()
 
@@ -55,6 +59,8 @@ public:
 	LRESULT OnInterfaceThemeChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnCopyPalette(WORD, WORD, HWND, BOOL&);
+	LRESULT OnChoosePaletteColor(WORD, WORD, HWND, BOOL&);
+	LRESULT OnResetPaletteColor(WORD, WORD, HWND, BOOL&);
 	bool StagePaletteCopy(const CString& name);
 	bool StagePaletteColor(ThemeColorRole role, COLORREF color, bool custom);
 	void ConfigureInterfaceTheme(bool darkThemeSupported);

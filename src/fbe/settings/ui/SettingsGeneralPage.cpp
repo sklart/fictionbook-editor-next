@@ -54,6 +54,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_originalTheme = _Settings.GetInterfaceTheme();
 	m_interfaceTheme = GetDlgItem(IDC_INTERFACE_THEME);
 	m_interfacePalette = GetDlgItem(IDC_INTERFACE_PALETTE);
+	m_paletteRole = GetDlgItem(IDC_PALETTE_ROLE);
 	m_originalPalette = ThemeManager::GetNamedPalette();
 	m_originalCustomPaletteActive = ThemeManager::GetCustomPalette(m_originalCustomPalette);
 	for(int index = 0; index < INTERFACE_PALETTE_COUNT; ++index)
@@ -76,6 +77,8 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	for(HWND control : {m_interfacePalette.m_hWnd, GetDlgItem(IDC_INTERFACE_PALETTE_LABEL).m_hWnd})
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.interface_palette", L"Choose interface colours independently of the Windows mode. High Contrast uses system colours.");
 	m_tooltips.Add(GetDlgItem(IDC_INTERFACE_PALETTE_COPY), L"fbe.settings.tooltip.general.palette_copy", L"Create a copy of the selected palette. It is saved when you confirm settings.");
+	for(HWND control : {m_paletteRole.m_hWnd, GetDlgItem(IDC_PALETTE_ROLE_LABEL).m_hWnd, GetDlgItem(IDC_PALETTE_CHOOSE_COLOR).m_hWnd, GetDlgItem(IDC_PALETTE_RESET_COLOR).m_hWnd})
+		m_tooltips.Add(control, L"fbe.settings.tooltip.general.palette_color", L"Edit a colour in a custom palette. Use the base colour to restore inheritance; Cancel discards changes.");
 	for(HWND control : {m_descriptionLayout.m_hWnd, GetDlgItem(IDC_DESCRIPTION_LAYOUT_LABEL).m_hWnd})
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.description_layout", L"Choose the Description layout. Modern uses compact, collapsible sections; Classic keeps the familiar FictionBook Editor field order. This does not change FB2 data.");
 	for(HWND control : {m_scriptIconSize.m_hWnd, GetDlgItem(IDC_SCRIPT_ICON_SIZE_LABEL).m_hWnd})
@@ -95,6 +98,9 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	SetText(m_hWnd, IDC_INTERFACE_THEME_LABEL, L"fbe.dialog.idd_options.interface_theme", L"Interface theme:");
 	SetText(m_hWnd, IDC_INTERFACE_PALETTE_LABEL, L"fbe.settings.interface_palette", L"Interface palette:");
 	SetText(m_hWnd, IDC_INTERFACE_PALETTE_COPY, L"fbe.settings.palette.copy", L"Create copy...");
+	SetText(m_hWnd, IDC_PALETTE_ROLE_LABEL, L"fbe.settings.palette.role", L"Colour role:");
+	SetText(m_hWnd, IDC_PALETTE_CHOOSE_COLOR, L"fbe.settings.palette.choose_color", L"Choose colour...");
+	SetText(m_hWnd, IDC_PALETTE_RESET_COLOR, L"fbe.settings.palette.reset_color", L"Use base colour");
 	SetText(m_hWnd, IDC_SCRIPT_ICON_SIZE_LABEL, L"fbe.settings.script_icon_size", L"Script icon size:");
 	SetText(m_hWnd, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, L"fbe.settings.main_toolbar_icon_size", L"Main toolbar icon size:");
 	SetText(m_hWnd, IDC_OPTIONS_GENRE_CATALOG_LABEL, L"fbe.dialog.idd_options.genre_catalog", L"Genre catalog:");
@@ -122,6 +128,11 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 		if(_Settings.GetInterfacePalette() == CString(L"custom:") + palette.id.c_str()) m_acceptedPaletteIndex = index;
 	}
 	m_interfacePalette.SetCurSel(m_acceptedPaletteIndex);
+	CString roles = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.roles", L"Window|Control|Text|Border|Separator|Secondary text|Disabled text|Selection background|Selection text|Hover|Pressed|Focus|Accent|Error|Warning|Success");
+	int rolePosition = 0;
+	for(int role = 0; role < THEME_COLOR_COUNT; ++role) m_paletteRole.AddString(roles.Tokenize(L"|", rolePosition));
+	m_paletteRole.SetCurSel(0);
+	UpdatePaletteColorControls();
 	FitLocalizedLayout();
 
 	m_language.SetDroppedWidth(320);
@@ -260,11 +271,11 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	};
 	shift(IDC_OPTIONS_INTERFACE_GROUP, { IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG,
 		IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME,
-		IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE, IDC_INTERFACE_PALETTE_COPY, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
+		IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE, IDC_INTERFACE_PALETTE_COPY, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
 	const CRect interfaceGroup = bounds(IDC_OPTIONS_INTERFACE_GROUP);
 	int comboLeft = bounds(IDC_LANG).left;
 	for(int id : { IDC_OPTIONS_LANGUAGE_LABEL, IDC_OPTIONS_GENRE_CATALOG_LABEL,
-		IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_PALETTE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_SETTINGS_OTHER_ENCODING, IDC_UPDATE_CHANNEL_LABEL })
+		IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_PALETTE_LABEL, IDC_PALETTE_ROLE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_SETTINGS_OTHER_ENCODING, IDC_UPDATE_CHANNEL_LABEL })
 		comboLeft = max(comboLeft, bounds(id).left + measure(id, 10000, false).cx + gap);
 	comboLeft = min(comboLeft, interfaceGroup.right - margin - UiMetrics::ScaleForDpi(130, dpi));
 	const int interfaceComboRight = interfaceGroup.right - margin;
@@ -272,6 +283,7 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	fitLabelCombo(IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, comboLeft, interfaceComboRight);
 	fitLabelCombo(IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME, comboLeft, interfaceComboRight);
 	fitLabelCombo(IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE, comboLeft, interfaceComboRight);
+	fitLabelCombo(IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE, comboLeft, interfaceComboRight);
 	fitLabelCombo(IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, comboLeft, interfaceComboRight);
 	fitLabelCombo(IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, comboLeft, interfaceComboRight);
 	fitLabelCombo(IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT, comboLeft, interfaceComboRight);
@@ -285,7 +297,14 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	copyButton.top = max(bounds(IDC_INTERFACE_PALETTE_LABEL).bottom, bounds(IDC_INTERFACE_PALETTE).bottom) + rowGap;
 	copyButton.bottom = copyButton.top + max(copyButtonHeight, measure(IDC_INTERFACE_PALETTE_COPY, copyButton.Width(), false).cy + padding);
 	place(IDC_INTERFACE_PALETTE_COPY, copyButton);
-	separateRows(IDC_INTERFACE_PALETTE_COPY, IDC_INTERFACE_PALETTE_COPY, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE);
+	separateRows(IDC_INTERFACE_PALETTE_COPY, IDC_INTERFACE_PALETTE_COPY, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE);
+	CRect choose = bounds(IDC_PALETTE_CHOOSE_COLOR), reset = bounds(IDC_PALETTE_RESET_COLOR);
+	const int buttonHeight = max(choose.Height(), reset.Height());
+	const int buttonTop = max(bounds(IDC_PALETTE_ROLE_LABEL).bottom, bounds(IDC_PALETTE_ROLE).bottom) + rowGap;
+	choose.SetRect(comboLeft, buttonTop, interfaceComboRight, buttonTop + buttonHeight);
+	reset.SetRect(comboLeft, choose.bottom + rowGap, interfaceComboRight, choose.bottom + rowGap + buttonHeight);
+	place(IDC_PALETTE_CHOOSE_COLOR, choose); place(IDC_PALETTE_RESET_COLOR, reset);
+	separateRows(IDC_PALETTE_RESET_COLOR, IDC_PALETTE_RESET_COLOR, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE);
 	separateRows(IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE);
 	separateRows(IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT);
 	grow(IDC_OPTIONS_INTERFACE_GROUP, { IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT });
@@ -409,8 +428,35 @@ LRESULT CSettingsGeneralPage::OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&)
 		return 0;
 	}
 	m_acceptedPaletteIndex = selection;
+	UpdatePaletteColorControls();
 	m_paletteChanged = true;
 	ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+	return 0;
+}
+
+void CSettingsGeneralPage::UpdatePaletteColorControls()
+{
+	const bool editable = m_acceptedPaletteIndex >= INTERFACE_PALETTE_COUNT && ThemeManager::IsCustomPaletteActive();
+	for(int id : {IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR}) GetDlgItem(id).EnableWindow(editable);
+}
+
+LRESULT CSettingsGeneralPage::OnChoosePaletteColor(WORD, WORD, HWND, BOOL&)
+{
+	const int role = m_paletteRole.GetCurSel();
+	if(role < 0 || role >= THEME_COLOR_COUNT || !ThemeManager::IsCustomPaletteActive()) return 0;
+	static COLORREF customColors[16] = {};
+	CHOOSECOLORW chooser = {};
+	chooser.lStructSize = sizeof(chooser); chooser.hwndOwner = m_hWnd;
+	chooser.rgbResult = ThemeManager::Color(static_cast<ThemeColorRole>(role));
+	chooser.lpCustColors = customColors; chooser.Flags = CC_RGBINIT | CC_FULLOPEN;
+	if(::ChooseColorW(&chooser)) StagePaletteColor(static_cast<ThemeColorRole>(role), chooser.rgbResult, true);
+	return 0;
+}
+
+LRESULT CSettingsGeneralPage::OnResetPaletteColor(WORD, WORD, HWND, BOOL&)
+{
+	const int role = m_paletteRole.GetCurSel();
+	if(role >= 0 && role < THEME_COLOR_COUNT) StagePaletteColor(static_cast<ThemeColorRole>(role), 0, false);
 	return 0;
 }
 
