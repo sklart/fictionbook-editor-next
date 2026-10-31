@@ -1,6 +1,7 @@
 
 #include "../settings/hotkeys/HotkeyExport.h"
 #include "Script64ResultChecks.h"
+#include <ColorDlg.h>
 
 // Test-only OLE parent for the Split undo probe.  It is intentionally kept
 // outside production structural code until MSHTML proves this composition.
@@ -58,6 +59,30 @@ static VOID CALLBACK CloseNavigationPopupForTest(HWND, UINT, UINT_PTR timer, DWO
 {
 	::KillTimer(NULL, timer);
 	::EndMenu();
+}
+
+static bool g_paletteColorDialogFound = false;
+static bool g_paletteColorDialogAccept = false;
+static BOOL CALLBACK DrivePaletteColorDialog(HWND window, LPARAM context)
+{
+    wchar_t className[32] = {};
+    ::GetClassNameW(window, className, _countof(className));
+    if(wcscmp(className, L"#32770") != 0 || !::GetDlgItem(window, COLOR_RED) || !::GetDlgItem(window, COLOR_GREEN) || !::GetDlgItem(window, COLOR_BLUE)) return TRUE;
+    g_paletteColorDialogFound = true;
+    const HWND owner = reinterpret_cast<HWND>(context);
+    ::KillTimer(owner, 0x7422);
+    if(g_paletteColorDialogAccept) {
+        ::SetDlgItemInt(window, COLOR_RED, 80, FALSE);
+        ::SetDlgItemInt(window, COLOR_GREEN, 90, FALSE);
+        ::SetDlgItemInt(window, COLOR_BLUE, 100, FALSE);
+    }
+    const int command = g_paletteColorDialogAccept ? IDOK : IDCANCEL;
+    ::PostMessageW(window, WM_COMMAND, MAKEWPARAM(command, BN_CLICKED), reinterpret_cast<LPARAM>(::GetDlgItem(window, command)));
+    return FALSE;
+}
+static VOID CALLBACK CheckPaletteColorDialogForTest(HWND owner, UINT, UINT_PTR, DWORD)
+{
+    ::EnumThreadWindows(::GetCurrentThreadId(), DrivePaletteColorDialog, reinterpret_cast<LPARAM>(owner));
 }
 
 static bool g_paletteWarningInitialState = false;
@@ -129,6 +154,14 @@ void CMainFrame::RunPortableStateTestScenario()
                 ::SendMessage(roleChoice, CB_GETCOUNT, 0, 0) == THEME_COLOR_COUNT && passed;
             ::SendMessage(roleChoice, CB_SETCURSEL, THEME_COLOR_WINDOW, 0);
             BOOL handled = FALSE;
+            g_paletteColorDialogFound = false; g_paletteColorDialogAccept = false;
+            const UINT_PTR cancelTimer = ::SetTimer(page.m_hWnd, 0x7422, 100, CheckPaletteColorDialogForTest);
+            if(cancelTimer) ::SendMessageW(page.m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_PALETTE_CHOOSE_COLOR, BN_CLICKED), reinterpret_cast<LPARAM>(chooseButton));
+            passed = cancelTimer && g_paletteColorDialogFound && ThemeManager::Color(THEME_COLOR_WINDOW) == RGB(17, 34, 51) && passed;
+            g_paletteColorDialogFound = false; g_paletteColorDialogAccept = true;
+            const UINT_PTR acceptTimer = ::SetTimer(page.m_hWnd, 0x7422, 100, CheckPaletteColorDialogForTest);
+            if(acceptTimer) ::SendMessageW(page.m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_PALETTE_CHOOSE_COLOR, BN_CLICKED), reinterpret_cast<LPARAM>(chooseButton));
+            passed = acceptTimer && g_paletteColorDialogFound && ThemeManager::Color(THEME_COLOR_WINDOW) == RGB(80, 90, 100) && passed;
             page.OnResetPaletteColor(BN_CLICKED, IDC_PALETTE_RESET_COLOR, resetButton, handled);
             ThemeManager::CustomPalette inherited;
             passed = ThemeManager::GetCustomPalette(inherited) && !inherited.present[THEME_COLOR_WINDOW] && passed;
