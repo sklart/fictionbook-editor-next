@@ -1,12 +1,14 @@
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$FbeExe,
       [ValidateSet('none', 'before-first', 'after-one', 'middle', 'format', 'end')][string]$Fault = 'none',
-      [string]$ArtifactDirectory = (Join-Path $PSScriptRoot '..\..\build\community-feedback-replace-runtime'))
+      [ValidateSet('digits', 'no-match')][string]$Mode = 'digits',
+      [string]$ArtifactDirectory)
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+if (-not $ArtifactDirectory) { $ArtifactDirectory = Join-Path $root 'build\community-feedback-replace-runtime' }
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'replace-all'
-$names = @('FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_REPLACE_OUTPUT', 'FBE_NEXT_TEST_REPLACE_FAULT')
+$names = @('FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_REPLACE_OUTPUT', 'FBE_NEXT_TEST_REPLACE_FAULT', 'FBE_NEXT_TEST_REPLACE_MODE')
 $old = @{}; foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name) }
 $passed = $false
 try {
@@ -29,12 +31,14 @@ try {
     $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'replace-all-runtime'
     $env:FBE_NEXT_TEST_REPLACE_OUTPUT = $iso.DataPath
     $env:FBE_NEXT_TEST_REPLACE_FAULT = if ($Fault -eq 'none') { $null } else { $Fault }
+    $env:FBE_NEXT_TEST_REPLACE_MODE = $Mode
+    if ($Mode -eq 'no-match' -and $Fault -ne 'none') { throw 'Fault injection requires digits mode.' }
     $report = Join-Path $iso.DataPath 'report.txt'
     $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -WindowStyle Hidden `
         -ArgumentList @('--portable', '-b', ('"' + $report + '"'), ('"' + $fixture + '"')) -PassThru
     $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'replace-all-runtime' -Report $report -TimeoutSeconds 120
     $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
-    $ArtifactDirectory = Join-Path ([IO.Path]::GetFullPath($ArtifactDirectory)) $Fault
+    $ArtifactDirectory = Join-Path ([IO.Path]::GetFullPath($ArtifactDirectory)) $(if ($Mode -eq 'digits') { $Fault } else { $Mode })
     New-Item -ItemType Directory -Force -Path $ArtifactDirectory | Out-Null
     foreach ($name in @('report.txt', 'before.fb2', 'after.fb2')) {
         $path = Join-Path $iso.DataPath $name
@@ -59,15 +63,15 @@ try {
         }
         $beforeText[$i].Value = $actual
     }
-    $expectedCount = switch ($Fault) { 'before-first' { 0 } 'after-one' { 1 } 'middle' { 9 } 'format' { 1 } default { 18 } }
+    $expectedCount = if ($Mode -eq 'no-match') { 0 } else { switch ($Fault) { 'before-first' { 0 } 'after-one' { 1 } 'middle' { 9 } 'format' { 1 } default { 18 } } }
     if ($replaced -ne $expectedCount) { throw "Expected $expectedCount replacements, got $replaced." }
     if ($before.OuterXml -cne $after.OuterXml) { throw 'Saved FB2 differs from independently transformed original DOM.' }
-    if ($Fault -in @('none', 'end') -and ($after.SelectSingleNode('//fb:title/fb:p', $afterNs).InnerText -cne '+.+ — создание файла' -or
+    if ($Mode -eq 'digits' -and $Fault -in @('none', 'end') -and ($after.SelectSingleNode('//fb:title/fb:p', $afterNs).InnerText -cne '+.+ — создание файла' -or
         $after.SelectSingleNode('//fb:p[@id="main-p"]', $afterNs).InnerText -notlike '*blank.fb+*')) { throw 'Expected text replacements are absent.' }
     $reader = [Xml.XmlReader]::Create((Join-Path $iso.DataPath 'after.fb2'), $settings)
     try { while ($reader.Read()) {} } finally { $reader.Dispose() }
     $passed = $true
-    $history = if ($Fault -eq 'before-first') { 'Undo/Redo not needed before mutation' } else { 'Undo/Redo verified' }
+    $history = if ($Fault -eq 'before-first' -or $Mode -eq 'no-match') { 'Undo/Redo not needed without mutation' } else { 'Undo/Redo verified' }
     [IO.File]::AppendAllText((Join-Path $ArtifactDirectory 'report.txt'), "validated-replacements=$replaced`nindependent-xml=1`nxsd=1`n")
     Write-Host "Replace All native DOM/XML, $history, Save/Reopen and XSD: PASS ($Fault; replacements=$replaced)."
 } finally {

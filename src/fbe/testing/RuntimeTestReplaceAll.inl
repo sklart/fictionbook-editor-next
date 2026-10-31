@@ -17,6 +17,9 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 		const CString afterPath = CString(directory) + L"\\after.fb2";
 		wchar_t fault[64] = {};
 		::GetEnvironmentVariableW(L"FBE_NEXT_TEST_REPLACE_FAULT", fault, _countof(fault));
+		wchar_t mode[64] = {};
+		::GetEnvironmentVariableW(L"FBE_NEXT_TEST_REPLACE_MODE", mode, _countof(mode));
+		const bool noMatch = wcscmp(mode, L"no-match") == 0;
 		const bool expectedFailure = fault[0] != 0;
 		const bool expectedMutation = expectedFailure && wcscmp(fault, L"before-first") != 0;
 		ShowView(BODY); m_doc->m_body.SetFocus(); pump();
@@ -35,7 +38,7 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 		const CString beforeHtml(static_cast<LPCWSTR>(body->innerHTML));
 		const CString beforeXml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
 		const wchar_t* replacement = wcscmp(fault, L"format") == 0 ? L"\\S+\\Q" : L"+";
-		if (!m_doc->m_body.ConfigureReplaceAllRuntimeTest(L"\\d", replacement, true)) CheckError(E_FAIL);
+		if (!m_doc->m_body.ConfigureReplaceAllRuntimeTest(noMatch ? L"THIS_PATTERN_IS_ABSENT_8472" : L"\\d", replacement, true)) CheckError(E_FAIL);
 		const UINT_PTR timer = ::SetTimer(NULL, 0, 30, [](HWND, UINT, UINT_PTR, DWORD) {
 			::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
 				wchar_t name[64] = {}; ::GetClassNameW(window, name, _countof(name));
@@ -81,7 +84,7 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 		report.Format("fault=%S\ncount=%d\nerror-empty=%d\npartial-warning=%d\nchanged=%d\nundo-tested=%d\nundo-available=%d\nredo-available=%d\nundo=%d\nredo=%d\nsaved=%d\nreopened=%d\nxml-matches=%d\nsaved-copy-recovery=%d\n",
 			fault, count, error.IsEmpty(), partialWarning, changed, changed, undoAvailable, redoAvailable, undo, redo, saved, reopened, xmlMatches, savedCopyRecovery);
 		const bool operation = expectedFailure ? count == -1 && !error.IsEmpty() && partialWarning == expectedMutation && changed == expectedMutation
-			: count > 0 && error.IsEmpty() && changed;
+			: noMatch ? count == 0 && error.IsEmpty() && !changed && beforeXml == afterXml : count > 0 && error.IsEmpty() && changed;
 		passed = operation && (!changed || (undo && redo && undoAvailable > 0 && redoAvailable > 0)) && saved && reopened && xmlMatches && savedCopyRecovery;
 	}
 	catch (const _com_error& error) { CStringA line; line.Format("error=0x%08lX\n", static_cast<unsigned long>(error.Error())); report += line; }
