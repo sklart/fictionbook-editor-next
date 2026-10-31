@@ -19,6 +19,7 @@
 #include <map>
 #include "search/SearchHistoryStore.h"
 #include "../common/DeploymentContext.h"
+#include "testing/RuntimeTestScenarioMode.h"
 
 inline CString MakePresetPreviewValue(const CString& source, int limit = 112)
 {
@@ -45,6 +46,9 @@ extern bool VBErr;
 class FRBase: public CWinDataExchange<FRBase>
 {
 public:
+	// The isolated migration probe supplies its own volatile key. This is never
+	// consulted outside that exact installed-mode runtime scenario.
+	static HKEY& HistoryTestRegistryRoot() { static HKEY root = NULL; return root; }
 	CRegKey		m_fh,m_rh;
 
 	CFBEView*	m_view;
@@ -1011,10 +1015,15 @@ public:
 		return;
 	}
 	// An isolated installed-mode test profile must not read the user's real registry.
-	if (!DeploymentContext::TestSettingsDirectory().empty()) return;
+	HKEY legacyRoot = _Settings.GetKey();
+	if (!DeploymentContext::TestSettingsDirectory().empty()) {
+		if (!RuntimeTests::IsScenario(L"search-history-migrate") ||
+			DeploymentContext::CurrentMode() != DeploymentContext::Mode::Installed || !HistoryTestRegistryRoot()) return;
+		legacyRoot = HistoryTestRegistryRoot();
+	}
 
     // open history key
-    if (rk.Open(_Settings.GetKey(), path, KEY_READ)!=ERROR_SUCCESS)
+    if (rk.Open(legacyRoot, path, KEY_READ)!=ERROR_SUCCESS)
       return;
     
     // get number of entries

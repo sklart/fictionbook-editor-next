@@ -45,6 +45,20 @@ try {
             $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds 45
             $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
             if ($code -ne 0 -or $text -notmatch '(?m)^found=1\r?$' -or $text -notmatch '(?m)^missing=1\r?$' -or $text -notmatch '(?m)^switched=1\r?$') { throw "$mode/find failed: $text" }
+            $historyFile = Join-Path $settings 'SearchHistory.dat'
+            $initialHash = (Get-FileHash -LiteralPath $historyFile -Algorithm SHA256).Hash
+            $originalAttributes = [IO.File]::GetAttributes($historyFile)
+            try {
+                [IO.File]::SetAttributes($historyFile, ($originalAttributes -bor [IO.FileAttributes]::ReadOnly))
+                $env:FBE_NEXT_TEST_SCENARIO = 'search-history-readonly'
+                $report = Join-Path $iso.Root 'history-readonly.txt'
+                $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -WindowStyle Hidden `
+                    -ArgumentList @("--$mode", '-b', ('"' + $report + '"'), ('"' + $document + '"')) -PassThru
+                $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds 120
+                $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
+                if ($code -ne 0 -or $text -notmatch '(?m)^readonly=1\r?$' -or $text -notmatch '(?m)^initial=1\r?$' -or $text -notmatch '(?m)^preserved=1\r?$' -or
+                    (Get-FileHash -LiteralPath $historyFile -Algorithm SHA256).Hash -ne $initialHash) { throw "$mode/readonly failed: $text" }
+            } finally { [IO.File]::SetAttributes($historyFile, $originalAttributes) }
             [IO.File]::WriteAllBytes((Join-Path $settings 'SearchHistory.dat'), [byte[]](1,2,3,4,5,6,7,8))
             $env:FBE_NEXT_TEST_SCENARIO = 'search-history-corrupt'
             $report = Join-Path $iso.Root 'history-corrupt.txt'
@@ -53,8 +67,24 @@ try {
             $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds 120
             $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
             if ($code -ne 0 -or $text -notmatch '(?m)^opened=1\r?$' -or $text -notmatch '(?m)^empty=1\r?$' -or $text -notmatch '(?m)^preserved=1\r?$') { throw "$mode/corrupt failed: $text" }
+            if ($mode -eq 'installed') {
+                foreach ($name in @('SearchHistory.dat', 'ReplaceHistory.dat')) {
+                    $file = Join-Path $settings $name
+                    if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file -Force }
+                }
+                foreach ($phase in @('migrate', 'migrate-read')) {
+                    $env:FBE_NEXT_TEST_SCENARIO = "search-history-$phase"
+                    $report = Join-Path $iso.Root "history-$phase.txt"
+                    $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -WindowStyle Hidden `
+                        -ArgumentList @('--installed', '-b', ('"' + $report + '"'), ('"' + $document + '"')) -PassThru
+                    $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds 120
+                    $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
+                    if ($code -ne 0 -or $text -notmatch '(?m)^isolated=1\r?$' -or $text -notmatch '(?m)^loaded=1\r?$' -or
+                        $text -notmatch '(?m)^saved=1\r?$' -or $text -notmatch '(?m)^reread=1\r?$') { throw "installed/$phase failed: $text" }
+                }
+            }
             $passed = $true
-            Write-Host "Search/replace history: PASS ($mode; close paths, find/miss, Find to Replace, reopen, restart, corrupt file preserved$(if ($mode -eq 'portable') { ', moved profile' }))."
+            Write-Host "Search/replace history: PASS ($mode; close paths, find/miss, Find to Replace, reopen, restart, read-only and corrupt files preserved$(if ($mode -eq 'portable') { ', moved profile' } else { ', isolated registry migration' }))."
         } finally { Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed }
     }
 } finally { foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $old[$name]) } }

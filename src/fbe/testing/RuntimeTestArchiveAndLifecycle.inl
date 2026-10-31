@@ -7,6 +7,88 @@
 #include "RuntimeTestNbspInput.inl"
 #include "RuntimeTestReplaceAll.inl"
 if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
+	if (IsFbeTestScenario(L"search-history-migrate") || IsFbeTestScenario(L"search-history-migrate-read"))
+	{
+		const bool migrate = IsFbeTestScenario(L"search-history-migrate");
+		struct TestKey {
+			CRegKey root; CString path;
+			~TestKey() {
+				FRBase::HistoryTestRegistryRoot() = NULL;
+				root.Close();
+				if (!path.IsEmpty()) { ::RegDeleteTreeW(HKEY_CURRENT_USER, path); ::RegDeleteKeyW(HKEY_CURRENT_USER, path); }
+			}
+		} key;
+		bool isolated = !migrate;
+		if (migrate && DeploymentContext::CurrentMode() == DeploymentContext::Mode::Installed && !DeploymentContext::TestSettingsDirectory().empty()) {
+			GUID id = {}; wchar_t guid[40] = {};
+			if (SUCCEEDED(::CoCreateGuid(&id)) && ::StringFromGUID2(id, guid, _countof(guid))) {
+				CString candidate; candidate.Format(L"Software\\FBEHistoryTest-%s", guid);
+				HKEY root = NULL; DWORD disposition = 0;
+				if (::RegCreateKeyExW(HKEY_CURRENT_USER, candidate, 0, NULL, REG_OPTION_VOLATILE, KEY_ALL_ACCESS, NULL, &root, &disposition) == ERROR_SUCCESS && disposition == REG_CREATED_NEW_KEY) {
+					key.path = candidate;
+					key.root.Attach(root);
+					auto seed = [&](LPCWSTR name, LPCWSTR first, LPCWSTR second) {
+						HKEY handle = NULL;
+						if (::RegCreateKeyExW(key.root, name, 0, NULL, REG_OPTION_VOLATILE, KEY_ALL_ACCESS, NULL, &handle, NULL) != ERROR_SUCCESS) return false;
+						CRegKey entries; entries.Attach(handle);
+						return entries.SetDWORDValue(L"", second ? 2 : 1) == ERROR_SUCCESS && entries.SetStringValue(L"0", first) == ERROR_SUCCESS &&
+							(!second || entries.SetStringValue(L"1", second) == ERROR_SUCCESS);
+					};
+					isolated = seed(L"SearchHistory", L"legacy-search-one", L"legacy-search-two") && seed(L"ReplaceHistory", L"legacy-replace", NULL);
+					if (isolated) FRBase::HistoryTestRegistryRoot() = key.root;
+				} else if (root) { ::RegCloseKey(root); }
+			}
+		}
+		BOOL handled = FALSE;
+		auto openDialog = [&]() -> HWND {
+			m_doc->m_body.OnReplace(0, ID_EDIT_REPLACE, m_doc->m_body, handled);
+			return m_doc->m_body.m_replace_dlg ? m_doc->m_body.m_replace_dlg->m_hWnd : NULL;
+		};
+		auto at = [](HWND dialog, int id, LPCWSTR value, int index) {
+			return dialog && ::SendMessageW(::GetDlgItem(dialog, id), CB_FINDSTRINGEXACT,
+				static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(value)) == index;
+		};
+		HWND dialog = isolated ? openDialog() : NULL;
+		const bool loaded = at(dialog, IDC_TEXT, L"legacy-search-one", 0) && at(dialog, IDC_TEXT, L"legacy-search-two", 1) && at(dialog, IDC_REPLACE, L"legacy-replace", 0);
+		if (dialog) ::SendMessageW(dialog, WM_CLOSE, 0, 0);
+		const bool saved = ::GetFileAttributesW(U::GetSettingsDir() + L"SearchHistory.dat") != INVALID_FILE_ATTRIBUTES &&
+			::GetFileAttributesW(U::GetSettingsDir() + L"ReplaceHistory.dat") != INVALID_FILE_ATTRIBUTES;
+		FRBase::HistoryTestRegistryRoot() = NULL;
+		dialog = isolated ? openDialog() : NULL;
+		const bool reread = at(dialog, IDC_TEXT, L"legacy-search-one", 0) && at(dialog, IDC_TEXT, L"legacy-search-two", 1) && at(dialog, IDC_REPLACE, L"legacy-replace", 0);
+		if (dialog) ::SendMessageW(dialog, WM_CLOSE, 0, 0);
+		CStringA report; report.Format("isolated=%d\nloaded=%d\nsaved=%d\nreread=%d\n", isolated, loaded, saved, reread);
+		DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close();
+		::PostQuitMessage(isolated && loaded && saved && reread ? 0 : 1); return 0;
+	}
+	if (IsFbeTestScenario(L"search-history-readonly"))
+	{
+		BOOL handled = FALSE;
+		auto openDialog = [&]() -> HWND {
+			m_doc->m_body.OnReplace(0, ID_EDIT_REPLACE, m_doc->m_body, handled);
+			return m_doc->m_body.m_replace_dlg ? m_doc->m_body.m_replace_dlg->m_hWnd : NULL;
+		};
+		auto contains = [](HWND dialog, LPCWSTR value) {
+			return dialog && ::SendMessageW(::GetDlgItem(dialog, IDC_TEXT), CB_FINDSTRINGEXACT,
+				static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(value)) != CB_ERR;
+		};
+		const CString path = U::GetSettingsDir() + L"SearchHistory.dat";
+		const DWORD attributes = ::GetFileAttributesW(path);
+		const bool readonly = attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_READONLY) != 0;
+		HWND dialog = openDialog();
+		const bool initial = contains(dialog, L"blank.fb2") && contains(dialog, L"ABSENT_HISTORY_PATTERN_8472");
+		if (dialog) {
+			::SetWindowTextW(::GetDlgItem(dialog, IDC_TEXT), L"READONLY_NEW_ENTRY_8472");
+			::SendMessageW(dialog, WM_COMMAND, IDCANCEL, 0);
+			dialog = openDialog();
+		}
+		const bool preserved = contains(dialog, L"blank.fb2") && contains(dialog, L"ABSENT_HISTORY_PATTERN_8472") &&
+			!contains(dialog, L"READONLY_NEW_ENTRY_8472");
+		if (dialog) ::SendMessageW(dialog, WM_CLOSE, 0, 0);
+		CStringA report; report.Format("readonly=%d\ninitial=%d\npreserved=%d\n", readonly, initial, preserved);
+		DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close();
+		::PostQuitMessage(readonly && initial && preserved ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"search-history-find"))
 	{
 		auto stage = [&](const char* value) { DWORD bytes = 0; output.Write(value, static_cast<DWORD>(strlen(value)), &bytes); output.Flush(); };
