@@ -50,6 +50,7 @@ void ReportError(HRESULT error) { ++active->reports; active->reported = error; }
 int MessageBox(HWND, const CString&, const CString&, UINT) { return 0; }
 }
 CString FbeLoadRuntimeStringByKey(LPCWSTR, LPCWSTR fallback) { return CString(fallback); }
+bool ReplaceAllRuntimeFault(const wchar_t*) { return false; }
 struct Markup {
     State& state;
     void BeginUndoUnit(LPCWSTR) {
@@ -123,7 +124,7 @@ CString PrepareRegexReplacementText(const CString& value, AU::IMatch2*, std::vec
     return value;
 }
 void NormalizeReplacementNbsp(CString&) {}
-void ApplyReplacementFormatting(Range*, const CString&, const std::vector<AU::Search::ReplacementFormattingRun>&) {
+void ApplyReplacementFormatting(Range*, const CString&, const std::vector<AU::Search::ReplacementFormattingRun>&, bool = false) {
     if (active->fault == 3) throw _com_error(E_FAIL);
 }
 BOOL FakePostMessage(HWND, UINT, WPARAM, LPARAM) { ++active->posts; return TRUE; }

@@ -864,6 +864,8 @@ public:
 	// Returns the committed replacement count; -2 means that preview was
 	// cancelled and -1 means that the native query/mapping failed.
 	int ReplaceAllSearchCore(CString* errorText=NULL);
+	// Internal runtime regression setup; refuses use outside its named test.
+	bool ConfigureReplaceAllRuntimeTest(const CString& pattern, const CString& replacement, bool regexp);
 	int GlobalReplace(MSHTML::IHTMLElementPtr elem = NULL, CString cntTag = L"P");
 	int ToolWordsGlobalReplace(MSHTML::IHTMLElementPtr fbw_body, int* pIndex = NULL, int* globIndex = NULL, bool find = false, CString cntTag = L"P");
 

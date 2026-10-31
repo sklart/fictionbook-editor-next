@@ -35,6 +35,7 @@
 #include "clipboard/ClipboardPastePreparer.h"
 #include "clipboard/HtmlPasteSanitizer.h"
 #include "undo/UndoFailureRecovery.h"
+#include "testing/RuntimeTestScenarioMode.h"
 #include <vector>
 #include <memory>
 using FbeTable::Grid;
@@ -3537,7 +3538,7 @@ static CString PrepareRegexReplacementText(const CString& replacementTemplate, A
 	return replacement;
 }
 
-static void ApplyReplacementFormatting(MSHTML::IHTMLTxtRangePtr sel, const CString& repl, const std::vector<AU::Search::ReplacementFormattingRun>& rl)
+static void ApplyReplacementFormatting(MSHTML::IHTMLTxtRangePtr sel, const CString& repl, const std::vector<AU::Search::ReplacementFormattingRun>& rl, bool injectFailure = false)
 {
 	for (std::size_t i = 0; i < rl.size(); ++i)
 	{
@@ -3545,6 +3546,7 @@ static void ApplyReplacementFormatting(MSHTML::IHTMLTxtRangePtr sel, const CStri
 		MSHTML::IHTMLTxtRangePtr range = sel->duplicate();
 		range->move(L"character", rr.Start - repl.GetLength());
 		range->moveEnd(L"character", rr.Length);
+		if (injectFailure) throw _com_error(E_FAIL);
 		if(rr.Flags & AU::Search::ReplacementFormatStrong)
 			range->execCommand(L"Bold", VARIANT_FALSE);
 		if(rr.Flags & AU::Search::ReplacementFormatEmphasis)
@@ -3622,6 +3624,26 @@ void  CFBEView::DoReplace() {
   if (FAILED(failure.Error())) U::ReportError(failure);
 }
 
+bool CFBEView::ConfigureReplaceAllRuntimeTest(const CString& pattern, const CString& replacement, bool regexp)
+{
+	if (!RuntimeTests::IsScenario(L"replace-all-runtime")) return false;
+	m_fo.ClearMatch();
+	m_fo.pattern = pattern;
+	m_fo.replacement = replacement;
+	m_fo.fRegexp = regexp;
+	m_fo.flags = 0;
+	m_fo.scope = AU::Search::SearchScope::WholeDocument;
+	return true;
+}
+
+static bool ReplaceAllRuntimeFault(const wchar_t* fault)
+{
+	if (!RuntimeTests::IsScenario(L"replace-all-runtime")) return false;
+	wchar_t value[64] = {};
+	const DWORD length = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_REPLACE_FAULT", value, _countof(value));
+	return length != 0 && length < _countof(value) && wcscmp(value, fault) == 0;
+}
+
 int CFBEView::ReplaceAllSearchCore(CString* errorText)
 {
 	if (errorText != NULL)
@@ -3689,6 +3711,11 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 
 	int replaced = 0;
 	bool mutationAttempted = false;
+	const bool faultBefore = ReplaceAllRuntimeFault(L"before-first");
+	const bool faultAfterOne = ReplaceAllRuntimeFault(L"after-one");
+	const bool faultMiddle = ReplaceAllRuntimeFault(L"middle");
+	const bool faultFormatting = ReplaceAllRuntimeFault(L"format");
+	const bool faultEnd = ReplaceAllRuntimeFault(L"end");
 	struct ControlledMutationScope
 	{
 		DesignSearchController& search;
@@ -3703,6 +3730,7 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	try
 	{
 		const AU::Search::SearchTextSnapshot& snapshot = m_design_search.Coordinator().GetSnapshot();
+		if (faultBefore) throw _com_error(E_FAIL);
 		for (std::size_t index = count; index-- > 0;)
 		{
 			const AU::Search::SearchResult* result = m_design_search.Coordinator().GetResults().GetAt(index);
@@ -3741,8 +3769,13 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 			mutationAttempted = true;
 			ranges[index]->text = static_cast<LPCWSTR>(replacement);
 			if (m_fo.fRegexp)
-				ApplyReplacementFormatting(ranges[index], replacement, formatting);
+			{
+				ApplyReplacementFormatting(ranges[index], replacement, formatting, faultFormatting);
+			}
 			++replaced;
+			if ((replaced == 1 && faultAfterOne) ||
+				(static_cast<std::size_t>(replaced) == (count + 1) / 2 && faultMiddle))
+				throw _com_error(E_FAIL);
 		}
 	}
 	catch (const _com_error& error)
@@ -3759,7 +3792,12 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	}
 	if (undo)
 	{
-		try { undo->Close(); }
+		try {
+			// Simulate an error immediately before closing; the scope destructor
+			// still attempts its normal cleanup, as after a COM exception.
+			if (faultEnd) throw _com_error(E_FAIL);
+			undo->Close();
+		}
 		catch (const _com_error& error) { failure = error.Error(); }
 	}
 	if (FAILED(failure))

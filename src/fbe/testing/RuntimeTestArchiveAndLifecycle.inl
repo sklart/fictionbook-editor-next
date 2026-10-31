@@ -5,6 +5,7 @@
 #include "RuntimeTestNewDocument.inl"
 #include "RuntimeTestUiDefects.inl"
 #include "RuntimeTestNbspInput.inl"
+#include "RuntimeTestReplaceAll.inl"
 if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 	if (IsFbeTestScenario(L"search-history-write") || IsFbeTestScenario(L"search-history-read"))
 	{
