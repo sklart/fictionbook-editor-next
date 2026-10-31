@@ -1,8 +1,8 @@
 #Requires -Version 7.0
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$FbeExe,
-      [ValidateSet('none', 'before-first', 'after-one', 'middle', 'format', 'end')][string]$Fault = 'none',
-      [ValidateSet('digits', 'no-match', 'literal', 'zero-length', 'stale-preview', 'scope-selection', 'scope-section', 'cross-inline')][string]$Mode = 'digits',
+      [ValidateSet('none', 'before-first', 'after-one', 'middle', 'format', 'format-command', 'format-italic-command', 'end')][string]$Fault = 'none',
+      [ValidateSet('digits', 'no-match', 'literal', 'zero-length', 'stale-preview', 'scope-selection', 'scope-section', 'cross-inline', 'format-success', 'format-italic')][string]$Mode = 'digits',
       [string]$ArtifactDirectory)
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -46,7 +46,7 @@ try {
         if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination (Join-Path $ArtifactDirectory $name) -Force }
     }
     if ($code -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw "Native Replace All failed: $text" }
-    if ($Mode -eq 'cross-inline' -and $text -notmatch '(?m)^count=1\r?$') { throw "Expected one formatting-boundary match: $text" }
+    if ($Mode -in @('cross-inline', 'format-success', 'format-italic') -and $text -notmatch '(?m)^count=1\r?$') { throw "Expected one match: $text" }
     $before = [Xml.XmlDocument]::new(); $before.Load((Join-Path $iso.DataPath 'before.fb2'))
     $after = [Xml.XmlDocument]::new(); $after.Load((Join-Path $iso.DataPath 'after.fb2'))
     $ns = [Xml.XmlNamespaceManager]::new($before.NameTable); $ns.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
@@ -57,6 +57,15 @@ try {
         $target.FirstChild.Value = 'xy'
         $target.SelectSingleNode('fb:emphasis', $ns).InnerText = 'C'
     }
+    if ($Mode -in @('format-success', 'format-italic')) {
+        $target = $before.SelectSingleNode('//fb:section[@id="section-two"]/fb:p', $ns)
+        if (-not $target -or -not $target.FirstChild.Value.StartsWith('9')) { throw 'Invalid format-success fixture.' }
+        $target.FirstChild.Value = $target.FirstChild.Value.Substring(1)
+        $tag = if ($Mode -eq 'format-italic') { 'emphasis' } else { 'strong' }
+        $strong = $before.CreateElement($tag, 'http://www.gribuser.ru/xml/fictionbook/2.0')
+        $strong.InnerText = '+'
+        [void]$target.PrependChild($strong)
+    }
     $beforeText = @($before.SelectNodes('/fb:FictionBook/fb:body//text()', $ns))
     $afterText = @($after.SelectNodes('/fb:FictionBook/fb:body//text()', $afterNs))
     if ($Mode -eq 'stale-preview') {
@@ -65,7 +74,7 @@ try {
         $target.Value = $target.Value.Replace('blank.fb2', '!blank.fb2')
     }
     if ($beforeText.Count -ne $afterText.Count) { throw 'Text-node structure changed.' }
-    $replaced = if ($Mode -eq 'cross-inline') { 1 } else { 0 }
+    $replaced = if ($Mode -in @('cross-inline', 'format-success', 'format-italic')) { 1 } else { 0 }
     for ($i = 0; $i -lt $beforeText.Count; ++$i) {
         $original = $beforeText[$i].Value; $actual = $afterText[$i].Value
         if ($Mode -eq 'zero-length') {
@@ -86,7 +95,7 @@ try {
         }
         $beforeText[$i].Value = $actual
     }
-    $expectedCount = switch ($Mode) { 'no-match' { 0 } 'stale-preview' { 0 } 'cross-inline' { 1 } 'literal' { 3 } 'zero-length' { 1 } 'scope-selection' { 1 } 'scope-section' { 1 } default { switch ($Fault) { 'before-first' { 0 } 'after-one' { 1 } 'middle' { 9 } 'format' { 1 } default { 18 } } } }
+    $expectedCount = switch ($Mode) { 'no-match' { 0 } 'stale-preview' { 0 } 'cross-inline' { 1 } 'format-success' { 1 } 'format-italic' { 1 } 'literal' { 3 } 'zero-length' { 1 } 'scope-selection' { 1 } 'scope-section' { 1 } default { switch ($Fault) { 'before-first' { 0 } 'after-one' { 1 } 'middle' { 9 } 'format' { 1 } 'format-command' { 1 } 'format-italic-command' { 1 } default { 18 } } } }
     if ($replaced -ne $expectedCount) { throw "Expected $expectedCount replacements, got $replaced." }
     if ($before.OuterXml -cne $after.OuterXml) { throw 'Saved FB2 differs from independently transformed original DOM.' }
     if ($Mode -eq 'digits' -and $Fault -in @('none', 'end') -and ($after.SelectSingleNode('//fb:title/fb:p', $afterNs).InnerText -cne '+.+ — создание файла' -or

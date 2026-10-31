@@ -26,6 +26,8 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 		const bool scopeSelection = wcscmp(mode, L"scope-selection") == 0;
 		const bool scopeSection = wcscmp(mode, L"scope-section") == 0;
 		const bool crossInline = wcscmp(mode, L"cross-inline") == 0;
+		const bool formatItalic = wcscmp(mode, L"format-italic") == 0;
+		const bool formatSuccess = wcscmp(mode, L"format-success") == 0 || formatItalic;
 		const bool expectedFailure = fault[0] != 0;
 		const bool expectedMutation = expectedFailure && wcscmp(fault, L"before-first") != 0;
 		ShowView(BODY); m_doc->m_body.SetFocus(); pump();
@@ -48,8 +50,8 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 			if (!selected->findText(scopeSelection ? L"blank.fb2" : L"9", 0, 0)) CheckError(E_FAIL);
 			selected->select(); pump();
 		}
-		const wchar_t* replacement = wcscmp(fault, L"format") == 0 ? L"\\S+\\Q" : crossInline ? L"xy" : L"+";
-		const wchar_t* pattern = noMatch ? L"THIS_PATTERN_IS_ABSENT_8472" : crossInline ? L"AB" : literal ? L"2" : zeroLength ? L"(?=blank)" : L"\\d";
+		const wchar_t* replacement = (formatItalic || wcscmp(fault, L"format-italic-command") == 0) ? L"\\E+\\Q" : (formatSuccess || wcscmp(fault, L"format") == 0 || wcscmp(fault, L"format-command") == 0) ? L"\\S+\\Q" : crossInline ? L"xy" : L"+";
+		const wchar_t* pattern = noMatch ? L"THIS_PATTERN_IS_ABSENT_8472" : formatSuccess ? L"9" : crossInline ? L"AB" : literal ? L"2" : zeroLength ? L"(?=blank)" : L"\\d";
 		if (!m_doc->m_body.ConfigureReplaceAllRuntimeTest(pattern, replacement, !literal && !crossInline)) CheckError(E_FAIL);
 		static MSHTML::IHTMLTxtRangePtr modalMutation;
 		static bool modalChanged = false;

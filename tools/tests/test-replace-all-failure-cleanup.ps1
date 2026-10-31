@@ -124,7 +124,7 @@ CString PrepareRegexReplacementText(const CString& value, AU::IMatch2*, std::vec
     return value;
 }
 void NormalizeReplacementNbsp(CString&) {}
-void ApplyReplacementFormatting(Range*, const CString&, const std::vector<AU::Search::ReplacementFormattingRun>&, bool = false) {
+void ApplyReplacementFormatting(Range*, const CString&, const std::vector<AU::Search::ReplacementFormattingRun>&, bool = false, bool = false, bool = false) {
     if (active->fault == 3) throw _com_error(E_FAIL);
 }
 BOOL FakePostMessage(HWND, UINT, WPARAM, LPARAM) { ++active->posts; return TRUE; }
