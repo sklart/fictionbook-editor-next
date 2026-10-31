@@ -50,7 +50,7 @@ try {
     $after = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
     if($after -ne $before) { throw 'Theme-only changes modified the FB2 file.' }
     $passed = $true
-    Write-Host 'BODY/table palette, named themes, document state, selection, scroll and edit Undo/Redo invariants passed.'
+    Write-Host 'BODY themes, document invariants, toolbar search and mode commands passed.'
 } finally {
     Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed
 }

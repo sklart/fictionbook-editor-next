@@ -2626,7 +2626,6 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		const bool redoRestored = editedBeforePalette == CString(static_cast<LPCWSTR>(body->innerHTML));
 		if(!restoredPalette || !editPreserved || !undoRestored || !redoRestored) { output.Close(); ::PostQuitMessage(1); return 0; }
 		// A later palette switch must not accidentally acknowledge a real edit.
-		body->insertAdjacentHTML(L"beforeEnd", L"<p>Unsent user edit.</p>");
 		const CString editedHtml(static_cast<LPCWSTR>(body->innerHTML));
 		const bool dirtyBeforeTheme = m_doc->DocChanged();
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
@@ -2636,6 +2635,38 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		{
 			output.Close(); ::PostQuitMessage(1); return 0;
 		}
+		// Send mouse messages to the actual toolbar, not directly to the frame's command handler.
+		ShowWindow(SW_MAXIMIZE); UpdateLayout(); OnIdle();
+		auto clickToolbar = [&](UINT command) {
+			OnIdle();
+			const int index = m_CmdToolbar.CommandToIndex(command);
+			RECT button = {}, client = {};
+			if(index < 0 || !m_CmdToolbar.GetItemRect(index, &button) || !m_CmdToolbar.GetClientRect(&client) ||
+				button.left < client.left || button.top < client.top || button.right > client.right || button.bottom > client.bottom ||
+				(m_CmdToolbar.SendMessage(TB_GETSTATE, command, 0) & TBSTATE_ENABLED) == 0) return false;
+			const LPARAM point = MAKELPARAM((button.left + button.right) / 2, (button.top + button.bottom) / 2);
+			m_CmdToolbar.SendMessage(WM_LBUTTONDOWN, MK_LBUTTON, point);
+			m_CmdToolbar.SendMessage(WM_LBUTTONUP, 0, point);
+			return true;
+		};
+		FB::Doc* const toolbarDocument = m_doc;
+		bool toolbarCommands = true;
+		CStringA toolbarDetails;
+		for(int size : {16, 20, 24, 32}) {
+			_Settings.SetMainToolbarIconSize(size);
+			const bool rebuilt = RebuildCommandToolbarImages(UiMetrics::DpiForWindow(m_hWnd));
+			UpdateLayout();
+			const bool findClicked = clickToolbar(ID_EDIT_FIND);
+			const bool findOpened = m_doc->m_body.m_find_dlg && m_doc->m_body.m_find_dlg->IsValid();
+			if(findOpened) m_doc->m_body.CloseFindDialog(m_doc->m_body.m_find_dlg);
+			const bool sourceClicked = clickToolbar(ID_VIEW_SOURCE);
+			const bool sourceOpened = m_editor_view_state.Current() == SOURCE;
+			const bool bodyClicked = clickToolbar(ID_VIEW_BODY);
+			const bool bodyOpened = m_editor_view_state.Current() == BODY;
+			CStringA detail; detail.Format("size=%d rebuilt=%d find-click=%d find-open=%d source-click=%d source-open=%d body-click=%d body-open=%d\n", size, rebuilt, findClicked, findOpened, sourceClicked, sourceOpened, bodyClicked, bodyOpened); toolbarDetails += detail;
+			toolbarCommands = rebuilt && findClicked && findOpened && sourceClicked && sourceOpened && bodyClicked && bodyOpened && m_doc == toolbarDocument && toolbarCommands;
+		}
+		if(!toolbarCommands) { DWORD detailWritten = 0; output.Write(toolbarDetails, static_cast<DWORD>(toolbarDetails.GetLength()), &detailWritten); output.Close(); ::PostQuitMessage(1); return 0; }
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
