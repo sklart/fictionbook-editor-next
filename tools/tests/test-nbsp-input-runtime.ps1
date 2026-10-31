@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$FbeExe,
       [ValidateSet('square', 'small-square', 'circle', 'none')][string[]]$Modes = @('square', 'small-square', 'circle', 'none'),
+      [ValidateSet('plain', 'emphasis', 'link')][string]$Context = 'plain',
       [string]$ArtifactDirectory = (Join-Path $PSScriptRoot '..\..\build\community-feedback-nbsp'))
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -21,7 +22,8 @@ try {
             $settings = [IO.File]::ReadAllText($settingsFile).Replace('</Settings>', "<NBSPChar>$marker</NBSPChar></Settings>")
             [IO.File]::WriteAllText($settingsFile, $settings, [Text.UTF8Encoding]::new($false))
             $fixture = Join-Path $iso.DataPath 'input.fb2'
-            $fb2 = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>Test</first-name><last-name>Author</last-name></author><book-title>NBSP test</book-title><lang>en</lang></title-info><document-info><author><first-name>Test</first-name><last-name>Author</last-name></author><date>2026</date><id>nbsp-test</id><version>1.0</version></document-info></description><body><section><p id="nbsp-probe">word1word2</p></section></body></FictionBook>'
+            $markup = switch ($Context) { 'plain' { 'word1word2' } 'emphasis' { '<emphasis>word1word2</emphasis>' } 'link' { '<a l:href="#nbsp-probe">word1word2</a>' } }
+            $fb2 = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><first-name>Test</first-name><last-name>Author</last-name></author><book-title>NBSP test</book-title><lang>en</lang></title-info><document-info><author><first-name>Test</first-name><last-name>Author</last-name></author><date>2026</date><id>nbsp-test</id><version>1.0</version></document-info></description><body><section><p id="nbsp-prior">prior</p><p id="nbsp-probe">' + $markup + '</p></section></body></FictionBook>'
             [IO.File]::WriteAllText($fixture, $fb2, [Text.UTF8Encoding]::new($false))
             $saved = Join-Path $iso.DataPath 'saved.fb2'
             $report = Join-Path $iso.DataPath 'report.txt'
@@ -31,12 +33,18 @@ try {
                 -ArgumentList @('--portable', '-b', ('"' + $report + '"'), ('"' + $fixture + '"')) -PassThru
             $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'nbsp-input-runtime' -Report $report -TimeoutSeconds 120
             $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
-            if (Test-Path -LiteralPath $report) { Copy-Item -LiteralPath $report -Destination (Join-Path $ArtifactDirectory "$name.txt") -Force }
-            if (Test-Path -LiteralPath $saved) { Copy-Item -LiteralPath $saved -Destination (Join-Path $ArtifactDirectory "$name.fb2") -Force }
+            if (Test-Path -LiteralPath $report) { Copy-Item -LiteralPath $report -Destination (Join-Path $ArtifactDirectory "$Context-$name.txt") -Force }
+            if (Test-Path -LiteralPath $saved) { Copy-Item -LiteralPath $saved -Destination (Join-Path $ArtifactDirectory "$Context-$name.fb2") -Force }
             $expectedMode = '{0:X4}' -f [int]$marker
+            if (-not (Test-Path -LiteralPath $saved)) { throw "$name failed before save: $text" }
             [xml]$xml = Get-Content -Raw -LiteralPath $saved
             $ns = [Xml.XmlNamespaceManager]::new($xml.NameTable); $ns.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
             $value = $xml.SelectSingleNode('//fb:p[@id="nbsp-probe"]', $ns).InnerText
+            if ($Context -eq 'emphasis' -and -not $xml.SelectSingleNode('//fb:p[@id="nbsp-probe"]/fb:emphasis', $ns)) { throw 'Emphasis was lost.' }
+            if ($Context -eq 'link') {
+                $link = $xml.SelectSingleNode('//fb:p[@id="nbsp-probe"]/fb:a', $ns)
+                if (-not $link -or $link.GetAttribute('href', 'http://www.w3.org/1999/xlink') -cne '#nbsp-probe') { throw 'Link or target was lost.' }
+            }
             if ($value.Length -ne 12 -or $value.Substring(0,5) -cne 'word1' -or $value.Substring(7) -cne 'word2' -or
                 @($value.Substring(5,2).ToCharArray() | Where-Object { $_ -ne ' ' -and $_ -ne [char]0x00A0 }).Count -ne 0) { throw "$name saved unexpected characters" }
             if (@($value.Substring(5,2).ToCharArray() | Where-Object { $_ -eq [char]0x00A0 }).Count -ne 1) { throw "$name did not save exactly one real NBSP" }
@@ -48,10 +56,10 @@ try {
             [void]$readerSettings.Schemas.Add('http://www.gribuser.ru/xml/fictionbook/2.0', (Join-Path $root 'runtime\FictionBook.xsd'))
             $reader = [Xml.XmlReader]::Create($saved, $readerSettings)
             try { while ($reader.Read()) {} } finally { $reader.Dispose() }
-            Write-Host "NBSP saved XML and independent XSD: PASS ($name)."
+            Write-Host "NBSP saved XML and independent XSD: PASS ($Context/$name)."
             if ($code -ne 0 -or $text -notmatch "(?m)^mode=$expectedMode\r?$" -or $text -notmatch '(?m)^result=pass\r?$') { throw "$name failed: $text" }
             $passed = $true
-            Write-Host "NBSP input/Undo/Redo: PASS ($name)."
+            Write-Host "NBSP input/Undo/Redo: PASS ($Context/$name)."
         } catch {
             $failures += "$name`: $($_.Exception.Message)"
             Write-Warning $failures[-1]

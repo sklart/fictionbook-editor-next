@@ -5097,6 +5097,57 @@ bool CFBEView::MoveTableCell(bool reverse)
 	catch (_com_error&) { return false; }
 }
 
+VARIANT_BOOL CFBEView::OnKeyPress(IDispatch* evt)
+{
+	bool intercepted = false;
+	try
+	{
+		MSHTML::IHTMLEventObjPtr event(evt);
+		if (!event) return VARIANT_TRUE;
+		if (event->keyCode != L' ' || event->ctrlKey == VARIANT_TRUE || event->altKey == VARIANT_TRUE) return VARIANT_TRUE;
+		const CString marker(_Settings.GetNBSPChar());
+		if (marker.GetLength() != 1 || marker == L"\u00a0") return VARIANT_TRUE;
+		MSHTML::IHTMLDocument2Ptr document(Document());
+		if (!document || !document->selection) return VARIANT_TRUE;
+		const _bstr_t selectionType(document->selection->type);
+		if (selectionType.length() && _wcsicmp(static_cast<LPCWSTR>(selectionType), L"Control") == 0) return VARIANT_TRUE;
+		MSHTML::IHTMLTxtRangePtr caret(document->selection->createRange());
+		if (!caret || caret->compareEndPoints(L"StartToEnd", caret) != 0) return VARIANT_TRUE;
+		MSHTML::IHTMLElementPtr parent(caret->parentElement());
+		MSHTML::IHTMLElementPtr body(MSHTML::IHTMLDocument3Ptr(document)->getElementById(L"fbw_body"));
+		if (!parent || !body || !body->contains(parent)) return VARIANT_TRUE;
+		MSHTML::IHTMLTxtRangePtr previous(caret->duplicate());
+		if (!previous || previous->moveStart(L"character", -1) != -1 || previous->parentElement() != parent ||
+			CString(static_cast<LPCWSTR>(previous->htmlText)) != L" ") return VARIANT_TRUE;
+
+		// MSHTML would replace the first of two spaces with U+00A0.  The
+		// subsequent DOM nodeValue conversion invalidates its typing undo unit.
+		// Insert the display marker through the editor's undoable text range
+		// before MSHTML performs that conversion.
+		event->returnValue = VARIANT_FALSE;
+		intercepted = true;
+		FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"insert nonbreaking space");
+		const CString replacement = marker + L" ";
+		previous->text = static_cast<LPCWSTR>(replacement);
+		previous->collapse(VARIANT_FALSE);
+		previous->select();
+		undo.Close();
+		return VARIANT_FALSE;
+	}
+	catch (_com_error& error) {
+		if (intercepted) U::ReportError(error);
+		return intercepted ? VARIANT_FALSE : VARIANT_TRUE;
+	}
+	catch (const ATL::CAtlException& error) {
+		if (intercepted) U::ReportError(error.m_hr);
+		return intercepted ? VARIANT_FALSE : VARIANT_TRUE;
+	}
+	catch (const std::bad_alloc&) {
+		if (intercepted) U::ReportError(E_OUTOFMEMORY);
+		return intercepted ? VARIANT_FALSE : VARIANT_TRUE;
+	}
+}
+
 VARIANT_BOOL  CFBEView::OnKeyDown(IDispatch *evt)
 {
 	MSHTML::IHTMLEventObjPtr oe(evt);

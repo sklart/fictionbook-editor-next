@@ -665,6 +665,7 @@ public:
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONMOUSEMOVE, &CFBEView::OnMouseMove, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONMOUSEUP, &CFBEView::OnMouseUp, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONKEYDOWN, &CFBEView::OnKeyDown, &EventInfo)
+		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONKEYPRESS, &CFBEView::OnKeyPress, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONKEYUP, &CFBEView::OnKeyUp, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONFOCUSIN, &CFBEView::OnFocusIn, &VoidEventInfo)
 		SINK_ENTRY_INFO(1, DIID_FBEHTMLElementEvents2, DISPID_HTMLELEMENTEVENTS2_ONSCROLL, &CFBEView::OnScroll, &VoidEventInfo)
@@ -1024,6 +1025,7 @@ public:
 	VARIANT_BOOL __stdcall  OnMouseMove(IDispatch *evt);
 	VARIANT_BOOL __stdcall  OnMouseUp(IDispatch *evt);
 	VARIANT_BOOL __stdcall  OnKeyDown(IDispatch *evt);
+	VARIANT_BOOL __stdcall  OnKeyPress(IDispatch *evt);
 	VARIANT_BOOL __stdcall  OnKeyUp(IDispatch *evt);
   void __stdcall	  OnFocusIn(IDispatch *evt);
 
