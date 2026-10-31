@@ -13,6 +13,7 @@
 namespace
 {
 InterfaceTheme g_selected = INTERFACE_THEME_AUTOMATIC;
+InterfacePalette g_namedPalette = INTERFACE_PALETTE_CLASSIC;
 bool g_systemDark = false;
 bool g_highContrast = false;
 HHOOK g_themeCbtHook = NULL;
@@ -1434,7 +1435,25 @@ void SetSelectedTheme(InterfaceTheme theme)
 
 InterfaceTheme GetSelectedTheme() { return g_selected; }
 bool IsDarkModeSupported() { return SupportsDarkMode(); }
-bool IsDark() { return SupportsDarkMode() && (g_selected == INTERFACE_THEME_DARK || (g_selected == INTERFACE_THEME_AUTOMATIC && g_systemDark)); }
+bool IsDark() {
+	if(!SupportsDarkMode()) return false;
+	if(g_namedPalette == INTERFACE_PALETTE_GRAPHITE || g_namedPalette == INTERFACE_PALETTE_NAVY) return true;
+	if(g_namedPalette == INTERFACE_PALETTE_SEPIA) return false;
+	return g_selected == INTERFACE_THEME_DARK || (g_selected == INTERFACE_THEME_AUTOMATIC && g_systemDark);
+}
+InterfacePalette GetNamedPalette() { return g_namedPalette; }
+bool SetNamedPalette(InterfacePalette palette)
+{
+	if(palette < INTERFACE_PALETTE_CLASSIC || palette >= INTERFACE_PALETTE_COUNT) return false;
+	if(!SupportsDarkMode() && (palette == INTERFACE_PALETTE_GRAPHITE || palette == INTERFACE_PALETTE_NAVY)) return false;
+	if(palette == g_namedPalette) return true;
+	const bool wasDark = IsDark();
+	g_namedPalette = palette;
+	if(wasDark != IsDark()) ApplyPreferredAppMode(IsDark(), g_highContrast);
+	AdvanceThemeGeneration();
+	RebuildBrushes();
+	return true;
+}
 bool IsHighContrast() { return g_highContrast; }
 void ResetApplyDiagnostics() { g_applyDiagnostics = {}; g_recordApplyDiagnostics = true; }
 ApplyDiagnostics GetApplyDiagnostics() { return g_applyDiagnostics; }
@@ -1455,6 +1474,23 @@ COLORREF Color(ThemeColorRole role)
 		case THEME_COLOR_SELECTION_TEXT: return ::GetSysColor(COLOR_HIGHLIGHTTEXT);
 		default: return ::GetSysColor(COLOR_WINDOWTEXT);
 		}
+	}
+	if(role >= THEME_COLOR_WINDOW && role < THEME_COLOR_COUNT && g_namedPalette != INTERFACE_PALETTE_CLASSIC)
+	{
+		// Role order is fixed by ThemeColorRole; preserve the legacy enum values.
+		static const COLORREF graphite[THEME_COLOR_COUNT] = {
+			RGB(38,38,38), RGB(53,53,53), RGB(235,235,235), RGB(112,112,112), RGB(78,78,78),
+			RGB(195,195,195), RGB(153,153,153), RGB(66,85,102), RGB(255,255,255), RGB(70,70,70),
+			RGB(86,86,86), RGB(137,194,236), RGB(137,194,236), RGB(255,128,112), RGB(255,194,102), RGB(112,210,142) };
+		static const COLORREF navy[THEME_COLOR_COUNT] = {
+			RGB(27,38,54), RGB(37,53,73), RGB(232,239,247), RGB(105,128,155), RGB(66,84,106),
+			RGB(191,207,224), RGB(150,170,190), RGB(49,83,119), RGB(255,255,255), RGB(49,70,96),
+			RGB(60,86,116), RGB(126,196,255), RGB(126,196,255), RGB(255,134,119), RGB(255,199,110), RGB(122,216,164) };
+		static const COLORREF sepia[THEME_COLOR_COUNT] = {
+			RGB(246,240,225), RGB(238,229,211), RGB(51,42,33), RGB(142,127,107), RGB(196,183,162),
+			RGB(93,78,62), RGB(110,97,82), RGB(208,192,164), RGB(44,35,27), RGB(229,216,193),
+			RGB(216,199,172), RGB(104,70,42), RGB(104,70,42), RGB(153,42,34), RGB(124,78,0), RGB(35,106,56) };
+		return (g_namedPalette == INTERFACE_PALETTE_GRAPHITE ? graphite : g_namedPalette == INTERFACE_PALETTE_NAVY ? navy : sepia)[role];
 	}
 	if(!IsDark())
 	{

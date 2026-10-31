@@ -33,6 +33,17 @@ enum ThemeColorRole
 	THEME_COLOR_COUNT
 };
 
+// Named palettes are separate from the persisted Windows appearance mode.
+// Classic preserves the existing Automatic/Light/Dark behaviour.
+enum InterfacePalette
+{
+	INTERFACE_PALETTE_CLASSIC = 0,
+	INTERFACE_PALETTE_GRAPHITE,
+	INTERFACE_PALETTE_NAVY,
+	INTERFACE_PALETTE_SEPIA,
+	INTERFACE_PALETTE_COUNT
+};
+
 namespace ThemeManager
 {
 	struct ApplyDiagnostics
@@ -49,6 +60,8 @@ namespace ThemeManager
 	ApplyDiagnostics GetApplyDiagnostics();
 	void SetSelectedTheme(InterfaceTheme theme);
 	InterfaceTheme GetSelectedTheme();
+	bool SetNamedPalette(InterfacePalette palette);
+	InterfacePalette GetNamedPalette();
 	bool IsDark();
 	bool IsDarkModeSupported();
 	bool IsHighContrast();

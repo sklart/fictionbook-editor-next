@@ -62,6 +62,45 @@ static VOID CALLBACK CloseNavigationPopupForTest(HWND, UINT, UINT_PTR timer, DWO
 
 void CMainFrame::RunPortableStateTestScenario()
 {
+    if(IsFbeTestScenario(L"named-palette-core-runtime")) {
+        const InterfaceTheme initialTheme = ThemeManager::GetSelectedTheme();
+        const InterfacePalette initialPalette = ThemeManager::GetNamedPalette();
+        const COLORREF classicWindow = ThemeManager::WindowColor();
+        const bool highContrast = ThemeManager::IsHighContrast();
+        bool passed = initialPalette == INTERFACE_PALETTE_CLASSIC;
+        auto contrast = [](COLORREF first, COLORREF second) {
+            auto luminance = [](COLORREF color) {
+                auto linear = [](BYTE value) { const double channel = value / 255.0; return channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4); };
+                return 0.2126 * linear(GetRValue(color)) + 0.7152 * linear(GetGValue(color)) + 0.0722 * linear(GetBValue(color));
+            };
+            const double a = luminance(first), b = luminance(second);
+            return ((std::max)(a, b) + 0.05) / ((std::min)(a, b) + 0.05);
+        };
+        if(ThemeManager::IsDarkModeSupported()) {
+            for(InterfacePalette palette : {INTERFACE_PALETTE_GRAPHITE, INTERFACE_PALETTE_NAVY, INTERFACE_PALETTE_SEPIA}) {
+                passed = ThemeManager::SetNamedPalette(palette) && ThemeManager::GetNamedPalette() == palette && passed;
+                for(int role = 0; role < THEME_COLOR_COUNT; ++role) passed = ThemeManager::Brush(static_cast<ThemeColorRole>(role)) != NULL && passed;
+                if(!highContrast) {
+                    passed = ThemeManager::WindowColor() != classicWindow && passed;
+                    for(ThemeColorRole background : {THEME_COLOR_WINDOW, THEME_COLOR_CONTROL, THEME_COLOR_HOVER, THEME_COLOR_PRESSED})
+                        passed = contrast(ThemeManager::TextColor(), ThemeManager::Color(background)) >= 4.5 && passed;
+                    passed = contrast(ThemeManager::SelectionTextColor(), ThemeManager::SelectionBackgroundColor()) >= 4.5 && passed;
+                }
+            }
+        } else {
+            passed = !ThemeManager::SetNamedPalette(INTERFACE_PALETTE_GRAPHITE) && ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SEPIA) && passed;
+        }
+        const InterfacePalette retained = ThemeManager::GetNamedPalette();
+        passed = !ThemeManager::SetNamedPalette(static_cast<InterfacePalette>(-1)) && ThemeManager::GetNamedPalette() == retained && passed;
+        const DWORD before = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+        for(int i = 0; i < 20; ++i) passed = ThemeManager::SetNamedPalette(i % 2 ? INTERFACE_PALETTE_CLASSIC : INTERFACE_PALETTE_SEPIA) && passed;
+        const DWORD after = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+        passed = after <= before + 2 && ThemeManager::GetSelectedTheme() == initialTheme && passed;
+        passed = ThemeManager::SetNamedPalette(initialPalette) && ThemeManager::WindowColor() == classicWindow && passed;
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
+            passed ? "named-palette-core=1\nresult=pass\n" : "named-palette-core=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
+    }
     if(IsFbeTestScenario(L"interface-theme-policy-runtime")) {
         _Settings.SetInterfaceTheme(INTERFACE_THEME_DARK);
         CSettingsGeneralPage page(false);

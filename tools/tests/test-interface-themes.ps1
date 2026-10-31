@@ -97,7 +97,7 @@ foreach($source in @(
 	$directMessageSource = Read-ProjectFile $source.Trim()
 	if($directMessageSource -match '(?<!U)::MessageBox\(') { throw "FBE-owned message dialog bypasses the shared themed wrapper: $($source.Trim())." }
 }
-foreach($required in @('RegisterNativeMenuBitmap', 'UnregisterNativeMenuBitmap', 'ScopedNativeMenuBitmaps', 'bitmaps.Apply(menu)', 'MIIM_BITMAP', 'TrackPopupMenuEx')) {
+foreach($required in @('RegisterNativeMenuBitmap', 'UnregisterNativeMenuBitmap', 'ScopedNativeMenuBitmaps', 'bitmaps.Apply(menu,', 'MIIM_BITMAP', 'TrackPopupMenuEx')) {
 	if($manager -notlike "*$required*") { throw "Theme manager does not attach registered native popup bitmaps: $required." }
 }
 if($mainFrameHeader -notlike '*ThemeManager::TrackPopupMenu(tp->hMenu*') {
