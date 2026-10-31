@@ -4789,6 +4789,30 @@ namespace
 
     void AppendBlockNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx);
 
+    bool LinkContainsBlockContent(const MSXML2::IXMLDOMNodePtr& node)
+    {
+        std::vector<MSXML2::IXMLDOMNodePtr> pending;
+        pending.push_back(node);
+        while (!pending.empty())
+        {
+            const auto current = pending.back();
+            pending.pop_back();
+            const auto children = MsxmlGetChildNodes(current);
+            for (long i = 0, count = children ? MsxmlGetNodeListLength(children) : 0; i < count; ++i)
+            {
+                const auto child = MsxmlGetNodeListItem(children, i);
+                if (MsxmlGetNodeType(child) != MSXML2::NODE_ELEMENT) continue;
+                const CStringW name = LocalName(child);
+                if (name == L"p" || name == L"div" || name == L"section" || name == L"article" ||
+                    name == L"aside" || name == L"figure" || name == L"blockquote" || name == L"table" ||
+                    name == L"ul" || name == L"ol" || name == L"li" || name == L"hr" || IsHeadingName(name))
+                    return true;
+                pending.push_back(child);
+            }
+        }
+        return false;
+    }
+
     void AppendSpecialSectionNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx, LPCWSTR title)
     {
         CStringW content;
@@ -4869,25 +4893,19 @@ namespace
             return;
         }
 
-        if (name == L"a" && g_options.importImages && TrimString(NodeText(node)).IsEmpty())
+        if (name == L"a" && !LinkContainsBlockContent(node))
         {
-            const auto children = MsxmlGetChildNodes(node);
-            bool hasElementChild = false;
-            for (long i = 0, count = children ? MsxmlGetNodeListLength(children) : 0; i < count; ++i)
-                if (MsxmlGetNodeType(MsxmlGetNodeListItem(children, i)) == MSXML2::NODE_ELEMENT)
-                    hasElementChild = true;
-            CStringW href, directory;
-            ResolveCssBackground(node, ctx, href, directory);
-            if (!hasElementChild && !href.IsEmpty())
-            {
-                const CStringW link = InlineToFb2(node, ctx);
-                CStringW extraMarkers;
-                const CStringW id = OptionalIdAttributeAndExtraMarkersIncludingDescendant(node, ctx, extraMarkers);
-                out += extraMarkers;
-                if (!link.IsEmpty() || !id.IsEmpty()) out += L"      <p" + id + L">" + link + L"</p>\r\n";
-                return;
-            }
+            CStringW link = InlineToFb2(node, ctx);
+            if (link.Left(3) == L"<a " && link.Right(5) == L"></a>" && link.Find(L'>') == link.GetLength() - 5)
+                link.Empty();
+            CStringW extraMarkers;
+            const CStringW id = OptionalIdAttributeAndExtraMarkersIncludingDescendant(node, ctx, extraMarkers);
+            out += extraMarkers;
+            if (!link.IsEmpty() || !id.IsEmpty()) out += L"      <p" + id + L">" + link + L"</p>\r\n";
+            return;
         }
+        if (name == L"a" && g_options.preserveLinks && !Attr(node, L"href").IsEmpty())
+            g_content.warnings += L"Block hyperlink could not be preserved as one FB2 link; its contents were retained.\r\n";
 
         if (name.CompareNoCase(L"figure") == 0)
         {

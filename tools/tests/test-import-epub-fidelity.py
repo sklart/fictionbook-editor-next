@@ -1681,6 +1681,30 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.convert(body, extra=extra, head=head, options=options, navigation=False)
                 self.assertNotIn('background image on non-empty inline content', self.diagnostics.lower())
 
+    def test_standalone_inline_link_retains_target_and_text(self):
+        css = 'a.button { background-image: url(../images/logo.png); }'
+        body = ('<div><a class="button" href="https://example.org/">Visit <strong>site</strong></a></div>'
+                '<div><a href="#destination">Jump</a></div><p id="destination">Destination.</p>')
+        extra = {'Styles/layout.css': ('css', 'text/css', css), 'images/logo.png': ('logo', 'image/png', PNG)}
+        head = '<link rel="stylesheet" href="../Styles/layout.css"/>'
+        root = self.convert(body, extra=extra, head=head, navigation=False)
+        links = root.findall('.//f:body//f:a', NS)
+        external = next((node for node in links if node.get(HREF) == 'https://example.org/'), None)
+        self.assertIsNotNone(external)
+        self.assertEqual(''.join(external.itertext()), 'Visit site')
+        self.assertIsNotNone(external.find('f:strong', NS))
+        self.assertTrue(any((node.get(HREF) or '').startswith('#') and ''.join(node.itertext()) == 'Jump' for node in links))
+        self.assertIn('background image on non-empty inline content', self.diagnostics.lower())
+        root = self.convert(body, extra=extra, head=head, navigation=False, options=['--no-links'])
+        self.assertEqual(root.findall('.//f:body//f:a', NS), [])
+        self.assertIn('Visit site', self.text(root))
+        root = self.convert('<div><a href="https://example.org/"><div><p>First block.</p>'
+                            '<p>Second block.</p></div></a></div>', navigation=False)
+        paragraphs = [''.join(node.itertext()) for node in root.findall('.//f:body//f:p', NS)]
+        self.assertTrue(any('First block.' in text for text in paragraphs))
+        self.assertTrue(any('Second block.' in text for text in paragraphs))
+        self.assertIn('block hyperlink could not be preserved', self.diagnostics.lower())
+
     def test_empty_inline_css_background_preserves_image_in_order(self):
         css = '.ornament { background-image: url(../images/ornament.png); }'
         extra = {'Styles/layout.css': ('css', 'text/css', css),
