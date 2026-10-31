@@ -100,6 +100,7 @@ namespace
         std::set<std::wstring> mainDocuments, noteContentAnchors, noteRootDocuments, residualDocuments;
         std::set<std::wstring> excludedServiceDocuments;
         std::set<std::wstring> warnedInlineCss;
+        std::set<std::wstring> warnedOrphanClosingTags;
         std::map<std::wstring, bool> imageOnlyCoverPages;
         std::set<std::wstring> fb2GenreIds;
         bool fb2GenresLoaded = false;
@@ -662,6 +663,81 @@ namespace
         return xml;
     }
 
+    // Repair only unmatched closing a/div tags when every other tag is
+    // properly nested. Do not infer missing open tags or restructure content.
+    bool RemoveOrphanHtmlClosingTags(const CStringW& input, CStringW& output)
+    {
+        std::vector<CStringW> stack;
+        std::vector<std::pair<int, int>> removals;
+        int pos = 0;
+        while (pos < input.GetLength())
+        {
+            const int start = input.Find(L'<', pos);
+            if (start < 0) break;
+            if (input.Mid(start, 4) == L"<!--" || input.Mid(start, 9) == L"<![CDATA[")
+            {
+                const bool comment = input.Mid(start, 4) == L"<!--";
+                const int end = input.Find(comment ? L"-->" : L"]]>", start + (comment ? 4 : 9));
+                if (end < 0) return false;
+                pos = end + 3; continue;
+            }
+            if (input.Mid(start, 2) == L"<?")
+            {
+                const int end = input.Find(L"?>", start + 2);
+                if (end < 0) return false;
+                pos = end + 2; continue;
+            }
+            const int end = FindHtmlTagEnd(input, start);
+            if (end < 0 || start + 1 >= end) return false;
+            if (input[start + 1] == L'!')
+            {
+                // Internal DTD subsets may contain nested markup and quotes.
+                if (input.Mid(start, end - start + 1).Find(L'[') >= 0) return false;
+                pos = end + 1; continue;
+            }
+            const bool closing = input[start + 1] == L'/';
+            const int nameStart = start + (closing ? 2 : 1);
+            int nameEnd = nameStart;
+            while (nameEnd < end)
+            {
+                const wchar_t ch = input[nameEnd];
+                if (!((ch >= L'a' && ch <= L'z') || (ch >= L'A' && ch <= L'Z') ||
+                      (ch >= L'0' && ch <= L'9') || ch == L':' || ch == L'-' || ch == L'_' || ch == L'.')) break;
+                ++nameEnd;
+            }
+            if (nameEnd == nameStart) return false;
+            const CStringW name = input.Mid(nameStart, nameEnd - nameStart);
+            if (closing)
+            {
+                for (int i = nameEnd; i < end; ++i) if (!iswspace(input[i])) return false;
+                if (!stack.empty() && stack.back() == name) stack.pop_back();
+                else
+                {
+                    if (name != L"a" && name != L"div") return false;
+                    if (std::find(stack.begin(), stack.end(), name) != stack.end() || removals.size() >= 32) return false;
+                    removals.emplace_back(start, end + 1);
+                }
+            }
+            else
+            {
+                int last = end - 1;
+                while (last > nameEnd && iswspace(input[last])) --last;
+                if (input[last] != L'/')
+                {
+                    if (stack.size() >= 1024) return false;
+                    stack.push_back(name);
+                }
+            }
+            pos = end + 1;
+        }
+        if (!stack.empty() || removals.empty()) return false;
+        output.Empty(); output.Preallocate(input.GetLength());
+        pos = 0;
+        for (const auto& range : removals) { output += input.Mid(pos, range.first - pos); pos = range.second; }
+        output += input.Mid(pos);
+        return true;
+    }
+
     bool LoadXmlFileAfterMarkupSanitizing(const CStringW& path, bool htmlMode, MSXML2::IXMLDOMDocument2Ptr& dom, CStringW& errorText)
     {
         std::vector<unsigned char> bytes;
@@ -678,6 +754,19 @@ namespace
         VARIANT_BOOL loaded = VARIANT_FALSE;
         CComBSTR xmlText(static_cast<LPCWSTR>(xml));
         HRESULT loadHr = dom->loadXML(xmlText, &loaded);
+        if ((FAILED(loadHr) || loaded != VARIANT_TRUE) && htmlMode)
+        {
+            CStringW repaired;
+            if (RemoveOrphanHtmlClosingTags(xml, repaired))
+            {
+                CComBSTR repairedText(static_cast<LPCWSTR>(repaired));
+                loaded = VARIANT_FALSE;
+                loadHr = dom->loadXML(repairedText, &loaded);
+                if (SUCCEEDED(loadHr) && loaded == VARIANT_TRUE &&
+                    g_content.warnedOrphanClosingTags.emplace(path.GetString()).second)
+                    g_content.warnings += L"Ignored unmatched closing HTML tag in: " + path + L"\r\n";
+            }
+        }
         if (FAILED(loadHr) || loaded != VARIANT_TRUE)
         {
             CStringW reason = MsxmlGetParseErrorReason(dom);

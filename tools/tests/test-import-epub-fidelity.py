@@ -1709,6 +1709,18 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.convert('<p>&nbsp;<b>Unclosed</p>', navigation=False, fail=True)
         self.assertIn('html fallback:', self.diagnostics.lower())
 
+    def test_orphan_closing_tags_preserve_text_and_links_with_warning(self):
+        root = self.convert('<p>Before</a><a href="#target">Link</a> after</p>'
+                            '<!-- </div> --><p id="target">Target</p></div>', navigation=False)
+        self.assertIn('BeforeLink after', self.text(root))
+        self.assertEqual([node.get(HREF) for node in root.findall('.//f:a', NS)], ['#target'])
+        self.assertIn('ignored unmatched closing html tag', self.diagnostics.lower())
+
+    def test_misnested_closing_tags_are_not_repaired(self):
+        self.convert('<p><a href="#target"><b>Text</a></b></p><p id="target">Target</p>',
+                     navigation=False, fail=True)
+        self.assertNotIn('ignored unmatched closing html tag', self.diagnostics.lower())
+
     def test_stylesheet_background_with_text_is_reported_only_when_effective(self):
         css = '.cap { background-image: url(../images/cap.png); }'
         extra = {'Styles/layout.css': ('css', 'text/css', css),
