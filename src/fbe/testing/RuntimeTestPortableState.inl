@@ -835,6 +835,44 @@ void CMainFrame::RunPortableStateTestScenario()
                 }
             }
         }
+        // Preserve the user's ReBar order and hidden state while rebuilding images.
+        struct BandState { UINT id; bool hidden; };
+        auto bandStates = [&]() {
+            std::vector<BandState> result;
+            for(int i = 0; i < static_cast<int>(m_rebar.GetBandCount()); ++i) {
+                REBARBANDINFO band = {}; band.cbSize = sizeof(band); band.fMask = RBBIM_ID | RBBIM_STYLE;
+                if(!m_rebar.GetBandInfo(i, &band)) { passed = false; break; }
+                result.push_back({band.wID, (band.fStyle & RBBS_HIDDEN) != 0});
+            }
+            return result;
+        };
+        const int bandCount = static_cast<int>(m_rebar.GetBandCount());
+        if(bandCount < 2) passed = false;
+        else {
+            const std::vector<BandState> originalBands = bandStates();
+            const bool moved = m_rebar.SendMessage(RB_MOVEBAND, 0, bandCount - 1) != FALSE;
+            const bool hidden = m_rebar.SendMessage(RB_SHOWBAND, bandCount - 1, FALSE) != FALSE;
+            const std::vector<BandState> arrangedBands = bandStates();
+            bool layoutPreserved = moved && hidden && arrangedBands.size() == originalBands.size() &&
+                !arrangedBands.empty() && arrangedBands.back().id == originalBands.front().id && arrangedBands.back().hidden;
+            for(int size : {16, 20, 24, 32}) {
+                _Settings.SetMainToolbarIconSize(size);
+                layoutPreserved = RebuildCommandToolbarImages(actualDpi) && layoutPreserved;
+                const std::vector<BandState> currentBands = bandStates();
+                layoutPreserved = currentBands.size() == arrangedBands.size() && layoutPreserved;
+                for(size_t i = 0; i < currentBands.size() && i < arrangedBands.size(); ++i)
+                    layoutPreserved = currentBands[i].id == arrangedBands[i].id && currentBands[i].hidden == arrangedBands[i].hidden && layoutPreserved;
+            }
+            if(moved && !originalBands.empty()) {
+                if(!originalBands.front().hidden) m_rebar.SendMessage(RB_SHOWBAND, bandCount - 1, TRUE);
+                m_rebar.SendMessage(RB_MOVEBAND, bandCount - 1, 0);
+            }
+            const std::vector<BandState> restoredBands = bandStates();
+            layoutPreserved = restoredBands.size() == originalBands.size() && layoutPreserved;
+            for(size_t i = 0; i < restoredBands.size() && i < originalBands.size(); ++i)
+                layoutPreserved = restoredBands[i].id == originalBands[i].id && restoredBands[i].hidden == originalBands[i].hidden && layoutPreserved;
+            passed = layoutPreserved && passed;
+        }
         // Exercise the two independent image lists while changing the effective palette.
         const bool documentDirtyBefore = DocChanged();
         const InterfacePalette paletteBefore = ThemeManager::GetNamedPalette();
