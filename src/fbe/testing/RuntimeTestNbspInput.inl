@@ -143,9 +143,9 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		}
 		wchar_t toggleFlag[2] = {};
 		const DWORD toggleLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_TOGGLE", toggleFlag, _countof(toggleFlag));
-		const bool toggleTested = toggleLength == 1 && (toggleFlag[0] == L'1' || toggleFlag[0] == L'2');
+		const bool toggleTested = toggleLength == 1 && (toggleFlag[0] == L'1' || toggleFlag[0] == L'2' || toggleFlag[0] == L'5');
 		const bool repeatTested = toggleLength == 1 && (toggleFlag[0] == L'3' || toggleFlag[0] == L'4');
-		const bool toggleApplied = toggleTested && toggleFlag[0] == L'1';
+		const bool toggleApplied = toggleTested && (toggleFlag[0] == L'1' || toggleFlag[0] == L'5');
 		bool changedDisplay = true, unchangedOther = true, toggleRestored = true, toggleUndoRedo = true;
 		CStringA toggleReport; toggleReport.Format("toggle-tested=%d\ntoggle-applied=%d\n", toggleTested, toggleApplied);
 		if(toggleTested) {
@@ -155,23 +155,25 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		const CString beforeToggle = state();
 		const CString xmlBeforeToggle(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
 		const bool dirtyBeforeToggle = m_doc->DocChanged();
+		CString expectedAfterToggle(beforeToggle);
 		if(toggleApplied) {
 			_Settings.SetNBSPChar(markerOther); ApplyConfChanges(false, false); pump();
 			const CString textOther = text();
 			const CString xmlOther(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
 			changedDisplay = textOther.Find(markerOther) >= 0 && textOther.Find(markerBefore) < 0;
+			if(toggleFlag[0] == L'5') expectedAfterToggle = state();
 			unchangedOther = xmlOther == xmlBeforeToggle && m_doc->DocChanged() == dirtyBeforeToggle;
-			_Settings.SetNBSPChar(markerBefore); ApplyConfChanges(false, false); pump();
+			if(toggleFlag[0] != L'5') { _Settings.SetNBSPChar(markerBefore); ApplyConfChanges(false, false); pump(); }
 		}
 		const CString xmlAfterToggle(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
-		toggleRestored = state() == beforeToggle && xmlAfterToggle == xmlBeforeToggle && m_doc->DocChanged() == dirtyBeforeToggle;
+		toggleRestored = state() == expectedAfterToggle && xmlAfterToggle == xmlBeforeToggle && m_doc->DocChanged() == dirtyBeforeToggle;
 		const int toggleUndoCount = historyCount(false), toggleRedoCount = historyCount(true);
 		m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
 		const CString toggleUndo = state(), toggleUndoText = text();
 		const int toggleUndoCountAfter = historyCount(false), toggleRedoCountAfter = historyCount(true);
 		m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_REDO, 0); pump();
 		const CString toggleRedo = state(), toggleRedoText = text();
-		toggleUndoRedo = toggleUndo == (steps == 2 ? first : original) && toggleRedo == beforeToggle;
+		toggleUndoRedo = toggleUndo == (steps == 2 ? first : original) && toggleRedo == expectedAfterToggle;
 		CStringA toggleDetail; toggleDetail.Format("toggle-display=%d\ntoggle-xml-unchanged=%d\ntoggle-restored=%d\ntoggle-undo-redo=%d\ntoggle-undo-text=%s\ntoggle-redo-text=%s\ntoggle-undo-count=%d\ntoggle-redo-count=%d\ntoggle-undo-count-after=%d\ntoggle-redo-count-after=%d\n",
 			changedDisplay, unchangedOther, toggleRestored, toggleUndoRedo, static_cast<LPCSTR>(codepoints(toggleUndoText)), static_cast<LPCSTR>(codepoints(toggleRedoText)),
 			toggleUndoCount, toggleRedoCount, toggleUndoCountAfter, toggleRedoCountAfter);
@@ -181,8 +183,8 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		const CString xml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
 		const bool validText = firstText == L"word1 word2" && secondText.GetLength() == 12 &&
 			secondText.Left(5) == L"word1" && secondText.Right(5) == L"word2" &&
-			(secondText[5] == L' ' || secondText[5] == L'\x00a0' || secondText[5] == _Settings.GetNBSPChar()[0]) &&
-			(secondText[6] == L' ' || secondText[6] == L'\x00a0' || secondText[6] == _Settings.GetNBSPChar()[0]);
+			(secondText[5] == L' ' || secondText[5] == L'\x00a0' || secondText[5] == configuredMarker[0]) &&
+			(secondText[6] == L' ' || secondText[6] == L'\x00a0' || secondText[6] == configuredMarker[0]);
 		const bool saved = m_doc->Save(target); pump();
 		const bool reopened = saved && LoadFile(target) == OK; pump();
 		const CString reopenedXml(reopened ? static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml) : L"");

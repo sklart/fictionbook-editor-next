@@ -4,11 +4,12 @@ param([Parameter(Mandatory)][string]$FbeExe,
       [ValidateSet('plain', 'emphasis', 'strong', 'link')][string]$Context = 'plain',
       [string]$ArtifactDirectory,
       [switch]$CheckDisplayToggle,
+      [switch]$CheckSingleDisplayToggle,
       [switch]$ToggleControl,
       [switch]$CheckRepeatedApply,
       [ValidateSet('none','small-square')][string]$RepeatDisplay = 'none')
 $ErrorActionPreference = 'Stop'
-if(@(@($CheckDisplayToggle, $ToggleControl, $CheckRepeatedApply) | Where-Object { $_ }).Count -gt 1) { throw 'Choose only one NBSP diagnostic mode.' }
+if(@(@($CheckDisplayToggle, $CheckSingleDisplayToggle, $ToggleControl, $CheckRepeatedApply) | Where-Object { $_ }).Count -gt 1) { throw 'Choose only one NBSP diagnostic mode.' }
 if($CheckRepeatedApply -and (@($Modes).Count -ne 1 -or $Modes[0] -ne 'square')) { throw 'Repeated-apply regression requires -Modes square.' }
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if (-not $ArtifactDirectory) { $ArtifactDirectory = Join-Path $root 'build\community-feedback-nbsp' }
@@ -35,7 +36,7 @@ try {
             $saved = Join-Path $iso.DataPath 'saved.fb2'
             $report = Join-Path $iso.DataPath 'report.txt'
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'nbsp-input-runtime'
-            $env:FBE_NEXT_TEST_NBSP_TOGGLE = if($CheckDisplayToggle) { '1' } elseif($ToggleControl) { '2' } elseif($CheckRepeatedApply -and $RepeatDisplay -eq 'small-square') { '4' } elseif($CheckRepeatedApply) { '3' } else { $null }
+            $env:FBE_NEXT_TEST_NBSP_TOGGLE = if($CheckDisplayToggle) { '1' } elseif($CheckSingleDisplayToggle) { '5' } elseif($ToggleControl) { '2' } elseif($CheckRepeatedApply -and $RepeatDisplay -eq 'small-square') { '4' } elseif($CheckRepeatedApply) { '3' } else { $null }
             $env:FBE_NEXT_TEST_NBSP_OUTPUT = $saved
             $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime `
                 -ArgumentList @('--portable', '-b', ('"' + $report + '"'), ('"' + $fixture + '"')) -PassThru
@@ -79,9 +80,9 @@ try {
                 try { while($repeatReader.Read()) {} } finally { $repeatReader.Dispose() }
             }
             Write-Host "NBSP saved XML and independent XSD: PASS ($Context/$name)."
-            $toggleExpected = if($CheckDisplayToggle -or $ToggleControl) { '1' } else { '0' }
+            $toggleExpected = if($CheckDisplayToggle -or $CheckSingleDisplayToggle -or $ToggleControl) { '1' } else { '0' }
             if($text -notmatch "(?m)^toggle-tested=$toggleExpected\r?$") { throw "$name did not report the requested display-toggle mode: $text" }
-            $appliedExpected = if($CheckDisplayToggle) { '1' } else { '0' }
+            $appliedExpected = if($CheckDisplayToggle -or $CheckSingleDisplayToggle) { '1' } else { '0' }
             if($text -notmatch "(?m)^toggle-applied=$appliedExpected\r?$") { throw "$name did not report the requested display change: $text" }
             if($CheckRepeatedApply -and $text -notmatch '(?m)^repeat-applied=1\r?$') { throw "$name did not run the repeated-settings diagnostic: $text" }
             if ($code -ne 0 -or $text -notmatch "(?m)^mode=$expectedMode\r?$" -or $text -notmatch '(?m)^result=pass\r?$') { throw "$name failed: $text" }
