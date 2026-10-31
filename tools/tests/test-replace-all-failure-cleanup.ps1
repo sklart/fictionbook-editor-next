@@ -171,7 +171,9 @@ int main() {
         ++cases;
         const int expectedDepth = initial + (fault == 7 && mode == 0 ? 1 : 0);
         if (escaped || result != expectedResult || state.controlled || state.depth != expectedDepth ||
-            (expectedError && operation == 0 && error.IsEmpty()) || state.advances != ((operation != 0 || expectedError) && state.writes > 0 ? 1 : 0) ||
+            (expectedError && operation == 0 && error.IsEmpty()) ||
+            (operation == 0 && expectedError && ((error.Find(L"partially changed") >= 0) != (state.writes > 0 || fault == 6))) ||
+            state.advances != ((operation == 0 ? expectedError && (state.writes > 0 || fault == 6) : state.writes > 0) ? 1 : 0) ||
             state.completion != (operation == 0 && expectedResult > 0 ? expectedResult : 0) ||
             state.reports != (operation != 0 && expectedError ? 1 : 0) || (expectedError && operation != 0 && !FAILED(state.reported))) {
             ++failures;

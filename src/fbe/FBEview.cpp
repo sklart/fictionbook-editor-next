@@ -3688,7 +3688,7 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	}
 
 	int replaced = 0;
-	bool mutationApplied = false;
+	bool mutationAttempted = false;
 	struct ControlledMutationScope
 	{
 		DesignSearchController& search;
@@ -3736,8 +3736,10 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 			{
 				undo.reset(new FbeDom::MarkupUndoUnitScope(m_mk_srv, L"replace all"));
 			}
+			// A COM setter can fail after changing the DOM. Treat even a failed
+			// first assignment as potentially partial, not as a clean failure.
+			mutationAttempted = true;
 			ranges[index]->text = static_cast<LPCWSTR>(replacement);
-			mutationApplied = true;
 			if (m_fo.fRegexp)
 				ApplyReplacementFormatting(ranges[index], replacement, formatting);
 			++replaced;
@@ -3763,10 +3765,18 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	if (FAILED(failure))
 	{
 		m_design_search.SetControlledReplaceAllMutation(false);
-		if (mutationApplied)
+		if (mutationAttempted)
 			AdvanceSearchDocumentGeneration();
 		if (errorText != NULL)
+		{
 			*errorText = _com_error(failure).ErrorMessage();
+			if (mutationAttempted)
+			{
+				*errorText += L"\n\n";
+				*errorText += FbeLoadRuntimeStringByKey(L"fbe.replace.partial_failure",
+					L"Replace All may have partially changed the document. Do not overwrite the original file. Reopen the last saved copy to restore it; unsaved changes will be lost.");
+			}
+		}
 		return -1;
 	}
 	m_fo.ClearMatch();

@@ -1021,6 +1021,23 @@
         "en-US": "The document changed before Replace All could be applied.", "ru-RU": "Документ изменился до выполнения команды «Заменить всё».", "uk-UA": "Документ змінився до виконання команди «Замінити все».", "de-DE": "Das Dokument wurde geändert, bevor Alle ersetzen ausgeführt werden konnte.", "fr-FR": "Le document a été modifié avant l’application de Tout remplacer.", "es-ES": "El documento cambió antes de aplicar Reemplazar todo.", "it-IT": "Il documento è stato modificato prima dell'applicazione di Sostituisci tutto.", "pl-PL": "Dokument zmienił się przed zastosowaniem opcji Zamień wszystko.", "pt-PT": "O documento foi alterado antes de Substituir tudo poder ser aplicado.", "nl-NL": "Het document is gewijzigd voordat Alles vervangen kon worden toegepast.", "cs-CZ": "Dokument se změnil před použitím příkazu Nahradit vše.", "bg-BG": "Документът се промени преди да може да се изпълни „Замяна на всички“."
       }
     },
+    "fbe.replace.partial_failure": {
+      "resource": "IDS_REPL_DONE_MSG", "kind": "VALUE", "targetId": "",
+      "translations": {
+        "en-US": "Replace All may have partially changed the document. Do not overwrite the original file. Reopen the last saved copy to restore it; unsaved changes will be lost.",
+        "ru-RU": "Команда «Заменить всё» могла частично изменить документ. Не перезаписывайте исходный файл. Для восстановления откройте последнюю сохранённую копию; несохранённые изменения будут потеряны.",
+        "uk-UA": "Команда «Замінити все» могла частково змінити документ. Не перезаписуйте вихідний файл. Для відновлення відкрийте останню збережену копію; незбережені зміни буде втрачено.",
+        "de-DE": "Alle ersetzen hat das Dokument möglicherweise teilweise geändert. Überschreiben Sie die Originaldatei nicht. Öffnen Sie die zuletzt gespeicherte Kopie erneut; ungespeicherte Änderungen gehen verloren.",
+        "fr-FR": "Tout remplacer a peut-être partiellement modifié le document. N’écrasez pas le fichier original. Rouvrez la dernière copie enregistrée ; les modifications non enregistrées seront perdues.",
+        "es-ES": "Reemplazar todo puede haber modificado parcialmente el documento. No sobrescriba el archivo original. Abra de nuevo la última copia guardada; se perderán los cambios sin guardar.",
+        "it-IT": "Sostituisci tutto potrebbe aver modificato parzialmente il documento. Non sovrascrivere il file originale. Riaprire l’ultima copia salvata; le modifiche non salvate andranno perse.",
+        "pl-PL": "Zamień wszystko mogło częściowo zmienić dokument. Nie nadpisuj oryginalnego pliku. Otwórz ponownie ostatnią zapisaną kopię; niezapisane zmiany zostaną utracone.",
+        "pt-PT": "Substituir tudo pode ter alterado parcialmente o documento. Não substitua o ficheiro original. Abra novamente a última cópia guardada; as alterações não guardadas serão perdidas.",
+        "nl-NL": "Alles vervangen heeft het document mogelijk gedeeltelijk gewijzigd. Overschrijf het oorspronkelijke bestand niet. Open de laatst opgeslagen kopie opnieuw; niet-opgeslagen wijzigingen gaan verloren.",
+        "cs-CZ": "Příkaz Nahradit vše mohl dokument částečně změnit. Nepřepisujte původní soubor. Znovu otevřete poslední uloženou kopii; neuložené změny budou ztraceny.",
+        "bg-BG": "„Замяна на всички“ може частично да е променила документа. Не презаписвайте оригиналния файл. Отворете последното запазено копие; незапазените промени ще бъдат загубени."
+      }
+    },
     "fbe.replace.preview.completed": {
       "resource": "IDS_REPL_DONE_MSG",
       "kind": "VALUE",
