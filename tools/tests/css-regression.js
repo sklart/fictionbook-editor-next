@@ -1,12 +1,18 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-function parseCss(path) {
-  // This deliberately small parser supports only the current flat CSS files:
-  // no @media blocks, nested rules, or other advanced CSS constructs.
-  const source = fs.readFileSync(path, "utf8");
-  const withoutComments = source.replace(/\/\*[^]*?\*\//g, "");
+function parseCss(path, source = fs.readFileSync(path, "utf8"), nested = false) {
+  // Support the flat rules and one level of @media used by these stylesheets.
+  let withoutComments = source.replace(/\/\*[^]*?\*\//g, "");
   assert(!/\/\*/.test(withoutComments), `${path}: unterminated comment`);
+  const media = [];
+  withoutComments = withoutComments.replace(/@media\s+([^{}]+)\{((?:[^{}]+\{[^{}]*\}\s*)+)\}/g, (_, condition, body) => {
+    assert(!nested, `${path}: nested @media is unsupported`);
+    const parsed = parseCss(`${path} @media ${condition.trim()}`, body, true);
+    media.push({ condition: condition.trim().replace(/\s+/g, " "),
+      rules: parsed.orderedRules.map(rule => [rule.selector, [...rule.declarations]]) });
+    return "";
+  });
 
   const rules = new Map();
   const selectorCounts = new Map();
@@ -42,7 +48,7 @@ function parseCss(path) {
     rules.set(selector, resolvedDeclarations);
 		orderedRules.push({ selector, declarations, order: orderedRules.length });
   }
-  return { rules, selectorCounts, orderedRules };
+  return { rules, selectorCounts, orderedRules, media };
 }
 
 function selectorSpecificity(selector) {
@@ -107,6 +113,7 @@ function resolveComputedPadding(css, ancestors) {
 
 const normalCss = parseCss("runtime/main.css");
 const fastCss = parseCss("runtime/main_fast.css");
+assert.deepStrictEqual(normalCss.media, fastCss.media, "Responsive @media rules must match in normal and fast modes");
 const normal = normalCss.rules;
 const fast = fastCss.rules;
 

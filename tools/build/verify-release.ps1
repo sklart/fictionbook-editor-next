@@ -333,6 +333,7 @@ foreach ($commandRouteOperation in @('insert-row-above','insert-row-below','dele
 & (Join-Path $repoRoot "tools\tests\test-fbe-main-js-reliability.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-main-js-binary-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-css-regression.ps1")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & (Join-Path $repoRoot "tools\tests\test-note-preview-regression.ps1")
 & (Join-Path $repoRoot "tools\tests\test-link-navigation.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-link-navigation-boundary.ps1")
