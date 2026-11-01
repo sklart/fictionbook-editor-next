@@ -7,6 +7,8 @@ param([Parameter(Mandatory)][string]$FbeExe,
       [switch]$CheckSingleDisplayToggle,
       [switch]$CheckSingleEmptyRedo,
       [switch]$EmptyRedoControl,
+      [switch]$CheckOtherNode,
+      [switch]$OtherNodeControl,
       [switch]$ToggleControl,
       [switch]$CheckRepeatedApply,
       [switch]$CheckSourceRoundTrip,
@@ -15,8 +17,8 @@ param([Parameter(Mandatory)][string]$FbeExe,
       [ValidateSet('none','small-square')][string]$RepeatDisplay = 'none')
 $ErrorActionPreference = 'Stop'
 if($CheckDirectSelection -and -not $CheckDirectInput) { throw 'Direct selection requires -CheckDirectInput.' }
-if(@(@($CheckDisplayToggle, $CheckSingleDisplayToggle, $CheckSingleEmptyRedo, $EmptyRedoControl, $ToggleControl, $CheckRepeatedApply) | Where-Object { $_ }).Count -gt 1) { throw 'Choose only one NBSP diagnostic mode.' }
-if($CheckDirectInput -and ($CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $EmptyRedoControl -or $ToggleControl -or $CheckRepeatedApply)) { throw 'Direct input cannot be combined with display-change diagnostics.' }
+if(@(@($CheckDisplayToggle, $CheckSingleDisplayToggle, $CheckSingleEmptyRedo, $EmptyRedoControl, $CheckOtherNode, $OtherNodeControl, $ToggleControl, $CheckRepeatedApply) | Where-Object { $_ }).Count -gt 1) { throw 'Choose only one NBSP diagnostic mode.' }
+if($CheckDirectInput -and ($CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $EmptyRedoControl -or $CheckOtherNode -or $OtherNodeControl -or $ToggleControl -or $CheckRepeatedApply)) { throw 'Direct input cannot be combined with display-change diagnostics.' }
 if($CheckRepeatedApply -and (@($Modes).Count -ne 1 -or $Modes[0] -ne 'square')) { throw 'Repeated-apply regression requires -Modes square.' }
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if (-not $ArtifactDirectory) { $ArtifactDirectory = Join-Path $root 'build\community-feedback-nbsp' }
@@ -43,7 +45,7 @@ try {
             $saved = Join-Path $iso.DataPath 'saved.fb2'
             $report = Join-Path $iso.DataPath 'report.txt'
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'nbsp-input-runtime'
-            $env:FBE_NEXT_TEST_NBSP_TOGGLE = if($CheckDisplayToggle) { '1' } elseif($CheckSingleDisplayToggle) { '5' } elseif($CheckSingleEmptyRedo) { '6' } elseif($EmptyRedoControl) { '7' } elseif($ToggleControl) { '2' } elseif($CheckRepeatedApply -and $RepeatDisplay -eq 'small-square') { '4' } elseif($CheckRepeatedApply) { '3' } else { $null }
+            $env:FBE_NEXT_TEST_NBSP_TOGGLE = if($CheckDisplayToggle) { '1' } elseif($CheckSingleDisplayToggle) { '5' } elseif($CheckSingleEmptyRedo) { '6' } elseif($EmptyRedoControl) { '7' } elseif($CheckOtherNode) { '8' } elseif($OtherNodeControl) { '9' } elseif($ToggleControl) { '2' } elseif($CheckRepeatedApply -and $RepeatDisplay -eq 'small-square') { '4' } elseif($CheckRepeatedApply) { '3' } else { $null }
             $env:FBE_NEXT_TEST_NBSP_OUTPUT = $saved
             $env:FBE_NEXT_TEST_NBSP_SOURCE = if($CheckSourceRoundTrip) { '1' } else { $null }
             $env:FBE_NEXT_TEST_NBSP_DIRECT = if($CheckDirectInput) { '1' } else { $null }
@@ -97,9 +99,9 @@ try {
                 try { while($repeatReader.Read()) {} } finally { $repeatReader.Dispose() }
             }
             Write-Host "NBSP saved XML and independent XSD: PASS ($Context/$name)."
-            $toggleExpected = if($CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $EmptyRedoControl -or $ToggleControl) { '1' } else { '0' }
+            $toggleExpected = if($CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $EmptyRedoControl -or $CheckOtherNode -or $OtherNodeControl -or $ToggleControl) { '1' } else { '0' }
             if($text -notmatch "(?m)^toggle-tested=$toggleExpected\r?$") { throw "$name did not report the requested display-toggle mode: $text" }
-            $appliedExpected = if($CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo) { '1' } else { '0' }
+            $appliedExpected = if($CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $CheckOtherNode) { '1' } else { '0' }
             if($text -notmatch "(?m)^toggle-applied=$appliedExpected\r?$") { throw "$name did not report the requested display change: $text" }
             if(($CheckSingleEmptyRedo -or $EmptyRedoControl) -and ($text -notmatch '(?m)^empty-redo-tested=1\r?$' -or $text -notmatch '(?m)^empty-redo-ready=1\r?$')) { throw "$name did not establish an empty Redo stack: $text" }
             if($CheckRepeatedApply -and $text -notmatch '(?m)^repeat-applied=1\r?$') { throw "$name did not run the repeated-settings diagnostic: $text" }
