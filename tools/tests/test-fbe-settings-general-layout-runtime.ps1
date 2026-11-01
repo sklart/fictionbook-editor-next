@@ -97,19 +97,31 @@ public static class SettingsGeneralLayoutWindow
     }
     [DllImport("user32.dll")] static extern IntPtr GetNextDlgTabItem(IntPtr dialog, IntPtr control, bool previous);
     [DllImport("user32.dll")] static extern bool GetGUIThreadInfo(uint threadId, ref GuiThreadInfo info);
+    [DllImport("user32.dll")] static extern int GetDlgCtrlID(IntPtr window);
+    public static string TabTrace = "";
     static IntPtr ThreadFocus(IntPtr dialog) {
         uint process; uint thread = GetWindowThreadProcessId(dialog, out process);
         var info = new GuiThreadInfo { Size = Marshal.SizeOf(typeof(GuiThreadInfo)) };
         return GetGUIThreadInfo(thread, ref info) ? info.Focus : IntPtr.Zero;
     }
     public static bool TraverseWithTab(IntPtr dialog, int[] ids) {
+        return TraverseWithTabIncludingOuter(dialog, IntPtr.Zero, ids);
+    }
+    public static bool TraverseWithTabIncludingOuter(IntPtr dialog, IntPtr outer, int[] ids) {
+        TabTrace = "";
         var remaining = new System.Collections.Generic.HashSet<IntPtr>();
-        foreach(int id in ids) { IntPtr child = GetDlgItem(dialog, id); if(child == IntPtr.Zero) return false; remaining.Add(child); }
+        foreach(int id in ids) {
+            IntPtr child = GetDlgItem(dialog, id);
+            if(child == IntPtr.Zero && outer != IntPtr.Zero) child = GetDlgItem(outer, id);
+            if(child == IntPtr.Zero) return false;
+            remaining.Add(child);
+        }
         IntPtr start = GetDlgItem(dialog, ids[0]);
         SendMessage(dialog, 0x0028, start, (IntPtr)1); // WM_NEXTDLGCTL, explicit target
-        if(ThreadFocus(dialog) != start) return false;
+        if(ThreadFocus(dialog) != start) { TabTrace = "initial-focus=" + GetDlgCtrlID(ThreadFocus(dialog)); return false; }
         for(int count = 0; count < 100; ++count) {
             IntPtr current = ThreadFocus(dialog); remaining.Remove(current);
+            TabTrace += GetDlgCtrlID(current) + ",";
             if(remaining.Count == 0) return true;
             if(current == IntPtr.Zero || !PostMessage(current, 0x0100, (IntPtr)9, IntPtr.Zero)) return false; // WM_KEYDOWN VK_TAB
             for(int wait = 0; wait < 100 && ThreadFocus(dialog) == current; ++wait) System.Threading.Thread.Sleep(10);
@@ -357,8 +369,12 @@ try {
                         if($manageRow.Count -ne 1) { throw "$locale palette management button is missing." }
                         $manageHandle = [IntPtr]::new([Convert]::ToInt64($manageRow[0].Hwnd.Substring(2), 16))
                         $appearancePage = [SettingsGeneralLayoutWindow]::Parent($manageHandle)
-                        if(-not [SettingsGeneralLayoutWindow]::HasTabTargets($appearancePage, [int[]]@(1161, 1828, 1829, 1839, 1826, 1821, 1824))) {
+                        $appearanceTargets = [int[]]@(1161, 1828, 1829, 1839, 1826, 1821, 1824)
+                        if(-not [SettingsGeneralLayoutWindow]::HasTabTargets($appearancePage, $appearanceTargets)) {
                             throw "$locale appearance controls are missing from keyboard tab order."
+                        }
+                        if(-not [SettingsGeneralLayoutWindow]::TraverseWithTabIncludingOuter($appearancePage, $settings, [int[]]($appearanceTargets + @(1625, 1, 2)))) {
+                            throw "$locale appearance focus did not reach all controls with Tab messages: $([SettingsGeneralLayoutWindow]::TabTrace)"
                         }
                         [SettingsGeneralLayoutWindow]::OpenPaletteManager($appearancePage)
                         $manager = [IntPtr]::Zero

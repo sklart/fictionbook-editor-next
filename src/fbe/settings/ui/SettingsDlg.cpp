@@ -123,8 +123,11 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 		m_spellingPage->m_hWnd, m_imagesPage->m_hWnd, m_sourcePage->m_hWnd,
 		m_hotkeysPage->m_hWnd, m_wordsPage->m_hWnd
 	};
-	for(HWND page : pagesToTheme)
+	for(HWND page : pagesToTheme) {
+		// The parent modal dialog must traverse controls inside each child page.
+		::SetWindowLongPtrW(page, GWL_EXSTYLE, ::GetWindowLongPtrW(page, GWL_EXSTYLE) | WS_EX_CONTROLPARENT);
 		ThemeManager::ApplyToWindow(page);
+	}
 	stage("page_themes");
 
 	m_pages[PageIndex(SettingsPageId::General)] = m_commonPage;
