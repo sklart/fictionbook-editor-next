@@ -180,6 +180,9 @@ void CMainFrame::RunPortableStateTestScenario()
         const bool corePassed = passed;
         bool focused = false, opened = true, downPreview = true, escaped = true, entered = true, returned = true, copiedOk = true;
         bool modePreview = false, modeEscape = false, modeEnter = false;
+        bool dialogCancel = false;
+        unsigned int dialogDetails = 0;
+        int dialogBeforePalette = -1, dialogAfterPalette = -1;
         int droppedAfterDown = -1, selectedAfterEscape = -1, themeAfterEscape = -1, selectedAfterEnter = -1, themeAfterEnter = -1;
         const bool pageCreated = page.Create(m_hWnd) != NULL;
         passed = pageCreated && passed;
@@ -259,12 +262,60 @@ void CMainFrame::RunPortableStateTestScenario()
             passed = page.CancelChanges() && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE && passed;
             page.DestroyWindow();
         }
+        if(pageCreated) {
+            static HWND dialogOwner = NULL;
+            static bool dialogPreview = false;
+            dialogOwner = m_hWnd; dialogPreview = false;
+            const UINT_PTR timer = ::SetTimer(NULL, 0, 50, [](HWND, UINT, UINT_PTR timerId, DWORD) {
+                ::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM data) -> BOOL {
+                    if(::GetWindow(window, GW_OWNER) != dialogOwner || !::IsWindowVisible(window) || !::GetDlgItem(window, IDCANCEL)) return TRUE;
+                    struct Controls { HWND mode; HWND palette; } controls{};
+                    ::EnumChildWindows(window, [](HWND child, LPARAM result) -> BOOL {
+                        auto& found = *reinterpret_cast<Controls*>(result);
+                        wchar_t className[32] = {};
+                        ::GetClassNameW(child, className, _countof(className));
+                        if(_wcsicmp(className, L"ComboBox") != 0) return TRUE;
+                        if(::GetDlgCtrlID(child) == IDC_INTERFACE_THEME) found.mode = child;
+                        if(::GetDlgCtrlID(child) == IDC_INTERFACE_PALETTE) found.palette = child;
+                        return TRUE;
+                    }, reinterpret_cast<LPARAM>(&controls));
+                    if(!controls.mode || !controls.palette ||
+                        !::GetPropW(window, L"FBE_THEME_TEST_SETTINGS_READY") ||
+                        ::GetFocus() != ::GetDlgItem(window, IDC_SETTINGS_NAV) ||
+                        ::SendMessageW(controls.mode, CB_GETCOUNT, 0, 0) != 3 ||
+                        ::SendMessageW(controls.palette, CB_GETCOUNT, 0, 0) < INTERFACE_PALETTE_COUNT) return TRUE;
+                    ::KillTimer(NULL, static_cast<UINT_PTR>(data));
+                    ::SendMessageW(controls.mode, CB_SETCURSEL, INTERFACE_THEME_LIGHT, 0);
+                    ::SendMessageW(::GetParent(controls.mode), WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_THEME, CBN_SELCHANGE), reinterpret_cast<LPARAM>(controls.mode));
+                    ::SendMessageW(controls.palette, CB_SETCURSEL, INTERFACE_PALETTE_SEPIA, 0);
+                    ::SendMessageW(::GetParent(controls.palette), WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_PALETTE, CBN_SELCHANGE), reinterpret_cast<LPARAM>(controls.palette));
+                    dialogPreview = ThemeManager::GetSelectedTheme() == INTERFACE_THEME_LIGHT && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA;
+                    ::PostMessageW(window, WM_COMMAND, MAKEWPARAM(IDCANCEL, BN_CLICKED), reinterpret_cast<LPARAM>(::GetDlgItem(window, IDCANCEL)));
+                    return FALSE;
+                }, static_cast<LPARAM>(timerId));
+            });
+            if(timer) {
+                dialogBeforePalette = static_cast<int>(ThemeManager::GetNamedPalette());
+                const bool accepted = ShowSettingsDialog(m_hWnd);
+                ::KillTimer(NULL, timer);
+                dialogAfterPalette = static_cast<int>(ThemeManager::GetNamedPalette());
+                dialogDetails = (!accepted ? 1u : 0u) | (dialogPreview ? 2u : 0u) |
+                    (ThemeManager::GetSelectedTheme() == mode ? 4u : 0u) |
+                    (ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE ? 8u : 0u) |
+                    (_Settings.GetInterfaceTheme() == mode ? 16u : 0u) |
+                    (_Settings.GetInterfacePalette() == L"catppuccin-latte" ? 32u : 0u);
+                dialogCancel = !accepted && dialogPreview && ThemeManager::GetSelectedTheme() == mode &&
+                    ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE &&
+                    _Settings.GetInterfaceTheme() == mode && _Settings.GetInterfacePalette() == L"catppuccin-latte";
+            }
+            passed = dialogCancel && passed;
+        }
         _Settings.SetInterfacePalette(L"solarized-light");
         passed = _Settings.GetInterfacePalette() == L"solarized-light" && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SOLARIZED_LIGHT &&
             _Settings.GetInterfaceTheme() == mode && passed;
         _Settings.Save();
         CStringA report;
-        report.Format("core=%d\npage=%d\nmode-preview=%d\nmode-escape=%d\nmode-enter=%d\nfocused=%d\nopened=%d\ndown=%d\ndropped-after-down=%d\nescape=%d\nselection-after-escape=%d\ntheme-after-escape=%d\nenter=%d\nselection-after-enter=%d\ntheme-after-enter=%d\nreturn=%d\ncopy=%d\nresult=%s\n", corePassed, pageCreated, modePreview, modeEscape, modeEnter, focused, opened, downPreview, droppedAfterDown, escaped, selectedAfterEscape, themeAfterEscape, entered, selectedAfterEnter, themeAfterEnter, returned, copiedOk, passed ? "pass" : "fail");
+        report.Format("core=%d\npage=%d\nmode-preview=%d\nmode-escape=%d\nmode-enter=%d\ndialog-cancel=%d\ndialog-details=%u\ndialog-before-palette=%d\ndialog-after-palette=%d\nfocused=%d\nopened=%d\ndown=%d\ndropped-after-down=%d\nescape=%d\nselection-after-escape=%d\ntheme-after-escape=%d\nenter=%d\nselection-after-enter=%d\ntheme-after-enter=%d\nreturn=%d\ncopy=%d\nresult=%s\n", corePassed, pageCreated, modePreview, modeEscape, modeEnter, dialogCancel, dialogDetails, dialogBeforePalette, dialogAfterPalette, focused, opened, downPreview, droppedAfterDown, escaped, selectedAfterEscape, themeAfterEscape, entered, selectedAfterEnter, themeAfterEnter, returned, copiedOk, passed ? "pass" : "fail");
         WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
         PostMessage(WM_CLOSE); return;
     }

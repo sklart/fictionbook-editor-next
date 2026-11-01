@@ -536,6 +536,7 @@ void CSettingsGeneralPage::UpdateThemeNotice()
 
 LRESULT CSettingsGeneralPage::OnInterfaceThemeChanged(WORD notification, WORD, HWND, BOOL&)
 {
+	if(m_closing) return 0;
 	const int selection = m_interfaceTheme.GetCurSel();
 	if(!m_darkThemeSupported && selection == INTERFACE_THEME_DARK) { m_interfaceTheme.SetCurSel(m_acceptedThemeIndex); return 0; }
 	if(selection >= INTERFACE_THEME_AUTOMATIC && selection <= INTERFACE_THEME_DARK)
@@ -570,6 +571,7 @@ LRESULT CSettingsGeneralPage::OnThemeDropdown(WORD, WORD, HWND, BOOL&)
 
 LRESULT CSettingsGeneralPage::OnThemeDropdownCancel(WORD, WORD, HWND, BOOL&)
 {
+	if(m_closing) return 0;
 	if(m_themeDropdownStart < INTERFACE_THEME_AUTOMATIC || m_themeDropdownStart > INTERFACE_THEME_DARK) return 0;
 	m_interfaceTheme.SetCurSel(m_themeDropdownStart);
 	m_preserveUnavailableDark = m_themePreservedBeforeDropdown;
@@ -593,6 +595,7 @@ LRESULT CSettingsGeneralPage::OnPaletteDropdown(WORD, WORD, HWND, BOOL&)
 
 LRESULT CSettingsGeneralPage::OnPaletteDropdownCancel(WORD, WORD, HWND, BOOL&)
 {
+	if(m_closing) return 0;
 	if(m_paletteDropdownStart < 0 || m_paletteDropdownStart >= m_interfacePalette.GetCount()) return 0;
 	m_interfacePalette.SetCurSel(m_paletteDropdownStart);
 	BOOL handled = FALSE;
@@ -606,6 +609,7 @@ LRESULT CSettingsGeneralPage::OnPaletteDropdownCancel(WORD, WORD, HWND, BOOL&)
 
 LRESULT CSettingsGeneralPage::OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&)
 {
+	if(m_closing) return 0;
 	const int selection = m_interfacePalette.GetCurSel();
 	if(selection < 0 || selection >= INTERFACE_PALETTE_COUNT + static_cast<int>(m_customPalettes.size())) return 0;
 	const bool keepDropdown = !m_cancellingPaletteDropdown && m_interfacePalette.GetDroppedState() != FALSE;
@@ -961,9 +965,13 @@ void CSettingsGeneralPage::Commit()
 }
 bool CSettingsGeneralPage::CancelChanges()
 {
+	m_closing = true;
+	m_themeDropdownStart = -1;
+	m_paletteDropdownStart = -1;
 	if(m_originalCustomPaletteActive) ThemeManager::SetCustomPalette(m_originalCustomPalette);
 	else ThemeManager::SetNamedPalette(m_originalPalette);
 	ThemeManager::SetSelectedTheme(m_originalTheme);
 	ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+	m_closing = false;
 	return true;
 }

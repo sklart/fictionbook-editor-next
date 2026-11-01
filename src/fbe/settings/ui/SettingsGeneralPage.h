@@ -39,6 +39,7 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	bool m_paletteChangedBeforeDropdown = false;
 	bool m_reopeningPaletteDropdown = false;
 	bool m_cancellingPaletteDropdown = false;
+	bool m_closing = false;
 	bool m_paletteChanged = false;
 	bool m_preserveUnavailableDark = false;
 	bool m_darkThemeSupported = true;
