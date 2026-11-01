@@ -330,6 +330,45 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		const bool reopened = saved && LoadFile(target) == OK; pump();
 		const CString reopenedXml(reopened ? static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml) : L"");
 		const bool xmlMatches = reopened && xml == reopenedXml;
+		wchar_t crossFlag[2] = {};
+		const bool crossTested = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_CROSS", crossFlag, _countof(crossFlag)) && crossFlag[0] == L'1';
+		bool crossInput = true, crossUndo = true, crossRedo = true, crossRoundTrip = true;
+		if (crossTested && reopened) {
+			stage = "cross-selection";
+			document = m_doc->m_body.Document(); ShowView(BODY); m_doc->m_body.SetFocus(); pump();
+			MSHTML::IHTMLElementPtr cross(MSHTML::IHTMLDocument3Ptr(document)->getElementById(L"nbsp-cross"));
+			if (!cross) CheckError(E_FAIL);
+			const CString beforeCross(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+			MSHTML::IHTMLTxtRangePtr selection(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+			selection->moveToElementText(cross); selection->collapse(VARIANT_TRUE);
+			selection->move(L"character", 2); selection->moveEnd(L"character", 5); selection->select(); pump();
+			if (CString(static_cast<LPCWSTR>(selection->text)) != L"ftrig") CheckError(E_FAIL);
+			const HWND crossFocus = ::GetFocus();
+			if (!crossFocus || (crossFocus != m_doc->m_body.m_hWnd && !::IsChild(m_doc->m_body.m_hWnd, crossFocus))) CheckError(E_FAIL);
+			::SendMessageW(crossFocus, WM_CHAR, L'\u00a0', 1); pump();
+			CString crossText;
+			MSHTML::IHTMLDOMNodePtr crossRoot(cross), crossChild(crossRoot->firstChild);
+			while (crossChild && crossChild != crossRoot) {
+				if (crossChild->nodeType == 3) crossText += static_cast<LPCWSTR>(_bstr_t(crossChild->nodeValue));
+				if (crossChild->firstChild) crossChild = crossChild->firstChild;
+				else {
+					while (crossChild && crossChild != crossRoot && !crossChild->nextSibling) crossChild = crossChild->parentNode;
+					if (crossChild && crossChild != crossRoot) crossChild = crossChild->nextSibling;
+				}
+			}
+			const CString afterCross(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+			crossInput = crossText == CString(L"le") + configuredMarker + L"ht";
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
+			crossUndo = CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == beforeCross;
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_REDO, 0); pump();
+			crossRedo = CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == afterCross;
+			if (crossInput && crossUndo && crossRedo) {
+				const CString crossPath = CString(target) + L".cross.fb2";
+				const bool crossSaved = m_doc->Save(crossPath); pump();
+				const bool crossOpened = crossSaved && LoadFile(crossPath) == OK; pump();
+				crossRoundTrip = crossOpened && CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == afterCross;
+			} else crossRoundTrip = false;
+		}
 		bool repeatPreserved = true, repeatInserted = true, repeatRoundTrip = true;
 		if(repeatTested && reopened) {
 			stage = "repeat-settings";
@@ -362,13 +401,14 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		report += toggleReport;
 		CStringA directReport; directReport.Format("direct-tested=%d\ndirect-input=%d\ndirect-undo=%d\ndirect-redo=%d\ndirect-save-input=%d\n", directTested, directInput, directUndo, directRedo, directSaveInput); report += directReport;
 		CStringA directSelectionReport; directSelectionReport.Format("direct-selection-tested=%d\ndirect-selection-input=%d\ndirect-selection-undo=%d\ndirect-selection-redo=%d\n", directSelectionTested, directSelectionInput, directSelectionUndo, directSelectionRedo); report += directSelectionReport;
+		CStringA crossReport; crossReport.Format("cross-tested=%d\ncross-input=%d\ncross-undo=%d\ncross-redo=%d\ncross-roundtrip=%d\n", crossTested, crossInput, crossUndo, crossRedo, crossRoundTrip); report += crossReport;
 		CStringA sourceReport; sourceReport.Format("source-tested=%d\nsource-roundtrip=%d\nsource-link-valid=%d\n", sourceTested, sourceRoundTrip, sourceLinkValid); report += sourceReport;
 		if (sourceTested && !sourceRoundTrip) {
 			CStringA details; details.Format("source-before-utf16=%s\nsource-after-utf16=%s\n", static_cast<LPCSTR>(codepoints(second)), static_cast<LPCSTR>(codepoints(sourceAfter))); report += details;
 		}
 		CStringA repeatReport; repeatReport.Format("repeat-applied=%d\nrepeat-inserted=%d\nrepeat-preserved=%d\nrepeat-roundtrip=%d\n", repeatTested, repeatInserted, repeatPreserved, repeatRoundTrip); report += repeatReport;
 		CStringA counts; counts.Format("undo-count-after-undo=%d\nredo-count-after-undo=%d\n", afterUndo, afterUndoRedo); report += counts;
-		passed = focusInside && caretPosition && sourceRoundTrip && sourceLinkValid && priorHistory && restored && replay && directInput && directUndo && directRedo && directSaveInput && directSelectionInput && directSelectionUndo && directSelectionRedo && selectionInput && selectionUndo &&
+		passed = focusInside && caretPosition && sourceRoundTrip && sourceLinkValid && priorHistory && restored && replay && directInput && directUndo && directRedo && directSaveInput && directSelectionInput && directSelectionUndo && directSelectionRedo && crossInput && crossUndo && crossRedo && crossRoundTrip && selectionInput && selectionUndo &&
 			(!thirdTested || (thirdInput && thirdUndo && thirdRedo)) && changedDisplay && unchangedOther && toggleRestored && toggleUndoRedo && repeatInserted && repeatPreserved && repeatRoundTrip && validText && saved && reopened && xmlMatches;
 	}
 	catch (const _com_error& error) { CStringA line; line.Format("stage=%s\nerror=0x%08lX\n", stage, static_cast<unsigned long>(error.Error())); report += line; }

@@ -5133,7 +5133,17 @@ VARIANT_BOOL CFBEView::OnKeyPress(IDispatch* evt)
 				MSHTML::IHTMLTxtRangePtr begin(caret->duplicate()), end(caret->duplicate());
 				if (!begin || !end) return VARIANT_TRUE;
 				begin->collapse(VARIANT_TRUE); end->collapse(VARIANT_FALSE);
-				if (begin->parentElement() != parent || end->parentElement() != parent) return VARIANT_TRUE;
+				MSHTML::IHTMLElementPtr first(begin->parentElement()), last(end->parentElement());
+				if (!first || !last) return VARIANT_TRUE;
+				if (first != parent || last != parent) {
+					const auto paragraphFor = [](MSHTML::IHTMLElementPtr element) -> MSHTML::IHTMLElementPtr {
+						for (; element; element = element->parentElement)
+							if (U::scmp(element->tagName, L"P") == 0) return element;
+						return MSHTML::IHTMLElementPtr();
+					};
+					MSHTML::IHTMLElementPtr firstParagraph(paragraphFor(first));
+					if (!firstParagraph || firstParagraph != paragraphFor(last)) return VARIANT_TRUE;
+				}
 			}
 			// Insert the display character as part of the user's undoable edit.
 			// Converting U+00A0 later through nodeValue invalidates that edit.

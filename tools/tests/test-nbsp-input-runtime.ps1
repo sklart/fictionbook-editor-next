@@ -14,8 +14,10 @@ param([Parameter(Mandatory)][string]$FbeExe,
       [switch]$CheckSourceRoundTrip,
       [switch]$CheckDirectInput,
       [switch]$CheckDirectSelection,
+      [switch]$CheckCrossSelection,
       [ValidateSet('none','small-square')][string]$RepeatDisplay = 'none')
 $ErrorActionPreference = 'Stop'
+if($CheckCrossSelection -and ($CheckDirectInput -or $CheckSourceRoundTrip -or $CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $EmptyRedoControl -or $CheckOtherNode -or $OtherNodeControl -or $ToggleControl -or $CheckRepeatedApply)) { throw 'Cross selection must run as its own diagnostic.' }
 if($CheckDirectSelection -and -not $CheckDirectInput) { throw 'Direct selection requires -CheckDirectInput.' }
 if(@(@($CheckDisplayToggle, $CheckSingleDisplayToggle, $CheckSingleEmptyRedo, $EmptyRedoControl, $CheckOtherNode, $OtherNodeControl, $ToggleControl, $CheckRepeatedApply) | Where-Object { $_ }).Count -gt 1) { throw 'Choose only one NBSP diagnostic mode.' }
 if($CheckDirectInput -and ($CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $EmptyRedoControl -or $CheckOtherNode -or $OtherNodeControl -or $ToggleControl -or $CheckRepeatedApply)) { throw 'Direct input cannot be combined with display-change diagnostics.' }
@@ -25,7 +27,7 @@ if (-not $ArtifactDirectory) { $ArtifactDirectory = Join-Path $root 'build\commu
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $ArtifactDirectory = [IO.Path]::GetFullPath($ArtifactDirectory)
 New-Item -ItemType Directory -Force -Path $ArtifactDirectory | Out-Null
-$names = @('FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_NBSP_OUTPUT', 'FBE_NEXT_TEST_NBSP_TOGGLE', 'FBE_NEXT_TEST_NBSP_SOURCE', 'FBE_NEXT_TEST_NBSP_DIRECT', 'FBE_NEXT_TEST_NBSP_DIRECT_SELECTION')
+$names = @('FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_NBSP_OUTPUT', 'FBE_NEXT_TEST_NBSP_TOGGLE', 'FBE_NEXT_TEST_NBSP_SOURCE', 'FBE_NEXT_TEST_NBSP_DIRECT', 'FBE_NEXT_TEST_NBSP_DIRECT_SELECTION', 'FBE_NEXT_TEST_NBSP_CROSS')
 $old = @{}; foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name) }
 $failures = @()
 try {
@@ -41,6 +43,7 @@ try {
             $fixture = Join-Path $iso.DataPath 'input.fb2'
             $markup = switch ($Context) { 'plain' { 'word1word2' } 'emphasis' { '<emphasis>word1word2</emphasis>' } 'strong' { '<strong>word1word2</strong>' } 'link' { '<a l:href="#nbsp-probe">word1word2</a>' } }
             $fb2 = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><first-name>Test</first-name><last-name>Author</last-name></author><book-title>NBSP test</book-title><lang>en</lang></title-info><document-info><author><first-name>Test</first-name><last-name>Author</last-name></author><date>2026</date><id>nbsp-test</id><version>1.0</version></document-info></description><body><section><p id="nbsp-prior">prior</p><p id="nbsp-probe">' + $markup + '</p></section></body></FictionBook>'
+            if($CheckCrossSelection) { $fb2 = $fb2.Replace('</section></body>', '<p id="nbsp-cross"><emphasis>left</emphasis><strong>right</strong></p></section></body>') }
             [IO.File]::WriteAllText($fixture, $fb2, [Text.UTF8Encoding]::new($false))
             $saved = Join-Path $iso.DataPath 'saved.fb2'
             $report = Join-Path $iso.DataPath 'report.txt'
@@ -50,12 +53,14 @@ try {
             $env:FBE_NEXT_TEST_NBSP_SOURCE = if($CheckSourceRoundTrip) { '1' } else { $null }
             $env:FBE_NEXT_TEST_NBSP_DIRECT = if($CheckDirectInput) { '1' } else { $null }
             $env:FBE_NEXT_TEST_NBSP_DIRECT_SELECTION = if($CheckDirectSelection) { '1' } else { $null }
+            $env:FBE_NEXT_TEST_NBSP_CROSS = if($CheckCrossSelection) { '1' } else { $null }
             $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime `
                 -ArgumentList @('--portable', '-b', ('"' + $report + '"'), ('"' + $fixture + '"')) -PassThru
             $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'nbsp-input-runtime' -Report $report -TimeoutSeconds 120
             $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
             if (Test-Path -LiteralPath $report) { Copy-Item -LiteralPath $report -Destination (Join-Path $ArtifactDirectory "$Context-$name.txt") -Force }
             if (Test-Path -LiteralPath $saved) { Copy-Item -LiteralPath $saved -Destination (Join-Path $ArtifactDirectory "$Context-$name.fb2") -Force }
+            if ($CheckCrossSelection -and (Test-Path -LiteralPath "$saved.cross.fb2")) { Copy-Item -LiteralPath "$saved.cross.fb2" -Destination (Join-Path $ArtifactDirectory "$Context-$name-cross.fb2") -Force }
             if ($CheckRepeatedApply -and (Test-Path -LiteralPath "$saved.repeat.fb2")) { Copy-Item -LiteralPath "$saved.repeat.fb2" -Destination (Join-Path $ArtifactDirectory "$Context-$name-repeat.fb2") -Force }
             $expectedMode = '{0:X4}' -f [int]$marker
             if (-not (Test-Path -LiteralPath $saved)) { throw "$name failed before save: $text" }
@@ -89,6 +94,16 @@ try {
             [void]$readerSettings.Schemas.Add('http://www.gribuser.ru/xml/fictionbook/2.0', (Join-Path $root 'runtime\FictionBook.xsd'))
             $reader = [Xml.XmlReader]::Create($saved, $readerSettings)
             try { while ($reader.Read()) {} } finally { $reader.Dispose() }
+            if($CheckCrossSelection -and (Test-Path -LiteralPath "$saved.cross.fb2")) {
+                $crossXml = [Xml.XmlDocument]::new(); $crossXml.Load("$saved.cross.fb2")
+                $crossNs = [Xml.XmlNamespaceManager]::new($crossXml.NameTable); $crossNs.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
+                $cross = $crossXml.SelectSingleNode('//fb:p[@id="nbsp-cross"]', $crossNs)
+                if(-not $cross) { throw 'Cross-selection paragraph is missing.' }
+                $emphasis = $cross.SelectSingleNode('fb:emphasis', $crossNs); $strong = $cross.SelectSingleNode('fb:strong', $crossNs)
+                if(-not $cross -or $cross.InnerText -cne ('le' + [char]0x00A0 + 'ht') -or -not $emphasis -or -not $strong -or -not $emphasis.InnerText.StartsWith('le') -or -not $strong.InnerText.EndsWith('ht')) { throw 'Cross-selection saved unexpected content or lost formatting.' }
+                $crossReader = [Xml.XmlReader]::Create("$saved.cross.fb2", $readerSettings)
+                try { while($crossReader.Read()) {} } finally { $crossReader.Dispose() }
+            }
             if($CheckRepeatedApply) {
                 $repeatPath = "$saved.repeat.fb2"
                 $repeatXml = [Xml.XmlDocument]::new(); $repeatXml.Load($repeatPath)
@@ -108,6 +123,7 @@ try {
             if($CheckSourceRoundTrip -and ($text -notmatch '(?m)^source-tested=1\r?$' -or $text -notmatch '(?m)^source-roundtrip=1\r?$')) { throw "$name did not preserve the document through Body/Source: $text" }
             if($CheckDirectInput -and $text -notmatch '(?m)^direct-tested=1\r?$') { throw "$name did not run the direct NBSP input diagnostic: $text" }
             if($CheckDirectSelection -and $text -notmatch '(?m)^direct-selection-tested=1\r?$') { throw "$name did not run the direct NBSP selection diagnostic: $text" }
+            if($CheckCrossSelection -and ($text -notmatch '(?m)^cross-tested=1\r?$' -or -not (Test-Path -LiteralPath "$saved.cross.fb2"))) { throw "$name did not complete the cross-selection diagnostic: $text" }
             if ($code -ne 0 -or $text -notmatch "(?m)^mode=$expectedMode\r?$" -or $text -notmatch '(?m)^result=pass\r?$') { throw "$name failed: $text" }
             $passed = $true
             if($CheckRepeatedApply) { Write-Host "Repeated settings preserve typed marker and save/reopen: PASS ($Context/$name/$RepeatDisplay)." }
