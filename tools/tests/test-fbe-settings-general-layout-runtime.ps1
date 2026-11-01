@@ -6,6 +6,7 @@ param(
     [switch]$ChangedPagesOnly,
     [switch]$AppearanceOnly,
     [switch]$CustomPalette,
+    [switch]$HotkeyTab,
     [ValidateSet('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')]
     [string[]]$Locales = @('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')
 )
@@ -45,6 +46,7 @@ public static class SettingsGeneralLayoutWindow
     [DllImport("user32.dll")] static extern IntPtr GetParent(IntPtr window);
     [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr window, uint command);
     [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+    [DllImport("user32.dll", SetLastError = true)] static extern IntPtr SendMessageTimeout(IntPtr window, uint message, IntPtr wParam, IntPtr lParam, uint flags, uint milliseconds, out IntPtr result);
     [DllImport("user32.dll", EntryPoint = "SendMessageW", CharSet = CharSet.Unicode)]
     static extern IntPtr SendMessageText(IntPtr window, uint message, IntPtr wParam, string text);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr window);
@@ -95,6 +97,12 @@ public static class SettingsGeneralLayoutWindow
         SendMessage(navigation, 0x0186, (IntPtr)index, IntPtr.Zero); // LB_SETCURSEL
         SendMessage(settings, 0x0111, (IntPtr)(1625 | (1 << 16)), navigation); // LBN_SELCHANGE
     }
+    public static IntPtr VisiblePageContaining(IntPtr settings, int id) {
+        for(IntPtr child = GetWindow(settings, 5); child != IntPtr.Zero; child = GetWindow(child, 2)) { // GW_CHILD / GW_HWNDNEXT
+            if(IsWindowVisible(child) && GetDlgItem(child, id) != IntPtr.Zero) return child;
+        }
+        return IntPtr.Zero;
+    }
     [DllImport("user32.dll")] static extern IntPtr GetNextDlgTabItem(IntPtr dialog, IntPtr control, bool previous);
     [DllImport("user32.dll")] static extern bool GetGUIThreadInfo(uint threadId, ref GuiThreadInfo info);
     [DllImport("user32.dll")] static extern int GetDlgCtrlID(IntPtr window);
@@ -117,7 +125,8 @@ public static class SettingsGeneralLayoutWindow
             remaining.Add(child);
         }
         IntPtr start = GetDlgItem(dialog, ids[0]);
-        SendMessage(dialog, 0x0028, start, (IntPtr)1); // WM_NEXTDLGCTL, explicit target
+        IntPtr result;
+        if(SendMessageTimeout(dialog, 0x0028, start, (IntPtr)1, 2, 2000, out result) == IntPtr.Zero) { TabTrace = "initial focus timed out"; return false; }
         if(ThreadFocus(dialog) != start) { TabTrace = "initial-focus=" + GetDlgCtrlID(ThreadFocus(dialog)); return false; }
         for(int count = 0; count < 100; ++count) {
             IntPtr current = ThreadFocus(dialog); remaining.Remove(current);
@@ -322,6 +331,16 @@ try {
                 }
             }
             Write-Host "$locale Hotkeys labels and action buttons fit."
+            if ($HotkeyTab) {
+                [SettingsGeneralLayoutWindow]::SelectPage($settings, 6)
+                Start-Sleep -Milliseconds 100
+                $targets = [int[]]@(1818, 1068, 1069, 1070, 1071, 1669)
+                $page = [SettingsGeneralLayoutWindow]::VisiblePageContaining($settings, $targets[0])
+                if ($page -eq [IntPtr]::Zero -or -not [SettingsGeneralLayoutWindow]::TraverseWithTabIncludingOuter($page, $settings, [int[]]($targets + @(1625, 1, 2)))) {
+                    throw "$locale Hotkeys page Tab focus failed: $([SettingsGeneralLayoutWindow]::TabTrace)"
+                }
+                Write-Host "$locale Tab reaches the Hotkeys controls and exits to the Settings dialog."
+            }
             if ($AppearanceOnly -or $ChangedPagesOnly -or $locale -in @('ru-RU', 'en-US', 'de-DE', 'uk-UA')) {
                 $wideRect = New-Object SettingsGeneralLayoutWindow+Rect
                 [void][SettingsGeneralLayoutWindow]::GetWindowRect($settings, [ref]$wideRect)

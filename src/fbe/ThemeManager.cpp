@@ -601,6 +601,28 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 		return 0;
 	}
 	if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);
+	if(message == WM_PAINT && ThemeManager::UsesPaletteSurface() && IsComboBox(window) &&
+		!IsClass(::GetParent(window), TOOLBARCLASSNAMEW)) {
+		const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
+		COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
+		if(::GetComboBoxInfo(window, &info)) {
+			HDC dc = ::GetDC(window);
+			if(dc) {
+				::FillRect(dc, &info.rcButton, ThemeManager::WindowBrush());
+				const int x = (info.rcButton.left + info.rcButton.right) / 2, y = (info.rcButton.top + info.rcButton.bottom) / 2;
+				const int half = max(2, UiMetrics::ScaleForDpi(3, UiMetrics::DpiForWindow(window)));
+				POINT arrow[] = { { x - half, y - half / 2 }, { x + half, y - half / 2 }, { x, y + half / 2 + 1 } };
+				HBRUSH brush = ::CreateSolidBrush(::IsWindowEnabled(window) ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
+				if(brush) {
+					HGDIOBJ oldBrush = ::SelectObject(dc, brush), oldPen = ::SelectObject(dc, ::GetStockObject(NULL_PEN));
+					::Polygon(dc, arrow, _countof(arrow));
+					::SelectObject(dc, oldPen); ::SelectObject(dc, oldBrush); ::DeleteObject(brush);
+				}
+				::ReleaseDC(window, dc);
+			}
+		}
+		return result;
+	}
     // Disabled STATIC uses COLOR_GRAYTEXT instead of the parent's HDC text
     // colour. Paint only text labels, with the semantic disabled foreground.
     if(ThemeManager::IsDark()&&IsDisabledTextLabel(window)) {

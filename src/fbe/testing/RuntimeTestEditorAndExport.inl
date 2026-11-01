@@ -2906,6 +2906,24 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			const bool ok = applied && pixel == expected;
 			surfaceDetails.AppendFormat("pixel_%s\t%d\r\npixel_%s_actual\t%lu\r\npixel_%s_expected\t%lu\r\n", name, ok ? 1 : 0, name, static_cast<unsigned long>(pixel), name, static_cast<unsigned long>(expected));
 			surfacePixels = surfacePixels && ok;
+			const HWND contextCombo = m_contextAttributeBars.HrefCatalogForPopulation();
+			COMBOBOXINFO comboInfo = {}; comboInfo.cbSize = sizeof(comboInfo);
+			COLORREF arrowPixel = CLR_INVALID, enabledArrowPixel = CLR_INVALID;
+			if(contextCombo && ::IsWindowVisible(contextCombo) && ::GetComboBoxInfo(contextCombo, &comboInfo)) {
+				const bool wasEnabled = ::IsWindowEnabled(contextCombo) != FALSE;
+				auto sampleArrow = [&]() {
+					::RedrawWindow(contextCombo, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+					HDC comboDc = ::GetDC(contextCombo);
+					const COLORREF color = comboDc ? ::GetPixel(comboDc, comboInfo.rcButton.left + 2, comboInfo.rcButton.top + 2) : CLR_INVALID;
+					if(comboDc) ::ReleaseDC(contextCombo, comboDc); return color;
+				};
+				::EnableWindow(contextCombo, FALSE); arrowPixel = sampleArrow();
+				::EnableWindow(contextCombo, TRUE); enabledArrowPixel = sampleArrow();
+				::EnableWindow(contextCombo, wasEnabled);
+			}
+			surfaceDetails.AppendFormat("combo_arrow_%s\t%lu\r\ncombo_arrow_enabled_%s\t%lu\r\n", name,
+				static_cast<unsigned long>(arrowPixel), name, static_cast<unsigned long>(enabledArrowPixel));
+			surfacePixels = arrowPixel == expected && enabledArrowPixel == expected && surfacePixels;
 			if(captureAppearance && (!strcmp(name, "latte") || !strcmp(name, "sepia"))) {
 				::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
 				RECT bounds = {}; ::GetWindowRect(m_hWnd, &bounds); CImage screenshot;

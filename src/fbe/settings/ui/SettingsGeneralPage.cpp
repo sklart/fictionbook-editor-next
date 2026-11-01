@@ -782,7 +782,8 @@ LRESULT CSettingsGeneralPage::OnDrawThemeItem(UINT, WPARAM, LPARAM parameter, BO
 	const bool selected = (item->itemState & ODS_SELECTED) != 0;
 	const int index = item->itemID == static_cast<UINT>(-1) ? -1 : static_cast<int>(item->itemID);
 	const bool available = index < 0 || (item->CtlID == IDC_INTERFACE_THEME ? m_darkThemeSupported || index != INTERFACE_THEME_DARK : PaletteItemAvailable(index));
-	const COLORREF background = selected ? ThemeManager::SelectionBackgroundColor() : ThemeManager::ControlColor();
+	const COLORREF background = selected ? ThemeManager::SelectionBackgroundColor() :
+		((item->itemState & ODS_COMBOBOXEDIT) && ThemeManager::UsesPaletteSurface()) ? ThemeManager::WindowColor() : ThemeManager::ControlColor();
 	const COLORREF foreground = !available ? ThemeManager::DisabledTextColor() : selected ? ThemeManager::SelectionTextColor() : ThemeManager::TextColor();
 	::SetBkColor(item->hDC, background); ::SetTextColor(item->hDC, foreground);
 	::ExtTextOutW(item->hDC, 0, 0, ETO_OPAQUE, &item->rcItem, NULL, 0, NULL);

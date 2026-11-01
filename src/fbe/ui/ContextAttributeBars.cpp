@@ -206,6 +206,27 @@ LRESULT CALLBACK ContextAttributeBoxThemeProc(HWND window, UINT message, WPARAM 
 	const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
 	if(message == WM_PAINT && ThemeManager::UsesPaletteSurface())
 	{
+		// Native combo buttons keep the system-grey face even after the field
+		// follows a custom palette. Paint only the arrow button; native hit
+		// testing and dropdown behaviour remain with the control.
+		COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
+		if(::GetComboBoxInfo(window, &info)) {
+			HDC client = ::GetDC(window);
+			if(client) {
+				::FillRect(client, &info.rcButton, ThemeManager::ControlBrush());
+				const int centerX = (info.rcButton.left + info.rcButton.right) / 2;
+				const int centerY = (info.rcButton.top + info.rcButton.bottom) / 2;
+				const int half = max(2, UiMetrics::ScaleForDpi(3, UiMetrics::DpiForWindow(window)));
+				POINT arrow[] = { { centerX - half, centerY - half / 2 }, { centerX + half, centerY - half / 2 }, { centerX, centerY + half / 2 + 1 } };
+				HBRUSH brush = ::CreateSolidBrush(::IsWindowEnabled(window) ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
+				if(brush) {
+					HGDIOBJ oldBrush = ::SelectObject(client, brush), oldPen = ::SelectObject(client, ::GetStockObject(NULL_PEN));
+					::Polygon(client, arrow, _countof(arrow));
+					::SelectObject(client, oldPen); ::SelectObject(client, oldBrush); ::DeleteObject(brush);
+				}
+				::ReleaseDC(window, client);
+			}
+		}
 		// CLIENTEDGE is deliberately removed in Dark mode; paint an in-client
 		// one-pixel border so the band's outer geometry and DPI layout remain intact.
 		RECT bounds = {}; ::GetWindowRect(window, &bounds);

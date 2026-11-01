@@ -1082,8 +1082,10 @@ void CMainFrame::RunPortableStateTestScenario()
                 const COLORREF comboPixel = comboDc && comboRect.right > 60 ? ::GetPixel(comboDc, comboRect.right - 40, comboRect.bottom / 2) : CLR_INVALID;
                 if(comboDc) ::ReleaseDC(ordinaryCombo, comboDc);
                 COMBOBOXINFO ordinaryInfo = {}; ordinaryInfo.cbSize = sizeof(ordinaryInfo);
-                COLORREF listPixel = CLR_INVALID;
+                COLORREF listPixel = CLR_INVALID, arrowPixel = CLR_INVALID, ownerArrowPixel = CLR_INVALID;
                 if(::GetComboBoxInfo(ordinaryCombo, &ordinaryInfo) && ordinaryInfo.hwndList) {
+					HDC arrowDc = ::GetDC(ordinaryCombo);
+					if(arrowDc) { arrowPixel = ::GetPixel(arrowDc, ordinaryInfo.rcButton.left + 2, ordinaryInfo.rcButton.top + 2); ::ReleaseDC(ordinaryCombo, arrowDc); }
                     ::SendMessage(ordinaryCombo, CB_SHOWDROPDOWN, TRUE, 0);
                     ::RedrawWindow(ordinaryInfo.hwndList, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
                     RECT listRect = {}; ::GetClientRect(ordinaryInfo.hwndList, &listRect);
@@ -1094,6 +1096,17 @@ void CMainFrame::RunPortableStateTestScenario()
                 }
                 const COLORREF comboExpected = ThemeManager::WindowColor();
                 const COLORREF listExpected = ThemeManager::ControlColor();
+				COLORREF ownerFieldPixel = CLR_INVALID;
+				COMBOBOXINFO ownerInfo = {}; ownerInfo.cbSize = sizeof(ownerInfo);
+				if(::GetComboBoxInfo(paletteChoice, &ownerInfo)) {
+					::RedrawWindow(paletteChoice, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+					HDC ownerDc = ::GetDC(paletteChoice);
+					if(ownerDc) {
+						ownerArrowPixel = ::GetPixel(ownerDc, ownerInfo.rcButton.left + 2, ownerInfo.rcButton.top + 2);
+						ownerFieldPixel = ::GetPixel(ownerDc, ownerInfo.rcItem.right - 8, ownerInfo.rcItem.bottom - 3);
+						::ReleaseDC(paletteChoice, ownerDc);
+					}
+				}
                 ::EnableWindow(ordinaryCombo, FALSE);
                 ::RedrawWindow(page.m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
                 comboDc = ::GetDC(ordinaryCombo);
@@ -1103,7 +1116,9 @@ void CMainFrame::RunPortableStateTestScenario()
                 comboPixelDiagnostics.AppendFormat("combo-palette=%d\ncombo-actual=%lu\ncombo-expected=%lu\ncombo-list-actual=%lu\ncombo-list-expected=%lu\ncombo-disabled=%lu\n",
                     static_cast<int>(light), static_cast<unsigned long>(comboPixel), static_cast<unsigned long>(comboExpected),
                     static_cast<unsigned long>(listPixel), static_cast<unsigned long>(listExpected), static_cast<unsigned long>(disabledPixel));
-                passed = comboPixel == comboExpected && listPixel == listExpected && disabledPixel == comboExpected && passed;
+				comboPixelDiagnostics.AppendFormat("combo-arrow=%lu\nowner-arrow=%lu\nowner-field=%lu\n", static_cast<unsigned long>(arrowPixel), static_cast<unsigned long>(ownerArrowPixel), static_cast<unsigned long>(ownerFieldPixel));
+                passed = comboPixel == comboExpected && listPixel == listExpected && disabledPixel == comboExpected &&
+					arrowPixel == comboExpected && ownerArrowPixel == comboExpected && ownerFieldPixel == comboExpected && passed;
             }
             ::SendMessage(choice, CB_SETCURSEL, INTERFACE_THEME_DARK, 0);
             page.OnInterfaceThemeChanged(CBN_SELCHANGE, IDC_INTERFACE_THEME, choice, handled);

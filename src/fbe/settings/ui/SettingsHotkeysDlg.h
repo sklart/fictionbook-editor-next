@@ -20,6 +20,7 @@ public:
 	CAccelEdit(): virtkey(0) { }
 
 	BEGIN_MSG_MAP(CAccelEdit)
+		MESSAGE_HANDLER(WM_GETDLGCODE, OnGetDlgCode)
 		MESSAGE_HANDLER(WM_KEYDOWN, OnKeyDown)
 		MESSAGE_HANDLER(WM_SYSKEYDOWN, OnKeyDown)
 		MESSAGE_HANDLER(WM_KEYUP, OnKeyUp) // Provides VK_ instead of FVIRT
@@ -28,6 +29,14 @@ public:
 		MESSAGE_HANDLER(WM_CHAR, OnSkip)
 		CHAIN_MSG_MAP(CEditCommands<CAccelEdit>)
 	END_MSG_MAP()
+
+	LRESULT OnGetDlgCode(UINT message, WPARAM wParam, LPARAM lParam, BOOL& handled)
+	{
+		if(wParam == VK_TAB && !(::GetKeyState(VK_CONTROL) & 0x8000) && !(::GetKeyState(VK_MENU) & 0x8000))
+			return DefWindowProc(message, wParam, lParam) & ~(DLGC_WANTALLKEYS | DLGC_WANTTAB);
+		handled = FALSE;
+		return 0;
+	}
 
 	LRESULT OnKeyDown(UINT /* unused: uMsg */, WPARAM wParam, LPARAM lParam, BOOL& /* unused: bHandled */)
 	{
