@@ -1397,7 +1397,7 @@ bool CSettingsDlg::ProbeLayout()
 			{ IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, toolbarGroup },
 			{ IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT, descriptionGroup }
 		};
-		int previousBottom = 0;
+		int previousBottom = 0, paletteRowBottom = 0, scriptRowBottom = 0;
 		for(const auto& row : rows) {
 			const HWND field = m_generalPage->GetDlgItem(row.field);
 			COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
@@ -1410,10 +1410,20 @@ bool CSettingsDlg::ProbeLayout()
 				label.bottom <= row.group.bottom && box.bottom <= row.group.bottom &&
 				label.top >= previousBottom && box.top >= previousBottom && passed;
 			previousBottom = max(label.bottom, box.bottom);
+			if(row.field == IDC_INTERFACE_PALETTE) paletteRowBottom = previousBottom;
+			if(row.field == IDC_SCRIPT_ICON_SIZE) scriptRowBottom = previousBottom;
 		}
+		const CRect copy = controlRect(m_generalPage->GetDlgItem(IDC_INTERFACE_PALETTE_COPY));
+		const CRect manage = controlRect(m_generalPage->GetDlgItem(IDC_PALETTE_MANAGE));
+		auto insideGroup = [](const CRect& child, const CRect& group) {
+			return child.Width() > 0 && child.Height() > 0 && child.left >= group.left &&
+				child.right <= group.right && child.top >= group.top && child.bottom <= group.bottom;
+		};
 		passed = colourGroup.bottom <= toolbarGroup.top && toolbarGroup.bottom <= descriptionGroup.top &&
-			themeSample.top >= colourGroup.top && themeSample.bottom <= colourGroup.bottom &&
-			iconSample.top >= toolbarGroup.top && iconSample.bottom <= toolbarGroup.bottom && passed;
+			insideGroup(copy, colourGroup) && insideGroup(manage, colourGroup) &&
+			insideGroup(themeSample, colourGroup) && insideGroup(iconSample, toolbarGroup) &&
+			copy.right <= manage.left && copy.top >= paletteRowBottom && manage.top >= paletteRowBottom &&
+			themeSample.top >= max(copy.bottom, manage.bottom) && iconSample.top >= scriptRowBottom && passed;
 	}
 	::SendMessageW(m_hWnd, WM_DPICHANGED, MAKELONG(originalLayoutDpi, originalLayoutDpi), 0);
 	SelectPage(SettingsPageId::General);
