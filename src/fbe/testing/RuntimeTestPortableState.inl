@@ -1067,33 +1067,38 @@ void CMainFrame::RunPortableStateTestScenario()
             // Sample a real, non-owner-drawn settings combo and its popup.
             // The unfocused field uses Window; the list uses Control.
             ShowWindow(SW_SHOWNORMAL); ::SetForegroundWindow(m_hWnd);
-            ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
             HWND ordinaryCombo = page.GetDlgItem(IDC_DESCRIPTION_LAYOUT);
             passed = ordinaryCombo && ::IsWindowVisible(ordinaryCombo) &&
                 ::SendMessage(ordinaryCombo, CB_GETCOUNT, 0, 0) > 0 && passed;
-            ::SetFocus(choice); // Measure the unfocused field, outside the selection highlight.
-            ::RedrawWindow(page.m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
-            RECT comboRect = {}; ::GetClientRect(ordinaryCombo, &comboRect);
-            HDC comboDc = ::GetDC(ordinaryCombo);
-            const COLORREF comboPixel = comboDc && comboRect.right > 60 ? ::GetPixel(comboDc, comboRect.right - 40, comboRect.bottom / 2) : CLR_INVALID;
-            if(comboDc) ::ReleaseDC(ordinaryCombo, comboDc);
-            COMBOBOXINFO ordinaryInfo = {}; ordinaryInfo.cbSize = sizeof(ordinaryInfo);
-            COLORREF listPixel = CLR_INVALID;
-            if(::GetComboBoxInfo(ordinaryCombo, &ordinaryInfo) && ordinaryInfo.hwndList) {
-                ::SendMessage(ordinaryCombo, CB_SHOWDROPDOWN, TRUE, 0);
-                ::RedrawWindow(ordinaryInfo.hwndList, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
-                RECT listRect = {}; ::GetClientRect(ordinaryInfo.hwndList, &listRect);
-                HDC listDc = ::GetDC(ordinaryInfo.hwndList);
-                if(listDc && listRect.right > 20 && listRect.bottom > 10) listPixel = ::GetPixel(listDc, listRect.right - 15, 5);
-                if(listDc) ::ReleaseDC(ordinaryInfo.hwndList, listDc);
-                ::SendMessage(ordinaryCombo, CB_SHOWDROPDOWN, FALSE, 0);
+            for(InterfacePalette light : {INTERFACE_PALETTE_SEPIA, INTERFACE_PALETTE_SOLARIZED_LIGHT, INTERFACE_PALETTE_CATPPUCCIN_LATTE}) {
+                ::SendMessage(paletteChoice, CB_SETCURSEL, light, 0);
+                page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, paletteChoice, handled);
+                passed = ThemeManager::GetNamedPalette() == light && passed;
+                ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+                ::SetFocus(choice); // Measure the unfocused field, outside the selection highlight.
+                ::RedrawWindow(page.m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+                RECT comboRect = {}; ::GetClientRect(ordinaryCombo, &comboRect);
+                HDC comboDc = ::GetDC(ordinaryCombo);
+                const COLORREF comboPixel = comboDc && comboRect.right > 60 ? ::GetPixel(comboDc, comboRect.right - 40, comboRect.bottom / 2) : CLR_INVALID;
+                if(comboDc) ::ReleaseDC(ordinaryCombo, comboDc);
+                COMBOBOXINFO ordinaryInfo = {}; ordinaryInfo.cbSize = sizeof(ordinaryInfo);
+                COLORREF listPixel = CLR_INVALID;
+                if(::GetComboBoxInfo(ordinaryCombo, &ordinaryInfo) && ordinaryInfo.hwndList) {
+                    ::SendMessage(ordinaryCombo, CB_SHOWDROPDOWN, TRUE, 0);
+                    ::RedrawWindow(ordinaryInfo.hwndList, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+                    RECT listRect = {}; ::GetClientRect(ordinaryInfo.hwndList, &listRect);
+                    HDC listDc = ::GetDC(ordinaryInfo.hwndList);
+                    if(listDc && listRect.right > 20 && listRect.bottom > 10) listPixel = ::GetPixel(listDc, listRect.right - 15, 5);
+                    if(listDc) ::ReleaseDC(ordinaryInfo.hwndList, listDc);
+                    ::SendMessage(ordinaryCombo, CB_SHOWDROPDOWN, FALSE, 0);
+                }
+                const COLORREF comboExpected = ThemeManager::WindowColor();
+                const COLORREF listExpected = ThemeManager::ControlColor();
+                comboPixelDiagnostics.AppendFormat("combo-palette=%d\ncombo-actual=%lu\ncombo-expected=%lu\ncombo-list-actual=%lu\ncombo-list-expected=%lu\n",
+                    static_cast<int>(light), static_cast<unsigned long>(comboPixel), static_cast<unsigned long>(comboExpected),
+                    static_cast<unsigned long>(listPixel), static_cast<unsigned long>(listExpected));
+                passed = comboPixel == comboExpected && listPixel == listExpected && passed;
             }
-            const COLORREF comboExpected = ThemeManager::WindowColor();
-            const COLORREF listExpected = ThemeManager::ControlColor();
-            comboPixelDiagnostics.Format("combo-actual=%lu\ncombo-expected=%lu\ncombo-list-actual=%lu\ncombo-list-expected=%lu\n",
-                static_cast<unsigned long>(comboPixel), static_cast<unsigned long>(comboExpected),
-                static_cast<unsigned long>(listPixel), static_cast<unsigned long>(listExpected));
-            passed = comboPixel == comboExpected && listPixel == listExpected && passed;
             ::SendMessage(choice, CB_SETCURSEL, INTERFACE_THEME_DARK, 0);
             page.OnInterfaceThemeChanged(CBN_SELCHANGE, IDC_INTERFACE_THEME, choice, handled);
             passed = ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT && passed;
