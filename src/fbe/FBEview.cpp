@@ -5115,7 +5115,8 @@ VARIANT_BOOL CFBEView::OnKeyPress(IDispatch* evt)
 	{
 		MSHTML::IHTMLEventObjPtr event(evt);
 		if (!event) return VARIANT_TRUE;
-		if (event->keyCode != L' ' || event->ctrlKey == VARIANT_TRUE || event->altKey == VARIANT_TRUE) return VARIANT_TRUE;
+		const bool directNbsp = event->keyCode == L'\u00a0';
+		if (!directNbsp && (event->keyCode != L' ' || event->ctrlKey == VARIANT_TRUE || event->altKey == VARIANT_TRUE)) return VARIANT_TRUE;
 		const CString marker(_Settings.GetNBSPChar());
 		if (marker.GetLength() != 1 || marker == L"\u00a0") return VARIANT_TRUE;
 		MSHTML::IHTMLDocument2Ptr document(Document());
@@ -5123,10 +5124,23 @@ VARIANT_BOOL CFBEView::OnKeyPress(IDispatch* evt)
 		const _bstr_t selectionType(document->selection->type);
 		if (selectionType.length() && _wcsicmp(static_cast<LPCWSTR>(selectionType), L"Control") == 0) return VARIANT_TRUE;
 		MSHTML::IHTMLTxtRangePtr caret(document->selection->createRange());
-		if (!caret || caret->compareEndPoints(L"StartToEnd", caret) != 0) return VARIANT_TRUE;
+		if (!caret) return VARIANT_TRUE;
 		MSHTML::IHTMLElementPtr parent(caret->parentElement());
 		MSHTML::IHTMLElementPtr body(MSHTML::IHTMLDocument3Ptr(document)->getElementById(L"fbw_body"));
 		if (!parent || !body || !body->contains(parent)) return VARIANT_TRUE;
+		if (caret->compareEndPoints(L"StartToEnd", caret) != 0) return VARIANT_TRUE;
+		if (directNbsp) {
+			// Insert the display character as part of the user's undoable edit.
+			// Converting U+00A0 later through nodeValue invalidates that edit.
+			event->returnValue = VARIANT_FALSE;
+			intercepted = true;
+			FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"insert nonbreaking space");
+			caret->text = static_cast<LPCWSTR>(marker);
+			caret->collapse(VARIANT_FALSE);
+			caret->select();
+			undo.Close();
+			return VARIANT_FALSE;
+		}
 		MSHTML::IHTMLTxtRangePtr previous(caret->duplicate());
 		if (!previous || previous->moveStart(L"character", -1) != -1 || previous->parentElement() != parent ||
 			CString(static_cast<LPCWSTR>(previous->htmlText)) != L" ") return VARIANT_TRUE;

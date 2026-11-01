@@ -141,6 +141,25 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		const CString redo1 = state(), redo1Text = text(); CString redo2, redo2Text;
 		if (steps == 2) { SendMessage(WM_COMMAND, ID_EDIT_REDO, 0); pump(); redo2 = state(); redo2Text = text(); }
 		const bool replay = steps == 1 ? redo1 == second : undo1 == first && redo1 == first && redo2 == second;
+		wchar_t directFlag[2] = {};
+		const bool directTested = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_DIRECT", directFlag, _countof(directFlag)) && directFlag[0] == L'1';
+		bool directInput = true, directUndo = true, directRedo = true;
+		if (directTested) {
+			stage = "direct-nbsp-input";
+			MSHTML::IHTMLTxtRangePtr direct(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+			direct->moveToElementText(paragraph()); direct->collapse(VARIANT_TRUE); direct->move(L"character", 8); direct->select(); pump();
+			const HWND directFocus = ::GetFocus();
+			if (!directFocus || (directFocus != m_doc->m_body.m_hWnd && !::IsChild(m_doc->m_body.m_hWnd, directFocus))) CheckError(E_FAIL);
+			::SendMessageW(directFocus, WM_CHAR, L'\u00a0', 1); pump();
+			const CString inserted = state();
+			CString expectedInserted(second);
+			const int expectedReplacements = expectedInserted.Replace(L"word2", CString(L"w") + configuredMarker + L"ord2");
+			directInput = expectedReplacements == 1 && inserted == expectedInserted &&
+				text() == secondText.Left(8) + configuredMarker + secondText.Mid(8);
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump(); directUndo = state() == second;
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_REDO, 0); pump(); directRedo = state() == inserted;
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump(); directUndo = directUndo && state() == second;
+		}
 		// A space typed over a selection must follow the ordinary editor route,
 		// not the special handling for a collapsed caret after a space.
 		stage = "selection-input";
@@ -282,13 +301,14 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 			static_cast<LPCSTR>(codepoints(undo1Text)), static_cast<LPCSTR>(codepoints(undo2Text)),
 			static_cast<LPCSTR>(codepoints(redo1Text)), static_cast<LPCSTR>(codepoints(redo2Text)), caretPosition, priorHistory, selectionInput, selectionUndo, thirdTested, thirdInput, thirdUndo, thirdRedo); report += history;
 		report += toggleReport;
+		CStringA directReport; directReport.Format("direct-tested=%d\ndirect-input=%d\ndirect-undo=%d\ndirect-redo=%d\n", directTested, directInput, directUndo, directRedo); report += directReport;
 		CStringA sourceReport; sourceReport.Format("source-tested=%d\nsource-roundtrip=%d\nsource-link-valid=%d\n", sourceTested, sourceRoundTrip, sourceLinkValid); report += sourceReport;
 		if (sourceTested && !sourceRoundTrip) {
 			CStringA details; details.Format("source-before-utf16=%s\nsource-after-utf16=%s\n", static_cast<LPCSTR>(codepoints(second)), static_cast<LPCSTR>(codepoints(sourceAfter))); report += details;
 		}
 		CStringA repeatReport; repeatReport.Format("repeat-applied=%d\nrepeat-inserted=%d\nrepeat-preserved=%d\nrepeat-roundtrip=%d\n", repeatTested, repeatInserted, repeatPreserved, repeatRoundTrip); report += repeatReport;
 		CStringA counts; counts.Format("undo-count-after-undo=%d\nredo-count-after-undo=%d\n", afterUndo, afterUndoRedo); report += counts;
-		passed = focusInside && caretPosition && sourceRoundTrip && sourceLinkValid && priorHistory && restored && replay && selectionInput && selectionUndo &&
+		passed = focusInside && caretPosition && sourceRoundTrip && sourceLinkValid && priorHistory && restored && replay && directInput && directUndo && directRedo && selectionInput && selectionUndo &&
 			(!thirdTested || (thirdInput && thirdUndo && thirdRedo)) && changedDisplay && unchangedOther && toggleRestored && toggleUndoRedo && repeatInserted && repeatPreserved && repeatRoundTrip && validText && saved && reopened && xmlMatches;
 	}
 	catch (const _com_error& error) { CStringA line; line.Format("stage=%s\nerror=0x%08lX\n", stage, static_cast<unsigned long>(error.Error())); report += line; }
