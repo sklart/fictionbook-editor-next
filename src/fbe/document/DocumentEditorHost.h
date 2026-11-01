@@ -39,7 +39,7 @@ public:
 	IDispatchPtr CreateHelper();
 	HRESULT SetExternalDispatch(IDispatchPtr dispatch);
 
-	void Normalize(MSHTML::IHTMLDOMNodePtr node);
+	void Normalize(MSHTML::IHTMLDOMNodePtr node, bool normalizeLinks = true);
 	HRESULT AddImportedBinary(const BYTE* data, size_t size, const CString& logicalFileName,
 		const CString& mimeType);
 	MSHTML::IHTMLElementPtr SelectionStructCon();

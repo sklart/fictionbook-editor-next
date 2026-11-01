@@ -33,7 +33,7 @@ CString DocumentEditorHost::NavURL() const { return m_editor.NavURL(); }
 IDispatchPtr DocumentEditorHost::CreateHelper() { return m_editor.CreateHelper(); }
 HRESULT DocumentEditorHost::SetExternalDispatch(IDispatchPtr dispatch) { return m_editor.SetExternalDispatch(dispatch); }
 
-void DocumentEditorHost::Normalize(MSHTML::IHTMLDOMNodePtr node) { m_editor.Normalize(node); }
+void DocumentEditorHost::Normalize(MSHTML::IHTMLDOMNodePtr node, bool normalizeLinks) { m_editor.Normalize(node, normalizeLinks); }
 HRESULT DocumentEditorHost::AddImportedBinary(const BYTE* data, size_t size, const CString& logicalFileName,
 	const CString& mimeType) { return m_editor.AddImportedBinary(data, size, logicalFileName, mimeType); }
 MSHTML::IHTMLElementPtr DocumentEditorHost::SelectionStructCon() { return m_editor.SelectionStructCon(); }

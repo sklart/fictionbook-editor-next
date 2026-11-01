@@ -2694,7 +2694,7 @@ void CFBEView::NormalizeScope(MSHTML::IHTMLDOMNodePtr dom)
 	CheckError(NormalizeWithoutUndo(dom));
 }
 
-HRESULT CFBEView::NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom)
+HRESULT CFBEView::NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom, bool normalizeLinks)
 {
   try {
     MSHTML::IHTMLElementPtr scope(dom);
@@ -2751,7 +2751,8 @@ HRESULT CFBEView::NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom)
       RemoveUnk(copyScope, Document()); CheckError(FbeUndo::Inject(L"normalize-remove"));
       MergeEqualHTMLElements(copyScope, Document()); CheckError(FbeUndo::Inject(L"normalize-merge"));
       FbeVisualDom::NormalizeStructure(Document(), copyScope); CheckError(FbeUndo::Inject(L"normalize-structure"));
-      FixupLinks(copyScope); CheckError(FbeUndo::Inject(L"normalize-links"));
+      if (normalizeLinks) FixupLinks(copyScope);
+      CheckError(FbeUndo::Inject(L"normalize-links"));
       auto before = CapturePasteChildren(original, nullptr, false), after = CapturePasteChildren(copy, nullptr, false);
       CComObject<PasteDomUndoUnit>* raw = nullptr;
       CheckError(CComObject<PasteDomUndoUnit>::CreateInstance(&raw));
@@ -2771,7 +2772,7 @@ HRESULT CFBEView::NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom)
           try {
                 FbeDom::MarkupUndoUnitScope native(m_mk_srv, L"Normalize DOM");
             RemoveUnk(transform, Document()); MergeEqualHTMLElements(transform, Document());
-            FbeVisualDom::NormalizeStructure(Document(), transform); FixupLinks(transform);
+            FbeVisualDom::NormalizeStructure(Document(), transform); if (normalizeLinks) FixupLinks(transform);
             CheckError(FbeUndo::Inject(L"normalize-live"));
                 native.Close();
             CheckError(FbeUndo::Inject(L"normalize-close"));
@@ -2813,9 +2814,9 @@ HRESULT CFBEView::NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom)
   } catch (const _com_error& error) { return error.Error(); }
   catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
 }
-void CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom)
+void CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom, bool normalizeLinks)
 {
-	CheckError(NormalizeWithoutUndo(dom));
+	CheckError(NormalizeWithoutUndo(dom, normalizeLinks));
 }
 
 LRESULT CFBEView::OnUndo(WORD, WORD, HWND, BOOL&)

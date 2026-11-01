@@ -67,7 +67,7 @@ public:
                const std::vector<unsigned char>& rawBytes);
   //bool	  LoadFromDOM(HWND hWndParent,MSXML2::IXMLDOMDocument2 *dom);
   bool	  LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSource = NULL);
-  MSXML2::IXMLDOMDocument2Ptr CreateDOM(const CString& encoding, bool compactBinaries = true);
+  MSXML2::IXMLDOMDocument2Ptr CreateDOM(const CString& encoding, bool compactBinaries = true, bool normalizeLiveLinks = true);
   MSXML2::IXMLDOMDocument2Ptr CreateDOMForAnalysis(CString* errorMessage = NULL);
   MSXML2::IXMLDOMDocument2Ptr CreateScriptingSnapshot(const CString& encoding, CString& errorMessage);
   bool IsSerializationUnsafe() const { return m_serialization_unsafe; }
@@ -222,7 +222,8 @@ private:
                    bool reportAccessDenied=true);
   MSXML2::IXMLDOMDocument2Ptr CreateDOMImp(const CString& encoding, bool compactBinaries,
                                            FictionBookFileType targetType, bool normalizeVisualDom = true,
-                                           bool analysisSnapshot = false, CString* analysisError = NULL);
+                                           bool analysisSnapshot = false, CString* analysisError = NULL,
+                                           bool normalizeLiveLinks = true);
 
   // loading support
 	void	  TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr doc,

@@ -104,11 +104,19 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		wchar_t sourceFlag[2] = {};
 		const bool sourceTested = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_SOURCE", sourceFlag, _countof(sourceFlag)) && sourceFlag[0] == L'1';
 		bool sourceRoundTrip = true;
+		bool sourceLinkValid = true;
 		CString sourceAfter;
 		if (sourceTested) {
 			stage = "source-roundtrip";
 			ShowView(SOURCE); pump();
 			const bool sourceActive = IsSourceActive();
+			if (sourceActive && second.Find(L"<A ") >= 0) {
+				const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
+				if (length < 0 || length > INT_MAX - 1) CheckError(E_FAIL);
+				std::vector<char> source(static_cast<size_t>(length) + 1);
+				m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(source.data()));
+				sourceLinkValid = strstr(source.data(), "l:href=\"#nbsp-probe\"") != NULL;
+			}
 			ShowView(BODY); pump();
 			document = m_doc->m_body.Document();
 			prior = MSHTML::IHTMLDocument3Ptr(document)->getElementById(L"nbsp-prior");
@@ -274,13 +282,13 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 			static_cast<LPCSTR>(codepoints(undo1Text)), static_cast<LPCSTR>(codepoints(undo2Text)),
 			static_cast<LPCSTR>(codepoints(redo1Text)), static_cast<LPCSTR>(codepoints(redo2Text)), caretPosition, priorHistory, selectionInput, selectionUndo, thirdTested, thirdInput, thirdUndo, thirdRedo); report += history;
 		report += toggleReport;
-		CStringA sourceReport; sourceReport.Format("source-tested=%d\nsource-roundtrip=%d\n", sourceTested, sourceRoundTrip); report += sourceReport;
+		CStringA sourceReport; sourceReport.Format("source-tested=%d\nsource-roundtrip=%d\nsource-link-valid=%d\n", sourceTested, sourceRoundTrip, sourceLinkValid); report += sourceReport;
 		if (sourceTested && !sourceRoundTrip) {
 			CStringA details; details.Format("source-before-utf16=%s\nsource-after-utf16=%s\n", static_cast<LPCSTR>(codepoints(second)), static_cast<LPCSTR>(codepoints(sourceAfter))); report += details;
 		}
 		CStringA repeatReport; repeatReport.Format("repeat-applied=%d\nrepeat-inserted=%d\nrepeat-preserved=%d\nrepeat-roundtrip=%d\n", repeatTested, repeatInserted, repeatPreserved, repeatRoundTrip); report += repeatReport;
 		CStringA counts; counts.Format("undo-count-after-undo=%d\nredo-count-after-undo=%d\n", afterUndo, afterUndoRedo); report += counts;
-		passed = focusInside && caretPosition && sourceRoundTrip && priorHistory && restored && replay && selectionInput && selectionUndo &&
+		passed = focusInside && caretPosition && sourceRoundTrip && sourceLinkValid && priorHistory && restored && replay && selectionInput && selectionUndo &&
 			(!thirdTested || (thirdInput && thirdUndo && thirdRedo)) && changedDisplay && unchangedOther && toggleRestored && toggleUndoRedo && repeatInserted && repeatPreserved && repeatRoundTrip && validText && saved && reopened && xmlMatches;
 	}
 	catch (const _com_error& error) { CStringA line; line.Format("stage=%s\nerror=0x%08lX\n", stage, static_cast<unsigned long>(error.Error())); report += line; }

@@ -966,7 +966,7 @@ public:
   MSHTML::IHTMLElementPtr   SelectionsVAlign();
   MSHTML::IHTMLElementPtr   SelectionsVAlignB(_bstr_t& valign);
 
-  void			    Normalize(MSHTML::IHTMLDOMNodePtr dom);
+  void			    Normalize(MSHTML::IHTMLDOMNodePtr dom, bool normalizeLinks = true);
   MSHTML::IHTMLDOMNodePtr ResolveNormalizationScope();
   void			    NormalizeScope(MSHTML::IHTMLDOMNodePtr dom);
   MSHTML::IHTMLDOMNodePtr   GetChangedNode();
@@ -1057,7 +1057,7 @@ public:
 
 private:
 	void ResetPendingDrop();
-	HRESULT NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom);
+	HRESULT NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom, bool normalizeLinks = true);
 	// added by SeNS
 	int m_startMatch, m_endMatch;
 };

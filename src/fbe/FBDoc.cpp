@@ -1957,7 +1957,7 @@ HRESULT Doc::ValidateForScripting(BSTR sourceOverride, bool& valid, int& line, i
 
 MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool compactBinaries,
 	FictionBookFileType targetType, bool normalizeVisualDom, bool analysisSnapshot,
-	CString* analysisError) {
+	CString* analysisError, bool normalizeLiveLinks) {
 	// GetBinaries converts every editor base64data value to bytes. MSXML formats
 	// the resulting bin.base64 text, so saving removes only that whitespace in
 	// place instead of converting every binary through MSXML a second time.
@@ -2072,7 +2072,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   if (normalizeVisualDom) {
     _EDMnr.CleanUpAll();
     markTableSerializationPhase(L"normalize-start");
-    m_editor.Normalize(m_editor.Document()->body);
+    m_editor.Normalize(m_editor.Document()->body, normalizeLiveLinks);
     markTableSerializationPhase(L"normalize-complete");
   }
 
@@ -2224,7 +2224,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   return ndoc;
 }
 
-MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compactBinaries)
+MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compactBinaries, bool normalizeLiveLinks)
 {
     FBE_BINARY_DIAG_SCOPE(Serialization);
 	CString trace;
@@ -2234,7 +2234,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compact
 	try
 	{
 		MSXML2::IXMLDOMDocument2Ptr result(CreateDOMImp(encoding, compactBinaries,
-			m_file_type));
+			m_file_type, true, false, NULL, normalizeLiveLinks));
 		StartupTrace::Event(L"xml", L"X190", L"CreateDOM completed");
 		return result;
 	}

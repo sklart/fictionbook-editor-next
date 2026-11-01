@@ -38,7 +38,10 @@ SourceTransitionResult SourceDocumentTransfer::PrepareSerializedSource(FB::Doc& 
 {
 	if(document.DocRelChanged() || !(bool)cachedXml)
 	{
-		MSXML2::IXMLDOMDocument2Ptr candidate = document.CreateDOM(encoding);
+		// FB2 serialization already writes local anchor URLs as fragments. Avoid
+		// rewriting live href attributes just to display Source: that extra edit
+		// becomes an Undo step in front of the user's preceding text operation.
+		MSXML2::IXMLDOMDocument2Ptr candidate = document.CreateDOM(encoding, true, false);
 		if(!(bool)candidate) return SourceTransitionResult::Failed;
 		cachedXml = candidate;
 		FBE_C41_POINT("source_cached_dom_created", 0);
