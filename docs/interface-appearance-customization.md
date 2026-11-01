@@ -953,3 +953,10 @@ test-appearance-dpi-locales-runtime.ps1 для ru-RU/en-US/de-DE. Контрол
 полным релизным PASS: Split/Undo, системный буфер и COM-регистрация остаются
 отдельными ограничениями. Наведение и полное попиксельное сравнение всех
 состояний значков текущими тестами не покрыты.
+Дополнительная сверка лицензий: источники Catppuccin, Solarized, Everforest,
+Rosé Pine для VS Code и Dracula публикуются на условиях MIT. Уведомления об
+авторах и текст разрешения находятся в THIRD-PARTY-LICENSES/Theme-palettes-MIT.txt;
+packaging/package-manifest.json требует включать этот файл в пакет. Тест
+реестра дополнен проверкой пяти авторских уведомлений, пяти источников,
+текста разрешения и обязательной записи упаковки; test-third-party-notices.ps1
+прошёл. Источники указаны в THIRD-PARTY-NOTICES.md.

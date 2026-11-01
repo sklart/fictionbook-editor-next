@@ -1,11 +1,11 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param()
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 
-foreach ($path in @("LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\README.md", "THIRD-PARTY-LICENSES\WTL-MS-PL.txt", "THIRD-PARTY-LICENSES\Dictionary-de_DE.txt", "THIRD-PARTY-LICENSES\Dictionary-en_US.txt", "THIRD-PARTY-LICENSES\Dictionary-ru_RU.txt", "THIRD-PARTY-LICENSES\Dictionary-uk_UA.txt")) {
+foreach ($path in @("LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\README.md", "THIRD-PARTY-LICENSES\WTL-MS-PL.txt", "THIRD-PARTY-LICENSES\Theme-palettes-MIT.txt", "THIRD-PARTY-LICENSES\Dictionary-de_DE.txt", "THIRD-PARTY-LICENSES\Dictionary-en_US.txt", "THIRD-PARTY-LICENSES\Dictionary-ru_RU.txt", "THIRD-PARTY-LICENSES\Dictionary-uk_UA.txt")) {
     if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $path) -PathType Leaf)) {
         throw "Отсутствует обязательный лицензионный документ: $path"
     }
@@ -18,9 +18,21 @@ foreach ($component in @("Scintilla | 5.6.7", "Lexilla | 5.5.4", "PCRE2 | 10.49"
     }
 }
 
+$themeLicense = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'THIRD-PARTY-LICENSES\Theme-palettes-MIT.txt')
+foreach ($author in @('Catppuccin', 'Ethan Schoonover', 'sainnhe', 'Rosé Pine', 'Dracula Theme')) {
+    if (-not $themeLicense.Contains($author)) {
+        throw "Missing theme palette attribution: $author"
+    }
+}
+foreach ($project in @('Catppuccin', 'Solarized', 'Everforest', 'Rosé Pine', 'Dracula')) {
+    if (-not $notices.Contains($project)) { throw "Missing theme palette notice: $project" }
+}
+foreach ($required in @('Permission is hereby granted', 'The above copyright notice and this permission notice', 'THE SOFTWARE IS PROVIDED')) {
+    if (-not $themeLicense.Contains($required)) { throw "Theme palette MIT permission text is incomplete: $required" }
+}
 $stageCoreScript = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "tools\build\stage-core.ps1")
 $manifest = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "packaging\package-manifest.json")
-foreach ($path in @("THIRD-PARTY-NOTICES.md", "Dictionary-de_DE.txt", "Dictionary-en_US.txt", "Dictionary-ru_RU.txt", "Dictionary-uk_UA.txt")) {
+foreach ($path in @("THIRD-PARTY-NOTICES.md", "Theme-palettes-MIT.txt", "Dictionary-de_DE.txt", "Dictionary-en_US.txt", "Dictionary-ru_RU.txt", "Dictionary-uk_UA.txt")) {
     if (-not $stageCoreScript.Contains($path) -and -not $manifest.Contains($path)) {
         throw "Core contract не требует лицензионный файл: $path"
     }
