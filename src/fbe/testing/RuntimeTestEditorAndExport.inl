@@ -2987,7 +2987,7 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			}
 		};
 		struct ToolbarButtonPixels { int command; RECT bounds; std::vector<COLORREF> pixels; };
-		auto captureEnabledButtons = [&]() {
+		auto captureButtons = [&](bool enabled) {
 			std::vector<ToolbarButtonPixels> buttons;
 			::RedrawWindow(m_CmdToolbar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
 			HDC dc = ::GetDC(m_CmdToolbar); RECT client = {}; ::GetClientRect(m_CmdToolbar, &client);
@@ -2997,7 +2997,7 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 				TBBUTTON button = {}; RECT bounds = {};
 				if(!::SendMessageW(m_CmdToolbar, TB_GETBUTTON, index, reinterpret_cast<LPARAM>(&button)) ||
 					!::SendMessageW(m_CmdToolbar, TB_GETITEMRECT, index, reinterpret_cast<LPARAM>(&bounds)) ||
-					(button.fsStyle & BTNS_SEP) || !(button.fsState & TBSTATE_ENABLED) || (button.fsState & TBSTATE_HIDDEN) ||
+					(button.fsStyle & BTNS_SEP) || ((button.fsState & TBSTATE_ENABLED) != 0) != enabled || (button.fsState & TBSTATE_HIDDEN) ||
 					button.iBitmap < 0 || bounds.left < 0 || bounds.top < 0 || bounds.right > client.right || bounds.bottom > client.bottom)
 					continue;
 				ToolbarButtonPixels image = {}; image.command = button.idCommand; image.bounds = bounds;
@@ -3009,10 +3009,10 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		};
 		sampleStatus("latte", ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CATPPUCCIN_LATTE));
 		const COLORREF latteBackground = ThemeManager::ControlColor();
-		const auto latteButtons = captureEnabledButtons();
+		const auto latteButtons = captureButtons(true);
 		sampleStatus("sepia", ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SEPIA));
 		const COLORREF sepiaBackground = ThemeManager::ControlColor();
-		const auto sepiaButtons = captureEnabledButtons();
+		const auto sepiaButtons = captureButtons(true);
 		int iconButtonsChecked = 0, iconButtonsPassed = 0;
 		for(const auto& first : latteButtons) {
 			const auto match = std::find_if(sepiaButtons.begin(), sepiaButtons.end(), [&](const ToolbarButtonPixels& second) {
@@ -3032,6 +3032,43 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		surfaceDetails.AppendFormat("icon_buttons_checked\t%d\r\nicon_buttons_passed\t%d\r\n", iconButtonsChecked, iconButtonsPassed);
 		surfacePixels = iconButtonsChecked >= 10 && static_cast<size_t>(iconButtonsChecked) == latteButtons.size() &&
 			latteButtons.size() == sepiaButtons.size() && iconButtonsChecked == iconButtonsPassed && surfacePixels;
+		// Disable several known visible buttons temporarily and compare their
+		// real disabled rendering on both palette surfaces, then restore state.
+		std::vector<std::pair<int, LRESULT>> savedButtonStates;
+		for(size_t index = 0; index < latteButtons.size() && index < 3; ++index) {
+			const int command = latteButtons[index].command;
+			const LRESULT state = ::SendMessageW(m_CmdToolbar, TB_GETSTATE, command, 0);
+			savedButtonStates.emplace_back(command, state);
+			::SendMessageW(m_CmdToolbar, TB_ENABLEBUTTON, command, MAKELONG(FALSE, 0));
+		}
+		ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CATPPUCCIN_LATTE);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const auto disabledLatte = captureButtons(false);
+		ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SEPIA);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const auto disabledSepia = captureButtons(false);
+		int disabledChecked = 0, disabledPassed = 0;
+		for(const auto& first : disabledLatte) {
+			const auto match = std::find_if(disabledSepia.begin(), disabledSepia.end(), [&](const ToolbarButtonPixels& second) {
+				return second.command == first.command && ::EqualRect(&second.bounds, &first.bounds);
+			});
+			if(match == disabledSepia.end() || first.pixels.empty() || first.pixels.size() != match->pixels.size()) continue;
+			++disabledChecked; int artwork = 0, background = 0; bool valid = true;
+			for(size_t pixel = 0; pixel < first.pixels.size(); ++pixel) {
+				const COLORREF a = first.pixels[pixel], b = match->pixels[pixel];
+				valid = valid && a != CLR_INVALID && b != CLR_INVALID;
+				if(a != latteBackground && b != sepiaBackground) ++artwork;
+				if(a == latteBackground && b == sepiaBackground) ++background;
+			}
+			if(valid && artwork >= 2 && background >= 2) ++disabledPassed;
+			else surfaceDetails.AppendFormat("disabled_icon_failure_%d\t%d/%d\r\n", first.command, artwork, background);
+		}
+		for(const auto& state : savedButtonStates)
+			::SendMessageW(m_CmdToolbar, TB_SETSTATE, state.first, MAKELONG(state.second, 0));
+		surfaceDetails.AppendFormat("disabled_icons_checked\t%d\r\ndisabled_icons_passed\t%d\r\n", disabledChecked, disabledPassed);
+		surfacePixels = savedButtonStates.size() == 3 && disabledChecked >= 3 &&
+			static_cast<size_t>(disabledChecked) == disabledLatte.size() && disabledLatte.size() == disabledSepia.size() &&
+			disabledChecked == disabledPassed && surfacePixels;
 		sampleStatus("solarized", ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SOLARIZED_LIGHT));
 		ThemeManager::CustomPalette surfaceProbe; surfaceProbe.id = L"surface-probe"; surfaceProbe.name = L"Surface probe";
 		surfaceProbe.base = ThemeManager::CustomPaletteBase::Light;
