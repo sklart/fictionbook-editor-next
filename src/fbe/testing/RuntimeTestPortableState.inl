@@ -847,6 +847,73 @@ void CMainFrame::RunPortableStateTestScenario()
             passed ? "named-palette-core=1\nresult=pass\n" : "named-palette-core=0\nresult=fail\n");
         PostMessage(WM_CLOSE); return;
     }
+    if(IsFbeTestScenario(L"interface-legacy-platform-runtime")) {
+        const bool unsupported = !ThemeManager::IsDarkModeSupported();
+        ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+        const bool noDark = !ThemeManager::IsDark() && !ThemeManager::SetNamedPalette(INTERFACE_PALETTE_GRAPHITE);
+        const bool latte = ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CATPPUCCIN_LATTE) && ThemeManager::UsesPaletteSurface();
+        const bool sepia = ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SEPIA) && ThemeManager::UsesPaletteSurface();
+        ThemeManager::CustomPalette palette; palette.id = L"legacy-light-probe"; palette.name = L"Legacy light probe";
+        palette.base = ThemeManager::CustomPaletteBase::Light; palette.present[THEME_COLOR_CONTROL] = true;
+        palette.colors[THEME_COLOR_CONTROL] = RGB(177, 213, 231);
+        const bool custom = ThemeManager::SetCustomPalette(palette) && ThemeManager::UsesPaletteSurface() && !ThemeManager::IsDark();
+        ShowWindow(SW_MAXIMIZE); UpdateLayout(); ::SetForegroundWindow(m_hWnd);
+        ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+        ::RedrawWindow(m_hWndStatusBar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+        RECT rect = {}; ::GetClientRect(m_hWndStatusBar, &rect); HDC dc = ::GetDC(m_hWndStatusBar);
+        const COLORREF pixel = dc && rect.bottom > 4 ? ::GetPixel(dc, 2, rect.bottom / 2) : CLR_INVALID;
+        if(dc) ::ReleaseDC(m_hWndStatusBar, dc);
+        const bool actualPixel = pixel == palette.colors[THEME_COLOR_CONTROL];
+        CSettingsGeneralPage page;
+        bool policy = page.Create(m_hWnd) != NULL;
+        if(policy) {
+            const HWND choices = page.GetDlgItem(IDC_INTERFACE_THEME); BOOL handled = FALSE;
+            ::SendMessageW(choices, CB_SETCURSEL, INTERFACE_THEME_DARK, 0);
+            page.OnInterfaceThemeChanged(CBN_SELCHANGE, IDC_INTERFACE_THEME, choices, handled);
+            policy = ::SendMessageW(choices, CB_GETCURSEL, 0, 0) != INTERFACE_THEME_DARK &&
+                ::IsWindowVisible(page.GetDlgItem(IDC_INTERFACE_THEME_NOTE)) == FALSE &&
+                (::GetWindowLongPtrW(page.GetDlgItem(IDC_INTERFACE_THEME_NOTE), GWL_STYLE) & WS_VISIBLE) != 0;
+            page.CancelChanges(); page.DestroyWindow();
+        }
+        const bool passed = unsupported && noDark && latte && sepia && custom && actualPixel && policy;
+        CStringA report; report.Format("unsupported=%d\nno-dark=%d\nlatte=%d\nsepia=%d\ncustom=%d\nactual-pixel=%d\npolicy=%d\nresult=%s\n",
+            unsupported, noDark, latte, sepia, custom, actualPixel, policy, passed ? "pass" : "fail");
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
+        PostMessage(WM_CLOSE); return;
+    }
+    if(IsFbeTestScenario(L"interface-high-contrast-runtime")) {
+        ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_FORCE_HIGH_CONTRAST", L"0");
+        ThemeManager::RefreshSystemTheme();
+        ThemeManager::CustomPalette palette;
+        palette.id = L"contrast-probe"; palette.name = L"Contrast probe"; palette.base = ThemeManager::CustomPaletteBase::Light;
+        palette.present[THEME_COLOR_WINDOW] = palette.present[THEME_COLOR_CONTROL] = palette.present[THEME_COLOR_TEXT] = true;
+        palette.colors[THEME_COLOR_WINDOW] = RGB(31, 67, 101); palette.colors[THEME_COLOR_CONTROL] = RGB(91, 137, 181);
+        palette.colors[THEME_COLOR_TEXT] = RGB(227, 233, 239);
+        const bool applied = ThemeManager::SetCustomPalette(palette);
+        ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+        const bool customBefore = applied && ThemeManager::UsesPaletteSurface() &&
+            ThemeManager::Color(THEME_COLOR_WINDOW) == palette.colors[THEME_COLOR_WINDOW];
+        ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_FORCE_HIGH_CONTRAST", L"1");
+        const bool entered = ThemeManager::RefreshSystemTheme() && ThemeManager::IsHighContrast() && !ThemeManager::UsesPaletteSurface();
+        const bool systemColors = ThemeManager::WindowColor() == ::GetSysColor(COLOR_WINDOW) &&
+            ThemeManager::ControlColor() == ::GetSysColor(COLOR_BTNFACE) && ThemeManager::TextColor() == ::GetSysColor(COLOR_WINDOWTEXT) &&
+            ThemeManager::SelectionBackgroundColor() == ::GetSysColor(COLOR_HIGHLIGHT) &&
+            ThemeManager::SelectionTextColor() == ::GetSysColor(COLOR_HIGHLIGHTTEXT);
+        const HWND tree = m_document_tree.m_tree.m_tree;
+        const bool treeSystem = ::IsWindow(tree) && static_cast<COLORREF>(::SendMessageW(tree, TVM_GETBKCOLOR, 0, 0)) == ::GetSysColor(COLOR_WINDOW) &&
+            static_cast<COLORREF>(::SendMessageW(tree, TVM_GETTEXTCOLOR, 0, 0)) == ::GetSysColor(COLOR_WINDOWTEXT);
+        const bool retained = ThemeManager::IsCustomPaletteActive();
+        ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_FORCE_HIGH_CONTRAST", L"0");
+        const bool exited = ThemeManager::RefreshSystemTheme() && !ThemeManager::IsHighContrast() && ThemeManager::UsesPaletteSurface();
+        const bool restored = ThemeManager::IsCustomPaletteActive() && ThemeManager::WindowColor() == palette.colors[THEME_COLOR_WINDOW] &&
+            ThemeManager::ControlColor() == palette.colors[THEME_COLOR_CONTROL] && ThemeManager::TextColor() == palette.colors[THEME_COLOR_TEXT];
+        ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_FORCE_HIGH_CONTRAST", NULL); ThemeManager::RefreshSystemTheme();
+        const bool passed = customBefore && entered && systemColors && treeSystem && retained && exited && restored;
+        CStringA report; report.Format("custom-before=%d\nentered=%d\nsystem-colors=%d\ntree-system=%d\nretained=%d\nexited=%d\nrestored=%d\nresult=%s\n",
+            customBefore, entered, systemColors, treeSystem, retained, exited, restored, passed ? "pass" : "fail");
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
+        PostMessage(WM_CLOSE); return;
+    }
     if(IsFbeTestScenario(L"interface-theme-policy-runtime")) {
         wchar_t mouseFlag[2] = {};
         const bool checkVisibleTooltip = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_THEME_MOUSE", mouseFlag, _countof(mouseFlag)) && mouseFlag[0] == L'1';

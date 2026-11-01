@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "testing/RuntimeTestScenarioMode.h"
 #include "ThemeManager.h"
 #include "InterfacePopularPalettes.h"
 #include "RuntimeLocalization.h"
@@ -60,6 +61,9 @@ bool UpdateSystemPalette()
 
 DWORD WindowsBuildNumber()
 {
+	// A test-only legacy platform probe keeps all dark-mode API paths disabled.
+	static const bool legacyProbe = RuntimeTests::IsScenario(L"interface-legacy-platform-runtime");
+	if(legacyProbe) return 0;
 	static const DWORD build = []() -> DWORD
 	{
 		HMODULE ntdll = ::GetModuleHandleW(L"ntdll.dll");
@@ -214,6 +218,13 @@ public:
 
 bool IsHighContrastEnabled()
 {
+	// Test only: exercise palette transitions without changing the user's Windows theme.
+	static const bool controlled = RuntimeTests::IsScenario(L"interface-high-contrast-runtime");
+	if(controlled) {
+		wchar_t forced[2] = {};
+		if(::GetEnvironmentVariableW(L"FBE_NEXT_TEST_FORCE_HIGH_CONTRAST", forced, _countof(forced)) == 1 &&
+			(forced[0] == L'0' || forced[0] == L'1')) return forced[0] == L'1';
+	}
 	HIGHCONTRAST highContrast = {}; highContrast.cbSize = sizeof(highContrast);
 	return ::SystemParametersInfo(SPI_GETHIGHCONTRAST, sizeof(highContrast), &highContrast, 0) &&
 		(highContrast.dwFlags & HCF_HIGHCONTRASTON) != 0;
