@@ -1183,10 +1183,13 @@ void CMainFrame::RunPortableStateTestScenario()
         ToolbarFactory::RebuildFailurePoint() = ToolbarFactory::RebuildFailure::None;
         passed = rejected && m_CmdToolbar.GetImageList() == previous && passed;
         struct RejectToolbarMetric {
-            UINT message; bool triggered;
+            UINT message; bool triggered; int skip = 0;
             static LRESULT CALLBACK Proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam, UINT_PTR, DWORD_PTR data) {
                 auto& probe = *reinterpret_cast<RejectToolbarMetric*>(data);
-                if(message == probe.message && !probe.triggered) { probe.triggered = true; return FALSE; }
+                if(message == probe.message && !probe.triggered) {
+                    if(probe.skip > 0) --probe.skip;
+                    else { probe.triggered = true; return FALSE; }
+                }
                 return ::DefSubclassProc(window, message, wparam, lparam);
             }
         };
@@ -1227,12 +1230,29 @@ void CMainFrame::RunPortableStateTestScenario()
                 width == beforeWidth && height == beforeHeight && m_CmdToolbar.SendMessage(TB_GETBUTTONSIZE) == beforeButton && layoutMatches && metricRollback;
         }
         passed = metricRollback && passed;
+        bool scriptMetricRollback = true;
+        for(int stage = 0; stage < 3; ++stage) {
+            const UINT message = stage == 0 ? TB_SETBITMAPSIZE : TB_SETBUTTONSIZE;
+            _Settings.SetScriptIconSize(16);
+            if(!RebuildScriptToolbarImages(m_ScriptsToolbar, m_scriptsToolbarImages, actualDpi)) { scriptMetricRollback = false; break; }
+            const HIMAGELIST beforeImages = m_ScriptsToolbar.GetImageList();
+            const LRESULT beforeButton = m_ScriptsToolbar.SendMessage(TB_GETBUTTONSIZE);
+            RejectToolbarMetric probe{message, false, stage == 2 ? 1 : 0};
+            const bool subclassed = ::SetWindowSubclass(m_ScriptsToolbar, RejectToolbarMetric::Proc, 0x534d4554, reinterpret_cast<DWORD_PTR>(&probe)) != FALSE;
+            _Settings.SetScriptIconSize(32);
+            const bool failed = subclassed && !RebuildScriptToolbarImages(m_ScriptsToolbar, m_scriptsToolbarImages, actualDpi);
+            if(subclassed) ::RemoveWindowSubclass(m_ScriptsToolbar, RejectToolbarMetric::Proc, 0x534d4554);
+            scriptMetricRollback = failed && probe.triggered && m_ScriptsToolbar.GetImageList() == beforeImages &&
+                m_scriptsToolbarImages == beforeImages && m_ScriptsToolbar.SendMessage(TB_GETBUTTONSIZE) == beforeButton && scriptMetricRollback;
+        }
+        _Settings.SetScriptIconSize(16);
+        passed = RebuildScriptToolbarImages(m_ScriptsToolbar, m_scriptsToolbarImages, actualDpi) && scriptMetricRollback && passed;
         _Settings.SetMainToolbarIconSize(-1);
         passed = passed && _Settings.GetMainToolbarIconSize() == 24;
         _Settings.SetMainToolbarIconSize(32);
         _Settings.SetScriptIconSize(20);
         _Settings.Save();
-		CStringA report; report.Format("interface-language=%lu\nmain-toolbar-metric-rollback=%d\nmain-toolbar-setting-write=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), metricRollback, passed, passed ? "pass" : "fail");
+		CStringA report; report.Format("interface-language=%lu\nmain-toolbar-metric-rollback=%d\nscript-toolbar-metric-rollback=%d\nmain-toolbar-setting-write=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), metricRollback, scriptMetricRollback, passed, passed ? "pass" : "fail");
 		WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
         PostMessage(WM_CLOSE); return;
     }

@@ -4732,7 +4732,8 @@ bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
 bool CMainFrame::RebuildScriptToolbarImages(HWND window, HIMAGELIST& ownedImages, UINT dpi)
 {
 	if(!::IsWindow(window)) return false;
-	CImageList replacement;
+	struct PreparedImages { CImageList images; ~PreparedImages() { if(images) images.Destroy(); } } prepared;
+	CImageList& replacement = prepared.images;
 	if(!ToolbarFactory::CreateCommandToolbarImages(replacement, IDR_SCRIPTS, dpi, _Settings.GetScriptIconSize())) return false;
 	const int imageSize = UiMetrics::ScaleForDpi(_Settings.GetScriptIconSize(), dpi);
 	std::vector<std::pair<UINT, int> > imageIndices;
@@ -4745,16 +4746,62 @@ bool CMainFrame::RebuildScriptToolbarImages(HWND window, HIMAGELIST& ownedImages
 		imageIndices.push_back(std::make_pair(ID_SCRIPT_BASE + script.commandId, image));
 	}
 	CToolBarCtrl toolbar = window;
-	const HIMAGELIST nextImages = replacement.Detach();
-	const HIMAGELIST previousImages = toolbar.SetImageList(nextImages);
-	if(previousImages != ownedImages)
-	{
-		toolbar.SetImageList(previousImages);
-		::ImageList_Destroy(nextImages);
-		return false;
+	const HIMAGELIST nextImages = replacement, previousImages = toolbar.GetImageList();
+	if(previousImages != ownedImages || !previousImages) return false;
+	int oldWidth = 0, oldHeight = 0;
+	if(!::ImageList_GetIconSize(previousImages, &oldWidth, &oldHeight)) return false;
+	const LRESULT oldButtonSize = toolbar.SendMessage(TB_GETBUTTONSIZE);
+	std::vector<TBBUTTON> oldButtons;
+	for(int index = 0; index < toolbar.GetButtonCount(); ++index) {
+		TBBUTTON button = {};
+		if(!toolbar.GetButton(index, &button)) return false;
+		oldButtons.push_back(button);
 	}
-	ownedImages = nextImages;
-	if(previousImages != NULL) ::ImageList_Destroy(previousImages);
+	auto rollback = [&]() {
+		toolbar.SetImageList(NULL);
+		const bool detached = toolbar.GetImageList() == NULL;
+		bool restored = detached;
+		if(detached) {
+			restored = (toolbar.SendMessage(TB_SETBITMAPSIZE, 0, MAKELPARAM(oldWidth, oldHeight)) != FALSE) && restored;
+			restored = (toolbar.SendMessage(TB_SETBUTTONSIZE, 0, oldButtonSize) != FALSE) && restored;
+		}
+		toolbar.SetImageList(previousImages);
+		restored = (toolbar.GetImageList() == previousImages) && restored;
+		for(const auto& button : oldButtons) if(!(button.fsStyle & BTNS_SEP)) {
+			TBBUTTONINFO info = {}; info.cbSize = sizeof(info); info.dwMask = TBIF_IMAGE | TBIF_STATE;
+			info.iImage = button.iBitmap; info.fsState = button.fsState;
+			restored = (toolbar.SetButtonInfo(button.idCommand, &info) != FALSE) && restored;
+		}
+		if(toolbar.GetImageList() == nextImages) {
+			::ImageList_Destroy(ownedImages);
+			ownedImages = replacement.Detach();
+		}
+		if(!restored) {
+			::SetPropW(window, L"FBE.Toolbar.ImageRestoreFailed", reinterpret_cast<HANDLE>(1));
+			StartupTrace::Error(L"toolbar", L"TB236", L"script toolbar rollback rejected; bound image list retained safely");
+		}
+		toolbar.Invalidate();
+		return false;
+	};
+	toolbar.SetImageList(NULL);
+	if(toolbar.GetImageList() != NULL) return rollback();
+	if(!ToolbarFactory::ApplyCommandToolbarMetrics(window, IDR_SCRIPTS, dpi, _Settings.GetScriptIconSize())) return rollback();
+	toolbar.SetImageList(nextImages);
+	if(toolbar.GetImageList() != nextImages) return rollback();
+	ToolbarFactory::SetDialogFontForToolbarRow(window);
+	// Attaching the image list can change the control's calculated button
+	// dimensions. Reapply the requested size after attachment, without calling
+	// TB_SETBITMAPSIZE while the list is owned by the toolbar.
+	const int buttonSize = UiMetrics::ScaleForDpi(_Settings.GetScriptIconSize() + 7, dpi ? dpi : 96);
+	if(!toolbar.SendMessage(TB_SETBUTTONSIZE, 0, MAKELPARAM(buttonSize, buttonSize))) return rollback();
+	ToolbarFactory::AutoSizeToolbar(window);
+	for(const auto& image : imageIndices) {
+		TBBUTTONINFO button = {}; button.cbSize = sizeof(button); button.dwMask = TBIF_IMAGE; button.iImage = image.second;
+		if(toolbar.CommandToIndex(image.first) >= 0 && !toolbar.SetButtonInfo(image.first, &button)) return rollback();
+	}
+	ownedImages = replacement.Detach();
+	::ImageList_Destroy(previousImages);
+	::RemovePropW(window, L"FBE.Toolbar.ImageRestoreFailed");
 	TBBUTTONS catalog;
 	if(GetAvailableButtons(window, catalog))
 	{
@@ -4763,13 +4810,6 @@ bool CMainFrame::RebuildScriptToolbarImages(HWND window, HIMAGELIST& ownedImages
 				if(catalog[button].idCommand == static_cast<int>(imageIndices[script].first)) catalog[button].iBitmap = imageIndices[script].second;
 		m_aButtons.SetAt(window, catalog);
 	}
-	for(size_t script = 0; script < imageIndices.size(); ++script)
-	{
-		TBBUTTONINFO button = {}; button.cbSize = sizeof(button); button.dwMask = TBIF_IMAGE; button.iImage = imageIndices[script].second;
-		toolbar.SetButtonInfo(imageIndices[script].first, &button);
-	}
-	ToolbarFactory::SetDialogFontForToolbarRow(window);
-	ToolbarFactory::ApplyCommandToolbarMetrics(window, IDR_SCRIPTS, dpi, _Settings.GetScriptIconSize());
 	return true;
 }
 
