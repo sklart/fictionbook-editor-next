@@ -87,6 +87,7 @@ static VOID CALLBACK CheckPaletteColorDialogForTest(HWND owner, UINT, UINT_PTR, 
 
 static bool g_paletteWarningInitialState = false;
 static bool g_paletteWarningReasonFound = false;
+static bool g_paletteWarningMessageFound = false;
 static unsigned g_paletteWarningTicks = 0;
 
 static BOOL CALLBACK FindPaletteWarningText(HWND child, LPARAM)
@@ -96,6 +97,7 @@ static BOOL CALLBACK FindPaletteWarningText(HWND child, LPARAM)
         std::vector<wchar_t> text(static_cast<size_t>(length) + 1);
         ::GetWindowTextW(child, text.data(), length + 1);
         if(CString(text.data()).Find(_Settings.GetInterfacePaletteError()) >= 0) g_paletteWarningReasonFound = true;
+        if(CString(text.data()).Find(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.startup_error", L"The selected interface palette could not be loaded. The classic palette is being used.")) >= 0) g_paletteWarningMessageFound = true;
     }
     return TRUE;
 }
@@ -107,7 +109,7 @@ static BOOL CALLBACK FindPaletteWarningWindow(HWND window, LPARAM context)
     ::GetClassNameW(window, className, _countof(className));
     if(::GetWindow(window, GW_OWNER) != owner || wcscmp(className, L"#32770") != 0) return TRUE;
     ::EnumChildWindows(window, FindPaletteWarningText, 0);
-    if(!g_paletteWarningReasonFound) return TRUE;
+    if(!g_paletteWarningReasonFound || !g_paletteWarningMessageFound) return TRUE;
     ::PostMessageW(window, WM_COMMAND, IDOK, 0);
     return FALSE;
 }
@@ -115,11 +117,11 @@ static BOOL CALLBACK FindPaletteWarningWindow(HWND window, LPARAM context)
 static VOID CALLBACK CheckPaletteWarningForTest(HWND owner, UINT, UINT_PTR timer, DWORD)
 {
     ::EnumThreadWindows(::GetCurrentThreadId(), FindPaletteWarningWindow, reinterpret_cast<LPARAM>(owner));
-    if(!g_paletteWarningReasonFound && ++g_paletteWarningTicks < 100) return;
+    if((!g_paletteWarningReasonFound || !g_paletteWarningMessageFound) && ++g_paletteWarningTicks < 100) return;
     ::KillTimer(owner, timer);
-    const bool passed = g_paletteWarningInitialState && g_paletteWarningReasonFound;
-    WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
-        passed ? "custom-palette-settings-missing=1\npalette-warning=1\nresult=pass\n" : "custom-palette-settings-missing=0\npalette-warning=0\nresult=fail\n");
+    const bool passed = g_paletteWarningInitialState && g_paletteWarningReasonFound && g_paletteWarningMessageFound;
+    CStringA report; report.Format("interface-language=%lu\ncustom-palette-settings-missing=%d\npalette-warning=%d\npalette-warning-localized=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), g_paletteWarningInitialState, g_paletteWarningReasonFound, g_paletteWarningMessageFound, passed ? "pass" : "fail");
+    WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
     ::PostMessageW(owner, WM_CLOSE, 0, 0);
 }
 
