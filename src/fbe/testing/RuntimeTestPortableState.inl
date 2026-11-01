@@ -179,6 +179,7 @@ void CMainFrame::RunPortableStateTestScenario()
         CSettingsGeneralPage page;
         const bool corePassed = passed;
         bool focused = false, opened = true, downPreview = true, escaped = true, entered = true, returned = true, copiedOk = true;
+        bool modePreview = false, modeEscape = false, modeEnter = false;
         int droppedAfterDown = -1, selectedAfterEscape = -1, themeAfterEscape = -1, selectedAfterEnter = -1, themeAfterEnter = -1;
         const bool pageCreated = page.Create(m_hWnd) != NULL;
         passed = pageCreated && passed;
@@ -187,6 +188,30 @@ void CMainFrame::RunPortableStateTestScenario()
             ::ShowWindow(m_hWnd, SW_SHOWNORMAL);
             ::ShowWindow(page.m_hWnd, SW_SHOW);
             ::SetForegroundWindow(m_hWnd);
+            const HWND modeChoice = page.GetDlgItem(IDC_INTERFACE_THEME);
+            ::SetFocus(modeChoice);
+            ::SendMessageW(modeChoice, CB_SHOWDROPDOWN, TRUE, 0);
+            ::SendMessageW(modeChoice, WM_KEYDOWN, VK_DOWN, 0);
+            ::SendMessageW(modeChoice, WM_KEYUP, VK_DOWN, 0);
+            modePreview = ::SendMessageW(modeChoice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT &&
+                ThemeManager::GetSelectedTheme() == INTERFACE_THEME_LIGHT &&
+                ::SendMessageW(modeChoice, CB_GETDROPPEDSTATE, 0, 0) && _Settings.GetInterfaceTheme() == mode;
+            ::SendMessageW(modeChoice, WM_KEYDOWN, VK_ESCAPE, 0);
+            ::SendMessageW(modeChoice, WM_KEYUP, VK_ESCAPE, 0);
+            modeEscape = ::SendMessageW(modeChoice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_AUTOMATIC &&
+                ThemeManager::GetSelectedTheme() == INTERFACE_THEME_AUTOMATIC;
+            ::SendMessageW(modeChoice, CB_SHOWDROPDOWN, TRUE, 0);
+            ::SendMessageW(modeChoice, WM_KEYDOWN, VK_DOWN, 0);
+            ::SendMessageW(modeChoice, WM_KEYUP, VK_DOWN, 0);
+            ::SendMessageW(modeChoice, WM_KEYDOWN, VK_RETURN, 0);
+            ::SendMessageW(modeChoice, WM_KEYUP, VK_RETURN, 0);
+            modeEnter = ::SendMessageW(modeChoice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT &&
+                ThemeManager::GetSelectedTheme() == INTERFACE_THEME_LIGHT && _Settings.GetInterfaceTheme() == mode &&
+                !::SendMessageW(modeChoice, CB_GETDROPPEDSTATE, 0, 0);
+            passed = modePreview && modeEscape && modeEnter && passed;
+            // Restore a known state even on failure so later checks remain diagnostic.
+            ::SendMessageW(modeChoice, CB_SETCURSEL, INTERFACE_THEME_AUTOMATIC, 0);
+            ::SendMessageW(page.m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_THEME, CBN_SELCHANGE), reinterpret_cast<LPARAM>(modeChoice));
             ::SetFocus(choice);
             focused = ::GetFocus() == choice && ::IsWindowVisible(choice);
             passed = focused && ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CATPPUCCIN_LATTE && passed;
@@ -239,7 +264,7 @@ void CMainFrame::RunPortableStateTestScenario()
             _Settings.GetInterfaceTheme() == mode && passed;
         _Settings.Save();
         CStringA report;
-        report.Format("core=%d\npage=%d\nfocused=%d\nopened=%d\ndown=%d\ndropped-after-down=%d\nescape=%d\nselection-after-escape=%d\ntheme-after-escape=%d\nenter=%d\nselection-after-enter=%d\ntheme-after-enter=%d\nreturn=%d\ncopy=%d\nresult=%s\n", corePassed, pageCreated, focused, opened, downPreview, droppedAfterDown, escaped, selectedAfterEscape, themeAfterEscape, entered, selectedAfterEnter, themeAfterEnter, returned, copiedOk, passed ? "pass" : "fail");
+        report.Format("core=%d\npage=%d\nmode-preview=%d\nmode-escape=%d\nmode-enter=%d\nfocused=%d\nopened=%d\ndown=%d\ndropped-after-down=%d\nescape=%d\nselection-after-escape=%d\ntheme-after-escape=%d\nenter=%d\nselection-after-enter=%d\ntheme-after-enter=%d\nreturn=%d\ncopy=%d\nresult=%s\n", corePassed, pageCreated, modePreview, modeEscape, modeEnter, focused, opened, downPreview, droppedAfterDown, escaped, selectedAfterEscape, themeAfterEscape, entered, selectedAfterEnter, themeAfterEnter, returned, copiedOk, passed ? "pass" : "fail");
         WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
         PostMessage(WM_CLOSE); return;
     }
@@ -738,6 +763,12 @@ void CMainFrame::RunPortableStateTestScenario()
             ::GetWindowRect(page.GetDlgItem(IDC_SETTINGS_OTHER_OPEN_GROUP), &openGroup);
             ::GetWindowRect(page.GetDlgItem(IDC_OPTIONS_INTERFACE_GROUP), &interfaceGroup);
             passed = passed && notice.bottom <= openGroup.top && notice.right <= interfaceGroup.right && notice.left >= interfaceGroup.left;
+            page.SendMessage(WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_THEME, CBN_DROPDOWN), reinterpret_cast<LPARAM>(choice));
+            ::SendMessage(choice, CB_SETCURSEL, INTERFACE_THEME_AUTOMATIC, 0);
+            page.SendMessage(WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_THEME, CBN_SELCHANGE), reinterpret_cast<LPARAM>(choice));
+            page.SendMessage(WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_THEME, CBN_SELENDCANCEL), reinterpret_cast<LPARAM>(choice));
+            passed = passed && ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT &&
+                ThemeManager::GetSelectedTheme() == INTERFACE_THEME_LIGHT;
             page.Commit(); passed = passed && _Settings.GetInterfaceTheme() == INTERFACE_THEME_DARK;
             page.CancelChanges(); passed = passed && _Settings.GetInterfaceTheme() == INTERFACE_THEME_DARK;
             ::SendMessage(choice, CB_SETCURSEL, INTERFACE_THEME_AUTOMATIC, 0);

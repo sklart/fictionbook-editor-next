@@ -540,14 +540,45 @@ LRESULT CSettingsGeneralPage::OnInterfaceThemeChanged(WORD notification, WORD, H
 	if(!m_darkThemeSupported && selection == INTERFACE_THEME_DARK) { m_interfaceTheme.SetCurSel(m_acceptedThemeIndex); return 0; }
 	if(selection >= INTERFACE_THEME_AUTOMATIC && selection <= INTERFACE_THEME_DARK)
 	{
+		const bool keepDropdown = !m_cancellingThemeDropdown && notification != CBN_SELENDOK && m_interfaceTheme.GetDroppedState() != FALSE;
+		const bool hadFocus = ::GetFocus() == m_interfaceTheme.m_hWnd;
 		m_acceptedThemeIndex = selection;
-		if(notification == CBN_SELENDOK || !m_interfaceTheme.GetDroppedState()) {
+		if(!m_cancellingThemeDropdown && (notification == CBN_SELENDOK || !m_interfaceTheme.GetDroppedState())) {
 			m_preserveUnavailableDark = false;
 			UpdateThemeNotice();
 		}
 		ThemeManager::SetSelectedTheme(static_cast<InterfaceTheme>(selection));
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		if(keepDropdown && !m_interfaceTheme.GetDroppedState()) {
+			if(hadFocus) m_interfaceTheme.SetFocus();
+			m_reopeningThemeDropdown = true;
+			m_interfaceTheme.ShowDropDown(TRUE);
+			m_reopeningThemeDropdown = false;
+		}
 	}
+	return 0;
+}
+
+LRESULT CSettingsGeneralPage::OnThemeDropdown(WORD, WORD, HWND, BOOL&)
+{
+	if(!m_reopeningThemeDropdown) {
+		m_themeDropdownStart = m_acceptedThemeIndex;
+		m_themePreservedBeforeDropdown = m_preserveUnavailableDark;
+	}
+	return 0;
+}
+
+LRESULT CSettingsGeneralPage::OnThemeDropdownCancel(WORD, WORD, HWND, BOOL&)
+{
+	if(m_themeDropdownStart < INTERFACE_THEME_AUTOMATIC || m_themeDropdownStart > INTERFACE_THEME_DARK) return 0;
+	m_interfaceTheme.SetCurSel(m_themeDropdownStart);
+	m_preserveUnavailableDark = m_themePreservedBeforeDropdown;
+	BOOL handled = FALSE;
+	m_cancellingThemeDropdown = true;
+	OnInterfaceThemeChanged(CBN_SELCHANGE, IDC_INTERFACE_THEME, m_interfaceTheme, handled);
+	m_cancellingThemeDropdown = false;
+	m_themeDropdownStart = -1;
+	UpdateThemeNotice();
 	return 0;
 }
 

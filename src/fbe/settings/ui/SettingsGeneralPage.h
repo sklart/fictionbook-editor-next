@@ -31,6 +31,10 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	bool m_originalCustomPaletteActive = false;
 	int m_acceptedPaletteIndex = 0;
 	int m_acceptedThemeIndex = INTERFACE_THEME_AUTOMATIC;
+	int m_themeDropdownStart = -1;
+	bool m_themePreservedBeforeDropdown = false;
+	bool m_reopeningThemeDropdown = false;
+	bool m_cancellingThemeDropdown = false;
 	int m_paletteDropdownStart = -1;
 	bool m_paletteChangedBeforeDropdown = false;
 	bool m_reopeningPaletteDropdown = false;
@@ -60,6 +64,8 @@ public:
 		COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_SELCHANGE, OnInterfaceThemeChanged)
 		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_SELENDOK, OnInterfaceThemeChanged)
+		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_DROPDOWN, OnThemeDropdown)
+		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_SELENDCANCEL, OnThemeDropdownCancel)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_SELCHANGE, OnInterfacePaletteChanged)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_DROPDOWN, OnPaletteDropdown)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_SELENDCANCEL, OnPaletteDropdownCancel)
@@ -79,6 +85,8 @@ public:
 	LRESULT OnClickedOK(WORD, WORD, HWND, BOOL&);
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnInterfaceThemeChanged(WORD, WORD, HWND, BOOL&);
+	LRESULT OnThemeDropdown(WORD, WORD, HWND, BOOL&);
+	LRESULT OnThemeDropdownCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnPaletteDropdown(WORD, WORD, HWND, BOOL&);
 	LRESULT OnPaletteDropdownCancel(WORD, WORD, HWND, BOOL&);
