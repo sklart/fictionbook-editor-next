@@ -135,7 +135,7 @@ LRESULT CALLBACK ContextAttributeBarThemeProc(HWND window, UINT message, WPARAM 
 		return ::DefSubclassProc(window, message, wParam, lParam);
 	}
 	if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);
-	if(message == WM_ERASEBKGND && ThemeManager::IsDark())
+	if(message == WM_ERASEBKGND && ThemeManager::UsesPaletteSurface())
 	{
 		RECT client = {}; ::GetClientRect(window, &client);
 		::FillRect(reinterpret_cast<HDC>(wParam), &client, ThemeManager::ControlBrush());
@@ -144,7 +144,7 @@ LRESULT CALLBACK ContextAttributeBarThemeProc(HWND window, UINT message, WPARAM 
 	if(message == WM_PAINT)
 	{
 		const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
-		if(ThemeManager::IsDark())
+		if(ThemeManager::UsesPaletteSurface())
 		{
 			RECT client = {}; ::GetClientRect(window, &client);
 			if(client.bottom > client.top)
@@ -165,7 +165,7 @@ LRESULT CALLBACK ContextAttributeBarThemeProc(HWND window, UINT message, WPARAM 
 		HDC dc = reinterpret_cast<HDC>(wParam);
 		HWND control = reinterpret_cast<HWND>(lParam);
 		const bool enabled = IsContextControlEnabled(control);
-		if(ThemeManager::IsDark())
+		if(ThemeManager::UsesPaletteSurface())
 		{
 			::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
 			::SetBkColor(dc, ThemeManager::ControlColor());
@@ -193,7 +193,7 @@ LRESULT CALLBACK ContextAttributeBoxThemeProc(HWND window, UINT message, WPARAM 
 		if(control != window && ::GetParent(control) != window) return ::DefSubclassProc(window, message, wParam, lParam);
 		HDC dc = reinterpret_cast<HDC>(wParam);
 		const bool enabled = ::IsWindowEnabled(window) != FALSE;
-		if(ThemeManager::IsDark())
+		if(ThemeManager::UsesPaletteSurface())
 		{
 			::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
 			::SetBkColor(dc, ThemeManager::ControlColor());
@@ -204,7 +204,7 @@ LRESULT CALLBACK ContextAttributeBoxThemeProc(HWND window, UINT message, WPARAM 
 		return reinterpret_cast<LRESULT>(::GetSysColorBrush(enabled ? COLOR_WINDOW : COLOR_BTNFACE));
 	}
 	const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
-	if(message == WM_PAINT && ThemeManager::IsDark())
+	if(message == WM_PAINT && ThemeManager::UsesPaletteSurface())
 	{
 		// CLIENTEDGE is deliberately removed in Dark mode; paint an in-client
 		// one-pixel border so the band's outer geometry and DPI layout remain intact.
@@ -264,7 +264,7 @@ void ApplyContextAttributeBoxTheme(HWND box)
 	std::map<HWND, LONG_PTR>::iterator base = g_contextAttributeBoxBaseExStyles.find(box);
 	if(base == g_contextAttributeBoxBaseExStyles.end())
 		base = g_contextAttributeBoxBaseExStyles.insert(std::make_pair(box, ::GetWindowLongPtr(box, GWL_EXSTYLE))).first;
-	const bool dark = ThemeManager::IsDark() && !IsHighContrastEnabled();
+	const bool dark = ThemeManager::UsesPaletteSurface();
 	::SetWindowLongPtr(box, GWL_EXSTYLE, dark ? base->second & ~static_cast<LONG_PTR>(WS_EX_CLIENTEDGE) : base->second);
 	::SetWindowSubclass(box, ContextAttributeBoxThemeProc, kContextAttributeBoxThemeSubclassId, 0);
 	::SetWindowPos(box, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
@@ -282,7 +282,7 @@ void ApplyContextBarTheme(HWND bar)
 	::SendMessage(bar, TB_SETCOLORSCHEME, 0, reinterpret_cast<LPARAM>(&colours));
 	// The toolbar itself owns the background behind captions and controls.  The
 	// containing rebar band is themed separately by the main frame.
-	::SendMessage(bar, CCM_SETBKCOLOR, 0, ThemeManager::IsDark() ? ThemeManager::ControlColor() : ::GetSysColor(COLOR_WINDOW));
+	::SendMessage(bar, CCM_SETBKCOLOR, 0, ThemeManager::UsesPaletteSurface() ? ThemeManager::ControlColor() : ::GetSysColor(COLOR_WINDOW));
 	::RedrawWindow(bar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
 }
 }

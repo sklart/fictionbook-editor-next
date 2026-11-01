@@ -133,12 +133,12 @@ if($settingsEditorPage -notlike '*OnBackgroundSelectionChanged*RefreshAutomaticC
 if($settingsEditorPage -notlike '*OnThemeChanged*' -or $settingsEditorPageHeader -notlike '*MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)*') {
 	throw 'Automatic BODY colour buttons do not refresh while Settings previews a live theme change.'
 }
-foreach($required in @('COLOR_WINDOWTEXT', 'COLOR_WINDOW', 'COLOR_BTNFACE', 'COLOR_GRAYTEXT', 'IsContextControlEnabled', 'ThemeManager::IsDark()', 'IsHighContrastEnabled()')) {
+foreach($required in @('COLOR_WINDOWTEXT', 'COLOR_WINDOW', 'COLOR_BTNFACE', 'COLOR_GRAYTEXT', 'IsContextControlEnabled', 'ThemeManager::UsesPaletteSurface()', 'IsHighContrastEnabled()')) {
     if($contextAttributeBars -notlike "*$required*") { throw "Context attribute light/dark control palette is missing $required." }
 }
 if($contextAttributeControls -like '*GetSysColorBrush(COLOR_BTNFACE)*') { throw 'Context captions must not paint a separate COLOR_BTNFACE rectangle.' }
 if($contextAttributeControls -notlike '*GetSysColorBrush(COLOR_WINDOW)*' -or $contextAttributeControls -notlike '*ThemeManager::IsHighContrast()*') { throw 'Context captions must inherit toolbar background and leave High Contrast native.' }
-if($contextAttributeControls -notlike '*if(dark)*ThemeManager::ControlBrush()*') { throw 'Dark captions must retain their palette brush.' }
+if($contextAttributeControls -notlike '*if(themed)*ThemeManager::ControlBrush()*') { throw 'Dark captions must retain their palette brush.' }
 if($contextAttributeBars -notlike '*if(message == WM_CTLCOLORSTATIC || message == WM_CTLCOLORBTN)*') { throw 'Toolbar theme proc must leave editable ComboBox palette messages to the ComboBox.' }
 if($contextAttributeBars -notlike '*if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);*') { throw 'Context ComboBox theme must leave High Contrast native.' }
 foreach($required in @('IsEditableComboInput', 'ES_READONLY', 'CBS_DROPDOWNLIST', 'input ? ThemeManager::WindowColor()', 'input ? ThemeManager::WindowBrush()', 'ThemeManager::ControlColor()', 'ThemeManager::ControlBrush()')) {

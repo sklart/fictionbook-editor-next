@@ -106,6 +106,8 @@ namespace ThemeManager
 	bool IsCustomPaletteActive();
 	bool GetCustomPalette(CustomPalette& palette);
 	bool IsDark();
+	// FBE-owned surfaces use palette colors independently of native dark mode.
+	bool UsesPaletteSurface();
 	bool IsDarkModeSupported();
 	bool IsHighContrast();
 	COLORREF Color(ThemeColorRole role);

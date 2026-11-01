@@ -25,11 +25,33 @@ try {
         $parts = $line -split "`t"
         if ($parts.Count -eq 2) { $values[$parts[0]] = $parts[1] }
     }
+    $palettes = @('latte', 'sepia', 'solarized', 'custom')
+    if($values.dark_supported -eq '1') { $palettes += 'dark' }
+    foreach ($palette in $palettes) {
+        Write-Host "Status pixel ${palette}: actual=$($values["pixel_${palette}_actual"]) expected=$($values["pixel_${palette}_expected"])"
+        Write-Host "Toolbar ${palette}: matching pixels=$($values["toolbar_${palette}_matches"])/$($values["toolbar_${palette}_observed"])"
+        Write-Host "Rebar ${palette}: border pixels=$($values["rebar_${palette}_matches"])/$($values["rebar_${palette}_observed"])"
+        $borderMatches = [int]$values["rebar_${palette}_matches"]
+        $borderObserved = [int]$values["rebar_${palette}_observed"]
+        if([int]$values["rebar_${palette}_matches"] -ne [int]$values["rebar_${palette}_observed"]) {
+            foreach($key in @($values.Keys | Where-Object { $_ -like "rebar_${palette}_band*" } | Sort-Object)) { Write-Host "  ${key}: $($values[$key])" }
+        }
+        if($borderObserved -lt 3 -or $borderMatches -ne $borderObserved) { throw "Rebar border mismatch ($palette): $borderMatches/$borderObserved" }
+        foreach($surface in @('scripts', 'context')) {
+            $surfaceMatches = [int]$values["${surface}_${palette}_matches"]
+            $surfaceObserved = [int]$values["${surface}_${palette}_observed"]
+            Write-Host "${surface} ${palette}: matching pixels=$surfaceMatches/$surfaceObserved"
+            if($surfaceObserved -lt 10 -or $surfaceMatches -lt 0.95 * $surfaceObserved) { throw "Surface pixel mismatch ($surface/$palette): $surfaceMatches/$surfaceObserved" }
+        }
+        $matchesCount = [int]$values["toolbar_${palette}_matches"]
+        $observedCount = [int]$values["toolbar_${palette}_observed"]
+        if($observedCount -lt 10 -or $matchesCount -lt 0.95 * $observedCount) { throw "Toolbar surface pixel mismatch ($palette): $matchesCount/$observedCount" }
+    }
     if ([long]$values.initial_applied -le 0 -or $values.repeated_delta -ne '0' -or
         $values.new_child_auto -ne '1' -or $values.hidden_preserved -ne '1' -or
         $values.order_preserved -ne '1' -or $values.deleted_band_cleared -ne '1' -or
         $values.reused_band_fresh -ne '1' -or
-        $values.refresh_noop -ne '1') {
+        $values.refresh_noop -ne '1' -or $values.surface_pixels -ne '1' -or $values.classic_restored -ne '1') {
         throw "Theme traversal/state failed: $($values | ConvertTo-Json -Compress)"
     }
     if ([math]::Abs([int]$values.gdi_delta) -gt 30 -or [int]$values.user_delta_second20 -gt 10) {

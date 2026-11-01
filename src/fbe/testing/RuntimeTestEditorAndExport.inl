@@ -2769,6 +2769,10 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		for(int iteration = 0; iteration < 40; ++iteration)
 		{
 			const DWORD beforeSet = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
+			const InterfacePalette palette = iteration % 3 == 0 ? INTERFACE_PALETTE_CATPPUCCIN_LATTE :
+				iteration % 3 == 1 ? INTERFACE_PALETTE_SEPIA :
+				ThemeManager::IsDarkModeSupported() ? INTERFACE_PALETTE_GRAPHITE : INTERFACE_PALETTE_CLASSIC;
+			ThemeManager::SetNamedPalette(palette);
 			ThemeManager::SetSelectedTheme(iteration % 2 == 0 ? INTERFACE_THEME_LIGHT : INTERFACE_THEME_DARK);
 			const DWORD afterSet = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
 			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
@@ -2779,6 +2783,7 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		}
 		const DWORD gdiAfter = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
 		const DWORD userAfter = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
+		ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CLASSIC);
 		REBARBANDINFO finalBand = {}; finalBand.cbSize = sizeof(finalBand); finalBand.fMask = RBBIM_ID | RBBIM_STYLE;
 		const bool hiddenPreserved = haveBand && m_rebar.GetBandInfo(0, &finalBand) &&
 			finalBand.wID == originalBand.wID && (finalBand.fStyle & RBBS_HIDDEN) != 0;
@@ -2839,6 +2844,120 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			}
 			::DestroyWindow(secondProbe);
 		}
+		// Read actual pixels from the visible status HWND after each palette change.
+		// The point is left of its first text pane and below the one-pixel border.
+		ShowWindow(SW_MAXIMIZE); UpdateLayout();
+		::SetForegroundWindow(m_hWnd);
+		std::vector<wchar_t> artifactDirectory(32768);
+		const DWORD artifactLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_APPEARANCE_ARTIFACT_DIR", artifactDirectory.data(), static_cast<DWORD>(artifactDirectory.size()));
+		const bool captureAppearance = artifactLength && artifactLength < artifactDirectory.size();
+		if(captureAppearance) {
+			DWORD phaseWritten = 0; output.Write("capture-stage-tree\n", 19, &phaseWritten);
+			m_document_tree.ShowWindow(SW_SHOW); m_splitter.SetSinglePaneMode(SPLIT_PANE_NONE);
+			output.Write("capture-stage-mode\n", 19, &phaseWritten);
+			if(!m_document_tree.m_tree.m_tree.IsScriptMode()) m_document_tree.m_tree.ToggleScriptMode();
+			output.Write("capture-stage-catalog\n", 22, &phaseWritten);
+			RefreshNavigationScriptTree(); UpdateLayout();
+			output.Write("capture-stage-ready\n", 20, &phaseWritten);
+		}
+		// Expose the actual context band so its toolbar can be sampled too.
+		const HWND linkBand = m_contextAttributeBars.LinksBar();
+		for(int band = 0; band < static_cast<int>(m_rebar.GetBandCount()); ++band) {
+			REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD;
+			if(m_rebar.GetBandInfo(band, &info) && info.hwndChild == linkBand) m_rebar.ShowBand(band, TRUE);
+		}
+		UpdateLayout();
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
+		ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CLASSIC);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		auto classicPixel = [&](HWND window, int x, int y) {
+			::RedrawWindow(window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+			HDC dc = ::GetDC(window); const COLORREF value = dc ? ::GetPixel(dc, x, y) : CLR_INVALID;
+			if(dc) ::ReleaseDC(window, dc); return value;
+		};
+		RECT classicStatusRect = {}, classicToolbarRect = {};
+		::GetClientRect(m_hWndStatusBar, &classicStatusRect); ::GetClientRect(m_CmdToolbar, &classicToolbarRect);
+		const COLORREF classicStatus = classicPixel(m_hWndStatusBar, 2, classicStatusRect.bottom / 2);
+		const COLORREF classicToolbar = classicPixel(m_CmdToolbar, 5, classicToolbarRect.bottom - 3);
+		bool surfacePixels = true; CStringA surfaceDetails;
+		auto sampleStatus = [&](const char* name, bool applied) {
+			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+			::RedrawWindow(m_hWndStatusBar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+			RECT rect = {}; ::GetClientRect(m_hWndStatusBar, &rect);
+			HDC dc = ::GetDC(m_hWndStatusBar);
+			const COLORREF pixel = dc && rect.bottom > 4 ? ::GetPixel(dc, 2, rect.bottom / 2) : CLR_INVALID;
+			if(dc) ::ReleaseDC(m_hWndStatusBar, dc);
+			const COLORREF expected = ThemeManager::ControlColor();
+			const bool ok = applied && pixel == expected;
+			surfaceDetails.AppendFormat("pixel_%s\t%d\r\npixel_%s_actual\t%lu\r\npixel_%s_expected\t%lu\r\n", name, ok ? 1 : 0, name, static_cast<unsigned long>(pixel), name, static_cast<unsigned long>(expected));
+			surfacePixels = surfacePixels && ok;
+			if(captureAppearance && (!strcmp(name, "latte") || !strcmp(name, "sepia"))) {
+				::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+				RECT bounds = {}; ::GetWindowRect(m_hWnd, &bounds); CImage screenshot;
+				const bool created = screenshot.Create(bounds.right - bounds.left, bounds.bottom - bounds.top, 32) != FALSE;
+				HDC target = created ? screenshot.GetDC() : NULL;
+				const bool captured = target && ::PrintWindow(m_hWnd, target, 0) != FALSE;
+				if(target) screenshot.ReleaseDC();
+				const CString path = CString(artifactDirectory.data()) + (!strcmp(name, "latte") ? L"\\main-latte.bmp" : L"\\main-sepia.bmp");
+				const bool valid = captured && ::IsWindowVisible(m_document_tree) && m_document_tree.m_tree.m_tree.IsScriptMode() && SUCCEEDED(screenshot.Save(path));
+				surfaceDetails.AppendFormat("screenshot_%s\t%d\r\n", name, valid ? 1 : 0);
+				surfacePixels = surfacePixels && valid;
+			}
+			// Sample the lower interior of the actual command toolbar; unlike the
+			// status probe this deliberately avoids button icons and captions.
+			HWND toolbar = m_CmdToolbar; RECT toolbarRect = {};
+			::RedrawWindow(toolbar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+			::GetClientRect(toolbar, &toolbarRect); HDC toolbarDc = ::GetDC(toolbar);
+			int matches = 0, observed = 0;
+			if(toolbarDc && toolbarRect.bottom > 5) for(int x = 3; x < toolbarRect.right - 3; x += 4) {
+				const COLORREF value = ::GetPixel(toolbarDc, x, toolbarRect.bottom - 3);
+				if(value != CLR_INVALID) { ++observed; if(value == expected) ++matches; }
+			}
+			if(toolbarDc) ::ReleaseDC(toolbar, toolbarDc);
+			surfaceDetails.AppendFormat("toolbar_%s_matches\t%d\r\ntoolbar_%s_observed\t%d\r\n", name, matches, name, observed);
+			::RedrawWindow(m_rebar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+			HDC rebarDc = ::GetWindowDC(m_rebar); int borders = 0, borderMatches = 0;
+			if(rebarDc) {
+				for(int band = 0; band < static_cast<int>(m_rebar.GetBandCount()); ++band) {
+					RECT bandRect = {}; REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_STYLE;
+					if(!m_rebar.GetBandInfo(band, &info) || (info.fStyle & RBBS_HIDDEN) || !m_rebar.GetRect(band, &bandRect) || bandRect.right <= bandRect.left) continue;
+					const COLORREF border = ::GetPixel(rebarDc, bandRect.left + (bandRect.right - bandRect.left) / 2, bandRect.bottom - 1);
+					surfaceDetails.AppendFormat("rebar_%s_band%d\t%lu/%lu:%ld,%ld,%ld,%ld\r\n", name, band,
+						static_cast<unsigned long>(border), static_cast<unsigned long>(ThemeManager::BorderColor()),
+						bandRect.left, bandRect.top, bandRect.right, bandRect.bottom);
+					if(border != CLR_INVALID) { ++borders; if(border == ThemeManager::BorderColor()) ++borderMatches; }
+				}
+				::ReleaseDC(m_rebar, rebarDc);
+			}
+			surfaceDetails.AppendFormat("rebar_%s_matches\t%d\r\nrebar_%s_observed\t%d\r\n", name, borderMatches, name, borders);
+			for(const auto& target : {std::make_pair("scripts", m_ScriptsToolbar.m_hWnd), std::make_pair("context", linkBand)}) {
+				RECT targetRect = {}; const bool visible = target.second && ::IsWindowVisible(target.second);
+				if(visible) ::RedrawWindow(target.second, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+				if(visible) ::GetClientRect(target.second, &targetRect);
+				HDC targetDc = visible ? ::GetDC(target.second) : NULL; int hits = 0, samples = 0;
+				if(targetDc && targetRect.bottom > 5) for(int x = 3; x < targetRect.right - 3; x += 4) {
+					const COLORREF value = ::GetPixel(targetDc, x, targetRect.bottom - 3);
+					if(value != CLR_INVALID) { ++samples; if(value == expected) ++hits; }
+				}
+				if(targetDc) ::ReleaseDC(target.second, targetDc);
+				surfaceDetails.AppendFormat("%s_%s_matches\t%d\r\n%s_%s_observed\t%d\r\n", target.first, name, hits, target.first, name, samples);
+			}
+		};
+		sampleStatus("latte", ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CATPPUCCIN_LATTE));
+		sampleStatus("sepia", ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SEPIA));
+		sampleStatus("solarized", ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SOLARIZED_LIGHT));
+		ThemeManager::CustomPalette surfaceProbe; surfaceProbe.id = L"surface-probe"; surfaceProbe.name = L"Surface probe";
+		surfaceProbe.base = ThemeManager::CustomPaletteBase::Light;
+		surfaceProbe.present[THEME_COLOR_CONTROL] = true; surfaceProbe.colors[THEME_COLOR_CONTROL] = RGB(177, 213, 231);
+		sampleStatus("custom", ThemeManager::SetCustomPalette(surfaceProbe));
+		if(ThemeManager::IsDarkModeSupported()) sampleStatus("dark", ThemeManager::SetNamedPalette(INTERFACE_PALETTE_GRAPHITE));
+		ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CLASSIC);
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const bool classicRestored = classicStatus != CLR_INVALID && classicToolbar != CLR_INVALID &&
+			classicStatus == classicPixel(m_hWndStatusBar, 2, classicStatusRect.bottom / 2) &&
+			classicToolbar == classicPixel(m_CmdToolbar, 5, classicToolbarRect.bottom - 3);
+		surfaceDetails.AppendFormat("classic_restored\t%d\r\ndark_supported\t%d\r\n", classicRestored ? 1 : 0, ThemeManager::IsDarkModeSupported() ? 1 : 0);
 		const ThemeManager::ApplyDiagnostics beforeRefresh = ThemeManager::GetApplyDiagnostics();
 		const bool refreshChanged = ThemeManager::RefreshSystemTheme();
 		const ThemeManager::ApplyDiagnostics afterRefresh = ThemeManager::GetApplyDiagnostics();
@@ -2854,6 +2973,7 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			afterRefresh.themeMessageUser, afterRefresh.nativePaletteUser,
 			afterRefresh.fbeMessageUser, afterRefresh.redrawUser,
 			!refreshChanged && afterRefresh.applied == beforeRefresh.applied ? 1 : 0);
+		row += surfaceDetails; row.AppendFormat("surface_pixels\t%d\r\n", surfacePixels ? 1 : 0);
 		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}

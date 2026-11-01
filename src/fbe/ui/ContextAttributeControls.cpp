@@ -5,8 +5,8 @@
 void CCustomStatic::DoPaint(CDCHandle dc)
 {
 	RECT rc; GetClientRect(&rc);
-	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
-	if(dark)
+	const bool themed = ThemeManager::UsesPaletteSurface();
+	if(themed)
 		::FillRect(dc, &rc, ThemeManager::ControlBrush());
 	else
 	{
@@ -21,7 +21,7 @@ void CCustomStatic::DoPaint(CDCHandle dc)
 	GetWindowText(&text[0], length + 1);
 	dc.SetBkMode(TRANSPARENT);
 	const bool enabled = m_enabled && ::IsWindowEnabled(m_hWnd) != FALSE;
-	dc.SetTextColor(dark ? (enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor()) :
+	dc.SetTextColor(themed ? (enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor()) :
 		GetSysColor(enabled ? COLOR_BTNTEXT : COLOR_GRAYTEXT));
 	dc.DrawText(&text[0], -1, &rc, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
 	SelectObject(dc, oldFont);

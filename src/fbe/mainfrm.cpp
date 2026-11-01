@@ -238,7 +238,7 @@ LRESULT CALLBACK MainRebarThemeProc(HWND window, UINT message, WPARAM wParam, LP
 	const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
 	if(message == RB_DELETEBAND && result && deletedBandId != 0)
 		g_rebarBaseBandStyles[window].erase(deletedBandId);
-	if(message != WM_PAINT || !ThemeManager::IsDark() || ThemeManager::IsHighContrast()) return result;
+	if(message != WM_PAINT || !ThemeManager::UsesPaletteSurface()) return result;
 	HDC dc = ::GetWindowDC(window);
 	if(dc == NULL) return result;
 	const int count = static_cast<int>(::SendMessage(window, RB_GETBANDCOUNT, 0, 0));
@@ -334,7 +334,7 @@ void ApplyMainRebarTheme(CReBarCtrl& rebar)
 {
 	if(!::IsWindow(rebar)) return;
 	const HWND window = rebar;
-	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
+	const bool dark = ThemeManager::UsesPaletteSurface();
 	ThemeManager::ApplyToWindow(window);
 	::SetWindowSubclass(window, MainRebarThemeProc, kMainRebarThemeSubclassId, 0);
 	const LONG_PTR currentStyle = ::GetWindowLongPtr(window, GWL_STYLE);
@@ -414,7 +414,7 @@ LRESULT CALLBACK StatusBarThemeProc(HWND window, UINT message, WPARAM wParam, LP
 		::RemoveWindowSubclass(window, StatusBarThemeProc, kStatusBarThemeSubclassId);
 		return ::DefSubclassProc(window, message, wParam, lParam);
 	}
-	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
+	const bool dark = ThemeManager::UsesPaletteSurface();
 	if(!dark) return ::DefSubclassProc(window, message, wParam, lParam);
 	if(message == WM_ERASEBKGND) return 1;
 	if(message != WM_PAINT) return ::DefSubclassProc(window, message, wParam, lParam);
@@ -525,7 +525,7 @@ void ApplyMainMenuRebarBandTheme(CReBarCtrl& rebar, HWND menuBar)
 	{
 		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID | RBBIM_CHILD | RBBIM_COLORS | RBBIM_STYLE;
 		if(!rebar.GetBandInfo(band, &info) || info.hwndChild != menuBar) continue;
-		if(ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
+		if(ThemeManager::UsesPaletteSurface())
 		{
 			info.clrBack = ThemeManager::ControlColor();
 			info.clrFore = ThemeManager::TextColor();
@@ -547,7 +547,7 @@ void ApplyContextAttributeRebarBandTheme(CReBarCtrl& rebar, const ContextAttribu
 		for(HWND contextBar : contextBars)
 			if(info.hwndChild == contextBar) { isContextBar = true; break; }
 		if(!isContextBar) continue;
-		if(ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
+		if(ThemeManager::UsesPaletteSurface())
 		{
 			info.clrBack = ThemeManager::ControlColor();
 			info.clrFore = ThemeManager::TextColor();
@@ -610,7 +610,7 @@ LRESULT CALLBACK MainMenuBarWindowThemeProc(HWND window, UINT message, WPARAM wP
 LRESULT CALLBACK MainMenuBarThemeProc(HWND window, UINT message, WPARAM wParam,
 	LPARAM lParam, UINT_PTR, DWORD_PTR reference)
 {
-	if(message != WM_NOTIFY || !ThemeManager::IsDark() || ThemeManager::IsHighContrast())
+	if(message != WM_NOTIFY || !ThemeManager::UsesPaletteSurface())
 		return ::DefSubclassProc(window, message, wParam, lParam);
 
 	LPNMHDR header = reinterpret_cast<LPNMHDR>(lParam);
@@ -623,7 +623,13 @@ LRESULT CALLBACK MainMenuBarThemeProc(HWND window, UINT message, WPARAM wParam,
 	{
 		RECT client = {}; ::GetClientRect(menuBar, &client);
 		::FillRect(draw->nmcd.hdc, &client, ThemeManager::ControlBrush());
-		return CDRF_NOTIFYITEMDRAW;
+		return CDRF_NOTIFYITEMDRAW | CDRF_NOTIFYPOSTPAINT;
+	}
+	if(draw->nmcd.dwDrawStage == CDDS_POSTPAINT)
+	{
+		RECT border = {}; ::GetClientRect(menuBar, &border);
+		if(border.bottom > border.top) { border.top = border.bottom - 1; ::FillRect(draw->nmcd.hdc, &border, ThemeManager::Brush(THEME_COLOR_BORDER)); }
+		return CDRF_DODEFAULT;
 	}
 	if(draw->nmcd.dwDrawStage != CDDS_ITEMPREPAINT)
 		return CDRF_DODEFAULT;

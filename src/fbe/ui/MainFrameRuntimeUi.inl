@@ -114,13 +114,20 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 	NMTBCUSTOMDRAW* customDraw = reinterpret_cast<NMTBCUSTOMDRAW*>(pnmh);
 	if (customDraw->nmcd.dwDrawStage == CDDS_PREPAINT)
 	{
-		if(ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
+		if(ThemeManager::UsesPaletteSurface())
 		{
 			RECT client = {};
 			::GetClientRect(pnmh->hwndFrom, &client);
 			::FillRect(customDraw->nmcd.hdc, &client, ThemeManager::ControlBrush());
 		}
-		return CDRF_NOTIFYITEMDRAW;
+		return CDRF_NOTIFYITEMDRAW | (ThemeManager::UsesPaletteSurface() ? CDRF_NOTIFYPOSTPAINT : 0);
+	}
+
+	if(customDraw->nmcd.dwDrawStage == CDDS_POSTPAINT && ThemeManager::UsesPaletteSurface())
+	{
+		RECT border = {}; ::GetClientRect(pnmh->hwndFrom, &border);
+		if(border.bottom > border.top) { border.top = border.bottom - 1; ::FillRect(customDraw->nmcd.hdc, &border, ThemeManager::Brush(THEME_COLOR_BORDER)); }
+		return CDRF_DODEFAULT;
 	}
 
 	if (customDraw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT)
@@ -132,7 +139,7 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 		const bool pressed = (customDraw->nmcd.uItemState & CDIS_SELECTED) != 0;
 		customDraw->clrBtnHighlight = pressed ? ThemeManager::PressedColor() : ThemeManager::HoverColor();
 		customDraw->clrHighlightHotTrack = ThemeManager::HoverColor();
-		if(isScriptsToolbar && ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
+		if(isScriptsToolbar && ThemeManager::UsesPaletteSurface())
 			return CDRF_NOTIFYPOSTPAINT;
 		const UINT commandId = static_cast<UINT>(customDraw->nmcd.dwItemSpec);
 		if (isCommandToolbar && (IsTableToolbarCommand(commandId) ||
@@ -148,7 +155,8 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 				return CDRF_DODEFAULT;
 
 			const RECT& rect = customDraw->nmcd.rc;
-			::DrawThemeParentBackground(m_CmdToolbar.m_hWnd, customDraw->nmcd.hdc, &rect);
+			if(ThemeManager::UsesPaletteSurface()) ::FillRect(customDraw->nmcd.hdc, &rect, ThemeManager::ControlBrush());
+			else ::DrawThemeParentBackground(m_CmdToolbar.m_hWnd, customDraw->nmcd.hdc, &rect);
 			IMAGELISTDRAWPARAMS draw = {};
 			draw.cbSize = sizeof(draw);
 			draw.himl = imageList;
@@ -166,7 +174,7 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 		}
 	}
 
-	if (isScriptsToolbar && customDraw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
+	if (isScriptsToolbar && customDraw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && ThemeManager::UsesPaletteSurface())
 	{
 		const UINT state = customDraw->nmcd.uItemState;
 		if((state & (CDIS_HOT | CDIS_SELECTED)) != 0)

@@ -330,7 +330,7 @@ bool UsesClassicSurfacePalette(HWND window)
 {
 	// Explorer visual styles ignore the colours set through the common-control
 	// messages for rebar/toolbar/status surfaces. Disable them only for these
-	// surfaces in dark mode; ordinary controls keep native modern rendering.
+	// surfaces when an FBE palette is active; ordinary controls keep native rendering.
 	return IsClass(window, TOOLBARCLASSNAMEW) || IsClass(window, REBARCLASSNAMEW) ||
 		IsClass(window, STATUSCLASSNAMEW);
 }
@@ -791,7 +791,9 @@ void ApplyWindowSurface(HWND window)
 	const DWORD userBefore = g_recordApplyDiagnostics ? ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS) : 0;
 	const bool dark = ThemeManager::IsDark() && !IsHighContrastEnabled();
 	::SetWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId, 0);
-	if((dark && (UsesClassicSurfacePalette(window) || IsRadioButton(window) || IsCheckBox(window))) ||
+	if((ThemeManager::UsesPaletteSurface() && UsesClassicSurfacePalette(window)) ||
+		(!dark && ThemeManager::UsesPaletteSurface() && IsComboBox(window)) ||
+		(dark && (IsRadioButton(window) || IsCheckBox(window))) ||
 		(IsClass(window, TOOLTIPS_CLASSW) && (dark || IsHighContrastEnabled())))
 		::SetWindowTheme(window, L" ", L" ");
 	else if(dark && IsComboBox(window))
@@ -1760,6 +1762,7 @@ bool IsDark() {
 	if(g_namedPalette != INTERFACE_PALETTE_CLASSIC) return NamedPaletteIsDark(g_namedPalette);
 	return g_selected == INTERFACE_THEME_DARK || (g_selected == INTERFACE_THEME_AUTOMATIC && g_systemDark);
 }
+bool UsesPaletteSurface() { return !IsHighContrastEnabled() && (IsDark() || g_customPaletteActive || g_namedPalette != INTERFACE_PALETTE_CLASSIC); }
 InterfacePalette GetNamedPalette() { return g_namedPalette; }
 bool IsCustomPaletteActive() { return g_customPaletteActive; }
 bool GetCustomPalette(CustomPalette& palette) { if(!g_customPaletteActive) return false; palette = g_customPalette; return true; }

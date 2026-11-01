@@ -16,8 +16,12 @@ try {
     [IO.File]::WriteAllText($seed, $settingsXml, [Text.UTF8Encoding]::new($false))
     $fixture = Join-Path $isolation.Root 'body-theme.fb2'
     $report = Join-Path $isolation.Root 'body-theme.tsv'
-    $paragraphs = (1..100 | ForEach-Object { "<p>Theme target paragraph $_.</p>" }) -join ''
-    $fb2 = '<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Body theme</book-title><lang>en</lang></title-info><document-info><author><first-name>T</first-name><last-name>T</last-name></author><date>2026</date><id>body-theme-test</id><version>1.0</version></document-info></description><body><section>' + $paragraphs + '<table><tr><th>Heading</th><td>Cell</td></tr></table></section></body></FictionBook>'
+    $paragraphs = (1..100 | ForEach-Object {
+        if($_ -eq 2) { '<p><strong>Theme target</strong> paragraph 2.</p>' }
+        elseif($_ -eq 3) { '<p><a l:href="#target"><emphasis>Theme target</emphasis> paragraph 3.</a></p>' }
+        else { "<p>Theme target paragraph $_.</p>" }
+    }) -join ''
+    $fb2 = '<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Body theme</book-title><lang>en</lang></title-info><document-info><author><first-name>T</first-name><last-name>T</last-name></author><date>2026</date><id>body-theme-test</id><version>1.0</version></document-info></description><body><section id="target">' + $paragraphs + '<table><tr><th>Heading</th><td>Cell</td></tr></table></section></body><binary id="attachment" content-type="application/octet-stream">AQIDBA==</binary></FictionBook>'
     [IO.File]::WriteAllText($fixture, $fb2, [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText("$fixture.open.fb2", $fb2.Replace('Theme target paragraph', 'Opened second paragraph'), [Text.UTF8Encoding]::new($false))
     $before = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
@@ -70,6 +74,15 @@ try {
     $savedParagraphs = @($savedXml.SelectNodes('/fb:FictionBook/fb:body/fb:section/fb:p', $ns))
     if($savedParagraphs.Count -ne 100 -or $savedParagraphs[0].InnerText -cne 'Edited target paragraph 1.') { throw 'Save did not persist the edited first paragraph.' }
     for($i = 1; $i -lt $savedParagraphs.Count; ++$i) { if($savedParagraphs[$i].InnerText -cne "Theme target paragraph $($i + 1).") { throw "Save changed paragraph $($i + 1)." } }
+    $ns.AddNamespace('l', 'http://www.w3.org/1999/xlink')
+    if($savedParagraphs[1].SelectSingleNode('fb:strong', $ns).InnerText -cne 'Theme target') { throw 'Save changed strong formatting.' }
+    $savedLink = $savedParagraphs[2].SelectSingleNode('fb:a', $ns)
+    if(-not $savedLink -or $savedLink.GetAttribute('href', 'http://www.w3.org/1999/xlink') -cne '#target' -or
+       $savedLink.SelectSingleNode('fb:emphasis', $ns).InnerText -cne 'Theme target') { throw 'Save changed the formatted internal link.' }
+    $savedBinary = $savedXml.SelectSingleNode('/fb:FictionBook/fb:binary[@id="attachment"]', $ns)
+    if(-not $savedBinary -or $savedBinary.GetAttribute('content-type') -cne 'application/octet-stream' -or
+       ($savedBinary.InnerText -replace '\s', '') -cne 'AQIDBA==') { throw 'Save changed the binary attachment.' }
+    if($savedParagraphs[0].ParentNode.GetAttribute('id') -cne 'target') { throw 'Save changed the link target.' }
     $table = $savedXml.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:table/fb:tr', $ns)
     if(-not $table -or $table.SelectSingleNode('fb:th', $ns).InnerText -cne 'Heading' -or $table.SelectSingleNode('fb:td', $ns).InnerText -cne 'Cell') { throw 'Save changed the table.' }
     $readerSettings = [Xml.XmlReaderSettings]::new(); $readerSettings.ValidationType = [Xml.ValidationType]::Schema
