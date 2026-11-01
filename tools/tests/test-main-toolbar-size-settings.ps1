@@ -20,7 +20,7 @@ try {
     $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = if ($Mode -eq 'installed') { Join-Path $iso.DataPath 'Settings' } else { $null }
     $diagnosticsRoot = if ($Mode -eq 'installed') { Join-Path $iso.DataPath 'Settings' } else { $iso.DataPath }
     $report = Join-Path $diagnosticsRoot 'Diagnostics/portable-state-report.txt'
-    foreach ($scenario in @('main-toolbar-size-setting-write','main-toolbar-size-setting-read','main-toolbar-size-dialog-runtime')) {
+    foreach ($scenario in @('main-toolbar-size-setting-write','main-toolbar-size-setting-read','main-toolbar-size-dialog-runtime','main-toolbar-size-dialog-read')) {
         $env:FBE_NEXT_TEST_SCENARIO = $scenario
         Remove-Item -LiteralPath $report -Force -ErrorAction SilentlyContinue
         $process = if ($scenario -eq 'main-toolbar-size-dialog-runtime') {

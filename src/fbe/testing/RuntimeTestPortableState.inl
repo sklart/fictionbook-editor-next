@@ -990,6 +990,14 @@ void CMainFrame::RunPortableStateTestScenario()
         PostMessage(WM_CLOSE); return;
     }
     if(IsFbeTestScenario(L"main-toolbar-size-dialog-runtime")) {
+        struct RejectDialogMetric {
+            UINT message; bool triggered;
+            static LRESULT CALLBACK Proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam, UINT_PTR, DWORD_PTR data) {
+                auto& probe = *reinterpret_cast<RejectDialogMetric*>(data);
+                if(message == probe.message && !probe.triggered) { probe.triggered = true; return FALSE; }
+                return ::DefSubclassProc(window, message, wparam, lparam);
+            }
+        };
         static HWND testOwner = NULL;
         static int testAction = 0;
         static bool errorDismissed = false;
@@ -999,7 +1007,7 @@ void CMainFrame::RunPortableStateTestScenario()
             ::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
                 if(::GetWindow(window, GW_OWNER) != testOwner || !::IsWindowVisible(window)) return TRUE;
                 const int dismissId = ::GetDlgItem(window, IDOK) ? IDOK : IDCANCEL;
-                if(testAction == 3 && !::GetDlgItem(window, IDC_SETTINGS_NAV) && ::GetDlgItem(window, dismissId)) {
+                if(testAction >= 3 && !::GetDlgItem(window, IDC_SETTINGS_NAV) && ::GetDlgItem(window, dismissId)) {
                     errorDismissed = true;
                     ::PostMessageW(window, WM_COMMAND, MAKEWPARAM(dismissId, BN_CLICKED), reinterpret_cast<LPARAM>(::GetDlgItem(window, dismissId)));
                 }
@@ -1007,21 +1015,24 @@ void CMainFrame::RunPortableStateTestScenario()
             }, 0);
         };
         bool passed = _Settings.GetMainToolbarIconSize() == 32 && _Settings.GetScriptIconSize() == 20;
-        for(testAction = 1; testAction <= 3; ++testAction) {
+        for(testAction = 1; testAction <= 5; ++testAction) {
             errorDismissed = false;
-            ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_TOOLBAR_DIALOG_ACTION", testAction == 1 ? L"cancel" : testAction == 3 ? L"failure" : L"apply");
+            ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_TOOLBAR_DIALOG_ACTION", testAction == 1 ? L"cancel" : testAction >= 3 ? L"failure" : L"apply");
             ToolbarFactory::RebuildFailurePoint() = testAction == 3 ? ToolbarFactory::RebuildFailure::Prepared : ToolbarFactory::RebuildFailure::None;
+            RejectDialogMetric metric{testAction == 4 ? static_cast<UINT>(TB_SETBITMAPSIZE) : static_cast<UINT>(TB_SETBUTTONSIZE), false};
+            const bool subclassed = testAction < 4 || ::SetWindowSubclass(m_CmdToolbar, RejectDialogMetric::Proc, 0x444d4554, reinterpret_cast<DWORD_PTR>(&metric)) != FALSE;
             const UINT_PTR timer = ::SetTimer(NULL, 0, 30, tick);
-            if(!timer) { passed = false; break; }
+            if(!timer || !subclassed) { if(timer) ::KillTimer(NULL, timer); passed = false; break; }
             const bool accepted = ShowSettingsDialog(m_hWnd);
             ::KillTimer(NULL, timer);
+            if(testAction >= 4) ::RemoveWindowSubclass(m_CmdToolbar, RejectDialogMetric::Proc, 0x444d4554);
             ToolbarFactory::RebuildFailurePoint() = ToolbarFactory::RebuildFailure::None;
             const int expected = testAction == 1 ? 32 : 16;
             int width = 0, height = 0;
             passed = accepted == (testAction != 1) && _Settings.GetMainToolbarIconSize() == expected &&
                 _Settings.GetScriptIconSize() == 20 && ::ImageList_GetIconSize(m_commandToolbarImages, &width, &height) &&
                 width == UiMetrics::ScaleForDpi(expected, UiMetrics::DpiForWindow(m_hWnd)) && height == width &&
-                (testAction != 3 || errorDismissed) && passed;
+                (testAction < 3 || errorDismissed) && (testAction < 4 || metric.triggered) && passed;
         }
         ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_TOOLBAR_DIALOG_ACTION", NULL);
 		CStringA report; report.Format("interface-language=%lu\nmain-toolbar-dialog=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), passed, passed ? "pass" : "fail");
@@ -1232,6 +1243,15 @@ void CMainFrame::RunPortableStateTestScenario()
             ::ImageList_GetIconSize(m_commandToolbarImages, &width, &height) && width == expected && height == expected;
 		CStringA report; report.Format("interface-language=%lu\nmain-toolbar-setting-restart=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), passed, passed ? "pass" : "fail");
 		WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
+        PostMessage(WM_CLOSE); return;
+    }
+    if(IsFbeTestScenario(L"main-toolbar-size-dialog-read")) {
+        int width = 0, height = 0;
+        const int expected = UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(m_hWnd));
+        const bool passed = _Settings.GetMainToolbarIconSize() == 16 && _Settings.GetScriptIconSize() == 20 &&
+            ::ImageList_GetIconSize(m_commandToolbarImages, &width, &height) && width == expected && height == expected;
+        CStringA report; report.Format("interface-language=%lu\nmain-toolbar-dialog-rollback-restart=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), passed, passed ? "pass" : "fail");
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
         PostMessage(WM_CLOSE); return;
     }
     if(IsFbeTestScenario(L"script-icon-size-read")) {
