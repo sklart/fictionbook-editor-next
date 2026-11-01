@@ -7,6 +7,7 @@ param(
     [switch]$AppearanceOnly,
     [switch]$CustomPalette,
     [switch]$HotkeyTab,
+    [switch]$WordsTab,
     [ValidateSet('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')]
     [string[]]$Locales = @('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')
 )
@@ -125,6 +126,7 @@ public static class SettingsGeneralLayoutWindow
             remaining.Add(child);
         }
         IntPtr start = GetDlgItem(dialog, ids[0]);
+        if(start == IntPtr.Zero && outer != IntPtr.Zero) start = GetDlgItem(outer, ids[0]);
         IntPtr result;
         if(SendMessageTimeout(dialog, 0x0028, start, (IntPtr)1, 2, 2000, out result) == IntPtr.Zero) { TabTrace = "initial focus timed out"; return false; }
         if(ThreadFocus(dialog) != start) { TabTrace = "initial-focus=" + GetDlgCtrlID(ThreadFocus(dialog)); return false; }
@@ -177,6 +179,7 @@ public static class SettingsGeneralLayoutWindow
         }, IntPtr.Zero);
         return found;
     }
+    public static long ListCount(IntPtr page, int id) { return SendMessage(GetDlgItem(page, id), 0x1004, IntPtr.Zero, IntPtr.Zero).ToInt64(); }
     public static IntPtr Parent(IntPtr window) { return GetParent(window); }
     public static long Query(IntPtr window, uint message, int argument) {
         return SendMessage(window, message, (IntPtr)argument, IntPtr.Zero).ToInt64();
@@ -222,6 +225,9 @@ try {
     $languageIds = @{ 'ru-RU' = 0xFBE002; 'en-US' = 0xFBE001; 'de-DE' = 0xFBE004; 'uk-UA' = 0xFBE003; 'es-ES' = 0xFBE006; 'bg-BG' = 0xFBE00C }
     $settingsDirectory = Join-Path $isolation.DataPath 'Settings'
     New-Item -ItemType Directory -Path $settingsDirectory -Force | Out-Null
+    if ($WordsTab) {
+        [IO.File]::WriteAllText((Join-Path $settingsDirectory 'Words.xml'), '<?xml version="1.0" encoding="UTF-8"?><FBE><Words><Word><Value>test-word</Value><Counted>0</Counted></Word></Words></FBE>', [Text.UTF8Encoding]::new($false))
+    }
     $settingsTemplate = [IO.File]::ReadAllText((Join-Path $isolation.Runtime 'Data\Settings\Settings.xml'))
     if ($CustomPalette) {
         if ($settingsTemplate -notmatch '<InterfacePalette>[^<]*</InterfacePalette>') { throw 'The isolated settings template lacks the palette setting.' }
@@ -340,6 +346,19 @@ try {
                     throw "$locale Hotkeys page Tab focus failed: $([SettingsGeneralLayoutWindow]::TabTrace)"
                 }
                 Write-Host "$locale Tab reaches the Hotkeys controls and exits to the Settings dialog."
+            }
+            if ($WordsTab) {
+                [SettingsGeneralLayoutWindow]::SelectPage($settings, 7)
+                Start-Sleep -Milliseconds 200
+                $page = [SettingsGeneralLayoutWindow]::VisiblePageContaining($settings, 1084)
+                if ($page -eq [IntPtr]::Zero) { throw "$locale Words page missing." }
+                $wordCount = [SettingsGeneralLayoutWindow]::ListCount($page, 1084)
+                if ($wordCount -ne 1) { throw "$locale isolated Words fixture count was $wordCount, expected 1." }
+                $targets = [int[]]@(1625, 1070, 1071, 1084, 1050, 1063, 1086, 1, 2)
+                if ($page -eq [IntPtr]::Zero -or -not [SettingsGeneralLayoutWindow]::TraverseWithTabIncludingOuter($page, $settings, $targets)) {
+                    throw "$locale Words page Tab focus failed: $([SettingsGeneralLayoutWindow]::TabTrace)"
+                }
+                Write-Host "$locale Tab reaches Words controls and exits to the Settings dialog."
             }
             if ($AppearanceOnly -or $ChangedPagesOnly -or $locale -in @('ru-RU', 'en-US', 'de-DE', 'uk-UA')) {
                 $wideRect = New-Object SettingsGeneralLayoutWindow+Rect
