@@ -14,4 +14,10 @@ $maxCommand = ($values.GetEnumerator() | Where-Object { $_.Value -like 'ID_*' -a
 $controlValues = foreach($line in $resource) { if($line -match '^#define\s+IDC_[A-Z0-9_]+\s+(\d+)$') { [int]$Matches[1] } }; $maxControl = ($controlValues | Measure-Object -Maximum).Maximum
 if((Get-MacroValue '_APS_NEXT_COMMAND_VALUE') -le $maxCommand) { throw '_APS_NEXT_COMMAND_VALUE collides with an existing command.' }
 if((Get-MacroValue '_APS_NEXT_CONTROL_VALUE') -le $maxControl) { throw '_APS_NEXT_CONTROL_VALUE collides with an existing control.' }
+$nextResource = Get-MacroValue '_APS_NEXT_RESOURCE_VALUE'
+foreach($line in $resource) {
+    if($line -match '^#define\s+ID(?:D|R|I|B|M)_[A-Z0-9_]+\s+(\d+)$' -and [int]$Matches[1] -eq $nextResource) {
+        throw '_APS_NEXT_RESOURCE_VALUE collides with an existing resource.'
+    }
+}
 Write-Host 'Resource ID safety contract passed.'
