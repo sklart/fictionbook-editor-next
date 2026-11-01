@@ -1094,10 +1094,16 @@ void CMainFrame::RunPortableStateTestScenario()
                 }
                 const COLORREF comboExpected = ThemeManager::WindowColor();
                 const COLORREF listExpected = ThemeManager::ControlColor();
-                comboPixelDiagnostics.AppendFormat("combo-palette=%d\ncombo-actual=%lu\ncombo-expected=%lu\ncombo-list-actual=%lu\ncombo-list-expected=%lu\n",
+                ::EnableWindow(ordinaryCombo, FALSE);
+                ::RedrawWindow(page.m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+                comboDc = ::GetDC(ordinaryCombo);
+                const COLORREF disabledPixel = comboDc && comboRect.right > 60 ? ::GetPixel(comboDc, comboRect.right - 40, comboRect.bottom / 2) : CLR_INVALID;
+                if(comboDc) ::ReleaseDC(ordinaryCombo, comboDc);
+                ::EnableWindow(ordinaryCombo, TRUE);
+                comboPixelDiagnostics.AppendFormat("combo-palette=%d\ncombo-actual=%lu\ncombo-expected=%lu\ncombo-list-actual=%lu\ncombo-list-expected=%lu\ncombo-disabled=%lu\n",
                     static_cast<int>(light), static_cast<unsigned long>(comboPixel), static_cast<unsigned long>(comboExpected),
-                    static_cast<unsigned long>(listPixel), static_cast<unsigned long>(listExpected));
-                passed = comboPixel == comboExpected && listPixel == listExpected && passed;
+                    static_cast<unsigned long>(listPixel), static_cast<unsigned long>(listExpected), static_cast<unsigned long>(disabledPixel));
+                passed = comboPixel == comboExpected && listPixel == listExpected && disabledPixel == comboExpected && passed;
             }
             ::SendMessage(choice, CB_SETCURSEL, INTERFACE_THEME_DARK, 0);
             page.OnInterfaceThemeChanged(CBN_SELCHANGE, IDC_INTERFACE_THEME, choice, handled);
