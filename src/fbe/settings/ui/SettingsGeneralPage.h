@@ -45,6 +45,7 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	void UpdatePaletteContrast();
 	bool PaletteItemAvailable(int index) const;
 	static LRESULT CALLBACK ThemeComboSubclassProc(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR);
+	static LRESULT CALLBACK ThemeListSubclassProc(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR);
 	static void UpdateThemeComboItemHeight(HWND window);
 
 public:

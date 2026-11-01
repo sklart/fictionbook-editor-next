@@ -784,6 +784,32 @@ void CMainFrame::RunPortableStateTestScenario()
             }, reinterpret_cast<LPARAM>(&tip));
             const CString unavailableTip = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.unavailable", L"This dark palette requires Windows 10 (1809) or newer.");
             passed = tip.text.Find(unavailableTip) >= 0 && passed;
+            // Check the actual dropdown tools: light choices must not inherit
+            // the explanatory text meant for unavailable dark choices.
+            ::ShowWindow(page.m_hWnd, SW_SHOW);
+            for(HWND combo : {choice, paletteChoice}) {
+                COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
+                if(!::GetComboBoxInfo(combo, &info) || !info.hwndList) { passed = false; continue; }
+                ::SendMessage(combo, CB_SHOWDROPDOWN, TRUE, 0);
+                const int lightIndex = combo == choice ? INTERFACE_THEME_LIGHT : INTERFACE_PALETTE_CLASSIC;
+                const int darkIndex = combo == choice ? INTERFACE_THEME_DARK : INTERFACE_PALETTE_GRAPHITE;
+                for(int index : {lightIndex, darkIndex}) {
+                    RECT itemRect = {};
+                    if(::SendMessage(info.hwndList, LB_GETITEMRECT, index, reinterpret_cast<LPARAM>(&itemRect)) == LB_ERR) { passed = false; continue; }
+                    ::SendMessage(info.hwndList, WM_MOUSEMOVE, 0, MAKELPARAM((itemRect.left + itemRect.right) / 2, (itemRect.top + itemRect.bottom) / 2));
+                    PolicyTip listTip{info.hwndList, CString()};
+                    ::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM data) -> BOOL {
+                        auto& target = *reinterpret_cast<PolicyTip*>(data);
+                        wchar_t name[64] = {}; ::GetClassNameW(window, name, _countof(name));
+                        if(wcscmp(name, TOOLTIPS_CLASSW) != 0) return TRUE;
+                        wchar_t value[2048] = {}; CToolInfo info(TTF_IDISHWND, target.control, 0, NULL, value);
+                        if(!::SendMessageW(window, TTM_GETTOOLINFOW, 0, reinterpret_cast<LPARAM>(&info))) return TRUE;
+                        target.text = info.lpszText; return FALSE;
+                    }, reinterpret_cast<LPARAM>(&listTip));
+                    passed = !listTip.text.IsEmpty() && ((listTip.text.Find(unavailableTip) >= 0) == (index == darkIndex)) && passed;
+                }
+                ::SendMessage(combo, CB_SHOWDROPDOWN, FALSE, 0);
+            }
             ::SendMessage(paletteChoice, CB_SETCURSEL, INTERFACE_PALETTE_CLASSIC, 0);
             page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, paletteChoice, handled);
             ::SendMessage(paletteChoice, WM_KEYDOWN, VK_DOWN, 0);
@@ -808,14 +834,14 @@ void CMainFrame::RunPortableStateTestScenario()
             page.DestroyWindow();
         }
         _Settings.SetInterfaceTheme(INTERFACE_THEME_DARK, true);
-        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
-            passed ? "controlled-theme-choice-policy=1\nresult=pass\n" : "controlled-theme-choice-policy=0\nresult=fail\n");
+        CStringA report; report.Format("interface-language=%lu\ncontrolled-theme-choice-policy=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), passed, passed ? "pass" : "fail");
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
         PostMessage(WM_CLOSE); return;
     }
     if(IsFbeTestScenario(L"interface-theme-policy-read")) {
         const bool passed = _Settings.GetInterfaceTheme() == INTERFACE_THEME_DARK && ThemeManager::GetSelectedTheme() == INTERFACE_THEME_DARK;
-        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
-            passed ? "theme-preference-restart=1\nresult=pass\n" : "theme-preference-restart=0\nresult=fail\n");
+        CStringA report; report.Format("interface-language=%lu\ntheme-preference-restart=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), passed, passed ? "pass" : "fail");
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
         PostMessage(WM_CLOSE); return;
     }
     if(IsFbeTestScenario(L"main-toolbar-size-dialog-runtime")) {

@@ -434,6 +434,28 @@ LRESULT CALLBACK CSettingsGeneralPage::ThemeComboSubclassProc(HWND window, UINT 
 	return ::DefSubclassProc(window, message, key, parameter);
 }
 
+LRESULT CALLBACK CSettingsGeneralPage::ThemeListSubclassProc(HWND window, UINT message, WPARAM key, LPARAM parameter, UINT_PTR id, DWORD_PTR data)
+{
+	CSettingsGeneralPage* page = reinterpret_cast<CSettingsGeneralPage*>(data);
+	if(message == WM_NCDESTROY) {
+		::RemoveWindowSubclass(window, ThemeListSubclassProc, id);
+		return ::DefSubclassProc(window, message, key, parameter);
+	}
+	if(page && message == WM_MOUSEMOVE) {
+		const LRESULT hit = ::SendMessage(window, LB_ITEMFROMPOINT, 0, parameter);
+		const int index = HIWORD(hit) ? -1 : LOWORD(hit);
+		const bool themeList = id == 1;
+		const bool unavailable = !page->m_darkThemeSupported && index >= 0 &&
+			(themeList ? index == INTERFACE_THEME_DARK : !page->PaletteItemAvailable(index));
+		const CString text = unavailable ?
+			FbeLoadRuntimeStringByKey(L"fbe.settings.palette.unavailable", L"This dark palette requires Windows 10 (1809) or newer.") :
+			(themeList ? FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.general.interface_theme", L"Automatic follows the Windows app theme.") :
+				FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.general.interface_palette", L"Choose interface colours independently of the Windows mode. High Contrast uses system colours."));
+		page->m_tooltips.UpdateText(window, text);
+	}
+	return ::DefSubclassProc(window, message, key, parameter);
+}
+
 bool CSettingsGeneralPage::PaletteItemAvailable(int index) const
 {
 	if(m_darkThemeSupported) return true;
@@ -497,8 +519,12 @@ void CSettingsGeneralPage::UpdateThemeNotice()
 		if(!m_unavailableListTooltips) {
 			for(HWND combo : {m_interfaceTheme.m_hWnd, m_interfacePalette.m_hWnd}) {
 				COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
-				if(::GetComboBoxInfo(combo, &info) && info.hwndList)
-					m_tooltips.Add(info.hwndList, L"fbe.settings.palette.unavailable", L"This dark palette requires Windows 10 (1809) or newer.");
+				if(::GetComboBoxInfo(combo, &info) && info.hwndList) {
+					const bool themeList = combo == m_interfaceTheme.m_hWnd;
+					m_tooltips.Add(info.hwndList, themeList ? L"fbe.settings.tooltip.general.interface_theme" : L"fbe.settings.tooltip.general.interface_palette",
+						themeList ? L"Automatic follows the Windows app theme." : L"Choose interface colours independently of the Windows mode. High Contrast uses system colours.");
+					::SetWindowSubclass(info.hwndList, ThemeListSubclassProc, themeList ? 1 : 2, reinterpret_cast<DWORD_PTR>(this));
+				}
 			}
 			m_unavailableListTooltips = true;
 		}
