@@ -45,7 +45,7 @@ $requiredInterfaceLanguages = @(
 $settingsText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\Settings.cpp")
 $settingsHeaderText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\Settings.h")
 $settingsTypesText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\settings\SettingsTypes.h")
-$generalPageText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\settings\ui\SettingsGeneralPage.cpp")
+$commonPageText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\settings\ui\SettingsCommonPage.cpp")
 $sharedRuntimeHelperPath = Join-Path $repoRoot "src\common\RuntimeLocalizationCommon.h"
 $sharedRuntimeHelperText = Get-Content -Raw -LiteralPath $sharedRuntimeHelperPath
 $appCatalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "localization\app-ui\catalog.json") -Encoding UTF8 | ConvertFrom-Json
@@ -55,25 +55,25 @@ $mainMenuCatalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "localizat
 if ($settingsTypesText -notlike "*FBE_INTERFACE_LANGUAGE_AUTO*") {
     throw "В SettingsTypes.h отсутствует специальное значение FBE_INTERFACE_LANGUAGE_AUTO для режима 'Определяется системой'."
 }
-if ($generalPageText -notlike "*FBE_INTERFACE_LANGUAGE_AUTO, IDS_LANG_SYSTEM_DEFAULT*") {
+if ($commonPageText -notlike "*FBE_INTERFACE_LANGUAGE_AUTO, IDS_LANG_SYSTEM_DEFAULT*") {
     throw "В списке языков настроек FBE отсутствует пункт 'Определяется системой'."
 }
 if ("fbe.language.system_default" -notin $appCatalogKeys) {
     throw "В app-ui catalog отсутствует ключ fbe.language.system_default."
 }
-if ($generalPageText -notlike "*FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName())*") {
-    throw "SettingsGeneralPage.cpp не публикует новую runtime-локаль после смены языка интерфейса."
+if ($commonPageText -notlike "*FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName())*") {
+    throw "SettingsCommonPage.cpp не публикует новую runtime-локаль после смены языка интерфейса."
 }
-if ($generalPageText -notlike "*FbeResetRuntimeLocalization()*") {
-    throw "SettingsGeneralPage.cpp не сбрасывает FBE runtime JSON-cache после смены языка интерфейса."
+if ($commonPageText -notlike "*FbeResetRuntimeLocalization()*") {
+    throw "SettingsCommonPage.cpp не сбрасывает FBE runtime JSON-cache после смены языка интерфейса."
 }
-if ($generalPageText -notmatch 'FbeIsRuntimeLocaleInstalled\s*\(\s*kInterfaceLanguages\[i\]\.localeName\s*\)') {
-    throw "SettingsGeneralPage.cpp должен скрывать языки, для которых отсутствует Lang/<locale>/fbe.json."
+if ($commonPageText -notmatch 'FbeIsRuntimeLocaleInstalled\s*\(\s*kInterfaceLanguages\[i\]\.localeName\s*\)') {
+    throw "SettingsCommonPage.cpp должен скрывать языки, для которых отсутствует Lang/<locale>/fbe.json."
 }
 if ($sharedRuntimeHelperText -notlike "*RuntimeStringFileExists*") {
     throw "RuntimeLocalizationCommon.h должен проверять наличие JSON-файла выбранного языкового пакета."
 }
-if ($generalPageText -like "*new_lang != _Settings.GetInterfaceLanguageID()*SetNeedRestart()*") {
+if ($commonPageText -like "*new_lang != _Settings.GetInterfaceLanguageID()*SetNeedRestart()*") {
     throw "Смена только языка интерфейса не должна требовать перезапуска: главное окно и новые диалоги обновляются runtime-слоем."
 }
 
@@ -86,8 +86,8 @@ $fbeRcText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\FBE.rc"
 if ($fbeRcText -match 'IDC_LANG[^\r\n]*CBS_SORT') {
     throw "ComboBox выбора языка не должен использовать CBS_SORT: пункт 'Определяется системой' обязан оставаться первым."
 }
-if ($generalPageText -notmatch "m_language\.SetDroppedWidth\((3[0-9]{2}|[4-9][0-9]{2,})\)") {
-    throw "SettingsGeneralPage.cpp должен расширять выпадающий список языка минимум до 300 px, чтобы 'Определяется системой' не обрезался."
+if ($commonPageText -notmatch "m_language\.SetDroppedWidth\((3[0-9]{2}|[4-9][0-9]{2,})\)") {
+    throw "SettingsCommonPage.cpp должен расширять выпадающий список языка минимум до 300 px, чтобы 'Определяется системой' не обрезался."
 }
 
 $mainFrameImplementation = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\mainfrm.cpp")
@@ -169,8 +169,8 @@ if ($mainFrameText -notmatch "acceleratorSeparator\s*=\s*text\.Find\(L'\\t'\)") 
 }
 
 foreach ($language in $requiredInterfaceLanguages) {
-    if ($generalPageText -notlike "*$($language.LanguageSymbol), $($language.ResourceId)*") {
-        throw "В SettingsGeneralPage.cpp отсутствует язык интерфейса $($language.Locale) ($($language.LanguageSymbol) / $($language.ResourceId))."
+    if ($commonPageText -notlike "*$($language.LanguageSymbol), $($language.ResourceId)*") {
+        throw "В SettingsCommonPage.cpp отсутствует язык интерфейса $($language.Locale) ($($language.LanguageSymbol) / $($language.ResourceId))."
     }
     $localeReturnPattern = "return\s+L`"$([regex]::Escape($language.Locale))`""
     if ($settingsText -notmatch $localeReturnPattern) {
