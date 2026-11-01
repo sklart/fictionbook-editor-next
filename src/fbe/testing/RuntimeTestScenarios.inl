@@ -34,9 +34,74 @@ __declspec(noinline) LRESULT CMainFrame::RunUiDefectsRuntime(CAtlFile& output)
     return 0;
 }
 
+__declspec(noinline) LRESULT CMainFrame::RunSettingsDialogRuntime(CAtlFile& output)
+{
+	if (IsFbeTestScenario(L"settings-dialog-runtime") || IsFbeTestScenario(L"settings-dialog-runtime-verify"))
+	{
+		const bool verifyOnly = IsFbeTestScenario(L"settings-dialog-runtime-verify");
+		auto sourceText = [&]() {
+			const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
+			std::vector<char> text(static_cast<size_t>(length) + 1);
+			m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(text.data()));
+			return text;
+		};
+		const std::vector<char> originalText = sourceText();
+		const sptr_t originalPosition = m_source.SendMessage(SCI_GETCURRENTPOS);
+		const sptr_t originalAnchor = m_source.SendMessage(SCI_GETANCHOR);
+		const sptr_t originalUndo = m_source.SendMessage(SCI_CANUNDO);
+		if (!verifyOnly)
+			SendMessage(WM_COMMAND, MAKEWPARAM(ID_TOOLS_OPTIONS, 0), 0);
+		const bool sourceUnchanged = originalText == sourceText() &&
+			originalPosition == m_source.SendMessage(SCI_GETCURRENTPOS) &&
+			originalAnchor == m_source.SendMessage(SCI_GETANCHOR) &&
+			originalUndo == m_source.SendMessage(SCI_CANUNDO);
+		const bool layoutPassed = verifyOnly ||
+			::GetPropW(m_hWnd, L"FBE_SETTINGS_LAYOUT_PASSED") == reinterpret_cast<HANDLE>(1);
+		::RemovePropW(m_hWnd, L"FBE_SETTINGS_LAYOUT_PASSED");
+		const bool initialSystem = ::GetPropW(m_hWnd, L"FBE_CARET_INITIAL_SYSTEM") == reinterpret_cast<HANDLE>(1);
+		::RemovePropW(m_hWnd, L"FBE_CARET_INITIAL_SYSTEM");
+		const bool followupPassed = verifyOnly || ::GetPropW(m_hWnd, L"FBE_SETTINGS_FOLLOWUP_PASSED") == reinterpret_cast<HANDLE>(1);
+		::RemovePropW(m_hWnd, L"FBE_SETTINGS_FOLLOWUP_PASSED");
+		const bool backupPersisted = _Settings.GetCreateBackupFile();
+		const bool nbspPersisted = _Settings.GetNBSPChar() == L"\x25AB";
+		const bool wrapPersisted = _Settings.XmlSrcWrap();
+		const bool yoPersisted = _Settings.GetCheckRussianYoUsage();
+		const bool persisted = backupPersisted && nbspPersisted && wrapPersisted && yoPersisted;
+		const bool applied = verifyOnly || (m_source.SendMessage(SCI_GETWRAPMODE) != SC_WRAP_NONE);
+		const CaretPreferences caret = _Settings.GetCaretPreferences();
+		const bool caretPersisted = caret.mode == TextCaretMode::Custom && caret.width == 4 &&
+			caret.color == TextCaretColor::White && caret.blink == TextCaretBlink::Solid;
+		const bool caretApplied = m_source.SendMessage(SCI_GETCARETWIDTH) ==
+			UiMetrics::ScaleForDpi(4, UiMetrics::DpiForWindow(m_source.m_hWnd)) &&
+			m_source.SendMessage(SCI_GETCARETPERIOD) == 0 &&
+			m_source.SendMessage(SCI_GETCARETFORE) == static_cast<sptr_t>(ThemeManager::IsHighContrast() ?
+				::GetSysColor(COLOR_WINDOWTEXT) : RGB(255, 255, 255));
+		CStringA report;
+		report.Format("followup=%d\nsettings_dialog=%d\nlayout=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\nyo_usage=%d\napplied=%d\ncaret_persisted=%d\ncaret_applied=%d\ncaret_initial_system=%d\nsource_unchanged=%d\n", followupPassed, !verifyOnly, layoutPassed, persisted, backupPersisted, nbspPersisted, wrapPersisted, yoPersisted, applied, caretPersisted, caretApplied, initialSystem, sourceUnchanged);
+        report.AppendFormat("followup_phase=%u\n",
+            static_cast<unsigned int>(reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd, L"FBE_SETTINGS_FOLLOWUP_PHASE"))));
+        ::RemovePropW(m_hWnd, L"FBE_SETTINGS_FOLLOWUP_PHASE");
+        report.AppendFormat("followup_theme_steps=%u\nfollowup_theme_error=%lu\n",
+            static_cast<unsigned int>(reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd, L"FBE_SETTINGS_FOLLOWUP_THEME_STEPS"))),
+            static_cast<unsigned long>(reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd, L"FBE_SETTINGS_FOLLOWUP_THEME_ERROR"))));
+        ::RemovePropW(m_hWnd, L"FBE_SETTINGS_FOLLOWUP_THEME_STEPS");
+        ::RemovePropW(m_hWnd, L"FBE_SETTINGS_FOLLOWUP_THEME_ERROR");
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(followupPassed && persisted && applied && layoutPassed && caretPersisted && caretApplied && sourceUnchanged ? 0 : 1);
+		return 0;
+	}
+	return 0;
+}
+
 // Keep new script/COM probes outside the large legacy scenario stack frame.
 LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT message, WPARAM wparam, LPARAM lparam, BOOL& handled)
 {
+    if (RuntimeTests::IsScenario(L"settings-dialog-runtime") || RuntimeTests::IsScenario(L"settings-dialog-runtime-verify")) {
+        PluginOptionsProbe::paletteForWindow = EditorPluginProbePalette;
+        CAtlFile output;
+        if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS))) return 0;
+        return RunSettingsDialogRuntime(output);
+    }
     if (RuntimeTests::IsScenario(L"ui-defects-runtime")) {
         PluginOptionsProbe::paletteForWindow = EditorPluginProbePalette;
         CAtlFile output;
