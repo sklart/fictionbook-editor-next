@@ -55,6 +55,7 @@ try {
         $observedCount = [int]$values["toolbar_${palette}_observed"]
         if($observedCount -lt 10 -or $matchesCount -lt 0.95 * $observedCount) { throw "Toolbar surface pixel mismatch ($palette): $matchesCount/$observedCount" }
     }
+    Write-Host "Toolbar enabled icons on Latte/Sepia: $($values.icon_buttons_passed)/$($values.icon_buttons_checked)"
     if ([long]$values.initial_applied -le 0 -or $values.repeated_delta -ne '0' -or
         $values.new_child_auto -ne '1' -or $values.hidden_preserved -ne '1' -or
         $values.order_preserved -ne '1' -or $values.deleted_band_cleared -ne '1' -or
