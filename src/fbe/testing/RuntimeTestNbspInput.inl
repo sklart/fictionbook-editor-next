@@ -101,6 +101,27 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		prefix->moveToElementText(paragraph()); prefix->setEndPoint(L"EndToStart", caretAfter);
 		const bool caretPosition = caretAfter->compareEndPoints(L"StartToEnd", caretAfter) == 0 &&
 			CString(static_cast<LPCWSTR>(prefix->text)).GetLength() == 7;
+		wchar_t geometryFlag[2] = {};
+		const bool geometryTested = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_GEOMETRY", geometryFlag, _countof(geometryFlag)) && geometryFlag[0] == L'1';
+		bool geometryFound = true, geometryUnchanged = true;
+		long geometryWidth = 0, geometryHeight = 0;
+		if (geometryTested) {
+			stage = "marker-geometry";
+			const CString beforeGeometryXml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+			const int undoBeforeGeometry = historyCount(false), redoBeforeGeometry = historyCount(true);
+			const bool dirtyBeforeGeometry = m_doc->DocChanged();
+			MSHTML::IHTMLTxtRangePtr markerRange(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+			markerRange->moveToElementText(paragraph());
+			geometryFound = configuredMarker != L"\u00a0" && markerRange->findText(_bstr_t(configuredMarker), 0, 0) != VARIANT_FALSE &&
+				CString(static_cast<LPCWSTR>(markerRange->text)) == configuredMarker;
+			MSHTML::IHTMLTextRangeMetrics2Ptr metrics(geometryFound ? markerRange : MSHTML::IHTMLTxtRangePtr());
+			MSHTML::IHTMLRectPtr rectangle(metrics ? metrics->getBoundingClientRect() : MSHTML::IHTMLRectPtr());
+			if (rectangle) { geometryWidth = rectangle->right - rectangle->left; geometryHeight = rectangle->bottom - rectangle->top; }
+			geometryFound = geometryFound && geometryWidth > 0 && geometryHeight > 0;
+			geometryUnchanged = state() == second && m_doc->DocChanged() == dirtyBeforeGeometry &&
+				historyCount(false) == undoBeforeGeometry && historyCount(true) == redoBeforeGeometry &&
+				CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == beforeGeometryXml;
+		}
 		wchar_t sourceFlag[2] = {};
 		const bool sourceTested = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_SOURCE", sourceFlag, _countof(sourceFlag)) && sourceFlag[0] == L'1';
 		bool sourceRoundTrip = true;
@@ -402,13 +423,14 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		CStringA directReport; directReport.Format("direct-tested=%d\ndirect-input=%d\ndirect-undo=%d\ndirect-redo=%d\ndirect-save-input=%d\n", directTested, directInput, directUndo, directRedo, directSaveInput); report += directReport;
 		CStringA directSelectionReport; directSelectionReport.Format("direct-selection-tested=%d\ndirect-selection-input=%d\ndirect-selection-undo=%d\ndirect-selection-redo=%d\n", directSelectionTested, directSelectionInput, directSelectionUndo, directSelectionRedo); report += directSelectionReport;
 		CStringA crossReport; crossReport.Format("cross-tested=%d\ncross-input=%d\ncross-undo=%d\ncross-redo=%d\ncross-roundtrip=%d\n", crossTested, crossInput, crossUndo, crossRedo, crossRoundTrip); report += crossReport;
+		CStringA geometryReport; geometryReport.Format("geometry-tested=%d\ngeometry-found=%d\ngeometry-unchanged=%d\ngeometry-width=%ld\ngeometry-height=%ld\n", geometryTested, geometryFound, geometryUnchanged, geometryWidth, geometryHeight); report += geometryReport;
 		CStringA sourceReport; sourceReport.Format("source-tested=%d\nsource-roundtrip=%d\nsource-link-valid=%d\n", sourceTested, sourceRoundTrip, sourceLinkValid); report += sourceReport;
 		if (sourceTested && !sourceRoundTrip) {
 			CStringA details; details.Format("source-before-utf16=%s\nsource-after-utf16=%s\n", static_cast<LPCSTR>(codepoints(second)), static_cast<LPCSTR>(codepoints(sourceAfter))); report += details;
 		}
 		CStringA repeatReport; repeatReport.Format("repeat-applied=%d\nrepeat-inserted=%d\nrepeat-preserved=%d\nrepeat-roundtrip=%d\n", repeatTested, repeatInserted, repeatPreserved, repeatRoundTrip); report += repeatReport;
 		CStringA counts; counts.Format("undo-count-after-undo=%d\nredo-count-after-undo=%d\n", afterUndo, afterUndoRedo); report += counts;
-		passed = focusInside && caretPosition && sourceRoundTrip && sourceLinkValid && priorHistory && restored && replay && directInput && directUndo && directRedo && directSaveInput && directSelectionInput && directSelectionUndo && directSelectionRedo && crossInput && crossUndo && crossRedo && crossRoundTrip && selectionInput && selectionUndo &&
+		passed = focusInside && caretPosition && geometryFound && geometryUnchanged && sourceRoundTrip && sourceLinkValid && priorHistory && restored && replay && directInput && directUndo && directRedo && directSaveInput && directSelectionInput && directSelectionUndo && directSelectionRedo && crossInput && crossUndo && crossRedo && crossRoundTrip && selectionInput && selectionUndo &&
 			(!thirdTested || (thirdInput && thirdUndo && thirdRedo)) && changedDisplay && unchangedOther && toggleRestored && toggleUndoRedo && repeatInserted && repeatPreserved && repeatRoundTrip && validText && saved && reopened && xmlMatches;
 	}
 	catch (const _com_error& error) { CStringA line; line.Format("stage=%s\nerror=0x%08lX\n", stage, static_cast<unsigned long>(error.Error())); report += line; }

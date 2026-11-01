@@ -15,9 +15,11 @@ param([Parameter(Mandatory)][string]$FbeExe,
       [switch]$CheckDirectInput,
       [switch]$CheckDirectSelection,
       [switch]$CheckCrossSelection,
+      [switch]$CheckMarkerGeometry,
       [ValidateSet('none','small-square')][string]$RepeatDisplay = 'none')
 $ErrorActionPreference = 'Stop'
 if($CheckCrossSelection -and ($CheckDirectInput -or $CheckSourceRoundTrip -or $CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $EmptyRedoControl -or $CheckOtherNode -or $OtherNodeControl -or $ToggleControl -or $CheckRepeatedApply)) { throw 'Cross selection must run as its own diagnostic.' }
+if($CheckMarkerGeometry -and ('none' -in $Modes)) { throw 'Marker geometry requires a visible marker mode.' }
 if($CheckDirectSelection -and -not $CheckDirectInput) { throw 'Direct selection requires -CheckDirectInput.' }
 if(@(@($CheckDisplayToggle, $CheckSingleDisplayToggle, $CheckSingleEmptyRedo, $EmptyRedoControl, $CheckOtherNode, $OtherNodeControl, $ToggleControl, $CheckRepeatedApply) | Where-Object { $_ }).Count -gt 1) { throw 'Choose only one NBSP diagnostic mode.' }
 if($CheckDirectInput -and ($CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $EmptyRedoControl -or $CheckOtherNode -or $OtherNodeControl -or $ToggleControl -or $CheckRepeatedApply)) { throw 'Direct input cannot be combined with display-change diagnostics.' }
@@ -27,7 +29,7 @@ if (-not $ArtifactDirectory) { $ArtifactDirectory = Join-Path $root 'build\commu
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $ArtifactDirectory = [IO.Path]::GetFullPath($ArtifactDirectory)
 New-Item -ItemType Directory -Force -Path $ArtifactDirectory | Out-Null
-$names = @('FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_NBSP_OUTPUT', 'FBE_NEXT_TEST_NBSP_TOGGLE', 'FBE_NEXT_TEST_NBSP_SOURCE', 'FBE_NEXT_TEST_NBSP_DIRECT', 'FBE_NEXT_TEST_NBSP_DIRECT_SELECTION', 'FBE_NEXT_TEST_NBSP_CROSS')
+$names = @('FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_NBSP_OUTPUT', 'FBE_NEXT_TEST_NBSP_TOGGLE', 'FBE_NEXT_TEST_NBSP_SOURCE', 'FBE_NEXT_TEST_NBSP_DIRECT', 'FBE_NEXT_TEST_NBSP_DIRECT_SELECTION', 'FBE_NEXT_TEST_NBSP_CROSS', 'FBE_NEXT_TEST_NBSP_GEOMETRY')
 $old = @{}; foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name) }
 $failures = @()
 try {
@@ -54,6 +56,7 @@ try {
             $env:FBE_NEXT_TEST_NBSP_DIRECT = if($CheckDirectInput) { '1' } else { $null }
             $env:FBE_NEXT_TEST_NBSP_DIRECT_SELECTION = if($CheckDirectSelection) { '1' } else { $null }
             $env:FBE_NEXT_TEST_NBSP_CROSS = if($CheckCrossSelection) { '1' } else { $null }
+            $env:FBE_NEXT_TEST_NBSP_GEOMETRY = if($CheckMarkerGeometry) { '1' } else { $null }
             $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime `
                 -ArgumentList @('--portable', '-b', ('"' + $report + '"'), ('"' + $fixture + '"')) -PassThru
             $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'nbsp-input-runtime' -Report $report -TimeoutSeconds 120
@@ -124,6 +127,7 @@ try {
             if($CheckDirectInput -and $text -notmatch '(?m)^direct-tested=1\r?$') { throw "$name did not run the direct NBSP input diagnostic: $text" }
             if($CheckDirectSelection -and $text -notmatch '(?m)^direct-selection-tested=1\r?$') { throw "$name did not run the direct NBSP selection diagnostic: $text" }
             if($CheckCrossSelection -and ($text -notmatch '(?m)^cross-tested=1\r?$' -or -not (Test-Path -LiteralPath "$saved.cross.fb2"))) { throw "$name did not complete the cross-selection diagnostic: $text" }
+            if($CheckMarkerGeometry -and ($text -notmatch '(?m)^geometry-tested=1\r?$' -or $text -notmatch '(?m)^geometry-found=1\r?$' -or $text -notmatch '(?m)^geometry-unchanged=1\r?$')) { throw "$name did not preserve the document while measuring its marker: $text" }
             if ($code -ne 0 -or $text -notmatch "(?m)^mode=$expectedMode\r?$" -or $text -notmatch '(?m)^result=pass\r?$') { throw "$name failed: $text" }
             $passed = $true
             if($CheckRepeatedApply) { Write-Host "Repeated settings preserve typed marker and save/reopen: PASS ($Context/$name/$RepeatDisplay)." }
