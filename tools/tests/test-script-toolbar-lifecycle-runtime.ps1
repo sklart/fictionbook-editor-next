@@ -22,6 +22,7 @@ function Invoke-Lifecycle([string]$Mode, [string]$Scenario, [string]$ReportDirec
 		if($Scenario -eq 'script-toolbar-runtime-size' -and ($text -notmatch '(?m)^dpi-matrix=1$' -or $text -notmatch '(?m)^dpi-restored=1$')) { throw "$Mode Scripts toolbar DPI metrics failed:`n$text" }
 		if($Scenario -eq 'script-toolbar-runtime-size' -and ($text -notmatch '(?m)^size-switches-pass=1$' -or $text -notmatch '(?m)^initial-icon-size=16$')) { throw "$Mode Scripts toolbar default size/100-switch regression failed:`n$text" }
 		if($Scenario -eq 'script-toolbar-runtime-size' -and $text -notmatch '(?m)^multi-toolbar-rollback=1$') { throw "$Mode Scripts toolbar group rollback failed:`n$text" }
+		if($Scenario -eq 'script-toolbar-runtime-size' -and $text -notmatch '(?m)^multi-toolbar-restore-refusal=1$') { throw "$Mode Scripts toolbar restore refusal failed:`n$text" }
     } finally { $env:FBE_NEXT_TEST_MODE = $savedMode; $env:FBE_NEXT_TEST_SCENARIO = $savedScenario }
 }
 
