@@ -45,7 +45,7 @@ try {
             foreach($key in @($values.Keys | Where-Object { $_ -like "rebar_${palette}_band*" } | Sort-Object)) { Write-Host "  ${key}: $($values[$key])" }
         }
         if($borderObserved -lt 3 -or $borderMatches -ne $borderObserved) { throw "Rebar border mismatch ($palette): $borderMatches/$borderObserved" }
-        foreach($surface in @('scripts', 'context')) {
+        foreach($surface in @('scripts', 'context', 'context_table', 'context_table2')) {
             $surfaceMatches = [int]$values["${surface}_${palette}_matches"]
             $surfaceObserved = [int]$values["${surface}_${palette}_observed"]
             Write-Host "${surface} ${palette}: matching pixels=$surfaceMatches/$surfaceObserved"

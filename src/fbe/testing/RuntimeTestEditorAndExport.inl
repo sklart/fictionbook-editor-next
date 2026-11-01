@@ -2871,11 +2871,11 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			const CString path = CString(artifactDirectory.data()) + filename;
 			return captured && ::IsWindowVisible(m_document_tree) && m_document_tree.m_tree.m_tree.IsScriptMode() && SUCCEEDED(screenshot.Save(path));
 		};
-		// Expose the actual context band so its toolbar can be sampled too.
+		// Expose all actual context bands so each toolbar can be sampled.
 		const HWND linkBand = m_contextAttributeBars.LinksBar();
 		for(int band = 0; band < static_cast<int>(m_rebar.GetBandCount()); ++band) {
 			REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD;
-			if(m_rebar.GetBandInfo(band, &info) && info.hwndChild == linkBand) m_rebar.ShowBand(band, TRUE);
+			if(m_rebar.GetBandInfo(band, &info) && m_contextAttributeBars.IsBar(info.hwndChild)) m_rebar.ShowBand(band, TRUE);
 		}
 		UpdateLayout();
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
@@ -2973,7 +2973,9 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 				::ReleaseDC(m_rebar, rebarDc);
 			}
 			surfaceDetails.AppendFormat("rebar_%s_matches\t%d\r\nrebar_%s_observed\t%d\r\n", name, borderMatches, name, borders);
-			for(const auto& target : {std::make_pair("scripts", m_ScriptsToolbar.m_hWnd), std::make_pair("context", linkBand)}) {
+			for(const auto& target : {std::make_pair("scripts", m_ScriptsToolbar.m_hWnd), std::make_pair("context", linkBand),
+				std::make_pair("context_table", m_contextAttributeBars.TableBar()),
+				std::make_pair("context_table2", m_contextAttributeBars.TableBar2())}) {
 				RECT targetRect = {}; const bool visible = target.second && ::IsWindowVisible(target.second);
 				if(visible) ::RedrawWindow(target.second, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
 				if(visible) ::GetClientRect(target.second, &targetRect);
