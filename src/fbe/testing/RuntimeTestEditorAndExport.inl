@@ -2879,6 +2879,21 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		::GetClientRect(m_hWndStatusBar, &classicStatusRect); ::GetClientRect(m_CmdToolbar, &classicToolbarRect);
 		const COLORREF classicStatus = classicPixel(m_hWndStatusBar, 2, classicStatusRect.bottom / 2);
 		const COLORREF classicToolbar = classicPixel(m_CmdToolbar, 5, classicToolbarRect.bottom - 3);
+		auto classicSurface = [](HWND window) {
+			std::vector<COLORREF> pixels; RECT rect = {};
+			::RedrawWindow(window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+			if(!::GetClientRect(window, &rect) || rect.right <= 0 || rect.bottom <= 0) return pixels;
+			HDC dc = ::GetDC(window); if(!dc) return pixels;
+			pixels.reserve(static_cast<size_t>(rect.right) * static_cast<size_t>(rect.bottom) + 2);
+			pixels.push_back(static_cast<COLORREF>(rect.right)); pixels.push_back(static_cast<COLORREF>(rect.bottom));
+			bool valid = true;
+			for(int y = 0; y < rect.bottom; ++y) for(int x = 0; x < rect.right; ++x) {
+				const COLORREF pixel = ::GetPixel(dc, x, y); pixels.push_back(pixel); valid = valid && pixel != CLR_INVALID;
+			}
+			::ReleaseDC(window, dc); if(!valid) pixels.clear(); return pixels;
+		};
+		const auto classicToolbarImage = classicSurface(m_CmdToolbar);
+		const auto classicStatusImage = classicSurface(m_hWndStatusBar);
 		bool surfacePixels = true; CStringA surfaceDetails;
 		auto sampleStatus = [&](const char* name, bool applied) {
 			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
@@ -2956,7 +2971,9 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 		const bool classicRestored = classicStatus != CLR_INVALID && classicToolbar != CLR_INVALID &&
 			classicStatus == classicPixel(m_hWndStatusBar, 2, classicStatusRect.bottom / 2) &&
-			classicToolbar == classicPixel(m_CmdToolbar, 5, classicToolbarRect.bottom - 3);
+			classicToolbar == classicPixel(m_CmdToolbar, 5, classicToolbarRect.bottom - 3) &&
+			!classicToolbarImage.empty() && !classicStatusImage.empty() &&
+			classicToolbarImage == classicSurface(m_CmdToolbar) && classicStatusImage == classicSurface(m_hWndStatusBar);
 		surfaceDetails.AppendFormat("classic_restored\t%d\r\ndark_supported\t%d\r\n", classicRestored ? 1 : 0, ThemeManager::IsDarkModeSupported() ? 1 : 0);
 		const ThemeManager::ApplyDiagnostics beforeRefresh = ThemeManager::GetApplyDiagnostics();
 		const bool refreshChanged = ThemeManager::RefreshSystemTheme();
