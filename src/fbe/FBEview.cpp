@@ -5128,8 +5128,13 @@ VARIANT_BOOL CFBEView::OnKeyPress(IDispatch* evt)
 		MSHTML::IHTMLElementPtr parent(caret->parentElement());
 		MSHTML::IHTMLElementPtr body(MSHTML::IHTMLDocument3Ptr(document)->getElementById(L"fbw_body"));
 		if (!parent || !body || !body->contains(parent)) return VARIANT_TRUE;
-		if (caret->compareEndPoints(L"StartToEnd", caret) != 0) return VARIANT_TRUE;
 		if (directNbsp) {
+			if (caret->compareEndPoints(L"StartToEnd", caret) != 0) {
+				MSHTML::IHTMLTxtRangePtr begin(caret->duplicate()), end(caret->duplicate());
+				if (!begin || !end) return VARIANT_TRUE;
+				begin->collapse(VARIANT_TRUE); end->collapse(VARIANT_FALSE);
+				if (begin->parentElement() != parent || end->parentElement() != parent) return VARIANT_TRUE;
+			}
 			// Insert the display character as part of the user's undoable edit.
 			// Converting U+00A0 later through nodeValue invalidates that edit.
 			event->returnValue = VARIANT_FALSE;
@@ -5141,6 +5146,7 @@ VARIANT_BOOL CFBEView::OnKeyPress(IDispatch* evt)
 			undo.Close();
 			return VARIANT_FALSE;
 		}
+		if (caret->compareEndPoints(L"StartToEnd", caret) != 0) return VARIANT_TRUE;
 		MSHTML::IHTMLTxtRangePtr previous(caret->duplicate());
 		if (!previous || previous->moveStart(L"character", -1) != -1 || previous->parentElement() != parent ||
 			CString(static_cast<LPCWSTR>(previous->htmlText)) != L" ") return VARIANT_TRUE;

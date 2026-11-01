@@ -11,8 +11,10 @@ param([Parameter(Mandatory)][string]$FbeExe,
       [switch]$CheckRepeatedApply,
       [switch]$CheckSourceRoundTrip,
       [switch]$CheckDirectInput,
+      [switch]$CheckDirectSelection,
       [ValidateSet('none','small-square')][string]$RepeatDisplay = 'none')
 $ErrorActionPreference = 'Stop'
+if($CheckDirectSelection -and -not $CheckDirectInput) { throw 'Direct selection requires -CheckDirectInput.' }
 if(@(@($CheckDisplayToggle, $CheckSingleDisplayToggle, $CheckSingleEmptyRedo, $EmptyRedoControl, $ToggleControl, $CheckRepeatedApply) | Where-Object { $_ }).Count -gt 1) { throw 'Choose only one NBSP diagnostic mode.' }
 if($CheckDirectInput -and ($CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $EmptyRedoControl -or $ToggleControl -or $CheckRepeatedApply)) { throw 'Direct input cannot be combined with display-change diagnostics.' }
 if($CheckRepeatedApply -and (@($Modes).Count -ne 1 -or $Modes[0] -ne 'square')) { throw 'Repeated-apply regression requires -Modes square.' }
@@ -21,7 +23,7 @@ if (-not $ArtifactDirectory) { $ArtifactDirectory = Join-Path $root 'build\commu
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $ArtifactDirectory = [IO.Path]::GetFullPath($ArtifactDirectory)
 New-Item -ItemType Directory -Force -Path $ArtifactDirectory | Out-Null
-$names = @('FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_NBSP_OUTPUT', 'FBE_NEXT_TEST_NBSP_TOGGLE', 'FBE_NEXT_TEST_NBSP_SOURCE', 'FBE_NEXT_TEST_NBSP_DIRECT')
+$names = @('FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_NBSP_OUTPUT', 'FBE_NEXT_TEST_NBSP_TOGGLE', 'FBE_NEXT_TEST_NBSP_SOURCE', 'FBE_NEXT_TEST_NBSP_DIRECT', 'FBE_NEXT_TEST_NBSP_DIRECT_SELECTION')
 $old = @{}; foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name) }
 $failures = @()
 try {
@@ -45,6 +47,7 @@ try {
             $env:FBE_NEXT_TEST_NBSP_OUTPUT = $saved
             $env:FBE_NEXT_TEST_NBSP_SOURCE = if($CheckSourceRoundTrip) { '1' } else { $null }
             $env:FBE_NEXT_TEST_NBSP_DIRECT = if($CheckDirectInput) { '1' } else { $null }
+            $env:FBE_NEXT_TEST_NBSP_DIRECT_SELECTION = if($CheckDirectSelection) { '1' } else { $null }
             $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime `
                 -ArgumentList @('--portable', '-b', ('"' + $report + '"'), ('"' + $fixture + '"')) -PassThru
             $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'nbsp-input-runtime' -Report $report -TimeoutSeconds 120
@@ -100,6 +103,7 @@ try {
             if($CheckRepeatedApply -and $text -notmatch '(?m)^repeat-applied=1\r?$') { throw "$name did not run the repeated-settings diagnostic: $text" }
             if($CheckSourceRoundTrip -and ($text -notmatch '(?m)^source-tested=1\r?$' -or $text -notmatch '(?m)^source-roundtrip=1\r?$')) { throw "$name did not preserve the document through Body/Source: $text" }
             if($CheckDirectInput -and $text -notmatch '(?m)^direct-tested=1\r?$') { throw "$name did not run the direct NBSP input diagnostic: $text" }
+            if($CheckDirectSelection -and $text -notmatch '(?m)^direct-selection-tested=1\r?$') { throw "$name did not run the direct NBSP selection diagnostic: $text" }
             if ($code -ne 0 -or $text -notmatch "(?m)^mode=$expectedMode\r?$" -or $text -notmatch '(?m)^result=pass\r?$') { throw "$name failed: $text" }
             $passed = $true
             if($CheckRepeatedApply) { Write-Host "Repeated settings preserve typed marker and save/reopen: PASS ($Context/$name/$RepeatDisplay)." }

@@ -143,7 +143,10 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		const bool replay = steps == 1 ? redo1 == second : undo1 == first && redo1 == first && redo2 == second;
 		wchar_t directFlag[2] = {};
 		const bool directTested = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_DIRECT", directFlag, _countof(directFlag)) && directFlag[0] == L'1';
+		wchar_t directSelectionFlag[2] = {};
+		const bool directSelectionTested = directTested && ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_DIRECT_SELECTION", directSelectionFlag, _countof(directSelectionFlag)) && directSelectionFlag[0] == L'1';
 		bool directInput = true, directUndo = true, directRedo = true;
+		bool directSelectionInput = true, directSelectionUndo = true, directSelectionRedo = true;
 		if (directTested) {
 			stage = "direct-nbsp-input";
 			MSHTML::IHTMLTxtRangePtr direct(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
@@ -160,6 +163,22 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump(); directUndo = state() == second;
 			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_REDO, 0); pump(); directRedo = state() == inserted;
 			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump(); directUndo = directUndo && state() == second;
+			if (directSelectionTested) {
+				stage = "direct-nbsp-selection";
+				MSHTML::IHTMLTxtRangePtr selectedDirect(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+				selectedDirect->moveToElementText(paragraph()); selectedDirect->collapse(VARIANT_TRUE);
+				selectedDirect->move(L"character", 8); selectedDirect->moveEnd(L"character", 1); selectedDirect->select(); pump();
+				const HWND selectedFocus = ::GetFocus();
+				if (!selectedFocus || (selectedFocus != m_doc->m_body.m_hWnd && !::IsChild(m_doc->m_body.m_hWnd, selectedFocus))) CheckError(E_FAIL);
+				::SendMessageW(selectedFocus, WM_CHAR, L'\u00a0', 1); pump();
+				const CString selectedState = state();
+				CString expectedSelection(second);
+				const int selectionReplacements = expectedSelection.Replace(L"word2", CString(L"w") + htmlMarker + L"rd2");
+				directSelectionInput = selectionReplacements == 1 && selectedState == expectedSelection && text() == secondText.Left(8) + configuredMarker + secondText.Mid(9);
+				m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump(); directSelectionUndo = state() == second;
+				m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_REDO, 0); pump(); directSelectionRedo = state() == selectedState;
+				m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump(); directSelectionUndo = directSelectionUndo && state() == second;
+			}
 		}
 		// A space typed over a selection must follow the ordinary editor route,
 		// not the special handling for a collapsed caret after a space.
@@ -315,13 +334,14 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 			static_cast<LPCSTR>(codepoints(redo1Text)), static_cast<LPCSTR>(codepoints(redo2Text)), caretPosition, priorHistory, selectionInput, selectionUndo, thirdTested, thirdInput, thirdUndo, thirdRedo); report += history;
 		report += toggleReport;
 		CStringA directReport; directReport.Format("direct-tested=%d\ndirect-input=%d\ndirect-undo=%d\ndirect-redo=%d\ndirect-save-input=%d\n", directTested, directInput, directUndo, directRedo, directSaveInput); report += directReport;
+		CStringA directSelectionReport; directSelectionReport.Format("direct-selection-tested=%d\ndirect-selection-input=%d\ndirect-selection-undo=%d\ndirect-selection-redo=%d\n", directSelectionTested, directSelectionInput, directSelectionUndo, directSelectionRedo); report += directSelectionReport;
 		CStringA sourceReport; sourceReport.Format("source-tested=%d\nsource-roundtrip=%d\nsource-link-valid=%d\n", sourceTested, sourceRoundTrip, sourceLinkValid); report += sourceReport;
 		if (sourceTested && !sourceRoundTrip) {
 			CStringA details; details.Format("source-before-utf16=%s\nsource-after-utf16=%s\n", static_cast<LPCSTR>(codepoints(second)), static_cast<LPCSTR>(codepoints(sourceAfter))); report += details;
 		}
 		CStringA repeatReport; repeatReport.Format("repeat-applied=%d\nrepeat-inserted=%d\nrepeat-preserved=%d\nrepeat-roundtrip=%d\n", repeatTested, repeatInserted, repeatPreserved, repeatRoundTrip); report += repeatReport;
 		CStringA counts; counts.Format("undo-count-after-undo=%d\nredo-count-after-undo=%d\n", afterUndo, afterUndoRedo); report += counts;
-		passed = focusInside && caretPosition && sourceRoundTrip && sourceLinkValid && priorHistory && restored && replay && directInput && directUndo && directRedo && directSaveInput && selectionInput && selectionUndo &&
+		passed = focusInside && caretPosition && sourceRoundTrip && sourceLinkValid && priorHistory && restored && replay && directInput && directUndo && directRedo && directSaveInput && directSelectionInput && directSelectionUndo && directSelectionRedo && selectionInput && selectionUndo &&
 			(!thirdTested || (thirdInput && thirdUndo && thirdRedo)) && changedDisplay && unchangedOther && toggleRestored && toggleUndoRedo && repeatInserted && repeatPreserved && repeatRoundTrip && validText && saved && reopened && xmlMatches;
 	}
 	catch (const _com_error& error) { CStringA line; line.Format("stage=%s\nerror=0x%08lX\n", stage, static_cast<unsigned long>(error.Error())); report += line; }
