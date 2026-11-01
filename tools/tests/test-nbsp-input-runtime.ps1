@@ -16,8 +16,12 @@ param([Parameter(Mandatory)][string]$FbeExe,
       [switch]$CheckDirectSelection,
       [switch]$CheckCrossSelection,
       [switch]$CheckMarkerGeometry,
+      [switch]$CheckRedoAfterDisplayChange,
+      [switch]$RedoAfterDisplayControl,
       [ValidateSet('none','small-square')][string]$RepeatDisplay = 'none')
 $ErrorActionPreference = 'Stop'
+if($CheckRedoAfterDisplayChange -and $RedoAfterDisplayControl) { throw 'Choose either redo display diagnostic or control.' }
+if(($CheckRedoAfterDisplayChange -or $RedoAfterDisplayControl) -and (@($Modes).Count -ne 1 -or $Modes[0] -ne 'square' -or $Context -ne 'plain' -or $CheckDirectInput -or $CheckCrossSelection -or $CheckMarkerGeometry -or $CheckSourceRoundTrip -or $CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $EmptyRedoControl -or $CheckOtherNode -or $OtherNodeControl -or $ToggleControl -or $CheckRepeatedApply)) { throw 'Redo display diagnostic requires only -Modes square -Context plain.' }
 if($CheckCrossSelection -and ($CheckDirectInput -or $CheckSourceRoundTrip -or $CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $EmptyRedoControl -or $CheckOtherNode -or $OtherNodeControl -or $ToggleControl -or $CheckRepeatedApply)) { throw 'Cross selection must run as its own diagnostic.' }
 if($CheckMarkerGeometry -and ('none' -in $Modes)) { throw 'Marker geometry requires a visible marker mode.' }
 if($CheckDirectSelection -and -not $CheckDirectInput) { throw 'Direct selection requires -CheckDirectInput.' }
@@ -29,7 +33,7 @@ if (-not $ArtifactDirectory) { $ArtifactDirectory = Join-Path $root 'build\commu
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $ArtifactDirectory = [IO.Path]::GetFullPath($ArtifactDirectory)
 New-Item -ItemType Directory -Force -Path $ArtifactDirectory | Out-Null
-$names = @('FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_NBSP_OUTPUT', 'FBE_NEXT_TEST_NBSP_TOGGLE', 'FBE_NEXT_TEST_NBSP_SOURCE', 'FBE_NEXT_TEST_NBSP_DIRECT', 'FBE_NEXT_TEST_NBSP_DIRECT_SELECTION', 'FBE_NEXT_TEST_NBSP_CROSS', 'FBE_NEXT_TEST_NBSP_GEOMETRY')
+$names = @('FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_NBSP_OUTPUT', 'FBE_NEXT_TEST_NBSP_TOGGLE', 'FBE_NEXT_TEST_NBSP_SOURCE', 'FBE_NEXT_TEST_NBSP_DIRECT', 'FBE_NEXT_TEST_NBSP_DIRECT_SELECTION', 'FBE_NEXT_TEST_NBSP_CROSS', 'FBE_NEXT_TEST_NBSP_GEOMETRY', 'FBE_NEXT_TEST_NBSP_REDO_DISPLAY')
 $old = @{}; foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name) }
 $failures = @()
 try {
@@ -57,6 +61,7 @@ try {
             $env:FBE_NEXT_TEST_NBSP_DIRECT_SELECTION = if($CheckDirectSelection) { '1' } else { $null }
             $env:FBE_NEXT_TEST_NBSP_CROSS = if($CheckCrossSelection) { '1' } else { $null }
             $env:FBE_NEXT_TEST_NBSP_GEOMETRY = if($CheckMarkerGeometry) { '1' } else { $null }
+            $env:FBE_NEXT_TEST_NBSP_REDO_DISPLAY = if($CheckRedoAfterDisplayChange) { '1' } elseif($RedoAfterDisplayControl) { '2' } else { $null }
             $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime `
                 -ArgumentList @('--portable', '-b', ('"' + $report + '"'), ('"' + $fixture + '"')) -PassThru
             $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'nbsp-input-runtime' -Report $report -TimeoutSeconds 120
@@ -78,6 +83,24 @@ try {
             if ($Context -eq 'link') {
                 $link = $xml.SelectSingleNode('//fb:p[@id="nbsp-probe"]/fb:a', $ns)
                 if (-not $link -or $link.GetAttribute('href', 'http://www.w3.org/1999/xlink') -cne '#nbsp-probe') { throw 'Link or target was lost.' }
+            }
+            if($CheckRedoAfterDisplayChange -or $RedoAfterDisplayControl) {
+                $redoReaderSettings = [Xml.XmlReaderSettings]::new(); $redoReaderSettings.ValidationType = [Xml.ValidationType]::Schema
+                $redoReaderSettings.XmlResolver = [Xml.XmlUrlResolver]::new(); $redoReaderSettings.Schemas.XmlResolver = [Xml.XmlUrlResolver]::new()
+                [void]$redoReaderSettings.Schemas.Add('http://www.gribuser.ru/xml/fictionbook/2.0', (Join-Path $root 'runtime\FictionBook.xsd'))
+                $redoReader = [Xml.XmlReader]::Create($saved, $redoReaderSettings)
+                try { while($redoReader.Read()) {} } finally { $redoReader.Dispose() }
+                $expectedApplied = if($CheckRedoAfterDisplayChange) { '1' } else { '0' }
+                $validValue = $value.Length -eq 12 -and $value.Substring(0,5) -ceq 'word1' -and $value.Substring(7) -ceq 'word2' -and
+                    @($value.Substring(5,2).ToCharArray() | Where-Object { $_ -eq [char]0x00A0 }).Count -eq 1 -and
+                    @($value.Substring(5,2).ToCharArray() | Where-Object { $_ -eq ' ' }).Count -eq 1
+                if(-not $validValue -or $code -ne 0 -or $text -notmatch '(?m)^redo-display-tested=1\r?$' -or $text -notmatch "(?m)^redo-display-applied=$expectedApplied\r?$" -or $text -notmatch '(?m)^result=pass\r?$') {
+                    $codepoints = ($value.ToCharArray() | ForEach-Object { '{0:X4}' -f [int]$_ }) -join ','
+                    throw "$name redo display diagnostic failed; saved codepoints=$codepoints; XSD passed: $text"
+                }
+                $passed = $true
+                Write-Host "NBSP redo after display, saved XML and independent XSD: PASS ($name; applied=$expectedApplied)."
+                continue
             }
             $expectedSuffix = if($CheckSingleEmptyRedo -or $EmptyRedoControl) { 'wOrd2' } else { 'word2' }
             if($CheckDirectInput) {

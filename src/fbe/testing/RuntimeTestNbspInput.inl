@@ -101,6 +101,34 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		prefix->moveToElementText(paragraph()); prefix->setEndPoint(L"EndToStart", caretAfter);
 		const bool caretPosition = caretAfter->compareEndPoints(L"StartToEnd", caretAfter) == 0 &&
 			CString(static_cast<LPCWSTR>(prefix->text)).GetLength() == 7;
+		wchar_t redoDisplayFlag[2] = {};
+		const bool redoDisplayTested = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_REDO_DISPLAY", redoDisplayFlag, _countof(redoDisplayFlag)) == 1 &&
+			(redoDisplayFlag[0] == L'1' || redoDisplayFlag[0] == L'2');
+		if (redoDisplayTested) {
+			stage = "redo-after-display-change";
+			const bool applyDisplay = redoDisplayFlag[0] == L'1';
+			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
+			int redoSteps = 1;
+			if (state() != original) { SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump(); ++redoSteps; }
+			const bool redoReady = state() == original && historyCount(true) >= redoSteps && text() == L"word1word2";
+			const CString beforeDisplayXml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+			if (applyDisplay) { _Settings.SetNBSPChar(L"\u00a0"); ApplyConfChanges(false, false); pump(); }
+			const bool displayUnchanged = CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == beforeDisplayXml;
+			for (int step = 0; step < redoSteps; ++step) { m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_REDO, 0); pump(); }
+			CString expectedText(secondText);
+			if (applyDisplay) expectedText.Replace(configuredMarker, L"\u00a0");
+			const CString actualText(text());
+			const bool redoText = actualText == expectedText;
+			const CString afterRedoXml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+			const bool redoSaved = m_doc->Save(target); pump();
+			const bool redoReopened = redoSaved && LoadFile(target) == OK; pump();
+			const bool redoRoundTrip = redoReopened && CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == afterRedoXml;
+			const bool redoPassed = caretPosition && redoReady && displayUnchanged && redoText && redoRoundTrip;
+			CStringA redoReport;
+			redoReport.Format("redo-display-tested=1\nredo-display-applied=%d\nredo-ready=%d\ndisplay-xml-unchanged=%d\nredo-steps=%d\nredo-text-ok=%d\nredo-text=%s\nredo-saved=%d\nredo-roundtrip=%d\nresult=%s\n", applyDisplay, redoReady, displayUnchanged, redoSteps, redoText, static_cast<LPCSTR>(codepoints(actualText)), redoSaved, redoRoundTrip, redoPassed ? "pass" : "fail");
+			DWORD written = 0; output.Write(redoReport, redoReport.GetLength(), &written); output.Flush(); output.Close();
+			::PostQuitMessage(redoPassed ? 0 : 1); return 0;
+		}
 		wchar_t geometryFlag[2] = {};
 		const bool geometryTested = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_GEOMETRY", geometryFlag, _countof(geometryFlag)) && geometryFlag[0] == L'1';
 		bool geometryFound = true, geometryUnchanged = true;
