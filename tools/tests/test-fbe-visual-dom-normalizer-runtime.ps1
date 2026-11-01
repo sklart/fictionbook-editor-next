@@ -2,7 +2,7 @@
 content, a BR and an empty paragraph.  It deliberately does not reuse a table
 scenario: this test exercises CFBEView::Normalize and VisualDomNormalizer. #>
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180, [switch]$KeepArtifacts)
+param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180, [switch]$KeepArtifacts, [switch]$SkipClipboard)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'visual-dom-normalizer'
@@ -17,22 +17,24 @@ try {
 <?xml version="1.0" encoding="utf-8"?>
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Normalizer</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>normalizer-test</id><version>1.0</version></document-info></description><body><section><p>До</p><empty-line/><p>После</p></section></body></FictionBook>
 "@ | Set-Content -LiteralPath $fixture -Encoding utf8
-    $oldMode, $oldScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
+    $oldMode, $oldScenario, $oldSkipClipboard = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SKIP_CLIPBOARD
     $invokeNormalizer = {
         $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('--portable', '-b', $report, $fixture) -PassThru
         $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'visual-dom-normalizer' -Report $report -TimeoutSeconds $TimeoutSeconds
         if($exitCode -ne 0) { throw "FBE normalizer scenario failed: exit $exitCode." }
     }
     try {
-        $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'visual-dom-normalizer'
+        $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'visual-dom-normalizer'; $env:FBE_NEXT_TEST_SKIP_CLIPBOARD = if($SkipClipboard) { '1' } else { $null }
         &$invokeNormalizer
     }
-    finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $oldMode, $oldScenario }
+    finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SKIP_CLIPBOARD = $oldMode, $oldScenario, $oldSkipClipboard }
     $row = Import-Csv -LiteralPath $report -Delimiter "`t"
-    if(@($row).Count -ne 9 -or @($row | Where-Object { $_.result -ne 'pass' }).Count -ne 0) { throw "Visual DOM normalizer runtime contract failed: $($row | ConvertTo-Json -Compress)" }
+    if(@($row).Count -ne 9 -or @($row | Where-Object { $_.case -ne 'paste-normal' -and $_.result -ne 'pass' }).Count -ne 0) { throw "Visual DOM normalizer runtime contract failed: $($row | ConvertTo-Json -Compress)" }
     $byCase = @{}; foreach($entry in $row) { $byCase[$entry.case] = $entry }
     foreach($name in 'single-br', 'double-br', 'empty-p', 'nbsp-p', 'formatted-br') { if(-not $byCase.ContainsKey($name)) { throw "Missing normalizer case: $name" } }
-	if(-not $byCase.ContainsKey('paste-normal') -or $byCase['paste-normal'].result -ne 'pass' -or $byCase['paste-normal'].nbsp -ne '1' -or $byCase['paste-normal'].scope_isolated -ne '1') { throw 'Ordinary Paste did not preserve its local scope and NBSP payload through Normalize.' }
+	if($SkipClipboard) {
+        if(-not $byCase.ContainsKey('paste-normal') -or $byCase['paste-normal'].result -ne 'skip') { throw 'Clipboard skip was not honored.' }
+    } elseif(-not $byCase.ContainsKey('paste-normal') -or $byCase['paste-normal'].result -ne 'pass' -or $byCase['paste-normal'].nbsp -ne '1' -or $byCase['paste-normal'].scope_isolated -ne '1') { throw 'Ordinary Paste did not preserve its local scope and NBSP payload through Normalize.' }
 	foreach($name in 'title-single', 'title-nested', 'title-direct-merge') {
 		if(-not $byCase.ContainsKey($name) -or $byCase[$name].exact_paragraphs -ne '1' -or $byCase[$name].empty_line -ne '1' -or $byCase[$name].nbsp -ne '1' -or $byCase[$name].formatting -ne '1' -or $byCase[$name].scope_isolated -ne '1') { throw "Title normalizer regression failed for $name." }
 	}
@@ -47,10 +49,10 @@ try {
     $section = $saved.selectSingleNode('/*[local-name()="FictionBook"]/*[local-name()="body"]/*[local-name()="section"]')
     if(-not $section -or $section.childNodes.length -ne 3 -or $section.childNodes.item(0).nodeName -ne 'p' -or $section.childNodes.item(1).nodeName -ne 'empty-line' -or $section.childNodes.item(2).nodeName -ne 'p' -or $section.childNodes.item(0).text -ne 'До' -or $section.childNodes.item(2).text -ne 'После') { throw 'Open → Save did not preserve the FB2 empty-line in its original position.' }
     try {
-        $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'visual-dom-normalizer'
+        $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'visual-dom-normalizer'; $env:FBE_NEXT_TEST_SKIP_CLIPBOARD = if($SkipClipboard) { '1' } else { $null }
         &$invokeNormalizer
     }
-    finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $oldMode, $oldScenario }
+    finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SKIP_CLIPBOARD = $oldMode, $oldScenario, $oldSkipClipboard }
     if(-not $saved.load($fixture)) { throw "Reopened normalization fixture is not XML: $($saved.parseError.reason)" }
     $section = $saved.selectSingleNode('/*[local-name()="FictionBook"]/*[local-name()="body"]/*[local-name()="section"]')
     if(-not $section -or $section.childNodes.length -ne 3 -or $section.childNodes.item(1).nodeName -ne 'empty-line') { throw 'Open → Save → Reopen lost or moved the FB2 empty-line.' }
@@ -59,4 +61,5 @@ try {
 finally {
     Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -KeepArtifacts:$KeepArtifacts
 }
-Write-Host 'Visual DOM normalizer production runtime passed.'
+if($SkipClipboard) { Write-Warning 'Visual DOM normalizer passed without clipboard paste; paste remains unverified.' }
+else { Write-Host 'Visual DOM normalizer production runtime passed.' }

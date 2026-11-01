@@ -245,7 +245,7 @@ foreach ($treeMode in @('portable', 'installed')) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-visual-dom-normalizer-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-clipboard-paste-boundary.ps1")
 if ($SkipClipboardRuntime) {
-    Write-Warning 'SKIPPED: visual DOM normalizer runtime includes a real clipboard paste.'
+    & (Join-Path $repoRoot "tools\tests\test-fbe-visual-dom-normalizer-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -SkipClipboard
 } else {
     & (Join-Path $repoRoot "tools\tests\test-fbe-visual-dom-normalizer-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 }

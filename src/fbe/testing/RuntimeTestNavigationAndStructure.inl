@@ -528,8 +528,10 @@
 		editable->innerHTML = L"<DIV class='section'><P>Before paste</P></DIV><DIV class='section'><P>Adjacent<BR>untouched</P></DIV>";
 		const CString pastePayload(L"paste-alpha\u00A0bold\r\npaste-beta\r\n\r\npaste-gamma");
 		bool pasteNormalized = false;
+		wchar_t skipClipboardValue[2] = {};
+		const bool skipClipboard = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SKIP_CLIPBOARD", skipClipboardValue, _countof(skipClipboardValue)) == 1 && skipClipboardValue[0] == L'1';
 		CComPtr<IDataObject> originalClipboard;
-		if (SUCCEEDED(::OleGetClipboard(&originalClipboard)) && ::OpenClipboard(m_hWnd)) {
+		if (!skipClipboard && SUCCEEDED(::OleGetClipboard(&originalClipboard)) && ::OpenClipboard(m_hWnd)) {
 			::EmptyClipboard();
 			const SIZE_T pasteBytes = static_cast<SIZE_T>(pastePayload.GetLength() + 1) * sizeof(wchar_t);
 			HGLOBAL pasteMemory = ::GlobalAlloc(GMEM_MOVEABLE, pasteBytes);
@@ -556,7 +558,7 @@
 			}
 			::OleSetClipboard(originalClipboard);
 		}
-		CStringA pasteRow; pasteRow.Format("paste-normal\t0\t0\t0\t%d\t%d\t%d\t%d\t%d\t%s\r\n", pasteNormalized ? 1 : 0, pasteNormalized ? 1 : 0, pasteNormalized ? 1 : 0, 1, pasteNormalized ? 1 : 0, pasteNormalized ? "pass" : "fail");
+		CStringA pasteRow; pasteRow.Format("paste-normal\t0\t0\t0\t%d\t%d\t%d\t%d\t%d\t%s\r\n", pasteNormalized ? 1 : 0, pasteNormalized ? 1 : 0, pasteNormalized ? 1 : 0, 1, pasteNormalized ? 1 : 0, skipClipboard ? "skip" : (pasteNormalized ? "pass" : "fail"));
 		output.Write(pasteRow, static_cast<DWORD>(pasteRow.GetLength()), &written);
 		editable = document->all->item(L"fbw_body");
 		if (!editable) { output.Close(); ::PostQuitMessage(1); return 0; }
