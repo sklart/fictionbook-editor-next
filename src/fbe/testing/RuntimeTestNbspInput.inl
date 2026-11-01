@@ -190,15 +190,44 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 			const bool redoReopened = redoSaved && LoadFile(target) == OK; pump();
 			const bool redoRoundTrip = redoReopened && CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == afterRedoXml;
 			bool guardReopened = !guardTested || (redoReopened && !HasNbspDisplayHistory());
+			bool guardSwitch = true, guardEdit = true;
 			if (guardTested && guardReopened) {
 				CSettingsEditorPage reopenedPage(HasNbspDisplayHistory());
 				const bool created = reopenedPage.Create(m_hWnd) != NULL;
 				guardReopened = created && ::IsWindowEnabled(reopenedPage.GetDlgItem(IDC_NBSP_CHAR));
+				if (guardReopened) {
+					::SendMessage(reopenedPage.GetDlgItem(IDC_NBSP_CHAR), CB_SETCURSEL, 3, 0);
+					guardSwitch = reopenedPage.Validate();
+					if (guardSwitch) reopenedPage.Commit();
+				}
 				if (created) reopenedPage.DestroyWindow();
+				if (guardReopened && guardSwitch) {
+					ApplyConfChanges(false, false); pump();
+					document = m_doc->m_body.Document();
+					CString expectedAfterSwitch(secondText); expectedAfterSwitch.Replace(configuredMarker, L"\u00a0");
+					guardSwitch = _Settings.GetNBSPChar() == L"\u00a0" && text() == expectedAfterSwitch &&
+						CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == afterRedoXml && !HasNbspDisplayHistory();
+					if (guardSwitch) {
+						MSHTML::IHTMLTxtRangePtr editRange(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+						editRange->moveToElementText(paragraph()); editRange->collapse(VARIANT_FALSE); editRange->select();
+						m_doc->m_body.SetFocus(); pump();
+						const HWND editFocus = ::GetFocus();
+						guardEdit = editFocus && (editFocus == m_doc->m_body.m_hWnd || ::IsChild(m_doc->m_body.m_hWnd, editFocus));
+						if (guardEdit) {
+							::SendMessageW(editFocus, WM_CHAR, L'X', 1); pump();
+							const CString editedXml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+							guardEdit = editedXml != afterRedoXml;
+							SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump();
+							guardEdit = guardEdit && CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == afterRedoXml;
+							SendMessage(WM_COMMAND, ID_EDIT_REDO, 0); pump();
+							guardEdit = guardEdit && CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == editedXml;
+						}
+					}
+				}
 			}
-			const bool redoPassed = caretPosition && redoReady && displayUnchanged && redoText && redoRoundTrip && guardEmpty && guardUndo && guardRedo && guardPage && guardPreserved && guardTooltip && guardOther && guardDialog && guardReopened;
+			const bool redoPassed = caretPosition && redoReady && displayUnchanged && redoText && redoRoundTrip && guardEmpty && guardUndo && guardRedo && guardPage && guardPreserved && guardTooltip && guardOther && guardDialog && guardReopened && guardSwitch && guardEdit;
 			CStringA redoReport;
-			redoReport.Format("redo-display-tested=1\nredo-display-applied=%d\nredo-ready=%d\ndisplay-xml-unchanged=%d\nredo-steps=%d\nredo-text-ok=%d\nredo-text=%s\nredo-saved=%d\nredo-roundtrip=%d\nguard-tested=%d\nguard-empty=%d\nguard-undo=%d\nguard-redo=%d\nguard-page=%d\nguard-preserved=%d\nguard-tooltip=%d\nguard-other=%d\nguard-dialog=%d\nguard-reopened=%d\nresult=%s\n", applyDisplay, redoReady, displayUnchanged, redoSteps, redoText, static_cast<LPCSTR>(codepoints(actualText)), redoSaved, redoRoundTrip, guardTested, guardEmpty, guardUndo, guardRedo, guardPage, guardPreserved, guardTooltip, guardOther, guardDialog, guardReopened, redoPassed ? "pass" : "fail");
+			redoReport.Format("redo-display-tested=1\nredo-display-applied=%d\nredo-ready=%d\ndisplay-xml-unchanged=%d\nredo-steps=%d\nredo-text-ok=%d\nredo-text=%s\nredo-saved=%d\nredo-roundtrip=%d\nguard-tested=%d\nguard-empty=%d\nguard-undo=%d\nguard-redo=%d\nguard-page=%d\nguard-preserved=%d\nguard-tooltip=%d\nguard-other=%d\nguard-dialog=%d\nguard-reopened=%d\nguard-switch=%d\nguard-edit=%d\nresult=%s\n", applyDisplay, redoReady, displayUnchanged, redoSteps, redoText, static_cast<LPCSTR>(codepoints(actualText)), redoSaved, redoRoundTrip, guardTested, guardEmpty, guardUndo, guardRedo, guardPage, guardPreserved, guardTooltip, guardOther, guardDialog, guardReopened, guardSwitch, guardEdit, redoPassed ? "pass" : "fail");
 			DWORD written = 0; output.Write(redoReport, redoReport.GetLength(), &written); output.Flush(); output.Close();
 			::PostQuitMessage(redoPassed ? 0 : 1); return 0;
 		}

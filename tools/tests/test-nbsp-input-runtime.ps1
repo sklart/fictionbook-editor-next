@@ -100,7 +100,7 @@ try {
                     $codepoints = ($value.ToCharArray() | ForEach-Object { '{0:X4}' -f [int]$_ }) -join ','
                     throw "$name redo display diagnostic failed; saved codepoints=$codepoints; XSD passed: $text"
                 }
-                if($CheckHistoryGuard) { foreach($flag in @('guard-tested','guard-empty','guard-undo','guard-redo','guard-page','guard-preserved','guard-tooltip','guard-other','guard-dialog','guard-reopened')) { if($text -notmatch ("(?m)^" + $flag + "=1\r?$")) { throw "History guard failed ($flag): $text" } } }
+                if($CheckHistoryGuard) { foreach($flag in @('guard-tested','guard-empty','guard-undo','guard-redo','guard-page','guard-preserved','guard-tooltip','guard-other','guard-dialog','guard-reopened','guard-switch','guard-edit')) { if($text -notmatch ("(?m)^" + $flag + "=1\r?$")) { throw "History guard failed ($flag): $text" } } }
                 $passed = $true
                 Write-Host "NBSP redo after display, saved XML and independent XSD: PASS ($name; applied=$expectedApplied)."
                 continue
