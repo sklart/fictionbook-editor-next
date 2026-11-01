@@ -851,8 +851,8 @@ void CMainFrame::RunPortableStateTestScenario()
                 (testAction != 3 || errorDismissed) && passed;
         }
         ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_TOOLBAR_DIALOG_ACTION", NULL);
-        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
-            passed ? "main-toolbar-dialog=1\nresult=pass\n" : "main-toolbar-dialog=0\nresult=fail\n");
+		CStringA report; report.Format("interface-language=%lu\nmain-toolbar-dialog=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), passed, passed ? "pass" : "fail");
+		WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
         PostMessage(WM_CLOSE); return;
     }
     if(IsFbeTestScenario(L"main-toolbar-size-setting-write")) {
@@ -1003,8 +1003,8 @@ void CMainFrame::RunPortableStateTestScenario()
         _Settings.SetMainToolbarIconSize(32);
         _Settings.SetScriptIconSize(20);
         _Settings.Save();
-        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
-            passed ? "main-toolbar-setting-write=1\nresult=pass\n" : "main-toolbar-setting-write=0\nresult=fail\n");
+		CStringA report; report.Format("interface-language=%lu\nmain-toolbar-setting-write=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), passed, passed ? "pass" : "fail");
+		WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
         PostMessage(WM_CLOSE); return;
     }
     if(IsFbeTestScenario(L"main-toolbar-size-setting-read")) {
@@ -1012,8 +1012,8 @@ void CMainFrame::RunPortableStateTestScenario()
         const int expected = UiMetrics::ScaleForDpi(32, UiMetrics::DpiForWindow(m_hWnd));
         const bool passed = _Settings.GetMainToolbarIconSize() == 32 && _Settings.GetScriptIconSize() == 20 &&
             ::ImageList_GetIconSize(m_commandToolbarImages, &width, &height) && width == expected && height == expected;
-        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
-            passed ? "main-toolbar-setting-restart=1\nresult=pass\n" : "main-toolbar-setting-restart=0\nresult=fail\n");
+		CStringA report; report.Format("interface-language=%lu\nmain-toolbar-setting-restart=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), passed, passed ? "pass" : "fail");
+		WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
         PostMessage(WM_CLOSE); return;
     }
     if(IsFbeTestScenario(L"script-icon-size-read")) {
