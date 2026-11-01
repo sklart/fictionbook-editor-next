@@ -2506,6 +2506,50 @@
 			::DeleteObject(lineScaled); ::DeleteObject(scaled); ::DeleteObject(baseline); if(!silhouettePassed || thinLineWidth == 0 || thinLineWidth > maximumThinLineWidth) { failure = 9; return false; }
 			return true;
 		};
+		// Render the production image list over two backgrounds whose channels
+		// differ equally. Every pixel must respond consistently in all channels.
+		auto realIconBlendPass = [&](UINT dpi) {
+			CImageList images;
+			if(!ToolbarFactory::CreateCommandToolbarImages(images, IDR_MAINFRAME, dpi, 24)) return false;
+			const int size = UiMetrics::ScaleForDpi(24, dpi), count = ::ImageList_GetImageCount(images);
+			if(size <= 0 || count <= 0) return false;
+			auto draw = [&](COLORREF background) {
+				std::vector<COLORREF> pixels;
+				BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader);
+				info.bmiHeader.biWidth = count * size; info.bmiHeader.biHeight = -size;
+				info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
+				void* bits = NULL; HBITMAP bitmap = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &bits, NULL, 0);
+				HDC dc = bitmap ? ::CreateCompatibleDC(NULL) : NULL; HGDIOBJ old = dc ? ::SelectObject(dc, bitmap) : NULL;
+				if(!bitmap || !bits || !dc || !old) { if(old) ::SelectObject(dc, old); if(dc) ::DeleteDC(dc); if(bitmap) ::DeleteObject(bitmap); return pixels; }
+				RECT bounds = { 0, 0, count * size, size }; HBRUSH brush = ::CreateSolidBrush(background);
+				bool valid = brush && ::FillRect(dc, &bounds, brush); if(brush) ::DeleteObject(brush);
+				for(int icon = 0; icon < count; ++icon) valid = ::ImageList_Draw(images, icon, dc, icon * size, 0, ILD_TRANSPARENT) && valid;
+				if(valid) {
+					pixels.reserve(static_cast<size_t>(count) * size * size);
+					for(int icon = 0; icon < count; ++icon) for(int y = 0; y < size; ++y) for(int x = 0; x < size; ++x)
+						pixels.push_back(::GetPixel(dc, icon * size + x, y));
+				}
+				::SelectObject(dc, old); ::DeleteDC(dc); ::DeleteObject(bitmap); return pixels;
+			};
+			const auto dark = draw(RGB(16, 32, 48)), light = draw(RGB(216, 232, 248));
+			if(dark.empty() || dark.size() != light.size()) return false;
+			bool passed = true; int visibleIcons = 0, transparentIcons = 0;
+			for(int icon = 0; icon < count; ++icon) {
+				int transparent = 0, visible = 0;
+				for(int pixel = 0; pixel < size * size; ++pixel) {
+					const size_t offset = static_cast<size_t>(icon) * size * size + pixel;
+					const COLORREF a = dark[offset], b = light[offset];
+					if(a == CLR_INVALID || b == CLR_INVALID) { passed = false; continue; }
+					const int r = GetRValue(b) - GetRValue(a), g = GetGValue(b) - GetGValue(a), blue = GetBValue(b) - GetBValue(a);
+					passed = passed && r >= -2 && r <= 202 && abs(r - g) <= 2 && abs(r - blue) <= 2;
+					if(r >= 198 && g >= 198 && blue >= 198) ++transparent;
+					if(r < 190 || g < 190 || blue < 190) ++visible;
+				}
+				if(transparent) ++transparentIcons;
+				if(visible) ++visibleIcons;
+			}
+			return passed && visibleIcons >= 10 && transparentIcons >= 10;
+		};
 		BITMAPINFO partialInfo = {}; partialInfo.bmiHeader.biSize = sizeof(partialInfo.bmiHeader); partialInfo.bmiHeader.biWidth = 2;
 		partialInfo.bmiHeader.biHeight = -2; partialInfo.bmiHeader.biPlanes = 1; partialInfo.bmiHeader.biBitCount = 32;
 		void* partialBits = NULL; HBITMAP partialSource = ::CreateDIBSection(NULL, &partialInfo, DIB_RGB_COLORS, &partialBits, NULL, 0);
@@ -2519,7 +2563,7 @@
 				abs(static_cast<int>((value >> 8) & 255) - 50) <= 1 && abs(static_cast<int>(value & 255) - 20) <= 1 && partialAlphaPassed;
 		}
 		if(partialScaled) ::DeleteObject(partialScaled); if(partialSource) ::DeleteObject(partialSource);
-		CStringA header("dpi\tsize\ttransparent_corners\tvisible_pixels\topaque_black_pixels\tmagenta_pixels\tinvalid_premultiplied_pixels\tmax_color_error\tcolor_fidelity_passed\tstandard_icons_passed\tstandard_failure\tstandard_intermediate_alpha_pixels\tstandard_silhouette_passed\tstandard_thin_line_width\tstandard_image_list_has_mask\tpartial_alpha_passed\tdark_supported\thigh_contrast\tpassed\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		CStringA header("dpi\tsize\ttransparent_corners\tvisible_pixels\topaque_black_pixels\tmagenta_pixels\tinvalid_premultiplied_pixels\tmax_color_error\tcolor_fidelity_passed\tstandard_icons_passed\tstandard_failure\tstandard_intermediate_alpha_pixels\tstandard_silhouette_passed\tstandard_thin_line_width\tstandard_image_list_has_mask\tpartial_alpha_passed\treal_icon_blend_passed\tdark_supported\thigh_contrast\tpassed\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		const UINT dpis[] = { 96, 120, 144, 168, 192 }; bool passed = true;
 		for(size_t index = 0; index < _countof(dpis); ++index)
 		{
@@ -2527,8 +2571,8 @@
 			DIBSECTION scaledInfo = {}; const bool ready = scaled && ::GetObject(scaled, sizeof(scaledInfo), &scaledInfo) == sizeof(scaledInfo) && scaledInfo.dsBm.bmBits != NULL && scaledInfo.dsBm.bmWidth == targetSize && abs(scaledInfo.dsBmih.biHeight) == targetSize;
 			long visible = 0, opaqueBlack = 0, magenta = 0, invalidPremultiplied = 0; bool transparentCorners = ready;
 			if(ready) { const DWORD* pixels = static_cast<const DWORD*>(scaledInfo.dsBm.bmBits); const int corners[] = { 0, targetSize - 1, targetSize * (targetSize - 1), targetSize * targetSize - 1 }; for(size_t corner = 0; corner < _countof(corners); ++corner) transparentCorners = transparentCorners && (pixels[corners[corner]] >> 24) == 0; for(int pixel = 0; pixel < targetSize * targetSize; ++pixel) { const DWORD value = pixels[pixel], rgb = value & 0x00FFFFFF, alpha = value >> 24; if(alpha) ++visible; if(alpha == 0xFF && rgb == 0) ++opaqueBlack; if(alpha && rgb == 0x00FF00FF) ++magenta; if(alpha > 0 && alpha < 0xFF && (((rgb >> 16) & 0xFF) > alpha || ((rgb >> 8) & 0xFF) > alpha || (rgb & 0xFF) > alpha)) ++invalidPremultiplied; } }
-			const DWORD center = ready ? static_cast<const DWORD*>(scaledInfo.dsBm.bmBits)[(targetSize / 2) * targetSize + targetSize / 2] : 0; const int centerAlpha = center >> 24, centerRed = (center >> 16) & 0xFF, centerGreen = (center >> 8) & 0xFF, centerBlue = center & 0xFF; const int maxColorError = max(abs(centerRed - 210), max(abs(centerGreen - 150), abs(centerBlue - 80))); const bool colorFidelity = centerAlpha == 0xFF && maxColorError <= 2 && (center & 0x00FFFFFF) != 0x00FFFFFF; int standardFailure = 0, standardSilhouettePassed = 0, standardImageListHasMask = -1, standardThinLineWidth = -1; long standardIntermediateAlpha = -1; const bool standardIconsPassed = standardIconsPass(dpis[index], standardFailure, standardIntermediateAlpha, standardSilhouettePassed, standardImageListHasMask, standardThinLineWidth); const bool scriptsIconsPassed = compactAndScriptIconsPass(dpis[index], IDR_SCRIPTS, 24, 1, L"scripts"); const bool bottomIconsPassed = compactAndScriptIconsPass(dpis[index], IDR_DOCUMENT_TREE, 24, 5, L"document-tree"); const bool rowPassed = ready && transparentCorners && visible > 0 && opaqueBlack == 0 && magenta == 0 && invalidPremultiplied == 0 && colorFidelity && standardIconsPassed && scriptsIconsPassed && bottomIconsPassed && standardSilhouettePassed && standardImageListHasMask == 0;
-			CStringA row; row.Format("%u\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%d\t%d\t%d\t%d\t%d\t%d\t%d\r\n", dpis[index], targetSize, transparentCorners ? 1 : 0, visible, opaqueBlack, magenta, invalidPremultiplied, maxColorError, colorFidelity ? 1 : 0, standardIconsPassed ? 1 : 0, standardFailure, standardIntermediateAlpha, standardSilhouettePassed, standardThinLineWidth, standardImageListHasMask, partialAlphaPassed ? 1 : 0, ThemeManager::IsDarkModeSupported() ? 1 : 0, ThemeManager::IsHighContrast() ? 1 : 0, rowPassed && partialAlphaPassed ? 1 : 0); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); if(scaled) ::DeleteObject(scaled); passed = passed && rowPassed && partialAlphaPassed;
+			const DWORD center = ready ? static_cast<const DWORD*>(scaledInfo.dsBm.bmBits)[(targetSize / 2) * targetSize + targetSize / 2] : 0; const int centerAlpha = center >> 24, centerRed = (center >> 16) & 0xFF, centerGreen = (center >> 8) & 0xFF, centerBlue = center & 0xFF; const int maxColorError = max(abs(centerRed - 210), max(abs(centerGreen - 150), abs(centerBlue - 80))); const bool colorFidelity = centerAlpha == 0xFF && maxColorError <= 2 && (center & 0x00FFFFFF) != 0x00FFFFFF; int standardFailure = 0, standardSilhouettePassed = 0, standardImageListHasMask = -1, standardThinLineWidth = -1; long standardIntermediateAlpha = -1; const bool standardIconsPassed = standardIconsPass(dpis[index], standardFailure, standardIntermediateAlpha, standardSilhouettePassed, standardImageListHasMask, standardThinLineWidth); const bool scriptsIconsPassed = compactAndScriptIconsPass(dpis[index], IDR_SCRIPTS, 24, 1, L"scripts"); const bool bottomIconsPassed = compactAndScriptIconsPass(dpis[index], IDR_DOCUMENT_TREE, 24, 5, L"document-tree"); const bool realBlend = realIconBlendPass(dpis[index]); const bool rowPassed = realBlend && ready && transparentCorners && visible > 0 && opaqueBlack == 0 && magenta == 0 && invalidPremultiplied == 0 && colorFidelity && standardIconsPassed && scriptsIconsPassed && bottomIconsPassed && standardSilhouettePassed && standardImageListHasMask == 0;
+			CStringA row; row.Format("%u\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\r\n", dpis[index], targetSize, transparentCorners ? 1 : 0, visible, opaqueBlack, magenta, invalidPremultiplied, maxColorError, colorFidelity ? 1 : 0, standardIconsPassed ? 1 : 0, standardFailure, standardIntermediateAlpha, standardSilhouettePassed, standardThinLineWidth, standardImageListHasMask, partialAlphaPassed ? 1 : 0, realBlend ? 1 : 0, ThemeManager::IsDarkModeSupported() ? 1 : 0, ThemeManager::IsHighContrast() ? 1 : 0, rowPassed && partialAlphaPassed ? 1 : 0); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); if(scaled) ::DeleteObject(scaled); passed = passed && rowPassed && partialAlphaPassed;
 		}
 		for(InterfaceTheme theme : {INTERFACE_THEME_LIGHT, INTERFACE_THEME_DARK}) {
 			if(theme == INTERFACE_THEME_DARK && !ThemeManager::IsDarkModeSupported()) continue;
