@@ -4704,7 +4704,7 @@ bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
     // image storage. Read back TB_GETIMAGELIST; TB_SETIMAGELIST returns the OLD list.
     m_CmdToolbar.SetImageList(NULL);
     if(m_CmdToolbar.GetImageList()!=NULL) return rollback();
-    ToolbarFactory::ApplyCommandToolbarMetrics(m_CmdToolbar,IDR_MAINFRAME,dpi,_Settings.GetMainToolbarIconSize());
+    if(!ToolbarFactory::ApplyCommandToolbarMetrics(m_CmdToolbar,IDR_MAINFRAME,dpi,_Settings.GetMainToolbarIconSize())) return rollback();
     m_CmdToolbar.SetImageList(next);
     if(m_CmdToolbar.GetImageList()!=next) return rollback();
     TBBUTTONINFO info={};info.cbSize=sizeof(info);info.dwMask=TBIF_IMAGE;info.iImage=qualityImage;

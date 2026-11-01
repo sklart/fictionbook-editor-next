@@ -1171,12 +1171,57 @@ void CMainFrame::RunPortableStateTestScenario()
         const bool rejected = !RebuildCommandToolbarImages(actualDpi);
         ToolbarFactory::RebuildFailurePoint() = ToolbarFactory::RebuildFailure::None;
         passed = rejected && m_CmdToolbar.GetImageList() == previous && passed;
+        struct RejectToolbarMetric {
+            UINT message; bool triggered;
+            static LRESULT CALLBACK Proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam, UINT_PTR, DWORD_PTR data) {
+                auto& probe = *reinterpret_cast<RejectToolbarMetric*>(data);
+                if(message == probe.message && !probe.triggered) { probe.triggered = true; return FALSE; }
+                return ::DefSubclassProc(window, message, wparam, lparam);
+            }
+        };
+        bool metricRollback = true;
+        for(UINT message : {static_cast<UINT>(TB_SETBITMAPSIZE), static_cast<UINT>(TB_SETBUTTONSIZE)}) {
+            _Settings.SetMainToolbarIconSize(24);
+            if(!RebuildCommandToolbarImages(actualDpi)) { metricRollback = false; break; }
+            const HIMAGELIST beforeImages = m_CmdToolbar.GetImageList();
+            const LRESULT beforeButton = m_CmdToolbar.SendMessage(TB_GETBUTTONSIZE);
+            const std::vector<BandState> beforeBands = bandStates();
+            std::vector<TBBUTTON> beforeButtons;
+            for(int index = 0; index < m_CmdToolbar.GetButtonCount(); ++index) {
+                TBBUTTON button = {};
+                if(!m_CmdToolbar.GetButton(index, &button)) metricRollback = false;
+                beforeButtons.push_back(button);
+            }
+            int beforeWidth = 0, beforeHeight = 0;
+            const bool beforeValid = ::ImageList_GetIconSize(beforeImages, &beforeWidth, &beforeHeight) != FALSE;
+            RejectToolbarMetric probe{message, false};
+            const bool subclassed = ::SetWindowSubclass(m_CmdToolbar, RejectToolbarMetric::Proc, 0x4d455452, reinterpret_cast<DWORD_PTR>(&probe)) != FALSE;
+            _Settings.SetMainToolbarIconSize(32);
+            const bool failed = subclassed && !RebuildCommandToolbarImages(actualDpi);
+            if(subclassed) ::RemoveWindowSubclass(m_CmdToolbar, RejectToolbarMetric::Proc, 0x4d455452);
+            int width = 0, height = 0;
+            const std::vector<BandState> afterBands = bandStates();
+            bool layoutMatches = afterBands.size() == beforeBands.size() && m_CmdToolbar.GetButtonCount() == static_cast<int>(beforeButtons.size());
+            for(size_t index = 0; index < afterBands.size() && index < beforeBands.size(); ++index)
+                layoutMatches = layoutMatches && afterBands[index].id == beforeBands[index].id && afterBands[index].hidden == beforeBands[index].hidden;
+            for(size_t index = 0; index < beforeButtons.size(); ++index) {
+                TBBUTTON button = {};
+                layoutMatches = m_CmdToolbar.GetButton(static_cast<int>(index), &button) &&
+                    button.idCommand == beforeButtons[index].idCommand && button.iBitmap == beforeButtons[index].iBitmap &&
+                    button.fsState == beforeButtons[index].fsState && layoutMatches;
+            }
+            metricRollback = failed && probe.triggered && beforeValid && m_CmdToolbar.GetImageList() == beforeImages &&
+                static_cast<HIMAGELIST>(m_commandToolbarImages) == beforeImages &&
+                ::ImageList_GetIconSize(m_CmdToolbar.GetImageList(), &width, &height) &&
+                width == beforeWidth && height == beforeHeight && m_CmdToolbar.SendMessage(TB_GETBUTTONSIZE) == beforeButton && layoutMatches && metricRollback;
+        }
+        passed = metricRollback && passed;
         _Settings.SetMainToolbarIconSize(-1);
         passed = passed && _Settings.GetMainToolbarIconSize() == 24;
         _Settings.SetMainToolbarIconSize(32);
         _Settings.SetScriptIconSize(20);
         _Settings.Save();
-		CStringA report; report.Format("interface-language=%lu\nmain-toolbar-setting-write=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), passed, passed ? "pass" : "fail");
+		CStringA report; report.Format("interface-language=%lu\nmain-toolbar-metric-rollback=%d\nmain-toolbar-setting-write=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), metricRollback, passed, passed ? "pass" : "fail");
 		WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
         PostMessage(WM_CLOSE); return;
     }
