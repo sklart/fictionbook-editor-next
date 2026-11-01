@@ -64,9 +64,11 @@ class CSettingsEditorPage : public CAxDialogImpl<CSettingsEditorPage>, public IS
 	unsigned int m_cachedBackgroundLoadCount = 0;
 	bool m_missingSavedBackground = false;
 	bool m_backgroundSelectionChanged = false;
+	bool m_nbspDisplayLocked = false;
 	CSettingsTooltips m_tooltips;
 
 public:
+	explicit CSettingsEditorPage(bool nbspDisplayLocked = false) : m_nbspDisplayLocked(nbspDisplayLocked) {}
 	~CSettingsEditorPage();
 	int CurrentPreviewFontSize() const { return m_previewFontSize; }
 	enum { IDD = IDD_SETTINGS_EDITOR };

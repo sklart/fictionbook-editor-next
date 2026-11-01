@@ -7900,10 +7900,34 @@ void CMainFrame::GoTo(int selected_pos)
 	rng->select();
 }
 
+bool CMainFrame::HasNbspDisplayHistory()
+{
+	if (!m_document_session.HasDocument()) return false;
+	if (!m_doc) return true;
+	try {
+		IServiceProviderPtr services(m_doc->m_body.Document());
+		CComPtr<IOleUndoManager> manager;
+		if (!services || FAILED(services->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&manager))) || !manager) return true;
+		DWORD parentState = 0;
+		const HRESULT parentResult = manager->GetOpenParentState(&parentState);
+		if (parentResult != S_FALSE) return true;
+		for (bool redo : {false, true}) {
+			CComPtr<IEnumOleUndoUnits> entries;
+			const HRESULT enumerate = redo ? manager->EnumRedoable(&entries) : manager->EnumUndoable(&entries);
+			if (FAILED(enumerate) || !entries) return true;
+			CComPtr<IOleUndoUnit> unit;
+			const HRESULT next = entries->Next(1, &unit, NULL);
+			if (next != S_FALSE) return true;
+		}
+		return false;
+	} catch (const _com_error&) { return true; }
+}
+
 bool CMainFrame::ShowSettingsDialog(HWND parent)
 {
 	const int oldMainIconSize = _Settings.GetMainToolbarIconSize();
-	CSettingsDlg dlg(m_doc ? m_doc->m_body.m_file_path : CString());
+	const bool nbspDisplayLocked = HasNbspDisplayHistory();
+	CSettingsDlg dlg(m_doc ? m_doc->m_body.m_file_path : CString(), nbspDisplayLocked);
 	if(dlg.DoModal(parent) != IDOK) return false;
 	if(oldMainIconSize != _Settings.GetMainToolbarIconSize() && !RebuildCommandToolbarImages(UiMetrics::DpiForWindow(m_hWnd))) {
 		_Settings.SetMainToolbarIconSize(oldMainIconSize);

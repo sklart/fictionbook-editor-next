@@ -31,6 +31,7 @@ enum class SettingsPageId
 class CSettingsDlg : public CAxDialogImpl<CSettingsDlg>
 {
 	CString m_legacyDictionaryDirectory;
+	bool m_nbspDisplayLocked;
 	bool TryCommit(CString& error);
 	bool ProbeFollowup();
 	int ProbeResidual();
@@ -81,7 +82,7 @@ class CSettingsDlg : public CAxDialogImpl<CSettingsDlg>
 	PageLayout m_pageLayouts[static_cast<int>(SettingsPageId::Count)];
 
 public:
-	explicit CSettingsDlg(const CString& legacyDictionaryDirectory = CString());
+	explicit CSettingsDlg(const CString& legacyDictionaryDirectory = CString(), bool nbspDisplayLocked = false);
 	~CSettingsDlg();
 
 	enum { IDD = IDD_TOOLS_SETTINGS };

@@ -1033,6 +1033,7 @@ public:
 	}
 
   void ChangeNBSP(MSHTML::IHTMLElementPtr elem);
+	bool HasNbspDisplayHistory();
   void RemoveLastUndo();
 
 	LRESULT OnEdChange(WORD, WORD, HWND /* unused: hWnd */, BOOL& /* unused: b */) {

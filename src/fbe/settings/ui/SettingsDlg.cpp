@@ -34,8 +34,9 @@ namespace
 
 // CSettingsDlg
 
-CSettingsDlg::CSettingsDlg(const CString& legacyDictionaryDirectory) :
+CSettingsDlg::CSettingsDlg(const CString& legacyDictionaryDirectory, bool nbspDisplayLocked) :
 	m_legacyDictionaryDirectory(legacyDictionaryDirectory),
+	m_nbspDisplayLocked(nbspDisplayLocked),
 	m_advancedPage(NULL), m_generalPage(NULL), m_editorPage(NULL), m_spellingPage(NULL), m_imagesPage(NULL), m_sourcePage(NULL),
 	m_hotkeysPage(NULL), m_wordsPage(NULL), m_currentPage(SettingsPageId::Count),
 	m_automaticSize(false), m_sizeMoveDpi(0), m_sizeMoveDpiChanged(false), m_sizingDuringMove(false),
@@ -92,7 +93,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_advancedPage = new CSettingsAdvancedPage;
 	m_advancedPage->Create(m_hWnd);
 	stage("advanced_page");
-	m_editorPage = new CSettingsEditorPage;
+	m_editorPage = new CSettingsEditorPage(m_nbspDisplayLocked);
 	m_editorPage->Create(m_hWnd);
 	stage("editor_page");
 	m_spellingPage = new CSettingsSpellingPage(m_legacyDictionaryDirectory);

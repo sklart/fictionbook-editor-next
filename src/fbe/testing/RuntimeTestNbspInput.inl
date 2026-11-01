@@ -68,6 +68,16 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		stage = "initial-document";
 		MSHTML::IHTMLElementPtr p = paragraph();
 		if (!p || text() != L"word1word2") CheckError(E_FAIL);
+		wchar_t guardFlag[2] = {};
+		const bool guardTested = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_GUARD", guardFlag, _countof(guardFlag)) == 1 && guardFlag[0] == L'1';
+		bool guardEmpty = true;
+		if (guardTested) {
+			guardEmpty = !HasNbspDisplayHistory();
+			CSettingsEditorPage emptyPage(HasNbspDisplayHistory());
+			const bool created = emptyPage.Create(m_hWnd) != NULL;
+			guardEmpty = created && ::IsWindowEnabled(emptyPage.GetDlgItem(IDC_NBSP_CHAR)) && guardEmpty;
+			if(created) emptyPage.DestroyWindow();
+		}
 		stage = "prior-element";
 		MSHTML::IHTMLElementPtr prior(MSHTML::IHTMLDocument3Ptr(document)->getElementById(L"nbsp-prior"));
 		if (!prior) CheckError(E_FAIL);
@@ -96,6 +106,7 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		stage = "second-space";
 		::SendMessageW(focus, WM_CHAR, L' ', 1); pump();
 		const CString second = state(), secondText = text(); const int secondUndo = historyCount(false);
+		const bool guardUndo = !guardTested || HasNbspDisplayHistory();
 		MSHTML::IHTMLTxtRangePtr caretAfter(document->selection->createRange());
 		MSHTML::IHTMLTxtRangePtr prefix(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
 		prefix->moveToElementText(paragraph()); prefix->setEndPoint(L"EndToStart", caretAfter);
@@ -103,7 +114,7 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 			CString(static_cast<LPCWSTR>(prefix->text)).GetLength() == 7;
 		wchar_t redoDisplayFlag[2] = {};
 		const bool redoDisplayTested = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_REDO_DISPLAY", redoDisplayFlag, _countof(redoDisplayFlag)) == 1 &&
-			(redoDisplayFlag[0] == L'1' || redoDisplayFlag[0] == L'2');
+			(redoDisplayFlag[0] == L'1' || redoDisplayFlag[0] == L'2' || redoDisplayFlag[0] == L'3');
 		if (redoDisplayTested) {
 			stage = "redo-after-display-change";
 			const bool applyDisplay = redoDisplayFlag[0] == L'1';
@@ -111,6 +122,61 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 			int redoSteps = 1;
 			if (state() != original) { SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump(); ++redoSteps; }
 			const bool redoReady = state() == original && historyCount(true) >= redoSteps && text() == L"word1word2";
+			const bool guardRedo = !guardTested || HasNbspDisplayHistory();
+			bool guardPage = true, guardPreserved = true, guardTooltip = true, guardOther = true, guardDialog = true;
+			if (guardTested) {
+				const CString markerBefore = _Settings.GetNBSPChar();
+				CSettingsEditorPage page(HasNbspDisplayHistory());
+				const bool created = page.Create(m_hWnd) != NULL;
+				guardPage = created && !::IsWindowEnabled(page.GetDlgItem(IDC_NBSP_CHAR));
+				if (created) {
+					const DWORD oldSize = _Settings.GetFontSize();
+					const DWORD newSize = oldSize == 19 ? 18 : 19;
+					CString sizeText; sizeText.Format(L"%lu", static_cast<unsigned long>(newSize));
+					::SetWindowText(page.GetDlgItem(IDC_FONT_SIZE), sizeText);
+					::SendMessage(page.GetDlgItem(IDC_NBSP_CHAR), CB_SETCURSEL, 3, 0);
+					guardPreserved = page.Validate(); page.Commit();
+					guardPreserved = guardPreserved && _Settings.GetNBSPChar() == markerBefore;
+					guardOther = _Settings.GetFontSize() == newSize;
+					_Settings.SetFontSize(oldSize);
+					struct TooltipProbe { HWND page; bool found; } probe{page.m_hWnd, false};
+					::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM data) -> BOOL {
+						auto& target = *reinterpret_cast<TooltipProbe*>(data);
+						wchar_t name[64] = {}; ::GetClassNameW(window, name, _countof(name));
+						if (wcscmp(name, TOOLTIPS_CLASSW) != 0) return TRUE;
+						wchar_t text[2048] = {};
+						TOOLINFOW tool = {}; tool.cbSize = sizeof(tool); tool.hwnd = target.page; tool.uId = 1; tool.lpszText = text;
+						if (::SendMessageW(window, TTM_GETTOOLINFOW, 0, reinterpret_cast<LPARAM>(&tool))) {
+							tool.lpszText = text;
+							::SendMessageW(window, TTM_GETTEXTW, 0, reinterpret_cast<LPARAM>(&tool));
+							if (CString(text) == FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.editor.nbsp")) target.found = true;
+						}
+						return TRUE;
+					}, reinterpret_cast<LPARAM>(&probe));
+					guardTooltip = probe.found;
+					page.DestroyWindow();
+				} else { guardPreserved = false; guardTooltip = false; guardOther = false; }
+				static HWND guardOwner = NULL;
+				static bool dialogFound = false, dialogLocked = false;
+				guardOwner = m_hWnd; dialogFound = false; dialogLocked = false;
+				const UINT_PTR timer = ::SetTimer(NULL, 0, 50, [](HWND, UINT, UINT_PTR timerId, DWORD) {
+					::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM data) -> BOOL {
+						if (::GetWindow(window, GW_OWNER) != guardOwner || !::IsWindowVisible(window)) return TRUE;
+						HWND control = NULL;
+						::EnumChildWindows(window, [](HWND child, LPARAM output) -> BOOL {
+							if (::GetDlgCtrlID(child) != IDC_NBSP_CHAR) return TRUE;
+							*reinterpret_cast<HWND*>(output) = child; return FALSE;
+						}, reinterpret_cast<LPARAM>(&control));
+						if (!control || !::GetDlgItem(window, IDCANCEL)) return TRUE;
+						dialogFound = true; dialogLocked = !::IsWindowEnabled(control);
+						::KillTimer(NULL, static_cast<UINT_PTR>(data));
+						::PostMessageW(window, WM_COMMAND, MAKEWPARAM(IDCANCEL, BN_CLICKED), reinterpret_cast<LPARAM>(::GetDlgItem(window, IDCANCEL)));
+						return FALSE;
+					}, static_cast<LPARAM>(timerId));
+				});
+				if (timer) { const bool accepted = ShowSettingsDialog(m_hWnd); ::KillTimer(NULL, timer); guardDialog = !accepted && dialogFound && dialogLocked; }
+				else guardDialog = false;
+			}
 			const CString beforeDisplayXml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
 			if (applyDisplay) { _Settings.SetNBSPChar(L"\u00a0"); ApplyConfChanges(false, false); pump(); }
 			const bool displayUnchanged = CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == beforeDisplayXml;
@@ -123,9 +189,16 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 			const bool redoSaved = m_doc->Save(target); pump();
 			const bool redoReopened = redoSaved && LoadFile(target) == OK; pump();
 			const bool redoRoundTrip = redoReopened && CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) == afterRedoXml;
-			const bool redoPassed = caretPosition && redoReady && displayUnchanged && redoText && redoRoundTrip;
+			bool guardReopened = !guardTested || (redoReopened && !HasNbspDisplayHistory());
+			if (guardTested && guardReopened) {
+				CSettingsEditorPage reopenedPage(HasNbspDisplayHistory());
+				const bool created = reopenedPage.Create(m_hWnd) != NULL;
+				guardReopened = created && ::IsWindowEnabled(reopenedPage.GetDlgItem(IDC_NBSP_CHAR));
+				if (created) reopenedPage.DestroyWindow();
+			}
+			const bool redoPassed = caretPosition && redoReady && displayUnchanged && redoText && redoRoundTrip && guardEmpty && guardUndo && guardRedo && guardPage && guardPreserved && guardTooltip && guardOther && guardDialog && guardReopened;
 			CStringA redoReport;
-			redoReport.Format("redo-display-tested=1\nredo-display-applied=%d\nredo-ready=%d\ndisplay-xml-unchanged=%d\nredo-steps=%d\nredo-text-ok=%d\nredo-text=%s\nredo-saved=%d\nredo-roundtrip=%d\nresult=%s\n", applyDisplay, redoReady, displayUnchanged, redoSteps, redoText, static_cast<LPCSTR>(codepoints(actualText)), redoSaved, redoRoundTrip, redoPassed ? "pass" : "fail");
+			redoReport.Format("redo-display-tested=1\nredo-display-applied=%d\nredo-ready=%d\ndisplay-xml-unchanged=%d\nredo-steps=%d\nredo-text-ok=%d\nredo-text=%s\nredo-saved=%d\nredo-roundtrip=%d\nguard-tested=%d\nguard-empty=%d\nguard-undo=%d\nguard-redo=%d\nguard-page=%d\nguard-preserved=%d\nguard-tooltip=%d\nguard-other=%d\nguard-dialog=%d\nguard-reopened=%d\nresult=%s\n", applyDisplay, redoReady, displayUnchanged, redoSteps, redoText, static_cast<LPCSTR>(codepoints(actualText)), redoSaved, redoRoundTrip, guardTested, guardEmpty, guardUndo, guardRedo, guardPage, guardPreserved, guardTooltip, guardOther, guardDialog, guardReopened, redoPassed ? "pass" : "fail");
 			DWORD written = 0; output.Write(redoReport, redoReport.GetLength(), &written); output.Flush(); output.Close();
 			::PostQuitMessage(redoPassed ? 0 : 1); return 0;
 		}

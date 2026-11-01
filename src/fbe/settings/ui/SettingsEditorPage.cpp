@@ -175,6 +175,10 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if(nbspIndex == CB_ERR) nbspIndex = m_nbspCharacter.AddString(_Settings.GetNBSPChar());
 	m_nbspCharacter.SetCurSel(nbspIndex);
+	if(m_nbspDisplayLocked) {
+		m_nbspCharacter.EnableWindow(FALSE);
+		m_tooltips.AddDisabledControlArea(m_nbspCharacter, L"fbe.settings.tooltip.editor.nbsp", L"Changing this with Undo/Redo history can damage history and non-breaking spaces. Save and reopen the book before changing it; history will be cleared.");
+	}
 	m_backgroundImage.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.none", L"None (color only)"));
 	EditorBackgrounds::Load(m_builtInBackgrounds);
 	for(size_t i = 0; i < m_builtInBackgrounds.size(); ++i)
@@ -263,7 +267,7 @@ bool CSettingsEditorPage::Validate()
 		}
 		::DeleteObject(decoded);
 	}
-	if(U::GetWindowText(m_nbspCharacter).IsEmpty()) { MessageBeep(MB_ICONERROR); m_nbspCharacter.SetFocus(); return false; }
+	if(!m_nbspDisplayLocked && U::GetWindowText(m_nbspCharacter).IsEmpty()) { MessageBeep(MB_ICONERROR); m_nbspCharacter.SetFocus(); return false; }
 	return true;
 }
 
@@ -277,7 +281,7 @@ void CSettingsEditorPage::Commit()
 	_Settings.SetFont(U::GetWindowText(m_fonts));
 	_Settings.SetFontSize(size);
 	const CString character = SelectedNbspCharacter();
-	_Settings.SetNBSPChar(character);
+	if(!m_nbspDisplayLocked) _Settings.SetNBSPChar(character);
 	const int backgroundIndex = m_backgroundImage.GetCurSel();
 	if(backgroundIndex <= 0 || backgroundIndex > static_cast<int>(m_builtInBackgrounds.size() + 1))
 	{
