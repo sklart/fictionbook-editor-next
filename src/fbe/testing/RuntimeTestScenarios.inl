@@ -78,6 +78,7 @@ __declspec(noinline) LRESULT CMainFrame::RunSettingsDialogRuntime(CAtlFile& outp
 				::GetSysColor(COLOR_WINDOWTEXT) : RGB(255, 255, 255));
 		CStringA report;
 		report.Format("followup=%d\nsettings_dialog=%d\nlayout=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\nyo_usage=%d\napplied=%d\ncaret_persisted=%d\ncaret_applied=%d\ncaret_initial_system=%d\nsource_unchanged=%d\n", followupPassed, !verifyOnly, layoutPassed, persisted, backupPersisted, nbspPersisted, wrapPersisted, yoPersisted, applied, caretPersisted, caretApplied, initialSystem, sourceUnchanged);
+        report.AppendFormat("interface-language=%lu\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()));
         report.AppendFormat("followup_phase=%u\n",
             static_cast<unsigned int>(reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd, L"FBE_SETTINGS_FOLLOWUP_PHASE"))));
         ::RemovePropW(m_hWnd, L"FBE_SETTINGS_FOLLOWUP_PHASE");
