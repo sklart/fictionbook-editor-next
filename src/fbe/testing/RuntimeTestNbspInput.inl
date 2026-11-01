@@ -285,13 +285,15 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		bool directSaveInput = true;
 		if (directTested) {
 			MSHTML::IHTMLTxtRangePtr directSave(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
-			directSave->moveToElementText(paragraph()); directSave->collapse(VARIANT_TRUE); directSave->move(L"character", 8); directSave->select(); pump();
+			directSave->moveToElementText(paragraph()); directSave->collapse(VARIANT_TRUE); directSave->move(L"character", 8);
+			if (directSelectionTested) directSave->moveEnd(L"character", 1);
+			directSave->select(); pump();
 			const HWND directSaveFocus = ::GetFocus();
 			if (!directSaveFocus || (directSaveFocus != m_doc->m_body.m_hWnd && !::IsChild(m_doc->m_body.m_hWnd, directSaveFocus))) CheckError(E_FAIL);
 			::SendMessageW(directSaveFocus, WM_CHAR, L'\u00a0', 1); pump();
 			CString expectedSaved(second);
 			const CString htmlMarker = configuredMarker == L"\u00a0" ? CString(L"&nbsp;") : configuredMarker;
-			const int replacements = expectedSaved.Replace(L"word2", CString(L"w") + htmlMarker + L"ord2");
+			const int replacements = expectedSaved.Replace(L"word2", CString(L"w") + htmlMarker + (directSelectionTested ? L"rd2" : L"ord2"));
 			directSaveInput = replacements == 1 && state() == expectedSaved;
 		}
 		const CString xml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));

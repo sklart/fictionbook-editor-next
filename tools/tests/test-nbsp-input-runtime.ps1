@@ -71,8 +71,10 @@ try {
             }
             $expectedSuffix = if($CheckSingleEmptyRedo -or $EmptyRedoControl) { 'wOrd2' } else { 'word2' }
             if($CheckDirectInput) {
-                if($value.Length -ne 13 -or $value[8] -ne [char]0x00A0) { throw "$name did not save the directly entered NBSP at the expected position" }
+                $expectedLength = if($CheckDirectSelection) { 12 } else { 13 }
+                if($value.Length -ne $expectedLength -or $value[8] -ne [char]0x00A0) { throw "$name did not save the directly entered NBSP at the expected position" }
                 $value = $value.Remove(8, 1)
+                if($CheckDirectSelection) { $value = $value.Insert(8, 'o') }
             }
             if ($value.Length -ne 12 -or $value.Substring(0,5) -cne 'word1' -or $value.Substring(7) -cne $expectedSuffix -or
                 @($value.Substring(5,2).ToCharArray() | Where-Object { $_ -ne ' ' -and $_ -ne [char]0x00A0 }).Count -ne 0) { throw "$name saved unexpected characters" }
