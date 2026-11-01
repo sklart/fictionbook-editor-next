@@ -235,6 +235,8 @@ LRESULT CSettingsDlg::OnTimer(UINT, WPARAM timerId, LPARAM, BOOL&)
 		wchar_t action[16] = {};
 		::GetEnvironmentVariableW(L"FBE_NEXT_TEST_TOOLBAR_DIALOG_ACTION", action, _countof(action));
 		m_generalPage->SendDlgItemMessage(IDC_MAIN_TOOLBAR_ICON_SIZE, CB_SETCURSEL, wcscmp(action, L"failure") == 0 ? 3 : 0, 0);
+		if(wcscmp(action, L"scriptfail") == 0)
+			m_generalPage->SendDlgItemMessage(IDC_SCRIPT_ICON_SIZE, CB_SETCURSEL, 3, 0);
 		BOOL handled = FALSE;
 		return wcscmp(action, L"cancel") == 0 ? OnClickedCancel(0, IDCANCEL, NULL, handled) : OnClickedOK(BN_CLICKED, IDOK, GetDlgItem(IDOK), handled);
 	}

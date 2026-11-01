@@ -24,6 +24,7 @@ try {
         Write-Host $text
         if($exitCode -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw "Script icon size runtime failed ($Mode/$scenario), exit=$exitCode" }
         if($scenario -eq 'script-toolbar-runtime-size' -and ($text -notmatch '(?m)^size-switches-pass=1\r?$' -or $text -notmatch '(?m)^initial-icon-size=16\r?$')) { throw 'Missing default size or 100-switch coverage' }
+        if($scenario -eq 'script-toolbar-runtime-size' -and $text -notmatch '(?m)^multi-toolbar-rollback=1\r?$') { throw 'Multi-toolbar rollback was not verified.' }
         if($scenario -eq 'script-toolbar-runtime-size' -and ($text -notmatch '(?m)^fixture-16px-pixels=1\r?$' -or $text -match '(?m)^fixture-16px-pixels=0\r?$')) { throw '16px script icon pixels differ from the source icon.' }
         if($scenario -eq 'script-toolbar-runtime-size' -and $text -notmatch '(?m)^tree-fixture-16px-pixels=1\r?$') { throw '16px script tree icon pixels differ from the source icon.' }
         if($scenario -eq 'script-toolbar-runtime-size' -and (($text -notmatch '(?m)^dual-bitmap-preferred=1\r?$') -or ($text -match '(?m)^dual-bitmap-preferred=0\r?$') -or ($text -notmatch '(?m)^dual-larger-ico-preferred=1\r?$') -or ($text -match '(?m)^dual-larger-ico-preferred=0\r?$'))) { throw 'BMP/ICO sidecar priority is inconsistent.' }

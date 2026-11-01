@@ -92,6 +92,7 @@
 #include "extras/SHA256.h"
 #include <string>
 #include <vector>
+#include <memory>
 #include <algorithm>
 #include <map>
 #include <psapi.h>
@@ -4815,15 +4816,91 @@ bool CMainFrame::RebuildScriptToolbarImages(HWND window, HIMAGELIST& ownedImages
 
 bool CMainFrame::UpdateScriptToolbarDpiMetrics(UINT dpi)
 {
-	if(!RebuildScriptToolbarImages(m_ScriptsToolbar, m_scriptsToolbarImages, dpi)) return false;
-	bool updated = true;
+	struct Snapshot {
+		HWND window = NULL;
+		HIMAGELIST* owned = NULL;
+		HIMAGELIST backup = NULL;
+		int width = 0, height = 0, band = -1;
+		LRESULT buttonSize = 0;
+		RECT bounds = {};
+		REBARBANDINFO bandInfo = {};
+		std::vector<TBBUTTON> buttons;
+		TBBUTTONS catalog;
+		bool hasCatalog = false;
+		~Snapshot() { if(backup) ::ImageList_Destroy(backup); }
+	};
+	std::vector<std::unique_ptr<Snapshot>> snapshots;
+	auto capture = [&](HWND window, HIMAGELIST& owned) {
+		auto saved = std::make_unique<Snapshot>();
+		saved->window = window; saved->owned = &owned;
+		if(!::IsWindow(window) || !owned || reinterpret_cast<HIMAGELIST>(::SendMessage(window, TB_GETIMAGELIST, 0, 0)) != owned ||
+			!::ImageList_GetIconSize(owned, &saved->width, &saved->height)) return false;
+		saved->backup = ::ImageList_Duplicate(owned);
+		if(!saved->backup) return false;
+		saved->buttonSize = ::SendMessage(window, TB_GETBUTTONSIZE, 0, 0);
+		if(!::GetWindowRect(window, &saved->bounds)) return false;
+		::MapWindowPoints(NULL, ::GetParent(window), reinterpret_cast<POINT*>(&saved->bounds), 2);
+		CToolBarCtrl toolbar = window;
+		for(int index = 0; index < toolbar.GetButtonCount(); ++index) {
+			TBBUTTON button = {};
+			if(!toolbar.GetButton(index, &button)) return false;
+			saved->buttons.push_back(button);
+		}
+		saved->hasCatalog = GetAvailableButtons(window, saved->catalog) != FALSE;
+		if(m_rebar.IsWindow()) for(int index = 0; index < static_cast<int>(m_rebar.GetBandCount()); ++index) {
+			REBARBANDINFO band = {}; band.cbSize = sizeof(band); band.fMask = RBBIM_CHILD | RBBIM_CHILDSIZE;
+			if(m_rebar.GetBandInfo(index, &band) && band.hwndChild == window) { saved->band = index; saved->bandInfo = band; break; }
+		}
+		snapshots.push_back(std::move(saved));
+		return true;
+	};
+	if(!capture(m_ScriptsToolbar, m_scriptsToolbarImages)) return false;
 	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
 	{
 		ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index];
 		if(runtime.definition.id == L"scripts-main" || !::IsWindow(runtime.window)) continue;
-		updated = RebuildScriptToolbarImages(runtime.window, runtime.images, dpi) && updated;
+		if(!capture(runtime.window, runtime.images)) return false;
 	}
-	if(!::IsWindow(m_rebar)) return updated;
+	auto rollback = [&]() {
+		for(auto& item : snapshots) {
+			Snapshot& saved = *item;
+			CToolBarCtrl toolbar = saved.window;
+			HIMAGELIST current = *saved.owned;
+			toolbar.SetImageList(NULL);
+			bool restored = toolbar.GetImageList() == NULL;
+			if(restored) {
+				restored = (toolbar.SendMessage(TB_SETBITMAPSIZE, 0, MAKELPARAM(saved.width, saved.height)) != FALSE) && restored;
+				restored = (toolbar.SendMessage(TB_SETBUTTONSIZE, 0, saved.buttonSize) != FALSE) && restored;
+				toolbar.SetImageList(saved.backup);
+				if(toolbar.GetImageList() == saved.backup) {
+					*saved.owned = saved.backup; saved.backup = NULL;
+					if(current) ::ImageList_Destroy(current);
+				} else restored = false;
+			}
+			for(const auto& button : saved.buttons) if(!(button.fsStyle & BTNS_SEP)) {
+				TBBUTTONINFO info = {}; info.cbSize = sizeof(info); info.dwMask = TBIF_IMAGE | TBIF_STATE;
+				info.iImage = button.iBitmap; info.fsState = button.fsState;
+				restored = (toolbar.SetButtonInfo(button.idCommand, &info) != FALSE) && restored;
+			}
+			if(saved.hasCatalog && !saved.backup) m_aButtons.SetAt(saved.window, saved.catalog);
+			if(saved.band >= 0) {
+				saved.bandInfo.fMask = RBBIM_CHILDSIZE;
+				restored = (m_rebar.SetBandInfo(saved.band, &saved.bandInfo) != FALSE) && restored;
+			}
+			restored = (::SetWindowPos(saved.window, NULL, saved.bounds.left, saved.bounds.top,
+				saved.bounds.right - saved.bounds.left, saved.bounds.bottom - saved.bounds.top, SWP_NOZORDER | SWP_NOACTIVATE) != FALSE) && restored;
+			if(!restored) {
+				::SetPropW(saved.window, L"FBE.Toolbar.ImageRestoreFailed", reinterpret_cast<HANDLE>(1));
+				StartupTrace::Error(L"toolbar", L"TB237", L"script toolbar group rollback rejected; bound image list retained safely");
+			} else ::RemovePropW(saved.window, L"FBE.Toolbar.ImageRestoreFailed");
+			toolbar.Invalidate();
+		}
+		if(m_rebar.IsWindow()) m_rebar.SendMessage(WM_SIZE);
+		return false;
+	};
+	for(auto& item : snapshots)
+		if(!RebuildScriptToolbarImages(item->window, *item->owned, dpi)) return rollback();
+	if(!::IsWindow(m_rebar)) return true;
 	for(int band = 0; band < static_cast<int>(m_rebar.GetBandCount()); ++band)
 	{
 		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD;
@@ -4833,17 +4910,17 @@ bool CMainFrame::UpdateScriptToolbarDpiMetrics(UINT dpi)
 		const int height = static_cast<int>(HIWORD(buttonSize));
 		info.fMask = RBBIM_CHILDSIZE;
 		info.cyMinChild = info.cyChild = info.cyMaxChild = height;
-		updated = m_rebar.SetBandInfo(band, &info) != FALSE && updated;
+		if(!m_rebar.SetBandInfo(band, &info)) return rollback();
 		break;
 	}
 	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
 	{
 		ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index];
 		if(runtime.definition.id != L"scripts-main" && ::IsWindow(runtime.window))
-			updated = NormalizeScriptToolbarRuntimeBand(runtime) && updated;
+			if(!NormalizeScriptToolbarRuntimeBand(runtime)) return rollback();
 	}
 	m_rebar.SendMessage(WM_SIZE);
-	return updated;
+	return true;
 }
 
 bool CMainFrame::ApplyScriptIconSize()
@@ -7966,6 +8043,7 @@ bool CMainFrame::HasNbspDisplayHistory()
 bool CMainFrame::ShowSettingsDialog(HWND parent)
 {
 	const int oldMainIconSize = _Settings.GetMainToolbarIconSize();
+	const int oldScriptIconSize = _Settings.GetScriptIconSize();
 	const bool nbspDisplayLocked = HasNbspDisplayHistory();
 	CSettingsDlg dlg(m_doc ? m_doc->m_body.m_file_path : CString(), nbspDisplayLocked);
 	if(dlg.DoModal(parent) != IDOK) return false;
@@ -7980,7 +8058,17 @@ bool CMainFrame::ShowSettingsDialog(HWND parent)
 			FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
 	}
 	if(m_rebar.IsWindow()) { m_rebar.SendMessage(WM_SIZE); UpdateLayout(); }
-	ApplyScriptIconSize();
+	if(!ApplyScriptIconSize()) {
+		_Settings.SetScriptIconSize(oldScriptIconSize);
+		_Settings.Save();
+		bool restoreFailed = ::GetPropW(m_ScriptsToolbar, L"FBE.Toolbar.ImageRestoreFailed") != NULL;
+		for(const auto& runtime : m_scriptToolbars.Items())
+			if(::IsWindow(runtime.window) && ::GetPropW(runtime.window, L"FBE.Toolbar.ImageRestoreFailed")) restoreFailed = true;
+		const CString message = restoreFailed
+			? FbeLoadRuntimeStringByKey(L"fbe.settings.main_toolbar_icon_size.restore_failed", L"Could not restore the previous toolbar appearance. Restart FBE to reload the saved size.")
+			: FbeLoadRuntimeStringByKey(L"fbe.settings.script_icon_size.failed", L"Could not change the script icon size. The previous size was restored.");
+		MessageBox(message, FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
+	}
 	return true;
 }
 
