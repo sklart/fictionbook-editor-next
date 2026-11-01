@@ -180,7 +180,7 @@ void CMainFrame::RunPortableStateTestScenario()
         const bool corePassed = passed;
         bool focused = false, opened = true, downPreview = true, escaped = true, entered = true, returned = true, copiedOk = true;
         bool modePreview = false, modeEscape = false, modeEnter = false;
-        bool dialogCancel = false;
+        bool dialogCancel = false, dialogCommit = false, dialogReopen = false;
         unsigned int dialogDetails = 0;
         int dialogBeforePalette = -1, dialogAfterPalette = -1;
         int droppedAfterDown = -1, selectedAfterEscape = -1, themeAfterEscape = -1, selectedAfterEnter = -1, themeAfterEnter = -1;
@@ -243,7 +243,8 @@ void CMainFrame::RunPortableStateTestScenario()
                 selectedAfterEnter = static_cast<int>(::SendMessage(choice, CB_GETCURSEL, 0, 0));
                 themeAfterEnter = static_cast<int>(ThemeManager::GetNamedPalette());
                 entered = selectedAfterEnter == INTERFACE_PALETTE_CATPPUCCIN_MOCHA &&
-                    ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_MOCHA;
+                    ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_MOCHA &&
+                    !::SendMessageW(choice, CB_GETDROPPEDSTATE, 0, 0);
                 passed = entered && passed;
                 ::SendMessageW(choice, CB_SHOWDROPDOWN, TRUE, 0);
                 ::SendMessageW(choice, WM_KEYDOWN, VK_UP, 0);
@@ -251,7 +252,8 @@ void CMainFrame::RunPortableStateTestScenario()
                 ::SendMessageW(choice, WM_KEYDOWN, VK_RETURN, 0);
                 ::SendMessageW(choice, WM_KEYUP, VK_RETURN, 0);
                 returned = ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CATPPUCCIN_LATTE &&
-                    ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE;
+                    ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE &&
+                    !::SendMessageW(choice, CB_GETDROPPEDSTATE, 0, 0);
                 passed = returned && passed;
             }
             copiedOk = page.StagePaletteCopy(L"Catppuccin copy");
@@ -265,8 +267,9 @@ void CMainFrame::RunPortableStateTestScenario()
         if(pageCreated) {
             static HWND dialogOwner = NULL;
             static bool dialogPreview = false;
-            dialogOwner = m_hWnd; dialogPreview = false;
-            const UINT_PTR timer = ::SetTimer(NULL, 0, 50, [](HWND, UINT, UINT_PTR timerId, DWORD) {
+            static int dialogAction = 0;
+            dialogOwner = m_hWnd; dialogPreview = false; dialogAction = 0;
+            auto dialogTick = [](HWND, UINT, UINT_PTR timerId, DWORD) {
                 ::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM data) -> BOOL {
                     if(::GetWindow(window, GW_OWNER) != dialogOwner || !::IsWindowVisible(window) || !::GetDlgItem(window, IDCANCEL)) return TRUE;
                     struct Controls { HWND mode; HWND palette; } controls{};
@@ -285,15 +288,23 @@ void CMainFrame::RunPortableStateTestScenario()
                         ::SendMessageW(controls.mode, CB_GETCOUNT, 0, 0) != 3 ||
                         ::SendMessageW(controls.palette, CB_GETCOUNT, 0, 0) < INTERFACE_PALETTE_COUNT) return TRUE;
                     ::KillTimer(NULL, static_cast<UINT_PTR>(data));
+                    if(dialogAction == 2) {
+                        dialogPreview = ::SendMessageW(controls.mode, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT &&
+                            ::SendMessageW(controls.palette, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_SEPIA;
+                        ::PostMessageW(window, WM_COMMAND, MAKEWPARAM(IDCANCEL, BN_CLICKED), reinterpret_cast<LPARAM>(::GetDlgItem(window, IDCANCEL)));
+                        return FALSE;
+                    }
                     ::SendMessageW(controls.mode, CB_SETCURSEL, INTERFACE_THEME_LIGHT, 0);
                     ::SendMessageW(::GetParent(controls.mode), WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_THEME, CBN_SELCHANGE), reinterpret_cast<LPARAM>(controls.mode));
                     ::SendMessageW(controls.palette, CB_SETCURSEL, INTERFACE_PALETTE_SEPIA, 0);
                     ::SendMessageW(::GetParent(controls.palette), WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_PALETTE, CBN_SELCHANGE), reinterpret_cast<LPARAM>(controls.palette));
                     dialogPreview = ThemeManager::GetSelectedTheme() == INTERFACE_THEME_LIGHT && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA;
-                    ::PostMessageW(window, WM_COMMAND, MAKEWPARAM(IDCANCEL, BN_CLICKED), reinterpret_cast<LPARAM>(::GetDlgItem(window, IDCANCEL)));
+                    const int button = dialogAction == 1 ? IDOK : IDCANCEL;
+                    ::PostMessageW(window, WM_COMMAND, MAKEWPARAM(button, BN_CLICKED), reinterpret_cast<LPARAM>(::GetDlgItem(window, button)));
                     return FALSE;
                 }, static_cast<LPARAM>(timerId));
-            });
+            };
+            const UINT_PTR timer = ::SetTimer(NULL, 0, 50, dialogTick);
             if(timer) {
                 dialogBeforePalette = static_cast<int>(ThemeManager::GetNamedPalette());
                 const bool accepted = ShowSettingsDialog(m_hWnd);
@@ -309,13 +320,35 @@ void CMainFrame::RunPortableStateTestScenario()
                     _Settings.GetInterfaceTheme() == mode && _Settings.GetInterfacePalette() == L"catppuccin-latte";
             }
             passed = dialogCancel && passed;
+            if(dialogCancel) {
+                dialogAction = 1; dialogPreview = false;
+                const UINT_PTR commitTimer = ::SetTimer(NULL, 0, 50, dialogTick);
+                if(commitTimer) {
+                    const bool accepted = ShowSettingsDialog(m_hWnd);
+                    ::KillTimer(NULL, commitTimer);
+                    dialogCommit = accepted && dialogPreview && _Settings.GetInterfaceTheme() == INTERFACE_THEME_LIGHT &&
+                        _Settings.GetInterfacePalette() == L"sepia" && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA;
+                }
+                if(dialogCommit) {
+                    dialogAction = 2; dialogPreview = false;
+                    const UINT_PTR reopenTimer = ::SetTimer(NULL, 0, 50, dialogTick);
+                    if(reopenTimer) {
+                        const bool accepted = ShowSettingsDialog(m_hWnd);
+                        ::KillTimer(NULL, reopenTimer);
+                        dialogReopen = !accepted && dialogPreview && _Settings.GetInterfaceTheme() == INTERFACE_THEME_LIGHT &&
+                            _Settings.GetInterfacePalette() == L"sepia";
+                    }
+                }
+                passed = dialogCommit && dialogReopen && passed;
+                _Settings.SetInterfaceTheme(mode);
+            }
         }
         _Settings.SetInterfacePalette(L"solarized-light");
         passed = _Settings.GetInterfacePalette() == L"solarized-light" && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SOLARIZED_LIGHT &&
             _Settings.GetInterfaceTheme() == mode && passed;
         _Settings.Save();
         CStringA report;
-        report.Format("core=%d\npage=%d\nmode-preview=%d\nmode-escape=%d\nmode-enter=%d\ndialog-cancel=%d\ndialog-details=%u\ndialog-before-palette=%d\ndialog-after-palette=%d\nfocused=%d\nopened=%d\ndown=%d\ndropped-after-down=%d\nescape=%d\nselection-after-escape=%d\ntheme-after-escape=%d\nenter=%d\nselection-after-enter=%d\ntheme-after-enter=%d\nreturn=%d\ncopy=%d\nresult=%s\n", corePassed, pageCreated, modePreview, modeEscape, modeEnter, dialogCancel, dialogDetails, dialogBeforePalette, dialogAfterPalette, focused, opened, downPreview, droppedAfterDown, escaped, selectedAfterEscape, themeAfterEscape, entered, selectedAfterEnter, themeAfterEnter, returned, copiedOk, passed ? "pass" : "fail");
+        report.Format("core=%d\npage=%d\nmode-preview=%d\nmode-escape=%d\nmode-enter=%d\ndialog-cancel=%d\ndialog-commit=%d\ndialog-reopen=%d\ndialog-details=%u\ndialog-before-palette=%d\ndialog-after-palette=%d\nfocused=%d\nopened=%d\ndown=%d\ndropped-after-down=%d\nescape=%d\nselection-after-escape=%d\ntheme-after-escape=%d\nenter=%d\nselection-after-enter=%d\ntheme-after-enter=%d\nreturn=%d\ncopy=%d\nresult=%s\n", corePassed, pageCreated, modePreview, modeEscape, modeEnter, dialogCancel, dialogCommit, dialogReopen, dialogDetails, dialogBeforePalette, dialogAfterPalette, focused, opened, downPreview, droppedAfterDown, escaped, selectedAfterEscape, themeAfterEscape, entered, selectedAfterEnter, themeAfterEnter, returned, copiedOk, passed ? "pass" : "fail");
         WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
         PostMessage(WM_CLOSE); return;
     }
