@@ -6,8 +6,12 @@
 #include "SettingsPageLifecycle.h"
 #include "SettingsTooltips.h"
 
+class CPaletteManagerDialog;
+
 class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public ISettingsPage
 {
+	friend class CPaletteManagerDialog;
+	HWND m_paletteManager = NULL;
 	CComboBox m_language;
 	CComboBox m_interfaceTheme;
 	CComboBox m_interfacePalette;
@@ -71,6 +75,9 @@ public:
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_DROPDOWN, OnPaletteDropdown)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_SELENDCANCEL, OnPaletteDropdownCancel)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE_COPY, BN_CLICKED, OnCopyPalette)
+		COMMAND_HANDLER(IDC_PALETTE_MANAGE, BN_CLICKED, OnManagePalettes)
+		COMMAND_HANDLER(IDC_MAIN_TOOLBAR_ICON_SIZE, CBN_SELCHANGE, OnIconPreviewChanged)
+		COMMAND_HANDLER(IDC_SCRIPT_ICON_SIZE, CBN_SELCHANGE, OnIconPreviewChanged)
 		COMMAND_HANDLER(IDC_PALETTE_IMPORT, BN_CLICKED, OnImportPalette)
 		COMMAND_HANDLER(IDC_PALETTE_EXPORT, BN_CLICKED, OnExportPalette)
 		COMMAND_HANDLER(IDC_PALETTE_RENAME, BN_CLICKED, OnRenamePalette)
@@ -92,6 +99,8 @@ public:
 	LRESULT OnPaletteDropdown(WORD, WORD, HWND, BOOL&);
 	LRESULT OnPaletteDropdownCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnCopyPalette(WORD, WORD, HWND, BOOL&);
+	LRESULT OnManagePalettes(WORD, WORD, HWND, BOOL&);
+	LRESULT OnIconPreviewChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnImportPalette(WORD, WORD, HWND, BOOL&);
 	LRESULT OnExportPalette(WORD, WORD, HWND, BOOL&);
 	LRESULT OnRenamePalette(WORD, WORD, HWND, BOOL&);
@@ -104,5 +113,6 @@ public:
 	bool StagePaletteCopy(const CString& name);
 	bool StagePaletteColor(ThemeColorRole role, COLORREF color, bool custom);
 	void ConfigureInterfaceTheme(bool darkThemeSupported);
+	void MakeAppearanceOnly();
 	bool Validate(); bool PrepareCommit(SettingsFileTransaction&, CString&); void Commit(); void FinishCommit(); bool CancelChanges();
 };

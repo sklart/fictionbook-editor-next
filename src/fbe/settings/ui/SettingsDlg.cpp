@@ -37,7 +37,7 @@ namespace
 CSettingsDlg::CSettingsDlg(const CString& legacyDictionaryDirectory, bool nbspDisplayLocked) :
 	m_legacyDictionaryDirectory(legacyDictionaryDirectory),
 	m_nbspDisplayLocked(nbspDisplayLocked),
-	m_advancedPage(NULL), m_generalPage(NULL), m_editorPage(NULL), m_spellingPage(NULL), m_imagesPage(NULL), m_sourcePage(NULL),
+	m_advancedPage(NULL), m_generalPage(NULL), m_commonPage(NULL), m_editorPage(NULL), m_spellingPage(NULL), m_imagesPage(NULL), m_sourcePage(NULL),
 	m_hotkeysPage(NULL), m_wordsPage(NULL), m_currentPage(SettingsPageId::Count),
 	m_automaticSize(false), m_sizeMoveDpi(0), m_sizeMoveDpiChanged(false), m_sizingDuringMove(false),
 	m_initialDpi(0), m_layoutDpi(0),
@@ -75,6 +75,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	::SetWindowSubclass(m_navigation, NavigationKeysSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
 	const struct { LPCWSTR key; LPCWSTR fallback; } navigationItems[] = {
 		{ L"fbe.settings.nav.general", L"General" },
+		{ L"fbe.settings.nav.appearance", L"Appearance" },
 		{ L"fbe.settings.nav.editor", L"Editor" },
 		{ L"fbe.settings.nav.source", L"Source code" },
 		{ L"fbe.settings.nav.images", L"Images" },
@@ -89,6 +90,9 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	EditorFontFamilies::ScopedCache fontCache;
 	m_generalPage = new CSettingsGeneralPage;
 	m_generalPage->Create(m_hWnd);
+	m_generalPage->MakeAppearanceOnly();
+	m_commonPage = new CSettingsCommonPage;
+	m_commonPage->Create(m_hWnd);
 	stage("general_page");
 	m_advancedPage = new CSettingsAdvancedPage;
 	m_advancedPage->Create(m_hWnd);
@@ -115,7 +119,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	// interface palette before any page becomes visible, preventing the light
 	// system background from flashing before a later theme refresh.
 	const HWND pagesToTheme[] = {
-		m_generalPage->m_hWnd, m_advancedPage->m_hWnd, m_editorPage->m_hWnd,
+		m_generalPage->m_hWnd, m_commonPage->m_hWnd, m_advancedPage->m_hWnd, m_editorPage->m_hWnd,
 		m_spellingPage->m_hWnd, m_imagesPage->m_hWnd, m_sourcePage->m_hWnd,
 		m_hotkeysPage->m_hWnd, m_wordsPage->m_hWnd
 	};
@@ -123,7 +127,8 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 		ThemeManager::ApplyToWindow(page);
 	stage("page_themes");
 
-	m_pages[PageIndex(SettingsPageId::General)] = m_generalPage;
+	m_pages[PageIndex(SettingsPageId::General)] = m_commonPage;
+	m_pages[PageIndex(SettingsPageId::Appearance)] = m_generalPage;
 	m_pages[PageIndex(SettingsPageId::Editor)] = m_editorPage;
 	m_pages[PageIndex(SettingsPageId::Source)] = m_sourcePage;
 	m_pages[PageIndex(SettingsPageId::Images)] = m_imagesPage;
@@ -131,7 +136,8 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_pages[PageIndex(SettingsPageId::Keyboard)] = m_hotkeysPage;
 	m_pages[PageIndex(SettingsPageId::Words)] = m_wordsPage;
 	m_pages[PageIndex(SettingsPageId::Advanced)] = m_advancedPage;
-	m_pageLifecycle[PageIndex(SettingsPageId::General)] = m_generalPage;
+	m_pageLifecycle[PageIndex(SettingsPageId::General)] = m_commonPage;
+	m_pageLifecycle[PageIndex(SettingsPageId::Appearance)] = m_generalPage;
 	m_pageLifecycle[PageIndex(SettingsPageId::Editor)] = m_editorPage;
 	m_pageLifecycle[PageIndex(SettingsPageId::Source)] = m_sourcePage;
 	m_pageLifecycle[PageIndex(SettingsPageId::Images)] = m_imagesPage;
@@ -169,7 +175,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	const int nonClientHeight = window.Height() - client.Height();
 	const int buttonRowWidth = 2 * m_buttonWidth + m_buttonGap;
 	const int minimumPageWidth = max(buttonRowWidth, 2 * m_navigationRect.Width());
-	const int navigationHeight = 8 * m_navigation.GetItemHeight(0) + m_navigationBottomGap;
+	const int navigationHeight = static_cast<int>(SettingsPageId::Count) * m_navigation.GetItemHeight(0) + m_navigationBottomGap;
 	const int minimumPageHeight = max(navigationHeight, 6 * m_buttonHeight);
 	m_minimumWindowSize = CSize(nonClientWidth + m_pageLeft + minimumPageWidth + m_pageRightMargin,
 		nonClientHeight + m_pageTop + minimumPageHeight + m_pageBottomMargin);
@@ -180,6 +186,11 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 		preferredPageWidth = max(preferredPageWidth, page.contentSize.cx);
 		preferredPageHeight = max(preferredPageHeight, page.contentSize.cy);
 	}
+	// Keep the common appearance pages compact by default. Longer pages can
+	// scroll, and a user-resized dialog continues to use its saved geometry.
+	const int compactHeight = max(m_pageLayouts[PageIndex(SettingsPageId::General)].contentSize.cy,
+		m_pageLayouts[PageIndex(SettingsPageId::Appearance)].contentSize.cy);
+	preferredPageHeight = max(minimumPageHeight, min(preferredPageHeight, compactHeight));
 	m_preferredWindowSize = CSize(nonClientWidth + m_pageLeft + preferredPageWidth + m_pageRightMargin,
 		nonClientHeight + m_pageTop + preferredPageHeight + m_pageBottomMargin);
 	RestoreGeometry();
@@ -195,7 +206,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 			reinterpret_cast<HANDLE>(_Settings.GetCaretPreferences().mode == TextCaretMode::System ? 1 : 2));
 		// Test-only automation still commits through the normal global OK path.
 		// Use independent pages so ApplyConfChanges covers more than one category.
-		m_generalPage->CheckDlgButton(IDC_CREATE_BACKUP_FILE, IsBackupSettingsSaveRuntimeTest() ? BST_UNCHECKED : BST_CHECKED);
+		m_commonPage->CheckDlgButton(IDC_CREATE_BACKUP_FILE, IsBackupSettingsSaveRuntimeTest() ? BST_UNCHECKED : BST_CHECKED);
 		m_editorPage->SendDlgItemMessage(IDC_NBSP_CHAR, CB_SELECTSTRING, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(L"\x25AB"));
 		m_sourcePage->SendDlgItemMessage(IDC_EDITOR_CARET_MODE, CB_SETCURSEL, 2, 0);
 		m_sourcePage->SendDlgItemMessage(IDC_EDITOR_CARET_WIDTH, CB_SETCURSEL, 4, 0);
@@ -518,6 +529,7 @@ LRESULT CSettingsDlg::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wPara
 			::RemoveWindowSubclass(m_pages[index]->m_hWnd, PageSubclassProc, static_cast<UINT_PTR>(index));
 	if(m_advancedPage) { m_advancedPage->DestroyWindow(); delete m_advancedPage; m_advancedPage = NULL; }
 	if(m_generalPage) { m_generalPage->DestroyWindow(); delete m_generalPage; m_generalPage = NULL; }
+	if(m_commonPage) { m_commonPage->DestroyWindow(); delete m_commonPage; m_commonPage = NULL; }
 	if(m_editorPage) { m_editorPage->DestroyWindow(); delete m_editorPage; m_editorPage = NULL; }
 	if(m_spellingPage) { m_spellingPage->DestroyWindow(); delete m_spellingPage; m_spellingPage = NULL; }
 	if(m_imagesPage) { m_imagesPage->DestroyWindow(); delete m_imagesPage; m_imagesPage = NULL; }
@@ -610,6 +622,10 @@ void CSettingsDlg::CapturePageLayouts()
 		int right = 0, bottom = 0;
 		for(HWND child = ::GetWindow(page, GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT))
 		{
+			// The palette editor controls remain owned by its single model but are
+			// hidden here and exposed through the separate management dialog.
+			if(index == PageIndex(SettingsPageId::Appearance) &&
+				(::GetWindowLongPtrW(child, GWL_STYLE) & WS_VISIBLE) == 0) continue;
 			RECT rect = {};
 			::GetWindowRect(child, &rect);
 			::MapWindowPoints(NULL, page, reinterpret_cast<POINT*>(&rect), 2);
@@ -730,8 +746,10 @@ bool CSettingsDlg::LayoutPagePass(int index)
 		const bool nearRight = rect.right >= layout.templateSize.cx - UiMetrics::ScaleForDpi(20, m_layoutDpi);
 		const bool stretchField =
 			(index == PageIndex(SettingsPageId::General) && (control.id == IDC_LANG ||
-				control.id == IDC_GENRE_CATALOG || control.id == IDC_INTERFACE_THEME ||
-				control.id == IDC_DEFAULT_ENC || control.id == IDC_UPDATE_CHANNEL)) ||
+				control.id == IDC_GENRE_CATALOG || control.id == IDC_DEFAULT_ENC || control.id == IDC_UPDATE_CHANNEL)) ||
+			(index == PageIndex(SettingsPageId::Appearance) && (control.id == IDC_INTERFACE_THEME ||
+				control.id == IDC_INTERFACE_PALETTE || control.id == IDC_MAIN_TOOLBAR_ICON_SIZE ||
+				control.id == IDC_SCRIPT_ICON_SIZE || control.id == IDC_DESCRIPTION_LAYOUT)) ||
 			(index == PageIndex(SettingsPageId::Editor) && (control.id == IDC_EDITOR_BACKGROUND_IMAGE ||
 				control.id == IDC_EDITOR_BACKGROUND_LAYOUT || control.id == IDC_EDITOR_BACKGROUND_PREVIEW ||
 				control.id == IDC_EDITOR_PREVIEW_GROUP || control.id == IDC_EDITOR_CARET_MODE ||
@@ -940,7 +958,11 @@ bool CSettingsDlg::ProbeLayout()
 			columns <= listClient.right - listClient.left &&
 			!(::GetWindowLongPtrW(m_wordsPage->m_list_words, GWL_STYLE) & WS_HSCROLL);
 	};
-	bool passed = true;
+	bool passed = m_navigation.GetCount() == static_cast<int>(SettingsPageId::Count) &&
+		::IsWindow(m_commonPage->GetDlgItem(IDC_LANG)) &&
+		::IsWindow(m_generalPage->GetDlgItem(IDC_INTERFACE_PALETTE)) &&
+		!::IsWindow(m_commonPage->GetDlgItem(IDC_INTERFACE_PALETTE)) &&
+		!::IsWindow(m_generalPage->GetDlgItem(IDC_LANG));
 	GetClientRect(client);
 	const CRect ok = controlRect(GetDlgItem(IDOK));
 	const CRect cancel = controlRect(GetDlgItem(IDCANCEL));
@@ -964,7 +986,7 @@ bool CSettingsDlg::ProbeLayout()
 	if(preferredFits && m_automaticSize)
 		passed = passed && original.Width() >= m_preferredWindowSize.cx &&
 			original.Height() >= m_preferredWindowSize.cy;
-	// Switching among all eight pages must not resize the outer dialog. On a
+	// Switching among all pages must not resize the outer dialog. On a
 	// monitor that can hold the preferred size, its initial pages need no bars.
 	for(int index = 0; index < PageIndex(SettingsPageId::Count); ++index)
 	{
@@ -973,6 +995,55 @@ bool CSettingsDlg::ProbeLayout()
 		const CRect pageRect = controlRect(page);
 		passed = passed && inside(pageRect) && navigation.right <= pageRect.left && pageRect.bottom <= ok.top &&
 			controlRect(m_navigation).bottom == pageRect.bottom;
+		if(index == PageIndex(SettingsPageId::Appearance)) {
+			const CRect colours = controlRect(m_generalPage->GetDlgItem(IDC_OPTIONS_INTERFACE_GROUP));
+			const CRect tools = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_TOOLBARS_GROUP));
+			const CRect description = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_DESCRIPTION_GROUP));
+			const CRect themePreview = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_THEME_PREVIEW));
+			const CRect iconPreview = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_ICON_PREVIEW));
+			passed = passed && colours.bottom <= tools.top && tools.bottom <= description.top &&
+				themePreview.top >= colours.top && themePreview.bottom <= colours.bottom &&
+				iconPreview.top >= tools.top && iconPreview.bottom <= tools.bottom &&
+				(::GetWindowLongPtrW(m_generalPage->GetDlgItem(IDC_PALETTE_ROLE), GWL_STYLE) & WS_VISIBLE) == 0 &&
+				(::GetWindowLongPtrW(m_generalPage->GetDlgItem(IDC_PALETTE_MANAGE), GWL_STYLE) & WS_VISIBLE) != 0;
+			wchar_t artifactDirectory[32768] = {};
+			const DWORD artifactLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_APPEARANCE_ARTIFACT_DIR", artifactDirectory, _countof(artifactDirectory));
+			if(artifactLength && artifactLength < _countof(artifactDirectory)) {
+				const int previousNavigation = m_navigation.GetCurSel();
+				m_navigation.SetCurSel(index);
+				::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+				RECT window = {}; ::GetWindowRect(m_hWnd, &window); CImage screenshot;
+				const bool created = screenshot.Create(window.right - window.left, window.bottom - window.top, 32) != FALSE;
+				HDC target = created ? screenshot.GetDC() : NULL;
+				const bool captured = target && ::PrintWindow(m_hWnd, target, 0) != FALSE;
+				if(target) screenshot.ReleaseDC();
+				const CString path = CString(artifactDirectory) + L"\\settings-appearance.bmp";
+				passed = captured && SUCCEEDED(screenshot.Save(path)) && passed;
+				m_navigation.SetCurSel(previousNavigation);
+			}
+			const int width = UiMetrics::ScaleForDpi(200, m_layoutDpi), height = UiMetrics::ScaleForDpi(42, m_layoutDpi);
+			HDC source = ::GetDC(page), dc = source ? ::CreateCompatibleDC(source) : NULL;
+			HBITMAP bitmap = source ? ::CreateCompatibleBitmap(source, width, height) : NULL;
+			HGDIOBJ old = dc && bitmap ? ::SelectObject(dc, bitmap) : NULL;
+			if(!dc || !bitmap || !old) passed = false;
+			else {
+				DRAWITEMSTRUCT draw = {}; draw.CtlType = ODT_STATIC; draw.hDC = dc; draw.rcItem = {0, 0, width, height};
+				BOOL handled = FALSE; draw.CtlID = IDC_APPEARANCE_THEME_PREVIEW;
+				m_generalPage->OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
+				passed = ::GetPixel(dc, UiMetrics::ScaleForDpi(3, m_layoutDpi), UiMetrics::ScaleForDpi(3, m_layoutDpi)) == ThemeManager::ControlColor() && passed;
+				const HWND mainSize = m_generalPage->GetDlgItem(IDC_MAIN_TOOLBAR_ICON_SIZE);
+				const HWND scriptSize = m_generalPage->GetDlgItem(IDC_SCRIPT_ICON_SIZE);
+				const LRESULT originalMain = ::SendMessageW(mainSize, CB_GETCURSEL, 0, 0), originalScript = ::SendMessageW(scriptSize, CB_GETCURSEL, 0, 0);
+				::SendMessageW(mainSize, CB_SETCURSEL, 0, 0); ::SendMessageW(scriptSize, CB_SETCURSEL, 0, 0);
+				draw.CtlID = IDC_APPEARANCE_ICON_PREVIEW; m_generalPage->OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
+				const int x = UiMetrics::ScaleForDpi(29, m_layoutDpi), y = height / 2 + UiMetrics::ScaleForDpi(5, m_layoutDpi);
+				const COLORREF smallPixel = ::GetPixel(dc, x, y);
+				::SendMessageW(mainSize, CB_SETCURSEL, 3, 0); m_generalPage->OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
+				passed = smallPixel == ThemeManager::WindowColor() && ::GetPixel(dc, x, y) == ThemeManager::HoverColor() && passed;
+				::SendMessageW(mainSize, CB_SETCURSEL, originalMain, 0); ::SendMessageW(scriptSize, CB_SETCURSEL, originalScript, 0);
+			}
+			if(old) ::SelectObject(dc, old); if(bitmap) ::DeleteObject(bitmap); if(dc) ::DeleteDC(dc); if(source) ::ReleaseDC(page, source);
+		}
 		if(index == PageIndex(SettingsPageId::Words)) passed = passed && wordsGeometry();
 		if(index == PageIndex(SettingsPageId::Keyboard))
 		{
@@ -990,9 +1061,11 @@ bool CSettingsDlg::ProbeLayout()
 		{
 			RECT viewport = {};
 			::GetClientRect(page, &viewport);
-			passed = passed && viewport.right >= m_pageLayouts[index].contentSize.cx &&
-				viewport.bottom >= m_pageLayouts[index].contentSize.cy &&
-				!(::GetWindowLongPtrW(page, GWL_STYLE) & (WS_VSCROLL | WS_HSCROLL));
+			const bool fits = viewport.right >= m_pageLayouts[index].contentSize.cx &&
+				viewport.bottom >= m_pageLayouts[index].contentSize.cy;
+			if(index == PageIndex(SettingsPageId::General) || index == PageIndex(SettingsPageId::Appearance))
+				passed = fits && passed;
+			if(fits) passed = !(::GetWindowLongPtrW(page, GWL_STYLE) & (WS_VSCROLL | WS_HSCROLL)) && passed;
 		}
 	}
 	SelectPage(SettingsPageId::Spelling);
@@ -1302,12 +1375,20 @@ bool CSettingsDlg::ProbeLayout()
 	passed = passed && !m_wordsPage->m_editActive && !::IsWindowVisible(m_wordsPage->m_edit) &&
 		::GetFocus() == m_navigation;
 	const UINT originalLayoutDpi = m_layoutDpi;
-	for(const UINT probeDpi : { 96U, 120U, 144U })
+	for(const UINT probeDpi : { 96U, 120U, 144U, 192U })
 	{
-	::SendMessageW(m_hWnd, WM_DPICHANGED, MAKELONG(probeDpi, probeDpi), 0);
-	SelectPage(SettingsPageId::Words);
-	passed = passed && controlRect(m_navigation).bottom == controlRect(m_wordsPage->m_hWnd).bottom &&
-		wordsGeometry();
+		::SendMessageW(m_hWnd, WM_DPICHANGED, MAKELONG(probeDpi, probeDpi), 0);
+		SelectPage(SettingsPageId::Words);
+		passed = passed && controlRect(m_navigation).bottom == controlRect(m_wordsPage->m_hWnd).bottom && wordsGeometry();
+		SelectPage(SettingsPageId::Appearance);
+		const CRect colourGroup = controlRect(m_generalPage->GetDlgItem(IDC_OPTIONS_INTERFACE_GROUP));
+		const CRect toolbarGroup = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_TOOLBARS_GROUP));
+		const CRect descriptionGroup = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_DESCRIPTION_GROUP));
+		const CRect themeSample = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_THEME_PREVIEW));
+		const CRect iconSample = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_ICON_PREVIEW));
+		passed = colourGroup.bottom <= toolbarGroup.top && toolbarGroup.bottom <= descriptionGroup.top &&
+			themeSample.top >= colourGroup.top && themeSample.bottom <= colourGroup.bottom &&
+			iconSample.top >= toolbarGroup.top && iconSample.bottom <= toolbarGroup.bottom && passed;
 	}
 	::SendMessageW(m_hWnd, WM_DPICHANGED, MAKELONG(originalLayoutDpi, originalLayoutDpi), 0);
 	SelectPage(SettingsPageId::General);

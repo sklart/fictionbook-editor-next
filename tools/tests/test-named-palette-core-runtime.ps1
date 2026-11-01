@@ -2,9 +2,9 @@
 param([string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [ValidateSet('portable','installed')][string]$Mode = 'portable',
     [ValidateSet('ru-RU','en-US')][string]$Locale = 'ru-RU',
-    [switch]$CoreOnly, [switch]$WarningOnly)
+    [switch]$CoreOnly, [switch]$WarningOnly, [switch]$ManageOnly)
 $ErrorActionPreference = 'Stop'
-if($CoreOnly -and $WarningOnly) { throw 'Choose either -CoreOnly or -WarningOnly.' }
+if(@(@($CoreOnly, $WarningOnly, $ManageOnly) | Where-Object { $_ }).Count -gt 1) { throw 'Choose only one focused mode.' }
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'named-palette-core'
 $names = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SETTINGS_DIRECTORY')
@@ -23,7 +23,7 @@ try {
     $diagnosticsRoot = if($Mode -eq 'installed') { $settingsRoot } else { $iso.DataPath }
     $report = Join-Path $diagnosticsRoot 'Diagnostics/portable-state-report.txt'
     $missingRuns = 0
-    $scenarios = if($CoreOnly) { @('named-palette-core-runtime') } elseif($WarningOnly) { @('custom-palette-settings-missing','custom-palette-settings-missing') } else { @('named-palette-core-runtime','custom-palette-copy','named-palette-settings-write','named-palette-settings-read','popular-palette-write','popular-palette-read','custom-palette-settings-write','custom-palette-manage','custom-palette-edit','custom-palette-settings-read','custom-palette-settings-missing','custom-palette-settings-missing') }
+    $scenarios = if($CoreOnly) { @('named-palette-core-runtime') } elseif($WarningOnly) { @('custom-palette-settings-missing','custom-palette-settings-missing') } elseif($ManageOnly) { @('custom-palette-settings-write','custom-palette-manage') } else { @('named-palette-core-runtime','custom-palette-copy','named-palette-settings-write','named-palette-settings-read','popular-palette-write','popular-palette-read','custom-palette-settings-write','custom-palette-manage','custom-palette-edit','custom-palette-settings-read','custom-palette-settings-missing','custom-palette-settings-missing') }
     foreach($scenario in $scenarios) {
         if($scenario -eq 'custom-palette-settings-missing' -and ++$missingRuns -eq 2) {
             $themeDirectory = Join-Path $settingsRoot 'InterfaceThemes'
@@ -42,6 +42,7 @@ try {
     $passed = $true
     if($WarningOnly) { Write-Host "Missing and invalid palette warnings: PASS ($Mode/$Locale)." }
     elseif($CoreOnly) { Write-Host "Named palette core and system control colours: PASS ($Mode)." }
+    elseif($ManageOnly) { Write-Host "Palette management and cancellation: PASS ($Mode/$Locale)." }
     else { Write-Host "Named palette roles, classic restoration, persistence and resource lifetime: PASS ($Mode)." }
 } finally {
     foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $saved[$name], 'Process') }

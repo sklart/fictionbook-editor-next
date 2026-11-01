@@ -3448,6 +3448,42 @@
         "pt-PT": "Geral", "nl-NL": "Algemeen", "cs-CZ": "Obecné", "bg-BG": "Общи"
       }
     },
+    "fbe.settings.tooltip.general.palette_builtin": {
+      "resourceId": "", "runtimeOnly": true, "component": "fbe.core",
+      "translations": { "en-US": "Create a copy of the built-in scheme before editing it.", "ru-RU": "Чтобы изменить встроенную схему, сначала создайте её копию.",
+        "uk-UA": "Щоб змінити вбудовану схему, спочатку створіть її копію.", "de-DE": "Erstellen Sie vor dem Bearbeiten eine Kopie des integrierten Farbschemas.",
+        "fr-FR": "Créez une copie du thème intégré avant de le modifier.", "es-ES": "Cree una copia del esquema integrado antes de editarlo.",
+        "it-IT": "Crea una copia dello schema integrato prima di modificarlo.", "pl-PL": "Przed edycją utwórz kopię wbudowanego schematu.",
+        "pt-PT": "Crie uma cópia do esquema integrado antes de o editar.", "nl-NL": "Maak een kopie van het ingebouwde schema voordat u het bewerkt.",
+        "cs-CZ": "Před úpravou vytvořte kopii vestavěného schématu.", "bg-BG": "Създайте копие на вградената схема преди редактиране." }
+    },
+    "fbe.settings.tooltip.general.palette_manage": {
+      "resourceId": "", "runtimeOnly": true, "component": "fbe.core",
+      "translations": { "en-US": "Import, export and edit custom colour schemes.", "ru-RU": "Импорт, экспорт и настройка пользовательских цветовых схем.",
+        "uk-UA": "Імпорт, експорт і налаштування власних колірних схем.", "de-DE": "Eigene Farbschemata importieren, exportieren und bearbeiten.",
+        "fr-FR": "Importer, exporter et modifier les thèmes personnalisés.", "es-ES": "Importar, exportar y editar esquemas de color personalizados.",
+        "it-IT": "Importa, esporta e modifica gli schemi di colori personalizzati.", "pl-PL": "Importuj, eksportuj i edytuj własne schematy kolorów.",
+        "pt-PT": "Importar, exportar e editar esquemas de cores personalizados.", "nl-NL": "Aangepaste kleurenschema’s importeren, exporteren en bewerken.",
+        "cs-CZ": "Importovat, exportovat a upravovat vlastní barevná schémata.", "bg-BG": "Импортиране, експортиране и редактиране на цветови схеми." }
+    },
+    "fbe.settings.palette.manage": {
+      "resourceId": "", "runtimeOnly": true, "component": "fbe.core",
+      "translations": { "en-US": "Manage schemes...", "ru-RU": "Управление схемами...", "uk-UA": "Керування схемами...",
+        "de-DE": "Farbschemata verwalten...", "fr-FR": "Gérer les thèmes...", "es-ES": "Administrar esquemas...",
+        "it-IT": "Gestisci schemi...", "pl-PL": "Zarządzaj schematami...", "pt-PT": "Gerir esquemas...",
+        "nl-NL": "Schema’s beheren...", "cs-CZ": "Spravovat schémata...", "bg-BG": "Управление на схемите..." }
+    },
+    "fbe.settings.appearance.colour_group": {"resourceId":"", "runtimeOnly":true, "component":"fbe.core", "translations": {"en-US": "Colour scheme", "ru-RU": "Цветовое оформление", "uk-UA": "Кольорове оформлення", "de-DE": "Farbschema", "fr-FR": "Couleurs", "es-ES": "Colores", "it-IT": "Colori", "pl-PL": "Kolory", "pt-PT": "Cores", "nl-NL": "Kleuren", "cs-CZ": "Barvy", "bg-BG": "Цветова схема"}},
+    "fbe.settings.appearance.toolbars_group": {"resourceId":"", "runtimeOnly":true, "component":"fbe.core", "translations": {"en-US": "Toolbars", "ru-RU": "Панели инструментов", "uk-UA": "Панелі інструментів", "de-DE": "Symbolleisten", "fr-FR": "Barres d’outils", "es-ES": "Barras de herramientas", "it-IT": "Barre degli strumenti", "pl-PL": "Paski narzędzi", "pt-PT": "Barras de ferramentas", "nl-NL": "Werkbalken", "cs-CZ": "Panely nástrojů", "bg-BG": "Ленти с инструменти"}},
+    "fbe.settings.appearance.description_group": {"resourceId":"", "runtimeOnly":true, "component":"fbe.core", "translations": {"en-US": "Description layout", "ru-RU": "Оформление описания", "uk-UA": "Оформлення опису", "de-DE": "Beschreibungslayout", "fr-FR": "Présentation de la description", "es-ES": "Diseño de la descripción", "it-IT": "Aspetto della descrizione", "pl-PL": "Układ opisu", "pt-PT": "Disposição da descrição", "nl-NL": "Indeling van beschrijving", "cs-CZ": "Rozvržení popisu", "bg-BG": "Оформление на описанието"}},
+    "fbe.settings.nav.appearance": {
+      "resourceId": "", "runtimeOnly": true, "component": "fbe.core",
+      "translations": {
+        "en-US": "Appearance", "ru-RU": "Внешний вид", "uk-UA": "Зовнішній вигляд", "de-DE": "Erscheinungsbild",
+        "fr-FR": "Apparence", "es-ES": "Apariencia", "it-IT": "Aspetto", "pl-PL": "Wygląd",
+        "pt-PT": "Aparência", "nl-NL": "Vormgeving", "cs-CZ": "Vzhled", "bg-BG": "Външен вид"
+      }
+    },
     "fbe.settings.nav.editor": {
       "resourceId": "",
       "runtimeOnly": true,

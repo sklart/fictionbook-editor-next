@@ -109,8 +109,12 @@ private:
 	{
 		if(!m_tooltips.IsWindow() || !::IsWindow(m_owner)) return;
 		RECT rect = {};
-		if(!::GetWindowRect(control, &rect)) return;
-		::MapWindowPoints(NULL, m_owner, reinterpret_cast<LPPOINT>(&rect), 2);
+		// Hidden controls must not leave an active tooltip rectangle on the page.
+		// WS_VISIBLE is checked locally because the page itself may be hidden.
+		if((::GetWindowLongPtrW(control, GWL_STYLE) & WS_VISIBLE) != 0) {
+			if(!::GetWindowRect(control, &rect)) return;
+			::MapWindowPoints(NULL, m_owner, reinterpret_cast<LPPOINT>(&rect), 2);
+		}
 		m_tooltips.SetToolRect(m_owner, toolId, &rect);
 	}
 

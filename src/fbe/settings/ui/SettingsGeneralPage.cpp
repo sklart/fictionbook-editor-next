@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "../../testing/RuntimeTestScenarioMode.h"
 #include "SettingsGeneralPage.h"
 #include "..\\..\\Settings.h"
 #include "..\\..\\ThemeManager.h"
@@ -48,6 +49,179 @@ const wchar_t* PaletteId(int index)
 }
 }
 
+class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
+{
+    CSettingsGeneralPage& m_page;
+    CSettingsTooltips m_tooltips;
+public:
+    explicit CPaletteManagerDialog(CSettingsGeneralPage& page) : m_page(page) {}
+    enum { IDD = IDD_SETTINGS_PALETTE_MANAGER };
+    BEGIN_MSG_MAP(CPaletteManagerDialog)
+        MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+        MESSAGE_HANDLER(WM_CLOSE, OnClose)
+        MESSAGE_HANDLER(WM_TIMER, OnTimer)
+        COMMAND_HANDLER(IDOK, BN_CLICKED, OnOk)
+        COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnCancel)
+        COMMAND_HANDLER(IDC_PALETTE_ROLE, CBN_SELCHANGE, OnRoleChanged)
+        COMMAND_HANDLER(IDC_PALETTE_IMPORT, BN_CLICKED, OnAction)
+        COMMAND_HANDLER(IDC_PALETTE_EXPORT, BN_CLICKED, OnAction)
+        COMMAND_HANDLER(IDC_PALETTE_RENAME, BN_CLICKED, OnAction)
+        COMMAND_HANDLER(IDC_PALETTE_DELETE, BN_CLICKED, OnAction)
+        COMMAND_HANDLER(IDC_PALETTE_CHOOSE_COLOR, BN_CLICKED, OnAction)
+        COMMAND_HANDLER(IDC_PALETTE_RESET_COLOR, BN_CLICKED, OnAction)
+    END_MSG_MAP()
+    LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
+    {
+        m_page.m_paletteManager = m_hWnd;
+        SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.manage", L"Manage colour schemes..."));
+        for(const auto& entry : { std::make_pair(IDC_PALETTE_IMPORT, L"fbe.settings.palette.import"),
+            std::make_pair(IDC_PALETTE_EXPORT, L"fbe.settings.palette.export"),
+            std::make_pair(IDC_PALETTE_RENAME, L"fbe.settings.palette.rename"),
+            std::make_pair(IDC_PALETTE_DELETE, L"fbe.settings.palette.delete"),
+            std::make_pair(IDC_PALETTE_ROLE_LABEL, L"fbe.settings.palette.role"),
+            std::make_pair(IDC_PALETTE_CHOOSE_COLOR, L"fbe.settings.palette.choose_color"),
+            std::make_pair(IDC_PALETTE_RESET_COLOR, L"fbe.settings.palette.reset_color") })
+            SetDlgItemText(entry.first, FbeLoadRuntimeStringByKey(entry.second));
+        SetDlgItemText(IDOK, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_tools_settings.ok", L"OK"));
+        SetDlgItemText(IDCANCEL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_tools_settings.cancel", L"Cancel"));
+        FitLocalizedLayout();
+        CComboBox roles = GetDlgItem(IDC_PALETTE_ROLE);
+        for(int i = 0; i < m_page.m_paletteRole.GetCount(); ++i) { CString text; m_page.m_paletteRole.GetLBText(i, text); roles.AddString(text); }
+        roles.SetCurSel(m_page.m_paletteRole.GetCurSel());
+        m_tooltips.Initialize(m_hWnd);
+        m_tooltips.Add(GetDlgItem(IDC_PALETTE_CURRENT), L"fbe.settings.tooltip.general.interface_palette", L"Selected colour scheme.");
+        for(int id : {IDC_PALETTE_ROLE, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR}) {
+            m_tooltips.Add(GetDlgItem(id), L"fbe.settings.tooltip.general.palette_color", L"Edit a colour in a custom palette.");
+            m_tooltips.AddDisabledControlArea(GetDlgItem(id), L"fbe.settings.tooltip.general.palette_builtin", L"Create a copy of the built-in scheme before editing it.");
+        }
+        for(const auto& item : {std::make_pair(IDC_PALETTE_IMPORT, L"fbe.settings.tooltip.general.palette_import"),
+            std::make_pair(IDC_PALETTE_EXPORT, L"fbe.settings.tooltip.general.palette_export"),
+            std::make_pair(IDC_PALETTE_RENAME, L"fbe.settings.tooltip.general.palette_rename"),
+            std::make_pair(IDC_PALETTE_DELETE, L"fbe.settings.tooltip.general.palette_delete")}) {
+            m_tooltips.Add(GetDlgItem(item.first), item.second, L"Manage a custom colour scheme.");
+            if(item.first != IDC_PALETTE_IMPORT)
+                m_tooltips.AddDisabledControlArea(GetDlgItem(item.first), L"fbe.settings.tooltip.general.palette_builtin", L"Create a copy of the built-in scheme before editing it.");
+        }
+        ThemeManager::ApplyToWindow(m_hWnd); Refresh(); CenterWindow(GetParent()); PublishAuditMetrics();
+        if(RuntimeTests::IsScenario(L"custom-palette-manage") && ::GetPropW(m_page.m_hWnd, L"FBE.PaletteManagerTest")) SetTimer(0x504D, 1);
+        return TRUE;
+    }
+    void PublishAuditMetrics()
+    {
+        wchar_t enabled[4] = {};
+        if(::GetEnvironmentVariableW(L"FBE_NEXT_SETTINGS_LAYOUT_AUDIT", enabled, _countof(enabled)) != 1 || enabled[0] != L'1') return;
+        for(HWND child = ::GetWindow(m_hWnd, GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT)) {
+            wchar_t kind[32] = {}; ::GetClassNameW(child, kind, _countof(kind));
+            const bool button = _wcsicmp(kind, L"Button") == 0, label = _wcsicmp(kind, L"Static") == 0;
+            if(!button && !label) continue;
+            const int length = ::GetWindowTextLengthW(child); if(length <= 0) continue;
+            CString text; ::GetWindowTextW(child, text.GetBuffer(length + 1), length + 1); text.ReleaseBuffer();
+            RECT bounds = {}; ::GetClientRect(child, &bounds);
+            const int inset = max(2, static_cast<int>(UiMetrics::DpiForWindow(child) / 48));
+            RECT measured = {0, 0, max(1, static_cast<int>(bounds.right) - 2 * inset), 0};
+            HDC dc = ::GetDC(child); if(!dc) continue;
+            HFONT font = reinterpret_cast<HFONT>(::SendMessageW(child, WM_GETFONT, 0, 0));
+            HGDIOBJ previous = font ? ::SelectObject(dc, font) : NULL;
+            ::DrawTextW(dc, text, text.GetLength(), &measured, DT_CALCRECT | (label ? DT_WORDBREAK : DT_SINGLELINE));
+            if(previous) ::SelectObject(dc, previous); ::ReleaseDC(child, dc);
+            ::SetPropW(child, L"FBE_AUDIT_TEXT_WIDTH", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(measured.right + 1)));
+            ::SetPropW(child, L"FBE_AUDIT_TEXT_HEIGHT", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(measured.bottom + 1)));
+        }
+    }
+    void FitLocalizedLayout()
+    {
+        const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+        const int margin = UiMetrics::ScaleForDpi(8, dpi), gap = UiMetrics::ScaleForDpi(6, dpi);
+        HDC dc = ::GetDC(m_hWnd); HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_hWnd, WM_GETFONT, 0, 0));
+        HGDIOBJ oldFont = dc && font ? ::SelectObject(dc, font) : NULL;
+        int buttonTextWidth = 0, labelWidth = 0, fontHeight = UiMetrics::ScaleForDpi(16, dpi);
+        if(dc) {
+            TEXTMETRICW metrics = {}; if(::GetTextMetricsW(dc, &metrics)) fontHeight = metrics.tmHeight;
+            for(int id : {IDC_PALETTE_IMPORT, IDC_PALETTE_EXPORT, IDC_PALETTE_RENAME, IDC_PALETTE_DELETE,
+                IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR, IDOK, IDCANCEL}) {
+                CString text; GetDlgItemText(id, text); SIZE extent = {};
+                if(::GetTextExtentPoint32W(dc, text, text.GetLength(), &extent)) buttonTextWidth = max(buttonTextWidth, static_cast<int>(extent.cx));
+            }
+            CString text; GetDlgItemText(IDC_PALETTE_ROLE_LABEL, text); SIZE extent = {};
+            if(::GetTextExtentPoint32W(dc, text, text.GetLength(), &extent)) labelWidth = extent.cx;
+        }
+        if(oldFont) ::SelectObject(dc, oldFont); if(dc) ::ReleaseDC(m_hWnd, dc);
+        labelWidth += margin; // Leave room for text overhang and static-control padding.
+        const int buttonWidth = max(UiMetrics::ScaleForDpi(95, dpi), buttonTextWidth + 2 * margin);
+        const int lineHeight = max(UiMetrics::ScaleForDpi(28, dpi), fontHeight + 2 * margin);
+        RECT client = {}, window = {}; ::GetClientRect(m_hWnd, &client); ::GetWindowRect(m_hWnd, &window);
+        const int width = max(static_cast<int>(client.right), max(2 * buttonWidth + 3 * margin,
+            labelWidth + UiMetrics::ScaleForDpi(140, dpi) + 3 * margin));
+        const int right = width - margin, mid = width / 2;
+        int y = margin;
+        auto place = [&](int id, int x, int top, int w, int h) {
+            ::SetWindowPos(GetDlgItem(id), NULL, x, top, max(1, w), max(1, h), SWP_NOZORDER | SWP_NOACTIVATE);
+        };
+        place(IDC_PALETTE_CURRENT, margin, y, right - margin, lineHeight); y += lineHeight + gap;
+        place(IDC_PALETTE_IMPORT, margin, y, mid - margin - gap / 2, lineHeight);
+        place(IDC_PALETTE_EXPORT, mid + gap / 2, y, right - mid - gap / 2, lineHeight); y += lineHeight + gap;
+        place(IDC_PALETTE_RENAME, margin, y, mid - margin - gap / 2, lineHeight);
+        place(IDC_PALETTE_DELETE, mid + gap / 2, y, right - mid - gap / 2, lineHeight); y += lineHeight + gap;
+        const int comboLeft = margin + labelWidth + gap;
+        RECT combo = {}; ::GetWindowRect(GetDlgItem(IDC_PALETTE_ROLE), &combo);
+        place(IDC_PALETTE_ROLE_LABEL, margin, y, labelWidth, lineHeight);
+        place(IDC_PALETTE_ROLE, comboLeft, y, right - comboLeft, combo.bottom - combo.top); y += lineHeight + gap;
+        place(IDC_PALETTE_CHOOSE_COLOR, margin, y, mid - margin - gap / 2, lineHeight);
+        place(IDC_PALETTE_RESET_COLOR, mid + gap / 2, y, right - mid - gap / 2, lineHeight); y += lineHeight + gap;
+        place(IDC_PALETTE_CONTRAST, margin, y, right - margin, 3 * fontHeight + 2 * margin);
+        y += 3 * fontHeight + 3 * margin;
+        place(IDOK, right - 2 * buttonWidth - gap, y, buttonWidth, lineHeight);
+        place(IDCANCEL, right - buttonWidth, y, buttonWidth, lineHeight); y += lineHeight + margin;
+        ::SetWindowPos(m_hWnd, NULL, 0, 0, width + window.right - window.left - client.right,
+            y + window.bottom - window.top - client.bottom, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+    void Refresh()
+    {
+        CString current; const int selected = m_page.m_interfacePalette.GetCurSel();
+        if(selected >= 0) m_page.m_interfacePalette.GetLBText(selected, current);
+        SetDlgItemText(IDC_PALETTE_CURRENT, current);
+        m_tooltips.UpdateText(GetDlgItem(IDC_PALETTE_CURRENT), current);
+        const bool editable = m_page.m_acceptedPaletteIndex >= INTERFACE_PALETTE_COUNT && ThemeManager::IsCustomPaletteActive();
+        for(int id : {IDC_PALETTE_EXPORT, IDC_PALETTE_RENAME, IDC_PALETTE_DELETE, IDC_PALETTE_ROLE_LABEL,
+            IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR}) GetDlgItem(id).EnableWindow(editable);
+        CString contrast; m_page.GetDlgItemText(IDC_PALETTE_CONTRAST, contrast); SetDlgItemText(IDC_PALETTE_CONTRAST, contrast);
+    }
+    LRESULT OnRoleChanged(WORD, WORD, HWND, BOOL&) { m_page.m_paletteRole.SetCurSel(CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel()); return 0; }
+    LRESULT OnAction(WORD, WORD id, HWND control, BOOL&)
+    {
+        BOOL handled = FALSE;
+        switch(id) {
+        case IDC_PALETTE_IMPORT: m_page.OnImportPalette(BN_CLICKED, id, control, handled); break;
+        case IDC_PALETTE_EXPORT: m_page.OnExportPalette(BN_CLICKED, id, control, handled); break;
+        case IDC_PALETTE_RENAME: m_page.OnRenamePalette(BN_CLICKED, id, control, handled); break;
+        case IDC_PALETTE_DELETE: m_page.OnDeletePalette(BN_CLICKED, id, control, handled); break;
+        case IDC_PALETTE_CHOOSE_COLOR: m_page.OnChoosePaletteColor(BN_CLICKED, id, control, handled); break;
+        case IDC_PALETTE_RESET_COLOR: m_page.OnResetPaletteColor(BN_CLICKED, id, control, handled); break;
+        }
+        Refresh(); return 0;
+    }
+    LRESULT OnTimer(UINT, WPARAM id, LPARAM, BOOL&)
+    {
+        if(id != 0x504D) return 0;
+        KillTimer(id);
+        const ULONG_PTR mode = reinterpret_cast<ULONG_PTR>(::GetPropW(m_page.m_hWnd, L"FBE.PaletteManagerTest"));
+        const bool editable = ::IsWindowEnabled(GetDlgItem(IDC_PALETTE_CHOOSE_COLOR)) != FALSE;
+        bool passed = mode == 1 && !editable;
+        if(mode == 2 && editable) {
+            const COLORREF before = ThemeManager::Color(THEME_COLOR_WINDOW);
+            ::SendMessageW(m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_PALETTE_RESET_COLOR, BN_CLICKED),
+                reinterpret_cast<LPARAM>(GetDlgItem(IDC_PALETTE_RESET_COLOR).m_hWnd));
+            passed = ThemeManager::Color(THEME_COLOR_WINDOW) != before;
+        }
+        ::SetPropW(m_page.m_hWnd, L"FBE.PaletteManagerResult", reinterpret_cast<HANDLE>(passed ? 1 : 2));
+        PostMessage(WM_COMMAND, MAKEWPARAM(IDCANCEL, BN_CLICKED), reinterpret_cast<LPARAM>(GetDlgItem(IDCANCEL).m_hWnd));
+        return 0;
+    }
+    LRESULT OnOk(WORD, WORD, HWND, BOOL&) { m_page.m_paletteManager = NULL; EndDialog(IDOK); return 0; }
+    LRESULT OnCancel(WORD, WORD, HWND, BOOL&) { m_page.m_paletteManager = NULL; EndDialog(IDCANCEL); return 0; }
+    LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&) { m_page.m_paletteManager = NULL; EndDialog(IDCANCEL); return 0; }
+};
+
 LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_SETTINGS_GENERAL);
@@ -82,6 +256,9 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	for(HWND control : {m_interfacePalette.m_hWnd, GetDlgItem(IDC_INTERFACE_PALETTE_LABEL).m_hWnd})
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.interface_palette", L"Choose interface colours independently of the Windows mode. High Contrast uses system colours.");
 	m_tooltips.Add(GetDlgItem(IDC_INTERFACE_PALETTE_COPY), L"fbe.settings.tooltip.general.palette_copy", L"Create a copy of the selected palette. It is saved when you confirm settings.");
+	m_tooltips.Add(GetDlgItem(IDC_PALETTE_MANAGE), L"fbe.settings.tooltip.general.palette_manage", L"Import, export and edit custom colour schemes.");
+	m_tooltips.Add(GetDlgItem(IDC_APPEARANCE_THEME_PREVIEW), L"fbe.settings.tooltip.general.interface_palette", L"Preview the selected interface colours.");
+	m_tooltips.Add(GetDlgItem(IDC_APPEARANCE_ICON_PREVIEW), L"fbe.settings.tooltip.general.main_toolbar_icon_size", L"Preview the selected toolbar icon sizes.");
 	m_tooltips.Add(GetDlgItem(IDC_PALETTE_IMPORT), L"fbe.settings.tooltip.general.palette_import", L"Import a JSON palette. It is saved when you confirm settings.");
 	m_tooltips.Add(GetDlgItem(IDC_PALETTE_EXPORT), L"fbe.settings.tooltip.general.palette_export", L"Export the selected custom palette to a JSON file.");
 	m_tooltips.Add(GetDlgItem(IDC_PALETTE_RENAME), L"fbe.settings.tooltip.general.palette_rename", L"Rename the selected custom palette. The change is saved when you confirm settings.");
@@ -110,6 +287,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	SetText(m_hWnd, IDC_INTERFACE_THEME_LABEL, L"fbe.dialog.idd_options.interface_theme", L"Interface theme:");
 	SetText(m_hWnd, IDC_INTERFACE_PALETTE_LABEL, L"fbe.settings.interface_palette", L"Interface palette:");
 	SetText(m_hWnd, IDC_INTERFACE_PALETTE_COPY, L"fbe.settings.palette.copy", L"Create copy...");
+	SetText(m_hWnd, IDC_PALETTE_MANAGE, L"fbe.settings.palette.manage", L"Manage schemes...");
 	SetText(m_hWnd, IDC_PALETTE_IMPORT, L"fbe.settings.palette.import", L"Import...");
 	SetText(m_hWnd, IDC_PALETTE_EXPORT, L"fbe.settings.palette.export", L"Export...");
 	SetText(m_hWnd, IDC_PALETTE_RENAME, L"fbe.settings.palette.rename", L"Rename...");
@@ -384,6 +562,101 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
+void CSettingsGeneralPage::MakeAppearanceOnly()
+{
+    // The common page owns these controls and values after the split.
+    for(int id : { IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG, IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG,
+        IDC_SETTINGS_OTHER_OPEN_GROUP, IDC_RESTORE_POS, IDC_SETTINGS_OTHER_SAVE_GROUP, IDC_SETTINGS_OTHER_ENCODING,
+        IDC_DEFAULT_ENC, IDC_KEEP, IDC_FBE_NEXT_SAVING_GROUP, IDC_CREATE_BACKUP_FILE,
+        IDC_FBE_NEXT_WINDOW_TITLE_GROUP, IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE, IDC_FBE_NEXT_UPDATES_GROUP,
+        IDC_UPDATE_CHANNEL_LABEL, IDC_UPDATE_CHANNEL }) {
+        HWND control = GetDlgItem(id); if(control) ::DestroyWindow(control);
+    }
+    for(int id : { IDC_PALETTE_IMPORT, IDC_PALETTE_EXPORT, IDC_PALETTE_RENAME, IDC_PALETTE_DELETE,
+        IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR, IDC_PALETTE_CONTRAST })
+        ::ShowWindow(GetDlgItem(id), SW_HIDE);
+    SetText(m_hWnd, IDC_OPTIONS_INTERFACE_GROUP, L"fbe.settings.appearance.colour_group", L"Colour scheme");
+    SetText(m_hWnd, IDC_APPEARANCE_TOOLBARS_GROUP, L"fbe.settings.appearance.toolbars_group", L"Toolbars");
+    SetText(m_hWnd, IDC_APPEARANCE_DESCRIPTION_GROUP, L"fbe.settings.appearance.description_group", L"Description layout");
+    const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+    const int margin = UiMetrics::ScaleForDpi(8, dpi), gap = UiMetrics::ScaleForDpi(6, dpi);
+    const int titleHeight = UiMetrics::ScaleForDpi(22, dpi);
+    int line = UiMetrics::ScaleForDpi(29, dpi);
+    RECT group = {}; ::GetWindowRect(GetDlgItem(IDC_OPTIONS_INTERFACE_GROUP), &group);
+    ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&group), 2);
+    const int left = group.left + margin;
+    const int labelIds[] = {IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_PALETTE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL,
+        IDC_SCRIPT_ICON_SIZE_LABEL, IDC_DESCRIPTION_LAYOUT_LABEL};
+    int labelWidth = 0, buttonWidth = 0; HDC dc = ::GetDC(m_hWnd);
+    HFONT font = reinterpret_cast<HFONT>(::SendMessage(m_hWnd, WM_GETFONT, 0, 0));
+    HGDIOBJ oldFont = dc && font ? ::SelectObject(dc, font) : NULL;
+    if(dc) {
+        TEXTMETRICW metrics = {};
+        if(::GetTextMetricsW(dc, &metrics)) line = max(line, static_cast<int>(metrics.tmHeight) + 2 * margin);
+        for(int id : labelIds) {
+            CString text; GetDlgItemText(id, text); SIZE extent = {};
+            if(::GetTextExtentPoint32W(dc, text, text.GetLength(), &extent)) labelWidth = max(labelWidth, static_cast<int>(extent.cx));
+        }
+        for(int id : {IDC_INTERFACE_PALETTE_COPY, IDC_PALETTE_MANAGE}) {
+            CString text; GetDlgItemText(id, text); SIZE extent = {};
+            if(::GetTextExtentPoint32W(dc, text, text.GetLength(), &extent)) buttonWidth = max(buttonWidth, static_cast<int>(extent.cx) + 2 * margin);
+        }
+    }
+    if(oldFont) ::SelectObject(dc, oldFont); if(dc) ::ReleaseDC(m_hWnd, dc);
+    const int neededWidth = max(labelWidth + gap + UiMetrics::ScaleForDpi(130, dpi), 2 * buttonWidth + gap) + 2 * margin;
+    group.right = max(group.right, group.left + neededWidth);
+    const int right = group.right - margin, comboLeft = left + labelWidth + gap;
+    int y = group.top + titleHeight;
+    auto row = [&](int label, int combo) {
+        RECT field = {}; ::GetWindowRect(GetDlgItem(combo), &field);
+        ::SetWindowPos(GetDlgItem(label), NULL, left, y, max(1, comboLeft - left - gap), line,
+            SWP_NOZORDER | SWP_NOACTIVATE);
+        ::SetWindowPos(GetDlgItem(combo), NULL, comboLeft, y, max(1, right - comboLeft), field.bottom - field.top,
+            SWP_NOZORDER | SWP_NOACTIVATE);
+        y += line + gap;
+    };
+    auto place = [&](int id, int x, int top, int width, int height) {
+        ::SetWindowPos(GetDlgItem(id), NULL, x, top, max(1, width), max(1, height), SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+    };
+    row(IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME);
+    row(IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE);
+    const int middle = left + (right - left) / 2;
+    place(IDC_INTERFACE_PALETTE_COPY, left, y, middle - left - gap / 2, line);
+    place(IDC_PALETTE_MANAGE, middle + gap / 2, y, right - middle - gap / 2, line);
+    y += line + gap;
+    const int themePreviewHeight = UiMetrics::ScaleForDpi(42, dpi);
+    place(IDC_APPEARANCE_THEME_PREVIEW, left, y, right - left, themePreviewHeight);
+    y += themePreviewHeight + gap;
+    if(!m_darkThemeSupported) {
+        RECT note = {}; ::GetWindowRect(GetDlgItem(IDC_INTERFACE_THEME_NOTE), &note);
+        const int height = max(line, static_cast<int>(note.bottom - note.top));
+        place(IDC_INTERFACE_THEME_NOTE, left, y, right - left, height); y += height + gap;
+    }
+    const int colourBottom = y + margin;
+    place(IDC_OPTIONS_INTERFACE_GROUP, group.left, group.top, group.right - group.left, colourBottom - group.top);
+    const int toolbarTop = colourBottom + gap; y = toolbarTop + titleHeight;
+    row(IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE);
+    row(IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE);
+    const int iconPreviewHeight = UiMetrics::ScaleForDpi(42, dpi);
+    place(IDC_APPEARANCE_ICON_PREVIEW, left, y, right - left, iconPreviewHeight);
+    y += iconPreviewHeight + margin;
+    place(IDC_APPEARANCE_TOOLBARS_GROUP, group.left, toolbarTop, group.right - group.left, y - toolbarTop);
+    const int descriptionTop = y + gap; y = descriptionTop + titleHeight;
+    row(IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT);
+    y += margin;
+    place(IDC_APPEARANCE_DESCRIPTION_GROUP, group.left, descriptionTop, group.right - group.left, y - descriptionTop);
+    RECT client = {}, window = {}; ::GetClientRect(m_hWnd, &client); ::GetWindowRect(m_hWnd, &window);
+    const int requiredHeight = y + margin, requiredWidth = group.right + margin;
+    ::SetWindowPos(m_hWnd, NULL, 0, 0, requiredWidth + window.right - window.left - client.right,
+        requiredHeight + window.bottom - window.top - client.bottom, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+LRESULT CSettingsGeneralPage::OnIconPreviewChanged(WORD, WORD, HWND, BOOL&)
+{
+    GetDlgItem(IDC_APPEARANCE_ICON_PREVIEW).Invalidate();
+    return 0;
+}
+
 LRESULT CSettingsGeneralPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
 {
 	return ForwardSettingsDialogCommand(m_hWnd, IDOK);
@@ -470,6 +743,41 @@ bool CSettingsGeneralPage::PaletteItemAvailable(int index) const
 LRESULT CSettingsGeneralPage::OnDrawThemeItem(UINT, WPARAM, LPARAM parameter, BOOL& handled)
 {
 	const DRAWITEMSTRUCT* item = reinterpret_cast<const DRAWITEMSTRUCT*>(parameter);
+	if(item && (item->CtlID == IDC_APPEARANCE_THEME_PREVIEW || item->CtlID == IDC_APPEARANCE_ICON_PREVIEW)) {
+		const int saved = ::SaveDC(item->hDC); const RECT bounds = item->rcItem;
+		::FillRect(item->hDC, &bounds, ThemeManager::WindowBrush());
+		::FrameRect(item->hDC, &bounds, ThemeManager::Brush(THEME_COLOR_BORDER));
+		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		const int padding = UiMetrics::ScaleForDpi(5, dpi);
+		if(item->CtlID == IDC_APPEARANCE_THEME_PREVIEW) {
+			RECT bar = {bounds.left + 1, bounds.top + 1, bounds.right - 1, bounds.top + UiMetrics::ScaleForDpi(11, dpi)};
+			::FillRect(item->hDC, &bar, ThemeManager::ControlBrush());
+			RECT panel = {bounds.left + padding, bar.bottom + padding, bounds.left + (bounds.right - bounds.left) / 4, bounds.bottom - padding};
+			::FillRect(item->hDC, &panel, ThemeManager::ControlBrush());
+			::SelectObject(item->hDC, ::GetStockObject(DC_PEN)); ::SetDCPenColor(item->hDC, ThemeManager::TextColor());
+			const int x = panel.right + padding, width = max(1, bounds.right - padding - x);
+			const int center = (panel.top + panel.bottom) / 2;
+			::MoveToEx(item->hDC, x, center - 2, NULL); ::LineTo(item->hDC, x + width * 3 / 4, center - 2);
+			::SetDCPenColor(item->hDC, ThemeManager::AccentColor());
+			::MoveToEx(item->hDC, x, center + 2, NULL); ::LineTo(item->hDC, x + width / 2, center + 2);
+		} else {
+			int x = bounds.left + padding;
+			for(CComboBox* combo : {&m_mainToolbarIconSize, &m_scriptIconSize}) {
+				const int selection = combo->GetCurSel();
+				const int size = selection == CB_ERR ? 16 : static_cast<int>(combo->GetItemData(selection));
+				const int scaled = UiMetrics::ScaleForDpi(size, dpi);
+				RECT sample = {x, bounds.top + (bounds.bottom - bounds.top - scaled) / 2, x + scaled, bounds.top + (bounds.bottom - bounds.top - scaled) / 2 + scaled};
+				::FillRect(item->hDC, &sample, ThemeManager::Brush(THEME_COLOR_HOVER));
+				::FrameRect(item->hDC, &sample, ThemeManager::Brush(THEME_COLOR_BORDER));
+				::SelectObject(item->hDC, ::GetStockObject(DC_PEN)); ::SetDCPenColor(item->hDC, ThemeManager::TextColor());
+				const int cx = (sample.left + sample.right) / 2, cy = (sample.top + sample.bottom) / 2;
+				::MoveToEx(item->hDC, sample.left + scaled / 4, cy, NULL); ::LineTo(item->hDC, sample.right - scaled / 4, cy);
+				::MoveToEx(item->hDC, cx, sample.top + scaled / 4, NULL); ::LineTo(item->hDC, cx, sample.bottom - scaled / 4);
+				x = sample.right + UiMetrics::ScaleForDpi(16, dpi);
+			}
+		}
+		if(saved) ::RestoreDC(item->hDC, saved); return TRUE;
+	}
 	if(!item || (item->CtlID != IDC_INTERFACE_THEME && item->CtlID != IDC_INTERFACE_PALETTE)) { handled = FALSE; return 0; }
 	const bool selected = (item->itemState & ODS_SELECTED) != 0;
 	const int index = item->itemID == static_cast<UINT>(-1) ? -1 : static_cast<int>(item->itemID);
@@ -655,6 +963,8 @@ LRESULT CSettingsGeneralPage::OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&)
 
 LRESULT CSettingsGeneralPage::OnPaletteThemeChanged(UINT, WPARAM, LPARAM, BOOL& handled)
 {
+	if(GetDlgItem(IDC_APPEARANCE_THEME_PREVIEW).IsWindow()) GetDlgItem(IDC_APPEARANCE_THEME_PREVIEW).Invalidate();
+	if(GetDlgItem(IDC_APPEARANCE_ICON_PREVIEW).IsWindow()) GetDlgItem(IDC_APPEARANCE_ICON_PREVIEW).Invalidate();
 	if(GetDlgItem(IDC_PALETTE_CONTRAST).IsWindow()) UpdatePaletteContrast();
 	handled = FALSE;
 	return 0;
@@ -692,7 +1002,7 @@ LRESULT CSettingsGeneralPage::OnChoosePaletteColor(WORD, WORD, HWND, BOOL&)
 	if(role < 0 || role >= THEME_COLOR_COUNT || !ThemeManager::IsCustomPaletteActive()) return 0;
 	static COLORREF customColors[16] = {};
 	CHOOSECOLORW chooser = {};
-	chooser.lStructSize = sizeof(chooser); chooser.hwndOwner = m_hWnd;
+	chooser.lStructSize = sizeof(chooser); chooser.hwndOwner = m_paletteManager ? m_paletteManager : m_hWnd;
 	chooser.rgbResult = ThemeManager::Color(static_cast<ThemeColorRole>(role));
 	chooser.lpCustColors = customColors; chooser.Flags = CC_RGBINIT | CC_FULLOPEN;
 	if(::ChooseColorW(&chooser)) StagePaletteColor(static_cast<ThemeColorRole>(role), chooser.rgbResult, true);
@@ -785,7 +1095,7 @@ LRESULT CSettingsGeneralPage::OnImportPalette(WORD, WORD, HWND, BOOL&)
 	const CString filter = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.json_filter", L"Interface palettes (*.json)");
 	const COMDLG_FILTERSPEC filters[] = {{filter, L"*.json"}};
 	ModernFileDialog::Request request; request.fileMustExist = true; request.pathMustExist = true; request.filters = filters; request.filterCount = _countof(filters);
-	const auto result = ModernFileDialog::Show(m_hWnd, request);
+	const auto result = ModernFileDialog::Show(m_paletteManager ? m_paletteManager : m_hWnd, request);
 	if(result.outcome == ModernFileDialog::Outcome::Failed) {
 		CString detail; detail.Format(L"0x%08X", static_cast<unsigned>(result.error));
 		MessageBox(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.load_failed", L"Could not load the selected interface palette.") + L"\n\n" + detail,
@@ -809,7 +1119,7 @@ LRESULT CSettingsGeneralPage::OnExportPalette(WORD, WORD, HWND, BOOL&)
 	const COMDLG_FILTERSPEC filters[] = {{filter, L"*.json"}};
 	ModernFileDialog::Request request; request.save = true; request.pathMustExist = true; request.overwritePrompt = true;
 	request.defaultExtension = L"json"; request.initialFileName = palette.id + L".json"; request.filters = filters; request.filterCount = _countof(filters);
-	const auto result = ModernFileDialog::Show(m_hWnd, request);
+	const auto result = ModernFileDialog::Show(m_paletteManager ? m_paletteManager : m_hWnd, request);
 	if(result.outcome == ModernFileDialog::Outcome::Failed) {
 		CString detail; detail.Format(L"0x%08X", static_cast<unsigned>(result.error));
 		MessageBox(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.export_failed", L"Could not export the interface palette.") + L"\n\n" + detail,
@@ -878,7 +1188,7 @@ LRESULT CSettingsGeneralPage::OnRenamePalette(WORD, WORD, HWND, BOOL&)
 	if(!ThemeManager::GetCustomPalette(palette)) return 0;
 	CString name(palette.name.c_str());
 	if(AU::InputBoxOwned(name, FbeLoadRuntimeStringByKey(L"fbe.settings.palette.rename", L"Rename..."),
-		FbeLoadRuntimeStringByKey(L"fbe.settings.palette.rename_name", L"New name of the interface palette:"), m_hWnd) != IDYES) return 0;
+		FbeLoadRuntimeStringByKey(L"fbe.settings.palette.rename_name", L"New name of the interface palette:"), m_paletteManager ? m_paletteManager : m_hWnd) != IDYES) return 0;
 	name.Trim();
 	if(!StagePaletteRename(name)) MessageBox(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.rename_failed", L"Could not rename the palette. Enter a name of up to 100 characters without control characters."),
 		FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONWARNING);
@@ -889,6 +1199,33 @@ LRESULT CSettingsGeneralPage::OnDeletePalette(WORD, WORD, HWND, BOOL&)
 {
 	StagePaletteDelete();
 	return 0;
+}
+
+LRESULT CSettingsGeneralPage::OnManagePalettes(WORD, WORD, HWND, BOOL&)
+{
+    const auto customBefore = m_customPalettes, pendingBefore = m_pendingPalettes;
+    const auto newBefore = m_newPaletteIds, deletedBefore = m_deletedPaletteIds;
+    const int acceptedBefore = m_acceptedPaletteIndex;
+    const bool changedBefore = m_paletteChanged;
+    const InterfacePalette namedBefore = ThemeManager::GetNamedPalette();
+    ThemeManager::CustomPalette paletteBefore;
+    const bool customActiveBefore = ThemeManager::GetCustomPalette(paletteBefore);
+    std::vector<CString> labels;
+    for(int i = 0; i < m_interfacePalette.GetCount(); ++i) { CString value; m_interfacePalette.GetLBText(i, value); labels.push_back(value); }
+    CPaletteManagerDialog dialog(*this);
+    const INT_PTR result = dialog.DoModal(m_hWnd);
+    m_paletteManager = NULL;
+    if(result != IDOK) {
+        m_customPalettes = customBefore; m_pendingPalettes = pendingBefore;
+        m_newPaletteIds = newBefore; m_deletedPaletteIds = deletedBefore;
+        m_acceptedPaletteIndex = acceptedBefore; m_paletteChanged = changedBefore;
+        m_interfacePalette.ResetContent();
+        for(const CString& label : labels) m_interfacePalette.AddString(label);
+        m_interfacePalette.SetCurSel(acceptedBefore);
+        if(customActiveBefore) ThemeManager::SetCustomPalette(paletteBefore); else ThemeManager::SetNamedPalette(namedBefore);
+        UpdatePaletteColorControls(); ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+    }
+    return 0;
 }
 
 LRESULT CSettingsGeneralPage::OnCopyPalette(WORD, WORD, HWND, BOOL&)
@@ -942,26 +1279,7 @@ void CSettingsGeneralPage::Commit()
 		(!m_preserveUnavailableDark || interfaceTheme != INTERFACE_THEME_LIGHT))
 		_Settings.SetInterfaceTheme(static_cast<InterfaceTheme>(interfaceTheme));
 	else if(m_preserveUnavailableDark) ThemeManager::SetSelectedTheme(m_originalTheme);
-	const int encodingIndex = m_defaultEncoding.GetCurSel();
-	if(encodingIndex != CB_ERR) { CString encoding; m_defaultEncoding.GetLBText(encodingIndex, encoding); _Settings.SetDefaultEncoding(encoding); }
-	_Settings.SetKeepEncoding(m_keepEncoding.GetCheck() == BST_CHECKED);
-	_Settings.SetRestoreFilePosition(m_restorePosition.GetCheck() == BST_CHECKED);
-	_Settings.SetCreateBackupFile(IsDlgButtonChecked(IDC_CREATE_BACKUP_FILE) == BST_CHECKED);
-	_Settings.SetShowFullPathInWindowTitle(IsDlgButtonChecked(IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE) == BST_CHECKED);
-	_Settings.SetUpdateChannel(m_updateChannel.GetCurSel() == 1 ? UpdateChannel::Prerelease : UpdateChannel::Stable);
 	_Settings.SetDescriptionLayout(m_descriptionLayout.GetCurSel() == 1 ? L"classic" : L"modern");
-	_Settings.SetGenreCatalog(m_genreCatalog.GetCurSel() == 1 ? GenreCatalog::Librusec : GenreCatalog::Standard);
-	const int language = m_language.GetCurSel();
-	if(language >= 0)
-	{
-		const DWORD selectedLanguage = static_cast<DWORD>(m_language.GetItemData(language));
-		if(selectedLanguage != _Settings.GetInterfaceLanguageID())
-		{
-			_Settings.SetInterfaceLanguage(selectedLanguage);
-			FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName());
-			FbeResetRuntimeLocalization();
-		}
-	}
 }
 bool CSettingsGeneralPage::CancelChanges()
 {

@@ -212,7 +212,7 @@ bool CSettingsDlg::ProbeFollowup()
     m_wordsPage->m_words.push_back(WordsItem(L"followup-word", 37)); m_wordsPage->m_wordsDirty = true;
     const bool backup = _Settings.GetCreateBackupFile();
     const bool restart = _Settings.NeedRestart();
-    m_generalPage->CheckDlgButton(IDC_CREATE_BACKUP_FILE, backup ? BST_UNCHECKED : BST_CHECKED);
+    m_commonPage->CheckDlgButton(IDC_CREATE_BACKUP_FILE, backup ? BST_UNCHECKED : BST_CHECKED);
     ::SetFileAttributesW(settingsPath, FILE_ATTRIBUTE_READONLY);
     passed = !TryCommit(error) && !error.IsEmpty() && ::IsWindow(m_hWnd) &&
         _Settings.GetCreateBackupFile() == backup && _Settings.NeedRestart() == restart &&
@@ -225,7 +225,7 @@ bool CSettingsDlg::ProbeFollowup()
     passed = lock != INVALID_HANDLE_VALUE && !_Settings.TrySave(error) && FollowupRead(settingsPath) == settingsBefore && passed;
     checkpoint(9);
     if(lock != INVALID_HANDLE_VALUE) ::CloseHandle(lock);
-    m_generalPage->CheckDlgButton(IDC_CREATE_BACKUP_FILE, BST_CHECKED);
+    m_commonPage->CheckDlgButton(IDC_CREATE_BACKUP_FILE, BST_CHECKED);
     m_wordsPage->m_words = words; m_wordsPage->m_wordsDirty = dirty;
     XmlSourceThemes::EndSettingsEdit(); XmlSourceThemes::BeginSettingsEdit();
     passed = FollowupRead(firstPath) == firstBytes && FollowupRead(secondPath) == secondBytes && passed;

@@ -422,6 +422,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
 	<ClCompile Include="settings\hotkeys\HotkeyGroup.cpp" />
 	<ClCompile Include="settings\words\WordsItem.cpp" />
 	<ClCompile Include="settings\words\WordsStore.cpp" />
+    <ClCompile Include="settings\ui\SettingsCommonPage.cpp"><AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories></ClCompile>
     <ClCompile Include="settings\ui\SettingsGeneralPage.cpp"><AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories></ClCompile>
 	<ClCompile Include="settings\ui\SettingsImagesPage.cpp"><AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories></ClCompile>
     <ClCompile Include="settings\ui\SettingsEditorPage.cpp"><AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories></ClCompile>
@@ -646,6 +647,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
 	<ClInclude Include="settings\words\WordsStore.h" />
 	<ClInclude Include="settings\ui\SettingsPageLifecycle.h" />
 	<ClInclude Include="settings\ui\SettingsTooltips.h" />
+    <ClInclude Include="settings\ui\SettingsCommonPage.h" />
     <ClInclude Include="settings\ui\SettingsGeneralPage.h" />
 	<ClInclude Include="settings\ui\SettingsImagesPage.h" />
     <ClInclude Include="settings\ui\SettingsEditorPage.h" />

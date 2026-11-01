@@ -31,9 +31,11 @@ foreach ($ownership in @(
     @{ Setter = 'SetImageImportFormat'; Writer = 'SettingsImagesPage.cpp' },
     @{ Setter = 'SetImageImportJpegQuality'; Writer = 'SettingsImagesPage.cpp' },
     @{ Setter = 'SetImageImportKeepSupported'; Writer = 'SettingsImagesPage.cpp' },
-    @{ Setter = 'SetDefaultEncoding'; Writer = 'SettingsGeneralPage.cpp' },
-    @{ Setter = 'SetKeepEncoding'; Writer = 'SettingsGeneralPage.cpp' },
-    @{ Setter = 'SetRestoreFilePosition'; Writer = 'SettingsGeneralPage.cpp' },
+    @{ Setter = 'SetDefaultEncoding'; Writer = 'SettingsCommonPage.cpp' },
+    @{ Setter = 'SetKeepEncoding'; Writer = 'SettingsCommonPage.cpp' },
+    @{ Setter = 'SetRestoreFilePosition'; Writer = 'SettingsCommonPage.cpp' },
+    @{ Setter = 'SetInterfacePalette'; Writer = 'SettingsGeneralPage.cpp' },
+    @{ Setter = 'SetMainToolbarIconSize'; Writer = 'SettingsGeneralPage.cpp' },
     @{ Setter = 'SetNBSPChar'; Writer = 'SettingsEditorPage.cpp' }
 )) {
     $writers = @(

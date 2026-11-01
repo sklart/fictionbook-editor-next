@@ -383,6 +383,36 @@ void CMainFrame::RunPortableStateTestScenario()
             CSettingsGeneralPage page;
             passed = page.Create(m_hWnd) != NULL && passed;
             if(page.m_hWnd) {
+                HWND palette = page.GetDlgItem(IDC_INTERFACE_PALETTE); BOOL handled = FALSE;
+                ::SendMessageW(palette, CB_SETCURSEL, INTERFACE_PALETTE_CLASSIC, 0);
+                page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, palette, handled);
+                ::SetPropW(page.m_hWnd, L"FBE.PaletteManagerTest", reinterpret_cast<HANDLE>(1));
+                page.OnManagePalettes(BN_CLICKED, IDC_PALETTE_MANAGE, NULL, handled);
+                passed = reinterpret_cast<ULONG_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteManagerResult")) == 1 &&
+                    !ThemeManager::IsCustomPaletteActive() && passed;
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerTest");
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerResult");
+                page.CancelChanges(); page.DestroyWindow();
+            }
+        }
+        {
+            CSettingsGeneralPage page;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
+                const COLORREF before = ThemeManager::Color(THEME_COLOR_WINDOW);
+                ::SetPropW(page.m_hWnd, L"FBE.PaletteManagerTest", reinterpret_cast<HANDLE>(2));
+                BOOL handled = FALSE; page.OnManagePalettes(BN_CLICKED, IDC_PALETTE_MANAGE, NULL, handled);
+                passed = reinterpret_cast<ULONG_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteManagerResult")) == 1 &&
+                    ThemeManager::Color(THEME_COLOR_WINDOW) == before && ThemeManager::IsCustomPaletteActive() && passed;
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerTest");
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerResult");
+                page.CancelChanges(); page.DestroyWindow();
+            }
+        }
+        {
+            CSettingsGeneralPage page;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
                 passed = page.StagePaletteCopy(L"Temporary copy") && page.StagePaletteDelete() && passed;
                 SettingsFileTransaction files; CString detail;
                 passed = page.PrepareCommit(files, detail) && files.Commit() && page.CancelChanges() &&
@@ -836,6 +866,7 @@ void CMainFrame::RunPortableStateTestScenario()
         }
         _Settings.SetInterfacePalette(L"classic");
         CSettingsGeneralPage page(false);
+        CStringA comboPixelDiagnostics;
         bool passed = page.Create(m_hWnd) != NULL && fallbackPreserved && cursorSaved;
         if(passed) {
             page.ConfigureInterfaceTheme(false);
@@ -966,6 +997,34 @@ void CMainFrame::RunPortableStateTestScenario()
                 page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, paletteChoice, handled);
                 passed = ThemeManager::GetNamedPalette() == light && ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == light && passed;
             }
+            // Sample a real, non-owner-drawn settings combo and its popup.
+            // The unfocused field uses Window; the list uses Control.
+            ShowWindow(SW_SHOWNORMAL); ::SetForegroundWindow(m_hWnd);
+            ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+            HWND ordinaryCombo = page.GetDlgItem(IDC_LANG);
+            ::SetFocus(choice); // Measure the unfocused field, outside the selection highlight.
+            ::RedrawWindow(page.m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+            RECT comboRect = {}; ::GetClientRect(ordinaryCombo, &comboRect);
+            HDC comboDc = ::GetDC(ordinaryCombo);
+            const COLORREF comboPixel = comboDc && comboRect.right > 60 ? ::GetPixel(comboDc, comboRect.right - 40, comboRect.bottom / 2) : CLR_INVALID;
+            if(comboDc) ::ReleaseDC(ordinaryCombo, comboDc);
+            COMBOBOXINFO ordinaryInfo = {}; ordinaryInfo.cbSize = sizeof(ordinaryInfo);
+            COLORREF listPixel = CLR_INVALID;
+            if(::GetComboBoxInfo(ordinaryCombo, &ordinaryInfo) && ordinaryInfo.hwndList) {
+                ::SendMessage(ordinaryCombo, CB_SHOWDROPDOWN, TRUE, 0);
+                ::RedrawWindow(ordinaryInfo.hwndList, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+                RECT listRect = {}; ::GetClientRect(ordinaryInfo.hwndList, &listRect);
+                HDC listDc = ::GetDC(ordinaryInfo.hwndList);
+                if(listDc && listRect.right > 20 && listRect.bottom > 10) listPixel = ::GetPixel(listDc, listRect.right - 15, 5);
+                if(listDc) ::ReleaseDC(ordinaryInfo.hwndList, listDc);
+                ::SendMessage(ordinaryCombo, CB_SHOWDROPDOWN, FALSE, 0);
+            }
+            const COLORREF comboExpected = ThemeManager::WindowColor();
+            const COLORREF listExpected = ThemeManager::ControlColor();
+            comboPixelDiagnostics.Format("combo-actual=%lu\ncombo-expected=%lu\ncombo-list-actual=%lu\ncombo-list-expected=%lu\n",
+                static_cast<unsigned long>(comboPixel), static_cast<unsigned long>(comboExpected),
+                static_cast<unsigned long>(listPixel), static_cast<unsigned long>(listExpected));
+            passed = comboPixel == comboExpected && listPixel == listExpected && passed;
             ::SendMessage(choice, CB_SETCURSEL, INTERFACE_THEME_DARK, 0);
             page.OnInterfaceThemeChanged(CBN_SELCHANGE, IDC_INTERFACE_THEME, choice, handled);
             passed = ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT && passed;
@@ -980,6 +1039,7 @@ void CMainFrame::RunPortableStateTestScenario()
         }
         _Settings.SetInterfaceTheme(INTERFACE_THEME_DARK, true);
         CStringA report; report.Format("interface-language=%lu\ncontrolled-theme-choice-policy=%d\nvisible-tooltip-tested=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), passed, checkVisibleTooltip, passed ? "pass" : "fail");
+        report += comboPixelDiagnostics;
         WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
         PostMessage(WM_CLOSE); return;
     }

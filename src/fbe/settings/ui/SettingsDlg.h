@@ -9,6 +9,7 @@
 #include "SettingsHotkeysDlg.h"
 #include "SettingsWordsDlg.h"
 #include "SettingsGeneralPage.h"
+#include "SettingsCommonPage.h"
 #include "SettingsEditorPage.h"
 #include "SettingsSpellingPage.h"
 #include "SettingsSourcePage.h"
@@ -16,6 +17,7 @@
 enum class SettingsPageId
 {
 	General,
+	Appearance,
 	Editor,
 	Source,
 	Images,
@@ -42,6 +44,7 @@ class CSettingsDlg : public CAxDialogImpl<CSettingsDlg>
 	CListBox m_navigation;
 	CSettingsAdvancedPage* m_advancedPage;
 	CSettingsGeneralPage* m_generalPage;
+	CSettingsCommonPage* m_commonPage;
 	CSettingsEditorPage* m_editorPage;
 	CSettingsSpellingPage* m_spellingPage;
 	CSettingsImagesPage* m_imagesPage;

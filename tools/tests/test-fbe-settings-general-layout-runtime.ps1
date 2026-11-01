@@ -4,6 +4,7 @@ param(
     [string]$FbeExe,
     [string]$ArtifactDirectory,
     [switch]$ChangedPagesOnly,
+    [switch]$AppearanceOnly,
     [ValidateSet('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')]
     [string[]]$Locales = @('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')
 )
@@ -82,13 +83,36 @@ public static class SettingsGeneralLayoutWindow
     }
     public static void SelectHotkeys(IntPtr settings)
     {
-        SelectPage(settings, 5);
+        SelectPage(settings, 6);
     }
     public static void SelectPage(IntPtr settings, int index)
     {
         var navigation = GetDlgItem(settings, 1625);
         SendMessage(navigation, 0x0186, (IntPtr)index, IntPtr.Zero); // LB_SETCURSEL
         SendMessage(settings, 0x0111, (IntPtr)(1625 | (1 << 16)), navigation); // LBN_SELCHANGE
+    }
+    [DllImport("user32.dll")] static extern IntPtr GetNextDlgTabItem(IntPtr dialog, IntPtr control, bool previous);
+    public static bool HasTabTargets(IntPtr dialog, int[] ids) {
+        var remaining = new System.Collections.Generic.HashSet<IntPtr>();
+        foreach(int id in ids) { IntPtr child = GetDlgItem(dialog, id); if(child == IntPtr.Zero) return false; remaining.Add(child); }
+        IntPtr first = GetNextDlgTabItem(dialog, IntPtr.Zero, false), current = first;
+        for(int count = 0; current != IntPtr.Zero && count < 200; ++count) {
+            remaining.Remove(current); current = GetNextDlgTabItem(dialog, current, false);
+            if(current == first) break;
+        }
+        return remaining.Count == 0;
+    }
+    [DllImport("user32.dll")] static extern bool IsChild(IntPtr parent, IntPtr child);
+    public static void OpenPaletteManager(IntPtr page) { PostMessage(GetDlgItem(page, 1839), 0x00F5, IntPtr.Zero, IntPtr.Zero); } // BM_CLICK
+    public static bool BelongsTo(IntPtr parent, IntPtr child) { return parent == child || IsChild(parent, child); }
+    public static IntPtr FindPaletteManager(int processId) {
+        IntPtr found = IntPtr.Zero;
+        EnumWindows((window, data) => {
+            uint owner; GetWindowThreadProcessId(window, out owner);
+            if(owner == (uint)processId && GetDlgItem(window, 1840) != IntPtr.Zero && IsWindowVisible(window)) { found = window; return false; }
+            return true;
+        }, IntPtr.Zero);
+        return found;
     }
     public static void Close(IntPtr window) { PostMessage(window, 0x0010, IntPtr.Zero, IntPtr.Zero); }
     public static bool HasTooltipWidth(int processId, IntPtr settings, int expected)
@@ -220,7 +244,7 @@ try {
                     throw "Settings tooltip does not use its page DPI for maximum width ($expectedWidth px)."
                 }
             }
-            $expected = if ($ChangedPagesOnly) { @() } else { @(1120, 1154, 1160, 1053, 1603, 1051, 1128, 1130, 1158) }
+            $expected = if ($ChangedPagesOnly) { @() } else { @(1120, 1154, 1053, 1603, 1051, 1128, 1130, 1158) }
             foreach ($id in $expected) {
                 $control = @($rows | Where-Object Id -eq $id)
                 if ($control.Count -ne 1 -or -not $control[0].InProcessTextMetrics -or $control[0].TextMayClip) {
@@ -254,7 +278,7 @@ try {
                 }
             }
             Write-Host "$locale Hotkeys labels and action buttons fit."
-            if ($ChangedPagesOnly -or $locale -in @('ru-RU', 'en-US', 'de-DE', 'uk-UA')) {
+            if ($AppearanceOnly -or $ChangedPagesOnly -or $locale -in @('ru-RU', 'en-US', 'de-DE', 'uk-UA')) {
                 $wideRect = New-Object SettingsGeneralLayoutWindow+Rect
                 [void][SettingsGeneralLayoutWindow]::GetWindowRect($settings, [ref]$wideRect)
                 $wideWidth = [Math]::Min(900, [SettingsGeneralLayoutWindow]::GetSystemMetrics(0) - 40)
@@ -262,7 +286,7 @@ try {
                     [SettingsGeneralLayoutWindow]::GetSystemMetrics(0) - $wideWidth - 20))
                 [void][SettingsGeneralLayoutWindow]::SetWindowPos($settings, [IntPtr]::Zero,
                     $wideLeft, $wideRect.Top, $wideWidth, ($wideRect.Bottom - $wideRect.Top), 0x14)
-                $pageIndices = if ($ChangedPagesOnly) { @(1, 2) } else { @(1, 2, 3, 4, 6, 7) }
+                $pageIndices = if ($AppearanceOnly) { @(1) } elseif ($ChangedPagesOnly) { @(1, 2, 3) } else { @(1, 2, 3, 4, 5, 7, 8) }
                 foreach ($pageIndex in $pageIndices) {
                     [SettingsGeneralLayoutWindow]::SelectPage($settings, $pageIndex)
                     Start-Sleep -Milliseconds 100
@@ -296,7 +320,45 @@ try {
                         throw "$locale Settings page $pageIndex has layout findings: $details"
                     }
                     Write-Host "$locale Settings page $pageIndex fits."
-                    if ($locale -eq 'ru-RU' -and $pageIndex -eq 1) {
+                    if($pageIndex -eq 1) {
+                        $manageRow = @($pageAudit.controls | Where-Object Id -eq 1839)
+                        if($manageRow.Count -ne 1) { throw "$locale palette management button is missing." }
+                        $manageHandle = [IntPtr]::new([Convert]::ToInt64($manageRow[0].Hwnd.Substring(2), 16))
+                        $appearancePage = [SettingsGeneralLayoutWindow]::Parent($manageHandle)
+                        if(-not [SettingsGeneralLayoutWindow]::HasTabTargets($appearancePage, [int[]]@(1161, 1828, 1829, 1839, 1826, 1821, 1824))) {
+                            throw "$locale appearance controls are missing from keyboard tab order."
+                        }
+                        [SettingsGeneralLayoutWindow]::OpenPaletteManager($appearancePage)
+                        $manager = [IntPtr]::Zero
+                        for($attempt = 0; $attempt -lt 50 -and $manager -eq [IntPtr]::Zero; ++$attempt) {
+                            Start-Sleep -Milliseconds 100
+                            $manager = [SettingsGeneralLayoutWindow]::FindPaletteManager($process.Id)
+                        }
+                        if($manager -eq [IntPtr]::Zero) { throw "$locale palette manager did not open." }
+                        try {
+                            if(-not [SettingsGeneralLayoutWindow]::HasTabTargets($manager, [int[]]@(1835, 1, 2))) {
+                                throw "$locale palette manager actions are missing from keyboard tab order."
+                            }
+                            $managerReport = Join-Path $ArtifactDirectory "palette-manager-$locale.json"
+                            & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $managerReport | Out-Null
+                            $managerAudit = Get-Content -Raw -Encoding UTF8 -LiteralPath $managerReport | ConvertFrom-Json
+                            $findings = @($managerAudit.issues | Where-Object {
+                                -not $_.ignored -and [SettingsGeneralLayoutWindow]::BelongsTo($manager, [IntPtr]::new([Convert]::ToInt64($_.hwnd.Substring(2), 16)))
+                            })
+                            if($findings.Count) {
+                                $details = @($findings | ForEach-Object {
+                                    $finding = $_; $control = @($managerAudit.controls | Where-Object Hwnd -eq $finding.hwnd)[0]
+                                    "$($control.Id): $($control.Text) [$($finding.kind)]"
+                                }) -join '; '
+                                throw "$locale palette manager has layout findings: $details"
+                            }
+                            Write-Host "$locale palette manager fits."
+                        } finally {
+                            [SettingsGeneralLayoutWindow]::Close($manager)
+                            for($attempt = 0; $attempt -lt 50 -and [SettingsGeneralLayoutWindow]::IsWindowVisible($manager); ++$attempt) { Start-Sleep -Milliseconds 100 }
+                        }
+                    }
+                    if ($locale -eq 'ru-RU' -and $pageIndex -eq 2) {
                         $sizeControl = @($pageAudit.controls | Where-Object Id -eq 1016)[0]
                         $sizeHandle = [IntPtr]::new([Convert]::ToInt64($sizeControl.Hwnd.Substring(2), 16))
                         $editorPage = [SettingsGeneralLayoutWindow]::Parent($sizeHandle)
@@ -312,7 +374,7 @@ try {
                         }
                         finally { $changedGraphics.Dispose(); $changedBitmap.Dispose() }
                     }
-                    if ($locale -eq 'ru-RU' -and $pageIndex -eq 2) {
+                    if ($locale -eq 'ru-RU' -and $pageIndex -eq 3) {
                         $editors = @($pageAudit.controls | Where-Object { $_.Class -eq 'Scintilla' -and $_.Text -like '<?xml*' })
                         if ($editors.Count -ne 1) { throw 'The XML preview must contain one independent Scintilla control.' }
                         $editor = [IntPtr]::new([Convert]::ToInt64($editors[0].Hwnd.Substring(2), 16))

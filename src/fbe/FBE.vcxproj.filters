@@ -268,6 +268,7 @@
 	<ClCompile Include="settings\words\WordsStore.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
 	<ClCompile Include="XmlTagMatcher.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="XmlSourceTagHighlighter.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="settings\ui\SettingsCommonPage.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="settings\ui\SettingsGeneralPage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -530,6 +531,7 @@
 	<ClInclude Include="settings\ui\SettingsPageLifecycle.h">
 	  <Filter>Header Files</Filter>
 	</ClInclude>
+    <ClInclude Include="settings\ui\SettingsCommonPage.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="settings\ui\SettingsGeneralPage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
