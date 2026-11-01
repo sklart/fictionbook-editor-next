@@ -5,6 +5,7 @@ param(
     [string]$ArtifactDirectory,
     [switch]$ChangedPagesOnly,
     [switch]$AppearanceOnly,
+    [switch]$CustomPalette,
     [ValidateSet('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')]
     [string[]]$Locales = @('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')
 )
@@ -177,6 +178,13 @@ try {
     $settingsDirectory = Join-Path $isolation.DataPath 'Settings'
     New-Item -ItemType Directory -Path $settingsDirectory -Force | Out-Null
     $settingsTemplate = [IO.File]::ReadAllText((Join-Path $isolation.Runtime 'Data\Settings\Settings.xml'))
+    if ($CustomPalette) {
+        if ($settingsTemplate -notmatch '<InterfacePalette>[^<]*</InterfacePalette>') { throw 'The isolated settings template lacks the palette setting.' }
+        $settingsTemplate = [regex]::Replace($settingsTemplate, '<InterfacePalette>[^<]*</InterfacePalette>', '<InterfacePalette>custom:layout-audit</InterfacePalette>')
+        $paletteDirectory = Join-Path $settingsDirectory 'InterfaceThemes'
+        New-Item -ItemType Directory -Path $paletteDirectory -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $paletteDirectory 'layout-audit.json'), '{"schemaVersion":1,"id":"layout-audit","name":"Layout audit","base":"light","colors":{}}', [Text.UTF8Encoding]::new($false))
+    }
     if ($settingsTemplate -notmatch '<IntefaceLangID>[0-9]+</IntefaceLangID>') {
         throw 'The isolated settings template lacks the interface language.'
     }
@@ -336,7 +344,8 @@ try {
                         }
                         if($manager -eq [IntPtr]::Zero) { throw "$locale palette manager did not open." }
                         try {
-                            if(-not [SettingsGeneralLayoutWindow]::HasTabTargets($manager, [int[]]@(1835, 1, 2))) {
+                            $managerTargets = if ($CustomPalette) { [int[]]@(1835, 1836, 1837, 1838, 1831, 1832, 1833, 1, 2) } else { [int[]]@(1835, 1, 2) }
+                            if(-not [SettingsGeneralLayoutWindow]::HasTabTargets($manager, $managerTargets)) {
                                 throw "$locale palette manager actions are missing from keyboard tab order."
                             }
                             $managerReport = Join-Path $ArtifactDirectory "palette-manager-$locale.json"
