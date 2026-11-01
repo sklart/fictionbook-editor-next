@@ -124,6 +124,7 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 			const bool redoReady = state() == original && historyCount(true) >= redoSteps && text() == L"word1word2";
 			const bool guardRedo = !guardTested || HasNbspDisplayHistory();
 			bool guardPage = true, guardPreserved = true, guardTooltip = true, guardOther = true, guardDialog = true;
+			bool guardLate = true, guardLateWarning = true;
 			if (guardTested) {
 				const CString markerBefore = _Settings.GetNBSPChar();
 				CSettingsEditorPage page(HasNbspDisplayHistory());
@@ -176,6 +177,27 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 				});
 				if (timer) { const bool accepted = ShowSettingsDialog(m_hWnd); ::KillTimer(NULL, timer); guardDialog = !accepted && dialogFound && dialogLocked; }
 				else guardDialog = false;
+				// Simulate a choice made before history appeared: applying the
+				// already-staged setting must recheck the live undo manager.
+				static bool lateWarning = false;
+				lateWarning = false;
+				const UINT_PTR warningTimer = ::SetTimer(NULL, 0, 50, [](HWND, UINT, UINT_PTR timerId, DWORD) {
+					::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM data) -> BOOL {
+						const int button = ::GetDlgItem(window, IDOK) ? IDOK : IDCANCEL;
+						if(!::IsWindowVisible(window) || !::GetDlgItem(window, button) || !(::GetWindowLongPtrW(window, GWL_STYLE) & WS_POPUP)) return TRUE;
+						wchar_t message[2048] = {}; ::GetDlgItemTextW(window, 65535, message, _countof(message));
+						lateWarning = CString(message) == FbeLoadRuntimeStringByKey(L"fbe.settings.editor.nbsp_history_changed");
+						::KillTimer(NULL, static_cast<UINT_PTR>(data));
+						::PostMessageW(window, WM_COMMAND, MAKEWPARAM(button, BN_CLICKED), reinterpret_cast<LPARAM>(::GetDlgItem(window, button)));
+						return FALSE;
+					}, static_cast<LPARAM>(timerId));
+				});
+				_Settings.SetNBSPChar(L"\u00a0");
+				ApplyConfChanges(false, false);
+				if(warningTimer) ::KillTimer(NULL, warningTimer);
+				guardLate = _Settings.GetNBSPChar() == markerBefore && _Settings.GetOldNBSPChar() == markerBefore && HasNbspDisplayHistory();
+				guardLateWarning = warningTimer && lateWarning;
+				if(!guardLate) { _Settings.SetNBSPChar(markerBefore); _Settings.AcknowledgeNBSPChange(); }
 			}
 			const CString beforeDisplayXml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
 			if (applyDisplay) { _Settings.SetNBSPChar(L"\u00a0"); ApplyConfChanges(false, false); pump(); }
@@ -225,9 +247,9 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 					}
 				}
 			}
-			const bool redoPassed = caretPosition && redoReady && displayUnchanged && redoText && redoRoundTrip && guardEmpty && guardUndo && guardRedo && guardPage && guardPreserved && guardTooltip && guardOther && guardDialog && guardReopened && guardSwitch && guardEdit;
+			const bool redoPassed = caretPosition && redoReady && displayUnchanged && redoText && redoRoundTrip && guardEmpty && guardUndo && guardRedo && guardPage && guardPreserved && guardTooltip && guardOther && guardDialog && guardLate && guardLateWarning && guardReopened && guardSwitch && guardEdit;
 			CStringA redoReport;
-			redoReport.Format("redo-display-tested=1\nredo-display-applied=%d\nredo-ready=%d\ndisplay-xml-unchanged=%d\nredo-steps=%d\nredo-text-ok=%d\nredo-text=%s\nredo-saved=%d\nredo-roundtrip=%d\nguard-tested=%d\nguard-empty=%d\nguard-undo=%d\nguard-redo=%d\nguard-page=%d\nguard-preserved=%d\nguard-tooltip=%d\nguard-other=%d\nguard-dialog=%d\nguard-reopened=%d\nguard-switch=%d\nguard-edit=%d\nresult=%s\n", applyDisplay, redoReady, displayUnchanged, redoSteps, redoText, static_cast<LPCSTR>(codepoints(actualText)), redoSaved, redoRoundTrip, guardTested, guardEmpty, guardUndo, guardRedo, guardPage, guardPreserved, guardTooltip, guardOther, guardDialog, guardReopened, guardSwitch, guardEdit, redoPassed ? "pass" : "fail");
+			redoReport.Format("redo-display-tested=1\nredo-display-applied=%d\nredo-ready=%d\ndisplay-xml-unchanged=%d\nredo-steps=%d\nredo-text-ok=%d\nredo-text=%s\nredo-saved=%d\nredo-roundtrip=%d\nguard-tested=%d\nguard-empty=%d\nguard-undo=%d\nguard-redo=%d\nguard-page=%d\nguard-preserved=%d\nguard-tooltip=%d\nguard-other=%d\nguard-dialog=%d\nguard-late=%d\nguard-late-warning=%d\nguard-reopened=%d\nguard-switch=%d\nguard-edit=%d\nresult=%s\n", applyDisplay, redoReady, displayUnchanged, redoSteps, redoText, static_cast<LPCSTR>(codepoints(actualText)), redoSaved, redoRoundTrip, guardTested, guardEmpty, guardUndo, guardRedo, guardPage, guardPreserved, guardTooltip, guardOther, guardDialog, guardLate, guardLateWarning, guardReopened, guardSwitch, guardEdit, redoPassed ? "pass" : "fail");
 			DWORD written = 0; output.Write(redoReport, redoReport.GetLength(), &written); output.Flush(); output.Close();
 			::PostQuitMessage(redoPassed ? 0 : 1); return 0;
 		}

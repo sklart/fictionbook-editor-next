@@ -8138,6 +8138,18 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles, bool saveSettings)
 		m_Speller->SetHighlightMisspells(_Settings.GetHighlightMisspells());
 	}
 
+	// History can appear after Settings was opened (for example through a
+	// reentrant document operation). Never rewrite text nodes in that case.
+	if (m_doc && m_document_session.HasDocument() && _Settings.GetOldNBSPChar() != _Settings.GetNBSPChar() && HasNbspDisplayHistory())
+	{
+		const CString previousMarker = _Settings.GetOldNBSPChar();
+		_Settings.SetNBSPChar(previousMarker);
+		_Settings.AcknowledgeNBSPChange();
+		_Settings.Save();
+		MessageBox(FbeLoadRuntimeStringByKey(L"fbe.settings.editor.nbsp_history_changed", L"The NBSP display was not changed because the book has Undo or Redo history. Save and reopen the book before changing it; this clears the history."),
+			FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONWARNING);
+	}
+
 	// added by SeNS: issue 17: process nbsp change
 	if (m_doc && m_document_session.HasDocument() && _Settings.GetOldNBSPChar().Compare (_Settings.GetNBSPChar()) != 0)
 	{

@@ -21,6 +21,12 @@ param([Parameter(Mandatory)][string]$FbeExe,
       [switch]$CheckHistoryGuard,
       [ValidateSet('none','small-square')][string]$RepeatDisplay = 'none')
 $ErrorActionPreference = 'Stop'
+# These historical probes deliberately changed the display while history was
+# live. The production guard now rejects that operation with a modal warning;
+# fail immediately instead of hanging or presenting the guard as a full fix.
+if($CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $CheckOtherNode -or $CheckRepeatedApply -or $CheckRedoAfterDisplayChange) {
+    throw 'This diagnostic requires an unsafe display change with live history, now blocked by production. Use -CheckHistoryGuard to verify the protection; history-preserving switching remains unresolved.'
+}
 if(@(@($CheckRedoAfterDisplayChange, $RedoAfterDisplayControl, $CheckHistoryGuard) | Where-Object { $_ }).Count -gt 1) { throw 'Choose only one redo display diagnostic.' }
 if(($CheckRedoAfterDisplayChange -or $RedoAfterDisplayControl -or $CheckHistoryGuard) -and (@($Modes).Count -ne 1 -or $Modes[0] -ne 'square' -or $Context -ne 'plain' -or $CheckDirectInput -or $CheckCrossSelection -or $CheckMarkerGeometry -or $CheckSourceRoundTrip -or $CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $EmptyRedoControl -or $CheckOtherNode -or $OtherNodeControl -or $ToggleControl -or $CheckRepeatedApply)) { throw 'Redo display diagnostic requires only -Modes square -Context plain.' }
 if($CheckCrossSelection -and ($CheckDirectInput -or $CheckSourceRoundTrip -or $CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $EmptyRedoControl -or $CheckOtherNode -or $OtherNodeControl -or $ToggleControl -or $CheckRepeatedApply)) { throw 'Cross selection must run as its own diagnostic.' }
@@ -100,7 +106,12 @@ try {
                     $codepoints = ($value.ToCharArray() | ForEach-Object { '{0:X4}' -f [int]$_ }) -join ','
                     throw "$name redo display diagnostic failed; saved codepoints=$codepoints; XSD passed: $text"
                 }
-                if($CheckHistoryGuard) { foreach($flag in @('guard-tested','guard-empty','guard-undo','guard-redo','guard-page','guard-preserved','guard-tooltip','guard-other','guard-dialog','guard-reopened','guard-switch','guard-edit')) { if($text -notmatch ("(?m)^" + $flag + "=1\r?$")) { throw "History guard failed ($flag): $text" } } }
+                if($CheckHistoryGuard) {
+                    foreach($flag in @('guard-tested','guard-empty','guard-undo','guard-redo','guard-page','guard-preserved','guard-tooltip','guard-other','guard-dialog','guard-late','guard-late-warning','guard-reopened','guard-switch','guard-edit')) { if($text -notmatch ("(?m)^" + $flag + "=1\r?$")) { throw "History guard failed ($flag): $text" } }
+                    $savedSettings = [Xml.XmlDocument]::new(); $savedSettings.Load($settingsFile)
+                    $savedMarker = $savedSettings.SelectSingleNode('/FBE/Settings[@ID="0"]/NBSPChar')
+                    if(-not $savedMarker -or $savedMarker.InnerText -cne [string]$marker) { throw 'The rejected display change was not rolled back in saved settings.' }
+                }
                 $passed = $true
                 Write-Host "NBSP redo after display, saved XML and independent XSD: PASS ($name; applied=$expectedApplied)."
                 continue

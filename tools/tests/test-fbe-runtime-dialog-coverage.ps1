@@ -169,6 +169,9 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
     $toolbarRestoreWarning = $key -in @('fbe.settings.main_toolbar_icon_size.failed', 'fbe.settings.main_toolbar_icon_size.restore_failed', 'fbe.settings.script_icon_size.failed') -and
         $settingsFrameHandler.Contains('FbeLoadRuntimeStringByKey(L"' + $key + '"') -and
         $settingsFrameHandler.Contains('MessageBox(message,')
+    $nbspHistoryWarning = $key -eq 'fbe.settings.editor.nbsp_history_changed' -and
+        $mainFrameSource.Contains('MessageBox(FbeLoadRuntimeStringByKey(L"' + $key + '"') -and
+        $mainFrameSource.Contains('HasNbspDisplayHistory()')
     $retainedReplacement = Test-ReplacedDialogKey $key
     $dynamicDescriptionKey = $value.resource -eq 'runtime/main.js' -and
         (Test-DescriptionRuntimeKey $key $consumerText)
@@ -179,7 +182,7 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
         $null -ne $catalog.strings.PSObject.Properties['fbe.description.binary_file_forms']
     if (-not $genericBinding -and -not $manifestDrivenBackgroundPreset -and -not $dynamicSearchPresetKey -and
         -not $dynamicQualityRuleKey -and -not $dynamicQualityHelpKey -and -not $nativeOverwritePrompt -and
-        -not $retainedReplacement -and -not $dynamicDescriptionKey -and -not $retainedDescriptionPlural -and -not $paletteStartupWarning -and -not $toolbarRestoreWarning -and -not $consumerText.Contains($key)) {
+        -not $retainedReplacement -and -not $dynamicDescriptionKey -and -not $retainedDescriptionPlural -and -not $paletteStartupWarning -and -not $toolbarRestoreWarning -and -not $nbspHistoryWarning -and -not $consumerText.Contains($key)) {
         throw "JSON dialog key has no binding in its concrete runtime consumer: $key ($($value.resource))."
     }
 }
