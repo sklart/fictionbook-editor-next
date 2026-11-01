@@ -21,6 +21,9 @@ param(
     # them is an explicit incomplete contour, never a successful release gate.
     [switch]$SkipClipboardRuntime,
 
+    # Only enable in a disposable user profile: regsvr32 writes real HKCU keys.
+    [switch]$AllowUserComRegistration,
+
     # Table regressions are intentionally opt-in while portable finalization is
     # in progress. They remain available for their dedicated test contour.
     [switch]$RunTableTests,
@@ -465,7 +468,11 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-nsis-shell-lifecycle.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-uninstall-user-data.ps1")
 & (Join-Path $repoRoot "tools\tests\test-bundled-plugin-local-activation.ps1") -Configuration $Configuration -RuntimeDirectory $outputDir
-& (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration
+if ($AllowUserComRegistration) {
+    & (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration -AllowUserRegistration
+} else {
+    Write-Warning 'SKIPPED: ImportEPUB registration smoke writes the real user registry; local plug-in activation was tested separately.'
+}
 
 & (Join-Path $repoRoot "tools\tests\test-fbe-spellcheck-local-edit-performance.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Mutation formatting -ParagraphCount 750 -VerifyCountIndependence
 
@@ -742,10 +749,11 @@ Assert-TrackedEditorRuntimeDllSnapshot -RepositoryRoot $repoRoot -Snapshot $trac
 if ($FullValidation -and -not $SkipEarlyRuntimeSuites -and -not (Get-Content -LiteralPath $requiredCiRuntimeReport -Raw | ConvertFrom-Json).complete) {
     throw "FullValidation incomplete: required external runtime checks are NOT RUN. See $requiredCiRuntimeReport"
 }
-if ($SkipSplitUndo -or $SkipClipboardRuntime) {
+if ($SkipSplitUndo -or $SkipClipboardRuntime -or -not $AllowUserComRegistration) {
     $skipped = @()
     if ($SkipSplitUndo) { $skipped += 'Split/Undo' }
     if ($SkipClipboardRuntime) { $skipped += 'clipboard runtime' }
+    if (-not $AllowUserComRegistration) { $skipped += 'user COM registration smoke' }
     Write-Warning "Release verification for version $expectedVersion is INCOMPLETE: skipped $($skipped -join ', '). All other selected checks completed."
 } else {
     Write-Host "Проверка релиза для версии $expectedVersion прошла успешно."

@@ -4,10 +4,16 @@
 [CmdletBinding()]
 param(
     [string]$Configuration = "Release",
-    [string]$DllPath
+    [string]$DllPath,
+
+    # This test writes real per-user COM and FBE plug-in registration.
+    [switch]$AllowUserRegistration
 )
 
 $ErrorActionPreference = "Stop"
+if (-not $AllowUserRegistration) {
+    throw 'ImportEPUB registration smoke changes the real user registry; run only with -AllowUserRegistration in a disposable user profile.'
+}
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $repoRootPath = $repoRoot.Path
