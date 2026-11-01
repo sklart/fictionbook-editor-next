@@ -3080,11 +3080,30 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CLASSIC);
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const COLORREF restoredStatus = classicPixel(m_hWndStatusBar, 2, classicStatusRect.bottom / 2);
+		const COLORREF restoredToolbar = classicPixel(m_CmdToolbar, 5, classicToolbarRect.bottom - 3);
+		const auto restoredToolbarImage = classicSurface(m_CmdToolbar);
+		const auto restoredStatusImage = classicSurface(m_hWndStatusBar);
+		auto compareClassic = [&](const char* name, const std::vector<COLORREF>& before, const std::vector<COLORREF>& after) {
+			size_t different = 0, first = 0;
+			const size_t common = min(before.size(), after.size());
+			for(size_t index = 0; index < common; ++index) if(before[index] != after[index]) {
+				if(different++ == 0) first = index;
+			}
+			const bool equal = !before.empty() && before.size() == after.size() && different == 0;
+			surfaceDetails.AppendFormat("classic_%s_before_size\t%I64u\r\nclassic_%s_after_size\t%I64u\r\nclassic_%s_differences\t%I64u\r\n", name,
+				static_cast<unsigned long long>(before.size()), name, static_cast<unsigned long long>(after.size()), name, static_cast<unsigned long long>(different));
+			if(different) surfaceDetails.AppendFormat("classic_%s_first_diff\t%I64u:%lu/%lu\r\n", name,
+				static_cast<unsigned long long>(first), static_cast<unsigned long>(before[first]), static_cast<unsigned long>(after[first]));
+			return equal;
+		};
+		const bool toolbarSame = compareClassic("toolbar", classicToolbarImage, restoredToolbarImage);
+		const bool statusSame = compareClassic("status", classicStatusImage, restoredStatusImage);
+		surfaceDetails.AppendFormat("classic_toolbar_point\t%lu/%lu\r\nclassic_status_point\t%lu/%lu\r\n",
+			static_cast<unsigned long>(classicToolbar), static_cast<unsigned long>(restoredToolbar),
+			static_cast<unsigned long>(classicStatus), static_cast<unsigned long>(restoredStatus));
 		const bool classicRestored = classicStatus != CLR_INVALID && classicToolbar != CLR_INVALID &&
-			classicStatus == classicPixel(m_hWndStatusBar, 2, classicStatusRect.bottom / 2) &&
-			classicToolbar == classicPixel(m_CmdToolbar, 5, classicToolbarRect.bottom - 3) &&
-			!classicToolbarImage.empty() && !classicStatusImage.empty() &&
-			classicToolbarImage == classicSurface(m_CmdToolbar) && classicStatusImage == classicSurface(m_hWndStatusBar);
+			classicStatus == restoredStatus && classicToolbar == restoredToolbar && toolbarSame && statusSame;
 		surfaceDetails.AppendFormat("classic_restored\t%d\r\ndark_supported\t%d\r\n", classicRestored ? 1 : 0, ThemeManager::IsDarkModeSupported() ? 1 : 0);
 		const ThemeManager::ApplyDiagnostics beforeRefresh = ThemeManager::GetApplyDiagnostics();
 		const bool refreshChanged = ThemeManager::RefreshSystemTheme();
