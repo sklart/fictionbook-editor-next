@@ -2860,6 +2860,17 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			RefreshNavigationScriptTree(); UpdateLayout();
 			output.Write("capture-stage-ready\n", 20, &phaseWritten);
 		}
+		auto captureMain = [&](const wchar_t* filename) {
+			if(!captureAppearance) return true;
+			::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+			RECT bounds = {}; ::GetWindowRect(m_hWnd, &bounds); CImage screenshot;
+			const bool created = screenshot.Create(bounds.right - bounds.left, bounds.bottom - bounds.top, 32) != FALSE;
+			HDC target = created ? screenshot.GetDC() : NULL;
+			const bool captured = target && ::PrintWindow(m_hWnd, target, 0) != FALSE;
+			if(target) screenshot.ReleaseDC();
+			const CString path = CString(artifactDirectory.data()) + filename;
+			return captured && ::IsWindowVisible(m_document_tree) && m_document_tree.m_tree.m_tree.IsScriptMode() && SUCCEEDED(screenshot.Save(path));
+		};
 		// Expose the actual context band so its toolbar can be sampled too.
 		const HWND linkBand = m_contextAttributeBars.LinksBar();
 		for(int band = 0; band < static_cast<int>(m_rebar.GetBandCount()); ++band) {
@@ -2894,7 +2905,9 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		};
 		const auto classicToolbarImage = classicSurface(m_CmdToolbar);
 		const auto classicStatusImage = classicSurface(m_hWndStatusBar);
-		bool surfacePixels = true; CStringA surfaceDetails;
+		const bool classicScreenshot = captureMain(L"\\main-classic.bmp");
+		bool surfacePixels = classicScreenshot; CStringA surfaceDetails;
+		surfaceDetails.AppendFormat("screenshot_classic\t%d\r\n", classicScreenshot ? 1 : 0);
 		auto sampleStatus = [&](const char* name, bool applied) {
 			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 			::RedrawWindow(m_hWndStatusBar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
@@ -2924,15 +2937,12 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			surfaceDetails.AppendFormat("combo_arrow_%s\t%lu\r\ncombo_arrow_enabled_%s\t%lu\r\n", name,
 				static_cast<unsigned long>(arrowPixel), name, static_cast<unsigned long>(enabledArrowPixel));
 			surfacePixels = arrowPixel == expected && enabledArrowPixel == expected && surfacePixels;
-			if(captureAppearance && (!strcmp(name, "latte") || !strcmp(name, "sepia"))) {
-				::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
-				RECT bounds = {}; ::GetWindowRect(m_hWnd, &bounds); CImage screenshot;
-				const bool created = screenshot.Create(bounds.right - bounds.left, bounds.bottom - bounds.top, 32) != FALSE;
-				HDC target = created ? screenshot.GetDC() : NULL;
-				const bool captured = target && ::PrintWindow(m_hWnd, target, 0) != FALSE;
-				if(target) screenshot.ReleaseDC();
-				const CString path = CString(artifactDirectory.data()) + (!strcmp(name, "latte") ? L"\\main-latte.bmp" : L"\\main-sepia.bmp");
-				const bool valid = captured && ::IsWindowVisible(m_document_tree) && m_document_tree.m_tree.m_tree.IsScriptMode() && SUCCEEDED(screenshot.Save(path));
+			if(captureAppearance) {
+				const wchar_t* filename = !strcmp(name, "latte") ? L"\\main-latte.bmp" :
+					!strcmp(name, "sepia") ? L"\\main-sepia.bmp" :
+					!strcmp(name, "solarized") ? L"\\main-solarized.bmp" :
+					!strcmp(name, "custom") ? L"\\main-custom.bmp" : L"\\main-dark.bmp";
+				const bool valid = captureMain(filename);
 				surfaceDetails.AppendFormat("screenshot_%s\t%d\r\n", name, valid ? 1 : 0);
 				surfacePixels = surfacePixels && valid;
 			}

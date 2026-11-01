@@ -1,4 +1,4 @@
-<# Checks repeated theme application, new controls, rebar visibility and GUI resource balance in an isolated FBE process. #>
+﻿<# Checks repeated theme application, new controls, rebar visibility and GUI resource balance in an isolated FBE process. #>
 [CmdletBinding()]
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 120)
 
@@ -27,6 +27,14 @@ try {
     }
     $palettes = @('latte', 'sepia', 'solarized', 'custom')
     if($values.dark_supported -eq '1') { $palettes += 'dark' }
+    if($env:FBE_NEXT_TEST_APPEARANCE_ARTIFACT_DIR) {
+        foreach($name in @('classic') + $palettes) {
+            $path = Join-Path $env:FBE_NEXT_TEST_APPEARANCE_ARTIFACT_DIR "main-$name.bmp"
+            if($values["screenshot_$name"] -ne '1' -or -not (Test-Path -LiteralPath $path -PathType Leaf)) {
+                throw "Missing appearance capture for ${name}: $path"
+            }
+        }
+    }
     foreach ($palette in $palettes) {
         Write-Host "Status pixel ${palette}: actual=$($values["pixel_${palette}_actual"]) expected=$($values["pixel_${palette}_expected"])"
         Write-Host "Toolbar ${palette}: matching pixels=$($values["toolbar_${palette}_matches"])/$($values["toolbar_${palette}_observed"])"
