@@ -709,6 +709,12 @@ void CMainFrame::RunPortableStateTestScenario()
         PostMessage(WM_CLOSE); return;
     }
     if(IsFbeTestScenario(L"interface-theme-policy-runtime")) {
+        wchar_t mouseFlag[2] = {};
+        const bool checkVisibleTooltip = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_THEME_MOUSE", mouseFlag, _countof(mouseFlag)) && mouseFlag[0] == L'1';
+        POINT originalCursor = {};
+        const bool cursorSaved = !checkVisibleTooltip || ::GetCursorPos(&originalCursor);
+        struct CursorRestore { POINT position; bool active; ~CursorRestore() { if(active) ::SetCursorPos(position.x, position.y); } } cursorRestore{originalCursor, checkVisibleTooltip && cursorSaved};
+        if(checkVisibleTooltip) { ShowWindow(SW_SHOWNORMAL); ::SetForegroundWindow(m_hWnd); }
         _Settings.SetInterfaceTheme(INTERFACE_THEME_DARK);
         _Settings.SetInterfacePalette(L"graphite");
         CSettingsGeneralPage fallbackPage(false);
@@ -721,7 +727,7 @@ void CMainFrame::RunPortableStateTestScenario()
         }
         _Settings.SetInterfacePalette(L"classic");
         CSettingsGeneralPage page(false);
-        bool passed = page.Create(m_hWnd) != NULL && fallbackPreserved;
+        bool passed = page.Create(m_hWnd) != NULL && fallbackPreserved && cursorSaved;
         if(passed) {
             page.ConfigureInterfaceTheme(false);
             const HWND choice = page.GetDlgItem(IDC_INTERFACE_THEME);
@@ -807,6 +813,30 @@ void CMainFrame::RunPortableStateTestScenario()
                         target.text = info.lpszText; return FALSE;
                     }, reinterpret_cast<LPARAM>(&listTip));
                     passed = !listTip.text.IsEmpty() && ((listTip.text.Find(unavailableTip) >= 0) == (index == darkIndex)) && passed;
+                    if(checkVisibleTooltip && cursorSaved) {
+                        POINT screenPoint = {(itemRect.left + itemRect.right) / 2, (itemRect.top + itemRect.bottom) / 2};
+                        ::ClientToScreen(info.hwndList, &screenPoint);
+                        const bool moved = ::SetCursorPos(screenPoint.x, screenPoint.y) != FALSE;
+                        bool visible = false;
+                        const ULONGLONG deadline = ::GetTickCount64() + 1800;
+                        while(moved && !visible && ::GetTickCount64() < deadline) {
+                            MSG message = {};
+                            while(::PeekMessageW(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessageW(&message); }
+                            std::pair<HWND, bool> current{info.hwndList, false};
+                            ::EnumThreadWindows(::GetCurrentThreadId(), [](HWND window, LPARAM data) -> BOOL {
+                                auto& result = *reinterpret_cast<std::pair<HWND, bool>*>(data);
+                                wchar_t name[64] = {}; ::GetClassNameW(window, name, _countof(name));
+                                if(wcscmp(name, TOOLTIPS_CLASSW) != 0 || !::IsWindowVisible(window)) return TRUE;
+                                TOOLINFOW tool = {}; tool.cbSize = sizeof(tool);
+                                if(::SendMessageW(window, TTM_GETCURRENTTOOLW, 0, reinterpret_cast<LPARAM>(&tool)) &&
+                                    (tool.uFlags & TTF_IDISHWND) && reinterpret_cast<HWND>(tool.uId) == result.first) result.second = true;
+                                return TRUE;
+                            }, reinterpret_cast<LPARAM>(&current));
+                            visible = current.second;
+                            if(!visible) ::Sleep(10);
+                        }
+                        passed = moved && visible && passed;
+                    }
                 }
                 ::SendMessage(combo, CB_SHOWDROPDOWN, FALSE, 0);
             }
@@ -834,7 +864,7 @@ void CMainFrame::RunPortableStateTestScenario()
             page.DestroyWindow();
         }
         _Settings.SetInterfaceTheme(INTERFACE_THEME_DARK, true);
-        CStringA report; report.Format("interface-language=%lu\ncontrolled-theme-choice-policy=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), passed, passed ? "pass" : "fail");
+        CStringA report; report.Format("interface-language=%lu\ncontrolled-theme-choice-policy=%d\nvisible-tooltip-tested=%d\nresult=%s\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), passed, checkVisibleTooltip, passed ? "pass" : "fail");
         WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
         PostMessage(WM_CLOSE); return;
     }
