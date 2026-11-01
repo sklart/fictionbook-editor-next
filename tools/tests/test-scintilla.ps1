@@ -18,9 +18,21 @@ $runtimeDirectory = if ([string]::IsNullOrWhiteSpace($EditorRuntimeDirectory)) {
 }
 & (Join-Path $repoRoot "tools\build\Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
 
-$testDir = Join-Path $repoRoot "out\tests"
-$testExe = Join-Path $testDir "scintilla-smoke.exe"
-New-Item -ItemType Directory -Path $testDir -Force | Out-Null
+$testRoot = Join-Path $repoRoot "out\tests"
+New-Item -ItemType Directory -Path $testRoot -Force | Out-Null
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+# Fixture records intentionally omit optional fields; retain the pre-existing
+# script behavior after the shared isolation helper enables strict mode.
+Set-StrictMode -Off
+$originalTemp, $originalTmp = $env:TEMP, $env:TMP
+$isolation = $null; $passed = $false
+try {
+    # Owned roots are also reaped on the next run if PowerShell is killed.
+    $env:TEMP = $testRoot; $env:TMP = $testRoot
+    $isolation = New-IsolatedFbeScratchDirectory -Name 'scintilla'
+    $env:TEMP = $originalTemp; $env:TMP = $originalTmp
+    $testDir = $isolation.Root
+    $testExe = Join-Path $testDir "scintilla-smoke.exe"
 
 function Convert-ToUtf8Hex([string]$Text) {
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
@@ -56,7 +68,7 @@ function Copy-FileWithRetry(
     (Join-Path $repoRoot "src\fbe\search\ScintillaRegexSearch.cpp") `
     /link /SUBSYSTEM:CONSOLE user32.lib psapi.lib "/OUT:$testExe"
 if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
+    throw "Scintilla smoke build failed: $LASTEXITCODE"
 }
 
 function Invoke-IsolatedTest {
@@ -73,10 +85,9 @@ function Invoke-IsolatedTest {
         [string[]]$Arguments = @()
     )
 
+    if ($Name -notmatch '^[A-Za-z0-9_-]+$') { throw "Invalid Scintilla test name: $Name" }
     $caseDir = Join-Path $testDir $Name
-    if (Test-Path -LiteralPath $caseDir) {
-        Remove-Item -LiteralPath $caseDir -Recurse -Force
-    }
+    if (Test-Path -LiteralPath $caseDir) { throw "Scintilla test directory already exists: $caseDir" }
     New-Item -ItemType Directory -Path $caseDir | Out-Null
     Copy-FileWithRetry -Source $testExe -Destination $caseDir
     foreach ($library in $Libraries) {
@@ -168,9 +179,7 @@ Invoke-IsolatedTest -Name "missing-scintilla" `
 
 function Invoke-ScintillaBenchmark([string]$Mode) {
     $benchmarkDir = Join-Path $testDir $Mode
-    if (Test-Path -LiteralPath $benchmarkDir) {
-        Remove-Item -LiteralPath $benchmarkDir -Recurse -Force
-    }
+    if (Test-Path -LiteralPath $benchmarkDir) { throw "Scintilla benchmark directory already exists: $benchmarkDir" }
     New-Item -ItemType Directory -Path $benchmarkDir | Out-Null
     Copy-FileWithRetry -Source $testExe -Destination $benchmarkDir
     foreach ($library in @("Scintilla.dll", "Lexilla.dll")) {
@@ -210,4 +219,11 @@ if ($RunMemoryBenchmark) {
     }
 }
 
-Write-Host "Smoke-тесты Scintilla, включая проверки отказа зависимостей, прошли успешно."
+    $passed = $true
+    Write-Host "Smoke-тесты Scintilla, включая проверки отказа зависимостей, прошли успешно."
+} finally {
+    try {
+        $env:TEMP = $testRoot; $env:TMP = $testRoot
+        if ($isolation) { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed }
+    } finally { $env:TEMP = $originalTemp; $env:TMP = $originalTmp }
+}
