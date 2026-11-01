@@ -32,6 +32,9 @@ public static class SettingsGeneralLayoutWindow
 {
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
     [StructLayout(LayoutKind.Sequential)] public struct Point { public int X, Y; }
+    [StructLayout(LayoutKind.Sequential)] struct GuiThreadInfo {
+        public int Size, Flags; public IntPtr Active, Focus, Capture, MenuOwner, MoveSize, Caret; public Rect CaretRect;
+    }
     public delegate bool Callback(IntPtr window, IntPtr data);
     [DllImport("user32.dll")] static extern bool EnumWindows(Callback callback, IntPtr data);
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
@@ -93,6 +96,27 @@ public static class SettingsGeneralLayoutWindow
         SendMessage(settings, 0x0111, (IntPtr)(1625 | (1 << 16)), navigation); // LBN_SELCHANGE
     }
     [DllImport("user32.dll")] static extern IntPtr GetNextDlgTabItem(IntPtr dialog, IntPtr control, bool previous);
+    [DllImport("user32.dll")] static extern bool GetGUIThreadInfo(uint threadId, ref GuiThreadInfo info);
+    static IntPtr ThreadFocus(IntPtr dialog) {
+        uint process; uint thread = GetWindowThreadProcessId(dialog, out process);
+        var info = new GuiThreadInfo { Size = Marshal.SizeOf(typeof(GuiThreadInfo)) };
+        return GetGUIThreadInfo(thread, ref info) ? info.Focus : IntPtr.Zero;
+    }
+    public static bool TraverseWithTab(IntPtr dialog, int[] ids) {
+        var remaining = new System.Collections.Generic.HashSet<IntPtr>();
+        foreach(int id in ids) { IntPtr child = GetDlgItem(dialog, id); if(child == IntPtr.Zero) return false; remaining.Add(child); }
+        IntPtr start = GetDlgItem(dialog, ids[0]);
+        SendMessage(dialog, 0x0028, start, (IntPtr)1); // WM_NEXTDLGCTL, explicit target
+        if(ThreadFocus(dialog) != start) return false;
+        for(int count = 0; count < 100; ++count) {
+            IntPtr current = ThreadFocus(dialog); remaining.Remove(current);
+            if(remaining.Count == 0) return true;
+            if(current == IntPtr.Zero || !PostMessage(current, 0x0100, (IntPtr)9, IntPtr.Zero)) return false; // WM_KEYDOWN VK_TAB
+            for(int wait = 0; wait < 100 && ThreadFocus(dialog) == current; ++wait) System.Threading.Thread.Sleep(10);
+            if(ThreadFocus(dialog) == current) return false;
+        }
+        return false;
+    }
     public static bool HasTabTargets(IntPtr dialog, int[] ids) {
         var remaining = new System.Collections.Generic.HashSet<IntPtr>();
         foreach(int id in ids) { IntPtr child = GetDlgItem(dialog, id); if(child == IntPtr.Zero) return false; remaining.Add(child); }
@@ -347,6 +371,9 @@ try {
                             $managerTargets = if ($CustomPalette) { [int[]]@(1835, 1836, 1837, 1838, 1831, 1832, 1833, 1, 2) } else { [int[]]@(1835, 1, 2) }
                             if(-not [SettingsGeneralLayoutWindow]::HasTabTargets($manager, $managerTargets)) {
                                 throw "$locale palette manager actions are missing from keyboard tab order."
+                            }
+                            if(-not [SettingsGeneralLayoutWindow]::TraverseWithTab($manager, $managerTargets)) {
+                                throw "$locale palette manager focus did not reach all actions with Tab messages."
                             }
                             $managerReport = Join-Path $ArtifactDirectory "palette-manager-$locale.json"
                             & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $managerReport | Out-Null
