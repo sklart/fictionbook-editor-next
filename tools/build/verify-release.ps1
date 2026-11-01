@@ -17,6 +17,10 @@ param(
     # Temporary opt-in: the Split/Undo contour remains incomplete when skipped.
     [switch]$SkipSplitUndo,
 
+    # The affected runtime tests use the interactive Windows clipboard. Skipping
+    # them is an explicit incomplete contour, never a successful release gate.
+    [switch]$SkipClipboardRuntime,
+
     # Table regressions are intentionally opt-in while portable finalization is
     # in progress. They remain available for their dedicated test contour.
     [switch]$RunTableTests,
@@ -27,6 +31,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+if ($SkipClipboardRuntime -and $FullValidation) {
+    throw 'SkipClipboardRuntime is supported only by the default contour; FullValidation has not been audited for clipboard use.'
+}
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 if (-not $SkipLocalizationPreflight) {
@@ -237,7 +244,11 @@ foreach ($treeMode in @('portable', 'installed')) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-attributes-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-visual-dom-normalizer-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-clipboard-paste-boundary.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-visual-dom-normalizer-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+if ($SkipClipboardRuntime) {
+    Write-Warning 'SKIPPED: visual DOM normalizer runtime includes a real clipboard paste.'
+} else {
+    & (Join-Path $repoRoot "tools\tests\test-fbe-visual-dom-normalizer-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+}
 & (Join-Path $repoRoot "tools\tests\test-fbe-structural-trace-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-cite-poem-undo-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-cite-poem-undo-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
@@ -730,8 +741,11 @@ Assert-TrackedEditorRuntimeDllSnapshot -RepositoryRoot $repoRoot -Snapshot $trac
 if ($FullValidation -and -not $SkipEarlyRuntimeSuites -and -not (Get-Content -LiteralPath $requiredCiRuntimeReport -Raw | ConvertFrom-Json).complete) {
     throw "FullValidation incomplete: required external runtime checks are NOT RUN. See $requiredCiRuntimeReport"
 }
-if ($SkipSplitUndo) {
-    Write-Warning "Release verification for version $expectedVersion is INCOMPLETE: Split/Undo was skipped. All other selected checks completed."
+if ($SkipSplitUndo -or $SkipClipboardRuntime) {
+    $skipped = @()
+    if ($SkipSplitUndo) { $skipped += 'Split/Undo' }
+    if ($SkipClipboardRuntime) { $skipped += 'clipboard runtime' }
+    Write-Warning "Release verification for version $expectedVersion is INCOMPLETE: skipped $($skipped -join ', '). All other selected checks completed."
 } else {
     Write-Host "Проверка релиза для версии $expectedVersion прошла успешно."
 }

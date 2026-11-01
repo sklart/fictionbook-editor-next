@@ -74,6 +74,7 @@ function Invoke-Import([string]$path,[string]$name,[bool]$success,[switch]$Repar
         $process.StartInfo.EnvironmentVariables['TEMP'] = $shortTemp
     }
     $null=$process.Start();$stdout=$process.StandardOutput.ReadToEndAsync();$stderr=$process.StandardError.ReadToEndAsync()
+    try {
     if($Reparse) {
         $deadline=[DateTime]::UtcNow.AddSeconds(5)
         while(-not [IO.File]::Exists($env:FBE_NEXT_TEST_EPUB_ROOT_REPORT) -and [DateTime]::UtcNow -lt $deadline){Start-Sleep -Milliseconds 20}
@@ -81,7 +82,7 @@ function Invoke-Import([string]$path,[string]$name,[bool]$success,[switch]$Repar
         $parent=[IO.Path]::GetDirectoryName($extracted)
         $actualTemp = [EpubImportFixturePaths]::Long([IO.Path]::GetDirectoryName($parent))
         $expectedTemp = [EpubImportFixturePaths]::Long([IO.Path]::GetTempPath())
-        if([IO.Path]::GetFileName($extracted) -ne 'epub' -or [IO.Path]::GetFileName($parent) -notmatch '^ImportEPUB_[A-F0-9-]{36}$' -or $actualTemp -ine $expectedTemp){throw 'Unexpected test-owned extraction path'}
+        if([IO.Path]::GetFileName($extracted) -ne 'epub' -or [IO.Path]::GetFileName($parent) -cnotmatch '^E_[0-9A-Za-z_-]{22}$' -or $actualTemp -ine $expectedTemp){throw 'Unexpected test-owned extraction path'}
         $null=New-Item -ItemType Junction -Path (Join-Path $extracted 'redirect') -Target $work
     }
     if(-not $process.WaitForExit(75000)){Stop-Process -Id $process.Id -Force;throw "Import timeout: $log"}
@@ -92,6 +93,10 @@ function Invoke-Import([string]$path,[string]$name,[bool]$success,[switch]$Repar
         $text=[IO.File]::ReadAllText($output)
         if(-not $text.Contains('FIRST_REQUIRED_CHAPTER') -or -not $text.Contains('LAST_REQUIRED_CHAPTER')){throw 'Required chapter was silently lost'}
     } elseif($code -eq 0 -or [IO.File]::Exists($output)){throw "Unsafe/incomplete EPUB accepted: $name"}
+    } finally {
+        if(-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+        $process.Dispose()
+    }
 }
 $oldMode,$oldDelay,$oldRootReport=$env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_EPUB_DELAY_ENTRY,$env:FBE_NEXT_TEST_EPUB_ROOT_REPORT
 try {
