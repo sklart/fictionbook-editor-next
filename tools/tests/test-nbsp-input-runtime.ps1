@@ -14,6 +14,7 @@ param([Parameter(Mandatory)][string]$FbeExe,
       [ValidateSet('none','small-square')][string]$RepeatDisplay = 'none')
 $ErrorActionPreference = 'Stop'
 if(@(@($CheckDisplayToggle, $CheckSingleDisplayToggle, $CheckSingleEmptyRedo, $EmptyRedoControl, $ToggleControl, $CheckRepeatedApply) | Where-Object { $_ }).Count -gt 1) { throw 'Choose only one NBSP diagnostic mode.' }
+if($CheckDirectInput -and ($CheckDisplayToggle -or $CheckSingleDisplayToggle -or $CheckSingleEmptyRedo -or $EmptyRedoControl -or $ToggleControl -or $CheckRepeatedApply)) { throw 'Direct input cannot be combined with display-change diagnostics.' }
 if($CheckRepeatedApply -and (@($Modes).Count -ne 1 -or $Modes[0] -ne 'square')) { throw 'Repeated-apply regression requires -Modes square.' }
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if (-not $ArtifactDirectory) { $ArtifactDirectory = Join-Path $root 'build\community-feedback-nbsp' }
@@ -66,6 +67,10 @@ try {
                 if (-not $link -or $link.GetAttribute('href', 'http://www.w3.org/1999/xlink') -cne '#nbsp-probe') { throw 'Link or target was lost.' }
             }
             $expectedSuffix = if($CheckSingleEmptyRedo -or $EmptyRedoControl) { 'wOrd2' } else { 'word2' }
+            if($CheckDirectInput) {
+                if($value.Length -ne 13 -or $value[8] -ne [char]0x00A0) { throw "$name did not save the directly entered NBSP at the expected position" }
+                $value = $value.Remove(8, 1)
+            }
             if ($value.Length -ne 12 -or $value.Substring(0,5) -cne 'word1' -or $value.Substring(7) -cne $expectedSuffix -or
                 @($value.Substring(5,2).ToCharArray() | Where-Object { $_ -ne ' ' -and $_ -ne [char]0x00A0 }).Count -ne 0) { throw "$name saved unexpected characters" }
             if (@($value.Substring(5,2).ToCharArray() | Where-Object { $_ -eq [char]0x00A0 }).Count -ne 1) { throw "$name did not save exactly one real NBSP" }

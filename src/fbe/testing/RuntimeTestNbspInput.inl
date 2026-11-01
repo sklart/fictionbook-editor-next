@@ -153,7 +153,8 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 			::SendMessageW(directFocus, WM_CHAR, L'\u00a0', 1); pump();
 			const CString inserted = state();
 			CString expectedInserted(second);
-			const int expectedReplacements = expectedInserted.Replace(L"word2", CString(L"w") + configuredMarker + L"ord2");
+			const CString htmlMarker = configuredMarker == L"\u00a0" ? CString(L"&nbsp;") : configuredMarker;
+			const int expectedReplacements = expectedInserted.Replace(L"word2", CString(L"w") + htmlMarker + L"ord2");
 			directInput = expectedReplacements == 1 && inserted == expectedInserted &&
 				text() == secondText.Left(8) + configuredMarker + secondText.Mid(8);
 			m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0); pump(); directUndo = state() == second;
@@ -262,6 +263,18 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		toggleReport += toggleDetail;
 		}
 		stage = "save-reopen";
+		bool directSaveInput = true;
+		if (directTested) {
+			MSHTML::IHTMLTxtRangePtr directSave(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+			directSave->moveToElementText(paragraph()); directSave->collapse(VARIANT_TRUE); directSave->move(L"character", 8); directSave->select(); pump();
+			const HWND directSaveFocus = ::GetFocus();
+			if (!directSaveFocus || (directSaveFocus != m_doc->m_body.m_hWnd && !::IsChild(m_doc->m_body.m_hWnd, directSaveFocus))) CheckError(E_FAIL);
+			::SendMessageW(directSaveFocus, WM_CHAR, L'\u00a0', 1); pump();
+			CString expectedSaved(second);
+			const CString htmlMarker = configuredMarker == L"\u00a0" ? CString(L"&nbsp;") : configuredMarker;
+			const int replacements = expectedSaved.Replace(L"word2", CString(L"w") + htmlMarker + L"ord2");
+			directSaveInput = replacements == 1 && state() == expectedSaved;
+		}
 		const CString xml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
 		const bool validText = firstText == L"word1 word2" && secondText.GetLength() == 12 &&
 			secondText.Left(5) == L"word1" && secondText.Right(5) == L"word2" &&
@@ -301,14 +314,14 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 			static_cast<LPCSTR>(codepoints(undo1Text)), static_cast<LPCSTR>(codepoints(undo2Text)),
 			static_cast<LPCSTR>(codepoints(redo1Text)), static_cast<LPCSTR>(codepoints(redo2Text)), caretPosition, priorHistory, selectionInput, selectionUndo, thirdTested, thirdInput, thirdUndo, thirdRedo); report += history;
 		report += toggleReport;
-		CStringA directReport; directReport.Format("direct-tested=%d\ndirect-input=%d\ndirect-undo=%d\ndirect-redo=%d\n", directTested, directInput, directUndo, directRedo); report += directReport;
+		CStringA directReport; directReport.Format("direct-tested=%d\ndirect-input=%d\ndirect-undo=%d\ndirect-redo=%d\ndirect-save-input=%d\n", directTested, directInput, directUndo, directRedo, directSaveInput); report += directReport;
 		CStringA sourceReport; sourceReport.Format("source-tested=%d\nsource-roundtrip=%d\nsource-link-valid=%d\n", sourceTested, sourceRoundTrip, sourceLinkValid); report += sourceReport;
 		if (sourceTested && !sourceRoundTrip) {
 			CStringA details; details.Format("source-before-utf16=%s\nsource-after-utf16=%s\n", static_cast<LPCSTR>(codepoints(second)), static_cast<LPCSTR>(codepoints(sourceAfter))); report += details;
 		}
 		CStringA repeatReport; repeatReport.Format("repeat-applied=%d\nrepeat-inserted=%d\nrepeat-preserved=%d\nrepeat-roundtrip=%d\n", repeatTested, repeatInserted, repeatPreserved, repeatRoundTrip); report += repeatReport;
 		CStringA counts; counts.Format("undo-count-after-undo=%d\nredo-count-after-undo=%d\n", afterUndo, afterUndoRedo); report += counts;
-		passed = focusInside && caretPosition && sourceRoundTrip && sourceLinkValid && priorHistory && restored && replay && directInput && directUndo && directRedo && selectionInput && selectionUndo &&
+		passed = focusInside && caretPosition && sourceRoundTrip && sourceLinkValid && priorHistory && restored && replay && directInput && directUndo && directRedo && directSaveInput && selectionInput && selectionUndo &&
 			(!thirdTested || (thirdInput && thirdUndo && thirdRedo)) && changedDisplay && unchangedOther && toggleRestored && toggleUndoRedo && repeatInserted && repeatPreserved && repeatRoundTrip && validText && saved && reopened && xmlMatches;
 	}
 	catch (const _com_error& error) { CStringA line; line.Format("stage=%s\nerror=0x%08lX\n", stage, static_cast<unsigned long>(error.Error())); report += line; }
