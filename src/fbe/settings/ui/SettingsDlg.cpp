@@ -1425,7 +1425,26 @@ bool CSettingsDlg::ProbeLayout()
 			copy.right <= manage.left && copy.top >= paletteRowBottom && manage.top >= paletteRowBottom &&
 			themeSample.top >= max(copy.bottom, manage.bottom) && iconSample.top >= scriptRowBottom && passed;
 	}
+	// At 100% DPI, exercise the actual preferred window size against a
+	// conservative 1366x728 work area (768px screen with a 40px taskbar).
+	CRect beforeScreenProbe; GetWindowRect(beforeScreenProbe);
+	const bool beforeAutomatic = m_automaticSize; m_automaticSize = true;
+	RECT suggested = beforeScreenProbe;
+	::SendMessageW(m_hWnd, WM_DPICHANGED, MAKELONG(96, 96), reinterpret_cast<LPARAM>(&suggested));
+	SelectPage(SettingsPageId::Appearance);
+	CRect preferred; GetWindowRect(preferred); GetClientRect(client);
+	RECT appearanceClient = {}; ::GetClientRect(m_generalPage->m_hWnd, &appearanceClient);
+	const PageLayout& appearanceLayout = m_pageLayouts[PageIndex(SettingsPageId::Appearance)];
+	passed = preferred.Width() <= 1366 && preferred.Height() <= 728 &&
+		appearanceLayout.contentSize.cx <= appearanceClient.right &&
+		appearanceLayout.contentSize.cy <= appearanceClient.bottom &&
+		inside(controlRect(GetDlgItem(IDOK))) && inside(controlRect(GetDlgItem(IDCANCEL))) && passed;
+	::SetPropW(::GetParent(m_hWnd), L"FBE_SETTINGS_SCREEN_WIDTH", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(preferred.Width())));
+	::SetPropW(::GetParent(m_hWnd), L"FBE_SETTINGS_SCREEN_HEIGHT", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(preferred.Height())));
+	m_automaticSize = beforeAutomatic;
 	::SendMessageW(m_hWnd, WM_DPICHANGED, MAKELONG(originalLayoutDpi, originalLayoutDpi), 0);
+	::SetWindowPos(m_hWnd, NULL, beforeScreenProbe.left, beforeScreenProbe.top,
+		beforeScreenProbe.Width(), beforeScreenProbe.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
 	SelectPage(SettingsPageId::General);
 	::SetPropW(::GetParent(m_hWnd), L"FBE_SETTINGS_LAYOUT_PASSED", reinterpret_cast<HANDLE>(passed ? 1 : 2));
 	return passed;

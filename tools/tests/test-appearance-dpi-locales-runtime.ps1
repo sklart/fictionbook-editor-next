@@ -1,4 +1,4 @@
-<# Exercises Settings DPI geometry under explicitly selected UI languages. #>
+﻿<# Exercises Settings DPI geometry under explicitly selected UI languages. #>
 [CmdletBinding()]
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 120)
 $ErrorActionPreference = 'Stop'
@@ -26,6 +26,14 @@ try {
         foreach($line in @('layout=1', 'followup=1', "interface-language=$($entry.Id)")) {
             if($result -notmatch ('(?m)^' + [regex]::Escape($line) + '\r?$')) { throw "Missing $line for $($entry.Locale): $result" }
         }
+        if($result -notmatch '(?m)^appearance_screen_width=(\d+)\r?$') { throw 'Missing 1366px screen probe width.' }
+        $screenWidth = [int]$Matches[1]
+        if($result -notmatch '(?m)^appearance_screen_height=(\d+)\r?$') { throw 'Missing 1366px screen probe height.' }
+        $screenHeight = [int]$Matches[1]
+        if($screenWidth -le 0 -or $screenWidth -gt 1366 -or $screenHeight -le 0 -or $screenHeight -gt 728) {
+            throw "Settings preferred size does not fit the test work area: ${screenWidth}x${screenHeight}."
+        }
+        Write-Host "Preferred window at 96 DPI: ${screenWidth}x${screenHeight} ($($entry.Locale))."
         Write-Host "Settings geometry at 96/120/144/192 DPI: PASS ($($entry.Locale))."
     }
     $passed = $true
