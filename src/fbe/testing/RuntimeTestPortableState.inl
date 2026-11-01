@@ -1068,7 +1068,9 @@ void CMainFrame::RunPortableStateTestScenario()
             // The unfocused field uses Window; the list uses Control.
             ShowWindow(SW_SHOWNORMAL); ::SetForegroundWindow(m_hWnd);
             ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
-            HWND ordinaryCombo = page.GetDlgItem(IDC_LANG);
+            HWND ordinaryCombo = page.GetDlgItem(IDC_DESCRIPTION_LAYOUT);
+            passed = ordinaryCombo && ::IsWindowVisible(ordinaryCombo) &&
+                ::SendMessage(ordinaryCombo, CB_GETCOUNT, 0, 0) > 0 && passed;
             ::SetFocus(choice); // Measure the unfocused field, outside the selection highlight.
             ::RedrawWindow(page.m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
             RECT comboRect = {}; ::GetClientRect(ordinaryCombo, &comboRect);
