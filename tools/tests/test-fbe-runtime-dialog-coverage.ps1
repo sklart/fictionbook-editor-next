@@ -126,6 +126,8 @@ if (-not (Test-DescriptionRuntimeKey 'fbe.description.add_source' $descriptionCo
     (Test-DescriptionRuntimeKey 'fbe.description.add_source' $descriptionConsumer.Replace('"fbe.description." + key', '"fixture.removed.prefix" + key'))) {
     throw 'Description localization binding must reject missing suffixes and a missing namespace bridge.'
 }
+$paletteWarningHandler = [regex]::Match($mainFrameSource, '(?s)LRESULT CMainFrame::OnPaletteLoadWarning\([^)]*\)\s*\{.*?\n\}').Value
+$settingsFrameHandler = [regex]::Match($mainFrameSource, '(?s)bool CMainFrame::ShowSettingsDialog\([^)]*\)\s*\{.*?\n\}').Value
 foreach ($entry in $catalog.strings.PSObject.Properties) {
     $key = $entry.Name
     $value = $entry.Value
@@ -159,6 +161,14 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
     $nativeOverwritePrompt = $key -eq 'fbe.quality.save.overwrite' -and
         $consumerText.Contains('request.overwritePrompt = true') -and
         $consumerText.Contains('FDEOR_DEFAULT')
+    # Palette loading happens before settings are opened; its warning is shown
+    # by the frame after startup, rather than by the General settings page.
+    $paletteStartupWarning = $key -eq 'fbe.settings.palette.startup_error' -and
+        $paletteWarningHandler.Contains('FbeLoadRuntimeStringByKey(L"' + $key + '"') -and
+        $paletteWarningHandler.Contains('U::MessageBox(m_hWnd, message,')
+    $toolbarRestoreWarning = $key -in @('fbe.settings.main_toolbar_icon_size.failed', 'fbe.settings.main_toolbar_icon_size.restore_failed') -and
+        $settingsFrameHandler.Contains('FbeLoadRuntimeStringByKey(L"' + $key + '"') -and
+        $settingsFrameHandler.Contains('MessageBox(message,')
     $retainedReplacement = Test-ReplacedDialogKey $key
     $dynamicDescriptionKey = $value.resource -eq 'runtime/main.js' -and
         (Test-DescriptionRuntimeKey $key $consumerText)
@@ -169,7 +179,7 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
         $null -ne $catalog.strings.PSObject.Properties['fbe.description.binary_file_forms']
     if (-not $genericBinding -and -not $manifestDrivenBackgroundPreset -and -not $dynamicSearchPresetKey -and
         -not $dynamicQualityRuleKey -and -not $dynamicQualityHelpKey -and -not $nativeOverwritePrompt -and
-        -not $retainedReplacement -and -not $dynamicDescriptionKey -and -not $retainedDescriptionPlural -and -not $consumerText.Contains($key)) {
+        -not $retainedReplacement -and -not $dynamicDescriptionKey -and -not $retainedDescriptionPlural -and -not $paletteStartupWarning -and -not $toolbarRestoreWarning -and -not $consumerText.Contains($key)) {
         throw "JSON dialog key has no binding in its concrete runtime consumer: $key ($($value.resource))."
     }
 }

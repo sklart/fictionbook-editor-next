@@ -239,7 +239,23 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     (Join-Path $repoRoot "build\hunspell\lib\$Configuration\libhunspell.lib") `
     /link "/OUT:$smokeExe"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& $smokeExe $dictDir
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$oldTemp, $oldTmp = $env:TEMP, $env:TMP
+$smokeIsolation = $null; $smokePassed = $false
+try {
+    # Keep the owned scratch root in the writable output tree. On the next
+    # invocation the isolation helper also reaps a forcibly stopped owner.
+    $env:TEMP = $testDir; $env:TMP = $testDir
+    $smokeIsolation = New-IsolatedFbeScratchDirectory -Name 'spellcheck'
+    $env:TEMP = $smokeIsolation.Root; $env:TMP = $smokeIsolation.Root
+    & $smokeExe $dictDir
+    if ($LASTEXITCODE -ne 0) { throw "Spellcheck dictionary smoke failed: $LASTEXITCODE" }
+    $smokePassed = $true
+} finally {
+    try {
+        $env:TEMP = $testDir; $env:TMP = $testDir
+        if ($smokeIsolation) { Complete-IsolatedFbeRuntime -Isolation $smokeIsolation -Passed $smokePassed -PreserveContents }
+    } finally { $env:TEMP = $oldTemp; $env:TMP = $oldTmp }
+}
 
 Write-Host (Get-ThirdPartyText -Base64 "0J/RgNC+0LLQtdGA0LrQsCDRgNC10LPRgNC10YHRgdC40Lgg0YHQu9C+0LLQsNGA0LXQuSDQvtGA0YTQvtCz0YDQsNGE0LjQuCDQv9GA0L7RiNC70LAg0YPRgdC/0LXRiNC90L4u")
