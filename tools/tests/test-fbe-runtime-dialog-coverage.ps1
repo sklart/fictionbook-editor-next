@@ -166,7 +166,7 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
     $paletteStartupWarning = $key -eq 'fbe.settings.palette.startup_error' -and
         $paletteWarningHandler.Contains('FbeLoadRuntimeStringByKey(L"' + $key + '"') -and
         $paletteWarningHandler.Contains('U::MessageBox(m_hWnd, message,')
-    $toolbarRestoreWarning = $key -in @('fbe.settings.main_toolbar_icon_size.failed', 'fbe.settings.main_toolbar_icon_size.restore_failed') -and
+    $toolbarRestoreWarning = $key -in @('fbe.settings.main_toolbar_icon_size.failed', 'fbe.settings.main_toolbar_icon_size.restore_failed', 'fbe.settings.script_icon_size.failed') -and
         $settingsFrameHandler.Contains('FbeLoadRuntimeStringByKey(L"' + $key + '"') -and
         $settingsFrameHandler.Contains('MessageBox(message,')
     $retainedReplacement = Test-ReplacedDialogKey $key
