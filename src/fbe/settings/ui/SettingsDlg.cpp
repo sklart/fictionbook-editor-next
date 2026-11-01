@@ -1386,6 +1386,28 @@ bool CSettingsDlg::ProbeLayout()
 		const CRect descriptionGroup = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_DESCRIPTION_GROUP));
 		const CRect themeSample = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_THEME_PREVIEW));
 		const CRect iconSample = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_ICON_PREVIEW));
+		struct AppearanceRow { int label, field; CRect group; };
+		const AppearanceRow rows[] = {
+			{ IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME, colourGroup },
+			{ IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE, colourGroup },
+			{ IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, toolbarGroup },
+			{ IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, toolbarGroup },
+			{ IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT, descriptionGroup }
+		};
+		int previousBottom = 0;
+		for(const auto& row : rows) {
+			const HWND field = m_generalPage->GetDlgItem(row.field);
+			COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
+			const bool gotInfo = ::GetComboBoxInfo(field, &info) != FALSE;
+			const CRect label = controlRect(m_generalPage->GetDlgItem(row.label));
+			CRect box = controlRect(field);
+			if(gotInfo) box.bottom = box.top + max(info.rcItem.bottom, info.rcButton.bottom);
+			passed = gotInfo && label.left >= row.group.left && label.right <= box.left &&
+				box.right <= row.group.right && label.top >= row.group.top && box.top >= row.group.top &&
+				label.bottom <= row.group.bottom && box.bottom <= row.group.bottom &&
+				label.top >= previousBottom && box.top >= previousBottom && passed;
+			previousBottom = max(label.bottom, box.bottom);
+		}
 		passed = colourGroup.bottom <= toolbarGroup.top && toolbarGroup.bottom <= descriptionGroup.top &&
 			themeSample.top >= colourGroup.top && themeSample.bottom <= colourGroup.bottom &&
 			iconSample.top >= toolbarGroup.top && iconSample.bottom <= toolbarGroup.bottom && passed;
