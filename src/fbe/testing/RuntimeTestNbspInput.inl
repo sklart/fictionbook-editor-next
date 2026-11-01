@@ -32,7 +32,14 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		auto state = [&]() -> CString {
 			MSHTML::IHTMLElementPtr p = paragraph();
 			if (!p) CheckError(E_FAIL);
-			return CString(static_cast<LPCWSTR>(p->outerHTML));
+			CString html(static_cast<LPCWSTR>(p->outerHTML));
+			// MSHTML can serialize this fixture's internal link as either an
+			// absolute document URL or its equivalent fragment after view changes.
+			const int href = html.Find(L"href=\"file:///");
+			const int fragment = href >= 0 ? html.Find(L"#nbsp-probe\"", href) : -1;
+			if (fragment >= 0 && html.Find(L'\"', href + 6) == fragment + 11)
+				html.Delete(href + 6, fragment - href - 6);
+			return html;
 		};
 		auto text = [&]() -> CString {
 			MSHTML::IHTMLElementPtr p = paragraph();
@@ -94,6 +101,20 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 		prefix->moveToElementText(paragraph()); prefix->setEndPoint(L"EndToStart", caretAfter);
 		const bool caretPosition = caretAfter->compareEndPoints(L"StartToEnd", caretAfter) == 0 &&
 			CString(static_cast<LPCWSTR>(prefix->text)).GetLength() == 7;
+		wchar_t sourceFlag[2] = {};
+		const bool sourceTested = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP_SOURCE", sourceFlag, _countof(sourceFlag)) && sourceFlag[0] == L'1';
+		bool sourceRoundTrip = true;
+		CString sourceAfter;
+		if (sourceTested) {
+			stage = "source-roundtrip";
+			ShowView(SOURCE); pump();
+			const bool sourceActive = IsSourceActive();
+			ShowView(BODY); pump();
+			document = m_doc->m_body.Document();
+			prior = MSHTML::IHTMLDocument3Ptr(document)->getElementById(L"nbsp-prior");
+			sourceAfter = state();
+			sourceRoundTrip = sourceActive && !IsSourceActive() && prior && sourceAfter == second;
+		}
 		stage = "undo-redo";
 		m_doc->m_body.SetFocus(); pump();
 		const HWND undoFocus = ::GetFocus();
@@ -253,9 +274,13 @@ if (IsFbeTestScenario(L"nbsp-input-runtime"))
 			static_cast<LPCSTR>(codepoints(undo1Text)), static_cast<LPCSTR>(codepoints(undo2Text)),
 			static_cast<LPCSTR>(codepoints(redo1Text)), static_cast<LPCSTR>(codepoints(redo2Text)), caretPosition, priorHistory, selectionInput, selectionUndo, thirdTested, thirdInput, thirdUndo, thirdRedo); report += history;
 		report += toggleReport;
+		CStringA sourceReport; sourceReport.Format("source-tested=%d\nsource-roundtrip=%d\n", sourceTested, sourceRoundTrip); report += sourceReport;
+		if (sourceTested && !sourceRoundTrip) {
+			CStringA details; details.Format("source-before-utf16=%s\nsource-after-utf16=%s\n", static_cast<LPCSTR>(codepoints(second)), static_cast<LPCSTR>(codepoints(sourceAfter))); report += details;
+		}
 		CStringA repeatReport; repeatReport.Format("repeat-applied=%d\nrepeat-inserted=%d\nrepeat-preserved=%d\nrepeat-roundtrip=%d\n", repeatTested, repeatInserted, repeatPreserved, repeatRoundTrip); report += repeatReport;
 		CStringA counts; counts.Format("undo-count-after-undo=%d\nredo-count-after-undo=%d\n", afterUndo, afterUndoRedo); report += counts;
-		passed = focusInside && caretPosition && priorHistory && restored && replay && selectionInput && selectionUndo &&
+		passed = focusInside && caretPosition && sourceRoundTrip && priorHistory && restored && replay && selectionInput && selectionUndo &&
 			(!thirdTested || (thirdInput && thirdUndo && thirdRedo)) && changedDisplay && unchangedOther && toggleRestored && toggleUndoRedo && repeatInserted && repeatPreserved && repeatRoundTrip && validText && saved && reopened && xmlMatches;
 	}
 	catch (const _com_error& error) { CStringA line; line.Format("stage=%s\nerror=0x%08lX\n", stage, static_cast<unsigned long>(error.Error())); report += line; }

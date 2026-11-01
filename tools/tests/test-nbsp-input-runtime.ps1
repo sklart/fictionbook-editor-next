@@ -9,6 +9,7 @@ param([Parameter(Mandatory)][string]$FbeExe,
       [switch]$EmptyRedoControl,
       [switch]$ToggleControl,
       [switch]$CheckRepeatedApply,
+      [switch]$CheckSourceRoundTrip,
       [ValidateSet('none','small-square')][string]$RepeatDisplay = 'none')
 $ErrorActionPreference = 'Stop'
 if(@(@($CheckDisplayToggle, $CheckSingleDisplayToggle, $CheckSingleEmptyRedo, $EmptyRedoControl, $ToggleControl, $CheckRepeatedApply) | Where-Object { $_ }).Count -gt 1) { throw 'Choose only one NBSP diagnostic mode.' }
@@ -18,7 +19,7 @@ if (-not $ArtifactDirectory) { $ArtifactDirectory = Join-Path $root 'build\commu
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $ArtifactDirectory = [IO.Path]::GetFullPath($ArtifactDirectory)
 New-Item -ItemType Directory -Force -Path $ArtifactDirectory | Out-Null
-$names = @('FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_NBSP_OUTPUT', 'FBE_NEXT_TEST_NBSP_TOGGLE')
+$names = @('FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_NBSP_OUTPUT', 'FBE_NEXT_TEST_NBSP_TOGGLE', 'FBE_NEXT_TEST_NBSP_SOURCE')
 $old = @{}; foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name) }
 $failures = @()
 try {
@@ -40,6 +41,7 @@ try {
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'nbsp-input-runtime'
             $env:FBE_NEXT_TEST_NBSP_TOGGLE = if($CheckDisplayToggle) { '1' } elseif($CheckSingleDisplayToggle) { '5' } elseif($CheckSingleEmptyRedo) { '6' } elseif($EmptyRedoControl) { '7' } elseif($ToggleControl) { '2' } elseif($CheckRepeatedApply -and $RepeatDisplay -eq 'small-square') { '4' } elseif($CheckRepeatedApply) { '3' } else { $null }
             $env:FBE_NEXT_TEST_NBSP_OUTPUT = $saved
+            $env:FBE_NEXT_TEST_NBSP_SOURCE = if($CheckSourceRoundTrip) { '1' } else { $null }
             $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime `
                 -ArgumentList @('--portable', '-b', ('"' + $report + '"'), ('"' + $fixture + '"')) -PassThru
             $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'nbsp-input-runtime' -Report $report -TimeoutSeconds 120
@@ -89,6 +91,7 @@ try {
             if($text -notmatch "(?m)^toggle-applied=$appliedExpected\r?$") { throw "$name did not report the requested display change: $text" }
             if(($CheckSingleEmptyRedo -or $EmptyRedoControl) -and ($text -notmatch '(?m)^empty-redo-tested=1\r?$' -or $text -notmatch '(?m)^empty-redo-ready=1\r?$')) { throw "$name did not establish an empty Redo stack: $text" }
             if($CheckRepeatedApply -and $text -notmatch '(?m)^repeat-applied=1\r?$') { throw "$name did not run the repeated-settings diagnostic: $text" }
+            if($CheckSourceRoundTrip -and ($text -notmatch '(?m)^source-tested=1\r?$' -or $text -notmatch '(?m)^source-roundtrip=1\r?$')) { throw "$name did not preserve the document through Body/Source: $text" }
             if ($code -ne 0 -or $text -notmatch "(?m)^mode=$expectedMode\r?$" -or $text -notmatch '(?m)^result=pass\r?$') { throw "$name failed: $text" }
             $passed = $true
             if($CheckRepeatedApply) { Write-Host "Repeated settings preserve typed marker and save/reopen: PASS ($Context/$name/$RepeatDisplay)." }
