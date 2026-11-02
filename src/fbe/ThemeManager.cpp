@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "testing/RuntimeTestScenarioMode.h"
 #include "ThemeManager.h"
+#include "ui/PaletteMenuSnapshot.h"
 #include "InterfacePopularPalettes.h"
 #include "RuntimeLocalization.h"
 #include "resource.h"
@@ -12,6 +13,7 @@
 #include "../common/DeploymentContext.h"
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <array>
 #include <set>
 #include <vector>
@@ -272,6 +274,7 @@ bool AdjustWindowRectForDpi(RECT* rect, DWORD style, DWORD exStyle, UINT dpi)
 
 const UINT_PTR kThemeControlSubclassId = 0x46424554; // "FBET"
 const wchar_t kHeaderThemeStateProperty[] = L"FBE.HeaderThemeState";
+const wchar_t kPaletteComboOwnerProperty[] = L"FBE.PaletteComboOwner";
 
 struct HeaderThemeState
 {
@@ -317,6 +320,14 @@ bool IsCheckBox(HWND window)
 	if(!IsClass(window, L"Button")) return false;
 	const LONG_PTR type = ::GetWindowLongPtrW(window, GWL_STYLE) & BS_TYPEMASK;
 	return type == BS_CHECKBOX || type == BS_AUTOCHECKBOX || type == BS_3STATE || type == BS_AUTO3STATE;
+}
+
+bool IsPalettePushButton(HWND window)
+{
+	if(!IsClass(window, L"Button")) return false;
+	const LONG_PTR style = ::GetWindowLongPtrW(window, GWL_STYLE);
+	const LONG_PTR type = style & BS_TYPEMASK;
+	return (type == BS_PUSHBUTTON || type == BS_DEFPUSHBUTTON) && !(style & (BS_BITMAP | BS_ICON));
 }
 
 bool HasClientEdge(HWND window)
@@ -386,8 +397,10 @@ bool IsHeader(HWND window)
 void ApplyComboDropListTheme(HWND combo)
 {
 	COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
-	if(::GetComboBoxInfo(combo, &info) && ::IsWindow(info.hwndList))
+	if(::GetComboBoxInfo(combo, &info) && ::IsWindow(info.hwndList)) {
+		::SetPropW(info.hwndList, kPaletteComboOwnerProperty, combo);
 		ThemeManager::ApplyToWindow(info.hwndList);
+	}
 }
 
 HeaderThemeState* HeaderState(HWND window)
@@ -630,24 +643,47 @@ void PaintTreeScrollbars(HWND window)
 	::ReleaseDC(window, dc);
 }
 
-// Classic disabled buttons emboss their captions with a second light copy.
-// Paint disabled checkboxes once in palette colours while leaving input and
-// state transitions to the native button implementation.
-void PaintDisabledPaletteCheckbox(HWND window, HDC dc)
+const wchar_t kPaletteButtonHotProperty[] = L"FBE.PaletteButtonHot";
+
+// Leave input, automatic group selection and accessibility to the native
+// button, while drawing the glyph and caption from the active palette.
+void PaintPaletteToggle(HWND window, HDC dc)
 {
 	const int saved = ::SaveDC(dc);
 	RECT client = {}; ::GetClientRect(window, &client);
 	::FillRect(dc, &client, ThemeManager::WindowBrush());
 	const LONG_PTR style = ::GetWindowLongPtrW(window, GWL_STYLE);
+	const bool enabled=::IsWindowEnabled(window)!=FALSE, radio=IsRadioButton(window);
+	const bool pressed=enabled && (::SendMessageW(window,BM_GETSTATE,0,0)&BST_PUSHED)!=0;
+	const bool hot=enabled && ::GetPropW(window,kPaletteButtonHotProperty)!=NULL;
+	const bool focused=::GetFocus()==window;
 	const UINT dpi = UiMetrics::DpiForWindow(window);
 	const int size = (std::min)(static_cast<int>(client.bottom), UiMetrics::ScaleForDpi(13, dpi));
 	const bool right = (style & BS_LEFTTEXT) != 0;
 	RECT box = {right ? client.right - size : client.left, (client.bottom - size) / 2,
 		right ? client.right : client.left + size, (client.bottom + size) / 2};
 	const LRESULT checked = ::SendMessageW(window, BM_GETCHECK, 0, 0);
-	UINT state = (checked == BST_INDETERMINATE ? DFCS_BUTTON3STATE : DFCS_BUTTONCHECK) | DFCS_INACTIVE;
-	if(checked != BST_UNCHECKED) state |= DFCS_CHECKED;
-	::DrawFrameControl(dc, &box, DFC_BUTTON, state);
+	const ThemeColorRole fill=pressed?THEME_COLOR_PRESSED:hot?THEME_COLOR_HOVER:THEME_COLOR_CONTROL;
+	const COLORREF foreground=enabled?ThemeManager::TextColor():ThemeManager::DisabledTextColor();
+	if(radio) {
+		HPEN pen=::CreatePen(PS_SOLID,1,ThemeManager::Color(focused?THEME_COLOR_FOCUS:THEME_COLOR_BORDER));
+		if(pen) { HGDIOBJ oldPen=::SelectObject(dc,pen),oldBrush=::SelectObject(dc,ThemeManager::Brush(fill));
+			::Ellipse(dc,box.left,box.top,box.right,box.bottom); ::SelectObject(dc,oldBrush); ::SelectObject(dc,oldPen); ::DeleteObject(pen); }
+		if(checked==BST_CHECKED) { HBRUSH dot=::CreateSolidBrush(foreground); if(dot) {
+			RECT inner=box; const int inset=(std::max)(2,UiMetrics::ScaleForDpi(4,dpi)); ::InflateRect(&inner,-inset,-inset);
+			HGDIOBJ oldPen=::SelectObject(dc,::GetStockObject(NULL_PEN)),oldBrush=::SelectObject(dc,dot); ::Ellipse(dc,inner.left,inner.top,inner.right,inner.bottom);
+			::SelectObject(dc,oldBrush); ::SelectObject(dc,oldPen); ::DeleteObject(dot); } }
+	} else {
+		::FillRect(dc,&box,ThemeManager::Brush(fill)); ::FrameRect(dc,&box,ThemeManager::Brush(focused?THEME_COLOR_FOCUS:THEME_COLOR_BORDER));
+		if(checked!=BST_UNCHECKED) {
+			HPEN pen=::CreatePen(PS_SOLID,(std::max)(1,UiMetrics::ScaleForDpi(2,dpi)),foreground);
+			if(pen) { HGDIOBJ oldPen=::SelectObject(dc,pen); const int left=box.left+UiMetrics::ScaleForDpi(3,dpi), mid=(box.top+box.bottom)/2;
+				::MoveToEx(dc,left,mid,NULL);
+				if(checked==BST_INDETERMINATE) ::LineTo(dc,box.right-UiMetrics::ScaleForDpi(3,dpi),mid);
+				else { ::LineTo(dc,left+UiMetrics::ScaleForDpi(3,dpi),mid+UiMetrics::ScaleForDpi(3,dpi)); ::LineTo(dc,box.right-UiMetrics::ScaleForDpi(2,dpi),box.top+UiMetrics::ScaleForDpi(3,dpi)); }
+				::SelectObject(dc,oldPen); ::DeleteObject(pen); }
+		}
+	}
 	RECT text = client; const int gap = UiMetrics::ScaleForDpi(4, dpi);
 	if(right) text.right = box.left - gap; else text.left = box.right + gap;
 	const int length = ::GetWindowTextLengthW(window);
@@ -655,13 +691,181 @@ void PaintDisabledPaletteCheckbox(HWND window, HDC dc)
 	::GetWindowTextW(window, caption.data(), length + 1);
 	HFONT font = reinterpret_cast<HFONT>(::SendMessageW(window, WM_GETFONT, 0, 0));
 	HGDIOBJ old = font ? ::SelectObject(dc, font) : NULL;
-	::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, ThemeManager::DisabledTextColor());
+	::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, foreground);
 	UINT flags = (style & BS_MULTILINE) ? DT_WORDBREAK : DT_SINGLELINE | DT_VCENTER;
 	flags |= right ? DT_RIGHT : DT_LEFT;
 	if(::SendMessageW(window, WM_QUERYUISTATE, 0, 0) & UISF_HIDEACCEL) flags |= DT_HIDEPREFIX;
 	::DrawTextW(dc, caption.data(), length, &text, flags);
+	if(focused && !(::SendMessageW(window,WM_QUERYUISTATE,0,0)&UISF_HIDEFOCUS)) { RECT focus=text; ::DrawFocusRect(dc,&focus); }
 	if(old) ::SelectObject(dc, old);
 	if(saved) ::RestoreDC(dc, saved);
+}
+
+void PaintPalettePushButton(HWND window, HDC dc)
+{
+	const int saved = ::SaveDC(dc); RECT rect = {}; ::GetClientRect(window, &rect);
+	const bool enabled = ::IsWindowEnabled(window) != FALSE;
+	const bool pressed = enabled && (::SendMessageW(window, BM_GETSTATE, 0, 0) & BST_PUSHED) != 0;
+	const bool hot = enabled && ::GetPropW(window, kPaletteButtonHotProperty) != NULL;
+	const bool focused = ::GetFocus() == window;
+	const ThemeColorRole fill = pressed ? THEME_COLOR_PRESSED : hot ? THEME_COLOR_HOVER : THEME_COLOR_CONTROL;
+	::FillRect(dc, &rect, ThemeManager::Brush(fill));
+	::FrameRect(dc, &rect, ThemeManager::Brush(focused ? THEME_COLOR_FOCUS : THEME_COLOR_BORDER));
+	RECT text = rect; const int inset = UiMetrics::ScaleForDpi(5, UiMetrics::DpiForWindow(window));
+	::InflateRect(&text, -inset, -1);
+	if(pressed) ::OffsetRect(&text, UiMetrics::ScaleForDpi(1, UiMetrics::DpiForWindow(window)), UiMetrics::ScaleForDpi(1, UiMetrics::DpiForWindow(window)));
+	const int length = ::GetWindowTextLengthW(window); std::vector<wchar_t> caption(static_cast<size_t>(length) + 1, 0);
+	::GetWindowTextW(window, caption.data(), length + 1);
+	HFONT font = reinterpret_cast<HFONT>(::SendMessageW(window, WM_GETFONT, 0, 0));
+	HGDIOBJ old = font ? ::SelectObject(dc, font) : NULL;
+	::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
+	const LONG_PTR style = ::GetWindowLongPtrW(window, GWL_STYLE);
+	UINT flags = DT_CENTER | ((style & BS_MULTILINE) ? DT_WORDBREAK : DT_SINGLELINE | DT_VCENTER);
+	if(::SendMessageW(window, WM_QUERYUISTATE, 0, 0) & UISF_HIDEACCEL) flags |= DT_HIDEPREFIX;
+	::DrawTextW(dc, caption.data(), length, &text, flags);
+	if(focused && !(::SendMessageW(window, WM_QUERYUISTATE, 0, 0) & UISF_HIDEFOCUS)) {
+		RECT focus = rect; ::InflateRect(&focus, -inset, -inset); ::DrawFocusRect(dc, &focus);
+	}
+	if(old) ::SelectObject(dc, old); if(saved) ::RestoreDC(dc, saved);
+}
+
+const wchar_t kPaletteComboHotProperty[] = L"FBE.PaletteComboHot";
+const wchar_t kPaletteSpinHotProperty[] = L"FBE.PaletteSpinHot";
+const wchar_t kPaletteSpinPressedProperty[] = L"FBE.PaletteSpinPressed";
+
+int PaletteSpinPart(HWND window,LPARAM point)
+{
+	RECT client={}; ::GetClientRect(window,&client); POINT pos={GET_X_LPARAM(point),GET_Y_LPARAM(point)};
+	if(!::PtInRect(&client,pos)) return 0;
+	return (::GetWindowLongPtrW(window,GWL_STYLE)&UDS_HORZ) ? (pos.x<(client.right-client.left)/2?1:2) : (pos.y<(client.bottom-client.top)/2?1:2);
+}
+
+void PaintPaletteSpin(HWND window,HDC dc)
+{
+	const int saved=::SaveDC(dc); RECT client={}; ::GetClientRect(window,&client);
+	const bool enabled=::IsWindowEnabled(window)!=FALSE, horizontal=(::GetWindowLongPtrW(window,GWL_STYLE)&UDS_HORZ)!=0;
+	const int hot=enabled?static_cast<int>(reinterpret_cast<INT_PTR>(::GetPropW(window,kPaletteSpinHotProperty))):0;
+	int pressed=enabled?static_cast<int>(reinterpret_cast<INT_PTR>(::GetPropW(window,kPaletteSpinPressedProperty))):0;
+	if(pressed && ::GetCapture()==window && hot!=pressed) pressed=0;
+	for(int part=1;part<=2;++part) {
+		RECT item=client;
+		if(horizontal) { const LONG mid=(client.left+client.right)/2; if(part==1) item.right=mid; else item.left=mid; }
+		else { const LONG mid=(client.top+client.bottom)/2; if(part==1) item.bottom=mid; else item.top=mid; }
+		::FillRect(dc,&item,ThemeManager::Brush(pressed==part?THEME_COLOR_PRESSED:hot==part?THEME_COLOR_HOVER:THEME_COLOR_CONTROL));
+		::FrameRect(dc,&item,ThemeManager::Brush(THEME_COLOR_BORDER));
+		const int cx=(item.left+item.right)/2,cy=(item.top+item.bottom)/2;
+		const int half=(std::max)(1,(std::min)(UiMetrics::ScaleForDpi(2,UiMetrics::DpiForWindow(window)),static_cast<int>((std::min)(item.right-item.left,item.bottom-item.top)/3)));
+		POINT arrow[3]={}; const int direction=part==1?-1:1;
+		if(horizontal) { arrow[0]={cx-direction*half,cy-half}; arrow[1]={cx-direction*half,cy+half}; arrow[2]={cx+direction*half,cy}; }
+		else { arrow[0]={cx-half,cy-direction*half}; arrow[1]={cx+half,cy-direction*half}; arrow[2]={cx,cy+direction*half}; }
+		HBRUSH brush=::CreateSolidBrush(enabled?ThemeManager::TextColor():ThemeManager::DisabledTextColor());
+		if(brush) { HGDIOBJ oldBrush=::SelectObject(dc,brush),oldPen=::SelectObject(dc,::GetStockObject(NULL_PEN)); ::Polygon(dc,arrow,_countof(arrow)); ::SelectObject(dc,oldPen); ::SelectObject(dc,oldBrush); ::DeleteObject(brush); }
+	}
+	if(saved) ::RestoreDC(dc,saved);
+}
+
+bool IsPlainDropDownList(HWND window)
+{
+	if(!IsClass(window, WC_COMBOBOXW) || IsClass(::GetParent(window), TOOLBARCLASSNAMEW)) return false;
+	const LONG_PTR style = ::GetWindowLongPtrW(window, GWL_STYLE);
+	if((style & 3) != CBS_DROPDOWNLIST) return false;
+	if(!(style & (CBS_OWNERDRAWFIXED | CBS_OWNERDRAWVARIABLE))) return true;
+	// These two owner-drawn selectors use plain strings in their closed field;
+	// only their popup rows need the page's custom group labels and availability.
+	const int id = ::GetDlgCtrlID(window);
+	return (style & CBS_HASSTRINGS) && (id == IDC_INTERFACE_THEME || id == IDC_INTERFACE_PALETTE);
+}
+
+bool HasPlainComboList(HWND window)
+{
+	if(!IsClass(window, WC_COMBOBOXW) || IsClass(::GetParent(window), TOOLBARCLASSNAMEW)) return false;
+	const LONG_PTR style = ::GetWindowLongPtrW(window, GWL_STYLE);
+	const LONG_PTR kind = style & 3;
+	return (kind == CBS_DROPDOWN || kind == CBS_DROPDOWNLIST) &&
+		!(style & (CBS_OWNERDRAWFIXED | CBS_OWNERDRAWVARIABLE));
+}
+
+void PaintPaletteDropDownList(HWND window, HDC dc)
+{
+	const int saved = ::SaveDC(dc); RECT client = {}; ::GetClientRect(window, &client);
+	const bool enabled = ::IsWindowEnabled(window) != FALSE, focused = ::GetFocus() == window;
+	const bool opened = enabled && ::SendMessageW(window, CB_GETDROPPEDSTATE, 0, 0) != FALSE;
+	const bool hot = enabled && ::GetPropW(window, kPaletteComboHotProperty) != NULL;
+	const ThemeColorRole fill = opened ? THEME_COLOR_PRESSED : hot ? THEME_COLOR_HOVER : THEME_COLOR_CONTROL;
+	::FillRect(dc, &client, ThemeManager::Brush(fill));
+	::FrameRect(dc, &client, ThemeManager::Brush(focused ? THEME_COLOR_FOCUS : THEME_COLOR_BORDER));
+	COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
+	if(::GetComboBoxInfo(window, &info)) {
+		RECT text = info.rcItem; ::InflateRect(&text, -UiMetrics::ScaleForDpi(3, UiMetrics::DpiForWindow(window)), 0);
+		const LRESULT selected = ::SendMessageW(window, CB_GETCURSEL, 0, 0);
+		const LRESULT length = selected == CB_ERR ? CB_ERR : ::SendMessageW(window, CB_GETLBTEXTLEN, selected, 0);
+		if(length >= 0 && length < 32768) {
+			std::vector<wchar_t> caption(static_cast<size_t>(length) + 1, 0);
+			if(::SendMessageW(window, CB_GETLBTEXT, selected, reinterpret_cast<LPARAM>(caption.data())) != CB_ERR) {
+				HFONT font = reinterpret_cast<HFONT>(::SendMessageW(window, WM_GETFONT, 0, 0));
+				HGDIOBJ old = font ? ::SelectObject(dc, font) : NULL;
+				::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
+				::DrawTextW(dc, caption.data(), static_cast<int>(length), &text, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX | DT_END_ELLIPSIS);
+				if(old) ::SelectObject(dc, old);
+			}
+		}
+		if(info.rcButton.right > info.rcButton.left && info.rcButton.bottom > info.rcButton.top) {
+			const int x = (info.rcButton.left + info.rcButton.right) / 2, y = (info.rcButton.top + info.rcButton.bottom) / 2;
+			const int half = (std::max)(2, UiMetrics::ScaleForDpi(3, UiMetrics::DpiForWindow(window)));
+			POINT arrow[] = {{x-half,y-half/2},{x+half,y-half/2},{x,y+half/2+1}};
+			HBRUSH brush = ::CreateSolidBrush(enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
+			if(brush) { HGDIOBJ oldBrush = ::SelectObject(dc, brush), oldPen = ::SelectObject(dc, ::GetStockObject(NULL_PEN));
+				::Polygon(dc, arrow, _countof(arrow)); ::SelectObject(dc, oldPen); ::SelectObject(dc, oldBrush); ::DeleteObject(brush); }
+		}
+		if(focused && !(::SendMessageW(window, WM_QUERYUISTATE, 0, 0) & UISF_HIDEFOCUS)) {
+			RECT focus = info.rcItem; ::InflateRect(&focus, -2, -2); ::DrawFocusRect(dc, &focus);
+		}
+	}
+	if(saved) ::RestoreDC(dc, saved);
+}
+
+void PaintPaletteComboList(HWND window, HWND combo, HDC dc)
+{
+	const int saved = ::SaveDC(dc); RECT client = {}; ::GetClientRect(window, &client);
+	::FillRect(dc, &client, ThemeManager::ControlBrush());
+	HFONT font = reinterpret_cast<HFONT>(::SendMessageW(combo, WM_GETFONT, 0, 0));
+	HGDIOBJ old = font ? ::SelectObject(dc, font) : NULL;
+	::SetBkMode(dc, TRANSPARENT);
+	const LRESULT count = ::SendMessageW(window, LB_GETCOUNT, 0, 0);
+	const LRESULT selected = ::SendMessageW(window, LB_GETCURSEL, 0, 0);
+	const LRESULT top = ::SendMessageW(window, LB_GETTOPINDEX, 0, 0);
+	for(LRESULT index = (std::max)(static_cast<LRESULT>(0), top); index < count; ++index) {
+		RECT item = {}; if(::SendMessageW(window, LB_GETITEMRECT, index, reinterpret_cast<LPARAM>(&item)) == LB_ERR || item.top >= client.bottom) break;
+		if(item.bottom <= client.top) continue;
+		const bool active = index == selected;
+		::FillRect(dc, &item, ThemeManager::Brush(active ? THEME_COLOR_SELECTION_BACKGROUND : THEME_COLOR_CONTROL));
+		const LRESULT length = ::SendMessageW(combo, CB_GETLBTEXTLEN, index, 0);
+		if(length < 0 || length >= 32768) continue;
+		std::vector<wchar_t> caption(static_cast<size_t>(length) + 1, 0);
+		if(::SendMessageW(combo, CB_GETLBTEXT, index, reinterpret_cast<LPARAM>(caption.data())) == CB_ERR) continue;
+		::SetTextColor(dc, active ? ThemeManager::SelectionTextColor() : ThemeManager::TextColor());
+		item.left += UiMetrics::ScaleForDpi(3, UiMetrics::DpiForWindow(combo));
+		::DrawTextW(dc, caption.data(), static_cast<int>(length), &item, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX | DT_END_ELLIPSIS);
+	}
+	if(old) ::SelectObject(dc, old); if(saved) ::RestoreDC(dc, saved);
+}
+
+void PaintPaletteComboButton(HWND window, HDC dc)
+{
+	COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
+	if(!dc || !::GetComboBoxInfo(window, &info) || info.rcButton.right <= info.rcButton.left || info.rcButton.bottom <= info.rcButton.top) return;
+	const bool enabled = ::IsWindowEnabled(window) != FALSE;
+	const bool opened = enabled && ::SendMessageW(window, CB_GETDROPPEDSTATE, 0, 0) != FALSE;
+	const bool hot = enabled && ::GetPropW(window, kPaletteComboHotProperty) != NULL;
+	::FillRect(dc, &info.rcButton, ThemeManager::Brush(opened ? THEME_COLOR_PRESSED : hot ? THEME_COLOR_HOVER : THEME_COLOR_CONTROL));
+	const int x = (info.rcButton.left + info.rcButton.right) / 2, y = (info.rcButton.top + info.rcButton.bottom) / 2;
+	const int half = (std::max)(2, UiMetrics::ScaleForDpi(3, UiMetrics::DpiForWindow(window)));
+	POINT arrow[] = {{x-half,y-half/2},{x+half,y-half/2},{x,y+half/2+1}};
+	HBRUSH brush = ::CreateSolidBrush(enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
+	if(brush) {
+		HGDIOBJ oldBrush = ::SelectObject(dc, brush), oldPen = ::SelectObject(dc, ::GetStockObject(NULL_PEN));
+		::Polygon(dc, arrow, _countof(arrow)); ::SelectObject(dc, oldPen); ::SelectObject(dc, oldBrush); ::DeleteObject(brush);
+	}
 }
 
 LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
@@ -669,6 +873,11 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 	if(message == WM_NCDESTROY)
 	{
 		if(IsHeader(window)) delete reinterpret_cast<HeaderThemeState*>(::RemovePropW(window, kHeaderThemeStateProperty));
+		::RemovePropW(window, kPaletteButtonHotProperty);
+		::RemovePropW(window, kPaletteComboHotProperty);
+		::RemovePropW(window, kPaletteComboOwnerProperty);
+		::RemovePropW(window, kPaletteSpinHotProperty);
+		::RemovePropW(window, kPaletteSpinPressedProperty);
 		::RemovePropW(window, kAppliedThemeGenerationProperty);
 		::RemoveWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId);
 		return ::DefSubclassProc(window, message, wParam, lParam);
@@ -678,7 +887,7 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 		return 1;
 	}
 	if(IsNativeFileDialogWindow(window)) return ::DefSubclassProc(window, message, wParam, lParam);
-	if(IsClass(window, L"Tree") && ThemeManager::IsDark() && !IsHighContrastEnabled() &&
+	if(IsClass(window, L"Tree") && ThemeManager::UsesPaletteSurface() &&
 		(message == WM_NCPAINT || message == WM_PAINT || message == WM_HSCROLL || message == WM_VSCROLL ||
 		 message == WM_NCMOUSEMOVE || message == WM_NCLBUTTONUP || (message == WM_MOUSEMOVE && ::GetCapture() == window))) {
 		const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
@@ -699,42 +908,100 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 		return 0;
 	}
 	if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);
-	if(ThemeManager::UsesPaletteSurface() && IsCheckBox(window) && !::IsWindowEnabled(window)) {
+	if(ThemeManager::UsesPaletteSurface() && IsClass(window,UPDOWN_CLASSW)) {
+		if(message==WM_MOUSEMOVE && ::IsWindowEnabled(window)) {
+			const int part=PaletteSpinPart(window,lParam), previous=static_cast<int>(reinterpret_cast<INT_PTR>(::GetPropW(window,kPaletteSpinHotProperty)));
+			if(part!=previous) { if(part) ::SetPropW(window,kPaletteSpinHotProperty,reinterpret_cast<HANDLE>(static_cast<INT_PTR>(part))); else ::RemovePropW(window,kPaletteSpinHotProperty); ::InvalidateRect(window,NULL,FALSE); }
+			TRACKMOUSEEVENT tracking={sizeof(tracking),TME_LEAVE,window,0}; ::TrackMouseEvent(&tracking);
+		} else if(message==WM_MOUSELEAVE) { ::RemovePropW(window,kPaletteSpinHotProperty); ::InvalidateRect(window,NULL,FALSE); }
+		if(message==WM_ERASEBKGND) return 1;
+		if(message==WM_PAINT) { PAINTSTRUCT paint={}; HDC dc=::BeginPaint(window,&paint); if(dc) PaintPaletteSpin(window,dc); ::EndPaint(window,&paint); return 0; }
+		if((message==WM_PRINTCLIENT || message==WM_PRINT) && wParam) { PaintPaletteSpin(window,reinterpret_cast<HDC>(wParam)); return 0; }
+		if(message==WM_LBUTTONDOWN) { const int part=PaletteSpinPart(window,lParam); if(part) ::SetPropW(window,kPaletteSpinPressedProperty,reinterpret_cast<HANDLE>(static_cast<INT_PTR>(part))); }
+		if(message==WM_LBUTTONUP || message==WM_CANCELMODE || message==WM_CAPTURECHANGED || message==WM_ENABLE) ::RemovePropW(window,kPaletteSpinPressedProperty);
+		if(message==WM_LBUTTONDOWN || message==WM_LBUTTONUP || message==WM_CANCELMODE || message==WM_CAPTURECHANGED || message==WM_ENABLE) {
+			const LRESULT result=::DefSubclassProc(window,message,wParam,lParam); ::InvalidateRect(window,NULL,FALSE); return result;
+		}
+	}
+	if(ThemeManager::UsesPaletteSurface() && IsPalettePushButton(window)) {
+		if(message == WM_MOUSEMOVE && ::IsWindowEnabled(window) && !::GetPropW(window, kPaletteButtonHotProperty)) {
+			::SetPropW(window, kPaletteButtonHotProperty, reinterpret_cast<HANDLE>(1));
+			TRACKMOUSEEVENT tracking = { sizeof(tracking), TME_LEAVE, window, 0 }; ::TrackMouseEvent(&tracking);
+			::InvalidateRect(window, NULL, FALSE);
+		} else if(message == WM_MOUSELEAVE) {
+			::RemovePropW(window, kPaletteButtonHotProperty); ::InvalidateRect(window, NULL, FALSE);
+		}
 		if(message == WM_ERASEBKGND) return 1;
 		if(message == WM_PAINT) {
 			PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(window, &paint);
-			if(dc) PaintDisabledPaletteCheckbox(window, dc);
+			if(dc) PaintPalettePushButton(window, dc); ::EndPaint(window, &paint); return 0;
+		}
+		if((message == WM_PRINTCLIENT || message == WM_PRINT) && wParam) {
+			PaintPalettePushButton(window, reinterpret_cast<HDC>(wParam)); return 0;
+		}
+		if(message == BM_SETSTATE || message == WM_ENABLE || message == WM_SETFOCUS || message == WM_KILLFOCUS || message == WM_UPDATEUISTATE) {
+			const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
+			::InvalidateRect(window, NULL, FALSE); return result;
+		}
+	}
+	HWND paletteCombo = reinterpret_cast<HWND>(::GetPropW(window, kPaletteComboOwnerProperty));
+	if(ThemeManager::UsesPaletteSurface() && paletteCombo && ::IsWindow(paletteCombo) && HasPlainComboList(paletteCombo)) {
+		if(message == WM_ERASEBKGND) return 1;
+		if(message == WM_PAINT) { PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(window, &paint);
+			if(dc) PaintPaletteComboList(window, paletteCombo, dc); ::EndPaint(window, &paint); return 0; }
+		if((message == WM_PRINTCLIENT || message == WM_PRINT) && wParam) { PaintPaletteComboList(window, paletteCombo, reinterpret_cast<HDC>(wParam)); return 0; }
+	}
+	if(ThemeManager::UsesPaletteSurface() && IsPlainDropDownList(window)) {
+		if(message == WM_MOUSEMOVE && ::IsWindowEnabled(window) && !::GetPropW(window, kPaletteComboHotProperty)) {
+			::SetPropW(window, kPaletteComboHotProperty, reinterpret_cast<HANDLE>(1));
+			TRACKMOUSEEVENT tracking = { sizeof(tracking), TME_LEAVE, window, 0 }; ::TrackMouseEvent(&tracking); ::InvalidateRect(window, NULL, FALSE);
+		} else if(message == WM_MOUSELEAVE) { ::RemovePropW(window, kPaletteComboHotProperty); ::InvalidateRect(window, NULL, FALSE); }
+		if(message == WM_ERASEBKGND) return 1;
+		if(message == WM_PAINT) { PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(window, &paint);
+			if(dc) PaintPaletteDropDownList(window, dc); ::EndPaint(window, &paint); return 0; }
+		if((message == WM_PRINTCLIENT || message == WM_PRINT) && wParam) { PaintPaletteDropDownList(window, reinterpret_cast<HDC>(wParam)); return 0; }
+		if(message == CB_SETCURSEL || message == CB_SHOWDROPDOWN || message == WM_ENABLE || message == WM_SETFOCUS || message == WM_KILLFOCUS || message == WM_UPDATEUISTATE ||
+			message == WM_KEYDOWN || message == WM_CHAR || message == WM_MOUSEWHEEL || message == WM_LBUTTONUP) {
+			const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam); ::InvalidateRect(window, NULL, FALSE); return result;
+		}
+	}
+	if(ThemeManager::UsesPaletteSurface() && (IsCheckBox(window) || IsRadioButton(window)) &&
+		!(::GetWindowLongPtrW(window,GWL_STYLE)&(BS_PUSHLIKE|BS_BITMAP|BS_ICON))) {
+		if(message==WM_MOUSEMOVE && ::IsWindowEnabled(window) && !::GetPropW(window,kPaletteButtonHotProperty)) {
+			::SetPropW(window,kPaletteButtonHotProperty,reinterpret_cast<HANDLE>(1));
+			TRACKMOUSEEVENT tracking={sizeof(tracking),TME_LEAVE,window,0}; ::TrackMouseEvent(&tracking); ::InvalidateRect(window,NULL,FALSE);
+		} else if(message==WM_MOUSELEAVE) { ::RemovePropW(window,kPaletteButtonHotProperty); ::InvalidateRect(window,NULL,FALSE); }
+		if(message == WM_ERASEBKGND) return 1;
+		if(message == WM_PAINT) {
+			PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(window, &paint);
+			if(dc) PaintPaletteToggle(window, dc);
 			::EndPaint(window, &paint); return 0;
 		}
 		if((message == WM_PRINTCLIENT || message == WM_PRINT) && wParam) {
-			PaintDisabledPaletteCheckbox(window, reinterpret_cast<HDC>(wParam)); return 0;
+			PaintPaletteToggle(window, reinterpret_cast<HDC>(wParam)); return 0;
+		}
+		if(message==BM_SETCHECK || message==BM_SETSTATE || message==WM_ENABLE || message==WM_SETFOCUS || message==WM_KILLFOCUS || message==WM_UPDATEUISTATE) {
+			const LRESULT result=::DefSubclassProc(window,message,wParam,lParam); ::InvalidateRect(window,NULL,FALSE); return result;
 		}
 	}
-	if(message == WM_PAINT && ThemeManager::UsesPaletteSurface() && IsComboBox(window) &&
-		!IsClass(::GetParent(window), TOOLBARCLASSNAMEW)) {
-		const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
-		COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
-		if(::GetComboBoxInfo(window, &info)) {
-			HDC dc = ::GetDC(window);
-			if(dc) {
-				::FillRect(dc, &info.rcButton, ThemeManager::WindowBrush());
-				const int x = (info.rcButton.left + info.rcButton.right) / 2, y = (info.rcButton.top + info.rcButton.bottom) / 2;
-				const int half = max(2, UiMetrics::ScaleForDpi(3, UiMetrics::DpiForWindow(window)));
-				POINT arrow[] = { { x - half, y - half / 2 }, { x + half, y - half / 2 }, { x, y + half / 2 + 1 } };
-				HBRUSH brush = ::CreateSolidBrush(::IsWindowEnabled(window) ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
-				if(brush) {
-					HGDIOBJ oldBrush = ::SelectObject(dc, brush), oldPen = ::SelectObject(dc, ::GetStockObject(NULL_PEN));
-					::Polygon(dc, arrow, _countof(arrow));
-					::SelectObject(dc, oldPen); ::SelectObject(dc, oldBrush); ::DeleteObject(brush);
-				}
-				::ReleaseDC(window, dc);
-			}
+	if(ThemeManager::UsesPaletteSurface() && IsComboBox(window) && !IsClass(::GetParent(window), TOOLBARCLASSNAMEW)) {
+		if(message == WM_MOUSEMOVE && ::IsWindowEnabled(window) && !::GetPropW(window, kPaletteComboHotProperty)) {
+			::SetPropW(window, kPaletteComboHotProperty, reinterpret_cast<HANDLE>(1));
+			TRACKMOUSEEVENT tracking = { sizeof(tracking), TME_LEAVE, window, 0 }; ::TrackMouseEvent(&tracking); ::InvalidateRect(window, NULL, FALSE);
+		} else if(message == WM_MOUSELEAVE) { ::RemovePropW(window, kPaletteComboHotProperty); ::InvalidateRect(window, NULL, FALSE); }
+		if(message == WM_PAINT || ((message == WM_PRINTCLIENT || message == WM_PRINT) && wParam)) {
+			const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
+			HDC dc = message == WM_PAINT ? ::GetDC(window) : reinterpret_cast<HDC>(wParam);
+			if(dc) { PaintPaletteComboButton(window, dc); if(message == WM_PAINT) ::ReleaseDC(window, dc); }
+			return result;
 		}
-		return result;
+		if(message == CB_SHOWDROPDOWN || message == WM_ENABLE) {
+			const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam); ::InvalidateRect(window, NULL, FALSE); return result;
+		}
 	}
     // Disabled STATIC uses COLOR_GRAYTEXT instead of the parent's HDC text
     // colour. Paint only text labels, with the semantic disabled foreground.
-    if(ThemeManager::IsDark()&&IsDisabledTextLabel(window)) {
+    if(ThemeManager::UsesPaletteSurface()&&IsDisabledTextLabel(window)) {
         if(message==WM_ERASEBKGND)return 1;
         if(message==WM_PAINT){PAINTSTRUCT paint={};HDC dc=::BeginPaint(window,&paint);PaintDisabledTextLabel(window,dc);::EndPaint(window,&paint);return 0;}
         if((message==WM_PRINTCLIENT||message==WM_PRINT)&&wParam){PaintDisabledTextLabel(window,reinterpret_cast<HDC>(wParam));return 0;}
@@ -763,7 +1030,7 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 		HWND combo = reinterpret_cast<HWND>(lParam);
 		if(IsComboBox(combo)) ApplyComboDropListTheme(combo);
 	}
-	if(ThemeManager::IsDark() && IsGroupBox(window))
+	if(ThemeManager::UsesPaletteSurface() && IsGroupBox(window))
 	{
 		if(message == WM_ERASEBKGND) return 1;
 		if(message == WM_PAINT) { PaintDarkGroupBox(window); return 0; }
@@ -1813,6 +2080,191 @@ public:
 	}
 };
 
+// Render a scoped snapshot without mutating the caller's menu or its bitmaps.
+class ScopedPaletteMenuRenderer
+{
+	struct Item { std::wstring text; HBITMAP bitmap; bool separator; bool submenu; };
+	std::vector<std::unique_ptr<Item>> m_items;
+	std::set<const Item*> m_itemSet;
+	HWND m_owner;
+	UINT m_dpi;
+	PaletteMenuSnapshot* m_snapshot = NULL;
+	HHOOK m_measureHook = NULL;
+	bool m_installed = false;
+	bool m_diagnostics = false;
+	static thread_local ScopedPaletteMenuRenderer* s_active;
+	static constexpr UINT_PTR subclassId = 0x504d5250;
+	static constexpr UINT_PTR popupSubclassId = 0x504d5251;
+	static void PaintPopupBorder(HWND window,HDC dc) {
+		RECT bounds={}, client={}; POINT origin={}; if(!dc || !::GetWindowRect(window,&bounds) || !::GetClientRect(window,&client) || !::ClientToScreen(window,&origin)) return;
+		RECT frame={0,0,bounds.right-bounds.left,bounds.bottom-bounds.top};
+		const int saved=::SaveDC(dc); if(!saved) return;
+		::OffsetRect(&client,origin.x-bounds.left,origin.y-bounds.top);
+		::ExcludeClipRect(dc,client.left,client.top,client.right,client.bottom);
+		::FillRect(dc,&frame,ThemeManager::Brush(THEME_COLOR_BORDER)); ::RestoreDC(dc,saved);
+	}
+	static LRESULT CALLBACK PopupProc(HWND window,UINT message,WPARAM wParam,LPARAM lParam,UINT_PTR,DWORD_PTR) {
+		if(message==WM_NCDESTROY) {
+			::RemoveWindowSubclass(window,PopupProc,popupSubclassId);
+			return ::DefSubclassProc(window,message,wParam,lParam);
+		}
+		const LRESULT result=::DefSubclassProc(window,message,wParam,lParam);
+		if(message==WM_NCPAINT || message==WM_NCACTIVATE) {
+			HDC dc=::GetWindowDC(window); if(dc) { PaintPopupBorder(window,dc); ::ReleaseDC(window,dc); }
+		} else if(message==WM_PRINT && wParam && (lParam&PRF_NONCLIENT)) PaintPopupBorder(window,reinterpret_cast<HDC>(wParam));
+		return result;
+	}
+	static LRESULT CALLBACK MeasureHook(int code, WPARAM wParam, LPARAM lParam) {
+		if(code >= 0 && s_active && lParam) {
+			const auto* call = reinterpret_cast<const CWPSTRUCT*>(lParam);
+			if(call->message==WM_CREATE && IsClass(call->hwnd,L"#32768"))
+				::SetWindowSubclass(call->hwnd,PopupProc,popupSubclassId,0);
+			if(s_active->m_diagnostics && call->message == WM_MEASUREITEM) {
+				::SetPropW(s_active->m_owner,L"FBE.Test.MenuMeasureTarget",call->hwnd);
+				const ULONG_PTR count=reinterpret_cast<ULONG_PTR>(::GetPropW(s_active->m_owner,L"FBE.Test.MenuMeasureThreadCount"));
+				::SetPropW(s_active->m_owner,L"FBE.Test.MenuMeasureThreadCount",reinterpret_cast<HANDLE>(count+1));
+			}
+		}
+		return ::CallNextHookEx(NULL,code,wParam,lParam);
+	}
+	int Scale(int pixels) const { return UiMetrics::ScaleForDpi(pixels, m_dpi); }
+	static bool Transform(MENUITEMINFOW& info, const wchar_t* text, void* context) {
+		auto* self=static_cast<ScopedPaletteMenuRenderer*>(context);
+		auto item=std::make_unique<Item>(); item->text=text; item->bitmap=info.hbmpItem; item->separator=(info.fType&MFT_SEPARATOR)!=0; item->submenu=info.hSubMenu!=NULL;
+		Item* pointer=item.get(); self->m_items.push_back(std::move(item)); self->m_itemSet.insert(pointer);
+		info.fType=MFT_OWNERDRAW; info.dwItemData=reinterpret_cast<ULONG_PTR>(pointer);
+		// The renderer owns the icon drawing; do not leave a second native
+		// bitmap on the owner-drawn item.
+		info.hbmpItem=NULL;
+		return true;
+	}
+	bool Owns(const Item* item) const { return m_itemSet.find(item)!=m_itemSet.end(); }
+	static LRESULT CALLBACK OwnerProc(HWND window,UINT message,WPARAM wParam,LPARAM lParam,UINT_PTR,DWORD_PTR data) {
+		auto* self=reinterpret_cast<ScopedPaletteMenuRenderer*>(data);
+		if(message==WM_INITMENUPOPUP && self->m_snapshot) {
+			HMENU copy=reinterpret_cast<HMENU>(wParam), source=self->m_snapshot->Source(copy);
+			if(source && ::IsMenu(source)) {
+				const LRESULT result=::DefSubclassProc(window,message,reinterpret_cast<WPARAM>(source),lParam);
+				if(!::IsMenu(source) || ::GetMenuItemCount(source)!=::GetMenuItemCount(copy)) { ::EndMenu(); return result; }
+				for(int index=0; index<::GetMenuItemCount(copy); ++index) {
+					MENUITEMINFOW original={}, cloned={}; original.cbSize=sizeof(original); cloned.cbSize=sizeof(cloned);
+					original.fMask=MIIM_ID|MIIM_STATE|MIIM_SUBMENU; cloned.fMask=MIIM_ID|MIIM_SUBMENU;
+					if(!::GetMenuItemInfoW(source,index,TRUE,&original) || !::GetMenuItemInfoW(copy,index,TRUE,&cloned) ||
+						original.wID!=cloned.wID || (cloned.hSubMenu && self->m_snapshot->Source(cloned.hSubMenu)!=original.hSubMenu) ||
+						(!cloned.hSubMenu && original.hSubMenu)) { ::EndMenu(); return result; }
+					cloned.fMask=MIIM_STATE; cloned.fState=original.fState; ::SetMenuItemInfoW(copy,index,TRUE,&cloned);
+				}
+				return result;
+			}
+		}
+		if(message==WM_UNINITMENUPOPUP && self->m_snapshot) {
+			HMENU source=self->m_snapshot->Source(reinterpret_cast<HMENU>(wParam));
+			if(source && ::IsMenu(source)) return ::DefSubclassProc(window,message,reinterpret_cast<WPARAM>(source),lParam);
+		}
+		if(message==WM_MENUSELECT && lParam && self->m_snapshot) {
+			HMENU source=self->m_snapshot->Source(reinterpret_cast<HMENU>(lParam));
+			if(source && ::IsMenu(source)) return ::DefSubclassProc(window,message,wParam,reinterpret_cast<LPARAM>(source));
+		}
+		// Script refresh may rebuild command IDs and delete source menus while
+		// this independent snapshot is open. Close it before dispatching the
+		// refresh, so a stale item can never execute a newly assigned command.
+		if(message==WM_COMMAND && LOWORD(wParam)==ID_TOOLS_REFRESH_SCRIPTS) {
+			::EndMenu();
+			return ::DefSubclassProc(window,message,wParam,lParam);
+		}
+		if(message==WM_MENUCHAR && lParam && self->m_snapshot && self->m_snapshot->Source(reinterpret_cast<HMENU>(lParam))) {
+			HMENU menu=reinterpret_cast<HMENU>(lParam); const wchar_t key=static_cast<wchar_t>(LOWORD(wParam));
+			int first=-1, next=-1, matches=0, current=-1;
+			for(int index=0; index<::GetMenuItemCount(menu); ++index) {
+				MENUITEMINFOW info={}; info.cbSize=sizeof(info); info.fMask=MIIM_DATA|MIIM_STATE;
+				if(!::GetMenuItemInfoW(menu,index,TRUE,&info)) continue;
+				auto* item=reinterpret_cast<Item*>(info.dwItemData); if(!self->Owns(item)) continue;
+				if(info.fState&MFS_HILITE) current=index;
+				if(item->separator || (info.fState&(MFS_DISABLED|MFS_GRAYED))) continue;
+				for(size_t pos=0; pos+1<item->text.size() && item->text[pos]!=L'\t'; ++pos) {
+					if(item->text[pos]!=L'&') continue;
+					if(item->text[pos+1]==L'&') { ++pos; continue; }
+					if(::CompareStringOrdinal(&item->text[pos+1],1,&key,1,TRUE)==CSTR_EQUAL) {
+						if(first<0) first=index; if(current>=0 && index>current && next<0) next=index; ++matches;
+					}
+					break;
+				}
+			}
+			if(matches==1) return MAKELRESULT(first,MNC_EXECUTE);
+			if(matches>1) return MAKELRESULT(next>=0?next:first,MNC_SELECT);
+			return MAKELRESULT(0,MNC_IGNORE);
+		}
+		if(message==WM_MEASUREITEM) {
+			if(self->m_diagnostics) {
+				const ULONG_PTR count=reinterpret_cast<ULONG_PTR>(::GetPropW(window,L"FBE.Test.MenuMeasureMessages"));
+				::SetPropW(window,L"FBE.Test.MenuMeasureMessages",reinterpret_cast<HANDLE>(count+1));
+			}
+			auto* measure=reinterpret_cast<MEASUREITEMSTRUCT*>(lParam); auto* item=reinterpret_cast<Item*>(measure->itemData);
+			if(measure->CtlType==ODT_MENU && self->Owns(item)) {
+				if(self->m_diagnostics) {
+					const ULONG_PTR matched=reinterpret_cast<ULONG_PTR>(::GetPropW(window,L"FBE.Test.MenuMeasureMatched"));
+					::SetPropW(window,L"FBE.Test.MenuMeasureMatched",reinterpret_cast<HANDLE>(matched+1));
+				}
+				HDC dc=::GetDC(window); SIZE labelSize={}, shortcutSize={};
+				if(dc) {
+					const size_t tab=item->text.find(L'\t');
+					const int labelLength=static_cast<int>(tab==std::wstring::npos?item->text.size():tab);
+					::GetTextExtentPoint32W(dc,item->text.c_str(),labelLength,&labelSize);
+					if(tab!=std::wstring::npos) ::GetTextExtentPoint32W(dc,item->text.c_str()+tab+1,static_cast<int>(item->text.size()-tab-1),&shortcutSize);
+					::ReleaseDC(window,dc);
+				}
+				measure->itemWidth=static_cast<UINT>(labelSize.cx+shortcutSize.cx+self->Scale(80)); measure->itemHeight=static_cast<UINT>(self->Scale(item->separator?8:24)); return TRUE;
+			}
+		}
+		if(message==WM_DRAWITEM) {
+			auto* draw=reinterpret_cast<DRAWITEMSTRUCT*>(lParam); auto* item=reinterpret_cast<Item*>(draw->itemData);
+			if(draw->CtlType==ODT_MENU && self->Owns(item)) {
+				const bool selected=(draw->itemState&ODS_SELECTED)!=0, disabled=(draw->itemState&(ODS_DISABLED|ODS_GRAYED))!=0;
+				::FillRect(draw->hDC,&draw->rcItem,ThemeManager::Brush(selected?THEME_COLOR_SELECTION_BACKGROUND:THEME_COLOR_CONTROL));
+				RECT text=draw->rcItem; text.left+=self->Scale(30); text.right-=self->Scale(18);
+				if(item->separator) { RECT line=text; line.top=(line.top+line.bottom)/2; line.bottom=line.top+1; ::FillRect(draw->hDC,&line,ThemeManager::Brush(THEME_COLOR_SEPARATOR)); return TRUE; }
+				::SetBkMode(draw->hDC,TRANSPARENT); ::SetTextColor(draw->hDC,disabled?ThemeManager::DisabledTextColor():selected?ThemeManager::SelectionTextColor():ThemeManager::TextColor());
+				const size_t tab=item->text.find(L'\t'); const std::wstring label=item->text.substr(0,tab);
+				::DrawTextW(draw->hDC,label.c_str(),static_cast<int>(label.size()),&text,DT_SINGLELINE|DT_VCENTER|DT_LEFT);
+				if(tab!=std::wstring::npos) { const std::wstring shortcut=item->text.substr(tab+1); ::DrawTextW(draw->hDC,shortcut.c_str(),static_cast<int>(shortcut.size()),&text,DT_SINGLELINE|DT_VCENTER|DT_RIGHT|DT_NOPREFIX); }
+				const COLORREF foreground=disabled?ThemeManager::DisabledTextColor():selected?ThemeManager::SelectionTextColor():ThemeManager::TextColor();
+				if(item->submenu) {
+					const int x=draw->rcItem.right-self->Scale(9), y=(draw->rcItem.top+draw->rcItem.bottom)/2, half=(std::max)(2,self->Scale(3));
+					POINT arrow[]={{x-half,y-half},{x-half,y+half},{x+half,y}}; HBRUSH brush=::CreateSolidBrush(foreground);
+					if(brush) { HGDIOBJ oldBrush=::SelectObject(draw->hDC,brush), oldPen=::SelectObject(draw->hDC,::GetStockObject(NULL_PEN)); ::Polygon(draw->hDC,arrow,_countof(arrow)); ::SelectObject(draw->hDC,oldPen); ::SelectObject(draw->hDC,oldBrush); ::DeleteObject(brush); }
+				}
+				if((draw->itemState&ODS_CHECKED) && !item->bitmap) {
+					HPEN pen=::CreatePen(PS_SOLID,(std::max)(1,self->Scale(1)),foreground);
+					if(pen) { HGDIOBJ old=::SelectObject(draw->hDC,pen); const int x=draw->rcItem.left+self->Scale(7), y=(draw->rcItem.top+draw->rcItem.bottom)/2;
+						::MoveToEx(draw->hDC,x,y,NULL); ::LineTo(draw->hDC,x+self->Scale(3),y+self->Scale(3)); ::LineTo(draw->hDC,x+self->Scale(9),y-self->Scale(4)); ::SelectObject(draw->hDC,old); ::DeleteObject(pen); }
+				}
+				BITMAP bitmap={}; if(item->bitmap && ::GetObjectW(item->bitmap,sizeof(bitmap),&bitmap)==sizeof(bitmap) && bitmap.bmWidth>0 && bitmap.bmHeight>0) {
+					HDC source=::CreateCompatibleDC(draw->hDC); if(source) { HGDIOBJ old=::SelectObject(source,item->bitmap); BLENDFUNCTION blend={AC_SRC_OVER,0,255,AC_SRC_ALPHA};
+						::AlphaBlend(draw->hDC,draw->rcItem.left+self->Scale(5),draw->rcItem.top+(draw->rcItem.bottom-draw->rcItem.top-self->Scale(16))/2,self->Scale(16),self->Scale(16),source,0,0,bitmap.bmWidth,bitmap.bmHeight,blend);
+						::SelectObject(source,old); ::DeleteDC(source); }
+				}
+				return TRUE;
+			}
+		}
+		return ::DefSubclassProc(window,message,wParam,lParam);
+	}
+public:
+	ScopedPaletteMenuRenderer(HWND owner,UINT dpi):m_owner(owner),m_dpi(dpi),m_diagnostics(RuntimeTests::IsScenario(L"ui-defects-runtime") || RuntimeTests::IsScenario(L"interface-high-contrast-runtime")) {
+		if(m_diagnostics) { ::RemovePropW(owner,L"FBE.Test.MenuMeasureMessages"); ::RemovePropW(owner,L"FBE.Test.MenuMeasureMatched"); }
+	}
+	bool Install() {
+		if(s_active || !::SetWindowSubclass(m_owner,OwnerProc,subclassId,reinterpret_cast<DWORD_PTR>(this))) return false;
+		m_installed=true;
+		s_active=this; m_measureHook=::SetWindowsHookExW(WH_CALLWNDPROC,MeasureHook,NULL,::GetCurrentThreadId());
+		if(!m_measureHook) return false;
+		if(m_diagnostics) ::SetPropW(m_owner,L"FBE.Test.MenuRenderActive",reinterpret_cast<HANDLE>(1));
+		return true;
+	}
+	bool CreateSnapshot(PaletteMenuSnapshot& snapshot, HMENU menu) { m_snapshot=&snapshot; return snapshot.Create(menu,Transform,this); }
+	~ScopedPaletteMenuRenderer() { if(!m_installed) return; if(m_measureHook) ::UnhookWindowsHookEx(m_measureHook); if(s_active==this) s_active=NULL; ::RemoveWindowSubclass(m_owner,OwnerProc,subclassId); if(m_diagnostics) { ::RemovePropW(m_owner,L"FBE.Test.MenuMeasureMessages"); ::RemovePropW(m_owner,L"FBE.Test.MenuMeasureMatched"); ::RemovePropW(m_owner,L"FBE.Test.MenuMeasureTarget"); ::RemovePropW(m_owner,L"FBE.Test.MenuMeasureThreadCount"); ::RemovePropW(m_owner,L"FBE.Test.MenuRenderActive"); } }
+};
+thread_local ScopedPaletteMenuRenderer* ScopedPaletteMenuRenderer::s_active=NULL;
+
 UINT TrackPopupMenu(HMENU menu, UINT flags, int x, int y, HWND owner)
 {
 	if(menu == NULL || !::IsWindow(owner)) return 0;
@@ -1820,6 +2272,24 @@ UINT TrackPopupMenu(HMENU menu, UINT flags, int x, int y, HWND owner)
 	bitmaps.Apply(menu, UiMetrics::DpiForWindow(owner));
 	ScopedPaletteMenuBackground background;
 	if(UsesPaletteSurface()) background.Apply(menu);
+	if(UsesPaletteSurface()) {
+		ScopedPaletteMenuRenderer renderer(owner,UiMetrics::DpiForWindow(owner));
+		PaletteMenuSnapshot snapshot;
+		if(renderer.Install() && renderer.CreateSnapshot(snapshot,menu)) {
+			const bool diagnostics=RuntimeTests::IsScenario(L"ui-defects-runtime");
+			if(diagnostics) {
+				::SetPropW(owner,L"FBE.Test.MenuSnapshotRoot",snapshot.Root());
+				MENUITEMINFOW debug={}; debug.cbSize=sizeof(debug); debug.fMask=MIIM_FTYPE|MIIM_DATA;
+				if(::GetMenuItemInfoW(snapshot.Root(),0,TRUE,&debug)) {
+					::SetPropW(owner,L"FBE.Test.MenuSnapshotType",reinterpret_cast<HANDLE>(static_cast<ULONG_PTR>(debug.fType)));
+					::SetPropW(owner,L"FBE.Test.MenuSnapshotData",reinterpret_cast<HANDLE>(debug.dwItemData));
+				}
+			}
+			const UINT result=::TrackPopupMenuEx(snapshot.Root(),flags|TPM_RETURNCMD,x,y,owner,NULL);
+			if(diagnostics) { ::RemovePropW(owner,L"FBE.Test.MenuSnapshotType"); ::RemovePropW(owner,L"FBE.Test.MenuSnapshotData"); ::RemovePropW(owner,L"FBE.Test.MenuSnapshotRoot"); }
+			return result;
+		}
+	}
 	return ::TrackPopupMenuEx(menu, flags | TPM_RETURNCMD, x, y, owner, NULL);
 }
 

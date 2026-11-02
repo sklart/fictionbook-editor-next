@@ -932,15 +932,38 @@ void CMainFrame::RunPortableStateTestScenario()
         const HWND tree = m_document_tree.m_tree.m_tree;
         const bool treeSystem = ::IsWindow(tree) && static_cast<COLORREF>(::SendMessageW(tree, TVM_GETBKCOLOR, 0, 0)) == ::GetSysColor(COLOR_WINDOW) &&
             static_cast<COLORREF>(::SendMessageW(tree, TVM_GETTEXTCOLOR, 0, 0)) == ::GetSysColor(COLOR_WINDOWTEXT);
+        struct ContrastMenuProbe {
+            HWND owner; HMENU menu; bool observed=false, native=false;
+            static void CALLBACK Tick(HWND,UINT,UINT_PTR timer,DWORD) {
+                ::KillTimer(NULL,timer);
+                auto* self=reinterpret_cast<ContrastMenuProbe*>(::GetPropW(PluginOptionsProbe::dialog,L"FBE.HighContrastMenuProbe"));
+                if(self) {
+                    MENUITEMINFOW info={}; info.cbSize=sizeof(info); info.fMask=MIIM_FTYPE;
+                    self->observed=true; self->native=::GetMenuItemInfoW(self->menu,0,TRUE,&info) && !(info.fType&MFT_OWNERDRAW) &&
+                        !::GetPropW(self->owner,L"FBE.Test.MenuRenderActive");
+                }
+                ::EndMenu();
+            }
+        } menuProbe={m_hWnd,::CreatePopupMenu()};
+        bool nativeMenu=false;
+        if(menuProbe.menu && ::AppendMenuW(menuProbe.menu,MF_STRING,0xdfe1,L"High contrast menu")) {
+            PluginOptionsProbe::dialog=m_hWnd; ::SetPropW(m_hWnd,L"FBE.HighContrastMenuProbe",&menuProbe);
+            const UINT_PTR timer=::SetTimer(NULL,0,100,ContrastMenuProbe::Tick);
+            RECT bounds={}; ::GetWindowRect(m_hWnd,&bounds);
+            if(timer) ThemeManager::TrackPopupMenu(menuProbe.menu,TPM_NONOTIFY,bounds.left+40,bounds.top+40,m_hWnd);
+            ::KillTimer(NULL,timer); ::RemovePropW(m_hWnd,L"FBE.HighContrastMenuProbe");
+            nativeMenu=timer && menuProbe.observed && menuProbe.native;
+        }
+        if(menuProbe.menu) ::DestroyMenu(menuProbe.menu);
         const bool retained = ThemeManager::IsCustomPaletteActive();
         ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_FORCE_HIGH_CONTRAST", L"0");
         const bool exited = ThemeManager::RefreshSystemTheme() && !ThemeManager::IsHighContrast() && ThemeManager::UsesPaletteSurface();
         const bool restored = ThemeManager::IsCustomPaletteActive() && ThemeManager::WindowColor() == palette.colors[THEME_COLOR_WINDOW] &&
             ThemeManager::ControlColor() == palette.colors[THEME_COLOR_CONTROL] && ThemeManager::TextColor() == palette.colors[THEME_COLOR_TEXT];
         ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_FORCE_HIGH_CONTRAST", NULL); ThemeManager::RefreshSystemTheme();
-        const bool passed = customBefore && entered && systemColors && treeSystem && retained && exited && restored;
-        CStringA report; report.Format("custom-before=%d\nentered=%d\nsystem-colors=%d\ntree-system=%d\nretained=%d\nexited=%d\nrestored=%d\nresult=%s\n",
-            customBefore, entered, systemColors, treeSystem, retained, exited, restored, passed ? "pass" : "fail");
+        const bool passed = customBefore && entered && systemColors && treeSystem && nativeMenu && retained && exited && restored;
+        CStringA report; report.Format("custom-before=%d\nentered=%d\nsystem-colors=%d\ntree-system=%d\nnative-menu=%d\nretained=%d\nexited=%d\nrestored=%d\nresult=%s\n",
+            customBefore, entered, systemColors, treeSystem, nativeMenu, retained, exited, restored, passed ? "pass" : "fail");
         WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
         PostMessage(WM_CLOSE); return;
     }

@@ -80,6 +80,17 @@ __declspec(noinline) LRESULT CMainFrame::RunSettingsDialogRuntime(CAtlFile& outp
 		report.Format("followup=%d\nsettings_dialog=%d\nlayout=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\nyo_usage=%d\napplied=%d\ncaret_persisted=%d\ncaret_applied=%d\ncaret_initial_system=%d\nsource_unchanged=%d\n", followupPassed, !verifyOnly, layoutPassed, persisted, backupPersisted, nbspPersisted, wrapPersisted, yoPersisted, applied, caretPersisted, caretApplied, initialSystem, sourceUnchanged);
         const UINT_PTR groupPaint = reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd, L"FBE_SETTINGS_GROUP_PAINT_PASSED"));
         report.AppendFormat("group-paint=%Iu\n", groupPaint);
+        report.AppendFormat("custom-active=%d\ncontrol-color=%lu\nhover-color=%lu\npressed-color=%lu\n", ThemeManager::IsCustomPaletteActive() ? 1 : 0,
+            static_cast<unsigned long>(ThemeManager::ControlColor()), static_cast<unsigned long>(ThemeManager::HoverColor()), static_cast<unsigned long>(ThemeManager::PressedColor()));
+        report.AppendFormat("button-states=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_BUTTON_PAINT")));
+        report.AppendFormat("combo-states=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_COMBO_PAINT")));
+        report.AppendFormat("editable-combo-states=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_EDITABLE_COMBO_PAINT")));
+        report.AppendFormat("grouped-combo-states=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_GROUPED_COMBO_PAINT")));
+        report.AppendFormat("disabled-label-paint=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_DISABLED_LABEL_PAINT")));
+        report.AppendFormat("toggle-states=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_TOGGLE_PAINT")));
+        report.AppendFormat("spin-states=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_SPIN_PAINT")));
+        ::RemovePropW(m_hWnd,L"FBE_SETTINGS_COMBO_PAINT");
+        ::RemovePropW(m_hWnd,L"FBE_SETTINGS_BUTTON_PAINT");
         report.AppendFormat("disabled-text=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_DISABLED_TEXT_PASSED")));
         report.AppendFormat("checkbox-caption=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_CHECKBOX_CAPTION_PASSED")));
         ::RemovePropW(m_hWnd,L"FBE_SETTINGS_CHECKBOX_CAPTION_PASSED");
@@ -104,7 +115,7 @@ __declspec(noinline) LRESULT CMainFrame::RunSettingsDialogRuntime(CAtlFile& outp
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		wchar_t paintOnly[2] = {};
 		const bool paintProbe = !verifyOnly && ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SETTINGS_PAINT_ONLY", paintOnly, _countof(paintOnly)) == 1 && paintOnly[0] == L'1';
-		const bool passed = paintProbe ? (layoutPassed && groupPaint == 1 && sourceUnchanged) :
+		const bool passed = paintProbe ? (layoutPassed && (!ThemeManager::UsesPaletteSurface() || groupPaint == 1) && sourceUnchanged) :
 			(followupPassed && persisted && applied && layoutPassed && caretPersisted && caretApplied && sourceUnchanged);
 		::PostQuitMessage(passed ? 0 : 1);
 		return 0;

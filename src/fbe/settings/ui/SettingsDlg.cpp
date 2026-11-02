@@ -1041,8 +1041,8 @@ bool CSettingsDlg::ProbeLayout()
 			controlRect(m_navigation).bottom == pageRect.bottom;
 		wchar_t paintProbe[2] = {};
 		const bool paintOnly = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SETTINGS_PAINT_ONLY", paintProbe, _countof(paintProbe)) == 1 && paintProbe[0] == L'1';
-		if(ThemeManager::IsDark() && paintOnly) probePageFrames(page);
-		if(index == PageIndex(SettingsPageId::Images) && ThemeManager::IsDark() && paintOnly) {
+		if(ThemeManager::UsesPaletteSurface() && paintOnly) probePageFrames(page);
+		if(index == PageIndex(SettingsPageId::Images) && ThemeManager::UsesPaletteSurface() && paintOnly) {
 			// Compare the real checkbox pixels before and after repainting its
 			// sibling group frame. Repainting the frame must not erase its label.
 			HWND field = ::GetDlgItem(page, IDC_OPTIONS_CLEARIMGS);
@@ -1059,6 +1059,73 @@ bool CSettingsDlg::ProbeLayout()
 				textSize.cx + UiMetrics::ScaleForDpi(20, m_layoutDpi) <= fieldClient.right && textSize.cy <= fieldClient.bottom &&
 				(::GetWindowLongPtrW(field, GWL_STYLE) & BS_TYPEMASK) == BS_AUTOCHECKBOX;
 			::SetPropW(GetParent(), L"FBE_SETTINGS_CHECKBOX_CAPTION_PASSED", reinterpret_cast<HANDLE>(captionValid ? 1 : 2));
+			auto togglePixel = [&](HWND control) {
+				RECT bounds={}; ::GetClientRect(control,&bounds); CImage image;
+				if(bounds.right<10 || bounds.bottom<10 || !image.Create(bounds.right,bounds.bottom,32)) return static_cast<COLORREF>(CLR_INVALID);
+				HDC dc=image.GetDC(); COLORREF pixel=CLR_INVALID;
+				if(dc) { ::SendMessageW(control,WM_PRINTCLIENT,reinterpret_cast<WPARAM>(dc),PRF_CLIENT);
+					const int size=(std::min)(static_cast<int>(bounds.bottom),UiMetrics::ScaleForDpi(13,UiMetrics::DpiForWindow(control)));
+					pixel=::GetPixel(dc,UiMetrics::ScaleForDpi(2,UiMetrics::DpiForWindow(control)),(bounds.bottom-size)/2+UiMetrics::ScaleForDpi(2,UiMetrics::DpiForWindow(control))); image.ReleaseDC(); }
+				return pixel;
+			};
+			auto toggleMarkVisible = [&](HWND control) {
+				RECT bounds={}; ::GetClientRect(control,&bounds); CImage image; bool found=false;
+				if(bounds.right>0 && bounds.bottom>0 && image.Create(bounds.right,bounds.bottom,32)) {
+					HDC dc=image.GetDC(); if(dc) {
+						::SendMessageW(control,WM_PRINTCLIENT,reinterpret_cast<WPARAM>(dc),PRF_CLIENT);
+						const int limit=(std::min)(static_cast<int>(bounds.right),UiMetrics::ScaleForDpi(13,UiMetrics::DpiForWindow(control)));
+						for(int y=0;y<bounds.bottom&&!found;++y) for(int x=0;x<limit;++x) if(::GetPixel(dc,x,y)==ThemeManager::TextColor()) { found=true; break; }
+						image.ReleaseDC();
+					}
+				}
+				return found;
+			};
+			const BOOL initialEnabled=::IsWindowEnabled(field); const LRESULT initialCheck=::SendMessageW(field,BM_GETCHECK,0,0);
+			::EnableWindow(field,TRUE); ::SendMessageW(field,BM_SETCHECK,BST_UNCHECKED,0); ::SendMessageW(field,WM_MOUSELEAVE,0,0);
+			unsigned toggleStates=togglePixel(field)==ThemeManager::ControlColor()?1U:0U;
+			::SendMessageW(field,WM_MOUSEMOVE,0,MAKELPARAM(1,1)); if(togglePixel(field)==ThemeManager::HoverColor()) toggleStates|=2U;
+			::SendMessageW(field,BM_SETSTATE,TRUE,0); if(togglePixel(field)==ThemeManager::PressedColor()) toggleStates|=4U;
+			::SendMessageW(field,BM_SETSTATE,FALSE,0); ::SendMessageW(field,WM_MOUSELEAVE,0,0); ::EnableWindow(field,FALSE);
+			if(togglePixel(field)==ThemeManager::ControlColor()) toggleStates|=8U;
+			::EnableWindow(field,TRUE); ::SendMessageW(field,BM_SETCHECK,BST_CHECKED,0);
+			if(::SendMessageW(field,BM_GETCHECK,0,0)==BST_CHECKED) toggleStates|=16U;
+			if(toggleMarkVisible(field)) toggleStates|=128U;
+			::SendMessageW(field,BM_SETCHECK,initialCheck,0); ::EnableWindow(field,initialEnabled);
+			HWND radio=::CreateWindowExW(0,L"Button",L"Probe",WS_CHILD|WS_VISIBLE|BS_AUTORADIOBUTTON,-200,-200,120,24,page,NULL,_Module.GetModuleInstance(),NULL);
+			if(radio) {
+				ThemeManager::ApplyToWindow(radio); if(togglePixel(radio)==ThemeManager::ControlColor()) toggleStates|=32U;
+				::SendMessageW(radio,BM_CLICK,0,0); if(::SendMessageW(radio,BM_GETCHECK,0,0)==BST_CHECKED) toggleStates|=64U;
+				if(toggleMarkVisible(radio)) toggleStates|=256U;
+				::DestroyWindow(radio);
+			}
+			::SetPropW(GetParent(),L"FBE_SETTINGS_TOGGLE_PAINT",reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(toggleStates)));
+			passed = passed && toggleStates==511U;
+			HWND spinBuddy=::CreateWindowExW(0,L"Edit",L"50",WS_CHILD|ES_NUMBER,-200,-200,60,24,page,NULL,_Module.GetModuleInstance(),NULL);
+			HWND spin=::CreateWindowExW(0,UPDOWN_CLASSW,L"",WS_CHILD|WS_VISIBLE|UDS_ARROWKEYS|UDS_SETBUDDYINT,0,0,20,30,page,NULL,_Module.GetModuleInstance(),NULL);
+			unsigned spinStates=0;
+			if(spin && spinBuddy) {
+				ThemeManager::ApplyToWindow(spin); ::SendMessageW(spin,UDM_SETBUDDY,reinterpret_cast<WPARAM>(spinBuddy),0); ::SendMessageW(spin,UDM_SETRANGE32,0,100); ::SendMessageW(spin,UDM_SETPOS32,0,50);
+				auto spinPixel=[&](int y) { CImage image; if(!image.Create(20,30,32)) return static_cast<COLORREF>(CLR_INVALID); HDC dc=image.GetDC(); COLORREF color=CLR_INVALID;
+					if(dc) { ::SendMessageW(spin,WM_PRINTCLIENT,reinterpret_cast<WPARAM>(dc),PRF_CLIENT); color=::GetPixel(dc,1,y); image.ReleaseDC(); } return color; };
+				if(spinPixel(1)==ThemeManager::ControlColor() && spinPixel(16)==ThemeManager::ControlColor()) spinStates|=1U;
+				::SendMessageW(spin,WM_MOUSEMOVE,0,MAKELPARAM(2,2));
+				if(spinPixel(1)==ThemeManager::HoverColor() && spinPixel(16)==ThemeManager::ControlColor()) spinStates|=2U;
+				POINT originalCursor={}, clickPoint={2,2}; const bool savedCursor=::GetCursorPos(&originalCursor)!=FALSE;
+				const bool movedCursor=savedCursor && ::ClientToScreen(spin,&clickPoint) && ::SetCursorPos(clickPoint.x,clickPoint.y);
+				::SendMessageW(spin,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(2,2));
+				if(spinPixel(1)==ThemeManager::PressedColor()) spinStates|=4U;
+				::SendMessageW(spin,WM_MOUSEMOVE,MK_LBUTTON,MAKELPARAM(2,17));
+				if(spinPixel(1)==ThemeManager::ControlColor() && spinPixel(16)==ThemeManager::HoverColor()) spinStates|=32U;
+				::SendMessageW(spin,WM_MOUSEMOVE,MK_LBUTTON,MAKELPARAM(2,2));
+				if(spinPixel(1)==ThemeManager::PressedColor()) spinStates|=64U;
+				::SendMessageW(spin,WM_LBUTTONUP,0,MAKELPARAM(2,2));
+				if(movedCursor) ::SetCursorPos(originalCursor.x,originalCursor.y);
+				BOOL error=FALSE; if(::SendMessageW(spin,UDM_GETPOS32,0,reinterpret_cast<LPARAM>(&error))!=50 && !error) spinStates|=8U;
+				::EnableWindow(spin,FALSE); if(spinPixel(1)==ThemeManager::ControlColor()) spinStates|=16U;
+			}
+			if(spin) ::DestroyWindow(spin); if(spinBuddy) ::DestroyWindow(spinBuddy);
+			::SetPropW(GetParent(),L"FBE_SETTINGS_SPIN_PAINT",reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(spinStates)));
+			passed = passed && spinStates==127U;
 			::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
 			RECT rect = {}; ::GetWindowRect(field, &rect);
 			::RedrawWindow(field, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
@@ -1128,6 +1195,184 @@ bool CSettingsDlg::ProbeLayout()
 			const bool paintPassed = !before.empty() && before == after && disabledPassed && captionValid;
 			::SetPropW(GetParent(), L"FBE_SETTINGS_GROUP_PAINT_PASSED", reinterpret_cast<HANDLE>(paintPassed ? 1 : 2));
 			passed = passed && paintPassed;
+		}
+		if(index == PageIndex(SettingsPageId::Editor) && paintOnly && ThemeManager::UsesPaletteSurface()) {
+			HWND combo = m_editorPage->GetDlgItem(IDC_FONT_SIZE);
+			wchar_t initialText[128] = {}; ::GetWindowTextW(combo, initialText, _countof(initialText));
+			const LRESULT initial = ::SendMessageW(combo, CB_GETCURSEL, 0, 0);
+			unsigned states = 0;
+			auto arrowPixel = [&]() {
+				COMBOBOXINFO info = {}; info.cbSize = sizeof(info); RECT bounds = {}; ::GetClientRect(combo, &bounds); CImage image;
+				if(!::GetComboBoxInfo(combo, &info) || info.rcButton.right - info.rcButton.left < 5 || info.rcButton.bottom - info.rcButton.top < 5 || !image.Create(bounds.right, bounds.bottom, 32)) return static_cast<COLORREF>(CLR_INVALID);
+				HDC dc = image.GetDC(); COLORREF pixel = CLR_INVALID;
+				if(dc) { ::SendMessageW(combo, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(dc), PRF_CLIENT); pixel = ::GetPixel(dc, info.rcButton.left + 2, info.rcButton.top + 2); image.ReleaseDC(); }
+				return pixel;
+			};
+			::SendMessageW(combo, WM_MOUSELEAVE, 0, 0);
+			if(arrowPixel() == ThemeManager::ControlColor()) states |= 16U;
+			::SendMessageW(combo, WM_MOUSEMOVE, 0, MAKELPARAM(1, 1));
+			if(arrowPixel() == ThemeManager::HoverColor()) states |= 32U;
+			::SendMessageW(combo, WM_MOUSELEAVE, 0, 0);
+			if(::SendMessageW(combo, CB_GETCOUNT, 0, 0) > 1) {
+				::SendMessageW(combo, CB_SETCURSEL, 0, 0);
+				::SendMessageW(combo, CB_SHOWDROPDOWN, TRUE, 0);
+				if(arrowPixel() == ThemeManager::PressedColor()) states |= 64U;
+				COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
+				if(::GetComboBoxInfo(combo, &info) && ::IsWindowVisible(info.hwndList)) {
+					RECT bounds = {}; ::GetClientRect(info.hwndList, &bounds); CImage image;
+					if(bounds.right > 0 && bounds.bottom > 0 && image.Create(bounds.right, bounds.bottom, 32)) {
+						HDC dc = image.GetDC();
+						if(dc) {
+							::SendMessageW(info.hwndList, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(dc), PRF_CLIENT);
+							const LRESULT selected = ::SendMessageW(info.hwndList, LB_GETCURSEL, 0, 0);
+							for(LRESULT item = 0; item < 2; ++item) {
+								RECT row = {}; if(::SendMessageW(info.hwndList, LB_GETITEMRECT, item, reinterpret_cast<LPARAM>(&row)) == LB_ERR || row.top < 0 || row.bottom > bounds.bottom || row.right < 8) continue;
+								const COLORREF pixel = ::GetPixel(dc, row.right - 4, (row.top + row.bottom) / 2);
+								if(item == selected && pixel == ThemeManager::SelectionBackgroundColor()) states |= 1U;
+								if(item != selected && pixel == ThemeManager::ControlColor()) states |= 2U;
+							}
+							if(selected == 0) {
+								::SendMessageW(info.hwndList, WM_KEYDOWN, VK_DOWN, 0);
+								if(::SendMessageW(info.hwndList, LB_GETCURSEL, 0, 0) == 1) states |= 4U;
+							}
+							image.ReleaseDC();
+						}
+					}
+				}
+				::SendMessageW(combo, CB_SHOWDROPDOWN, FALSE, 0);
+			}
+			::SetWindowTextW(combo, L"13.5");
+			wchar_t editedText[128] = {}; ::GetWindowTextW(combo, editedText, _countof(editedText));
+			if(wcscmp(editedText, L"13.5") == 0) states |= 8U;
+			::SendMessageW(combo, CB_SETCURSEL, initial, 0); ::SetWindowTextW(combo, initialText);
+			::SetPropW(GetParent(), L"FBE_SETTINGS_EDITABLE_COMBO_PAINT", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(states)));
+			passed = passed && states == 127U;
+		}
+		if(index == PageIndex(SettingsPageId::Appearance) && paintOnly && ThemeManager::UsesPaletteSurface()) {
+			HWND label = m_generalPage->GetDlgItem(IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL);
+			const bool labelWasEnabled = ::IsWindowEnabled(label)!=FALSE; ::EnableWindow(label,FALSE);
+			RECT labelBounds={}; ::GetClientRect(label,&labelBounds); CImage labelImage; bool disabledLabel=false;
+			if(labelBounds.right>0 && labelBounds.bottom>0 && labelImage.Create(labelBounds.right,labelBounds.bottom,32)) {
+				HDC dc=labelImage.GetDC();
+				if(dc) {
+					::SendMessageW(label,WM_PRINTCLIENT,reinterpret_cast<WPARAM>(dc),PRF_CLIENT);
+					for(int y=0; y<labelBounds.bottom && !disabledLabel; ++y)
+						for(int x=0; x<labelBounds.right; ++x) if(::GetPixel(dc,x,y)==ThemeManager::DisabledTextColor()) { disabledLabel=true; break; }
+					labelImage.ReleaseDC();
+				}
+			}
+			::EnableWindow(label,labelWasEnabled);
+			::SetPropW(GetParent(),L"FBE_SETTINGS_DISABLED_LABEL_PAINT",reinterpret_cast<HANDLE>(disabledLabel?1:2));
+			passed = passed && disabledLabel;
+			HWND button = m_generalPage->GetDlgItem(IDC_INTERFACE_PALETTE_COPY);
+			RECT buttonRect = {}; ::GetClientRect(button, &buttonRect);
+			auto buttonPixel = [&](int x, int y) {
+				CImage image; if(!image.Create(buttonRect.right, buttonRect.bottom, 32)) return static_cast<COLORREF>(CLR_INVALID);
+				HDC dc = image.GetDC(); COLORREF pixel = CLR_INVALID;
+				if(dc) { ::SendMessageW(button, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(dc), PRF_CLIENT); pixel = ::GetPixel(dc, x, y); image.ReleaseDC(); }
+				return pixel;
+			};
+			const int sample = UiMetrics::ScaleForDpi(3, m_layoutDpi);
+			const HWND oldFocus = ::GetFocus();
+			::SendMessageW(button, WM_MOUSELEAVE, 0, 0); ::SetFocus(m_navigation);
+			unsigned buttonStates = buttonPixel(sample, sample) == ThemeManager::ControlColor() ? 1U : 0U;
+			::SendMessageW(button, WM_MOUSEMOVE, 0, MAKELPARAM(sample, sample));
+			if(buttonPixel(sample, sample) == ThemeManager::HoverColor()) buttonStates |= 2U;
+			::SendMessageW(button, BM_SETSTATE, TRUE, 0);
+			if(buttonPixel(sample, sample) == ThemeManager::PressedColor()) buttonStates |= 4U;
+			::SendMessageW(button, BM_SETSTATE, FALSE, 0); ::SendMessageW(button, WM_MOUSELEAVE, 0, 0);
+			::EnableWindow(button, FALSE);
+			if(buttonPixel(sample, sample) == ThemeManager::ControlColor()) buttonStates |= 8U;
+			::EnableWindow(button, TRUE); ::SetFocus(button);
+			if(buttonPixel(0, 0) == ThemeManager::FocusColor()) buttonStates |= 16U;
+			if(oldFocus && ::IsWindow(oldFocus)) ::SetFocus(oldFocus);
+			::SetPropW(GetParent(), L"FBE_SETTINGS_BUTTON_PAINT", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(buttonStates)));
+			passed = passed && buttonStates == 31U;
+			HWND combo = m_generalPage->GetDlgItem(IDC_MAIN_TOOLBAR_ICON_SIZE);
+			RECT comboRect = {}; ::GetClientRect(combo, &comboRect);
+			auto comboPixel = [&](int x, int y) {
+				CImage image; if(!image.Create(comboRect.right, comboRect.bottom, 32)) return static_cast<COLORREF>(CLR_INVALID);
+				HDC dc = image.GetDC(); COLORREF pixel = CLR_INVALID;
+				if(dc) { ::SendMessageW(combo, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(dc), PRF_CLIENT); pixel = ::GetPixel(dc, x, y); image.ReleaseDC(); }
+				return pixel;
+			};
+			::SendMessageW(combo, WM_MOUSELEAVE, 0, 0); ::SetFocus(m_navigation);
+			unsigned comboStates = comboPixel(sample, sample) == ThemeManager::ControlColor() ? 1U : 0U;
+			::SendMessageW(combo, WM_MOUSEMOVE, 0, MAKELPARAM(sample, sample));
+			if(comboPixel(sample, sample) == ThemeManager::HoverColor()) comboStates |= 2U;
+			::SendMessageW(combo, WM_MOUSELEAVE, 0, 0); ::EnableWindow(combo, FALSE);
+			if(comboPixel(sample, sample) == ThemeManager::ControlColor()) comboStates |= 4U;
+			::EnableWindow(combo, TRUE); ::SetFocus(combo);
+			if(comboPixel(0, 0) == ThemeManager::FocusColor()) comboStates |= 8U;
+			const LRESULT initial = ::SendMessageW(combo, CB_GETCURSEL, 0, 0);
+			const LRESULT count = ::SendMessageW(combo, CB_GETCOUNT, 0, 0);
+			if(count > 1 && initial != CB_ERR) {
+				const LRESULT next = (initial + 1) % count;
+				::SendMessageW(combo, CB_SETCURSEL, next, 0);
+				if(::SendMessageW(combo, CB_GETCURSEL, 0, 0) == next) comboStates |= 16U;
+				::SendMessageW(combo, CB_SETCURSEL, initial, 0);
+			}
+			::SendMessageW(combo, CB_SHOWDROPDOWN, TRUE, 0);
+			COMBOBOXINFO comboInfo = {}; comboInfo.cbSize = sizeof(comboInfo);
+			if(::GetComboBoxInfo(combo, &comboInfo) && ::IsWindowVisible(comboInfo.hwndList)) {
+				if(comboPixel(sample, sample) == ThemeManager::PressedColor()) comboStates |= 32U;
+				RECT listRect = {}; ::GetClientRect(comboInfo.hwndList, &listRect); CImage listImage;
+				if(listRect.right > 0 && listRect.bottom > 0 && listImage.Create(listRect.right, listRect.bottom, 32)) {
+					HDC listDc = listImage.GetDC();
+					if(listDc) {
+						::SendMessageW(comboInfo.hwndList, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(listDc), PRF_CLIENT);
+						const LRESULT selected = ::SendMessageW(comboInfo.hwndList, LB_GETCURSEL, 0, 0);
+						const LRESULT listCount = ::SendMessageW(comboInfo.hwndList, LB_GETCOUNT, 0, 0);
+						for(LRESULT item = 0; item < listCount; ++item) {
+							RECT row = {}; if(::SendMessageW(comboInfo.hwndList, LB_GETITEMRECT, item, reinterpret_cast<LPARAM>(&row)) == LB_ERR || row.top < 0 || row.bottom > listRect.bottom || row.right < 8) continue;
+							const COLORREF pixel = ::GetPixel(listDc, row.right - 4, (row.top + row.bottom) / 2);
+							if(item == selected && pixel == ThemeManager::SelectionBackgroundColor()) comboStates |= 64U;
+							if(item != selected && pixel == ThemeManager::ControlColor()) comboStates |= 128U;
+						}
+						if(selected != LB_ERR && selected + 1 < listCount) {
+							::SendMessageW(comboInfo.hwndList, WM_KEYDOWN, VK_DOWN, 0);
+							const LRESULT moved = ::SendMessageW(comboInfo.hwndList, LB_GETCURSEL, 0, 0);
+							if(moved == selected + 1) {
+								comboStates |= 256U;
+								::SendMessageW(comboInfo.hwndList, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(listDc), PRF_CLIENT);
+								RECT row = {}; if(::SendMessageW(comboInfo.hwndList, LB_GETITEMRECT, moved, reinterpret_cast<LPARAM>(&row)) != LB_ERR &&
+									row.top >= 0 && row.bottom <= listRect.bottom && row.right >= 8 &&
+									::GetPixel(listDc, row.right - 4, (row.top + row.bottom) / 2) == ThemeManager::SelectionBackgroundColor()) comboStates |= 512U;
+							}
+						}
+						listImage.ReleaseDC();
+					}
+				}
+			}
+			::SendMessageW(combo, CB_SHOWDROPDOWN, FALSE, 0);
+			if(initial != CB_ERR) ::SendMessageW(combo, CB_SETCURSEL, initial, 0);
+			if(oldFocus && ::IsWindow(oldFocus)) ::SetFocus(oldFocus);
+			::SetPropW(GetParent(), L"FBE_SETTINGS_COMBO_PAINT", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(comboStates)));
+			passed = passed && comboStates == 1023U;
+			unsigned groupedStates = 0;
+			for(int role = 0; role < 2; ++role) {
+				HWND grouped = m_generalPage->GetDlgItem(role == 0 ? IDC_INTERFACE_THEME : IDC_INTERFACE_PALETTE);
+				::SendMessageW(grouped, WM_MOUSELEAVE, 0, 0); ::SetFocus(m_navigation);
+				RECT bounds = {}; ::GetClientRect(grouped, &bounds); CImage image;
+				if(bounds.right > sample && bounds.bottom > sample && image.Create(bounds.right, bounds.bottom, 32)) {
+					HDC dc = image.GetDC();
+					if(dc) {
+						::SendMessageW(grouped, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(dc), PRF_CLIENT);
+						if(::GetPixel(dc, sample, sample) == ThemeManager::ControlColor()) groupedStates |= 1U << role;
+						image.ReleaseDC();
+					}
+				}
+				const LRESULT selection = ::SendMessageW(grouped, CB_GETCURSEL, 0, 0);
+				::SendMessageW(grouped, CB_SHOWDROPDOWN, TRUE, 0);
+				COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
+				if(::GetComboBoxInfo(grouped, &info) && ::IsWindowVisible(info.hwndList) &&
+					::SendMessageW(grouped, CB_GETCOUNT, 0, 0) > 1 && ::SendMessageW(grouped, CB_GETCURSEL, 0, 0) == selection)
+					groupedStates |= 1U << (role + 2);
+				::SendMessageW(grouped, CB_SHOWDROPDOWN, FALSE, 0);
+			}
+			if(oldFocus && ::IsWindow(oldFocus)) ::SetFocus(oldFocus);
+			::SetPropW(GetParent(), L"FBE_SETTINGS_GROUPED_COMBO_PAINT", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(groupedStates)));
+			passed = passed && groupedStates == 15U;
 		}
 		if(index == PageIndex(SettingsPageId::Appearance)) {
 			const CRect colours = controlRect(m_generalPage->GetDlgItem(IDC_OPTIONS_INTERFACE_GROUP));

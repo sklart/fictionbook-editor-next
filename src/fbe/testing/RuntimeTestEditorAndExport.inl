@@ -2776,8 +2776,14 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 	}
 	if (IsFbeTestScenario(L"theme-application-runtime"))
 	{
+		auto themeStage = [&](const char* stage,int iteration) {
+			CStringA marker; marker.Format("diagnostic_stage\t%s:%d\n",stage,iteration); DWORD written=0;
+			output.Write(marker.GetString(),marker.GetLength(),&written); output.Flush();
+		};
+		themeStage("initial-light",0);
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		themeStage("initial-dark",0);
 		ThemeManager::ResetApplyDiagnostics();
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
@@ -2789,6 +2795,7 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			0, 0, 80, 20, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
 		for(int iteration = 0; iteration < 100; ++iteration)
 		{
+			themeStage("child-message",iteration);
 			MSG message = {};
 			if(!::PeekMessageW(&message, NULL, 0, 0, PM_REMOVE)) break;
 			::TranslateMessage(&message); ::DispatchMessageW(&message);
@@ -2811,6 +2818,7 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		int setUserDelta = 0, applyUserDelta = 0;
 		for(int iteration = 0; iteration < 40; ++iteration)
 		{
+			themeStage("switch-set",iteration);
 			const DWORD beforeSet = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
 			const InterfacePalette palette = iteration % 3 == 0 ? INTERFACE_PALETTE_CATPPUCCIN_LATTE :
 				iteration % 3 == 1 ? INTERFACE_PALETTE_SEPIA :
@@ -2818,6 +2826,7 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			ThemeManager::SetNamedPalette(palette);
 			ThemeManager::SetSelectedTheme(iteration % 2 == 0 ? INTERFACE_THEME_LIGHT : INTERFACE_THEME_DARK);
 			const DWORD afterSet = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
+			themeStage("switch-apply",iteration);
 			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 			const DWORD afterApply = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
 			setUserDelta += static_cast<int>(afterSet) - static_cast<int>(beforeSet);
@@ -2825,6 +2834,8 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			if(iteration == 19) userAt20 = afterApply;
 		}
 		const DWORD gdiAfter = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+		themeStage("switch-complete",40);
+		themeStage("restore-band",0);
 		const DWORD userAfter = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
 		ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CLASSIC);
 		REBARBANDINFO finalBand = {}; finalBand.cbSize = sizeof(finalBand); finalBand.fMask = RBBIM_ID | RBBIM_STYLE;
@@ -2837,6 +2848,7 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			m_rebar.SetBandInfo(0, &restored);
 		}
 		bool orderPreserved = bandCount > 1;
+		themeStage("move-band",0);
 		if(orderPreserved)
 		{
 			const BOOL moved = static_cast<BOOL>(m_rebar.SendMessage(RB_MOVEBAND, 0, bandCount - 1));
@@ -2849,6 +2861,7 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 		}
 		const UINT probeBandId = 0x7f20;
+		themeStage("reuse-band",0);
 		bool deletedBandCleared = false, reusedBandFresh = false;
 		HWND firstProbe = ::CreateWindowExW(0, WC_STATICW, L"rebar first", WS_CHILD | WS_VISIBLE,
 			0, 0, 40, 16, m_rebar, NULL, _Module.GetModuleInstance(), NULL);
@@ -2889,7 +2902,7 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		}
 		// Read actual pixels from the visible status HWND after each palette change.
 		// The point is left of its first text pane and below the one-pixel border.
-		ShowWindow(SW_MAXIMIZE); UpdateLayout();
+		themeStage("maximize",0); ShowWindow(SW_MAXIMIZE); UpdateLayout();
 		::SetForegroundWindow(m_hWnd);
 		std::vector<wchar_t> artifactDirectory(32768);
 		const DWORD artifactLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_APPEARANCE_ARTIFACT_DIR", artifactDirectory.data(), static_cast<DWORD>(artifactDirectory.size()));
@@ -2921,6 +2934,7 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			if(m_rebar.GetBandInfo(band, &info) && m_contextAttributeBars.IsBar(info.hwndChild)) m_rebar.ShowBand(band, TRUE);
 		}
 		UpdateLayout();
+		themeStage("classic-apply",0);
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
 		ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CLASSIC);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
@@ -2946,8 +2960,8 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			}
 			::ReleaseDC(window, dc); if(!valid) pixels.clear(); return pixels;
 		};
-		const auto classicToolbarImage = classicSurface(m_CmdToolbar);
-		const auto classicStatusImage = classicSurface(m_hWndStatusBar);
+		themeStage("classic-toolbar-pixels",0); const auto classicToolbarImage = classicSurface(m_CmdToolbar);
+		themeStage("classic-status-pixels",0); const auto classicStatusImage = classicSurface(m_hWndStatusBar);
 		const bool classicScreenshot = captureMain(L"\\main-classic.bmp");
 		bool surfacePixels = classicScreenshot; CStringA surfaceDetails;
 		surfaceDetails.AppendFormat("screenshot_classic\t%d\r\n", classicScreenshot ? 1 : 0);
@@ -3052,10 +3066,10 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			}
 			::ReleaseDC(m_CmdToolbar, dc); return buttons;
 		};
-		sampleStatus("latte", ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CATPPUCCIN_LATTE));
+		themeStage("sample-latte",0); sampleStatus("latte", ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CATPPUCCIN_LATTE));
 		const COLORREF latteBackground = ThemeManager::ControlColor();
 		const auto latteButtons = captureButtons(true);
-		sampleStatus("sepia", ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SEPIA));
+		themeStage("sample-sepia",0); sampleStatus("sepia", ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SEPIA));
 		const COLORREF sepiaBackground = ThemeManager::ControlColor();
 		const auto sepiaButtons = captureButtons(true);
 		int iconButtonsChecked = 0, iconButtonsPassed = 0;

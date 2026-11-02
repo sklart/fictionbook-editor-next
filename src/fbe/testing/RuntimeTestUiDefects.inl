@@ -10,18 +10,27 @@ if (IsFbeTestScenario(L"ui-defects-runtime")) {
     PluginOptionsProbe::captures=captures.data();PluginOptionsProbe::dialog=m_hWnd;
     auto showTools=[&](HMENU menu,const std::wstring& name) {
         PluginOptionsProbe::prefix=name;::RemovePropW(m_hWnd,L"FBE.MenuCapture");
-        struct MenuProbe {static void CALLBACK Tick(HWND,UINT,UINT_PTR,DWORD) {
-            ::EnumThreadWindows(::GetCurrentThreadId(),[](HWND window,LPARAM)->BOOL {
+        struct MenuProbe { ULONGLONG started; unsigned ticks=0, visible=0; static void CALLBACK Tick(HWND,UINT,UINT_PTR,DWORD) {
+            auto* self=reinterpret_cast<MenuProbe*>(::GetPropW(PluginOptionsProbe::dialog,L"FBE.MenuCaptureProbe"));
+            if(!self) { ::EndMenu(); return; }
+            ++self->ticks;
+            ::EnumThreadWindows(::GetCurrentThreadId(),[](HWND window,LPARAM data)->BOOL {
                 wchar_t kind[32]={};::GetClassNameW(window,kind,_countof(kind));
                 if(!wcscmp(kind,L"#32768")&&::IsWindowVisible(window)) {
-                    if(PluginOptionsProbe::Capture(window,L"tools"))::SetPropW(PluginOptionsProbe::dialog,L"FBE.MenuCapture",reinterpret_cast<HANDLE>(1));return FALSE;
+                    ++reinterpret_cast<MenuProbe*>(data)->visible;
+                    if(PluginOptionsProbe::Capture(window,L"tools")) { ::SetPropW(PluginOptionsProbe::dialog,L"FBE.MenuCapture",reinterpret_cast<HANDLE>(1)); return FALSE; }
                 }return TRUE;
-            },0);::EndMenu();
-        }};
+            },reinterpret_cast<LPARAM>(self));
+            if(::GetPropW(PluginOptionsProbe::dialog,L"FBE.MenuCapture") || ::GetTickCount64()-self->started>2000) ::EndMenu();
+        }} probe={::GetTickCount64()};
+        ::SetPropW(m_hWnd,L"FBE.MenuCaptureProbe",&probe);
         const UINT_PTR timer=::SetTimer(NULL,0,120,MenuProbe::Tick);check("menu_timer",timer!=0);
         RECT bounds={};m_MenuBar.GetWindowRect(&bounds);
-        ThemeManager::TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,bounds.left,bounds.bottom,m_hWnd);
-        ::KillTimer(NULL,timer);check("menu_display_capture",::GetPropW(m_hWnd,L"FBE.MenuCapture")!=NULL);
+        MSG pendingMouse={}; const bool hasPendingMouse=::PeekMessageW(&pendingMouse,NULL,WM_MOUSEFIRST,WM_MOUSELAST,PM_NOREMOVE)!=FALSE;
+        report.AppendFormat("menu_capture_context=%ls foreground=%p active=%p focus=%p capture=%p pending_mouse=%u\n",name.c_str(),::GetForegroundWindow(),::GetActiveWindow(),::GetFocus(),::GetCapture(),hasPendingMouse?pendingMouse.message:0);
+        if(timer) ThemeManager::TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,bounds.left,bounds.bottom,m_hWnd);
+        report.AppendFormat("menu_capture_wait_ms=%llu ticks=%u visible=%u\n",::GetTickCount64()-probe.started,probe.ticks,probe.visible);
+        ::KillTimer(NULL,timer);::RemovePropW(m_hWnd,L"FBE.MenuCaptureProbe");check("menu_display_capture",::GetPropW(m_hWnd,L"FBE.MenuCapture")!=NULL);
     };
     auto toolsMenu = [&]() {
         HMENU menu=::GetSubMenu(m_MenuBar.GetMenu(),5);
@@ -57,6 +66,30 @@ if (IsFbeTestScenario(L"ui-defects-runtime")) {
         ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
         check("scripts_classic_after_theme",::GetWindowTheme(tree)==NULL);
         report.AppendFormat("script_theme_after_refresh=%p\n",::GetWindowTheme(tree));
+        const InterfacePalette savedTreePalette=ThemeManager::GetNamedPalette(); ThemeManager::CustomPalette savedTreeCustom;
+        const bool hadTreeCustom=ThemeManager::GetCustomPalette(savedTreeCustom);
+        for(int index=0;index<160;++index) {
+            wchar_t caption[48]={}; swprintf_s(caption,L"Scrollbar probe %03d",index);
+            TVINSERTSTRUCTW item={}; item.hParent=TVI_ROOT; item.hInsertAfter=TVI_LAST; item.item.mask=TVIF_TEXT; item.item.pszText=caption;
+            ::SendMessageW(tree,TVM_INSERTITEMW,0,reinterpret_cast<LPARAM>(&item));
+        }
+        ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT); ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SEPIA);
+        ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+        ::RedrawWindow(tree,NULL,NULL,RDW_INVALIDATE|RDW_FRAME|RDW_UPDATENOW);
+        SCROLLBARINFO scrollbar={}; scrollbar.cbSize=sizeof(scrollbar); RECT windowRect={};
+        bool lightTrack=false;
+        if(::GetScrollBarInfo(tree,OBJID_VSCROLL,&scrollbar) && !(scrollbar.rgstate[0]&STATE_SYSTEM_INVISIBLE) && ::GetWindowRect(tree,&windowRect)) {
+            HDC dc=::GetWindowDC(tree);
+            if(dc) {
+                const int x=(scrollbar.rcScrollBar.left+scrollbar.rcScrollBar.right)/2-windowRect.left;
+                const int y=scrollbar.rcScrollBar.bottom-scrollbar.dxyLineButton-3-windowRect.top;
+                const COLORREF actual=::GetPixel(dc,x,y); lightTrack=actual==ThemeManager::ControlColor();
+                report.AppendFormat("scripts_light_scroll_track_actual=%lu expected=%lu\n",static_cast<unsigned long>(actual),static_cast<unsigned long>(ThemeManager::ControlColor()));
+                ::ReleaseDC(tree,dc);
+            }
+        }
+        check("scripts_light_scrollbar_palette",lightTrack);
+        if(hadTreeCustom) ThemeManager::SetCustomPalette(savedTreeCustom); else ThemeManager::SetNamedPalette(savedTreePalette);
         tree.SetScriptMode(false);
         check("structure_themed_after_mode_switch",!::IsAppThemed()||::GetWindowTheme(tree)!=NULL);
         m_document_tree.GetDocumentStructure(m_doc->m_body.Document());

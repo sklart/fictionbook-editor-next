@@ -68,6 +68,7 @@
     struct BitmapLifetimeProbe {
         HWND frame;HMENU menu,child;UINT command;HBITMAP previous,source,replacement;
         bool called=false,copyAlive=false,replacementAlive=false,folderCopyAlive=false,scaledOnPopup=false,darkOnlyCorrect=false,scaledAlphaCorrect=false;
+        DWORD gdiWhileOpen=0,gdiAfterReplacement=0;
         static HBITMAP Bitmap() {
             BITMAPINFO info={};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=4;info.bmiHeader.biHeight=-4;
             info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;void* pixels=NULL;
@@ -79,6 +80,7 @@
             ::KillTimer(NULL,timer);
             auto* self=reinterpret_cast<BitmapLifetimeProbe*>(::GetPropW(PluginOptionsProbe::dialog,L"FBE.BitmapLifetime"));
             if(!self){::EndMenu();return;}
+            self->gdiWhileOpen=::GetGuiResources(::GetCurrentProcess(),GR_GDIOBJECTS);
             MENUITEMINFO info={};info.cbSize=sizeof(info);info.fMask=MIIM_BITMAP;
             ::GetMenuItemInfoW(self->menu,0,TRUE,&info);const HBITMAP displayed=info.hbmpItem;
             self->copyAlive=displayed!=self->source&&::GetObjectType(displayed)==OBJ_BITMAP;
@@ -107,6 +109,7 @@
             info.hbmpItem=self->replacement;::SetMenuItemInfoW(self->child,0,TRUE,&info);
             ::AppendMenuW(self->menu,MF_POPUP,reinterpret_cast<UINT_PTR>(self->child),L"Scripts");
             self->replacementAlive=::GetObjectType(displayed)==OBJ_BITMAP;
+            self->gdiAfterReplacement=::GetGuiResources(::GetCurrentProcess(),GR_GDIOBJECTS);
             self->called=true;::EndMenu();
         }
     };
@@ -127,10 +130,26 @@
     ::SetMenuItemInfoW(lifetime.menu,1,TRUE,&folderItem);ThemeManager::RegisterNativeMenuBitmap(folderItem.wID,lifetime.source);
     MENUITEMINFO item={};item.cbSize=sizeof(item);item.fMask=MIIM_BITMAP;item.hbmpItem=lifetime.previous;
     ::SetMenuItemInfoW(lifetime.menu,0,TRUE,&item);ThemeManager::RegisterNativeMenuBitmap(lifetime.command,lifetime.source);
+    const DWORD setupGdi=::GetGuiResources(::GetCurrentProcess(),GR_GDIOBJECTS);
+    {
+        PaletteMenuSnapshot snapshot;
+        const bool created=snapshot.Create(lifetime.menu);
+        HMENU child=created?::GetSubMenu(snapshot.Root(),1):NULL;
+        MENUITEMINFO cloned={};cloned.cbSize=sizeof(cloned);cloned.fMask=MIIM_BITMAP|MIIM_ID;
+        wchar_t caption[128]={};
+        const bool matches=created&&snapshot.Root()!=lifetime.menu&&::GetMenuItemCount(snapshot.Root())==3&&
+            child&&child!=lifetime.child&&snapshot.Source(child)==lifetime.child&&snapshot.Source(snapshot.Root())==lifetime.menu&&
+            ::GetMenuItemInfoW(snapshot.Root(),0,TRUE,&cloned)&&cloned.hbmpItem==lifetime.previous&&cloned.wID==lifetime.command&&
+            ::GetMenuStringW(child,0,caption,_countof(caption),MF_BYPOSITION)>0&&!wcscmp(caption,L"Old script");
+        check("palette_menu_snapshot_structure",matches);
+    }
+    check("palette_menu_snapshot_source_alive",::IsMenu(lifetime.menu)&&::IsMenu(lifetime.child)&&::GetObjectType(lifetime.previous)==OBJ_BITMAP);
+    const DWORD snapshotGdi=::GetGuiResources(::GetCurrentProcess(),GR_GDIOBJECTS);
     ::SetPropW(m_hWnd,L"FBE.BitmapLifetime",&lifetime);
     const UINT_PTR timer=::SetTimer(NULL,0,100,BitmapLifetimeProbe::Tick);check("bitmap_lifetime_timer",timer!=0);
     RECT bounds={};GetWindowRect(&bounds);ThemeManager::TrackPopupMenu(lifetime.menu,TPM_NONOTIFY,bounds.left+40,bounds.top+40,m_hWnd);
     ::KillTimer(NULL,timer);::RemovePropW(m_hWnd,L"FBE.BitmapLifetime");
+    const DWORD closedGdi=::GetGuiResources(::GetCurrentProcess(),GR_GDIOBJECTS);
     check("bitmap_survives_source_destruction",lifetime.called&&lifetime.copyAlive&&lifetime.replacementAlive);
     check("folder_popup_bitmap_applied",lifetime.folderCopyAlive);
     check("native_popup_scales_bitmap",lifetime.scaledOnPopup);
@@ -143,5 +162,76 @@
     if(lifetime.previous)::DeleteObject(lifetime.previous);if(lifetime.source)::DeleteObject(lifetime.source);if(lifetime.replacement)::DeleteObject(lifetime.replacement);
     const DWORD after=::GetGuiResources(::GetCurrentProcess(),GR_GDIOBJECTS);
     report.AppendFormat("bitmap_gdi_before=%lu\nbitmap_gdi_after=%lu\n",before,after);
+    report.AppendFormat("bitmap_gdi_phases=setup:%lu snapshot:%lu open:%lu replace:%lu closed:%lu\n",setupGdi,snapshotGdi,lifetime.gdiWhileOpen,lifetime.gdiAfterReplacement,closedGdi);
     check("bitmap_lifetime_gdi_balanced",before==after);
+    wchar_t rendererEnabled[2]={};
+    if(::GetEnvironmentVariableW(L"FBE_NEXT_TEST_PALETTE_MENU_RENDER",rendererEnabled,_countof(rendererEnabled)) && ThemeManager::UsesPaletteSurface()) {
+        struct MnemonicProbe {
+            HWND owner; unsigned states=0;
+            static void CALLBACK Tick(HWND,UINT,UINT_PTR timer,DWORD) {
+                ::KillTimer(NULL,timer);
+                auto* self=reinterpret_cast<MnemonicProbe*>(::GetPropW(PluginOptionsProbe::dialog,L"FBE.MnemonicProbe"));
+                if(!self) { ::EndMenu(); return; }
+                HMENU menu=reinterpret_cast<HMENU>(::GetPropW(self->owner,L"FBE.Test.MenuSnapshotRoot"));
+                if(menu) {
+                    auto key=[&](wchar_t value) { return ::SendMessageW(self->owner,WM_MENUCHAR,MAKEWPARAM(value,MF_POPUP),reinterpret_cast<LPARAM>(menu)); };
+                    LRESULT result=key(L'a'); if(LOWORD(result)==0&&HIWORD(result)==MNC_SELECT) self->states|=1;
+                    ::HiliteMenuItem(self->owner,menu,0,MF_BYPOSITION|MF_HILITE);
+                    result=key(L'A'); if(LOWORD(result)==1&&HIWORD(result)==MNC_SELECT) self->states|=2;
+                    ::HiliteMenuItem(self->owner,menu,0,MF_BYPOSITION|MF_UNHILITE);
+                    ::HiliteMenuItem(self->owner,menu,1,MF_BYPOSITION|MF_HILITE);
+                    result=key(L'a'); if(LOWORD(result)==0&&HIWORD(result)==MNC_SELECT) self->states|=4;
+                    result=key(L'b'); if(LOWORD(result)==4&&HIWORD(result)==MNC_EXECUTE) self->states|=8;
+                    result=key(L'z'); if(HIWORD(result)==MNC_IGNORE) self->states|=16;
+                    RECT item={}; HDC dc=::GetDC(self->owner); SIZE label={},shortcut={};
+                    if(dc && ::GetMenuItemRect(self->owner,menu,5,&item) &&
+                        ::GetTextExtentPoint32W(dc,L"Very long menu caption",22,&label) &&
+                        ::GetTextExtentPoint32W(dc,L"Ctrl+Shift+Alt+Backspace",24,&shortcut) &&
+                        item.right-item.left>=label.cx+shortcut.cx+UiMetrics::ScaleForDpi(40,UiMetrics::DpiForWindow(self->owner))) self->states|=32;
+                    if(dc) ::ReleaseDC(self->owner,dc);
+                }
+                ::EndMenu();
+            }
+        } mnemonic={m_hWnd};
+        HMENU menu=::CreatePopupMenu();
+        ::AppendMenuW(menu,MF_STRING,0xdfa1,L"&Alpha"); ::AppendMenuW(menu,MF_STRING,0xdfa2,L"&Another");
+        ::AppendMenuW(menu,MF_STRING,0xdfa3,L"&&Amber"); ::AppendMenuW(menu,MF_STRING|MF_GRAYED,0xdfa4,L"&Abort");
+        ::AppendMenuW(menu,MF_STRING,0xdfa5,L"&Beta");
+        ::AppendMenuW(menu,MF_STRING,0xdfa6,L"&Very long menu caption\tCtrl+Shift+Alt+Backspace");
+        ::SetPropW(m_hWnd,L"FBE.MnemonicProbe",&mnemonic);
+        const UINT_PTR mnemonicTimer=::SetTimer(NULL,0,100,MnemonicProbe::Tick);
+        ThemeManager::TrackPopupMenu(menu,TPM_NONOTIFY,bounds.left+40,bounds.top+40,m_hWnd);
+        ::KillTimer(NULL,mnemonicTimer); ::RemovePropW(m_hWnd,L"FBE.MnemonicProbe"); ::DestroyMenu(menu);
+        report.AppendFormat("palette_menu_mnemonic_states=%u\n",mnemonic.states);
+        check("palette_menu_mnemonic_duplicates_disabled_escaped",mnemonicTimer&&(mnemonic.states&31)==31);
+        check("palette_menu_long_shortcut_geometry",(mnemonic.states&32)!=0);
+        struct LargeMenuProbe {
+            HWND owner; unsigned measured=0;
+            static void CALLBACK Tick(HWND,UINT,UINT_PTR timer,DWORD) {
+                ::KillTimer(NULL,timer);
+                auto* self=reinterpret_cast<LargeMenuProbe*>(::GetPropW(PluginOptionsProbe::dialog,L"FBE.LargeMenuProbe"));
+                if(self) self->measured=static_cast<unsigned>(reinterpret_cast<UINT_PTR>(::GetPropW(self->owner,L"FBE.Test.MenuMeasureMatched")));
+                ::EndMenu();
+            }
+        };
+        DWORD largeGdi[3]={}; bool largeMeasured=true;
+        for(int cycle=0; cycle<3; ++cycle) {
+            HMENU large=::CreatePopupMenu();
+            if(!large) { largeMeasured=false; break; }
+            bool inserted=true;
+            for(UINT index=0; index<256; ++index) {
+                wchar_t title[64]={}; swprintf_s(title,L"Test script %03u",index);
+                if(!::AppendMenuW(large,MF_STRING,0xc000+index,title)) { inserted=false; break; }
+            }
+            LargeMenuProbe largeProbe={m_hWnd}; ::SetPropW(m_hWnd,L"FBE.LargeMenuProbe",&largeProbe);
+            const UINT_PTR largeTimer=::SetTimer(NULL,0,100,LargeMenuProbe::Tick);
+            if(inserted && largeTimer) ThemeManager::TrackPopupMenu(large,TPM_NONOTIFY,bounds.left+40,bounds.top+40,m_hWnd);
+            ::KillTimer(NULL,largeTimer); ::RemovePropW(m_hWnd,L"FBE.LargeMenuProbe"); ::DestroyMenu(large);
+            largeGdi[cycle]=::GetGuiResources(::GetCurrentProcess(),GR_GDIOBJECTS);
+            largeMeasured=largeMeasured&&inserted&&largeTimer&&largeProbe.measured==256;
+        }
+        report.AppendFormat("palette_menu_large_gdi=%lu,%lu,%lu\n",largeGdi[0],largeGdi[1],largeGdi[2]);
+        check("palette_menu_large_items_measured",largeMeasured);
+        check("palette_menu_large_gdi_stable",largeMeasured&&largeGdi[1]==largeGdi[2]);
+    }
 }

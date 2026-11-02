@@ -3,13 +3,14 @@ param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [ValidateSet('light','dark','automatic')][string]$Theme='light',
     [ValidateSet('ru-RU','en-US')][string]$Locale='ru-RU',
     [string]$ArtifactDirectory,
+    [switch]$RequirePaletteMenuGutter,
     [ValidateRange(1,100)][int]$MenuCycles=20,
     [ValidateRange(1,600)][int]$TimeoutSeconds=300)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $iso=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'ui-defects'
 $passed=$false
-$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_UI_LOCALE','FBE_NEXT_TEST_REQUESTED_THEME','FBE_NEXT_TEST_ARTIFACT_DIR','FBE_NEXT_TEST_MENU_CYCLES','FBE_NEXT_TEST_MENU_THEME','FBE_NEXT_TEST_MENU_PLUGIN_ICONS')
+$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_UI_LOCALE','FBE_NEXT_TEST_REQUESTED_THEME','FBE_NEXT_TEST_ARTIFACT_DIR','FBE_NEXT_TEST_MENU_CYCLES','FBE_NEXT_TEST_MENU_THEME','FBE_NEXT_TEST_MENU_PLUGIN_ICONS','FBE_NEXT_TEST_REQUIRE_PALETTE_MENU_GUTTER')
 $old=@{};foreach($name in $names){$old[$name]=[Environment]::GetEnvironmentVariable($name)}
 try {
     $seed=New-IsolatedFbeSettingsSeed $iso
@@ -47,6 +48,7 @@ try {
     $fixture=Join-Path $iso.Root 'probe.fb2';$report=Join-Path $iso.Root 'ui-defects.txt'
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'fb2-metadata-cyrillic-smoke.fb2') -Destination $fixture
     $env:FBE_NEXT_TEST_MENU_CYCLES=[string]$MenuCycles;$env:FBE_NEXT_TEST_MENU_THEME=$null
+    $env:FBE_NEXT_TEST_REQUIRE_PALETTE_MENU_GUTTER=if($RequirePaletteMenuGutter){'1'}else{$null}
     $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='ui-defects-runtime'
     $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY=Split-Path $seed;$env:FBE_NEXT_UI_LOCALE=$null
     if(!$ArtifactDirectory){$ArtifactDirectory=Join-Path $PSScriptRoot "../../out/issue64/menu-$Theme-$Locale"}
