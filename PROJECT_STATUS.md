@@ -132,11 +132,11 @@
 - `https://github.com/evpobr/fictionbookeditor` — дополнительный upstream/reference для `ExportHTML` и возможной сверки `FBV`.
 - `https://github.com/hunspell/hunspell` — источник Hunspell.
 - `third_party/pcre2` — исходники PCRE2 10.49.
-- `third_party/scintilla` — исходники Scintilla 5.6.7.
-- `third_party/lexilla` — исходники Lexilla 5.5.4.
+- `third_party/scintilla` — исходники Scintilla 5.6.9.
+- `third_party/lexilla` — исходники Lexilla 5.5.5.
 - `third_party/hunspell` — интегрированные исходники Hunspell 1.7.4.
 - `third_party/uac` — полный комплект NSIS UAC plugin 0.2.4c, перенесённый из ранее скачанного `UAC.zip`.
-- `tools/upx/upx.exe` — локальная копия UPX 5.2.1.
+- `tools/upx/upx.exe` — локальная копия UPX 5.3.0.
 - `third_party/wtl` — WTL, подключаемый как внешняя зависимость/submodule.
 - `runtime` — схемы FB2, XSL, словари, скрипты, справка, локализации и прочие runtime-материалы.
 - `tools/tests/*.fb2` и `tools/tests/regex-fixtures.json` — тестовые документы и fixture-наборы.
@@ -425,10 +425,10 @@
 - Основная архитектура приложения: Win32.
 - Shell DLL: Win32 и x64.
 - PCRE2: 10.49.
-- Scintilla: 5.6.7.
-- Lexilla: 5.5.4.
+- Scintilla: 5.6.9.
+- Lexilla: 5.5.5.
 - NSIS UAC plugin: 0.2.4c.
-- UPX: 5.2.1; для modern shell DLL не применяется.
+- UPX: 5.3.0; для modern shell DLL не применяется.
 - Hunspell: 1.7.4.
 
 ## Стандарты и соглашения

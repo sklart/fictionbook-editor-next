@@ -7,8 +7,8 @@ is needed to build the project but is not shipped as a separate component.
 
 | Component | Version in this tree | License | Use | Upstream |
 | --- | --- | --- | --- | --- |
-| Scintilla | 5.6.7 | Scintilla License (permissive) | XML source editor; `Scintilla.dll` is bundled | <https://www.scintilla.org/> |
-| Lexilla | 5.5.4 | Scintilla License (permissive) | Lexers for Scintilla; `Lexilla.dll` is bundled | <https://www.scintilla.org/Lexilla.html> |
+| Scintilla | 5.6.9 | Scintilla License (permissive) | XML source editor; `Scintilla.dll` is bundled | <https://www.scintilla.org/> |
+| Lexilla | 5.5.5 | Scintilla License (permissive) | Lexers for Scintilla; `Lexilla.dll` is bundled | <https://www.scintilla.org/Lexilla.html> |
 | PCRE2 | 10.49 | BSD-3-Clause with PCRE2 exception | Regular-expression backend, statically linked into FBE | <https://github.com/PCRE2Project/pcre2> |
 | Hunspell | 1.7.6 | MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later | Spell checking, statically linked into FBE | <https://github.com/hunspell/hunspell> |
 | English Speller Database / SCOWL | 2026.02.25 | SCOWL permissive license; BSD license for the affix file | Bundled English (`en_US`) spell-check dictionary | <https://github.com/en-wl/wordlist> |
@@ -19,13 +19,14 @@ is needed to build the project but is not shipped as a separate component.
 | OpenJPEG | 2.5.4 | BSD-2-Clause | JPEG 2000 decoder build input for FBE | <https://github.com/uclouvain/openjpeg> |
 | libheif | 1.23.7 | LGPL-2.1-or-later | Static ISO-BMFF/HEIF container reader in FBE; AVIF/HEIC/HEIF decoding only | <https://github.com/strukturag/libheif> |
 | libde265 | 1.1.3 | LGPL-2.1-or-later | Static HEVC decoder used by bundled libheif | <https://github.com/strukturag/libde265> |
-| libaom | 3.15.2 | BSD-2-Clause and Alliance for Open Media Patent License 1.0 | Static AV1 decoder used by bundled libheif | <https://aomedia.googlesource.com/aom> |
+| libaom | 3.15.3 | BSD-2-Clause and Alliance for Open Media Patent License 1.0 | Static AV1 decoder used by bundled libheif | <https://aomedia.googlesource.com/aom> |
 | zlib | 1.3.2 | zlib License | Static DEFLATE backend used by libarchive | <https://github.com/madler/zlib> |
-| libarchive | 3.8.10 | BSD-2-Clause | Static ZIP/RAR/RAR5 reader and ZIP writer linked into FBE | <https://github.com/libarchive/libarchive> |
+| libarchive | 3.8.11 | BSD-2-Clause | Static ZIP/RAR/RAR5 reader and ZIP writer linked into FBE | <https://github.com/libarchive/libarchive> |
 | Windows Template Library (WTL) | 10.01 | MS-PL | UI and Windows shell components, compiled into FBE, FBV, and FBShell | <https://sourceforge.net/projects/wtl/> |
 | LunaSVG | 3.5.0 | MIT | EPUB import SVG renderer, statically linked into `ImportEPUBLunaSVG.dll` | <https://github.com/sammycage/lunasvg> |
 | PlutoVG | 1.3.3 | MIT | LunaSVG raster backend, statically linked into `ImportEPUBLunaSVG.dll` | <https://github.com/sammycage/plutovg> |
 | Microsoft Fluent UI System Icons — Pin | a347af95478f989038cccbf085978865264c048a | MIT | Regular/Filled Pin SVGs rasterized into FBE at build time | <https://github.com/microsoft/fluentui-system-icons> |
+| UPX | 5.3.0 | GPL-2.0-or-later with UPX exception | Optional build-time executable packer; disabled for standard builds | <https://github.com/upx/upx> |
 | UAC plugin helper | 0.2.4c (source snapshot; manual review) | zlib/libpng license | Build-time UAC support for the NSIS installer | <https://nsis.sourceforge.io/UAC_plug-in> |
 
 ## Bundled XML source-editor palettes
