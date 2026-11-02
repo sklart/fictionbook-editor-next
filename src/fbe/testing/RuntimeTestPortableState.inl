@@ -488,14 +488,16 @@ void CMainFrame::RunPortableStateTestScenario()
                 const bool staged = reinterpret_cast<ULONG_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteManagerResult")) == 1;
                 ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerTest"); ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerResult");
                 const bool unchangedOnDisk = ThemeManager::LoadCustomPaletteFromProfile(original.id, stored, error) &&
-                    stored.present[THEME_COLOR_CONTROL] == original.present[THEME_COLOR_CONTROL];
+                    stored.present[THEME_COLOR_CONTROL] == original.present[THEME_COLOR_CONTROL] &&
+                    (!original.present[THEME_COLOR_CONTROL] || stored.colors[THEME_COLOR_CONTROL] == original.colors[THEME_COLOR_CONTROL]);
                 SettingsFileTransaction files; CString detail;
                 const bool prepared = page.PrepareCommit(files, detail);
                 if(prepared) page.Commit();
                 const bool committed = prepared && files.Commit();
                 if(committed) page.FinishCommit();
                 hexPersisted = staged && unchangedOnDisk && committed && ThemeManager::LoadCustomPaletteFromProfile(original.id, stored, error) &&
-                    stored.present[THEME_COLOR_CONTROL] && stored.colors[THEME_COLOR_CONTROL] == RGB(0x42,0x68,0x91);
+                    stored.present[THEME_COLOR_CONTROL] && stored.colors[THEME_COLOR_CONTROL] == RGB(0x42,0x68,0x91) &&
+                    ThemeManager::Color(THEME_COLOR_CONTROL) == RGB(0x42,0x68,0x91);
                 passed = hexPersisted && passed;
                 page.DestroyWindow();
             }
