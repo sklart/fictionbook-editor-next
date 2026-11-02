@@ -63,6 +63,10 @@ try {
     if(Test-Path $caret){Write-Host (Get-Content $caret -Raw)}
     Write-Host $text
     if($code -ne 0 -or $text -notmatch 'result=PASS'){throw "UI defects runtime failed: $Theme/$Locale (exit=$code)"}
+    if($env:FBE_NEXT_TEST_PALETTE_MENU_RENDER -and $env:FBE_NEXT_TEST_PALETTE_MENU_MATRIX -and
+       $text -notmatch '(?m)^palette_switch_resources_gdi_\d+_\d+_user_\d+_\d+=1\r?$') {
+        throw 'Palette matrix did not verify resources after repeated theme switches.'
+    }
     $passed=$true;Write-Host "UI defects $Theme/$Locale PASS"
 } finally {
     foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$old[$name])}

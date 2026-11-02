@@ -417,6 +417,28 @@
                     probe.paletteColor=probe.paletteGutter=probe.paletteBorder=probe.paletteSelected=probe.paletteSelectedText=probe.paletteHover=probe.snapshotText=probe.accessibleText=false;
                     route(6, L"palette-scripts");
                     check("palette_scripts_hover", probe.paletteColor && probe.paletteGutter && probe.paletteSelected && probe.paletteHover && probe.snapshotText && probe.accessibleText);
+                    // Warm up each palette before measuring: the two measured
+                    // rounds then exercise the same windows and theme paths.
+                    auto switchPalettes = [&]() {
+                        bool applied = true;
+                        for(int i = 0; i < 30; ++i) {
+                            const Case& test = cases[i % _countof(cases)];
+                            ThemeManager::SetSelectedTheme(test.theme);
+                            applied = ThemeManager::SetNamedPalette(test.palette) && applied;
+                            ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+                            ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+                        }
+                        return applied;
+                    };
+                    const bool warm = switchPalettes();
+                    const DWORD gdiBefore = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+                    const DWORD userBefore = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
+                    const bool repeated = switchPalettes();
+                    const DWORD gdiAfter = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+                    const DWORD userAfter = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
+                    CStringA resourceResult;
+                    resourceResult.Format("palette_switch_resources_gdi_%lu_%lu_user_%lu_%lu", gdiBefore, gdiAfter, userBefore, userAfter);
+                    check(resourceResult.GetString(), warm && repeated && gdiBefore && userBefore && gdiAfter <= gdiBefore && userAfter <= userBefore);
                 }
             }
         if(hadCustom) ThemeManager::SetCustomPalette(custom); else ThemeManager::SetNamedPalette(savedPalette);
