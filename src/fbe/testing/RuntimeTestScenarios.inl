@@ -92,9 +92,11 @@ __declspec(noinline) LRESULT CMainFrame::RunSettingsDialogRuntime(CAtlFile& outp
         ::RemovePropW(m_hWnd,L"FBE_SETTINGS_COMBO_PAINT");
         ::RemovePropW(m_hWnd,L"FBE_SETTINGS_BUTTON_PAINT");
         report.AppendFormat("disabled-text=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_DISABLED_TEXT_PASSED")));
+        report.AppendFormat("hover-text=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_TEXT_PASSED")));
         report.AppendFormat("checkbox-caption=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_CHECKBOX_CAPTION_PASSED")));
         ::RemovePropW(m_hWnd,L"FBE_SETTINGS_CHECKBOX_CAPTION_PASSED");
         ::RemovePropW(m_hWnd,L"FBE_SETTINGS_DISABLED_TEXT_PASSED");
+        ::RemovePropW(m_hWnd,L"FBE_SETTINGS_HOVER_TEXT_PASSED");
         report.AppendFormat("group-areas=%Iu group-failures=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_PAINT_AREAS")), reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_PAINT_FAILURES")));
         ::RemovePropW(m_hWnd,L"FBE_SETTINGS_PAINT_AREAS"); ::RemovePropW(m_hWnd,L"FBE_SETTINGS_PAINT_FAILURES");
         ::RemovePropW(m_hWnd, L"FBE_SETTINGS_GROUP_PAINT_PASSED");

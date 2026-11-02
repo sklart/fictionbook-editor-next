@@ -150,7 +150,7 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
             {rect(0,246,300,545), THEME_COLOR_BORDER, L"", THEME_COLOR_BORDER},
             {rect(5,251,294,540), THEME_COLOR_WINDOW, L"", THEME_COLOR_WINDOW},
             {rect(15,258,280,296), THEME_COLOR_SECONDARY_TEXT, L"Scripts", THEME_COLOR_WINDOW},
-            {rect(15,299,280,338), THEME_COLOR_SELECTION_BACKGROUND, L"  \x25B8  Category", THEME_COLOR_SELECTION_BACKGROUND},
+            {rect(15,299,280,338), THEME_COLOR_SELECTION_BACKGROUND, L"  \x25B8", THEME_COLOR_SELECTION_BACKGROUND},
             {rect(42,303,270,334), THEME_COLOR_SELECTION_TEXT, L"Category", THEME_COLOR_SELECTION_BACKGROUND},
             {rect(15,342,280,380), THEME_COLOR_HOVER, L"  \x25B8  Script", THEME_COLOR_HOVER},
             {rect(15,384,280,422), THEME_COLOR_DISABLED_TEXT, L"  \x25B8  Script", THEME_COLOR_WINDOW},
@@ -243,7 +243,7 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
                     if(!localized.IsEmpty()) caption = localized;
                 }
                 if((part.role >= THEME_COLOR_SECONDARY_TEXT && part.role <= THEME_COLOR_SUCCESS) &&
-                    sampleIndex < 0) {
+                    sampleIndex < 0 && wcscmp(part.text, L"  \x25B8") != 0) {
                     m_page.m_paletteRole.GetLBText(part.role, localized);
                     if(!localized.IsEmpty()) caption = localized;
                 }
@@ -293,7 +293,9 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
         }
         const int selected = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel();
         for(const auto& part : parts) if(part.role == selected || part.role == m_hoverRole) {
-            RECT outline = part.rect; ::InflateRect(&outline, -2, -2);
+            // Draw the selection outside the sample so it cannot cross the
+            // text in compact rows such as a selected tree item.
+            RECT outline = part.rect; ::InflateRect(&outline, 2, 2);
             HPEN darkPen = ::CreatePen(PS_SOLID, 1, RGB(0,0,0));
             HPEN lightPen = ::CreatePen(PS_DOT, 1, RGB(255,255,255));
             if(darkPen && lightPen) {
@@ -883,6 +885,53 @@ public:
         ::SetPropW(m_page.m_hWnd, L"FBE.PaletteDpiFailure", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(failedDpi)));
         return valid;
     }
+    bool CapturePaletteExamples(const CString& directory)
+    {
+        const int index = m_page.m_acceptedPaletteIndex - INTERFACE_PALETTE_COUNT;
+        if(index < 0 || index >= static_cast<int>(m_page.m_customPalettes.size())) return false;
+        const auto originalPalettes = m_page.m_customPalettes, originalPending = m_page.m_pendingPalettes;
+        const bool originalChanged = m_page.m_paletteChanged;
+        const int originalThemeIndex = m_page.m_acceptedThemeIndex;
+        const InterfaceTheme activeTheme = ThemeManager::GetSelectedTheme();
+        const InterfacePalette activePalette = ThemeManager::GetNamedPalette();
+        ThemeManager::CustomPalette activeCustom;
+        const bool hadCustom = ThemeManager::GetCustomPalette(activeCustom);
+        auto capture = [&](LPCWSTR name) {
+            ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+            RECT frame = {}; ::GetWindowRect(m_hWnd, &frame); CImage image;
+            if(!image.Create(frame.right - frame.left, frame.bottom - frame.top, 32)) return false;
+            HDC dc = image.GetDC(); const bool painted = dc && ::PrintWindow(m_hWnd, dc, 0);
+            if(dc) image.ReleaseDC();
+            return painted && SUCCEEDED(image.Save(directory + L"\\" + name));
+        };
+        auto selectRole = [&](ThemeColorRole role) { ::SendMessageW(m_hWnd, kPreviewSelect, role, 0); };
+        ThemeManager::CustomPalette draft = originalPalettes[index];
+        bool ok = ThemeManager::CopyNamedPaletteColors(INTERFACE_PALETTE_CATPPUCCIN_MOCHA, draft);
+        draft.name = L"Catppuccin Mocha";
+        m_page.m_customPalettes[index] = draft; m_page.m_acceptedThemeIndex = INTERFACE_THEME_DARK;
+        ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK); ok = ThemeManager::SetCustomPalette(draft) && ok;
+        ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId()); Refresh();
+        SetDlgItemText(IDC_PALETTE_CURRENT, L"Catppuccin Mocha");
+        selectRole(THEME_COLOR_CONTROL); ok = capture(L"mocha-control.bmp") && ok;
+        selectRole(THEME_COLOR_SELECTION_BACKGROUND); ok = capture(L"mocha-selection.bmp") && ok;
+        draft = originalPalettes[index]; draft.name = L"Sepia"; draft.base = ThemeManager::CustomPaletteBase::Sepia;
+        for(int role = 0; role < THEME_COLOR_COUNT; ++role) draft.present[role] = false;
+        m_page.m_customPalettes[index] = draft; m_page.m_acceptedThemeIndex = INTERFACE_THEME_LIGHT;
+        ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT); ok = ThemeManager::SetCustomPalette(draft) && ok;
+        ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId()); Refresh(); SetDlgItemText(IDC_PALETTE_CURRENT, L"Sepia");
+        selectRole(THEME_COLOR_CONTROL); ::SetWindowTextW(m_hex, L"#D8C9AF");
+        ok = capture(L"sepia-custom.bmp") && ok;
+        ::SetWindowTextW(m_hex, L"#A0C8D0"); ok = capture(L"sepia-hex.bmp") && ok;
+        BOOL handled = FALSE; OnAction(BN_CLICKED, IDC_PALETTE_RESET_COLOR, GetDlgItem(IDC_PALETTE_RESET_COLOR), handled);
+        SetDlgItemText(IDC_PALETTE_CURRENT, L"Sepia");
+        ok = capture(L"sepia-reset.bmp") && ok;
+        m_page.m_customPalettes = originalPalettes; m_page.m_pendingPalettes = originalPending;
+        m_page.m_paletteChanged = originalChanged; m_page.m_acceptedThemeIndex = originalThemeIndex;
+        ThemeManager::SetSelectedTheme(activeTheme);
+        if(hadCustom) ThemeManager::SetCustomPalette(activeCustom); else ThemeManager::SetNamedPalette(activePalette);
+        ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId()); Refresh();
+        return ok;
+    }
     LRESULT OnTimer(UINT, WPARAM id, LPARAM, BOOL&)
     {
         if(id != 0x504D) return 0;
@@ -1054,6 +1103,10 @@ public:
                     if(captured) image.Save(capturePath);
                 }
             }
+            wchar_t artifactDirectory[MAX_PATH] = {};
+            const DWORD artifactLength = ::GetEnvironmentVariableW(L"FBE_NEXT_PALETTE_EXAMPLES_DIR", artifactDirectory, _countof(artifactDirectory));
+            if(mode == 2 && artifactLength > 0 && artifactLength < _countof(artifactDirectory))
+                passed = CapturePaletteExamples(artifactDirectory) && passed;
         } else passed = false;
         ::SetPropW(m_page.m_hWnd, L"FBE.PaletteManagerResult", reinterpret_cast<HANDLE>(passed ? 1 : 2));
         PostMessage(WM_COMMAND, MAKEWPARAM(IDCANCEL, BN_CLICKED), reinterpret_cast<LPARAM>(GetDlgItem(IDCANCEL).m_hWnd));

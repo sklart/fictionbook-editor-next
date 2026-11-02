@@ -87,6 +87,10 @@
                     }
                 }
                 if(probe->paletteHover || ::GetTickCount64()-probe->hoverStarted>2000) {
+                    if(probe->paletteHover && probe->stage == L"palette-scripts") {
+                        PluginOptionsProbe::prefix = probe->stage;
+                        PluginOptionsProbe::Capture(probe->readyMenu, L"hover");
+                    }
                     if(probe->hoverCursorSaved) ::SetCursorPos(probe->hoverOriginalCursor.x,probe->hoverOriginalCursor.y);
                     probe->hoverPending=false; ::EndMenu(); probe->done=true;
                 }
@@ -143,7 +147,7 @@
                     if(self->stage.find(L"palette-") == 0) {
                         HMENU snapshot=reinterpret_cast<HMENU>(::GetPropW(self->owner,L"FBE.Test.MenuSnapshotRoot"));
                         if(snapshot) {
-                            const HMENU source=::GetSubMenu(self->root,4); wchar_t caption[256]={};
+                            const HMENU source=::GetSubMenu(self->root,self->stage == L"palette-scripts" ? 6 : 4); wchar_t caption[256]={};
                             if(::GetMenuStringW(source,0,caption,_countof(caption),MF_BYPOSITION)>0) {
                                 wchar_t copyCaption[256]={};
                                 self->snapshotText=::GetMenuStringW(snapshot,0,copyCaption,_countof(copyCaption),MF_BYPOSITION)>0 && wcscmp(caption,copyCaption)==0;
@@ -408,6 +412,11 @@
                     route(4, L"palette-custom-probe");
                     check("palette_matrix_custom", probe.paletteColor && probe.paletteGutter && probe.paletteBorder &&
                         probe.paletteSelected && probe.paletteSelectedText && probe.paletteHover && probe.snapshotText && probe.accessibleText && probe.mnemonicOk);
+                    ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK); ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CATPPUCCIN_MOCHA);
+                    ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+                    probe.paletteColor=probe.paletteGutter=probe.paletteBorder=probe.paletteSelected=probe.paletteSelectedText=probe.paletteHover=probe.snapshotText=probe.accessibleText=false;
+                    route(6, L"palette-scripts");
+                    check("palette_scripts_hover", probe.paletteColor && probe.paletteGutter && probe.paletteSelected && probe.paletteHover && probe.snapshotText && probe.accessibleText);
                 }
             }
         if(hadCustom) ThemeManager::SetCustomPalette(custom); else ThemeManager::SetNamedPalette(savedPalette);

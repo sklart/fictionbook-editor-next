@@ -1043,6 +1043,9 @@ bool CSettingsDlg::ProbeLayout()
 		const bool paintOnly = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SETTINGS_PAINT_ONLY", paintProbe, _countof(paintProbe)) == 1 && paintProbe[0] == L'1';
 		if(ThemeManager::UsesPaletteSurface() && paintOnly) probePageFrames(page);
 		if(index == PageIndex(SettingsPageId::Images) && ThemeManager::UsesPaletteSurface() && paintOnly) {
+			const int previousNavigation = m_navigation.GetCurSel();
+			m_navigation.SetCurSel(index);
+			::RedrawWindow(m_navigation, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
 			// Compare the real checkbox pixels before and after repainting its
 			// sibling group frame. Repainting the frame must not erase its label.
 			HWND field = ::GetDlgItem(page, IDC_OPTIONS_CLEARIMGS);
@@ -1135,6 +1138,16 @@ bool CSettingsDlg::ProbeLayout()
 			const bool dialogCreated = dialog.Create(dialogRect.right - dialogRect.left, dialogRect.bottom - dialogRect.top, 32) != FALSE;
 			HDC dialogDc = dialogCreated ? dialog.GetDC() : NULL;
 			const bool captured = dialogDc && ::PrintWindow(m_hWnd, dialogDc, 0) != FALSE;
+			auto saveDialogScreenshot = [&](const wchar_t* filename) {
+				wchar_t artifactDir[32768] = {};
+				const DWORD length = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_APPEARANCE_ARTIFACT_DIR", artifactDir, _countof(artifactDir));
+				if(!length || length >= _countof(artifactDir)) return;
+				CImage snapshot;
+				if(!snapshot.Create(dialogRect.right - dialogRect.left, dialogRect.bottom - dialogRect.top, 32)) return;
+				HDC dc = snapshot.GetDC(); const bool saved = dc && ::PrintWindow(m_hWnd, dc, 0);
+				if(dc) snapshot.ReleaseDC();
+				if(saved) snapshot.Save(CString(artifactDir) + filename);
+			};
 			auto capture = [&](const wchar_t* filename, bool repaintFrame) {
 				std::vector<BYTE> pixels; CImage image;
 				if(captured && width > 0 && height > 0 && image.Create(width, height, 32)) {
@@ -1161,7 +1174,26 @@ bool CSettingsDlg::ProbeLayout()
 				return pixels;
 			};
 			const auto before = capture(L"\\checkbox-before.bmp", false);
+			saveDialogScreenshot(L"\\images-page-before.bmp");
 			const auto after = capture(L"\\checkbox-after.bmp", true);
+			const int textStart = UiMetrics::ScaleForDpi(20, m_layoutDpi);
+			POINT savedCursor = {}; const bool cursorSaved = ::GetCursorPos(&savedCursor) != FALSE;
+			const bool cursorMoved = cursorSaved && ::SetCursorPos((rect.left + rect.right) / 2, (rect.top + rect.bottom) / 2);
+			if(cursorMoved) {
+				::SendMessageW(field, WM_MOUSEMOVE, 0, MAKELPARAM(width / 2, height / 2));
+				::RedrawWindow(field, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+				if(dialogDc) ::PrintWindow(m_hWnd, dialogDc, 0);
+			}
+			const auto hover = cursorMoved ? capture(L"\\checkbox-hover.bmp", false) : std::vector<BYTE>();
+			if(cursorMoved) saveDialogScreenshot(L"\\images-page-hover.bmp");
+			if(cursorMoved) { ::SetCursorPos(savedCursor.x, savedCursor.y); ::SendMessageW(field, WM_MOUSELEAVE, 0, 0); }
+			m_navigation.SetCurSel(previousNavigation);
+			bool hoverTextStable = !before.empty() && hover.size() == before.size();
+			if(hoverTextStable) for(int y = 0; y < height; ++y) for(int x = textStart; x < width; ++x) {
+				const size_t offset = static_cast<size_t>((y * width + x) * 3);
+				if(before[offset] != hover[offset] || before[offset + 1] != hover[offset + 1] || before[offset + 2] != hover[offset + 2]) hoverTextStable = false;
+			}
+			::SetPropW(GetParent(), L"FBE_SETTINGS_HOVER_TEXT_PASSED", reinterpret_cast<HANDLE>(hoverTextStable ? 1 : 2));
 			const BOOL wasEnabled = ::IsWindowEnabled(field);
 			const LRESULT originalCheck = ::SendMessageW(field, BM_GETCHECK, 0, 0);
 			::EnableWindow(field, FALSE); ::SendMessageW(field, BM_SETCHECK, BST_UNCHECKED, 0);
@@ -1176,7 +1208,6 @@ bool CSettingsDlg::ProbeLayout()
 			if(dialogDc) dialog.ReleaseDC();
 			const COLORREF disabledColor = ThemeManager::DisabledTextColor();
 			int textPixels = 0, highlightPixels = 0;
-			const int textStart = UiMetrics::ScaleForDpi(20, m_layoutDpi);
 			for(int y = 0; y < height; ++y) for(int x = textStart; x < width; ++x) {
 				const size_t offset = static_cast<size_t>((y * width + x) * 3);
 				if(offset + 2 >= disabled.size()) continue;
@@ -1195,7 +1226,7 @@ bool CSettingsDlg::ProbeLayout()
 			}
 			const bool disabledPassed = textPixels > 0 && highlightPixels == 0 && boxChanged && textUnchanged;
 			::SetPropW(GetParent(), L"FBE_SETTINGS_DISABLED_TEXT_PASSED", reinterpret_cast<HANDLE>(disabledPassed ? 1 : 2));
-			const bool paintPassed = !before.empty() && before == after && disabledPassed && captionValid;
+			const bool paintPassed = !before.empty() && before == after && disabledPassed && captionValid && hoverTextStable;
 			::SetPropW(GetParent(), L"FBE_SETTINGS_GROUP_PAINT_PASSED", reinterpret_cast<HANDLE>(paintPassed ? 1 : 2));
 			passed = passed && paintPassed;
 		}
