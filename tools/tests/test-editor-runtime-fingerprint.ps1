@@ -14,8 +14,8 @@ function New-Fingerprint {
     param(
         [string]$PlatformToolset = 'v143',
         [string]$VCToolsVersion = '14.44.35207',
-        [string]$ScintillaVersion = '5.6.7',
-        [string]$LexillaVersion = '5.5.4'
+        [string]$ScintillaVersion = '5.6.9',
+        [string]$LexillaVersion = '5.5.5'
     )
     return [pscustomobject]@{
         platformToolset = $PlatformToolset
@@ -25,7 +25,7 @@ function New-Fingerprint {
     }
 }
 
-$expected = @{ PlatformToolset = 'v143'; VCToolsVersion = '14.44.35207'; ScintillaVersion = '5.6.7'; LexillaVersion = '5.5.4' }
+$expected = @{ PlatformToolset = 'v143'; VCToolsVersion = '14.44.35207'; ScintillaVersion = '5.6.9'; LexillaVersion = '5.5.5' }
 $valid = New-Fingerprint
 Assert-Result (Test-EditorRuntimeFingerprint -Fingerprint $valid @expected) $true 'valid'
 Assert-Result (Test-EditorRuntimeFingerprint -Fingerprint (New-Fingerprint -ScintillaVersion '5.6.4') @expected) $false 'stale Scintilla'
@@ -39,7 +39,7 @@ Assert-Result (Test-EditorRuntimeFingerprint -Fingerprint (New-Fingerprint -VCTo
 Assert-Result (Test-EditorRuntimeFingerprint -Fingerprint (ConvertFrom-EditorRuntimeFingerprintJson -Json '{broken') @expected) $false 'corrupt JSON'
 
 $wrongSeries = New-Fingerprint -VCToolsVersion '14.45.10000'
-$wrongSeriesExpected = @{ PlatformToolset = 'v143'; VCToolsVersion = '14.45.10000'; ScintillaVersion = '5.6.7'; LexillaVersion = '5.5.4' }
+$wrongSeriesExpected = @{ PlatformToolset = 'v143'; VCToolsVersion = '14.45.10000'; ScintillaVersion = '5.6.9'; LexillaVersion = '5.5.5' }
 Assert-Result (Test-EditorRuntimeFingerprint -Fingerprint $wrongSeries @wrongSeriesExpected) $false 'universal runtime requires VC Tools 14.44'
 
 Assert-Result (Test-SubmoduleCommitMatch -ExpectedCommit 'abc' -ActualCommit 'abc') $true 'matching submodule commit'
