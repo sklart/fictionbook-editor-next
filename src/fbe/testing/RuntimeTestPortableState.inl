@@ -402,6 +402,7 @@ void CMainFrame::RunPortableStateTestScenario()
     }
     if(IsFbeTestScenario(L"custom-palette-manage")) {
         bool passed = _Settings.GetInterfacePalette() == L"custom:restart-test" && ThemeManager::IsCustomPaletteActive();
+        UINT_PTR dpiFailure = 0, dpiWidth = 0, dpiHeight = 0, dpiControl = 0, dpiTextWidth = 0, dpiTextHeight = 0, dpiBoxWidth = 0, dpiBoxHeight = 0;
         const bool dirtyBefore = DocChanged();
         CString bodyBefore;
         bool documentReady = false;
@@ -436,8 +437,17 @@ void CMainFrame::RunPortableStateTestScenario()
                 const COLORREF before = ThemeManager::Color(THEME_COLOR_WINDOW);
                 ::SetPropW(page.m_hWnd, L"FBE.PaletteManagerTest", reinterpret_cast<HANDLE>(2));
                 BOOL handled = FALSE; page.OnManagePalettes(BN_CLICKED, IDC_PALETTE_MANAGE, NULL, handled);
+                dpiFailure = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteDpiFailure"));
+                dpiWidth = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteDpiWidth"));
+                dpiHeight = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteDpiHeight"));
+                dpiControl = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteDpiControl"));
+                dpiTextWidth = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteDpiTextWidth")); dpiTextHeight = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteDpiTextHeight"));
+                dpiBoxWidth = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteDpiBoxWidth")); dpiBoxHeight = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteDpiBoxHeight"));
                 passed = reinterpret_cast<ULONG_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteManagerResult")) == 1 &&
                     ThemeManager::Color(THEME_COLOR_WINDOW) == before && ThemeManager::IsCustomPaletteActive() && passed;
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiFailure");
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiWidth"); ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiHeight"); ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiControl");
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiTextWidth"); ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiTextHeight"); ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiBoxWidth"); ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiBoxHeight");
                 ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerTest");
                 ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerResult");
                 page.CancelChanges(); page.DestroyWindow();
@@ -532,7 +542,7 @@ void CMainFrame::RunPortableStateTestScenario()
                 bodyBefore == CString(static_cast<LPCWSTR>(m_doc->m_body.Document()->body->outerHTML)) && dirtyBefore == DocChanged();
         } catch(const _com_error&) {}
         passed = documentPreserved && passed;
-        CStringA report; report.Format("custom-palette-manage=%d\ndocument-preserved=%d\nresult=%s\n", passed ? 1 : 0, documentPreserved ? 1 : 0, passed ? "pass" : "fail");
+        CStringA report; report.Format("custom-palette-manage=%d\ndocument-preserved=%d\ninterface-language=%lu\ndpi-failure=%Iu\ndpi-size=%Iux%Iu\ndpi-control=%Iu\ndpi-text=%Iux%Iu box=%Iux%Iu\nresult=%s\n", passed ? 1 : 0, documentPreserved ? 1 : 0, static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), dpiFailure, dpiWidth, dpiHeight, dpiControl, dpiTextWidth, dpiTextHeight, dpiBoxWidth, dpiBoxHeight, passed ? "pass" : "fail");
         WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report.GetString());
         PostMessage(WM_CLOSE); return;
     }

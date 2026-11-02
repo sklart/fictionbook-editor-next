@@ -92,6 +92,8 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
     HWND m_roleList = NULL;
     HWND m_resetChanges = NULL;
     CImageList m_previewIcons;
+    std::vector<HICON> m_previewScriptIcons;
+    HFONT m_scaledFont = NULL;
     std::vector<COLORREF> m_recentColors;
     std::vector<ThemeManager::CustomPalette> m_startCustom, m_startPending;
     std::vector<std::wstring> m_startNew, m_startDeleted;
@@ -104,6 +106,7 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
     int m_hoverRole = -1;
     bool m_layoutActive = false;
     SIZE m_minTrack = {};
+    UINT m_testLayoutDpi = 0;
     static constexpr UINT kPreviewSelect = WM_APP + 0x351;
     static constexpr int kPreviewId = 0x7e41;
     static constexpr int kHexId = 0x7e42;
@@ -142,23 +145,50 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
             {rect(0,68,1000,115), THEME_COLOR_TEXT, L"File   Edit   View   Insert   Scripts", THEME_COLOR_WINDOW},
             {rect(0,118,1000,180), THEME_COLOR_CONTROL, L"", THEME_COLOR_CONTROL},
             {rect(0,181,1000,186), THEME_COLOR_SEPARATOR, L"", THEME_COLOR_SEPARATOR},
-            {rect(0,188,300,545), THEME_COLOR_BORDER, L"", THEME_COLOR_BORDER},
-            {rect(5,193,294,540), THEME_COLOR_WINDOW, L"", THEME_COLOR_WINDOW},
-            {rect(15,202,280,250), THEME_COLOR_SECONDARY_TEXT, L"Scripts", THEME_COLOR_WINDOW},
-            {rect(15,254,280,302), THEME_COLOR_SELECTION_BACKGROUND, L"  \x25B8  Category", THEME_COLOR_SELECTION_BACKGROUND},
-            {rect(42,260,270,296), THEME_COLOR_SELECTION_TEXT, L"Category", THEME_COLOR_SELECTION_BACKGROUND},
-            {rect(15,308,280,350), THEME_COLOR_HOVER, L"  \x25B8  Script", THEME_COLOR_HOVER},
-            {rect(15,355,280,397), THEME_COLOR_DISABLED_TEXT, L"  \x25B8  Script", THEME_COLOR_WINDOW},
-            {rect(320,200,975,252), THEME_COLOR_CONTROL, L"  ID:             \x25BE", THEME_COLOR_CONTROL},
-            {rect(320,265,975,313), THEME_COLOR_TEXT, L"Document", THEME_COLOR_WINDOW},
-            {rect(320,322,610,375), THEME_COLOR_PRESSED, L"  OK", THEME_COLOR_PRESSED},
-            {rect(630,322,960,375), THEME_COLOR_FOCUS, L"  Focus", THEME_COLOR_FOCUS},
-            {rect(320,390,470,435), THEME_COLOR_ACCENT, L"  Accent", THEME_COLOR_ACCENT},
-            {rect(485,390,635,435), THEME_COLOR_ERROR, L"  Error", THEME_COLOR_ERROR},
-            {rect(650,390,800,435), THEME_COLOR_WARNING, L"  Warning", THEME_COLOR_WARNING},
-            {rect(815,390,970,435), THEME_COLOR_SUCCESS, L"  OK", THEME_COLOR_SUCCESS},
+            {rect(0,188,1000,238), THEME_COLOR_CONTROL, L"", THEME_COLOR_CONTROL},
+            {rect(0,239,1000,244), THEME_COLOR_SEPARATOR, L"", THEME_COLOR_SEPARATOR},
+            {rect(0,246,300,545), THEME_COLOR_BORDER, L"", THEME_COLOR_BORDER},
+            {rect(5,251,294,540), THEME_COLOR_WINDOW, L"", THEME_COLOR_WINDOW},
+            {rect(15,258,280,296), THEME_COLOR_SECONDARY_TEXT, L"Scripts", THEME_COLOR_WINDOW},
+            {rect(15,299,280,338), THEME_COLOR_SELECTION_BACKGROUND, L"  \x25B8  Category", THEME_COLOR_SELECTION_BACKGROUND},
+            {rect(42,303,270,334), THEME_COLOR_SELECTION_TEXT, L"Category", THEME_COLOR_SELECTION_BACKGROUND},
+            {rect(15,342,280,380), THEME_COLOR_HOVER, L"  \x25B8  Script", THEME_COLOR_HOVER},
+            {rect(15,384,280,422), THEME_COLOR_DISABLED_TEXT, L"  \x25B8  Script", THEME_COLOR_WINDOW},
+            {rect(320,252,975,294), THEME_COLOR_CONTROL, L"  ID:             \x25BE", THEME_COLOR_CONTROL},
+            {rect(320,300,975,340), THEME_COLOR_TEXT, L"Document", THEME_COLOR_WINDOW},
+            {rect(320,346,610,388), THEME_COLOR_PRESSED, L"  OK", THEME_COLOR_PRESSED},
+            {rect(630,346,960,388), THEME_COLOR_FOCUS, L"  Focus", THEME_COLOR_FOCUS},
+            {rect(320,400,470,440), THEME_COLOR_ACCENT, L"  Accent", THEME_COLOR_ACCENT},
+            {rect(485,400,635,440), THEME_COLOR_ERROR, L"  Error", THEME_COLOR_ERROR},
+            {rect(650,400,800,440), THEME_COLOR_WARNING, L"  Warning", THEME_COLOR_WARNING},
+            {rect(815,400,970,440), THEME_COLOR_SUCCESS, L"  OK", THEME_COLOR_SUCCESS},
             {rect(0,548,1000,600), THEME_COLOR_CONTROL, L"  FB2                                           UTF-8", THEME_COLOR_CONTROL}
         };
+    }
+
+    static RECT PreviewCaptionButton(int width, int height, int index)
+    {
+        const int titleHeight = MulDiv(height, 65, 600);
+        const int buttonWidth = max(10, titleHeight);
+        const int right = width - (2 - index) * buttonWidth;
+        return { right - buttonWidth, 0, right, titleHeight };
+    }
+
+    void LoadPreviewScriptIcons(UINT dpi)
+    {
+        for(HICON icon : m_previewScriptIcons) ::DestroyIcon(icon);
+        m_previewScriptIcons.clear();
+        wchar_t path[MAX_PATH] = {};
+        if(!::GetModuleFileNameW(NULL, path, _countof(path))) return;
+        CString directory(path); const int slash = directory.ReverseFind(L'\\');
+        if(slash < 0) return;
+        directory = directory.Left(slash + 1) + L"Scripts\\";
+        const wchar_t* names[] = { L"01_Регистр.ico", L"02_Примечания.ico", L"03_Комментарии.ico", L"06_Чистка.ico" };
+        const int size = UiMetrics::ScaleForDpi(16, dpi);
+        for(const wchar_t* name : names) {
+            HICON icon = static_cast<HICON>(::LoadImageW(NULL, directory + name, IMAGE_ICON, size, size, LR_LOADFROMFILE));
+            if(icon) m_previewScriptIcons.push_back(icon);
+        }
     }
 
     void PreviewColors(COLORREF* colors) const
@@ -188,7 +218,8 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
         HBITMAP bitmap = dc ? ::CreateCompatibleBitmap(target, client.right, client.bottom) : NULL;
         if(!dc || !bitmap) { if(bitmap) ::DeleteObject(bitmap); if(dc) ::DeleteDC(dc); return; }
         HGDIOBJ oldBitmap = ::SelectObject(dc, bitmap);
-        HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_hWnd, WM_GETFONT, 0, 0));
+        HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_resetChanges, WM_GETFONT, 0, 0));
+        if(!font) font = reinterpret_cast<HFONT>(::SendMessageW(m_hWnd, WM_GETFONT, 0, 0));
         HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
         COLORREF colors[THEME_COLOR_COUNT] = {}; PreviewColors(colors);
         ::SetBkMode(dc, TRANSPARENT);
@@ -219,6 +250,27 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
                 ::DrawTextW(dc, caption, -1, &text, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
             }
         }
+        if(::SendMessageW(m_previewMode, CB_GETCURSEL, 0, 0) == 0) {
+            HPEN pen = ::CreatePen(PS_SOLID, 1, colors[THEME_COLOR_TEXT]);
+            if(pen) {
+                HGDIOBJ oldPen = ::SelectObject(dc, pen), oldBrush = ::SelectObject(dc, ::GetStockObject(NULL_BRUSH));
+                for(int index = 0; index < 3; ++index) {
+                    const RECT button = PreviewCaptionButton(client.right, client.bottom, index);
+                    const int centerX = (button.left + button.right) / 2, centerY = (button.top + button.bottom) / 2;
+                    const int radius = max(2, min(button.right - button.left, button.bottom - button.top) / 5);
+                    if(index == 0) {
+                        ::MoveToEx(dc, centerX - radius, centerY + radius / 2, NULL);
+                        ::LineTo(dc, centerX + radius + 1, centerY + radius / 2);
+                    } else if(index == 1) {
+                        ::Rectangle(dc, centerX - radius, centerY - radius, centerX + radius + 1, centerY + radius + 1);
+                    } else {
+                        ::MoveToEx(dc, centerX - radius, centerY - radius, NULL); ::LineTo(dc, centerX + radius + 1, centerY + radius + 1);
+                        ::MoveToEx(dc, centerX + radius, centerY - radius, NULL); ::LineTo(dc, centerX - radius - 1, centerY + radius + 1);
+                    }
+                }
+                ::SelectObject(dc, oldBrush); ::SelectObject(dc, oldPen); ::DeleteObject(pen);
+            }
+        }
         if(::SendMessageW(m_previewMode, CB_GETCURSEL, 0, 0) == 0 && m_previewIcons.m_hImageList) {
             const int size = UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(m_preview));
             const int top = MulDiv(client.bottom, 118, 600), bottom = MulDiv(client.bottom, 180, 600);
@@ -227,6 +279,16 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
             ::IntersectClipRect(dc, 0, top, client.right, bottom);
             for(int index = 0; index < min(6, m_previewIcons.GetImageCount()); ++index)
                 m_previewIcons.Draw(dc, index, CPoint(left + index * (size + gap), top + (bottom - top - size) / 2), ILD_TRANSPARENT);
+            ::RestoreDC(dc, saved);
+        }
+        if(::SendMessageW(m_previewMode, CB_GETCURSEL, 0, 0) == 0 && !m_previewScriptIcons.empty()) {
+            const int size = UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(m_preview));
+            const int top = MulDiv(client.bottom, 188, 600), bottom = MulDiv(client.bottom, 238, 600);
+            const int gap = max(2, size / 5), left = gap * 2;
+            const int saved = ::SaveDC(dc); ::IntersectClipRect(dc, 0, top, client.right, bottom);
+            for(size_t index = 0; index < m_previewScriptIcons.size(); ++index)
+                ::DrawIconEx(dc, left + static_cast<int>(index) * (size + gap), top + (bottom - top - size) / 2,
+                    m_previewScriptIcons[index], size, size, 0, NULL, DI_NORMAL);
             ::RestoreDC(dc, saved);
         }
         const int selected = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel();
@@ -329,6 +391,7 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
     }
 public:
     explicit CPaletteManagerDialog(CSettingsGeneralPage& page) : m_page(page) {}
+    ~CPaletteManagerDialog() { for(HICON icon : m_previewScriptIcons) ::DestroyIcon(icon); if(m_scaledFont) ::DeleteObject(m_scaledFont); }
     enum { IDD = IDD_SETTINGS_PALETTE_MANAGER };
     BEGIN_MSG_MAP(CPaletteManagerDialog)
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
@@ -377,6 +440,7 @@ public:
             0, 0, 1, 1, m_hWnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(kPreviewId)), _Module.GetModuleInstance(), NULL);
         if(m_preview) ::SetWindowSubclass(m_preview, PreviewProc, 1, reinterpret_cast<DWORD_PTR>(this));
         ToolbarFactory::CreateCommandToolbarImages(m_previewIcons, IDR_MAINFRAME, UiMetrics::DpiForWindow(m_hWnd), 16);
+        LoadPreviewScriptIcons(UiMetrics::DpiForWindow(m_hWnd));
         m_previewMode = ::CreateWindowExW(0, WC_COMBOBOXW, L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | CBS_DROPDOWNLIST | WS_VSCROLL,
             0, 0, 1, 200, m_hWnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(kPreviewModeId)), _Module.GetModuleInstance(), NULL);
         CString modes = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.preview_modes", L"Interface|Control states|Messages and accents");
@@ -460,9 +524,11 @@ public:
     {
         if(m_layoutActive) return;
         m_layoutActive = true;
-        const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+        const UINT dpi = m_testLayoutDpi ? m_testLayoutDpi : UiMetrics::DpiForWindow(m_hWnd);
         const int margin = UiMetrics::ScaleForDpi(8, dpi), gap = UiMetrics::ScaleForDpi(4, dpi);
-        HDC dc = ::GetDC(m_hWnd); HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_hWnd, WM_GETFONT, 0, 0));
+        HDC dc = ::GetDC(m_hWnd);
+        HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_resetChanges, WM_GETFONT, 0, 0));
+        if(!font) font = reinterpret_cast<HFONT>(::SendMessageW(m_hWnd, WM_GETFONT, 0, 0));
         HGDIOBJ oldFont = dc && font ? ::SelectObject(dc, font) : NULL;
         int buttonTextWidth = 0, labelWidth = 0, fontHeight = UiMetrics::ScaleForDpi(16, dpi);
         if(dc) {
@@ -482,6 +548,7 @@ public:
         RECT client = {}, window = {}; ::GetClientRect(m_hWnd, &client); ::GetWindowRect(m_hWnd, &window);
         MONITORINFO monitor = { sizeof(monitor) };
         ::GetMonitorInfoW(::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST), &monitor);
+        if(m_testLayoutDpi) monitor.rcWork = { 0, 0, 1366, 728 };
         const int screenWidth = monitor.rcWork.right - monitor.rcWork.left - (window.right - window.left - client.right);
         const int desiredWidth = max(UiMetrics::ScaleForDpi(760, dpi), max(static_cast<int>(client.right), max(2 * buttonWidth + 3 * margin,
             labelWidth + UiMetrics::ScaleForDpi(140, dpi) + 3 * margin)));
@@ -498,20 +565,24 @@ public:
             place(ids[action], margin + action * (actionWidth + gap), y, actionWidth, lineHeight);
         }
         y += lineHeight + gap;
-        const int previewHeight = resizeWindow ? UiMetrics::ScaleForDpi(260, dpi) :
+        const int workHeight = monitor.rcWork.bottom - monitor.rcWork.top - (window.bottom - window.top - client.bottom);
+        const int availablePreviewHeight = workHeight - y - lineHeight - 2 * margin;
+        const int previewHeight = resizeWindow ? max(UiMetrics::ScaleForDpi(120, dpi), min(UiMetrics::ScaleForDpi(260, dpi), availablePreviewHeight)) :
             max(UiMetrics::ScaleForDpi(120, dpi), static_cast<int>(client.bottom) - y - lineHeight - 2 * margin);
+        const int minimumInspector = max(2 * buttonWidth + gap, labelWidth + UiMetrics::ScaleForDpi(140, dpi) + gap);
         const int previewWidth = min((right - margin) * 2 / 3,
-            max(UiMetrics::ScaleForDpi(220, dpi), right - margin - 2 * buttonWidth - 2 * gap));
+            max(UiMetrics::ScaleForDpi(220, dpi), right - margin - minimumInspector - gap));
         ::SetWindowPos(m_previewMode, NULL, margin, y, previewWidth, 8 * lineHeight, SWP_NOZORDER | SWP_NOACTIVATE);
         ::SetWindowPos(m_preview, NULL, margin, y + lineHeight + gap, previewWidth, previewHeight - lineHeight - gap, SWP_NOZORDER | SWP_NOACTIVATE);
         ::SetWindowPos(m_roleList, NULL, margin, y + lineHeight + gap, previewWidth, previewHeight - lineHeight - gap, SWP_NOZORDER | SWP_NOACTIVATE);
         const int previewBottom = y + previewHeight;
         const int inspectorLeft = margin + previewWidth + gap;
         const int inspectorWidth = right - inspectorLeft;
-        const int comboLeft = inspectorLeft;
+        const int roleLabelWidth = min(labelWidth, max(1, inspectorWidth - UiMetrics::ScaleForDpi(100, dpi) - gap));
+        const int comboLeft = inspectorLeft + roleLabelWidth + gap;
         RECT combo = {}; ::GetWindowRect(GetDlgItem(IDC_PALETTE_ROLE), &combo);
-        place(IDC_PALETTE_ROLE_LABEL, inspectorLeft, y, inspectorWidth, lineHeight); y += lineHeight + gap;
-        place(IDC_PALETTE_ROLE, comboLeft, y, inspectorWidth, combo.bottom - combo.top); y += lineHeight + gap;
+        place(IDC_PALETTE_ROLE_LABEL, inspectorLeft, y, roleLabelWidth, lineHeight);
+        place(IDC_PALETTE_ROLE, comboLeft, y, right - comboLeft, combo.bottom - combo.top); y += lineHeight + gap;
         ::SetWindowPos(m_hex, NULL, inspectorLeft, y, inspectorWidth, lineHeight, SWP_NOZORDER | SWP_NOACTIVATE); y += lineHeight + gap;
         ::SetWindowPos(m_colorInfo, NULL, inspectorLeft, y, inspectorWidth, 2 * lineHeight, SWP_NOZORDER | SWP_NOACTIVATE); y += 2 * lineHeight + gap;
         ::SetWindowPos(m_recentLabel, NULL, inspectorLeft, y, inspectorWidth / 2, lineHeight, SWP_NOZORDER | SWP_NOACTIVATE);
@@ -547,8 +618,17 @@ public:
     {
         const UINT dpi = HIWORD(value) ? HIWORD(value) : 96;
         m_minTrack = {};
+        HFONT font = UiMetrics::CreateDialogFontForDpi(dpi);
+        if(font) {
+            ::SendMessageW(m_hWnd, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE);
+            for(HWND child = ::GetWindow(m_hWnd, GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT))
+                ::SendMessageW(child, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE);
+            if(m_scaledFont) ::DeleteObject(m_scaledFont);
+            m_scaledFont = font;
+        }
         m_previewIcons.Destroy();
         ToolbarFactory::CreateCommandToolbarImages(m_previewIcons, IDR_MAINFRAME, dpi, 16);
+        LoadPreviewScriptIcons(dpi);
         if(m_roleList) ::SendMessageW(m_roleList, LB_SETITEMHEIGHT, 0, UiMetrics::ScaleForDpi(26, dpi));
         const RECT* suggested = reinterpret_cast<const RECT*>(parameter);
         if(suggested) ::SetWindowPos(m_hWnd, NULL, suggested->left, suggested->top,
@@ -744,6 +824,65 @@ public:
         }
         Refresh(); return 0;
     }
+    bool VerifySimulatedDpiLayout()
+    {
+        RECT original = {}; ::GetWindowRect(m_hWnd, &original);
+        const HFONT dialogFont = reinterpret_cast<HFONT>(::SendMessageW(m_hWnd, WM_GETFONT, 0, 0));
+        std::vector<std::pair<HWND, HFONT>> fonts;
+        for(HWND child = ::GetWindow(m_hWnd, GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT))
+            fonts.emplace_back(child, reinterpret_cast<HFONT>(::SendMessageW(child, WM_GETFONT, 0, 0)));
+        bool valid = true;
+        UINT failedDpi = 0;
+        for(UINT dpi : {96U, 120U, 144U, 192U}) {
+            HFONT font = UiMetrics::CreateDialogFontForDpi(dpi);
+            if(!font) { valid = false; failedDpi = dpi; break; }
+            ::SendMessageW(m_hWnd, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE);
+            for(const auto& item : fonts) ::SendMessageW(item.first, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE);
+            m_testLayoutDpi = dpi; FitLocalizedLayout(true);
+            RECT frame = {}, client = {}; ::GetWindowRect(m_hWnd, &frame); ::GetClientRect(m_hWnd, &client);
+            bool fits = frame.right - frame.left <= 1366 && frame.bottom - frame.top <= 728;
+            ::SetPropW(m_page.m_hWnd, L"FBE.PaletteDpiWidth", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(frame.right - frame.left)));
+            ::SetPropW(m_page.m_hWnd, L"FBE.PaletteDpiHeight", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(frame.bottom - frame.top)));
+            ::RemovePropW(m_page.m_hWnd, L"FBE.PaletteDpiControl");
+            for(const auto& item : fonts) if(::IsWindowVisible(item.first)) {
+                RECT bounds = {}; ::GetWindowRect(item.first, &bounds);
+                ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&bounds), 2);
+                if(bounds.left < 0 || bounds.top < 0 || bounds.right > client.right || bounds.bottom > client.bottom)
+                    ::SetPropW(m_page.m_hWnd, L"FBE.PaletteDpiControl", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(::GetDlgCtrlID(item.first))));
+                fits = bounds.left >= 0 && bounds.top >= 0 && bounds.right <= client.right && bounds.bottom <= client.bottom && fits;
+                wchar_t kind[32] = {}; ::GetClassNameW(item.first, kind, _countof(kind));
+                const bool button = _wcsicmp(kind, L"Button") == 0, label = _wcsicmp(kind, L"Static") == 0;
+                const int length = ::GetWindowTextLengthW(item.first);
+                if((button || label) && length > 0) {
+                    CString text; ::GetWindowTextW(item.first, text.GetBuffer(length + 1), length + 1); text.ReleaseBuffer();
+                    HDC dc = ::GetDC(item.first); HGDIOBJ oldFont = dc ? ::SelectObject(dc, font) : NULL;
+                    RECT measured = {0, 0, max(1, static_cast<int>(bounds.right - bounds.left)), 0};
+                    const bool wrap = ::GetDlgCtrlID(item.first) == IDC_PALETTE_CONTRAST;
+                    if(dc) ::DrawTextW(dc, text, text.GetLength(), &measured, DT_CALCRECT | (wrap ? DT_WORDBREAK : DT_SINGLELINE));
+                    if(oldFont) ::SelectObject(dc, oldFont); if(dc) ::ReleaseDC(item.first, dc);
+                    const int inset = button ? UiMetrics::ScaleForDpi(12, dpi) : 0;
+                    const bool textFits = measured.right + inset <= bounds.right - bounds.left && measured.bottom <= bounds.bottom - bounds.top;
+                    if(!textFits) {
+                        ::SetPropW(m_page.m_hWnd, L"FBE.PaletteDpiControl", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(::GetDlgCtrlID(item.first))));
+                        ::SetPropW(m_page.m_hWnd, L"FBE.PaletteDpiTextWidth", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(measured.right + inset)));
+                        ::SetPropW(m_page.m_hWnd, L"FBE.PaletteDpiTextHeight", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(measured.bottom)));
+                        ::SetPropW(m_page.m_hWnd, L"FBE.PaletteDpiBoxWidth", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(bounds.right - bounds.left)));
+                        ::SetPropW(m_page.m_hWnd, L"FBE.PaletteDpiBoxHeight", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(bounds.bottom - bounds.top)));
+                    }
+                    fits = textFits && fits;
+                }
+            }
+            ::SendMessageW(m_hWnd, WM_SETFONT, reinterpret_cast<WPARAM>(dialogFont), FALSE);
+            for(const auto& item : fonts) ::SendMessageW(item.first, WM_SETFONT, reinterpret_cast<WPARAM>(item.second), FALSE);
+            ::DeleteObject(font);
+            if(!fits) { valid = false; failedDpi = dpi; break; }
+        }
+        m_testLayoutDpi = 0; m_minTrack = {};
+        ::SetWindowPos(m_hWnd, NULL, original.left, original.top, original.right - original.left, original.bottom - original.top, SWP_NOZORDER | SWP_NOACTIVATE);
+        FitLocalizedLayout(true);
+        ::SetPropW(m_page.m_hWnd, L"FBE.PaletteDpiFailure", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(failedDpi)));
+        return valid;
+    }
     LRESULT OnTimer(UINT, WPARAM id, LPARAM, BOOL&)
     {
         if(id != 0x504D) return 0;
@@ -793,8 +932,30 @@ public:
                 ::RedrawWindow(m_preview, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
                 HDC dc = ::GetDC(m_preview);
                 const COLORREF pixel = dc ? ::GetPixel(dc, MulDiv(bounds.right, 900, 1000), MulDiv(bounds.bottom, 145, 600)) : CLR_INVALID;
+                bool captionButtons = dc != NULL;
+                for(int index = 0; index < 3 && dc; ++index) {
+                    const RECT button = PreviewCaptionButton(bounds.right, bounds.bottom, index);
+                    const int x = (button.left + button.right) / 2, y = (button.top + button.bottom) / 2;
+                    const int radius = max(2, min(button.right - button.left, button.bottom - button.top) / 5);
+                    const int sampleY = index == 0 ? y + radius / 2 : index == 1 ? y - radius : y;
+                    captionButtons = ::GetPixel(dc, x, sampleY) == colors[THEME_COLOR_TEXT] && captionButtons;
+                }
+                bool scriptToolbar = dc && m_previewScriptIcons.size() >= 3 &&
+                    ::GetPixel(dc, MulDiv(bounds.right, 900, 1000), MulDiv(bounds.bottom, 210, 600)) == colors[THEME_COLOR_CONTROL];
+                if(scriptToolbar) {
+                    const int size = UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(m_preview));
+                    const int gap = max(2, size / 5), top = MulDiv(bounds.bottom, 188, 600), bottom = MulDiv(bounds.bottom, 238, 600);
+                    const int iconTop = top + (bottom - top - size) / 2;
+                    for(int icon = 0; icon < 3; ++icon) {
+                        bool visible = false;
+                        for(int y = max(top + 2, iconTop); y < min(bottom - 2, iconTop + size); ++y)
+                            for(int x = gap * 2 + icon * (size + gap); x < gap * 2 + icon * (size + gap) + size; ++x)
+                                if(::GetPixel(dc, x, y) != colors[THEME_COLOR_CONTROL]) visible = true;
+                        scriptToolbar = visible && scriptToolbar;
+                    }
+                }
                 if(dc) ::ReleaseDC(m_preview, dc);
-                passed = colors[THEME_COLOR_CONTROL] == RGB(0x12, 0x34, 0x56) && pixel == colors[THEME_COLOR_CONTROL] && passed;
+                passed = colors[THEME_COLOR_CONTROL] == RGB(0x12, 0x34, 0x56) && pixel == colors[THEME_COLOR_CONTROL] && captionButtons && scriptToolbar && passed;
                 ::SendMessageW(m_hWnd, kPreviewSelect, THEME_COLOR_ACCENT, 0);
                 ::SendMessageW(m_recent, CB_SETCURSEL, 0, 0);
                 BOOL recentHandled = FALSE; OnRecentChanged(CBN_SELCHANGE, kRecentId, m_recent, recentHandled);
@@ -857,6 +1018,20 @@ public:
                     PreviewColors(actual);
                     for(int role = 0; role < THEME_COLOR_COUNT; ++role) passed = expected[role] == actual[role] && passed;
                 }
+            }
+            if(mode == 2) {
+                const DWORD beforeDpi = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+                passed = VerifySimulatedDpiLayout() && passed;
+                RECT suggested = {}; ::GetWindowRect(m_hWnd, &suggested);
+                m_testLayoutDpi = 120;
+                ::SendMessageW(m_hWnd, WM_DPICHANGED, MAKEWPARAM(120, 120), reinterpret_cast<LPARAM>(&suggested));
+                passed = m_scaledFont && reinterpret_cast<HFONT>(::SendMessageW(m_resetChanges, WM_GETFONT, 0, 0)) == m_scaledFont &&
+                    ::SendMessageW(m_roleList, LB_GETITEMHEIGHT, 0, 0) == UiMetrics::ScaleForDpi(26, 120) && passed;
+                m_testLayoutDpi = 0;
+                const UINT actualDpi = UiMetrics::DpiForWindow(m_hWnd);
+                ::SendMessageW(m_hWnd, WM_DPICHANGED, MAKEWPARAM(actualDpi, actualDpi), reinterpret_cast<LPARAM>(&suggested));
+                const DWORD afterDpi = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+                passed = afterDpi <= beforeDpi + 2 && passed;
             }
             wchar_t capturePath[MAX_PATH] = {};
             const DWORD captureLength = ::GetEnvironmentVariableW(L"FBE_NEXT_PALETTE_PREVIEW_CAPTURE", capturePath, _countof(capturePath));

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param([string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [ValidateSet('portable','installed')][string]$Mode = 'portable',
-    [ValidateSet('ru-RU','en-US')][string]$Locale = 'ru-RU',
+    [ValidateSet('ru-RU','en-US','de-DE','uk-UA','fr-FR','es-ES','it-IT','pl-PL','pt-PT','nl-NL','cs-CZ','bg-BG')][string]$Locale = 'ru-RU',
     [switch]$CoreOnly, [switch]$WarningOnly, [switch]$ManageOnly)
 $ErrorActionPreference = 'Stop'
 if(@(@($CoreOnly, $WarningOnly, $ManageOnly) | Where-Object { $_ }).Count -gt 1) { throw 'Choose only one focused mode.' }
@@ -12,8 +12,8 @@ $saved = @{}; foreach ($name in $names) { $saved[$name] = [Environment]::GetEnvi
 $passed = $false
 try {
     $seed = New-IsolatedFbeSettingsSeed -Isolation $iso
-    $languageId = if($Locale -eq 'ru-RU') { 1049 } else { 1033 }
-    $expectedLanguageId = if($Locale -eq 'ru-RU') { 0xFBE002 } else { 0xFBE001 }
+    $languageId = @{ 'ru-RU' = 1049; 'en-US' = 1033; 'de-DE' = 1031; 'uk-UA' = 1058; 'fr-FR' = 1036; 'es-ES' = 3082; 'it-IT' = 1040; 'pl-PL' = 1045; 'pt-PT' = 2070; 'nl-NL' = 1043; 'cs-CZ' = 1029; 'bg-BG' = 1026 }[$Locale]
+    $expectedLanguageId = @{ 'ru-RU' = 0xFBE002; 'en-US' = 0xFBE001; 'de-DE' = 0xFBE004; 'uk-UA' = 0xFBE003; 'fr-FR' = 0xFBE005; 'es-ES' = 0xFBE006; 'it-IT' = 0xFBE007; 'pl-PL' = 0xFBE008; 'pt-PT' = 0xFBE009; 'nl-NL' = 0xFBE00A; 'cs-CZ' = 0xFBE00B; 'bg-BG' = 0xFBE00C }[$Locale]
     $settingsXml = [IO.File]::ReadAllText($seed).Replace('</Settings>', "<IntefaceLangID>$languageId</IntefaceLangID></Settings>")
     if($WarningOnly) { $settingsXml = $settingsXml.Replace('</Settings>', '<InterfacePalette>custom:restart-test</InterfacePalette></Settings>') }
     [IO.File]::WriteAllText($seed, $settingsXml, [Text.UTF8Encoding]::new($false))
@@ -42,6 +42,11 @@ try {
         $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<missing report>' }
         if($code -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw "Named palette core failed ($Mode/$scenario): $text" }
         if($scenario -eq 'custom-palette-manage' -and ($text -notmatch '(?m)^document-preserved=1\r?$' -or (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $fixtureHash)) { throw 'Palette management changed the test document or its saved FB2.' }
+        if($scenario -eq 'custom-palette-manage') {
+            if($text -notmatch '(?m)^dpi-failure=0\r?$') { throw "Palette manager DPI simulation failed: $text" }
+            if($text -notmatch ("(?m)^interface-language=" + $expectedLanguageId + "\r?$")) { throw "Requested interface language not active ($Mode/$scenario): $text" }
+            Write-Host "Palette manager simulated DPI 96/120/144/192, 1366x728 work area and scaled captions: PASS ($Mode/$Locale)."
+        }
         if($scenario -eq 'custom-palette-settings-missing' -and $text -notmatch ("(?m)^interface-language=" + $expectedLanguageId + "\r?$")) { throw "Requested interface language not active ($Mode/$scenario): $text" }
     }
     $passed = $true
