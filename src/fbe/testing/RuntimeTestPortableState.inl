@@ -929,6 +929,20 @@ void CMainFrame::RunPortableStateTestScenario()
             fallbackPreserved = ::SendMessage(fallbackPage.GetDlgItem(IDC_INTERFACE_PALETTE), CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CLASSIC;
             fallbackPage.Commit();
             fallbackPreserved = _Settings.GetInterfacePalette() == L"graphite" && fallbackPreserved;
+            fallbackPage.MakeAppearanceOnly();
+            HWND note = fallbackPage.GetDlgItem(IDC_INTERFACE_THEME_NOTE);
+            RECT noteClient = {}; ::GetClientRect(note, &noteClient);
+            CString noteText; fallbackPage.GetDlgItemText(IDC_INTERFACE_THEME_NOTE, noteText);
+            HDC noteDc = ::GetDC(note);
+            if(noteDc) {
+                HFONT font = reinterpret_cast<HFONT>(::SendMessage(note, WM_GETFONT, 0, 0));
+                HGDIOBJ previous = font ? ::SelectObject(noteDc, font) : NULL;
+                RECT required = {0, 0, noteClient.right, 0};
+                ::DrawTextW(noteDc, noteText, noteText.GetLength(), &required, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+                fallbackPreserved = !noteText.IsEmpty() && required.bottom <= noteClient.bottom && fallbackPreserved;
+                if(previous) ::SelectObject(noteDc, previous);
+                ::ReleaseDC(note, noteDc);
+            } else fallbackPreserved = false;
             fallbackPage.DestroyWindow();
         }
         _Settings.SetInterfacePalette(L"classic");

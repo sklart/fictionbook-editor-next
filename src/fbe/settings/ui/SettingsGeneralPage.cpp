@@ -628,8 +628,18 @@ void CSettingsGeneralPage::MakeAppearanceOnly()
     place(IDC_APPEARANCE_THEME_PREVIEW, left, y, right - left, themePreviewHeight);
     y += themePreviewHeight + gap;
     if(!m_darkThemeSupported) {
-        RECT note = {}; ::GetWindowRect(GetDlgItem(IDC_INTERFACE_THEME_NOTE), &note);
-        const int height = max(line, static_cast<int>(note.bottom - note.top));
+        HWND note = GetDlgItem(IDC_INTERFACE_THEME_NOTE);
+        CString caption; GetDlgItemText(IDC_INTERFACE_THEME_NOTE, caption);
+        RECT measured = { 0, 0, max(1, right - left), 0 };
+        HDC noteDc = ::GetDC(note);
+        if(noteDc) {
+            HFONT noteFont = reinterpret_cast<HFONT>(::SendMessage(note, WM_GETFONT, 0, 0));
+            HGDIOBJ previous = noteFont ? ::SelectObject(noteDc, noteFont) : NULL;
+            ::DrawTextW(noteDc, caption, caption.GetLength(), &measured, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+            if(previous) ::SelectObject(noteDc, previous);
+            ::ReleaseDC(note, noteDc);
+        }
+        const int height = max(line, static_cast<int>(measured.bottom - measured.top) + margin);
         place(IDC_INTERFACE_THEME_NOTE, left, y, right - left, height); y += height + gap;
     }
     const int colourBottom = y + margin;
