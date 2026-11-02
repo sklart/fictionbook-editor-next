@@ -39,7 +39,7 @@ try {
         }
     }
     $areas = [regex]::Match($content, '(?m)^group-areas=(\d+) group-failures=(\d+)\r?$')
-    if(-not $ControlOnly -and ($content -notmatch '(?m)^group-paint=1\r?$' -or $content -notmatch '(?m)^disabled-text=1\r?$' -or $content -notmatch '(?m)^checkbox-caption=1\r?$' -or $content -notmatch '(?m)^repaint-pages=9 repaint-failures=0\r?$' -or -not $areas.Success -or [int]$areas.Groups[1].Value -lt 10 -or [int]$areas.Groups[2].Value -ne 0)) { throw "Settings group paint coverage failed: $content" }
+    if(-not $ControlOnly -and ($content -notmatch '(?m)^group-paint=1\r?$' -or $content -notmatch '(?m)^disabled-text=1\r?$' -or $content -notmatch '(?m)^checkbox-caption=1\r?$' -or $content -notmatch '(?m)^repaint-pages=9 repaint-failures=0\r?$' -or $content -notmatch '(?m)^hover-pages=9 hover-failures=0\r?$' -or -not $areas.Success -or [int]$areas.Groups[1].Value -lt 10 -or [int]$areas.Groups[2].Value -ne 0)) { throw "Settings group paint coverage failed: $content" }
     if((Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $originalHash) { throw 'Settings paint test modified the FB2 fixture.' }
     $passed = $true
     Write-Host "Settings paint and document preservation: PASS ($Locale, $Palette, $($areas.Groups[1].Value) group regions)"
