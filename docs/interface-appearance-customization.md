@@ -97,6 +97,9 @@ de-DE, uk-UA, fr-FR, es-ES, it-IT, pl-PL, pt-PT, nl-NL, cs-CZ и bg-BG.
 `build/palette-dpi-message-en.log`, `build/palette-dpi-message-de.log`.
 Повторный аудит 12 языков после изменения компоновки сохранён в
 `build/palette-layout-dpi-final`.
+После добавления кнопок заголовка и значков скриптов повторный русский
+сценарий выполнил 30 сообщений `WM_DPICHANGED`: GDI 2302 → 2302, USER
+869 → 869 (`build/palette-dpi-30-resources-runtime.log`).
 
 Позднее при диагностике аналогичного падения `ui-defects-runtime` в ru-RU
 обнаружено переполнение стека общего тестового обработчика; сценарий вынесен

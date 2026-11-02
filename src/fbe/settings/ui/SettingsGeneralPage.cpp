@@ -1021,17 +1021,26 @@ public:
             }
             if(mode == 2) {
                 const DWORD beforeDpi = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+                const DWORD beforeDpiUser = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
                 passed = VerifySimulatedDpiLayout() && passed;
                 RECT suggested = {}; ::GetWindowRect(m_hWnd, &suggested);
-                m_testLayoutDpi = 120;
-                ::SendMessageW(m_hWnd, WM_DPICHANGED, MAKEWPARAM(120, 120), reinterpret_cast<LPARAM>(&suggested));
-                passed = m_scaledFont && reinterpret_cast<HFONT>(::SendMessageW(m_resetChanges, WM_GETFONT, 0, 0)) == m_scaledFont &&
-                    ::SendMessageW(m_roleList, LB_GETITEMHEIGHT, 0, 0) == UiMetrics::ScaleForDpi(26, 120) && passed;
+                for(int iteration = 0; iteration < 30; ++iteration) {
+                    const UINT dpi = iteration % 2 ? 96 : 120;
+                    m_testLayoutDpi = dpi;
+                    ::SendMessageW(m_hWnd, WM_DPICHANGED, MAKEWPARAM(dpi, dpi), reinterpret_cast<LPARAM>(&suggested));
+                    passed = m_scaledFont && reinterpret_cast<HFONT>(::SendMessageW(m_resetChanges, WM_GETFONT, 0, 0)) == m_scaledFont &&
+                        ::SendMessageW(m_roleList, LB_GETITEMHEIGHT, 0, 0) == UiMetrics::ScaleForDpi(26, dpi) && passed;
+                }
                 m_testLayoutDpi = 0;
                 const UINT actualDpi = UiMetrics::DpiForWindow(m_hWnd);
                 ::SendMessageW(m_hWnd, WM_DPICHANGED, MAKEWPARAM(actualDpi, actualDpi), reinterpret_cast<LPARAM>(&suggested));
                 const DWORD afterDpi = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
-                passed = afterDpi <= beforeDpi + 2 && passed;
+                const DWORD afterDpiUser = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
+                ::SetPropW(m_page.m_hWnd, L"FBE.PaletteGdiBefore", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(beforeDpi)));
+                ::SetPropW(m_page.m_hWnd, L"FBE.PaletteGdiAfter", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(afterDpi)));
+                ::SetPropW(m_page.m_hWnd, L"FBE.PaletteUserBefore", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(beforeDpiUser)));
+                ::SetPropW(m_page.m_hWnd, L"FBE.PaletteUserAfter", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(afterDpiUser)));
+                passed = afterDpi <= beforeDpi + 2 && afterDpiUser <= beforeDpiUser + 2 && passed;
             }
             wchar_t capturePath[MAX_PATH] = {};
             const DWORD captureLength = ::GetEnvironmentVariableW(L"FBE_NEXT_PALETTE_PREVIEW_CAPTURE", capturePath, _countof(capturePath));

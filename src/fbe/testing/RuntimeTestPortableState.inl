@@ -403,6 +403,7 @@ void CMainFrame::RunPortableStateTestScenario()
     if(IsFbeTestScenario(L"custom-palette-manage")) {
         bool passed = _Settings.GetInterfacePalette() == L"custom:restart-test" && ThemeManager::IsCustomPaletteActive();
         UINT_PTR dpiFailure = 0, dpiWidth = 0, dpiHeight = 0, dpiControl = 0, dpiTextWidth = 0, dpiTextHeight = 0, dpiBoxWidth = 0, dpiBoxHeight = 0;
+        UINT_PTR dpiGdiBefore = 0, dpiGdiAfter = 0, dpiUserBefore = 0, dpiUserAfter = 0;
         const bool dirtyBefore = DocChanged();
         CString bodyBefore;
         bool documentReady = false;
@@ -443,11 +444,14 @@ void CMainFrame::RunPortableStateTestScenario()
                 dpiControl = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteDpiControl"));
                 dpiTextWidth = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteDpiTextWidth")); dpiTextHeight = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteDpiTextHeight"));
                 dpiBoxWidth = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteDpiBoxWidth")); dpiBoxHeight = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteDpiBoxHeight"));
+                dpiGdiBefore = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteGdiBefore")); dpiGdiAfter = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteGdiAfter"));
+                dpiUserBefore = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteUserBefore")); dpiUserAfter = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteUserAfter"));
                 passed = reinterpret_cast<ULONG_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteManagerResult")) == 1 &&
                     ThemeManager::Color(THEME_COLOR_WINDOW) == before && ThemeManager::IsCustomPaletteActive() && passed;
                 ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiFailure");
                 ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiWidth"); ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiHeight"); ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiControl");
                 ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiTextWidth"); ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiTextHeight"); ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiBoxWidth"); ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiBoxHeight");
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteGdiBefore"); ::RemovePropW(page.m_hWnd, L"FBE.PaletteGdiAfter"); ::RemovePropW(page.m_hWnd, L"FBE.PaletteUserBefore"); ::RemovePropW(page.m_hWnd, L"FBE.PaletteUserAfter");
                 ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerTest");
                 ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerResult");
                 page.CancelChanges(); page.DestroyWindow();
@@ -542,7 +546,7 @@ void CMainFrame::RunPortableStateTestScenario()
                 bodyBefore == CString(static_cast<LPCWSTR>(m_doc->m_body.Document()->body->outerHTML)) && dirtyBefore == DocChanged();
         } catch(const _com_error&) {}
         passed = documentPreserved && passed;
-        CStringA report; report.Format("custom-palette-manage=%d\ndocument-preserved=%d\ninterface-language=%lu\ndpi-failure=%Iu\ndpi-size=%Iux%Iu\ndpi-control=%Iu\ndpi-text=%Iux%Iu box=%Iux%Iu\nresult=%s\n", passed ? 1 : 0, documentPreserved ? 1 : 0, static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), dpiFailure, dpiWidth, dpiHeight, dpiControl, dpiTextWidth, dpiTextHeight, dpiBoxWidth, dpiBoxHeight, passed ? "pass" : "fail");
+        CStringA report; report.Format("custom-palette-manage=%d\ndocument-preserved=%d\ninterface-language=%lu\ndpi-failure=%Iu\ndpi-size=%Iux%Iu\ndpi-control=%Iu\ndpi-text=%Iux%Iu box=%Iux%Iu\ndpi-gdi=%Iu:%Iu\ndpi-user=%Iu:%Iu\nresult=%s\n", passed ? 1 : 0, documentPreserved ? 1 : 0, static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), dpiFailure, dpiWidth, dpiHeight, dpiControl, dpiTextWidth, dpiTextHeight, dpiBoxWidth, dpiBoxHeight, dpiGdiBefore, dpiGdiAfter, dpiUserBefore, dpiUserAfter, passed ? "pass" : "fail");
         WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report.GetString());
         PostMessage(WM_CLOSE); return;
     }

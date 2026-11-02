@@ -46,6 +46,7 @@ try {
             if($text -notmatch '(?m)^dpi-failure=0\r?$') { throw "Palette manager DPI simulation failed: $text" }
             if($text -notmatch ("(?m)^interface-language=" + $expectedLanguageId + "\r?$")) { throw "Requested interface language not active ($Mode/$scenario): $text" }
             Write-Host "Palette manager simulated DPI 96/120/144/192, 1366x728 work area and scaled captions: PASS ($Mode/$Locale)."
+            foreach($line in ($text -split '\r?\n' | Where-Object { $_ -match '^dpi-(gdi|user)=' })) { Write-Host $line }
         }
         if($scenario -eq 'custom-palette-settings-missing' -and $text -notmatch ("(?m)^interface-language=" + $expectedLanguageId + "\r?$")) { throw "Requested interface language not active ($Mode/$scenario): $text" }
     }
