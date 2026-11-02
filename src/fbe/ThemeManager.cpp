@@ -824,6 +824,41 @@ void PaintPaletteDropDownList(HWND window, HDC dc)
 	if(saved) ::RestoreDC(dc, saved);
 }
 
+bool IsPlainPaletteList(HWND window)
+{
+	if(!IsClass(window, WC_LISTBOXW) || IsComboBox(::GetParent(window))) return false;
+	const LONG_PTR style = ::GetWindowLongPtrW(window, GWL_STYLE);
+	return !(style & (LBS_OWNERDRAWFIXED | LBS_OWNERDRAWVARIABLE | LBS_NOSEL));
+}
+
+void PaintPaletteListSelection(HWND window, HDC dc)
+{
+	const int saved = ::SaveDC(dc);
+	const LONG_PTR style = ::GetWindowLongPtrW(window, GWL_STYLE);
+	const bool multiple = (style & (LBS_MULTIPLESEL | LBS_EXTENDEDSEL)) != 0;
+	const LRESULT count = ::SendMessageW(window, LB_GETCOUNT, 0, 0);
+	const LRESULT single = multiple ? LB_ERR : ::SendMessageW(window, LB_GETCURSEL, 0, 0);
+	const LRESULT caret = ::SendMessageW(window, LB_GETCARETINDEX, 0, 0);
+	RECT client = {}; ::GetClientRect(window, &client);
+	HFONT font = reinterpret_cast<HFONT>(::SendMessageW(window, WM_GETFONT, 0, 0));
+	HGDIOBJ previous = font ? ::SelectObject(dc, font) : NULL;
+	::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, ThemeManager::SelectionTextColor());
+	for(LRESULT index = 0; index < count; ++index) {
+		if(multiple ? ::SendMessageW(window, LB_GETSEL, index, 0) <= 0 : index != single) continue;
+		RECT row = {}, visible = {};
+		if(::SendMessageW(window, LB_GETITEMRECT, index, reinterpret_cast<LPARAM>(&row)) == LB_ERR || !::IntersectRect(&visible, &row, &client)) continue;
+		const LRESULT length = ::SendMessageW(window, LB_GETTEXTLEN, index, 0);
+		if(length < 0 || length >= 32768) continue;
+		std::vector<wchar_t> caption(static_cast<size_t>(length) + 1, 0);
+		if(::SendMessageW(window, LB_GETTEXT, index, reinterpret_cast<LPARAM>(caption.data())) == LB_ERR) continue;
+		::FillRect(dc, &row, ThemeManager::Brush(THEME_COLOR_SELECTION_BACKGROUND));
+		RECT text = row; text.left += UiMetrics::ScaleForDpi(2, UiMetrics::DpiForWindow(window));
+		::DrawTextW(dc, caption.data(), static_cast<int>(length), &text, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX | DT_END_ELLIPSIS);
+		if(::GetFocus() == window && index == caret && !(::SendMessageW(window, WM_QUERYUISTATE, 0, 0) & UISF_HIDEFOCUS)) ::DrawFocusRect(dc, &row);
+	}
+	if(previous) ::SelectObject(dc, previous); if(saved) ::RestoreDC(dc, saved);
+}
+
 void PaintPaletteComboList(HWND window, HWND combo, HDC dc)
 {
 	const int saved = ::SaveDC(dc); RECT client = {}; ::GetClientRect(window, &client);
@@ -950,6 +985,19 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 		if(message == WM_PAINT) { PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(window, &paint);
 			if(dc) PaintPaletteComboList(window, paletteCombo, dc); ::EndPaint(window, &paint); return 0; }
 		if((message == WM_PRINTCLIENT || message == WM_PRINT) && wParam) { PaintPaletteComboList(window, paletteCombo, reinterpret_cast<HDC>(wParam)); return 0; }
+	}
+	if(ThemeManager::UsesPaletteSurface() && IsPlainPaletteList(window)) {
+		if(message == WM_PAINT || ((message == WM_PRINTCLIENT || message == WM_PRINT) && wParam)) {
+			const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
+			HDC dc = message == WM_PAINT ? ::GetDC(window) : reinterpret_cast<HDC>(wParam);
+			if(dc) { PaintPaletteListSelection(window, dc); if(message == WM_PAINT) ::ReleaseDC(window, dc); }
+			return result;
+		}
+		if(message == WM_KEYDOWN || message == WM_LBUTTONDOWN || message == WM_LBUTTONUP || (message == WM_MOUSEMOVE && (wParam & MK_LBUTTON)) ||
+			message == WM_VSCROLL || message == WM_HSCROLL || message == WM_MOUSEWHEEL || message == LB_SETCURSEL || message == LB_SETSEL ||
+			message == LB_SETCARETINDEX || message == LB_SELITEMRANGE || message == LB_SELITEMRANGEEX || message == WM_SETFOCUS || message == WM_KILLFOCUS) {
+			const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam); ::InvalidateRect(window, NULL, FALSE); return result;
+		}
 	}
 	if(ThemeManager::UsesPaletteSurface() && IsPlainDropDownList(window)) {
 		if(message == WM_MOUSEMOVE && ::IsWindowEnabled(window) && !::GetPropW(window, kPaletteComboHotProperty)) {

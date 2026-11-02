@@ -919,34 +919,7 @@ LRESULT CALLBACK CSettingsDlg::NavigationKeysSubclassProc(HWND window, UINT mess
 			if(dialog->m_hotkeysPage->PreTranslateMessage(&key))return 0;
 		}
 	}
-	const LRESULT result = ::DefSubclassProc(window,message,wParam,lParam);
-	if(ThemeManager::UsesPaletteSurface() && !ThemeManager::IsHighContrast() &&
-		(message == WM_KEYDOWN || message == WM_LBUTTONUP || message == LB_SETCURSEL || message == WM_SETFOCUS || message == WM_KILLFOCUS))
-		::InvalidateRect(window, NULL, FALSE);
-	if((message == WM_PAINT || message == WM_PRINTCLIENT) && ThemeManager::UsesPaletteSurface() && !ThemeManager::IsHighContrast()) {
-		HDC dc = message == WM_PAINT ? ::GetDC(window) : reinterpret_cast<HDC>(wParam);
-		const LRESULT selected = ::SendMessageW(window, LB_GETCURSEL, 0, 0);
-		RECT row = {};
-		if(dc && selected != LB_ERR && ::SendMessageW(window, LB_GETITEMRECT, selected, reinterpret_cast<LPARAM>(&row)) != LB_ERR) {
-			const LRESULT length = ::SendMessageW(window, LB_GETTEXTLEN, selected, 0);
-			if(length >= 0 && length < 32768) {
-				std::vector<wchar_t> caption(static_cast<size_t>(length) + 1, 0);
-				if(::SendMessageW(window, LB_GETTEXT, selected, reinterpret_cast<LPARAM>(caption.data())) != LB_ERR) {
-					const int saved = ::SaveDC(dc);
-					::FillRect(dc, &row, ThemeManager::Brush(THEME_COLOR_SELECTION_BACKGROUND));
-					HFONT font = reinterpret_cast<HFONT>(::SendMessageW(window, WM_GETFONT, 0, 0));
-					HGDIOBJ previous = font ? ::SelectObject(dc, font) : NULL;
-					::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, ThemeManager::SelectionTextColor());
-					RECT text = row; text.left += UiMetrics::ScaleForDpi(2, UiMetrics::DpiForWindow(window));
-					::DrawTextW(dc, caption.data(), static_cast<int>(length), &text, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX | DT_END_ELLIPSIS);
-					if(::GetFocus() == window && !(::SendMessageW(window, WM_QUERYUISTATE, 0, 0) & UISF_HIDEFOCUS)) ::DrawFocusRect(dc, &row);
-					if(previous) ::SelectObject(dc, previous); if(saved) ::RestoreDC(dc, saved);
-				}
-			}
-		}
-		if(dc && message == WM_PAINT) ::ReleaseDC(window, dc);
-	}
-	return result;
+	return ::DefSubclassProc(window,message,wParam,lParam);
 }
 
 LRESULT CALLBACK CSettingsDlg::PageSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam,
@@ -1219,6 +1192,55 @@ bool CSettingsDlg::ProbeLayout()
 			probePageRepaint(page);
 			if(ThemeManager::UsesPaletteSurface()) probePageFrames(page);
 			probePageHover(page);
+		}
+		if(index == PageIndex(SettingsPageId::Keyboard) && paintOnly && ThemeManager::UsesPaletteSurface() && !ThemeManager::IsHighContrast()) {
+			HWND list = ::GetDlgItem(page, IDC_LIST_HOTKEYS_GROUPS); RECT row = {};
+			const LRESULT initial = list ? ::SendMessageW(list, LB_GETCURSEL, 0, 0) : LB_ERR;
+			if(list) ::SendMessageW(list, LB_SETCURSEL, 0, 0);
+			if(list) ::RedrawWindow(list, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+			const bool hasRow = list && ::SendMessageW(list, LB_GETITEMRECT, 0, reinterpret_cast<LPARAM>(&row)) != LB_ERR;
+			HDC dc = list ? ::GetDC(list) : NULL;
+			const COLORREF pixel = dc && hasRow ? ::GetPixel(dc, row.right - 5, (row.top + row.bottom) / 2) : CLR_INVALID;
+			wchar_t captureDirectory[32768] = {};
+			const DWORD captureLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_APPEARANCE_ARTIFACT_DIR", captureDirectory, _countof(captureDirectory));
+			if(captureLength && captureLength < _countof(captureDirectory)) {
+				RECT bounds = {}; ::GetWindowRect(m_hWnd, &bounds); CImage image;
+				if(image.Create(bounds.right - bounds.left, bounds.bottom - bounds.top, 32)) {
+					HDC imageDc = image.GetDC(); const bool captured = imageDc && ::PrintWindow(m_hWnd, imageDc, 0);
+					if(imageDc) image.ReleaseDC();
+					passed = captured && SUCCEEDED(image.Save(CString(captureDirectory) + L"\\settings-keyboard-list.bmp")) && passed;
+				} else passed = false;
+			}
+			if(dc) ::ReleaseDC(list, dc); if(list) ::SendMessageW(list, LB_SETCURSEL, initial, 0);
+			bool multiPassed = false;
+			HWND multi = ::CreateWindowExW(0, WC_LISTBOXW, L"", WS_CHILD | WS_VISIBLE | LBS_EXTENDEDSEL | LBS_NOTIFY,
+				-300, -300, 140, 90, page, NULL, _Module.GetModuleInstance(), NULL);
+			if(multi) {
+				ThemeManager::ApplyToWindow(multi);
+				for(const wchar_t* text : {L"One", L"Two", L"Three"}) ::SendMessageW(multi, LB_ADDSTRING, 0, reinterpret_cast<LPARAM>(text));
+				::SendMessageW(multi, LB_SETSEL, TRUE, 0); ::SendMessageW(multi, LB_SETSEL, TRUE, 2);
+				CImage image;
+				if(image.Create(140, 90, 32)) {
+					HDC imageDc = image.GetDC();
+					if(imageDc) {
+						auto sample = [&](int item) {
+							RECT bounds = {}; if(::SendMessageW(multi, LB_GETITEMRECT, item, reinterpret_cast<LPARAM>(&bounds)) == LB_ERR) return static_cast<COLORREF>(CLR_INVALID);
+							return ::GetPixel(imageDc, bounds.right - 5, (bounds.top + bounds.bottom) / 2);
+						};
+						::SendMessageW(multi, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(imageDc), PRF_CLIENT);
+						multiPassed = sample(0) == ThemeManager::SelectionBackgroundColor() && sample(2) == ThemeManager::SelectionBackgroundColor() &&
+							::SendMessageW(multi, LB_GETSEL, 0, 0) > 0 && ::SendMessageW(multi, LB_GETSEL, 1, 0) == 0 && ::SendMessageW(multi, LB_GETSEL, 2, 0) > 0;
+						::SendMessageW(multi, LB_SETSEL, FALSE, 2);
+						::SendMessageW(multi, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(imageDc), PRF_CLIENT);
+						multiPassed = sample(2) == ThemeManager::ControlColor() && ::SendMessageW(multi, LB_GETSEL, 2, 0) == 0 && multiPassed;
+						image.ReleaseDC();
+					}
+				}
+				::DestroyWindow(multi);
+			}
+			const bool listPassed = pixel == ThemeManager::SelectionBackgroundColor() && multiPassed;
+			::SetPropW(GetParent(), L"FBE_SETTINGS_LIST_PALETTE", reinterpret_cast<HANDLE>(listPassed ? 1 : 2));
+			passed = listPassed && passed;
 		}
 		if(index == PageIndex(SettingsPageId::Images) && ThemeManager::UsesPaletteSurface() && paintOnly) {
 			const int previousNavigation = m_navigation.GetCurSel();
