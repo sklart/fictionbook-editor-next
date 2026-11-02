@@ -136,9 +136,16 @@ de-DE, uk-UA, fr-FR, es-ES, it-IT, pl-PL, pt-PT, nl-NL, cs-CZ и bg-BG.
 девяти страниц до и после `RedrawWindow`: Catppuccin Mocha и Solarized Light,
 ru-RU, прошли без различий (`build/palette-pages-repaint-*.log`). Снимки
 получены через `PrintWindow`. Дополнительная проверка перемещает указатель на
-один доступный элемент каждой страницы и сравнивает остальную область страницы;
-она прошла в Catppuccin Mocha и Solarized Light, ru-RU
-(`build/palette-page-hover-*.log`). Проверка не охватывает каждый контрол.
+каждую подходящую видимую включённую кнопку и комбобокс и сравнивает остальную
+область страницы. В Catppuccin Mocha и Solarized Light, ru-RU, проверены 63
+контрола (`build/palette-hover-diagnostic-*.log`,
+`build/palette-hover-all-solarized-light.log`). Проверка не охватывает скрытые,
+неактивные или частично видимые контролы и другие классы элементов. Ранний
+сбой показал изменение 220 пикселей рамки комбобокса с RGB 158 на 157;
+снимки сохранены в `build/palette-hover-failure-capture`. Сравнение допускает
+изменение одного уровня на канал и продолжает выявлять более крупные различия.
+После этого прошли пять повторов Mocha и один Solarized Light
+(`build/palette-hover-stable-*.log`).
 Повторный прогон этого же сравнения прошёл для 12 встроенных палитр и двух
 пользовательских проб в ru-RU: 14 журналов находятся в
 `build/palette-pages-repaint-matrix`. Classic с системной отрисовкой и реальный

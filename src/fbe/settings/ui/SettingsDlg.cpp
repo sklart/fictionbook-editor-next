@@ -995,7 +995,7 @@ bool CSettingsDlg::ProbeLayout()
 	if(preferredFits && m_automaticSize)
 		passed = passed && original.Width() >= m_preferredWindowSize.cx &&
 			original.Height() >= m_preferredWindowSize.cy;
-	int paintAreas = 0, paintFailures = 0, repaintPages = 0, repaintFailures = 0, hoverPages = 0, hoverFailures = 0;
+	int paintAreas = 0, paintFailures = 0, repaintPages = 0, repaintFailures = 0, hoverPages = 0, hoverFailures = 0, hoverControls = 0;
 	auto probePageRepaint = [&](HWND page) {
 		RECT dialogBounds = {}, pageBounds = {}, visible = {};
 		::GetWindowRect(m_hWnd, &dialogBounds); ::GetWindowRect(page, &pageBounds);
@@ -1022,7 +1022,7 @@ bool CSettingsDlg::ProbeLayout()
 		RECT dialogBounds = {}, pageBounds = {}, visible = {}, targetBounds = {};
 		::GetWindowRect(m_hWnd, &dialogBounds); ::GetWindowRect(page, &pageBounds);
 		if(!::IntersectRect(&visible, &dialogBounds, &pageBounds)) { ++hoverFailures; return; }
-		HWND target = NULL;
+		std::vector<HWND> targets;
 		for(HWND child = ::GetWindow(page, GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT)) {
 			wchar_t kind[32] = {}; ::GetClassNameW(child, kind, _countof(kind));
 			const LONG_PTR style = ::GetWindowLongPtrW(child, GWL_STYLE);
@@ -1031,13 +1031,17 @@ bool CSettingsDlg::ProbeLayout()
 				(!_wcsicmp(kind, L"Button") && (style & BS_TYPEMASK) == BS_GROUPBOX)) continue;
 			RECT bounds = {}, intersection = {}; ::GetWindowRect(child, &bounds);
 			if(::IntersectRect(&intersection, &bounds, &visible) && ::EqualRect(&intersection, &bounds) &&
-				bounds.right - bounds.left > 8 && bounds.bottom - bounds.top > 8) { target = child; targetBounds = bounds; break; }
+				bounds.right - bounds.left > 8 && bounds.bottom - bounds.top > 8) targets.push_back(child);
 		}
 		POINT savedCursor = {};
-		if(!target || !::GetCursorPos(&savedCursor)) { ++hoverFailures; return; }
+		if(targets.empty() || !::GetCursorPos(&savedCursor)) { ++hoverFailures; return; }
 		const int width = dialogBounds.right - dialogBounds.left, height = dialogBounds.bottom - dialogBounds.top;
 		CImage before, after;
 		if(!before.Create(width, height, 32) || !after.Create(width, height, 32)) { ++hoverFailures; return; }
+		const HWND savedFocus = ::GetFocus();
+		::SetFocus(m_navigation); // Keep a blinking edit caret out of the comparison.
+		for(HWND target : targets) {
+		::GetWindowRect(target, &targetBounds);
 		::SetCursorPos(dialogBounds.left + 5, dialogBounds.top + 5);
 		::SendMessageW(target, WM_MOUSELEAVE, 0, 0);
 		::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
@@ -1049,16 +1053,33 @@ bool CSettingsDlg::ProbeLayout()
 		HDC second = after.GetDC(); const bool capturedAfter = second && ::PrintWindow(m_hWnd, second, 0); if(second) after.ReleaseDC();
 		::SetCursorPos(savedCursor.x, savedCursor.y); ::SendMessageW(target, WM_MOUSELEAVE, 0, 0);
 		bool same = capturedBefore && capturedAfter && moved;
+		int differenceX = -1, differenceY = -1;
 		for(int y = visible.top; y < visible.bottom && same; ++y) {
 			const BYTE* a = static_cast<const BYTE*>(before.GetPixelAddress(0, y - dialogBounds.top));
 			const BYTE* b = static_cast<const BYTE*>(after.GetPixelAddress(0, y - dialogBounds.top));
 			for(int x = visible.left; x < visible.right && same; ++x) {
 				if(x >= targetBounds.left && x < targetBounds.right && y >= targetBounds.top && y < targetBounds.bottom) continue;
 				const int offset = 4 * (x - dialogBounds.left);
-				for(int channel = 0; channel < 3; ++channel) if(a[offset+channel] != b[offset+channel]) { same = false; break; }
+				// Native themed borders may dither by one RGB level while the
+				// pointer moves; retain sensitivity to visible changes.
+				for(int channel = 0; channel < 3; ++channel) if(std::abs(static_cast<int>(a[offset+channel]) - static_cast<int>(b[offset+channel])) > 1) { same = false; differenceX = x - dialogBounds.left; differenceY = y - dialogBounds.top; break; }
 			}
 		}
-		++hoverPages; if(!same) ++hoverFailures;
+		++hoverControls; if(!same) {
+			++hoverFailures;
+			wchar_t directory[32768] = {};
+			const DWORD length = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_APPEARANCE_ARTIFACT_DIR", directory, _countof(directory));
+			if(length && length < _countof(directory)) {
+				CString path; path.Format(L"%s\\hover-failure-%d-before.bmp", directory, ::GetDlgCtrlID(target)); before.Save(path);
+				path.Format(L"%s\\hover-failure-%d-after.bmp", directory, ::GetDlgCtrlID(target)); after.Save(path);
+			}
+			::SetPropW(GetParent(), L"FBE_SETTINGS_HOVER_FAILED_ID", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(::GetDlgCtrlID(target))));
+			::SetPropW(GetParent(), L"FBE_SETTINGS_HOVER_FAILED_X", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(differenceX + 1)));
+			::SetPropW(GetParent(), L"FBE_SETTINGS_HOVER_FAILED_Y", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(differenceY + 1)));
+		}
+		}
+		if(savedFocus && ::IsWindow(savedFocus)) ::SetFocus(savedFocus);
+		++hoverPages;
 	};
 	auto probePageFrames = [&](HWND page) {
 		::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
@@ -1961,6 +1982,7 @@ bool CSettingsDlg::ProbeLayout()
 	::SetPropW(::GetParent(m_hWnd), L"FBE_SETTINGS_REPAINT_FAILURES", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(repaintFailures)));
 	::SetPropW(::GetParent(m_hWnd), L"FBE_SETTINGS_HOVER_PAGES", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(hoverPages)));
 	::SetPropW(::GetParent(m_hWnd), L"FBE_SETTINGS_HOVER_FAILURES", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(hoverFailures)));
+	::SetPropW(::GetParent(m_hWnd), L"FBE_SETTINGS_HOVER_CONTROLS", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(hoverControls)));
 	if(paintAreas) passed = passed && paintFailures == 0;
 	if(repaintPages) passed = passed && repaintFailures == 0;
 	if(hoverPages) passed = passed && hoverFailures == 0;

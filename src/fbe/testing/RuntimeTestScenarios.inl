@@ -100,8 +100,12 @@ __declspec(noinline) LRESULT CMainFrame::RunSettingsDialogRuntime(CAtlFile& outp
         report.AppendFormat("group-areas=%Iu group-failures=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_PAINT_AREAS")), reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_PAINT_FAILURES")));
         report.AppendFormat("repaint-pages=%Iu repaint-failures=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_REPAINT_PAGES")), reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_REPAINT_FAILURES")));
         report.AppendFormat("hover-pages=%Iu hover-failures=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_PAGES")), reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILURES")));
+        report.AppendFormat("hover-controls=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_CONTROLS")));
+        report.AppendFormat("hover-failed-id=%Iu hover-failed-x=%Iu hover-failed-y=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILED_ID")), reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILED_X")), reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILED_Y")));
         ::RemovePropW(m_hWnd,L"FBE_SETTINGS_REPAINT_PAGES"); ::RemovePropW(m_hWnd,L"FBE_SETTINGS_REPAINT_FAILURES");
         ::RemovePropW(m_hWnd,L"FBE_SETTINGS_HOVER_PAGES"); ::RemovePropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILURES");
+        ::RemovePropW(m_hWnd,L"FBE_SETTINGS_HOVER_CONTROLS");
+        ::RemovePropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILED_ID"); ::RemovePropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILED_X"); ::RemovePropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILED_Y");
         ::RemovePropW(m_hWnd,L"FBE_SETTINGS_PAINT_AREAS"); ::RemovePropW(m_hWnd,L"FBE_SETTINGS_PAINT_FAILURES");
         ::RemovePropW(m_hWnd, L"FBE_SETTINGS_GROUP_PAINT_PASSED");
         report.AppendFormat("interface-language=%lu\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()));
