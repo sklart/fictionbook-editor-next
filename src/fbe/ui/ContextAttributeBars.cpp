@@ -216,6 +216,29 @@ LRESULT CALLBACK ContextAttributeBoxThemeProc(HWND window, UINT message, WPARAM 
 			info.rcButton.bottom > info.rcButton.top) {
 			HDC client = ::GetDC(window);
 			if(client) {
+				// The native disabled drop-down-list face remains system grey,
+				// regardless of WM_CTLCOLOR. Repaint its closed value with the
+				// same semantic surface used by the button and settings lists.
+				const LONG_PTR style = ::GetWindowLongPtrW(window, GWL_STYLE);
+				if(!::IsWindowEnabled(window) && (style & 3) == CBS_DROPDOWNLIST &&
+					!(style & (CBS_OWNERDRAWFIXED | CBS_OWNERDRAWVARIABLE))) {
+					::FillRect(client, &info.rcItem, ThemeManager::ControlBrush());
+					const LRESULT selected = ::SendMessageW(window, CB_GETCURSEL, 0, 0);
+					const LRESULT length = selected == CB_ERR ? CB_ERR : ::SendMessageW(window, CB_GETLBTEXTLEN, selected, 0);
+					if(length >= 0 && length < 32768) {
+						std::vector<wchar_t> text(static_cast<size_t>(length) + 1, 0);
+						if(::SendMessageW(window, CB_GETLBTEXT, selected, reinterpret_cast<LPARAM>(text.data())) != CB_ERR) {
+							const int saved = ::SaveDC(client);
+							HFONT font = reinterpret_cast<HFONT>(::SendMessageW(window, WM_GETFONT, 0, 0));
+							HGDIOBJ oldFont = font ? ::SelectObject(client, font) : NULL;
+							::SetBkMode(client, TRANSPARENT); ::SetTextColor(client, ThemeManager::DisabledTextColor());
+							RECT textRect = info.rcItem; textRect.left += UiMetrics::ScaleForDpi(3, UiMetrics::DpiForWindow(window));
+							::DrawTextW(client, text.data(), static_cast<int>(length), &textRect, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX | DT_END_ELLIPSIS);
+							if(oldFont) ::SelectObject(client, oldFont);
+							if(saved) ::RestoreDC(client, saved);
+						}
+					}
+				}
 				::FillRect(client, &info.rcButton, ThemeManager::ControlBrush());
 				const int centerX = (info.rcButton.left + info.rcButton.right) / 2;
 				const int centerY = (info.rcButton.top + info.rcButton.bottom) / 2;

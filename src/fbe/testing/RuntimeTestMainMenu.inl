@@ -391,6 +391,9 @@
                     for(const Case& test : cases) {
                         ThemeManager::SetSelectedTheme(test.theme); ThemeManager::SetNamedPalette(test.palette);
                         ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+                        PluginOptionsProbe::prefix = std::wstring(L"palette-") + test.name;
+                        CStringA captureName; captureName.Format("palette_frame_%ls", test.name);
+                        check(captureName.GetString(), PluginOptionsProbe::Capture(m_hWnd, L"frame"));
                         probe.paletteColor=probe.paletteGutter=probe.paletteBorder=probe.paletteSelected=probe.paletteSelectedText=probe.paletteHover=probe.mnemonicOk=probe.snapshotText=probe.accessibleText=false;
                         const std::wstring paletteStage = std::wstring(L"palette-") + test.name;
                         route(4, paletteStage);
@@ -408,6 +411,8 @@
                     customProbe.colors[THEME_COLOR_SELECTION_TEXT] = RGB(255,255,255);
                     ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK); ThemeManager::SetCustomPalette(customProbe);
                     ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+                    PluginOptionsProbe::prefix = L"palette-custom-probe";
+                    check("palette_frame_custom", PluginOptionsProbe::Capture(m_hWnd, L"frame"));
                     probe.paletteColor=probe.paletteGutter=probe.paletteBorder=probe.paletteSelected=probe.paletteSelectedText=probe.paletteHover=probe.mnemonicOk=probe.snapshotText=probe.accessibleText=false;
                     route(4, L"palette-custom-probe");
                     check("palette_matrix_custom", probe.paletteColor && probe.paletteGutter && probe.paletteBorder &&

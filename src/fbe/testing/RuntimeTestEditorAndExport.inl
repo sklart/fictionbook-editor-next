@@ -2994,6 +2994,30 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			surfaceDetails.AppendFormat("combo_arrow_%s\t%lu\r\ncombo_arrow_enabled_%s\t%lu\r\n", name,
 				static_cast<unsigned long>(arrowPixel), name, static_cast<unsigned long>(enabledArrowPixel));
 			surfacePixels = arrowPixel == expected && enabledArrowPixel == expected && surfacePixels;
+			const HWND tableCombo = ::GetDlgItem(m_contextAttributeBars.TableBar2(), IDC_VALIGN);
+			COMBOBOXINFO tableInfo = {}; tableInfo.cbSize = sizeof(tableInfo);
+			COLORREF tableDisabled = CLR_INVALID; bool disabledTextVisible = false;
+			if(tableCombo && ::IsWindowVisible(tableCombo) && ::GetComboBoxInfo(tableCombo, &tableInfo)) {
+				const bool wasEnabled = ::IsWindowEnabled(tableCombo) != FALSE;
+				const LRESULT originalSelection = ::SendMessageW(tableCombo, CB_GETCURSEL, 0, 0);
+				::SendMessageW(tableCombo, CB_SETCURSEL, 1, 0);
+				::EnableWindow(tableCombo, FALSE);
+				::RedrawWindow(tableCombo, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+				HDC tableDc = ::GetDC(tableCombo);
+				if(tableDc) {
+					tableDisabled = ::GetPixel(tableDc, tableInfo.rcItem.right - 4, (tableInfo.rcItem.top + tableInfo.rcItem.bottom) / 2);
+					for(int y = tableInfo.rcItem.top; y < tableInfo.rcItem.bottom && !disabledTextVisible; ++y)
+						for(int x = tableInfo.rcItem.left + 2; x < tableInfo.rcItem.right - 5; ++x)
+							if(::GetPixel(tableDc, x, y) == ThemeManager::DisabledTextColor()) { disabledTextVisible = true; break; }
+					::ReleaseDC(tableCombo, tableDc);
+				}
+				::EnableWindow(tableCombo, wasEnabled);
+				::SendMessageW(tableCombo, CB_SETCURSEL, originalSelection, 0);
+			}
+			surfaceDetails.AppendFormat("table_combo_disabled_%s\t%lu/%lu\r\n", name,
+				static_cast<unsigned long>(tableDisabled), static_cast<unsigned long>(expected));
+			surfaceDetails.AppendFormat("table_combo_disabled_text_%s\t%d\r\n", name, disabledTextVisible ? 1 : 0);
+			surfacePixels = tableDisabled == expected && disabledTextVisible && surfacePixels;
 			if(captureAppearance) {
 				const wchar_t* filename = !strcmp(name, "latte") ? L"\\main-latte.bmp" :
 					!strcmp(name, "sepia") ? L"\\main-sepia.bmp" :

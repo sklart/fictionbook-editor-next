@@ -36,6 +36,11 @@ try {
         }
     }
     foreach ($palette in $palettes) {
+        $tableField = $values["table_combo_disabled_$palette"] -split '/'
+        if($tableField.Count -ne 2 -or $tableField[0] -ne $tableField[1] -or $values["table_combo_disabled_text_$palette"] -ne '1') {
+            throw "Disabled table ComboBox palette or text mismatch ($palette): $($values["table_combo_disabled_$palette"])"
+        }
+        Write-Host "Disabled table ComboBox ${palette}: color=$($tableField[0]), text visible"
         Write-Host "Status pixel ${palette}: actual=$($values["pixel_${palette}_actual"]) expected=$($values["pixel_${palette}_expected"])"
         Write-Host "Toolbar ${palette}: matching pixels=$($values["toolbar_${palette}_matches"])/$($values["toolbar_${palette}_observed"])"
         Write-Host "Rebar ${palette}: border pixels=$($values["rebar_${palette}_matches"])/$($values["rebar_${palette}_observed"])"
