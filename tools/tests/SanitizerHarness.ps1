@@ -95,8 +95,10 @@ function Invoke-SanitizerCase {
         $pattern=if($Sanitizer -eq 'Address') {'ERROR:\s*(AddressSanitizer|LeakSanitizer)|AddressSanitizer:|AddressSanitizer failed|ASan runtime|Sanitizer CHECK failed|Shadow memory range interleaves'} else {'runtime error:|UndefinedBehaviorSanitizer|(?m)^\s*ubsan\b|Sanitizer CHECK failed'}
         $diagnostics=@($logs | Where-Object { Select-String -LiteralPath $_.FullName -Pattern $pattern -Quiet })
         $completedStacks=if($Sanitizer -eq 'Address') {@(Complete-SanitizerStack -Logs @($diagnostics | ForEach-Object FullName) -Executable $Executable -Force:$OfflineSymbolization)} else {@()}
-        foreach($file in @(Get-ChildItem -LiteralPath (Split-Path -Parent $dumpPrefix) -File -Filter ((Split-Path -Leaf $dumpPrefix)+'*.dmp'))) {
-            Move-Item -LiteralPath $file.FullName -Destination $directoryPath
+        if($Sanitizer -eq 'Address' -and (Test-Path -LiteralPath (Split-Path -Parent $dumpPrefix))) {
+            foreach($file in @(Get-ChildItem -LiteralPath (Split-Path -Parent $dumpPrefix) -File -Filter ((Split-Path -Leaf $dumpPrefix)+'*.dmp'))) {
+                Move-Item -LiteralPath $file.FullName -Destination $directoryPath
+            }
         }
         $dumps=@(Get-ChildItem -LiteralPath $directoryPath -File -Filter '*.dmp')
         $failure=($null -ne $monitor.ObservationError) -or $timedOut -or $workerExit -ne 0 -or $childFailures.Count -gt 0 -or $diagnostics.Count -gt 0 -or $dumps.Count -gt 0 -or $uninstrumented.Count -gt 0

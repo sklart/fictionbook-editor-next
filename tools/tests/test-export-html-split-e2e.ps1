@@ -4,9 +4,13 @@ param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [
 $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if (-not (Test-Path -LiteralPath $FbeExe)) { throw "Не найден FBE: $FbeExe" }
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-export-html-split-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $directory | Out-Null
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'export-html-split'
+$FbeExe = $isolation.Exe
+$directory = Join-Path $isolation.Root 'split-case'
+$passed = $false
 try {
+    New-Item -ItemType Directory -Path $directory | Out-Null
     $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL1kQAAAABJRU5ErkJggg=='
     $fixture = Join-Path $directory 'split.fb2'
     @"
@@ -17,9 +21,9 @@ try {
     $old = @($env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_EXPORT_HTML_PATH, $env:FBE_NEXT_TEST_EXPORT_HTML_MODE, $env:FBE_NEXT_TEST_EXPORT_HTML_SPLIT)
     try {
         $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='export-html'; $env:FBE_NEXT_TEST_EXPORT_HTML_PATH=$selected; $env:FBE_NEXT_TEST_EXPORT_HTML_MODE='2'; $env:FBE_NEXT_TEST_EXPORT_HTML_SPLIT='1'
-        $report = Join-Path $directory 'split.tsv'; $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -PassThru
-        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE did not finish split export.' }
-        if ($process.ExitCode -ne 0) { throw "FBE split export failed: $($process.ExitCode)" }
+        $report = Join-Path $directory 'split.tsv'; $process = Start-Process -FilePath $FbeExe -WorkingDirectory $isolation.Runtime -ArgumentList @('-b', ('"'+$report+'"'), '--portable', ('"'+$fixture+'"')) -PassThru
+        $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'export-html-split' -Report $report -TimeoutSeconds $TimeoutSeconds
+        if ($exitCode -ne 0) { throw "FBE split export failed: $exitCode" }
 
     } finally { $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO,$env:FBE_NEXT_TEST_EXPORT_HTML_PATH,$env:FBE_NEXT_TEST_EXPORT_HTML_MODE,$env:FBE_NEXT_TEST_EXPORT_HTML_SPLIT = $old }
     $index = Join-Path $directory 'index.html'; if (-not (Test-Path -LiteralPath $index)) { throw 'Split export did not create index.html.' }
@@ -35,9 +39,10 @@ try {
         $saved = @($env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_EXPORT_HTML_PATH, $env:FBE_NEXT_TEST_EXPORT_HTML_MODE, $env:FBE_NEXT_TEST_EXPORT_HTML_SPLIT, $env:FBE_NEXT_TEST_EXPORT_HTML_NOTE_PLACEMENT, $env:FBE_NEXT_TEST_EXPORT_HTML_CONFIRM_OVERWRITE)
         try {
             $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='export-html'; $env:FBE_NEXT_TEST_EXPORT_HTML_PATH=$Output; $env:FBE_NEXT_TEST_EXPORT_HTML_MODE="$Mode"; $env:FBE_NEXT_TEST_EXPORT_HTML_SPLIT='1'; $env:FBE_NEXT_TEST_EXPORT_HTML_NOTE_PLACEMENT="$NotePlacement"; $env:FBE_NEXT_TEST_EXPORT_HTML_CONFIRM_OVERWRITE=$ConfirmOverwrite
-            $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', (Join-Path (Split-Path $Output) 'split.tsv'), $fixture) -PassThru
-            if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { throw "Split export mode $Mode / notes $NotePlacement timed out." }
-            if ($ConfirmOverwrite -ne "0" -and $process.ExitCode -ne 0) { throw "Split export mode $Mode / notes $NotePlacement failed." }
+            $report = Join-Path (Split-Path $Output) 'split.tsv'
+            $process = Start-Process -FilePath $FbeExe -WorkingDirectory $isolation.Runtime -ArgumentList @('-b', ('"'+$report+'"'), '--portable', ('"'+$fixture+'"')) -PassThru
+            $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'export-html-split-mode' -Report $report -TimeoutSeconds $TimeoutSeconds
+            if ($ConfirmOverwrite -ne "0" -and $exitCode -ne 0) { throw "Split export mode $Mode / notes $NotePlacement failed: $exitCode." }
         } finally { $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO,$env:FBE_NEXT_TEST_EXPORT_HTML_PATH,$env:FBE_NEXT_TEST_EXPORT_HTML_MODE,$env:FBE_NEXT_TEST_EXPORT_HTML_SPLIT,$env:FBE_NEXT_TEST_EXPORT_HTML_NOTE_PLACEMENT,$env:FBE_NEXT_TEST_EXPORT_HTML_CONFIRM_OVERWRITE = $saved }
     }
     # A generated index is not silently overwritten when its confirmation is declined.
@@ -64,5 +69,14 @@ try {
     Invoke-SplitExport (Join-Path $sectionEndDirectory 'chosen.html') 2 2
     $sectionEndFirst = Get-Content -Raw -LiteralPath ((Get-ChildItem -LiteralPath $sectionEndDirectory -Filter 'section-1-*.html').FullName)
     if ($sectionEndFirst -notmatch 'class="notes"') { throw 'End-of-section split notes regressed.' }
+    $passed = $true
     Write-Host 'ExportHTML split production E2E passed.'
-} finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+} finally {
+    try {
+        if (-not $passed -and (Test-Path -LiteralPath $directory)) {
+            Get-ChildItem -LiteralPath $directory -Filter '*.tsv' -File -Recurse | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $isolation.Root ('failure-' + $_.Directory.Name + '-' + $_.Name)) -Force }
+        }
+    } finally {
+        Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed
+    }
+}
