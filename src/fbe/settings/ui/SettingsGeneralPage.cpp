@@ -537,6 +537,8 @@ public:
         auto* limits = reinterpret_cast<MINMAXINFO*>(parameter);
         if(limits && m_minTrack.cx > 0 && m_minTrack.cy > 0) {
             limits->ptMinTrackSize.x = m_minTrack.cx; limits->ptMinTrackSize.y = m_minTrack.cy;
+            handled = TRUE;
+            return 0;
         }
         handled = FALSE;
         return 0;
@@ -824,6 +826,9 @@ public:
             CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).SetCurSel(originalRole);
             m_page.m_paletteRole.SetCurSel(originalRole);
             RECT window = {}, oldPreview = {}, newPreview = {};
+            MINMAXINFO limits = {}; ::SendMessageW(m_hWnd, WM_GETMINMAXINFO, 0, reinterpret_cast<LPARAM>(&limits));
+            passed = limits.ptMinTrackSize.x == m_minTrack.cx && limits.ptMinTrackSize.y == m_minTrack.cy &&
+                m_minTrack.cx > 0 && m_minTrack.cy > 0 && passed;
             ::GetWindowRect(m_hWnd, &window); ::GetWindowRect(m_preview, &oldPreview);
             ::SetWindowPos(m_hWnd, NULL, 0, 0, window.right - window.left + 80, window.bottom - window.top + 60,
                 SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
