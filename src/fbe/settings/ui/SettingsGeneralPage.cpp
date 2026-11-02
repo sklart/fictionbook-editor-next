@@ -93,6 +93,7 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
     HWND m_resetChanges = NULL;
     CImageList m_previewIcons;
     std::vector<HICON> m_previewScriptIcons;
+    std::vector<CString> m_previewScriptNames;
     HFONT m_scaledFont = NULL;
     std::vector<COLORREF> m_recentColors;
     std::vector<ThemeManager::CustomPalette> m_startCustom, m_startPending;
@@ -149,11 +150,15 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
             {rect(0,239,1000,244), THEME_COLOR_SEPARATOR, L"", THEME_COLOR_SEPARATOR},
             {rect(0,246,300,545), THEME_COLOR_BORDER, L"", THEME_COLOR_BORDER},
             {rect(5,251,294,540), THEME_COLOR_WINDOW, L"", THEME_COLOR_WINDOW},
-            {rect(15,258,280,296), THEME_COLOR_SECONDARY_TEXT, L"Scripts", THEME_COLOR_WINDOW},
-            {rect(15,299,280,338), THEME_COLOR_SELECTION_BACKGROUND, L"  \x25B8", THEME_COLOR_SELECTION_BACKGROUND},
-            {rect(42,303,270,334), THEME_COLOR_SELECTION_TEXT, L"Category", THEME_COLOR_SELECTION_BACKGROUND},
-            {rect(15,342,280,380), THEME_COLOR_HOVER, L"  \x25B8  Script", THEME_COLOR_HOVER},
-            {rect(15,384,280,422), THEME_COLOR_DISABLED_TEXT, L"  \x25B8  Script", THEME_COLOR_WINDOW},
+            {rect(15,252,280,284), THEME_COLOR_SECONDARY_TEXT, L"Scripts", THEME_COLOR_WINDOW},
+            {rect(12,287,288,330), THEME_COLOR_BORDER, L"", THEME_COLOR_BORDER},
+            {rect(16,291,284,326), THEME_COLOR_CONTROL, L"", THEME_COLOR_CONTROL},
+            {rect(24,294,277,323), THEME_COLOR_SECONDARY_TEXT, L"@find-script", THEME_COLOR_CONTROL},
+            {rect(15,337,280,376), THEME_COLOR_SELECTION_BACKGROUND, L"", THEME_COLOR_SELECTION_BACKGROUND},
+            {rect(80,340,275,373), THEME_COLOR_SELECTION_TEXT, L"@script0", THEME_COLOR_SELECTION_BACKGROUND},
+            {rect(15,380,280,419), THEME_COLOR_HOVER, L"", THEME_COLOR_HOVER},
+            {rect(80,383,275,416), THEME_COLOR_TEXT, L"@script1", THEME_COLOR_HOVER},
+            {rect(80,426,275,459), THEME_COLOR_DISABLED_TEXT, L"@script2", THEME_COLOR_WINDOW},
             {rect(320,252,975,294), THEME_COLOR_CONTROL, L"  ID:             \x25BE", THEME_COLOR_CONTROL},
             {rect(320,300,975,340), THEME_COLOR_TEXT, L"Document", THEME_COLOR_WINDOW},
             {rect(320,346,610,388), THEME_COLOR_PRESSED, L"  OK", THEME_COLOR_PRESSED},
@@ -178,6 +183,7 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
     {
         for(HICON icon : m_previewScriptIcons) ::DestroyIcon(icon);
         m_previewScriptIcons.clear();
+        m_previewScriptNames.clear();
         wchar_t path[MAX_PATH] = {};
         if(!::GetModuleFileNameW(NULL, path, _countof(path))) return;
         CString directory(path); const int slash = directory.ReverseFind(L'\\');
@@ -187,7 +193,11 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
         const int size = UiMetrics::ScaleForDpi(16, dpi);
         for(const wchar_t* name : names) {
             HICON icon = static_cast<HICON>(::LoadImageW(NULL, directory + name, IMAGE_ICON, size, size, LR_LOADFROMFILE));
-            if(icon) m_previewScriptIcons.push_back(icon);
+            if(icon) {
+                m_previewScriptIcons.push_back(icon);
+                CString label(name); label = label.Mid(3); label = label.Left(label.GetLength() - 4);
+                m_previewScriptNames.push_back(label);
+            }
         }
     }
 
@@ -233,6 +243,13 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
                 RECT text = part.rect; text.left += 4;
                 CString localized;
                 LPCWSTR caption = part.text;
+                const bool scriptName = wcsncmp(part.text, L"@script", 7) == 0 && part.text[7] >= L'0' && part.text[7] <= L'2';
+                const int scriptIndex = scriptName ? part.text[7] - L'0' : -1;
+                if(scriptIndex >= 0 && scriptIndex < static_cast<int>(m_previewScriptNames.size())) {
+                    localized = m_previewScriptNames[scriptIndex]; caption = localized;
+                } else if(wcscmp(part.text, L"@find-script") == 0) {
+                    localized = FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.search", L"Find script..."); caption = localized;
+                }
                 const wchar_t* samples[] = {L"File   Edit   View   Insert   Scripts", L"Scripts", L"  \x25B8  Category", L"Category", L"  \x25B8  Script", L"Document", L"Normal"};
                 int sampleIndex = -1;
                 for(int i = 0; i < static_cast<int>(_countof(samples)); ++i) if(wcscmp(part.text, samples[i]) == 0) { sampleIndex = i; break; }
@@ -243,7 +260,7 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
                     if(!localized.IsEmpty()) caption = localized;
                 }
                 if((part.role >= THEME_COLOR_SECONDARY_TEXT && part.role <= THEME_COLOR_SUCCESS) &&
-                    sampleIndex < 0 && wcscmp(part.text, L"  \x25B8") != 0) {
+                    sampleIndex < 0 && !scriptName && wcscmp(part.text, L"@find-script") != 0 && wcscmp(part.text, L"  \x25B8") != 0) {
                     m_page.m_paletteRole.GetLBText(part.role, localized);
                     if(!localized.IsEmpty()) caption = localized;
                 }
@@ -289,6 +306,30 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
             for(size_t index = 0; index < m_previewScriptIcons.size(); ++index)
                 ::DrawIconEx(dc, left + static_cast<int>(index) * (size + gap), top + (bottom - top - size) / 2,
                     m_previewScriptIcons[index], size, size, 0, NULL, DI_NORMAL);
+            ::RestoreDC(dc, saved);
+        }
+        if(::SendMessageW(m_previewMode, CB_GETCURSEL, 0, 0) == 0 && !m_previewScriptIcons.empty()) {
+            const int rowTop[] = {337, 380, 423}, rowBottom[] = {376, 419, 462};
+            const int iconX = MulDiv(client.right, 48, 1000);
+            const int glyphX = MulDiv(client.right, 24, 1000);
+            const int saved = ::SaveDC(dc);
+            ::IntersectClipRect(dc, 0, MulDiv(client.bottom, 330, 600), MulDiv(client.right, 300, 1000), MulDiv(client.bottom, 545, 600));
+            HPEN pen = ::CreatePen(PS_SOLID, 1, colors[THEME_COLOR_SECONDARY_TEXT]);
+            HGDIOBJ oldPen = pen ? ::SelectObject(dc, pen) : NULL;
+            HGDIOBJ oldBrush = ::SelectObject(dc, ::GetStockObject(NULL_BRUSH));
+            for(int row = 0; row < 3 && row < static_cast<int>(m_previewScriptIcons.size()); ++row) {
+                const int top = MulDiv(client.bottom, rowTop[row], 600), bottom = MulDiv(client.bottom, rowBottom[row], 600);
+                const int iconSize = max(1, min(UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(m_preview)), bottom - top - 2));
+                const int middle = (top + bottom) / 2;
+                if(pen) {
+                    const int radius = max(2, min(4, (bottom - top - 2) / 3));
+                    ::Rectangle(dc, glyphX - radius, middle - radius, glyphX + radius + 1, middle + radius + 1);
+                    ::MoveToEx(dc, glyphX - radius + 2, middle, NULL); ::LineTo(dc, glyphX + radius - 1, middle);
+                    ::MoveToEx(dc, glyphX, middle - radius + 2, NULL); ::LineTo(dc, glyphX, middle + radius - 1);
+                }
+                ::DrawIconEx(dc, iconX, middle - iconSize / 2, m_previewScriptIcons[row], iconSize, iconSize, 0, NULL, DI_NORMAL);
+            }
+            ::SelectObject(dc, oldBrush); if(oldPen) ::SelectObject(dc, oldPen); if(pen) ::DeleteObject(pen);
             ::RestoreDC(dc, saved);
         }
         const int selected = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel();
@@ -938,6 +979,17 @@ public:
         KillTimer(id);
         const ULONG_PTR mode = reinterpret_cast<ULONG_PTR>(::GetPropW(m_page.m_hWnd, L"FBE.PaletteManagerTest"));
         const bool editable = ::IsWindowEnabled(GetDlgItem(IDC_PALETTE_CHOOSE_COLOR)) != FALSE;
+        if(mode == 3) {
+            const COLORREF globalBefore = ThemeManager::Color(THEME_COLOR_CONTROL);
+            ::SendMessageW(m_hWnd, kPreviewSelect, THEME_COLOR_CONTROL, 0);
+            ::SetWindowTextW(m_hex, L"#426891");
+            COLORREF colors[THEME_COLOR_COUNT] = {}; PreviewColors(colors);
+            const bool changed = editable && colors[THEME_COLOR_CONTROL] == RGB(0x42,0x68,0x91) &&
+                ThemeManager::Color(THEME_COLOR_CONTROL) == globalBefore;
+            ::SetPropW(m_page.m_hWnd, L"FBE.PaletteManagerResult", reinterpret_cast<HANDLE>(changed ? 1 : 2));
+            PostMessage(WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), reinterpret_cast<LPARAM>(GetDlgItem(IDOK).m_hWnd));
+            return 0;
+        }
         bool passed = mode == 1 && !editable;
         if(mode == 2 && editable) {
             const int index = m_page.m_acceptedPaletteIndex - INTERFACE_PALETTE_COUNT;

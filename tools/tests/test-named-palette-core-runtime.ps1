@@ -41,7 +41,7 @@ try {
         $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario $scenario -Report $report -TimeoutSeconds 120
         $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<missing report>' }
         if($code -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw "Named palette core failed ($Mode/$scenario): $text" }
-        if($scenario -eq 'custom-palette-manage' -and ($text -notmatch '(?m)^document-preserved=1\r?$' -or (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $fixtureHash)) { throw 'Palette management changed the test document or its saved FB2.' }
+        if($scenario -eq 'custom-palette-manage' -and ($text -notmatch '(?m)^document-preserved=1\r?$' -or $text -notmatch '(?m)^hex-persisted=1\r?$' -or (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $fixtureHash)) { throw 'Palette management failed to persist HEX or changed the test document.' }
         if($scenario -eq 'custom-palette-manage') {
             if($text -notmatch '(?m)^dpi-failure=0\r?$') { throw "Palette manager DPI simulation failed: $text" }
             if($text -notmatch ("(?m)^interface-language=" + $expectedLanguageId + "\r?$")) { throw "Requested interface language not active ($Mode/$scenario): $text" }

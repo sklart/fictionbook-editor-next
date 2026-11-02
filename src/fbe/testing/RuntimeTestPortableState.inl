@@ -404,6 +404,7 @@ void CMainFrame::RunPortableStateTestScenario()
         bool passed = _Settings.GetInterfacePalette() == L"custom:restart-test" && ThemeManager::IsCustomPaletteActive();
         UINT_PTR dpiFailure = 0, dpiWidth = 0, dpiHeight = 0, dpiControl = 0, dpiTextWidth = 0, dpiTextHeight = 0, dpiBoxWidth = 0, dpiBoxHeight = 0;
         UINT_PTR dpiGdiBefore = 0, dpiGdiAfter = 0, dpiUserBefore = 0, dpiUserAfter = 0;
+        bool hexPersisted = false;
         const bool dirtyBefore = DocChanged();
         CString bodyBefore;
         bool documentReady = false;
@@ -482,6 +483,27 @@ void CMainFrame::RunPortableStateTestScenario()
             CSettingsGeneralPage page;
             passed = page.Create(m_hWnd) != NULL && passed;
             if(page.m_hWnd) {
+                ::SetPropW(page.m_hWnd, L"FBE.PaletteManagerTest", reinterpret_cast<HANDLE>(3));
+                BOOL handled = FALSE; page.OnManagePalettes(BN_CLICKED, IDC_PALETTE_MANAGE, NULL, handled);
+                const bool staged = reinterpret_cast<ULONG_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteManagerResult")) == 1;
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerTest"); ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerResult");
+                const bool unchangedOnDisk = ThemeManager::LoadCustomPaletteFromProfile(original.id, stored, error) &&
+                    stored.present[THEME_COLOR_CONTROL] == original.present[THEME_COLOR_CONTROL];
+                SettingsFileTransaction files; CString detail;
+                const bool prepared = page.PrepareCommit(files, detail);
+                if(prepared) page.Commit();
+                const bool committed = prepared && files.Commit();
+                if(committed) page.FinishCommit();
+                hexPersisted = staged && unchangedOnDisk && committed && ThemeManager::LoadCustomPaletteFromProfile(original.id, stored, error) &&
+                    stored.present[THEME_COLOR_CONTROL] && stored.colors[THEME_COLOR_CONTROL] == RGB(0x42,0x68,0x91);
+                passed = hexPersisted && passed;
+                page.DestroyWindow();
+            }
+        }
+        {
+            CSettingsGeneralPage page;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
                 passed = ::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_RENAME)) && ::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_DELETE)) &&
                     !page.StagePaletteRename(L"") && page.StagePaletteRename(L"Renamed") && passed;
                 passed = ThemeManager::LoadCustomPaletteFromProfile(original.id, stored, error) && stored.name == original.name && passed;
@@ -546,7 +568,7 @@ void CMainFrame::RunPortableStateTestScenario()
                 bodyBefore == CString(static_cast<LPCWSTR>(m_doc->m_body.Document()->body->outerHTML)) && dirtyBefore == DocChanged();
         } catch(const _com_error&) {}
         passed = documentPreserved && passed;
-        CStringA report; report.Format("custom-palette-manage=%d\ndocument-preserved=%d\ninterface-language=%lu\ndpi-failure=%Iu\ndpi-size=%Iux%Iu\ndpi-control=%Iu\ndpi-text=%Iux%Iu box=%Iux%Iu\ndpi-gdi=%Iu:%Iu\ndpi-user=%Iu:%Iu\nresult=%s\n", passed ? 1 : 0, documentPreserved ? 1 : 0, static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), dpiFailure, dpiWidth, dpiHeight, dpiControl, dpiTextWidth, dpiTextHeight, dpiBoxWidth, dpiBoxHeight, dpiGdiBefore, dpiGdiAfter, dpiUserBefore, dpiUserAfter, passed ? "pass" : "fail");
+        CStringA report; report.Format("custom-palette-manage=%d\ndocument-preserved=%d\nhex-persisted=%d\ninterface-language=%lu\ndpi-failure=%Iu\ndpi-size=%Iux%Iu\ndpi-control=%Iu\ndpi-text=%Iux%Iu box=%Iux%Iu\ndpi-gdi=%Iu:%Iu\ndpi-user=%Iu:%Iu\nresult=%s\n", passed ? 1 : 0, documentPreserved ? 1 : 0, hexPersisted ? 1 : 0, static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), dpiFailure, dpiWidth, dpiHeight, dpiControl, dpiTextWidth, dpiTextHeight, dpiBoxWidth, dpiBoxHeight, dpiGdiBefore, dpiGdiAfter, dpiUserBefore, dpiUserAfter, passed ? "pass" : "fail");
         WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report.GetString());
         PostMessage(WM_CLOSE); return;
     }
