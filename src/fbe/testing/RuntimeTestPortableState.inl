@@ -402,6 +402,15 @@ void CMainFrame::RunPortableStateTestScenario()
     }
     if(IsFbeTestScenario(L"custom-palette-manage")) {
         bool passed = _Settings.GetInterfacePalette() == L"custom:restart-test" && ThemeManager::IsCustomPaletteActive();
+        const bool dirtyBefore = DocChanged();
+        CString bodyBefore;
+        bool documentReady = false;
+        try {
+            if(m_doc && m_doc->m_body.Document() && m_doc->m_body.Document()->body) {
+                bodyBefore = static_cast<LPCWSTR>(m_doc->m_body.Document()->body->outerHTML);
+                documentReady = true;
+            }
+        } catch(const _com_error&) {}
         ThemeManager::CustomPalette original, stored; std::wstring error;
         passed = ThemeManager::LoadCustomPaletteFromProfile(L"restart-test", original, error) && passed;
         {
@@ -517,7 +526,14 @@ void CMainFrame::RunPortableStateTestScenario()
         }
         passed = ThemeManager::SaveCustomPaletteToProfile(original, false, error) && passed;
         _Settings.SetInterfacePalette(L"custom:restart-test"); _Settings.Save();
-        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", passed ? "custom-palette-manage=1\nresult=pass\n" : "custom-palette-manage=0\nresult=fail\n");
+        bool documentPreserved = false;
+        try {
+            documentPreserved = documentReady && m_doc && m_doc->m_body.Document() && m_doc->m_body.Document()->body &&
+                bodyBefore == CString(static_cast<LPCWSTR>(m_doc->m_body.Document()->body->outerHTML)) && dirtyBefore == DocChanged();
+        } catch(const _com_error&) {}
+        passed = documentPreserved && passed;
+        CStringA report; report.Format("custom-palette-manage=%d\ndocument-preserved=%d\nresult=%s\n", passed ? 1 : 0, documentPreserved ? 1 : 0, passed ? "pass" : "fail");
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report.GetString());
         PostMessage(WM_CLOSE); return;
     }
     if(IsFbeTestScenario(L"custom-palette-edit")) {

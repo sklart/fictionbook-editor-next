@@ -5154,7 +5154,7 @@ LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 	if(RuntimeTests::IsScenario(L"script-hotkey-management-runtime")) {
 		RunScriptHotkeyManagementTest(); return 0;
 	}
-	RunPortableStateTestScenario();
+	if(!RuntimeTests::IsScenario(L"custom-palette-manage")) RunPortableStateTestScenario();
 	if (!_Settings.GetInterfacePaletteError().IsEmpty()) PostMessage(WM_APP + 0x173);
 	StartupTrace::AppendTestStartupBreadcrumb("postcreate-before-runtime-dispatch");
     m_ui_watchdog.Start(m_hWnd);

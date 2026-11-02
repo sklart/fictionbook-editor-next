@@ -185,6 +185,7 @@ __declspec(noinline) LRESULT CMainFrame::RunScriptingStage2Runtime(CAtlFile& out
 
 LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT message, WPARAM wparam, LPARAM lparam, BOOL& handled)
 {
+    if (RuntimeTests::IsScenario(L"custom-palette-manage")) { RunPortableStateTestScenario(); return 0; }
     if (RuntimeTests::IsScenario(L"scripting-stage2")) {
         CAtlFile output;
         if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS))) return 0;
