@@ -695,6 +695,13 @@ void CSettingsGeneralPage::MakeAppearanceOnly()
     row(IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT);
     y += margin;
     place(IDC_APPEARANCE_DESCRIPTION_GROUP, group.left, descriptionTop, group.right - group.left, y - descriptionTop);
+    // Group boxes are siblings of their fields. Keep them behind the fields
+    // and clip their custom background painting around higher siblings.
+    for(int id : {IDC_OPTIONS_INTERFACE_GROUP, IDC_APPEARANCE_TOOLBARS_GROUP, IDC_APPEARANCE_DESCRIPTION_GROUP}) {
+        HWND frame = GetDlgItem(id);
+        ::SetWindowLongPtrW(frame, GWL_STYLE, ::GetWindowLongPtrW(frame, GWL_STYLE) | WS_CLIPSIBLINGS);
+        ::SetWindowPos(frame, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
     RECT client = {}, window = {}; ::GetClientRect(m_hWnd, &client); ::GetWindowRect(m_hWnd, &window);
     const int requiredHeight = y + margin, requiredWidth = group.right + margin;
     ::SetWindowPos(m_hWnd, NULL, 0, 0, requiredWidth + window.right - window.left - client.right,
