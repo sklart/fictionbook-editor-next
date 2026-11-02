@@ -3,6 +3,10 @@ if (IsFbeTestScenario(L"scripting-stage2"))
     wchar_t root[32768] = {}; ::GetEnvironmentVariableW(L"FBE_NEXT_SCRIPT_API_ROOT", root, _countof(root));
     _Settings.SetScriptsFolder(root);
     bool passed = false; CStringA details;
+    auto checkpoint = [&](const char* name) {
+        CStringA row; row.Format("phase=%s\r\n", name);
+        DWORD written = 0; output.Write(row, row.GetLength(), &written); output.Flush();
+    };
     struct RedrawProbe {
         HWND window; unsigned disabled = 0, enabled = 0;
         static LRESULT CALLBACK Observe(HWND window, UINT message, WPARAM wparam, LPARAM lparam, UINT_PTR, DWORD_PTR data) {
@@ -25,6 +29,7 @@ if (IsFbeTestScenario(L"scripting-stage2"))
         FbeScriptDiagnostics::ScopedDialogSuppression suppressDialogs;
         ::ShowWindow(m_hWnd, SW_SHOWNORMAL); ::SetForegroundWindow(m_hWnd);
         ShowView(BODY); m_doc->m_body.SetFocus();
+        checkpoint("native-file-retry");
         {
             const CString destination = CString(root) + L"\\native-commit-destination.bin";
             const CString temporary = CString(root) + L"\\native-commit-source.bin";
@@ -56,6 +61,7 @@ if (IsFbeTestScenario(L"scripting-stage2"))
                 ::GetFileAttributesW(temporary) != INVALID_FILE_ATTRIBUTES) CheckError(E_UNEXPECTED);
         }
         {
+            checkpoint("com-contract");
             CComPtr<IDispatch> external;
             CheckError(m_doc->m_body.Document()->parentWindow->get_external(&external));
             CComQIPtr<IExternalHelper> legacy(external);
@@ -73,10 +79,12 @@ if (IsFbeTestScenario(L"scripting-stage2"))
             }
         }
         {
+            checkpoint("run-stage2-script");
             RedrawProbe redraw(m_doc->m_body);
             m_doc->RunScript(CString(root) + L"\\stage2.js");
             if (!redraw.Balanced()) CheckError(E_UNEXPECTED);
         }
+        checkpoint("script-result");
         passed = invoke(L"stage2Result", L"PASS") && ::IsWindowEnabled(m_hWnd) && FbeScripts::ExecutionContexts().empty() && FbeScripts::RedrawStates().empty();
         if (passed) {
             SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
@@ -85,6 +93,7 @@ if (IsFbeTestScenario(L"scripting-stage2"))
             passed = passed && invoke(L"stage2Paragraph", L"batch two");
         }
         if (passed) {
+            checkpoint("description");
             ShowView(DESC);
             FbeScripts::ScriptExecutionScope context(CString(root) + L"\\stage2.js");
             RedrawProbe redraw(m_doc->m_body);
@@ -95,6 +104,7 @@ if (IsFbeTestScenario(L"scripting-stage2"))
             passed = passed && invoke(L"stage2DescriptionRedo", L"PASS") && FbeScripts::RedrawStates().empty() && redraw.Balanced();
         }
         if (passed) {
+            checkpoint("source");
             ShowView(SOURCE);
             FbeScripts::ScriptExecutionScope context(CString(root) + L"\\stage2.js");
             passed = invoke(L"stage2Source", L"PASS");
@@ -142,11 +152,13 @@ if (IsFbeTestScenario(L"scripting-stage2"))
             }
         }
         if (passed) {
+            checkpoint("replacement");
             ShowView(BODY);
             FbeScripts::ScriptExecutionScope context(CString(root) + L"\\stage2.js");
             passed = invoke(L"stage2Replaced", L"PASS");
         }
         if (passed) {
+            checkpoint("script-menu");
             if (!InitializeScripts()) CheckError(E_FAIL);
             UINT command = 0;
             for (int index = 0; index < m_scripts.Menu().Count(); ++index)
@@ -164,6 +176,7 @@ if (IsFbeTestScenario(L"scripting-stage2"))
             passed = passed && translated && invoke(L"stage2EntryCount", L"2") && FbeScripts::ExecutionContexts().empty();
         }
         if (passed) {
+            checkpoint("progress");
             FbeScripts::ScriptExecutionScope context(CString(root) + L"\\stage2.js");
             passed = invoke(L"stage2ProgressBegin", L"PASS");
             if (passed) {
@@ -192,7 +205,7 @@ if (IsFbeTestScenario(L"scripting-stage2"))
                 passed = cancelled && invoke(L"stage2ProgressEnd", L"PASS");
             }
         }
-        passed = passed && FbeScripts::ExecutionContexts().empty() && FbeScripts::RedrawStates().empty();
+        passed = passed && invoke(L"stage2Result", L"PASS") && FbeScripts::ExecutionContexts().empty() && FbeScripts::RedrawStates().empty();
     } catch (const _com_error& error) { passed = false; details.Format("HRESULT=0x%08lX", static_cast<unsigned long>(error.Error())); }
     catch (...) { passed = false; details = "native exception"; }
     try {

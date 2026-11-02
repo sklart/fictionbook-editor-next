@@ -717,6 +717,7 @@ public:
   LRESULT RunIssue64Runtime(CAtlFile& output);
   LRESULT RunUiDefectsRuntime(CAtlFile& output);
   LRESULT RunSettingsDialogRuntime(CAtlFile& output);
+  LRESULT RunScriptingStage2Runtime(CAtlFile& output);
   LRESULT RunLegacyRuntimeScenarios(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT RunBinaryStoreRuntime(CAtlFile& output);
 #ifdef FBE_BINARY_STORE_DIAGNOSTICS

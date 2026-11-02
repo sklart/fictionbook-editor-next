@@ -152,9 +152,20 @@ __declspec(noinline) LRESULT CMainFrame::RunSettingsDialogRuntime(CAtlFile& outp
 	return 0;
 }
 
-// Keep new script/COM probes outside the large legacy scenario stack frame.
+// Keep script/COM probes outside the large legacy scenario stack frame.
+__declspec(noinline) LRESULT CMainFrame::RunScriptingStage2Runtime(CAtlFile& output)
+{
+#include "RuntimeTestScriptingStage2.inl"
+    return 0;
+}
+
 LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT message, WPARAM wparam, LPARAM lparam, BOOL& handled)
 {
+    if (RuntimeTests::IsScenario(L"scripting-stage2")) {
+        CAtlFile output;
+        if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS))) return 0;
+        return RunScriptingStage2Runtime(output);
+    }
     if (RuntimeTests::IsScenario(L"settings-dialog-runtime") || RuntimeTests::IsScenario(L"settings-dialog-runtime-verify") ||
         RuntimeTests::IsScenario(L"backup-settings-save-runtime") || RuntimeTests::IsScenario(L"backup-settings-save-runtime-verify")) {
         PluginOptionsProbe::paletteForWindow = EditorPluginProbePalette;

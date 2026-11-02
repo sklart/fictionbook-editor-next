@@ -9,6 +9,15 @@ $oldMode,$oldScenario,$oldRoot,$oldSettings=$env:FBE_NEXT_TEST_MODE,$env:FBE_NEX
 $oldTemp,$oldTmp=$env:TEMP,$env:TMP
 try {
     $null=New-IsolatedFbeSettingsSeed -Isolation $iso
+    # A failed MSHTML script must fail this unattended test, not block the
+    # user's desktop with a modal error dialog. Only the disposable copy is
+    # changed; the recorded error is asserted by stage2Result below.
+    $mainJs = Join-Path $iso.Root 'main.js'
+    $mainText = [IO.File]::ReadAllText($mainJs)
+    $modalError = 'if(!IsDiagnosticFaultInjectionActive()) try { MsgBox("Error at line "+lno+":\n"+msg+" "); } catch(ignore) {}'
+    if (-not $mainText.Contains($modalError)) { throw 'Cannot install the unattended script-error probe.' }
+    $mainText = $mainText.Replace($modalError, 'window.stage2UnhandledError=String(msg)+" at "+String(lno);')
+    [IO.File]::WriteAllText($mainJs, $mainText, [Text.UTF8Encoding]::new($false))
     $scripts=Join-Path $iso.Root 'api2-Юникод'; New-Item -ItemType Directory $scripts | Out-Null
     $script=@'
 var stage2Phase="start";
@@ -68,7 +77,7 @@ function Run(){try{
  stage2Failure="PASS";
 }catch(error){stage2Failure=stage2Phase+": "+String(error.message||error);}}
 function stage2TemporaryFile(){return stage2Temps.length?stage2Temps.pop():"";}
-function stage2Result(){return stage2Failure;}
+function stage2Result(){return window.stage2UnhandledError ? "unhandled script error: "+window.stage2UnhandledError : stage2Failure;}
 function stage2Paragraph(){return paragraph2().innerText;}
 function stage2Source(){try{var e=window.external;stage2SourceBefore=e.GetSourceText();window.stage2SourcePrepared=false;var threw=false;try{apiRunCmd(@@SOURCECHILD@@);}catch(error){threw=true;}assert2(threw&&window.stage2SourcePrepared&&e.GetCurrentScriptName()==="stage2.js","source exception cleanup");var mark=e.CreateSelectionBookmark();assert2(e.RestoreSelectionBookmark(mark)&&e.ReleaseSelectionBookmark(mark),"source bookmark");assert2(e.GetSelectionInfo().indexOf('"view":"source"')>=0,"source info");e.GetSelectionText();e.GetSelectionHtml();window.stage2SourceToken=e.BeginDocumentUpdate("Source update","{}");return "PASS";}catch(error){return "stage2Source: "+String(error.message||error);}}
 function stage2SourceEnd(){try{var e=window.external;assert2(e.EndDocumentUpdate(window.stage2SourceToken),"source end");stage2SourceAfter=e.GetSourceText();assert2(stage2SourceAfter===stage2SourceBefore+"  ","source edits");return "PASS";}catch(error){return "stage2SourceEnd: "+String(error.message||error);}}
@@ -92,7 +101,7 @@ function stage2Description(){try{
 }catch(error){return "stage2Description: "+String(error.message||error);}}
 function stage2DescriptionUndo(){return document.getElementById("tiTitle").value===descriptionBefore&&document.getElementById("fbw_body").outerHTML===descriptionBody?"PASS":"description undo/body";}
 function stage2DescriptionRedo(){return document.getElementById("tiTitle").value===descriptionAfter&&document.getElementById("fbw_body").outerHTML===descriptionBody?"PASS":"description redo/body";}
-function stage2Replaced(){try{var e=window.external;select2();var mark=e.CreateSelectionBookmark(),xml=e.GetSourceText();xml=xml.replace("batch two","replacement two");assert2(e.ApplySourceText(xml,"replace full DOM"),"apply");assert2(!e.RestoreSelectionBookmark(mark),"replacement invalidation");return "PASS";}catch(error){return "stage2Replaced: "+String(error.message||error);}}
+function stage2Replaced(){try{var e=window.external;select2();var mark=e.CreateSelectionBookmark(),xml=e.GetSourceText();xml=xml.replace("batch two","replacement two");if(!e.ApplySourceText(xml,"replace full DOM"))throw new Error("apply: "+e.GetLastSourceDiagnostic());assert2(!e.RestoreSelectionBookmark(mark),"replacement invalidation");return "PASS";}catch(error){return "stage2Replaced: "+String(error.message||error);}}
 function stage2ProgressBegin(){try{var e=window.external;rejects2(function(){e.BeginProgress("invalid",0);},"zero maximum");stage2Progress=e.BeginProgress("FBE stage2 cancellation",10);assert2(e.SetProgress(stage2Progress,2,"Работа"),"set progress");rejects2(function(){e.BeginProgress("second",1);},"single progress");rejects2(function(){e.SetProgress(stage2Progress,11,"bad");},"range");return "PASS";}catch(error){return "stage2ProgressBegin: "+String(error.message||error);}}
 function stage2ProgressCancelled(){return window.external.IsProgressCancelled(stage2Progress)?"PASS":"waiting";}
 function stage2ProgressEnd(){try{var e=window.external;assert2(e.EndProgress(stage2Progress),"end progress");rejects2(function(){e.IsProgressCancelled(stage2Progress);},"stale progress");return "PASS";}catch(error){return "stage2ProgressEnd: "+String(error.message||error);}}
