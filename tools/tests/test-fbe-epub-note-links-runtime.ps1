@@ -7,8 +7,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $batchPath = (Resolve-Path -LiteralPath $Batch).Path
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-note-links-' + [guid]::NewGuid().ToString('N'))
-[void][IO.Directory]::CreateDirectory($directory)
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$scratch = New-IsolatedFbeScratchDirectory -Name 'epub-note-links'
+$directory = $scratch.Root
 $passed = $false
 try {
     Add-Type -AssemblyName System.IO.Compression
@@ -74,6 +75,5 @@ try {
     $passed = $true
     Write-Host 'External note links, content, image, backlink anchors and XSD after FBE Save/Reopen: PASS.'
 } finally {
-    if($passed) { Remove-Item -LiteralPath $directory -Recurse -Force }
-    else { Write-Host "Note regression failure artifacts: $directory" }
+    Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $passed -PreserveContents
 }

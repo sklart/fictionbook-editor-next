@@ -65,9 +65,9 @@ $isolation = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'tools\tests\Run
 if($archiveTest -notmatch [regex]::Escape("New-IsolatedFbeRuntime -FbeExe `$FbeExe -Name 'ArchiveMruRuntimeData'")) {
     throw 'Archive MRU data must be created only by the isolated runtime test.'
 }
-if($isolation -notmatch 'if \(\$Passed\) \{ Remove-Item -LiteralPath \$Isolation\.Root -Recurse -Force \}' -or
-   $isolation -notmatch 'Runtime failure artifacts: \$\(\$Isolation\.Root\)') {
-    throw 'Isolated runtime cleanup must remove successful data and retain failed diagnostics only in its isolated directory.'
+if($isolation -notmatch 'Remove-Item -LiteralPath \$root -Recurse -Force' -or
+   $isolation -notmatch 'Runtime failure artifacts: \$destination') {
+    throw 'Isolated runtime cleanup must remove disposable data and preserve failure diagnostics separately.'
 }
 
 if($RuntimeDirectory) {

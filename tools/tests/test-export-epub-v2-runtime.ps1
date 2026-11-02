@@ -7,10 +7,6 @@ if (-not (Test-Path -LiteralPath $batch -PathType Leaf)) { throw "Missing Export
 $dll = Join-Path $RuntimeDirectory "Plugins\ExportEPUB.dll"; if (-not (Test-Path -LiteralPath $dll)) { throw "Missing ExportEPUB.dll: $dll" }
 & (Join-Path $root 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64 -PlatformToolset v143
 $apiDirectory = & (Join-Path $PSScriptRoot 'ensure-fbe-api.ps1') -Configuration $Configuration
-$exe = Join-Path $RuntimeDirectory "export-epub-v2-runtime.exe"
-$objectDir = Join-Path $RuntimeDirectory 'test-obj\export-epub-v2-runtime'; New-Item -ItemType Directory -Force -Path $objectDir | Out-Null
-& cl.exe /nologo /EHsc /std:c++14 /utf-8 /DFBE_TEST_EXPORT_EPUB /DUNICODE /D_UNICODE "/I$apiDirectory" "/Fo:$objectDir\\" (Join-Path $PSScriptRoot 'export-html-v2-runtime-harness.cpp') (Join-Path $apiDirectory 'FBE_i.c') /link ole32.lib oleaut32.lib "/OUT:$exe"
-if ($LASTEXITCODE -ne 0) { throw 'ExportEPUB v2 runtime harness did not compile.' }
 function Test-V2EpubContent([string]$Path, [int]$Version) {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf) -or (Get-Item -LiteralPath $Path).Length -eq 0) { throw "v2 EPUB $Version is missing or empty: $Path" }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -24,7 +20,16 @@ function Test-V2EpubContent([string]$Path, [int]$Version) {
     $combined = ($texts.Values -join "`n"); if (-not $combined.Contains('Привет, мир')) { throw "v2 EPUB $Version lost Cyrillic fixture text." }
     foreach ($marker in @([string][char]0x00D0,[string][char]0x00D1)) { if ($combined.Contains($marker)) { throw "v2 EPUB $Version contains mojibake." } }
 }
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$scratch = New-IsolatedFbeScratchDirectory -Name 'export-epub-v2'
+$exe = Join-Path $scratch.Root 'export-epub-v2-runtime.exe'
+$objectDir = Join-Path $scratch.Root 'obj'
+$oldTemp, $oldTmp = $env:TEMP, $env:TMP; $passed = $false
 try {
+    $env:TEMP = $scratch.Root; $env:TMP = $scratch.Root
+    New-Item -ItemType Directory -Path $objectDir | Out-Null
+    & cl.exe /nologo /EHsc /std:c++14 /utf-8 /DFBE_TEST_EXPORT_EPUB /DUNICODE /D_UNICODE "/I$apiDirectory" "/Fo:$objectDir\\" (Join-Path $PSScriptRoot 'export-html-v2-runtime-harness.cpp') (Join-Path $apiDirectory 'FBE_i.c') /link ole32.lib oleaut32.lib "/OUT:$exe"
+    if ($LASTEXITCODE -ne 0) { throw 'ExportEPUB v2 runtime harness did not compile.' }
     for($iteration = 1; $iteration -le $RepeatCount; ++$iteration) {
     $lines = @(& $exe $dll); if ($LASTEXITCODE -ne 0) { throw "ExportEPUB v2 runtime harness failed: $LASTEXITCODE" }
     $epub3 = ($lines | Where-Object { $_ -like 'EPUB3=*' } | Select-Object -First 1) -replace '^EPUB3='; $epub2 = ($lines | Where-Object { $_ -like 'EPUB2=*' } | Select-Object -First 1) -replace '^EPUB2='
@@ -42,4 +47,5 @@ try {
     Remove-Item -LiteralPath $epub3,$epub2 -Force -ErrorAction SilentlyContinue; $parent = Split-Path -Parent $epub3; Remove-Item -LiteralPath $parent -Force -ErrorAction SilentlyContinue
     }
     Write-Host "ExportEPUB v2 and batch overwrite checks: PASS ($RepeatCount independent runs; no retries)."
-} finally { Remove-Item -LiteralPath $exe -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath ($exe -replace '\.exe$','.pdb') -Force -ErrorAction SilentlyContinue }
+    $passed = $true
+} finally { $env:TEMP = $oldTemp; $env:TMP = $oldTmp; Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $passed -PreserveContents }

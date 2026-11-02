@@ -6,10 +6,12 @@ $ErrorActionPreference = 'Stop'
 if (-not $FbeExe) { $FbeExe = Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe' }
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
-$root = Join-Path ([IO.Path]::GetTempPath()) ('fbe-settings-dialog-' + [guid]::NewGuid().ToString('N'))
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$scratch = New-IsolatedFbeScratchDirectory -Name 'settings-dialog' -RuntimePayload
+$root = $scratch.Root
 $passed = $false
 try {
-    Copy-Item -LiteralPath (Split-Path $FbeExe -Parent) -Destination $root -Recurse -Force
+    Get-ChildItem -LiteralPath (Split-Path $FbeExe -Parent) -Force | Where-Object { $_.Name -notin @('.fbe-runtime-owner.json', 'Data', 'test-obj') -and $_.Extension -notin @('.pdb', '.lib', '.exp') } | Copy-Item -Destination $root -Recurse -Force
     $exe = Join-Path $root 'FBE.exe'; $fixture = Join-Path $root 'settings.fb2'
     $report = Join-Path $root 'settings.txt'; $reopenReport = Join-Path $root 'settings-reopen.txt'; $legacyReport = Join-Path $root 'settings-legacy.txt'; $manualReport = Join-Path $root 'settings-manual.txt'; $verifyReport = Join-Path $root 'verify.txt'; $backupReport = Join-Path $root 'backup.txt'; $backupExistingReport = Join-Path $root 'backup-existing.txt'; $backupVerifyReport = Join-Path $root 'backup-verify.txt'
     [IO.File]::WriteAllText((Join-Path $root 'portable.ini'), "[Portable]`r`nDataPath=TestData`r`n", [Text.UTF8Encoding]::new($false))
@@ -104,6 +106,5 @@ try {
     Write-Host 'FBE Settings dialog auto/legacy/manual geometry, move/resize, Apply/OK, and backup-disabled save passed.'
     $passed = $true
 } finally {
-    if($passed) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    else { Write-Host "Settings runtime failure artifacts: $root" }
+    Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $passed
 }

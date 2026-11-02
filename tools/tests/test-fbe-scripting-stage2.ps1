@@ -6,6 +6,7 @@ $root=(Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if ((Get-FileHash (Join-Path $root 'src/contracts/fbe.idl')).Hash -ne 'FB69F8A6C18DACED5C5E435C5E23286A30F89274586F569C9A730322CE3AAEEE') {throw 'Legacy ABI changed'}
 $iso=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'scripting-stage2'; $passed=$false
 $oldMode,$oldScenario,$oldRoot,$oldSettings=$env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO,$env:FBE_NEXT_SCRIPT_API_ROOT,$env:FBE_NEXT_TEST_SETTINGS_DIRECTORY
+$oldTemp,$oldTmp=$env:TEMP,$env:TMP
 try {
     $null=New-IsolatedFbeSettingsSeed -Isolation $iso
     $scripts=Join-Path $iso.Root 'api2-Юникод'; New-Item -ItemType Directory $scripts | Out-Null
@@ -110,6 +111,7 @@ function stage2ProgressEnd(){try{var e=window.external;assert2(e.EndProgress(sta
     $fixture=Join-Path $iso.Root 'api2.fb2'; $report=Join-Path $iso.Root 'api2.txt'
     '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>API2</book-title><lang>en</lang></title-info><document-info><id>api2</id><version>1</version></document-info></description><body><section><p>selected words</p></section></body></FictionBook>' | Set-Content $fixture -Encoding utf8
     $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='scripting-stage2';$env:FBE_NEXT_SCRIPT_API_ROOT=$scripts;$env:FBE_NEXT_TEST_SETTINGS_DIRECTORY=Join-Path $iso.DataPath 'Settings'
+    $env:TEMP=$iso.Root; $env:TMP=$iso.Root
     $process=Start-Process $iso.Exe -WorkingDirectory $iso.Root -ArgumentList @("--$Mode",'-b',$report,$fixture) -WindowStyle Hidden -PassThru
     $code=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'scripting-stage2' -Report $report -TimeoutSeconds $TimeoutSeconds
     $locked.Dispose();$locked=$null
@@ -120,6 +122,7 @@ function stage2ProgressEnd(){try{var e=window.external;assert2(e.EndProgress(sta
     $passed=$true; Write-Host "Scripting stage 2 real COM/JScript ($Mode): PASS."
 } finally {
     if($locked){$locked.Dispose()}
+    $env:TEMP,$env:TMP=$oldTemp,$oldTmp
     $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO,$env:FBE_NEXT_SCRIPT_API_ROOT,$env:FBE_NEXT_TEST_SETTINGS_DIRECTORY=$oldMode,$oldScenario,$oldRoot,$oldSettings
     if(-not ([IO.Path]::GetFullPath($iso.Root).StartsWith([IO.Path]::GetFullPath([IO.Path]::GetTempPath()),[StringComparison]::OrdinalIgnoreCase))){throw 'Unsafe isolation root'}
     Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed

@@ -14,8 +14,11 @@ param()
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$tmpDir = Join-Path ([IO.Path]::GetTempPath()) ("fbe-rc-ui-literals-{0}" -f $PID)
-New-Item -ItemType Directory -Force -Path $tmpDir | Out-Null
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$scratch = New-IsolatedFbeScratchDirectory -Name 'rc-ui-literals'
+$tmpDir = $scratch.Root
+$passed = $false
+try {
 $outPath = Join-Path $tmpDir "fbe-rc-ui-literals.json"
 
 & (Join-Path $repoRoot "tools\localization\analyze-fbe-rc-ui-literals.ps1") -OutputPath $outPath
@@ -53,6 +56,7 @@ if ([int]$report.totals.items -ne 0) {
 }
 
 Write-Host "Инвентарь UI-литералов FBE прошёл проверку."
-Write-Host "  Файл: $outPath"
 Write-Host "  Литералов: $($report.totals.items)"
 Write-Host "  Ресурсов: $($report.totals.resources)"
+$passed = $true
+} finally { Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $passed }

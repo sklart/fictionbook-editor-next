@@ -7,8 +7,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $batchPath = (Resolve-Path -LiteralPath $Batch).Path
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-epub-dates-' + [guid]::NewGuid().ToString('N'))
-[void][IO.Directory]::CreateDirectory($directory)
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$scratch = New-IsolatedFbeScratchDirectory -Name 'epub-dates'
+$directory = $scratch.Root
 $passed = $false
 try {
     Add-Type -AssemblyName System.IO.Compression
@@ -50,6 +51,5 @@ try {
     $passed = $true
     Write-Host 'EPUB date semantics and independent XSD after FBE Save/Reopen: PASS.'
 } finally {
-    if ($passed) { Remove-Item -LiteralPath $directory -Recurse -Force }
-    else { Write-Host "Date regression failure artifacts: $directory" }
+    Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $passed -PreserveContents
 }

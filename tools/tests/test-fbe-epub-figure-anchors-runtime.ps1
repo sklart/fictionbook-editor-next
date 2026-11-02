@@ -7,8 +7,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $batchPath = (Resolve-Path -LiteralPath $Batch).Path
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-figure-anchors-' + [guid]::NewGuid().ToString('N'))
-[void][IO.Directory]::CreateDirectory($directory)
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$scratch = New-IsolatedFbeScratchDirectory -Name 'figure-anchors'
+$directory = $scratch.Root
 $passed = $false
 try {
     Add-Type -AssemblyName System.IO.Compression
@@ -54,6 +55,5 @@ try {
     $passed = $true
     Write-Host 'Figure anchors, caption, image bytes and XSD after FBE Save/Reopen: PASS.'
 } finally {
-    if($passed) { Remove-Item -LiteralPath $directory -Recurse -Force }
-    else { Write-Host "Figure regression failure artifacts: $directory" }
+    Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $passed -PreserveContents
 }

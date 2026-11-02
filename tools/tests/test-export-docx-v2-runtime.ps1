@@ -6,12 +6,16 @@ $dll = Join-Path $RuntimeDirectory "Plugins\ExportDOCX.dll"
 if (-not (Test-Path -LiteralPath $dll)) { throw "Missing ExportDOCX.dll: $dll" }
 & (Join-Path $root 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64 -PlatformToolset v143
 $apiDirectory = & (Join-Path $PSScriptRoot 'ensure-fbe-api.ps1') -Configuration $Configuration
-$exe = Join-Path $RuntimeDirectory "export-docx-v2-runtime.exe"
-$objectDir = Join-Path $RuntimeDirectory 'test-obj\export-docx-v2-runtime'; New-Item -ItemType Directory -Force -Path $objectDir | Out-Null
-& cl.exe /nologo /EHsc /std:c++14 /utf-8 /DFBE_TEST_EXPORT_DOCX /DUNICODE /D_UNICODE "/I$apiDirectory" "/Fo:$objectDir\\" (Join-Path $PSScriptRoot 'export-html-v2-runtime-harness.cpp') (Join-Path $apiDirectory 'FBE_i.c') /link ole32.lib oleaut32.lib "/OUT:$exe"
-if ($LASTEXITCODE -ne 0) { throw 'ExportDOCX v2 runtime harness did not compile.' }
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$scratch = New-IsolatedFbeScratchDirectory -Name 'export-docx-v2'
+$exe = Join-Path $scratch.Root 'export-docx-v2-runtime.exe'
+$objectDir = Join-Path $scratch.Root 'obj'
+$oldTemp, $oldTmp = $env:TEMP, $env:TMP; $passed = $false; $docx = ''; $outputLog = Join-Path $scratch.Root 'harness.log'
 try {
-    $outputLog = "$exe.stdout"
+    $env:TEMP = $scratch.Root; $env:TMP = $scratch.Root
+    New-Item -ItemType Directory -Path $objectDir | Out-Null
+    & cl.exe /nologo /EHsc /std:c++14 /utf-8 /DFBE_TEST_EXPORT_DOCX /DUNICODE /D_UNICODE "/I$apiDirectory" "/Fo:$objectDir\\" (Join-Path $PSScriptRoot 'export-html-v2-runtime-harness.cpp') (Join-Path $apiDirectory 'FBE_i.c') /link ole32.lib oleaut32.lib "/OUT:$exe"
+    if ($LASTEXITCODE -ne 0) { throw 'ExportDOCX v2 runtime harness did not compile.' }
     $process = Start-Process -FilePath $exe -ArgumentList @($dll) -Wait -PassThru -NoNewWindow -RedirectStandardOutput $outputLog
     if ($process.ExitCode -ne 0) { throw "ExportDOCX v2 runtime harness failed: $($process.ExitCode)" }
     $lines = @(Get-Content -LiteralPath $outputLog)
@@ -46,12 +50,13 @@ try {
         Remove-Item -LiteralPath $batchOutput -Force
         Write-Host 'DOCX batch conversion and package content passed.'
     }
+    $passed = $true
 } finally {
-    if ($docx) {
+    $env:TEMP = $oldTemp; $env:TMP = $oldTmp
+    if ($passed -and $docx) {
         Remove-Item -LiteralPath $docx -Force -ErrorAction SilentlyContinue
         $parent = Split-Path -Parent $docx
         if ($parent -and (Test-Path -LiteralPath $parent -PathType Container)) { try { [IO.Directory]::Delete($parent) } catch {} }
     }
-    Remove-Item -LiteralPath $exe -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath ($exe -replace '\.exe$','.pdb') -Force -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath $outputLog -Force -ErrorAction SilentlyContinue
+    Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $passed -PreserveContents
 }

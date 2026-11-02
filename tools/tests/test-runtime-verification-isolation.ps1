@@ -70,6 +70,34 @@ try {
     $newRoots = @(Get-ChildItem -LiteralPath ([IO.Path]::GetTempPath()) -Directory -Filter 'fr-*' | Where-Object { $_.FullName -notin $before })
     if (!$creationFailed -or $newRoots.Count) { throw 'A failed runtime creation must remove its partial copy.' }
     $env:FBE_RUNTIME_FAILURE_ARTIFACTS = $testArtifacts
+    $owned = New-IsolatedFbeScratchDirectory -Name 'owned-process'
+    $ownedExe = Join-Path $owned.Root 'owned-cmd.exe'
+    Copy-Item -LiteralPath $env:ComSpec -Destination $ownedExe
+    $ownedChild = Start-Process -FilePath $ownedExe -ArgumentList '/c ping -n 30 127.0.0.1 >nul' -WindowStyle Hidden -PassThru
+    try {
+        $detected = $false
+        for ($i = 0; $i -lt 30 -and -not $detected; $i++) { $detected = @(Get-IsolatedRuntimeProcesses $owned | Where-Object ProcessId -eq $ownedChild.Id).Count -gt 0; if (-not $detected) { Start-Sleep -Milliseconds 100 } }
+        if (-not $detected) { throw 'The isolated non-FBE child was not detected.' }
+        $reported = $false
+        try { Complete-IsolatedFbeRuntime -Isolation $owned -Passed $true } catch { $reported = $_.Exception.Message -like 'Disposable runtime leaked process(es):*' }
+        $ownedChild.Refresh()
+        if (-not $reported -or -not $ownedChild.HasExited -or (Test-Path -LiteralPath $owned.Root)) { throw 'The isolated child must be stopped and the leaked-process failure reported.' }
+    } finally {
+        if (-not $ownedChild.HasExited) { Stop-Process -Id $ownedChild.Id -Force -ErrorAction SilentlyContinue; $ownedChild.WaitForExit() }
+        if (Test-Path -LiteralPath $owned.Root) { Complete-IsolatedFbeRuntime -Isolation $owned -Passed $true }
+    }
+    $bounded = New-IsolatedFbeScratchDirectory -Name 'bounded'
+    New-Item -ItemType Directory -Path (Join-Path $bounded.Root 'nested') | Out-Null
+    Set-Content -LiteralPath (Join-Path $bounded.Root 'nested\evidence.txt') -Value 'diagnostic'
+    Set-Content -LiteralPath (Join-Path $bounded.Root 'nested\runtime.dll') -Value 'binary'
+    $large = [IO.File]::OpenWrite((Join-Path $bounded.Root 'nested\huge.xml'))
+    try { $large.SetLength(6MB) } finally { $large.Dispose() }
+    for ($i = 0; $i -lt 5; $i++) { $part = [IO.File]::OpenWrite((Join-Path $bounded.Root "nested\part-$i.xml")); try { $part.SetLength(5MB) } finally { $part.Dispose() } }
+    Complete-IsolatedFbeRuntime -Isolation $bounded -Passed $false -PreserveContents
+    $boundedArtifacts = Join-Path $testArtifacts (Split-Path -Leaf $bounded.Root)
+    if ((Test-Path $bounded.Root) -or !(Test-Path (Join-Path $boundedArtifacts 'nested\evidence.txt')) -or (Test-Path (Join-Path $boundedArtifacts 'nested\runtime.dll')) -or (Test-Path (Join-Path $boundedArtifacts 'nested\huge.xml'))) { throw 'Failure evidence must retain small diagnostics without binaries or oversized files.' }
+    $summary = Get-Content -LiteralPath (Join-Path $boundedArtifacts 'artifact-summary.txt') -Raw
+    if ($summary -notmatch '(?m)^skipped=([2-9]|[1-9][0-9]+)\r?$' -or $summary -notmatch '(?m)^bytes=(\d+)\r?$' -or [long]$Matches[1] -gt 20MB) { throw 'The artifact summary must report omitted files and enforce the total size limit.' }
     $kept = New-IsolatedFbeRuntime -FbeExe (Join-Path $fixtureSource 'FBE.exe') -Name 'kept'
     try {
         Complete-IsolatedFbeRuntime -Isolation $kept -Passed $true -KeepArtifacts
@@ -98,13 +126,45 @@ try {
     } finally {
         if (!$child.HasExited) { Stop-Process -Id $child.Id -Force -ErrorAction SilentlyContinue; $child.WaitForExit() }
     }
+    Remove-Item -LiteralPath $ready -Force
+    $command = ". '$helper'; `$iso = New-IsolatedFbeScratchDirectory -Name interrupted-scratch; New-Item -ItemType Directory -Path (Join-Path `$iso.Root 'nested') | Out-Null; Set-Content -LiteralPath (Join-Path `$iso.Root 'nested\evidence.txt') -Value 'evidence'; [IO.File]::WriteAllText('$readyQuoted', `$iso.Root); Start-Sleep -Seconds 60"
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
+    $child = Start-Process $pwsh -ArgumentList "-NoProfile -EncodedCommand $encoded" -WindowStyle Hidden -PassThru
+    try {
+        for ($i = 0; $i -lt 100 -and !(Test-Path -LiteralPath $ready) -and !$child.HasExited; $i++) { Start-Sleep -Milliseconds 100 }
+        if (!(Test-Path -LiteralPath $ready)) { throw 'Child did not create its scratch directory.' }
+        $orphan = [IO.File]::ReadAllText($ready)
+        Stop-Process -Id $child.Id -Force; $child.WaitForExit()
+        Remove-AbandonedIsolatedFbeRuntimes
+        $orphanArtifacts = Join-Path $testArtifacts (Split-Path -Leaf $orphan)
+        if ((Test-Path -LiteralPath $orphan) -or !(Test-Path -LiteralPath (Join-Path $orphanArtifacts 'nested\evidence.txt'))) { throw 'Interrupted scratch cleanup must preserve nested evidence.' }
+    } finally {
+        if (!$child.HasExited) { Stop-Process -Id $child.Id -Force -ErrorAction SilentlyContinue; $child.WaitForExit() }
+    }
+    Remove-Item -LiteralPath $ready -Force
+    $command = ". '$helper'; `$iso = New-IsolatedFbeScratchDirectory -Name interrupted-runtime -RuntimePayload; New-Item -ItemType Directory -Path (Join-Path `$iso.Root 'Resources') | Out-Null; Set-Content -LiteralPath (Join-Path `$iso.Root 'Resources\payload.xml') -Value 'bundled'; Set-Content -LiteralPath (Join-Path `$iso.Root 'report.txt') -Value 'diagnostic'; [IO.File]::WriteAllText('$readyQuoted', `$iso.Root); Start-Sleep -Seconds 60"
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
+    $child = Start-Process $pwsh -ArgumentList "-NoProfile -EncodedCommand $encoded" -WindowStyle Hidden -PassThru
+    try {
+        for ($i = 0; $i -lt 100 -and !(Test-Path -LiteralPath $ready) -and !$child.HasExited; $i++) { Start-Sleep -Milliseconds 100 }
+        if (!(Test-Path -LiteralPath $ready)) { throw 'Child did not create its runtime payload.' }
+        $orphan = [IO.File]::ReadAllText($ready)
+        Stop-Process -Id $child.Id -Force; $child.WaitForExit()
+        Remove-AbandonedIsolatedFbeRuntimes
+        $orphanArtifacts = Join-Path $testArtifacts (Split-Path -Leaf $orphan)
+        if ((Test-Path -LiteralPath $orphan) -or !(Test-Path -LiteralPath (Join-Path $orphanArtifacts 'report.txt')) -or (Test-Path -LiteralPath (Join-Path $orphanArtifacts 'Resources\payload.xml'))) { throw 'Interrupted runtime payload must preserve its report without copying bundled resources.' }
+    } finally {
+        if (!$child.HasExited) { Stop-Process -Id $child.Id -Force -ErrorAction SilentlyContinue; $child.WaitForExit() }
+    }
     New-Item -ItemType Directory -Path $waitRoot | Out-Null
     Set-Content -LiteralPath (Join-Path $waitRoot 'test-stage.txt') -Value 'failed stage'
     New-Item -ItemType Directory -Path (Join-Path $waitRoot 'Recovery') | Out-Null
     Set-Content -LiteralPath (Join-Path $waitRoot 'Recovery\fixture.fb2') -Value 'recovery'
+    New-Item -ItemType Directory -Path (Join-Path $waitRoot 'Diagnostics') | Out-Null
+    Set-Content -LiteralPath (Join-Path $waitRoot 'Diagnostics\startup.log') -Value 'startup'
     Complete-IsolatedFbeRuntime -Isolation $waitIsolation -Passed $false
     $saved = Join-Path $testArtifacts (Split-Path -Leaf $waitRoot)
-    if ((Test-Path $waitRoot) -or !(Test-Path (Join-Path $saved 'test-stage.txt')) -or !(Test-Path (Join-Path $saved 'Recovery\fixture.fb2'))) { throw 'Failure must save diagnostics and remove the disposable runtime.' }
+    if ((Test-Path $waitRoot) -or !(Test-Path (Join-Path $saved 'test-stage.txt')) -or !(Test-Path (Join-Path $saved 'Recovery\fixture.fb2')) -or !(Test-Path (Join-Path $saved 'Diagnostics\startup.log'))) { throw 'Failure must save diagnostics and remove the disposable runtime.' }
     New-Item -ItemType Directory -Path $waitRoot | Out-Null
     Complete-IsolatedFbeRuntime -Isolation $waitIsolation -Passed $false -KeepArtifacts
     if (!(Test-Path $waitRoot)) { throw 'Explicit KeepArtifacts must retain the runtime.' }
