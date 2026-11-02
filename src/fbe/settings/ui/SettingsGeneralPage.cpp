@@ -1083,6 +1083,20 @@ public:
             passed = ::IsWindowVisible(m_roleList) && !::IsWindowVisible(m_preview) &&
                 ::SendMessageW(m_roleList, LB_GETCURSEL, 0, 0) == THEME_COLOR_WARNING &&
                 CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel() == THEME_COLOR_WARNING && passed;
+            COLORREF keyboardBefore[THEME_COLOR_COUNT] = {}, keyboardAfter[THEME_COLOR_COUNT] = {};
+            PreviewColors(keyboardBefore);
+            for(int role = 0; role < THEME_COLOR_COUNT; ++role) {
+                const bool first = role == 0;
+                ::SendMessageW(m_roleList, LB_SETCURSEL, first ? 1 : role - 1, 0);
+                const WPARAM key = first ? VK_UP : VK_DOWN;
+                ::SendMessageW(m_roleList, WM_KEYDOWN, key, 0);
+                ::SendMessageW(m_roleList, WM_KEYUP, key, 0);
+                passed = ::SendMessageW(m_roleList, LB_GETCURSEL, 0, 0) == role &&
+                    CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel() == role && passed;
+            }
+            PreviewColors(keyboardAfter);
+            for(int role = 0; role < THEME_COLOR_COUNT; ++role)
+                passed = keyboardBefore[role] == keyboardAfter[role] && passed;
             ::SendMessageW(m_previewMode, CB_SETCURSEL, 0, 0);
             OnPreviewModeChanged(CBN_SELCHANGE, kPreviewModeId, m_previewMode, handled);
             CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).SetCurSel(originalRole);
