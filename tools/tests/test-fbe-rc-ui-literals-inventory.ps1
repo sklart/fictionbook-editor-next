@@ -1,62 +1,33 @@
-﻿<#
-.SYNOPSIS
-Проверяет, что инвентарь оставшихся FBE DIALOGEX UI-литералов строится корректно.
-
-.DESCRIPTION
-Тест запускает tools/localization/analyze-fbe-rc-ui-literals.ps1 во временный каталог
-и проверяет базовый контракт отчёта: ручных MENU/DIALOGEX UI-литералов больше
-не осталось, а уже generated MENU/DIALOGEX-ресурсы не возвращаются в ручной инвентарь.
-Это страховка для дальнейшего переноса диалогов в JSON/Weblate pipeline.
-#>
+<# Checks the current JSON replacement for the retired localized RC inventory. #>
 [CmdletBinding()]
 param()
+$ErrorActionPreference = 'Stop'
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 
-$ErrorActionPreference = "Stop"
-
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
-$scratch = New-IsolatedFbeScratchDirectory -Name 'rc-ui-literals'
-$tmpDir = $scratch.Root
-$passed = $false
-try {
-$outPath = Join-Path $tmpDir "fbe-rc-ui-literals.json"
-
-& (Join-Path $repoRoot "tools\localization\analyze-fbe-rc-ui-literals.ps1") -OutputPath $outPath
-if (-not $?) {
-    throw "analyze-fbe-rc-ui-literals.ps1 завершился с ошибкой."
+# Localized RC files were removed when FBE switched to runtime JSON. Their
+# return would bypass the catalog checks below and recreate the old problem.
+foreach ($locale in @('res_rus', 'res_ukr')) {
+    $legacy = Join-Path $repoRoot "src\locales\$locale\FBE.rc"
+    if (Test-Path -LiteralPath $legacy) { throw "Obsolete localized FBE.rc returned: $legacy" }
 }
-
-if (-not (Test-Path -LiteralPath $outPath)) {
-    throw "Файл отчёта не создан: $outPath"
+$baseRc = Get-Content -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.rc') -Raw
+foreach ($resource in @('IDR_MAINFRAME MENU', 'IDD_FIND DIALOGEX', 'IDD_REPLACE DIALOGEX', 'IDD_SETTINGS_GENERAL DIALOGEX')) {
+    if ($baseRc -notmatch [regex]::Escape($resource)) { throw "Missing base resource: $resource" }
 }
-
-$report = Get-Content -Raw -LiteralPath $outPath -Encoding UTF8 | ConvertFrom-Json
-$resourceTypes = @($report.byResourceType | ForEach-Object { $_.resourceType })
-if ($resourceTypes -contains "DIALOGEX") {
-    throw "DIALOGEX больше не должен быть в ручном инвентаре: все FBE DIALOGEX подключены из generated .rc2."
+$menu = Get-Content -LiteralPath (Join-Path $repoRoot 'localization\app-ui\fbe-idr-mainframe-menu.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$dialogs = Get-Content -LiteralPath (Join-Path $repoRoot 'localization\app-ui\fbe-small-dialogs.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+if ($menu.resource -ne 'IDR_MAINFRAME' -or $menu.resourceType -ne 'MENU') { throw 'Main menu catalog identity is invalid.' }
+foreach ($resource in @('IDD_FIND', 'IDD_REPLACE', 'IDD_SETTINGS_GENERAL')) {
+    if ($resource -notin @($dialogs.resources)) { throw "Dialog missing from JSON catalog: $resource" }
 }
-if ($resourceTypes -contains "MENU") {
-    throw "MENU больше не должен быть в ручном инвентаре: все FBE MENU подключены из generated .rc2."
-}
-
-$resources = @($report.byResource | ForEach-Object { $_.resource })
-foreach ($generatedMenu in @("IDR_MAINFRAME", "IDR_DOCUMENT_TREE", "IDR_TOOLBAR_MENU")) {
-    if ($resources -contains $generatedMenu) {
-        throw "$generatedMenu больше не должен быть в ручном инвентаре: FBE MENU подключены из generated .rc2."
+foreach ($catalog in @($menu, $dialogs)) {
+    $entries = @($catalog.strings.PSObject.Properties)
+    if ($entries.Count -eq 0) { throw 'Localization catalog is empty.' }
+    foreach ($entry in $entries) {
+        foreach ($locale in @('ru-RU', 'uk-UA')) {
+            $translation = $entry.Value.translations.PSObject.Properties[$locale]
+            if (-not $translation -or [string]::IsNullOrWhiteSpace([string]$translation.Value)) { throw "Missing $locale translation: $($entry.Name)" }
+        }
     }
 }
-foreach ($generatedDialog in @("IDD_TABLE", "IDD_INPUTBOX", "IDD_ADDIMAGE", "IDD_TOOLS_SETTINGS", "IDD_ABOUTBOX", "IDD_CUSTOMSAVEDLG", "IDD_SETTINGS_WORDS", "IDD_HOTKEYS", "IDD_FIND", "IDD_REPLACE", "IDD_SPELL_CHECK", "IDD_WORDS", "IDD_SETTINGS_GENERAL", "IDD_SETTINGS_SOURCE", "IDD_SETTINGS_IMAGES", "IDD_SETTINGS_ADVANCED")) {
-    if ($resources -contains $generatedDialog) {
-        throw "$generatedDialog больше не должен быть в ручном инвентаре: малые DIALOGEX подключены из generated .rc2."
-    }
-}
-
-if ([int]$report.totals.items -ne 0) {
-    throw "Ожидалось 0 оставшихся FBE UI-литералов, получено $($report.totals.items)."
-}
-
-Write-Host "Инвентарь UI-литералов FBE прошёл проверку."
-Write-Host "  Литералов: $($report.totals.items)"
-Write-Host "  Ресурсов: $($report.totals.resources)"
-$passed = $true
-} finally { Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $passed }
+Write-Host 'FBE menu/dialog JSON inventory: PASS (legacy localized RC absent; ru-RU and uk-UA populated).'

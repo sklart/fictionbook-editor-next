@@ -15,7 +15,11 @@ param()
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$outputDirectory = Join-Path ([IO.Path]::GetTempPath()) "fbe-localization-rc2-$PID"
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+Set-StrictMode -Off
+$scratch = New-IsolatedFbeScratchDirectory -Name 'localization-rc2'
+$outputDirectory = $scratch.Root
+$passed = $false
 
 try {
     & (Join-Path $repoRoot "tools\localization\export-win32-resource-fragments.ps1") -OutputDirectory $outputDirectory | Out-Host
@@ -36,9 +40,14 @@ try {
     }
 
     $header = Get-Content -Raw -LiteralPath $headerPath
-    if ($header -notmatch 'IDS_L10N_APP_FBE_UPDATE_CHECKING\s+70004') {
+    # IDs follow the ordered catalog and can move when catalog entries are
+    # added; verify the generated identifier and its range, not an old index.
+    if ($header -notmatch 'IDS_L10N_APP_FBE_UPDATE_CHECKING\s+(\d+)') {
         throw "Header не содержит ожидаемый app-ui идентификатор."
     }
+    $updateId = [int]$Matches[1]
+    $appScope = @($manifest.catalogs | Where-Object { $_.scope -eq 'app-ui' })
+    if ($appScope.Count -ne 1 -or $updateId -lt [int]$appScope[0].firstId -or $updateId -gt [int]$appScope[0].lastId) { throw 'Идентификатор app-ui находится вне диапазона manifest.' }
     if ($header -notmatch 'IDS_L10N_PLUGIN_EXPORT_EPUB_DIALOG_OPTIONS_CAPTION\s+\d+') {
         throw "Header не содержит ожидаемый plugin-ui идентификатор."
     }
@@ -63,6 +72,7 @@ try {
     }
 
     $ukApp = [IO.File]::ReadAllText((Join-Path $outputDirectory "app-ui.uk-UA.rc2"), [Text.Encoding]::Unicode)
+    if ($ukApp -notmatch 'IDS_L10N_APP_FBE_UPDATE_CHECKING\s+L"') { throw 'Идентификатор обновления отсутствует в украинском app-ui.rc2.' }
     if ($ukApp -notmatch 'Файл доступний лише для читання') {
         throw "Украинская строка read-only warning не попала в app-ui.uk-UA.rc2."
     }
@@ -71,13 +81,16 @@ try {
         ForEach-Object { [IO.File]::ReadAllText($_.FullName, [Text.Encoding]::Unicode) } |
         Out-String
 
-     if ($allRcText -cmatch (([char]0xFFFD) + '|Ð.|Ñ.|Ã.|Â.')) {
+     # Portuguese words such as “Âmbito” are valid text, not UTF-8 mojibake.
+     $mojibake = ([char]0xFFFD) + '|[ÐÑÃÂ][\u0080-\u00BF]'
+     if ('Âmbito' -cmatch $mojibake -or ("Ð" + [char]0x009F) -cnotmatch $mojibake) { throw 'Проверка mojibake не различает допустимый текст и повреждённый UTF-8.' }
+     if ($allRcText -cmatch $mojibake) {
         throw "В сгенерированных .rc2 обнаружены признаки mojibake."
     }
 
     Write-Host "Генерация Win32 resource-фрагментов локализации прошла проверку."
-    Write-Host "  Каталог: $outputDirectory"
+    $passed = $true
 }
 finally {
-    Remove-Item -LiteralPath $outputDirectory -Recurse -Force -ErrorAction SilentlyContinue
+    Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $passed -PreserveContents
 }
