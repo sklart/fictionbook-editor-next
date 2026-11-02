@@ -83,6 +83,250 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
 {
     CSettingsGeneralPage& m_page;
     CSettingsTooltips m_tooltips;
+    HWND m_preview = NULL;
+    HWND m_hex = NULL;
+    HWND m_colorInfo = NULL;
+    HWND m_previewMode = NULL;
+    HWND m_recent = NULL;
+    HWND m_recentLabel = NULL;
+    HWND m_roleList = NULL;
+    HWND m_resetChanges = NULL;
+    CImageList m_previewIcons;
+    std::vector<COLORREF> m_recentColors;
+    std::vector<ThemeManager::CustomPalette> m_startCustom, m_startPending;
+    std::vector<std::wstring> m_startNew, m_startDeleted;
+    std::vector<CString> m_startLabels;
+    int m_startAccepted = 0;
+    bool m_startChanged = false;
+    bool m_updatingHex = false;
+    COLORREF m_currentColor = 0, m_baseColor = 0;
+    CString m_baseDescription;
+    int m_hoverRole = -1;
+    bool m_layoutActive = false;
+    SIZE m_minTrack = {};
+    static constexpr UINT kPreviewSelect = WM_APP + 0x351;
+    static constexpr int kPreviewId = 0x7e41;
+    static constexpr int kHexId = 0x7e42;
+    static constexpr int kPreviewModeId = 0x7e43;
+    static constexpr int kRecentId = 0x7e44;
+    static constexpr int kRoleListId = 0x7e45;
+    static constexpr int kResetChangesId = 0x7e46;
+    struct PreviewPart { RECT rect; int role; LPCWSTR text; int background; };
+
+    static std::vector<PreviewPart> PreviewParts(int width, int height, int mode = 0)
+    {
+        auto rect = [=](int l, int t, int r, int b) -> RECT {
+            return { MulDiv(width, l, 1000), MulDiv(height, t, 600), MulDiv(width, r, 1000), MulDiv(height, b, 600) };
+        };
+        if(mode == 1) return {
+            {rect(0,0,1000,600), THEME_COLOR_WINDOW, L"", THEME_COLOR_WINDOW},
+            {rect(30,30,970,105), THEME_COLOR_CONTROL, L"Normal", THEME_COLOR_CONTROL},
+            {rect(30,125,970,200), THEME_COLOR_HOVER, L"Hover", THEME_COLOR_HOVER},
+            {rect(30,220,970,295), THEME_COLOR_PRESSED, L"Pressed", THEME_COLOR_PRESSED},
+            {rect(30,315,970,390), THEME_COLOR_FOCUS, L"Focus", THEME_COLOR_FOCUS},
+            {rect(30,410,970,485), THEME_COLOR_DISABLED_TEXT, L"Disabled", THEME_COLOR_CONTROL},
+            {rect(30,505,970,580), THEME_COLOR_SELECTION_BACKGROUND, L"Selected", THEME_COLOR_SELECTION_BACKGROUND},
+            {rect(70,515,930,570), THEME_COLOR_SELECTION_TEXT, L"Selected", THEME_COLOR_SELECTION_BACKGROUND}
+        };
+        if(mode == 2) return {
+            {rect(0,0,1000,600), THEME_COLOR_WINDOW, L"", THEME_COLOR_WINDOW},
+            {rect(30,35,970,130), THEME_COLOR_ACCENT, L"Accent", THEME_COLOR_ACCENT},
+            {rect(30,150,970,245), THEME_COLOR_ERROR, L"Error", THEME_COLOR_ERROR},
+            {rect(30,265,970,360), THEME_COLOR_WARNING, L"Warning", THEME_COLOR_WARNING},
+            {rect(30,380,970,475), THEME_COLOR_SUCCESS, L"Success", THEME_COLOR_SUCCESS},
+            {rect(30,495,970,575), THEME_COLOR_SECONDARY_TEXT, L"Secondary text", THEME_COLOR_WINDOW}
+        };
+        return {
+            {rect(0,0,1000,600), THEME_COLOR_WINDOW, L"", THEME_COLOR_WINDOW},
+            {rect(0,0,1000,65), THEME_COLOR_CONTROL, L"FBE Next", THEME_COLOR_CONTROL},
+            {rect(0,68,1000,115), THEME_COLOR_TEXT, L"File   Edit   View   Insert   Scripts", THEME_COLOR_WINDOW},
+            {rect(0,118,1000,180), THEME_COLOR_CONTROL, L"", THEME_COLOR_CONTROL},
+            {rect(0,181,1000,186), THEME_COLOR_SEPARATOR, L"", THEME_COLOR_SEPARATOR},
+            {rect(0,188,300,545), THEME_COLOR_BORDER, L"", THEME_COLOR_BORDER},
+            {rect(5,193,294,540), THEME_COLOR_WINDOW, L"", THEME_COLOR_WINDOW},
+            {rect(15,202,280,250), THEME_COLOR_SECONDARY_TEXT, L"Scripts", THEME_COLOR_WINDOW},
+            {rect(15,254,280,302), THEME_COLOR_SELECTION_BACKGROUND, L"  \x25B8  Category", THEME_COLOR_SELECTION_BACKGROUND},
+            {rect(42,260,270,296), THEME_COLOR_SELECTION_TEXT, L"Category", THEME_COLOR_SELECTION_BACKGROUND},
+            {rect(15,308,280,350), THEME_COLOR_HOVER, L"  \x25B8  Script", THEME_COLOR_HOVER},
+            {rect(15,355,280,397), THEME_COLOR_DISABLED_TEXT, L"  \x25B8  Script", THEME_COLOR_WINDOW},
+            {rect(320,200,975,252), THEME_COLOR_CONTROL, L"  ID:             \x25BE", THEME_COLOR_CONTROL},
+            {rect(320,265,975,313), THEME_COLOR_TEXT, L"Document", THEME_COLOR_WINDOW},
+            {rect(320,322,610,375), THEME_COLOR_PRESSED, L"  OK", THEME_COLOR_PRESSED},
+            {rect(630,322,960,375), THEME_COLOR_FOCUS, L"  Focus", THEME_COLOR_FOCUS},
+            {rect(320,390,470,435), THEME_COLOR_ACCENT, L"  Accent", THEME_COLOR_ACCENT},
+            {rect(485,390,635,435), THEME_COLOR_ERROR, L"  Error", THEME_COLOR_ERROR},
+            {rect(650,390,800,435), THEME_COLOR_WARNING, L"  Warning", THEME_COLOR_WARNING},
+            {rect(815,390,970,435), THEME_COLOR_SUCCESS, L"  OK", THEME_COLOR_SUCCESS},
+            {rect(0,548,1000,600), THEME_COLOR_CONTROL, L"  FB2                                           UTF-8", THEME_COLOR_CONTROL}
+        };
+    }
+
+    void PreviewColors(COLORREF* colors) const
+    {
+        const int index = m_page.m_acceptedPaletteIndex;
+        const int customIndex = index - INTERFACE_PALETTE_COUNT;
+        const ThemeManager::CustomPalette* custom = customIndex >= 0 && customIndex < static_cast<int>(m_page.m_customPalettes.size()) ?
+            &m_page.m_customPalettes[customIndex] : NULL;
+        ThemeManager::PreviewColors(static_cast<InterfaceTheme>(m_page.m_acceptedThemeIndex),
+            custom ? INTERFACE_PALETTE_CLASSIC : CSettingsGeneralPage::PaletteForRow(index), custom, colors);
+    }
+
+    int PreviewHitTest(POINT point) const
+    {
+        RECT client = {}; ::GetClientRect(m_preview, &client);
+        const auto parts = PreviewParts(client.right, client.bottom, static_cast<int>(::SendMessageW(m_previewMode, CB_GETCURSEL, 0, 0)));
+        for(auto part = parts.rbegin(); part != parts.rend(); ++part)
+            if(::PtInRect(&part->rect, point)) return part->role;
+        return -1;
+    }
+
+    void PaintPreview(HDC target)
+    {
+        RECT client = {}; ::GetClientRect(m_preview, &client);
+        if(client.right <= 0 || client.bottom <= 0) return;
+        HDC dc = ::CreateCompatibleDC(target);
+        HBITMAP bitmap = dc ? ::CreateCompatibleBitmap(target, client.right, client.bottom) : NULL;
+        if(!dc || !bitmap) { if(bitmap) ::DeleteObject(bitmap); if(dc) ::DeleteDC(dc); return; }
+        HGDIOBJ oldBitmap = ::SelectObject(dc, bitmap);
+        HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_hWnd, WM_GETFONT, 0, 0));
+        HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
+        COLORREF colors[THEME_COLOR_COUNT] = {}; PreviewColors(colors);
+        ::SetBkMode(dc, TRANSPARENT);
+        const auto parts = PreviewParts(client.right, client.bottom, static_cast<int>(::SendMessageW(m_previewMode, CB_GETCURSEL, 0, 0)));
+        for(const auto& part : parts) {
+            HBRUSH brush = ::CreateSolidBrush(colors[part.background]);
+            if(brush) { ::FillRect(dc, &part.rect, brush); ::DeleteObject(brush); }
+            if(*part.text) {
+                ::SetTextColor(dc, colors[part.role == THEME_COLOR_SELECTION_TEXT || part.role == THEME_COLOR_TEXT ||
+                    part.role == THEME_COLOR_SECONDARY_TEXT || part.role == THEME_COLOR_DISABLED_TEXT ? part.role : THEME_COLOR_TEXT]);
+                RECT text = part.rect; text.left += 4;
+                CString localized;
+                LPCWSTR caption = part.text;
+                const wchar_t* samples[] = {L"File   Edit   View   Insert   Scripts", L"Scripts", L"  \x25B8  Category", L"Category", L"  \x25B8  Script", L"Document", L"Normal"};
+                int sampleIndex = -1;
+                for(int i = 0; i < static_cast<int>(_countof(samples)); ++i) if(wcscmp(part.text, samples[i]) == 0) { sampleIndex = i; break; }
+                if(sampleIndex >= 0) {
+                    CString labels = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.preview_labels", L"File   Edit   View   Insert   Scripts|Scripts|  \x25B8  Category|Category|  \x25B8  Script|Document|Normal");
+                    int offset = 0;
+                    for(int i = 0; i <= sampleIndex; ++i) localized = labels.Tokenize(L"|", offset);
+                    if(!localized.IsEmpty()) caption = localized;
+                }
+                if((part.role >= THEME_COLOR_SECONDARY_TEXT && part.role <= THEME_COLOR_SUCCESS) &&
+                    sampleIndex < 0) {
+                    m_page.m_paletteRole.GetLBText(part.role, localized);
+                    if(!localized.IsEmpty()) caption = localized;
+                }
+                ::DrawTextW(dc, caption, -1, &text, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
+            }
+        }
+        if(::SendMessageW(m_previewMode, CB_GETCURSEL, 0, 0) == 0 && m_previewIcons.m_hImageList) {
+            const int size = UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(m_preview));
+            const int top = MulDiv(client.bottom, 118, 600), bottom = MulDiv(client.bottom, 180, 600);
+            const int gap = max(2, size / 5), left = gap * 2;
+            const int saved = ::SaveDC(dc);
+            ::IntersectClipRect(dc, 0, top, client.right, bottom);
+            for(int index = 0; index < min(6, m_previewIcons.GetImageCount()); ++index)
+                m_previewIcons.Draw(dc, index, CPoint(left + index * (size + gap), top + (bottom - top - size) / 2), ILD_TRANSPARENT);
+            ::RestoreDC(dc, saved);
+        }
+        const int selected = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel();
+        for(const auto& part : parts) if(part.role == selected || part.role == m_hoverRole) {
+            RECT outline = part.rect; ::InflateRect(&outline, -2, -2);
+            HPEN darkPen = ::CreatePen(PS_SOLID, 1, RGB(0,0,0));
+            HPEN lightPen = ::CreatePen(PS_DOT, 1, RGB(255,255,255));
+            if(darkPen && lightPen) {
+                HGDIOBJ oldPen = ::SelectObject(dc, darkPen), oldBrush = ::SelectObject(dc, ::GetStockObject(NULL_BRUSH));
+                ::Rectangle(dc, outline.left, outline.top, outline.right, outline.bottom);
+                ::InflateRect(&outline, -1, -1); ::SelectObject(dc, lightPen);
+                ::Rectangle(dc, outline.left, outline.top, outline.right, outline.bottom);
+                ::SelectObject(dc, oldBrush); ::SelectObject(dc, oldPen);
+            }
+            if(darkPen) ::DeleteObject(darkPen);
+            if(lightPen) ::DeleteObject(lightPen);
+        }
+        ::BitBlt(target, 0, 0, client.right, client.bottom, dc, 0, 0, SRCCOPY);
+        if(oldFont) ::SelectObject(dc, oldFont);
+        ::SelectObject(dc, oldBitmap); ::DeleteObject(bitmap); ::DeleteDC(dc);
+    }
+
+    static LRESULT CALLBACK PreviewProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR data)
+    {
+        auto* self = reinterpret_cast<CPaletteManagerDialog*>(data);
+        if(message == WM_PAINT) { PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(window, &paint); self->PaintPreview(dc); ::EndPaint(window, &paint); return 0; }
+        if(message == WM_ERASEBKGND) return 1;
+        if(message == WM_MOUSEMOVE) {
+            POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+            const int role = self->PreviewHitTest(point);
+            if(role != self->m_hoverRole) {
+                self->m_hoverRole = role;
+                CString label;
+                if(role >= 0) self->m_page.m_paletteRole.GetLBText(role, label);
+                if(!label.IsEmpty()) self->m_tooltips.UpdateText(window, label);
+                ::InvalidateRect(window, NULL, FALSE);
+            }
+            TRACKMOUSEEVENT track = { sizeof(track), TME_LEAVE, window, 0 }; ::TrackMouseEvent(&track);
+            return 0;
+        }
+        if(message == WM_MOUSELEAVE) { self->m_hoverRole = -1; ::InvalidateRect(window, NULL, FALSE); return 0; }
+        if(message == WM_LBUTTONDOWN) {
+            POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+            const int role = self->PreviewHitTest(point);
+            if(role >= 0) ::SendMessageW(self->m_hWnd, kPreviewSelect, role, 0);
+            return 0;
+        }
+        if(message == WM_NCDESTROY) ::RemoveWindowSubclass(window, PreviewProc, 1);
+        return ::DefSubclassProc(window, message, wParam, lParam);
+    }
+    static LRESULT CALLBACK ColorInfoProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR data)
+    {
+        auto* self = reinterpret_cast<CPaletteManagerDialog*>(data);
+        if(message == WM_PAINT) {
+            PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(window, &paint);
+            RECT bounds = {}; ::GetClientRect(window, &bounds);
+            ::FillRect(dc, &bounds, ThemeManager::WindowBrush());
+            const int line = max(1, static_cast<int>(bounds.bottom) / 2);
+            const int square = max(4, min(line - 4, UiMetrics::ScaleForDpi(20, UiMetrics::DpiForWindow(window))));
+            HFONT font = reinterpret_cast<HFONT>(::SendMessageW(window, WM_GETFONT, 0, 0));
+            HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
+            ::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, ThemeManager::TextColor());
+            for(int row = 0; row < 2; ++row) {
+                RECT swatch = { 2, row * line + 2, 2 + square, row * line + 2 + square };
+                HBRUSH brush = ::CreateSolidBrush(row == 0 ? self->m_currentColor : self->m_baseColor);
+                if(brush) { ::FillRect(dc, &swatch, brush); ::DeleteObject(brush); }
+                ::FrameRect(dc, &swatch, reinterpret_cast<HBRUSH>(::GetStockObject(BLACK_BRUSH)));
+                RECT text = { square + 8, row * line, bounds.right, (row + 1) * line };
+                CString caption;
+                if(row == 0) caption = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.current_color", L"Current");
+                else caption = self->m_baseDescription;
+                ::DrawTextW(dc, caption, -1, &text, DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+            }
+            if(oldFont) ::SelectObject(dc, oldFont);
+            ::EndPaint(window, &paint); return 0;
+        }
+        if(message == WM_NCDESTROY) ::RemoveWindowSubclass(window, ColorInfoProc, 1);
+        return ::DefSubclassProc(window, message, wParam, lParam);
+    }
+    static LRESULT CALLBACK ContrastWarningProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
+    {
+        if(message == WM_PAINT && ThemeManager::UsesPaletteSurface()) {
+            PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(window, &paint);
+            RECT bounds = {}; ::GetClientRect(window, &bounds);
+            ::FillRect(dc, &bounds, ThemeManager::WindowBrush());
+            const COLORREF background = ThemeManager::WindowColor();
+            auto linear = [](BYTE value) { const double v = value / 255.0; return v <= 0.04045 ? v / 12.92 : std::pow((v + 0.055) / 1.055, 2.4); };
+            const double luminance = 0.2126 * linear(GetRValue(background)) + 0.7152 * linear(GetGValue(background)) + 0.0722 * linear(GetBValue(background));
+            ::SetTextColor(dc, luminance > 0.179 ? RGB(0,0,0) : RGB(255,255,255)); ::SetBkMode(dc, TRANSPARENT);
+            HFONT font = reinterpret_cast<HFONT>(::SendMessageW(window, WM_GETFONT, 0, 0));
+            HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
+            const int length = ::GetWindowTextLengthW(window); CString text;
+            if(length > 0) { ::GetWindowTextW(window, text.GetBuffer(length + 1), length + 1); text.ReleaseBuffer(); }
+            ::DrawTextW(dc, text, text.GetLength(), &bounds, DT_WORDBREAK | DT_NOPREFIX);
+            if(oldFont) ::SelectObject(dc, oldFont);
+            ::EndPaint(window, &paint); return 0;
+        }
+        if(message == WM_NCDESTROY) ::RemoveWindowSubclass(window, ContrastWarningProc, 1);
+        return ::DefSubclassProc(window, message, wParam, lParam);
+    }
 public:
     explicit CPaletteManagerDialog(CSettingsGeneralPage& page) : m_page(page) {}
     enum { IDD = IDD_SETTINGS_PALETTE_MANAGER };
@@ -90,6 +334,11 @@ public:
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
         MESSAGE_HANDLER(WM_CLOSE, OnClose)
         MESSAGE_HANDLER(WM_TIMER, OnTimer)
+        MESSAGE_HANDLER(WM_SIZE, OnSize)
+        MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
+        MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
+        MESSAGE_HANDLER(WM_DRAWITEM, OnDrawItem)
+        MESSAGE_HANDLER(kPreviewSelect, OnPreviewSelect)
         COMMAND_HANDLER(IDOK, BN_CLICKED, OnOk)
         COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnCancel)
         COMMAND_HANDLER(IDC_PALETTE_ROLE, CBN_SELCHANGE, OnRoleChanged)
@@ -99,10 +348,20 @@ public:
         COMMAND_HANDLER(IDC_PALETTE_DELETE, BN_CLICKED, OnAction)
         COMMAND_HANDLER(IDC_PALETTE_CHOOSE_COLOR, BN_CLICKED, OnAction)
         COMMAND_HANDLER(IDC_PALETTE_RESET_COLOR, BN_CLICKED, OnAction)
+        COMMAND_HANDLER(kHexId, EN_CHANGE, OnHexChanged)
+        COMMAND_HANDLER(kPreviewModeId, CBN_SELCHANGE, OnPreviewModeChanged)
+        COMMAND_HANDLER(kRecentId, CBN_SELCHANGE, OnRecentChanged)
+        COMMAND_HANDLER(kRoleListId, LBN_SELCHANGE, OnRoleListChanged)
+        COMMAND_HANDLER(kResetChangesId, BN_CLICKED, OnResetChanges)
     END_MSG_MAP()
     LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
     {
         m_page.m_paletteManager = m_hWnd;
+        ::SetWindowSubclass(GetDlgItem(IDC_PALETTE_CONTRAST), ContrastWarningProc, 1, 0);
+        m_startCustom = m_page.m_customPalettes; m_startPending = m_page.m_pendingPalettes;
+        m_startNew = m_page.m_newPaletteIds; m_startDeleted = m_page.m_deletedPaletteIds;
+        m_startAccepted = m_page.m_acceptedPaletteIndex; m_startChanged = m_page.m_paletteChanged;
+        for(int i = 0; i < m_page.m_interfacePalette.GetCount(); ++i) { CString label; m_page.m_interfacePalette.GetLBText(i, label); m_startLabels.push_back(label); }
         SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.manage", L"Manage colour schemes..."));
         for(const auto& entry : { std::make_pair(IDC_PALETTE_IMPORT, L"fbe.settings.palette.import"),
             std::make_pair(IDC_PALETTE_EXPORT, L"fbe.settings.palette.export"),
@@ -114,11 +373,50 @@ public:
             SetDlgItemText(entry.first, FbeLoadRuntimeStringByKey(entry.second));
         SetDlgItemText(IDOK, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_tools_settings.ok", L"OK"));
         SetDlgItemText(IDCANCEL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_tools_settings.cancel", L"Cancel"));
+        m_preview = ::CreateWindowExW(WS_EX_CLIENTEDGE, L"STATIC", L"", WS_CHILD | WS_VISIBLE | SS_NOTIFY,
+            0, 0, 1, 1, m_hWnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(kPreviewId)), _Module.GetModuleInstance(), NULL);
+        if(m_preview) ::SetWindowSubclass(m_preview, PreviewProc, 1, reinterpret_cast<DWORD_PTR>(this));
+        ToolbarFactory::CreateCommandToolbarImages(m_previewIcons, IDR_MAINFRAME, UiMetrics::DpiForWindow(m_hWnd), 16);
+        m_previewMode = ::CreateWindowExW(0, WC_COMBOBOXW, L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | CBS_DROPDOWNLIST | WS_VSCROLL,
+            0, 0, 1, 200, m_hWnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(kPreviewModeId)), _Module.GetModuleInstance(), NULL);
+        CString modes = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.preview_modes", L"Interface|Control states|Messages and accents");
+        int position = 0;
+        for(int i = 0; i < 4; ++i) { CString mode = modes.Tokenize(L"|", position); if(mode.IsEmpty()) mode = L"All colours"; ::SendMessageW(m_previewMode, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(mode.GetString())); }
+        ::SendMessageW(m_previewMode, CB_SETCURSEL, 0, 0);
+        m_roleList = ::CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", L"", WS_CHILD | WS_TABSTOP | WS_VSCROLL | LBS_NOTIFY | LBS_OWNERDRAWFIXED | LBS_HASSTRINGS,
+            0, 0, 1, 1, m_hWnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(kRoleListId)), _Module.GetModuleInstance(), NULL);
+        for(int role = 0; role < THEME_COLOR_COUNT; ++role) {
+            CString label; m_page.m_paletteRole.GetLBText(role, label);
+            ::SendMessageW(m_roleList, LB_ADDSTRING, 0, reinterpret_cast<LPARAM>(label.GetString()));
+        }
+        m_hex = ::CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL,
+            0, 0, 1, 1, m_hWnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(kHexId)), _Module.GetModuleInstance(), NULL);
+        m_colorInfo = ::CreateWindowExW(0, L"STATIC", L"", WS_CHILD | WS_VISIBLE | SS_LEFT,
+            0, 0, 1, 1, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+        if(m_colorInfo) ::SetWindowSubclass(m_colorInfo, ColorInfoProc, 1, reinterpret_cast<DWORD_PTR>(this));
+        m_recentLabel = ::CreateWindowExW(0, L"STATIC", FbeLoadRuntimeStringByKey(L"fbe.settings.palette.recent", L"Recent:"), WS_CHILD | WS_VISIBLE | SS_LEFT,
+            0, 0, 1, 1, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+        m_recent = ::CreateWindowExW(0, WC_COMBOBOXW, L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | CBS_DROPDOWNLIST | WS_VSCROLL,
+            0, 0, 1, 200, m_hWnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(kRecentId)), _Module.GetModuleInstance(), NULL);
+        m_resetChanges = ::CreateWindowExW(0, L"BUTTON", FbeLoadRuntimeStringByKey(L"fbe.settings.palette.reset_changes", L"Reset changes"),
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 0, 0, 1, 1, m_hWnd,
+            reinterpret_cast<HMENU>(static_cast<INT_PTR>(kResetChangesId)), _Module.GetModuleInstance(), NULL);
+        HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_hWnd, WM_GETFONT, 0, 0));
+        if(m_hex) { ::SendMessageW(m_hex, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE); ::SendMessageW(m_hex, EM_SETLIMITTEXT, 7, 0); }
+        if(m_colorInfo) ::SendMessageW(m_colorInfo, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE);
+        if(m_previewMode) ::SendMessageW(m_previewMode, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE);
+        if(m_roleList) { ::SendMessageW(m_roleList, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE); ::SendMessageW(m_roleList, LB_SETITEMHEIGHT, 0, UiMetrics::ScaleForDpi(26, UiMetrics::DpiForWindow(m_hWnd))); }
+        if(m_recent) ::SendMessageW(m_recent, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE);
+        if(m_recentLabel) ::SendMessageW(m_recentLabel, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE);
+        if(m_resetChanges) ::SendMessageW(m_resetChanges, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE);
         FitLocalizedLayout();
         CComboBox roles(GetDlgItem(IDC_PALETTE_ROLE).m_hWnd);
         for(int i = 0; i < m_page.m_paletteRole.GetCount(); ++i) { CString text; m_page.m_paletteRole.GetLBText(i, text); roles.AddString(text); }
         roles.SetCurSel(m_page.m_paletteRole.GetCurSel());
         m_tooltips.Initialize(m_hWnd);
+        m_tooltips.Add(m_preview, L"fbe.settings.tooltip.general.palette_color", L"Choose an interface colour by clicking the preview.");
+        m_tooltips.Add(m_hex, L"fbe.settings.tooltip.general.palette_color", L"Enter a colour as #RRGGBB.");
+        m_tooltips.Add(m_recent, L"fbe.settings.tooltip.general.palette_color", L"Choose a recently used colour.");
         m_tooltips.Add(GetDlgItem(IDC_PALETTE_CURRENT), L"fbe.settings.tooltip.general.interface_palette", L"Selected colour scheme.");
         for(int id : {IDC_PALETTE_ROLE, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR}) {
             m_tooltips.Add(GetDlgItem(id), L"fbe.settings.tooltip.general.palette_color", L"Edit a colour in a custom palette.");
@@ -158,17 +456,19 @@ public:
             ::SetPropW(child, L"FBE_AUDIT_TEXT_HEIGHT", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(measured.bottom + 1)));
         }
     }
-    void FitLocalizedLayout()
+    void FitLocalizedLayout(bool resizeWindow = true)
     {
+        if(m_layoutActive) return;
+        m_layoutActive = true;
         const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
-        const int margin = UiMetrics::ScaleForDpi(8, dpi), gap = UiMetrics::ScaleForDpi(6, dpi);
+        const int margin = UiMetrics::ScaleForDpi(8, dpi), gap = UiMetrics::ScaleForDpi(4, dpi);
         HDC dc = ::GetDC(m_hWnd); HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_hWnd, WM_GETFONT, 0, 0));
         HGDIOBJ oldFont = dc && font ? ::SelectObject(dc, font) : NULL;
         int buttonTextWidth = 0, labelWidth = 0, fontHeight = UiMetrics::ScaleForDpi(16, dpi);
         if(dc) {
             TEXTMETRICW metrics = {}; if(::GetTextMetricsW(dc, &metrics)) fontHeight = metrics.tmHeight;
             for(int id : {IDC_PALETTE_IMPORT, IDC_PALETTE_EXPORT, IDC_PALETTE_RENAME, IDC_PALETTE_DELETE,
-                IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR, IDOK, IDCANCEL}) {
+                IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR, kResetChangesId, IDOK, IDCANCEL}) {
                 CString text; GetDlgItemText(id, text); SIZE extent = {};
                 if(::GetTextExtentPoint32W(dc, text, text.GetLength(), &extent)) buttonTextWidth = max(buttonTextWidth, static_cast<int>(extent.cx));
             }
@@ -178,48 +478,255 @@ public:
         if(oldFont) ::SelectObject(dc, oldFont); if(dc) ::ReleaseDC(m_hWnd, dc);
         labelWidth += margin; // Leave room for text overhang and static-control padding.
         const int buttonWidth = max(UiMetrics::ScaleForDpi(95, dpi), buttonTextWidth + 2 * margin);
-        const int lineHeight = max(UiMetrics::ScaleForDpi(28, dpi), fontHeight + 2 * margin);
+        const int lineHeight = max(UiMetrics::ScaleForDpi(24, dpi), fontHeight + margin);
         RECT client = {}, window = {}; ::GetClientRect(m_hWnd, &client); ::GetWindowRect(m_hWnd, &window);
-        const int width = max(static_cast<int>(client.right), max(2 * buttonWidth + 3 * margin,
-            labelWidth + UiMetrics::ScaleForDpi(140, dpi) + 3 * margin));
-        const int right = width - margin, mid = width / 2;
+        MONITORINFO monitor = { sizeof(monitor) };
+        ::GetMonitorInfoW(::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST), &monitor);
+        const int screenWidth = monitor.rcWork.right - monitor.rcWork.left - (window.right - window.left - client.right);
+        const int desiredWidth = max(UiMetrics::ScaleForDpi(760, dpi), max(static_cast<int>(client.right), max(2 * buttonWidth + 3 * margin,
+            labelWidth + UiMetrics::ScaleForDpi(140, dpi) + 3 * margin)));
+        const int width = resizeWindow ? min(desiredWidth, max(1, screenWidth)) : max(1, static_cast<int>(client.right));
+        const int right = width - margin;
         int y = margin;
         auto place = [&](int id, int x, int top, int w, int h) {
             ::SetWindowPos(GetDlgItem(id), NULL, x, top, max(1, w), max(1, h), SWP_NOZORDER | SWP_NOACTIVATE);
         };
         place(IDC_PALETTE_CURRENT, margin, y, right - margin, lineHeight); y += lineHeight + gap;
-        place(IDC_PALETTE_IMPORT, margin, y, mid - margin - gap / 2, lineHeight);
-        place(IDC_PALETTE_EXPORT, mid + gap / 2, y, right - mid - gap / 2, lineHeight); y += lineHeight + gap;
-        place(IDC_PALETTE_RENAME, margin, y, mid - margin - gap / 2, lineHeight);
-        place(IDC_PALETTE_DELETE, mid + gap / 2, y, right - mid - gap / 2, lineHeight); y += lineHeight + gap;
-        const int comboLeft = margin + labelWidth + gap;
+        const int actionWidth = (right - margin - 3 * gap) / 4;
+        for(int action = 0; action < 4; ++action) {
+            const int ids[] = { IDC_PALETTE_IMPORT, IDC_PALETTE_EXPORT, IDC_PALETTE_RENAME, IDC_PALETTE_DELETE };
+            place(ids[action], margin + action * (actionWidth + gap), y, actionWidth, lineHeight);
+        }
+        y += lineHeight + gap;
+        const int previewHeight = resizeWindow ? UiMetrics::ScaleForDpi(260, dpi) :
+            max(UiMetrics::ScaleForDpi(120, dpi), static_cast<int>(client.bottom) - y - lineHeight - 2 * margin);
+        const int previewWidth = min((right - margin) * 2 / 3,
+            max(UiMetrics::ScaleForDpi(220, dpi), right - margin - 2 * buttonWidth - 2 * gap));
+        ::SetWindowPos(m_previewMode, NULL, margin, y, previewWidth, 8 * lineHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+        ::SetWindowPos(m_preview, NULL, margin, y + lineHeight + gap, previewWidth, previewHeight - lineHeight - gap, SWP_NOZORDER | SWP_NOACTIVATE);
+        ::SetWindowPos(m_roleList, NULL, margin, y + lineHeight + gap, previewWidth, previewHeight - lineHeight - gap, SWP_NOZORDER | SWP_NOACTIVATE);
+        const int previewBottom = y + previewHeight;
+        const int inspectorLeft = margin + previewWidth + gap;
+        const int inspectorWidth = right - inspectorLeft;
+        const int comboLeft = inspectorLeft;
         RECT combo = {}; ::GetWindowRect(GetDlgItem(IDC_PALETTE_ROLE), &combo);
-        place(IDC_PALETTE_ROLE_LABEL, margin, y, labelWidth, lineHeight);
-        place(IDC_PALETTE_ROLE, comboLeft, y, right - comboLeft, combo.bottom - combo.top); y += lineHeight + gap;
-        place(IDC_PALETTE_CHOOSE_COLOR, margin, y, mid - margin - gap / 2, lineHeight);
-        place(IDC_PALETTE_RESET_COLOR, mid + gap / 2, y, right - mid - gap / 2, lineHeight); y += lineHeight + gap;
-        place(IDC_PALETTE_CONTRAST, margin, y, right - margin, 3 * fontHeight + 2 * margin);
-        y += 3 * fontHeight + 3 * margin;
+        place(IDC_PALETTE_ROLE_LABEL, inspectorLeft, y, inspectorWidth, lineHeight); y += lineHeight + gap;
+        place(IDC_PALETTE_ROLE, comboLeft, y, inspectorWidth, combo.bottom - combo.top); y += lineHeight + gap;
+        ::SetWindowPos(m_hex, NULL, inspectorLeft, y, inspectorWidth, lineHeight, SWP_NOZORDER | SWP_NOACTIVATE); y += lineHeight + gap;
+        ::SetWindowPos(m_colorInfo, NULL, inspectorLeft, y, inspectorWidth, 2 * lineHeight, SWP_NOZORDER | SWP_NOACTIVATE); y += 2 * lineHeight + gap;
+        ::SetWindowPos(m_recentLabel, NULL, inspectorLeft, y, inspectorWidth / 2, lineHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+        ::SetWindowPos(m_recent, NULL, inspectorLeft + inspectorWidth / 2, y, inspectorWidth - inspectorWidth / 2, 7 * lineHeight, SWP_NOZORDER | SWP_NOACTIVATE); y += lineHeight + gap;
+        place(IDC_PALETTE_CHOOSE_COLOR, inspectorLeft, y, (inspectorWidth - gap) / 2, lineHeight);
+        place(IDC_PALETTE_RESET_COLOR, inspectorLeft + (inspectorWidth + gap) / 2, y, (inspectorWidth - gap) / 2, lineHeight); y += lineHeight + gap;
+        place(IDC_PALETTE_CONTRAST, inspectorLeft, y, inspectorWidth, 3 * fontHeight + 2 * margin);
+        y = max(previewBottom, y + 3 * fontHeight + 2 * margin) + margin;
+        place(kResetChangesId, margin, y, buttonWidth, lineHeight);
         place(IDOK, right - 2 * buttonWidth - gap, y, buttonWidth, lineHeight);
         place(IDCANCEL, right - buttonWidth, y, buttonWidth, lineHeight); y += lineHeight + margin;
-        ::SetWindowPos(m_hWnd, NULL, 0, 0, width + window.right - window.left - client.right,
-            y + window.bottom - window.top - client.bottom, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        if(resizeWindow) {
+            const int targetWidth = width + window.right - window.left - client.right;
+            const int targetHeight = y + window.bottom - window.top - client.bottom;
+            m_minTrack.cx = min(targetWidth, monitor.rcWork.right - monitor.rcWork.left);
+            m_minTrack.cy = min(targetHeight, monitor.rcWork.bottom - monitor.rcWork.top);
+            ::SetWindowPos(m_hWnd, NULL, 0, 0, targetWidth, targetHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        m_layoutActive = false;
+    }
+    LRESULT OnGetMinMaxInfo(UINT, WPARAM, LPARAM parameter, BOOL& handled)
+    {
+        auto* limits = reinterpret_cast<MINMAXINFO*>(parameter);
+        if(limits && m_minTrack.cx > 0 && m_minTrack.cy > 0) {
+            limits->ptMinTrackSize.x = m_minTrack.cx; limits->ptMinTrackSize.y = m_minTrack.cy;
+        }
+        handled = FALSE;
+        return 0;
+    }
+    LRESULT OnDpiChanged(UINT, WPARAM value, LPARAM parameter, BOOL&)
+    {
+        const UINT dpi = HIWORD(value) ? HIWORD(value) : 96;
+        m_minTrack = {};
+        m_previewIcons.Destroy();
+        ToolbarFactory::CreateCommandToolbarImages(m_previewIcons, IDR_MAINFRAME, dpi, 16);
+        if(m_roleList) ::SendMessageW(m_roleList, LB_SETITEMHEIGHT, 0, UiMetrics::ScaleForDpi(26, dpi));
+        const RECT* suggested = reinterpret_cast<const RECT*>(parameter);
+        if(suggested) ::SetWindowPos(m_hWnd, NULL, suggested->left, suggested->top,
+            suggested->right - suggested->left, suggested->bottom - suggested->top, SWP_NOZORDER | SWP_NOACTIVATE);
+        if(m_preview) { FitLocalizedLayout(true); ::InvalidateRect(m_preview, NULL, FALSE); }
+        return 0;
+    }
+    LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL& handled)
+    {
+        if(m_preview && !m_layoutActive) FitLocalizedLayout(false);
+        handled = FALSE;
+        return 0;
+    }
+    LRESULT OnPreviewModeChanged(WORD, WORD, HWND, BOOL&)
+    {
+        m_hoverRole = -1;
+        const bool allColors = ::SendMessageW(m_previewMode, CB_GETCURSEL, 0, 0) == 3;
+        ::ShowWindow(m_preview, allColors ? SW_HIDE : SW_SHOW);
+        ::ShowWindow(m_roleList, allColors ? SW_SHOW : SW_HIDE);
+        if(allColors) ::SendMessageW(m_roleList, LB_SETCURSEL, CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel(), 0);
+        if(m_preview) ::InvalidateRect(m_preview, NULL, FALSE);
+        return 0;
+    }
+    LRESULT OnRoleListChanged(WORD, WORD, HWND, BOOL&)
+    {
+        const LRESULT role = ::SendMessageW(m_roleList, LB_GETCURSEL, 0, 0);
+        if(role >= 0 && role < THEME_COLOR_COUNT) { BOOL handled = FALSE; OnPreviewSelect(kPreviewSelect, static_cast<WPARAM>(role), 0, handled); }
+        return 0;
+    }
+    LRESULT OnDrawItem(UINT, WPARAM id, LPARAM parameter, BOOL& handled)
+    {
+        if(id != kRoleListId) { handled = FALSE; return 0; }
+        const auto* item = reinterpret_cast<const DRAWITEMSTRUCT*>(parameter);
+        if(!item || item->itemID >= THEME_COLOR_COUNT) return TRUE;
+        COLORREF colors[THEME_COLOR_COUNT] = {}; PreviewColors(colors);
+        const bool selected = (item->itemState & ODS_SELECTED) != 0;
+        HBRUSH background = ::CreateSolidBrush(ThemeManager::Color(selected ? THEME_COLOR_SELECTION_BACKGROUND : THEME_COLOR_WINDOW));
+        if(background) { ::FillRect(item->hDC, &item->rcItem, background); ::DeleteObject(background); }
+        RECT swatch = item->rcItem; ::InflateRect(&swatch, -4, -4); swatch.right = min(swatch.right, swatch.left + swatch.bottom - swatch.top);
+        HBRUSH fill = ::CreateSolidBrush(colors[item->itemID]);
+        if(fill) { ::FillRect(item->hDC, &swatch, fill); ::DeleteObject(fill); }
+        ::FrameRect(item->hDC, &swatch, reinterpret_cast<HBRUSH>(::GetStockObject(BLACK_BRUSH)));
+        CString label; m_page.m_paletteRole.GetLBText(static_cast<int>(item->itemID), label);
+        RECT text = item->rcItem; text.left = swatch.right + 8;
+        ::SetBkMode(item->hDC, TRANSPARENT); ::SetTextColor(item->hDC, ThemeManager::Color(selected ? THEME_COLOR_SELECTION_TEXT : THEME_COLOR_TEXT));
+        ::DrawTextW(item->hDC, label, -1, &text, DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+        if(item->itemState & ODS_FOCUS) ::DrawFocusRect(item->hDC, &item->rcItem);
+        return TRUE;
     }
     void Refresh()
     {
         CString current; const int selected = m_page.m_interfacePalette.GetCurSel();
         if(selected >= 0) m_page.m_interfacePalette.GetLBText(selected, current);
-        SetDlgItemText(IDC_PALETTE_CURRENT, current);
-        m_tooltips.UpdateText(GetDlgItem(IDC_PALETTE_CURRENT), current);
         const int customIndex = m_page.m_acceptedPaletteIndex - INTERFACE_PALETTE_COUNT;
         const bool editable = customIndex >= 0 && customIndex < static_cast<int>(m_page.m_customPalettes.size());
+        if(editable) {
+            LPCWSTR key = L"fbe.settings.interface_theme.light", fallback = L"Light";
+            switch(m_page.m_customPalettes[customIndex].base) {
+            case ThemeManager::CustomPaletteBase::Dark: key = L"fbe.settings.interface_theme.dark"; fallback = L"Dark"; break;
+            case ThemeManager::CustomPaletteBase::Graphite: key = L"fbe.settings.palette.graphite"; fallback = L"Graphite"; break;
+            case ThemeManager::CustomPaletteBase::Navy: key = L"fbe.settings.palette.navy"; fallback = L"Dark blue"; break;
+            case ThemeManager::CustomPaletteBase::Sepia: key = L"fbe.settings.palette.sepia"; fallback = L"Sepia"; break;
+            default: break;
+            }
+            current += L"   "; current += FbeLoadRuntimeStringByKey(L"fbe.settings.palette.base_color", L"Base:");
+            current += L" "; current += FbeLoadRuntimeStringByKey(key, fallback);
+        }
+        SetDlgItemText(IDC_PALETTE_CURRENT, current);
+        m_tooltips.UpdateText(GetDlgItem(IDC_PALETTE_CURRENT), current);
         for(int id : {IDC_PALETTE_EXPORT, IDC_PALETTE_RENAME, IDC_PALETTE_DELETE, IDC_PALETTE_ROLE_LABEL,
             IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR}) GetDlgItem(id).EnableWindow(editable);
+        ::EnableWindow(m_hex, editable);
+        ::EnableWindow(m_recent, editable && !m_recentColors.empty());
         CString contrast; m_page.GetDlgItemText(IDC_PALETTE_CONTRAST, contrast); SetDlgItemText(IDC_PALETTE_CONTRAST, contrast);
+        RefreshColorInfo();
+        if(m_preview) ::InvalidateRect(m_preview, NULL, FALSE);
+        if(m_roleList) ::InvalidateRect(m_roleList, NULL, FALSE);
     }
-    LRESULT OnRoleChanged(WORD, WORD, HWND, BOOL&) { m_page.m_paletteRole.SetCurSel(CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel()); return 0; }
+    void RefreshColorInfo()
+    {
+        const int role = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel();
+        if(role < 0 || role >= THEME_COLOR_COUNT) return;
+        COLORREF colors[THEME_COLOR_COUNT] = {}; PreviewColors(colors);
+        const COLORREF current = colors[role];
+        m_currentColor = m_baseColor = current;
+        CString value; value.Format(L"#%02X%02X%02X", GetRValue(current), GetGValue(current), GetBValue(current));
+        m_updatingHex = true; ::SetWindowTextW(m_hex, value); m_updatingHex = false;
+        const int index = m_page.m_acceptedPaletteIndex - INTERFACE_PALETTE_COUNT;
+        CString info;
+        if(index >= 0 && index < static_cast<int>(m_page.m_customPalettes.size())) {
+            ThemeManager::CustomPalette base = m_page.m_customPalettes[index];
+            base.present[role] = false;
+            ThemeManager::PreviewColors(static_cast<InterfaceTheme>(m_page.m_acceptedThemeIndex), INTERFACE_PALETTE_CLASSIC, &base, colors);
+            m_baseColor = colors[role];
+            info.Format(L"%s  #%02X%02X%02X", static_cast<LPCWSTR>(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.base_color", L"Base:")),
+                GetRValue(colors[role]), GetGValue(colors[role]), GetBValue(colors[role]));
+            info += L" ";
+            info += FbeLoadRuntimeStringByKey(m_page.m_customPalettes[index].present[role] ? L"fbe.settings.palette.overridden" : L"fbe.settings.palette.inherited",
+                m_page.m_customPalettes[index].present[role] ? L"(custom)" : L"(inherited)");
+        }
+        else info = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.base_color", L"Base:");
+        m_baseDescription = info;
+        if(m_colorInfo) ::InvalidateRect(m_colorInfo, NULL, FALSE);
+    }
+    LRESULT OnHexChanged(WORD, WORD, HWND, BOOL&)
+    {
+        if(m_updatingHex) return 0;
+        wchar_t text[8] = {}; ::GetWindowTextW(m_hex, text, _countof(text));
+        if(wcslen(text) != 7 || text[0] != L'#') return 0;
+        unsigned value = 0;
+        for(int i = 1; i < 7; ++i) {
+            const wchar_t ch = text[i];
+            const int digit = ch >= L'0' && ch <= L'9' ? ch - L'0' : ch >= L'a' && ch <= L'f' ? ch - L'a' + 10 : ch >= L'A' && ch <= L'F' ? ch - L'A' + 10 : -1;
+            if(digit < 0) return 0;
+            value = (value << 4) | static_cast<unsigned>(digit);
+        }
+        const int role = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel();
+        if(role >= 0 && role < THEME_COLOR_COUNT && m_page.StagePaletteColor(static_cast<ThemeColorRole>(role), RGB((value >> 16) & 255, (value >> 8) & 255, value & 255), true)) {
+            RecordRecent(RGB((value >> 16) & 255, (value >> 8) & 255, value & 255));
+            DWORD start = 0, end = 0; ::SendMessageW(m_hex, EM_GETSEL, reinterpret_cast<WPARAM>(&start), reinterpret_cast<LPARAM>(&end));
+            RefreshColorInfo();
+            ::SendMessageW(m_hex, EM_SETSEL, start, end);
+            CString contrast; m_page.GetDlgItemText(IDC_PALETTE_CONTRAST, contrast); SetDlgItemText(IDC_PALETTE_CONTRAST, contrast);
+            if(m_preview) ::InvalidateRect(m_preview, NULL, FALSE);
+        }
+        return 0;
+    }
+    void RecordRecent(COLORREF color)
+    {
+        m_recentColors.erase(std::remove(m_recentColors.begin(), m_recentColors.end(), color), m_recentColors.end());
+        m_recentColors.insert(m_recentColors.begin(), color);
+        if(m_recentColors.size() > 6) m_recentColors.resize(6);
+        ::SendMessageW(m_recent, CB_RESETCONTENT, 0, 0);
+        for(COLORREF recent : m_recentColors) {
+            CString label; label.Format(L"#%02X%02X%02X", GetRValue(recent), GetGValue(recent), GetBValue(recent));
+            const LRESULT index = ::SendMessageW(m_recent, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(label.GetString()));
+            if(index >= 0) ::SendMessageW(m_recent, CB_SETITEMDATA, static_cast<WPARAM>(index), recent);
+        }
+        ::SendMessageW(m_recent, CB_SETCURSEL, 0, 0);
+        ::EnableWindow(m_recent, TRUE);
+    }
+    LRESULT OnRecentChanged(WORD, WORD, HWND, BOOL&)
+    {
+        const int selected = static_cast<int>(::SendMessageW(m_recent, CB_GETCURSEL, 0, 0));
+        const int role = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel();
+        if(selected >= 0 && role >= 0 && role < THEME_COLOR_COUNT) {
+            const COLORREF color = static_cast<COLORREF>(::SendMessageW(m_recent, CB_GETITEMDATA, selected, 0));
+            if(m_page.StagePaletteColor(static_cast<ThemeColorRole>(role), color, true)) { RecordRecent(color); Refresh(); }
+        }
+        return 0;
+    }
+    LRESULT OnResetChanges(WORD, WORD, HWND, BOOL&)
+    {
+        m_page.m_customPalettes = m_startCustom; m_page.m_pendingPalettes = m_startPending;
+        m_page.m_newPaletteIds = m_startNew; m_page.m_deletedPaletteIds = m_startDeleted;
+        m_page.m_acceptedPaletteIndex = m_startAccepted; m_page.m_paletteChanged = m_startChanged;
+        m_page.m_interfacePalette.ResetContent();
+        for(const CString& label : m_startLabels) m_page.m_interfacePalette.AddString(label);
+        m_page.m_interfacePalette.SetCurSel(m_startAccepted);
+        m_page.UpdatePaletteColorControls();
+        m_page.GetDlgItem(IDC_APPEARANCE_ICON_PREVIEW).Invalidate();
+        Refresh();
+        return 0;
+    }
+    LRESULT OnRoleChanged(WORD, WORD, HWND, BOOL&) { const int role = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel(); m_page.m_paletteRole.SetCurSel(role); ::SendMessageW(m_roleList, LB_SETCURSEL, role, 0); RefreshColorInfo(); if(m_preview) ::InvalidateRect(m_preview, NULL, FALSE); return 0; }
+    LRESULT OnPreviewSelect(UINT, WPARAM role, LPARAM, BOOL&)
+    {
+        if(role < THEME_COLOR_COUNT) {
+            CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).SetCurSel(static_cast<int>(role));
+            m_page.m_paletteRole.SetCurSel(static_cast<int>(role));
+            ::SendMessageW(m_roleList, LB_SETCURSEL, role, 0);
+            RefreshColorInfo();
+            if(m_preview) ::InvalidateRect(m_preview, NULL, FALSE);
+        }
+        return 0;
+    }
     LRESULT OnAction(WORD, WORD id, HWND control, BOOL&)
     {
+        COLORREF before[THEME_COLOR_COUNT] = {}; PreviewColors(before);
+        const int role = m_page.m_paletteRole.GetCurSel();
         BOOL handled = FALSE;
         switch(id) {
         case IDC_PALETTE_IMPORT: m_page.OnImportPalette(BN_CLICKED, id, control, handled); break;
@@ -228,6 +735,10 @@ public:
         case IDC_PALETTE_DELETE: m_page.OnDeletePalette(BN_CLICKED, id, control, handled); break;
         case IDC_PALETTE_CHOOSE_COLOR: m_page.OnChoosePaletteColor(BN_CLICKED, id, control, handled); break;
         case IDC_PALETTE_RESET_COLOR: m_page.OnResetPaletteColor(BN_CLICKED, id, control, handled); break;
+        }
+        if(id == IDC_PALETTE_CHOOSE_COLOR && role >= 0 && role < THEME_COLOR_COUNT) {
+            COLORREF after[THEME_COLOR_COUNT] = {}; PreviewColors(after);
+            if(after[role] != before[role]) RecordRecent(after[role]);
         }
         Refresh(); return 0;
     }
@@ -247,6 +758,114 @@ public:
             ThemeManager::PreviewColors(static_cast<InterfaceTheme>(m_page.m_acceptedThemeIndex), INTERFACE_PALETTE_CLASSIC, &m_page.m_customPalettes[index], after);
             passed = after[THEME_COLOR_WINDOW] != before[THEME_COLOR_WINDOW];
         }
+        if(m_preview) {
+            RECT bounds = {}; ::GetClientRect(m_preview, &bounds);
+            const auto parts = PreviewParts(bounds.right, bounds.bottom);
+            POINT hits[THEME_COLOR_COUNT] = {};
+            bool found[THEME_COLOR_COUNT] = {};
+            int remaining = THEME_COLOR_COUNT;
+            for(int y = 0; y < bounds.bottom && remaining; ++y) for(int x = 0; x < bounds.right && remaining; ++x) {
+                POINT point = {x, y};
+                for(auto part = parts.rbegin(); part != parts.rend(); ++part) if(::PtInRect(&part->rect, point)) {
+                    if(!found[part->role]) { found[part->role] = true; hits[part->role] = point; --remaining; }
+                    break;
+                }
+            }
+            const int originalRole = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel();
+            COLORREF beforeSelection[THEME_COLOR_COUNT] = {}; PreviewColors(beforeSelection);
+            ::RedrawWindow(m_preview, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+            for(int role = 0; role < THEME_COLOR_COUNT; ++role) {
+                if(!found[role]) { passed = false; continue; }
+                ::SendMessageW(m_preview, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(hits[role].x, hits[role].y));
+                passed = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel() == role &&
+                    m_page.m_paletteRole.GetCurSel() == role && passed;
+            }
+            COLORREF afterSelection[THEME_COLOR_COUNT] = {}; PreviewColors(afterSelection);
+            for(int role = 0; role < THEME_COLOR_COUNT; ++role) passed = beforeSelection[role] == afterSelection[role] && passed;
+            CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).SetCurSel(originalRole);
+            m_page.m_paletteRole.SetCurSel(originalRole);
+            if(mode == 2 && editable) {
+                ::SendMessageW(m_hWnd, kPreviewSelect, THEME_COLOR_CONTROL, 0);
+                ::SetWindowTextW(m_hex, L"#123456");
+                COLORREF colors[THEME_COLOR_COUNT] = {}; PreviewColors(colors);
+                ::RedrawWindow(m_preview, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+                HDC dc = ::GetDC(m_preview);
+                const COLORREF pixel = dc ? ::GetPixel(dc, MulDiv(bounds.right, 900, 1000), MulDiv(bounds.bottom, 145, 600)) : CLR_INVALID;
+                if(dc) ::ReleaseDC(m_preview, dc);
+                passed = colors[THEME_COLOR_CONTROL] == RGB(0x12, 0x34, 0x56) && pixel == colors[THEME_COLOR_CONTROL] && passed;
+                ::SendMessageW(m_hWnd, kPreviewSelect, THEME_COLOR_ACCENT, 0);
+                ::SendMessageW(m_recent, CB_SETCURSEL, 0, 0);
+                BOOL recentHandled = FALSE; OnRecentChanged(CBN_SELCHANGE, kRecentId, m_recent, recentHandled);
+                PreviewColors(colors);
+                passed = ::SendMessageW(m_recent, CB_GETCOUNT, 0, 0) > 0 && colors[THEME_COLOR_ACCENT] == RGB(0x12, 0x34, 0x56) && passed;
+                ::SetWindowTextW(m_hex, L"#XYZ123");
+                PreviewColors(colors);
+                passed = colors[THEME_COLOR_ACCENT] == RGB(0x12, 0x34, 0x56) && passed;
+                CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).SetCurSel(originalRole);
+                m_page.m_paletteRole.SetCurSel(originalRole);
+            }
+            for(int previewMode = 1; previewMode <= 2; ++previewMode) {
+                ::SendMessageW(m_previewMode, CB_SETCURSEL, previewMode, 0);
+                const int expected = previewMode == 1 ? THEME_COLOR_HOVER : THEME_COLOR_ERROR;
+                POINT sample = {MulDiv(bounds.right, 500, 1000), MulDiv(bounds.bottom, 160, 600)};
+                ::SendMessageW(m_preview, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(sample.x, sample.y));
+                passed = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel() == expected && passed;
+            }
+            ::SendMessageW(m_previewMode, CB_SETCURSEL, 3, 0);
+            BOOL handled = FALSE; OnPreviewModeChanged(CBN_SELCHANGE, kPreviewModeId, m_previewMode, handled);
+            ::SendMessageW(m_roleList, LB_SETCURSEL, THEME_COLOR_WARNING - 1, 0);
+            ::SendMessageW(m_roleList, WM_KEYDOWN, VK_DOWN, 0);
+            ::SendMessageW(m_roleList, WM_KEYUP, VK_DOWN, 0);
+            passed = ::IsWindowVisible(m_roleList) && !::IsWindowVisible(m_preview) &&
+                ::SendMessageW(m_roleList, LB_GETCURSEL, 0, 0) == THEME_COLOR_WARNING &&
+                CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel() == THEME_COLOR_WARNING && passed;
+            ::SendMessageW(m_previewMode, CB_SETCURSEL, 0, 0);
+            OnPreviewModeChanged(CBN_SELCHANGE, kPreviewModeId, m_previewMode, handled);
+            CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).SetCurSel(originalRole);
+            m_page.m_paletteRole.SetCurSel(originalRole);
+            RECT window = {}, oldPreview = {}, newPreview = {};
+            ::GetWindowRect(m_hWnd, &window); ::GetWindowRect(m_preview, &oldPreview);
+            ::SetWindowPos(m_hWnd, NULL, 0, 0, window.right - window.left + 80, window.bottom - window.top + 60,
+                SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+            ::GetWindowRect(m_preview, &newPreview);
+            passed = newPreview.right - newPreview.left > oldPreview.right - oldPreview.left &&
+                newPreview.bottom - newPreview.top > oldPreview.bottom - oldPreview.top && passed;
+            ::SetWindowPos(m_hWnd, NULL, 0, 0, window.right - window.left, window.bottom - window.top,
+                SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+            const DWORD gdiBefore = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+            for(int iteration = 0; iteration < 40; ++iteration) {
+                ::SendMessageW(m_hWnd, kPreviewSelect, iteration % THEME_COLOR_COUNT, 0);
+                ::RedrawWindow(m_preview, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+            }
+            const DWORD gdiAfter = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+            passed = gdiAfter <= gdiBefore + 2 && passed;
+            CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).SetCurSel(originalRole);
+            m_page.m_paletteRole.SetCurSel(originalRole);
+            RefreshColorInfo();
+            if(mode == 2 && editable) {
+                const int originalIndex = m_startAccepted - INTERFACE_PALETTE_COUNT;
+                COLORREF expected[THEME_COLOR_COUNT] = {}, actual[THEME_COLOR_COUNT] = {};
+                if(originalIndex < 0 || originalIndex >= static_cast<int>(m_startCustom.size())) passed = false;
+                else {
+                    ThemeManager::PreviewColors(static_cast<InterfaceTheme>(m_page.m_acceptedThemeIndex), INTERFACE_PALETTE_CLASSIC, &m_startCustom[originalIndex], expected);
+                    BOOL resetHandled = FALSE; OnResetChanges(BN_CLICKED, kResetChangesId, m_resetChanges, resetHandled);
+                    PreviewColors(actual);
+                    for(int role = 0; role < THEME_COLOR_COUNT; ++role) passed = expected[role] == actual[role] && passed;
+                }
+            }
+            wchar_t capturePath[MAX_PATH] = {};
+            const DWORD captureLength = ::GetEnvironmentVariableW(L"FBE_NEXT_PALETTE_PREVIEW_CAPTURE", capturePath, _countof(capturePath));
+            if(mode == 2 && captureLength > 0 && captureLength < _countof(capturePath)) {
+                RECT frame = {}; ::GetWindowRect(m_hWnd, &frame);
+                CImage image;
+                if(image.Create(frame.right - frame.left, frame.bottom - frame.top, 32)) {
+                    HDC dc = image.GetDC();
+                    const bool captured = dc && ::PrintWindow(m_hWnd, dc, 0);
+                    if(dc) image.ReleaseDC();
+                    if(captured) image.Save(capturePath);
+                }
+            }
+        } else passed = false;
         ::SetPropW(m_page.m_hWnd, L"FBE.PaletteManagerResult", reinterpret_cast<HANDLE>(passed ? 1 : 2));
         PostMessage(WM_COMMAND, MAKEWPARAM(IDCANCEL, BN_CLICKED), reinterpret_cast<LPARAM>(GetDlgItem(IDCANCEL).m_hWnd));
         return 0;
@@ -302,7 +921,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.AddDisabledControlArea(GetDlgItem(IDC_PALETTE_DELETE), L"fbe.settings.tooltip.general.palette_delete", L"Delete the selected custom palette when you confirm settings. Cancel keeps it.");
 	for(HWND control : {m_paletteRole.m_hWnd, GetDlgItem(IDC_PALETTE_ROLE_LABEL).m_hWnd, GetDlgItem(IDC_PALETTE_CHOOSE_COLOR).m_hWnd, GetDlgItem(IDC_PALETTE_RESET_COLOR).m_hWnd})
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.palette_color", L"Edit a colour in a custom palette. Use the base colour to restore inheritance; Cancel discards changes.");
-	m_tooltips.Add(GetDlgItem(IDC_PALETTE_CONTRAST), L"fbe.settings.tooltip.general.palette_contrast", L"Checks text against window, control, selection, hover and pressed backgrounds. Disabled text uses a 3:1 threshold.");
+	m_tooltips.Add(GetDlgItem(IDC_PALETTE_CONTRAST), L"fbe.settings.tooltip.general.palette_contrast", L"Shows the lowest contrast of normal text against the window, control, selection, hover and pressed backgrounds.");
 	for(HWND control : {m_descriptionLayout.m_hWnd, GetDlgItem(IDC_DESCRIPTION_LAYOUT_LABEL).m_hWnd})
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.description_layout", L"Choose the Description layout. Modern uses compact, collapsible sections; Classic keeps the familiar FictionBook Editor field order. This does not change FB2 data.");
 	for(HWND control : {m_scriptIconSize.m_hWnd, GetDlgItem(IDC_SCRIPT_ICON_SIZE_LABEL).m_hWnd})
@@ -1172,16 +1791,18 @@ void CSettingsGeneralPage::UpdatePaletteContrast()
 		auto channel = [](BYTE value) { const double v = value / 255.0; return v <= 0.04045 ? v / 12.92 : std::pow((v + 0.055) / 1.055, 2.4); };
 		return 0.2126 * channel(GetRValue(color)) + 0.7152 * channel(GetGValue(color)) + 0.0722 * channel(GetBValue(color));
 	};
-	auto enough = [&](ThemeColorRole foreground, ThemeColorRole background, double threshold) {
+	auto contrast = [&](ThemeColorRole foreground, ThemeColorRole background) {
 		const double a = luminance(colors[foreground]), b = luminance(colors[background]);
-		return ((std::max)(a, b) + 0.05) / ((std::min)(a, b) + 0.05) >= threshold;
+		return ((std::max)(a, b) + 0.05) / ((std::min)(a, b) + 0.05);
 	};
-	const bool readable = enough(THEME_COLOR_TEXT, THEME_COLOR_WINDOW, 4.5) && enough(THEME_COLOR_TEXT, THEME_COLOR_CONTROL, 4.5) &&
-		enough(THEME_COLOR_SELECTION_TEXT, THEME_COLOR_SELECTION_BACKGROUND, 4.5) && enough(THEME_COLOR_TEXT, THEME_COLOR_HOVER, 4.5) &&
-		enough(THEME_COLOR_TEXT, THEME_COLOR_PRESSED, 4.5) && enough(THEME_COLOR_DISABLED_TEXT, THEME_COLOR_CONTROL, 3.0);
-	SetDlgItemText(IDC_PALETTE_CONTRAST, readable ?
+	const double minimum = (std::min)({contrast(THEME_COLOR_TEXT, THEME_COLOR_WINDOW), contrast(THEME_COLOR_TEXT, THEME_COLOR_CONTROL),
+		contrast(THEME_COLOR_SELECTION_TEXT, THEME_COLOR_SELECTION_BACKGROUND), contrast(THEME_COLOR_TEXT, THEME_COLOR_HOVER),
+		contrast(THEME_COLOR_TEXT, THEME_COLOR_PRESSED)});
+	CString message = minimum >= 4.5 ?
 		FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_ok", L"Text contrast check passed.") :
-		FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_low", L"Warning: some text may be difficult to read against its background."));
+		FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_low", L"Warning: some text may be difficult to read against its background.");
+	CString ratio; ratio.Format(L" (%.2f:1)", minimum); message += ratio;
+	SetDlgItemText(IDC_PALETTE_CONTRAST, message);
 }
 
 LRESULT CSettingsGeneralPage::OnChoosePaletteColor(WORD, WORD, HWND, BOOL&)
