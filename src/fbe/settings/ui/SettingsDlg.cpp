@@ -1187,15 +1187,30 @@ bool CSettingsDlg::ProbeLayout()
 				const COLORREF pixel = dc && hasRow ? ::GetPixel(dc, row.right - 5, (row.top + row.bottom) / 2) : CLR_INVALID;
 				if(dc) ::ReleaseDC(m_navigation, dc); return pixel;
 			};
+			auto rowColor = [&](LRESULT rowIndex) {
+				RECT row = {}; const bool valid = rowIndex != LB_ERR && ::SendMessageW(m_navigation, LB_GETITEMRECT, rowIndex, reinterpret_cast<LPARAM>(&row)) != LB_ERR;
+				HDC dc = ::GetDC(m_navigation); const COLORREF pixel = dc && valid ? ::GetPixel(dc, row.right - 5, (row.top + row.bottom) / 2) : CLR_INVALID;
+				if(dc) ::ReleaseDC(m_navigation, dc); return pixel;
+			};
+			auto selectedTextVisible = [&]() {
+				const LRESULT selected = ::SendMessageW(m_navigation, LB_GETCURSEL, 0, 0); RECT row = {};
+				const bool valid = selected != LB_ERR && ::SendMessageW(m_navigation, LB_GETITEMRECT, selected, reinterpret_cast<LPARAM>(&row)) != LB_ERR;
+				HDC dc = ::GetDC(m_navigation); bool visible = false;
+				if(dc && valid) for(int y = row.top; y < row.bottom && !visible; ++y) for(int x = row.left + 2; x < row.right - 5; ++x)
+					if(::GetPixel(dc, x, y) == ThemeManager::SelectionTextColor()) { visible = true; break; }
+				if(dc) ::ReleaseDC(m_navigation, dc); return visible;
+			};
 			const HWND oldFocus = ::GetFocus(); ::SetFocus(m_navigation);
 			const LRESULT initialSelection = ::SendMessageW(m_navigation, LB_GETCURSEL, 0, 0);
-			bool navPassed = selectionColor() == ThemeManager::SelectionBackgroundColor();
+			bool navPassed = selectionColor() == ThemeManager::SelectionBackgroundColor() && selectedTextVisible();
 			::SendMessageW(m_navigation, WM_KEYDOWN, VK_DOWN, 0); ::SendMessageW(m_navigation, WM_KEYUP, VK_DOWN, 0);
 			navPassed = initialSelection != LB_ERR && ::SendMessageW(m_navigation, LB_GETCURSEL, 0, 0) == initialSelection + 1 &&
-				selectionColor() == ThemeManager::SelectionBackgroundColor() && navPassed;
+				selectionColor() == ThemeManager::SelectionBackgroundColor() && selectedTextVisible() &&
+				rowColor(initialSelection) == ThemeManager::ControlColor() && navPassed;
 			::SendMessageW(m_navigation, WM_KEYDOWN, VK_UP, 0); ::SendMessageW(m_navigation, WM_KEYUP, VK_UP, 0);
 			navPassed = ::SendMessageW(m_navigation, LB_GETCURSEL, 0, 0) == initialSelection &&
-				selectionColor() == ThemeManager::SelectionBackgroundColor() && navPassed;
+				selectionColor() == ThemeManager::SelectionBackgroundColor() && selectedTextVisible() &&
+				rowColor(initialSelection + 1) == ThemeManager::ControlColor() && navPassed;
 			if(oldFocus && ::IsWindow(oldFocus)) ::SetFocus(oldFocus);
 			::SetPropW(GetParent(), L"FBE_SETTINGS_NAV_PALETTE", reinterpret_cast<HANDLE>(navPassed ? 1 : 2));
 			passed = passed && navPassed;
