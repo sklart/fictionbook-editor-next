@@ -1045,7 +1045,32 @@ bool CSettingsDlg::ProbeLayout()
 		::SetCursorPos(dialogBounds.left + 5, dialogBounds.top + 5);
 		::SendMessageW(target, WM_MOUSELEAVE, 0, 0);
 		::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
-		HDC first = before.GetDC(); const bool capturedBefore = first && ::PrintWindow(m_hWnd, first, 0); if(first) before.ReleaseDC();
+		HDC first = before.GetDC(); bool capturedBefore = first && ::PrintWindow(m_hWnd, first, 0); if(first) before.ReleaseDC();
+		if(!ThemeManager::UsesPaletteSurface() && capturedBefore) {
+			// Native controls can animate their previous hover state. Observe
+			// stability before taking the baseline rather than masking them.
+			int stableFrames = 0; const ULONGLONG deadline = ::GetTickCount64() + 1200;
+			while(stableFrames < 3 && ::GetTickCount64() < deadline) {
+				::Sleep(35);
+				MSG message = {};
+				while(::PeekMessageW(&message, NULL, WM_MOUSEFIRST, WM_MOUSELAST, PM_REMOVE)) ::DispatchMessageW(&message);
+				while(::PeekMessageW(&message, NULL, WM_MOUSELEAVE, WM_MOUSELEAVE, PM_REMOVE)) ::DispatchMessageW(&message);
+				HDC dc = after.GetDC(); const bool captured = dc && ::PrintWindow(m_hWnd, dc, 0); if(dc) after.ReleaseDC();
+				bool equal = captured;
+				for(int y = visible.top - dialogBounds.top; y < visible.bottom - dialogBounds.top && equal; ++y) {
+					const BYTE* a = static_cast<const BYTE*>(before.GetPixelAddress(0, y));
+					const BYTE* b = static_cast<const BYTE*>(after.GetPixelAddress(0, y));
+					for(int x = visible.left - dialogBounds.left; x < visible.right - dialogBounds.left && equal; ++x)
+						for(int channel = 0; channel < 3; ++channel) if(std::abs(static_cast<int>(a[4*x+channel]) - static_cast<int>(b[4*x+channel])) > 1) { equal = false; break; }
+				}
+				stableFrames = equal ? stableFrames + 1 : 0;
+				HDC to = before.GetDC(), from = after.GetDC();
+				if(!captured || !to || !from || !::BitBlt(to, 0, 0, width, height, from, 0, 0, SRCCOPY)) capturedBefore = false;
+				if(from) after.ReleaseDC(); if(to) before.ReleaseDC();
+				if(!capturedBefore) break;
+			}
+			capturedBefore = capturedBefore && stableFrames >= 3;
+		}
 		const POINT hover = {(targetBounds.left + targetBounds.right) / 2, (targetBounds.top + targetBounds.bottom) / 2};
 		const bool moved = ::SetCursorPos(hover.x, hover.y) != FALSE;
 		::SendMessageW(target, WM_MOUSEMOVE, 0, MAKELPARAM(hover.x - targetBounds.left, hover.y - targetBounds.top));
@@ -1126,7 +1151,11 @@ bool CSettingsDlg::ProbeLayout()
 			controlRect(m_navigation).bottom == pageRect.bottom;
 		wchar_t paintProbe[2] = {};
 		const bool paintOnly = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SETTINGS_PAINT_ONLY", paintProbe, _countof(paintProbe)) == 1 && paintProbe[0] == L'1';
-		if(ThemeManager::UsesPaletteSurface() && paintOnly) { probePageRepaint(page); probePageFrames(page); probePageHover(page); }
+		if(paintOnly) {
+			probePageRepaint(page);
+			if(ThemeManager::UsesPaletteSurface()) probePageFrames(page);
+			probePageHover(page);
+		}
 		if(index == PageIndex(SettingsPageId::Images) && ThemeManager::UsesPaletteSurface() && paintOnly) {
 			const int previousNavigation = m_navigation.GetCurSel();
 			m_navigation.SetCurSel(index);

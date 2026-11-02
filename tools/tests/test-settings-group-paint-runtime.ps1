@@ -1,6 +1,6 @@
 <# Exercises real settings group painting in an isolated portable profile. #>
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 90, [ValidateSet('ru-RU','en-US','de-DE')][string]$Locale = 'ru-RU', [ValidateSet('sepia','navy','catppuccin-latte','catppuccin-mocha','solarized-light','solarized-dark','everforest-light-medium','dracula','catppuccin-frappe','high-contrast-light','high-contrast-dark','graphite','custom-probe','custom-light-probe')][string]$Palette = 'catppuccin-mocha', [switch]$ControlOnly)
+param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 90, [ValidateSet('ru-RU','en-US','de-DE')][string]$Locale = 'ru-RU', [ValidateSet('classic','sepia','navy','catppuccin-latte','catppuccin-mocha','solarized-light','solarized-dark','everforest-light-medium','dracula','catppuccin-frappe','high-contrast-light','high-contrast-dark','graphite','custom-probe','custom-light-probe')][string]$Palette = 'catppuccin-mocha', [switch]$ControlOnly)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'settings-group-paint'
@@ -8,7 +8,7 @@ $passed = $false
 try {
     $settings = Join-Path $isolation.DataPath 'Settings\Settings.xml'
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $settings) | Out-Null
-    $theme = if($Palette -in @('sepia','catppuccin-latte','solarized-light','everforest-light-medium','high-contrast-light','custom-light-probe')) { 1 } else { 2 }
+    $theme = if($Palette -in @('classic','sepia','catppuccin-latte','solarized-light','everforest-light-medium','high-contrast-light','custom-light-probe')) { 1 } else { 2 }
     $paletteId = $Palette
     if($Palette -in @('custom-probe','custom-light-probe')) {
         $paletteId = 'custom:probe'
@@ -32,7 +32,8 @@ try {
         $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'settings-group-paint' -Report $report -TimeoutSeconds $TimeoutSeconds
     } finally { foreach($key in $keys) { [Environment]::SetEnvironmentVariable($key, $saved[$key]) } }
     $content = if(Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
-    if($exitCode -ne 0 -or $content -notmatch '(?m)^button-states=31\r?$' -or $content -notmatch '(?m)^combo-states=1023\r?$' -or $content -notmatch '(?m)^editable-combo-states=127\r?$' -or $content -notmatch '(?m)^grouped-combo-states=15\r?$' -or $content -notmatch '(?m)^disabled-label-paint=1\r?$' -or $content -notmatch '(?m)^toggle-states=511\r?$' -or $content -notmatch '(?m)^spin-states=127\r?$' -or $content -notmatch '(?m)^hover-text=1\r?$' -or $content -notmatch '(?m)^layout=1\r?$' -or $content -notmatch '(?m)^source_unchanged=1\r?$') { throw "Settings controls paint regression: exit=$exitCode; $content" }
+    if($exitCode -ne 0 -or $content -notmatch '(?m)^layout=1\r?$' -or $content -notmatch '(?m)^source_unchanged=1\r?$') { throw "Settings paint regression: exit=$exitCode; $content" }
+    if($Palette -ne 'classic' -and ($content -notmatch '(?m)^button-states=31\r?$' -or $content -notmatch '(?m)^combo-states=1023\r?$' -or $content -notmatch '(?m)^editable-combo-states=127\r?$' -or $content -notmatch '(?m)^grouped-combo-states=15\r?$' -or $content -notmatch '(?m)^disabled-label-paint=1\r?$' -or $content -notmatch '(?m)^toggle-states=511\r?$' -or $content -notmatch '(?m)^spin-states=127\r?$' -or $content -notmatch '(?m)^hover-text=1\r?$')) { throw "Settings palette controls regression: $content" }
     if($Palette -in @('custom-probe','custom-light-probe')) {
         foreach($line in @('custom-active=1', 'control-color=6837298', 'hover-color=2646807', 'pressed-color=1653361')) {
             if($content -notmatch [regex]::Escape($line)) { throw "Custom probe palette was not applied: $content" }
@@ -41,7 +42,8 @@ try {
     $areas = [regex]::Match($content, '(?m)^group-areas=(\d+) group-failures=(\d+)\r?$')
     $hoverControls = [regex]::Match($content, '(?m)^hover-controls=(\d+)\r?$')
     if(-not $ControlOnly -and (-not $hoverControls.Success -or [int]$hoverControls.Groups[1].Value -lt 50)) { throw "Settings hover coverage failed: $content" }
-    if(-not $ControlOnly -and ($content -notmatch '(?m)^group-paint=1\r?$' -or $content -notmatch '(?m)^disabled-text=1\r?$' -or $content -notmatch '(?m)^checkbox-caption=1\r?$' -or $content -notmatch '(?m)^repaint-pages=9 repaint-failures=0\r?$' -or $content -notmatch '(?m)^hover-pages=9 hover-failures=0\r?$' -or -not $areas.Success -or [int]$areas.Groups[1].Value -lt 10 -or [int]$areas.Groups[2].Value -ne 0)) { throw "Settings group paint coverage failed: $content" }
+    if(-not $ControlOnly -and ($content -notmatch '(?m)^repaint-pages=9 repaint-failures=0\r?$' -or $content -notmatch '(?m)^hover-pages=9 hover-failures=0\r?$')) { throw "Settings page paint coverage failed: $content" }
+    if(-not $ControlOnly -and $Palette -ne 'classic' -and ($content -notmatch '(?m)^group-paint=1\r?$' -or $content -notmatch '(?m)^disabled-text=1\r?$' -or $content -notmatch '(?m)^checkbox-caption=1\r?$' -or -not $areas.Success -or [int]$areas.Groups[1].Value -lt 10 -or [int]$areas.Groups[2].Value -ne 0)) { throw "Settings group paint coverage failed: $content" }
     if((Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $originalHash) { throw 'Settings paint test modified the FB2 fixture.' }
     $passed = $true
     Write-Host "Settings paint and document preservation: PASS ($Locale, $Palette, $($areas.Groups[1].Value) group regions, $($hoverControls.Groups[1].Value) hover controls)"
