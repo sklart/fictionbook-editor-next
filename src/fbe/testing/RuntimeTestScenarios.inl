@@ -101,6 +101,8 @@ __declspec(noinline) LRESULT CMainFrame::RunSettingsDialogRuntime(CAtlFile& outp
         report.AppendFormat("repaint-pages=%Iu repaint-failures=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_REPAINT_PAGES")), reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_REPAINT_FAILURES")));
         report.AppendFormat("hover-pages=%Iu hover-failures=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_PAGES")), reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILURES")));
         report.AppendFormat("hover-controls=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_CONTROLS")));
+        report.AppendFormat("navigation-palette=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_NAV_PALETTE")));
+        ::RemovePropW(m_hWnd,L"FBE_SETTINGS_NAV_PALETTE");
         report.AppendFormat("hover-failed-id=%Iu hover-failed-x=%Iu hover-failed-y=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILED_ID")), reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILED_X")), reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILED_Y")));
         ::RemovePropW(m_hWnd,L"FBE_SETTINGS_REPAINT_PAGES"); ::RemovePropW(m_hWnd,L"FBE_SETTINGS_REPAINT_FAILURES");
         ::RemovePropW(m_hWnd,L"FBE_SETTINGS_HOVER_PAGES"); ::RemovePropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILURES");

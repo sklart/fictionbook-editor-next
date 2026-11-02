@@ -919,7 +919,34 @@ LRESULT CALLBACK CSettingsDlg::NavigationKeysSubclassProc(HWND window, UINT mess
 			if(dialog->m_hotkeysPage->PreTranslateMessage(&key))return 0;
 		}
 	}
-	return ::DefSubclassProc(window,message,wParam,lParam);
+	const LRESULT result = ::DefSubclassProc(window,message,wParam,lParam);
+	if(ThemeManager::UsesPaletteSurface() && !ThemeManager::IsHighContrast() &&
+		(message == WM_KEYDOWN || message == WM_LBUTTONUP || message == LB_SETCURSEL || message == WM_SETFOCUS || message == WM_KILLFOCUS))
+		::InvalidateRect(window, NULL, FALSE);
+	if((message == WM_PAINT || message == WM_PRINTCLIENT) && ThemeManager::UsesPaletteSurface() && !ThemeManager::IsHighContrast()) {
+		HDC dc = message == WM_PAINT ? ::GetDC(window) : reinterpret_cast<HDC>(wParam);
+		const LRESULT selected = ::SendMessageW(window, LB_GETCURSEL, 0, 0);
+		RECT row = {};
+		if(dc && selected != LB_ERR && ::SendMessageW(window, LB_GETITEMRECT, selected, reinterpret_cast<LPARAM>(&row)) != LB_ERR) {
+			const LRESULT length = ::SendMessageW(window, LB_GETTEXTLEN, selected, 0);
+			if(length >= 0 && length < 32768) {
+				std::vector<wchar_t> caption(static_cast<size_t>(length) + 1, 0);
+				if(::SendMessageW(window, LB_GETTEXT, selected, reinterpret_cast<LPARAM>(caption.data())) != LB_ERR) {
+					const int saved = ::SaveDC(dc);
+					::FillRect(dc, &row, ThemeManager::Brush(THEME_COLOR_SELECTION_BACKGROUND));
+					HFONT font = reinterpret_cast<HFONT>(::SendMessageW(window, WM_GETFONT, 0, 0));
+					HGDIOBJ previous = font ? ::SelectObject(dc, font) : NULL;
+					::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, ThemeManager::SelectionTextColor());
+					RECT text = row; text.left += UiMetrics::ScaleForDpi(2, UiMetrics::DpiForWindow(window));
+					::DrawTextW(dc, caption.data(), static_cast<int>(length), &text, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX | DT_END_ELLIPSIS);
+					if(::GetFocus() == window && !(::SendMessageW(window, WM_QUERYUISTATE, 0, 0) & UISF_HIDEFOCUS)) ::DrawFocusRect(dc, &row);
+					if(previous) ::SelectObject(dc, previous); if(saved) ::RestoreDC(dc, saved);
+				}
+			}
+		}
+		if(dc && message == WM_PAINT) ::ReleaseDC(window, dc);
+	}
+	return result;
 }
 
 LRESULT CALLBACK CSettingsDlg::PageSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam,
@@ -1151,6 +1178,28 @@ bool CSettingsDlg::ProbeLayout()
 			controlRect(m_navigation).bottom == pageRect.bottom;
 		wchar_t paintProbe[2] = {};
 		const bool paintOnly = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SETTINGS_PAINT_ONLY", paintProbe, _countof(paintProbe)) == 1 && paintProbe[0] == L'1';
+		if(index == 0 && paintOnly && ThemeManager::UsesPaletteSurface() && !ThemeManager::IsHighContrast()) {
+			auto selectionColor = [&]() {
+				::RedrawWindow(m_navigation, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+				const LRESULT selected = ::SendMessageW(m_navigation, LB_GETCURSEL, 0, 0); RECT row = {};
+				const bool hasRow = selected != LB_ERR && ::SendMessageW(m_navigation, LB_GETITEMRECT, selected, reinterpret_cast<LPARAM>(&row)) != LB_ERR;
+				HDC dc = ::GetDC(m_navigation);
+				const COLORREF pixel = dc && hasRow ? ::GetPixel(dc, row.right - 5, (row.top + row.bottom) / 2) : CLR_INVALID;
+				if(dc) ::ReleaseDC(m_navigation, dc); return pixel;
+			};
+			const HWND oldFocus = ::GetFocus(); ::SetFocus(m_navigation);
+			const LRESULT initialSelection = ::SendMessageW(m_navigation, LB_GETCURSEL, 0, 0);
+			bool navPassed = selectionColor() == ThemeManager::SelectionBackgroundColor();
+			::SendMessageW(m_navigation, WM_KEYDOWN, VK_DOWN, 0); ::SendMessageW(m_navigation, WM_KEYUP, VK_DOWN, 0);
+			navPassed = initialSelection != LB_ERR && ::SendMessageW(m_navigation, LB_GETCURSEL, 0, 0) == initialSelection + 1 &&
+				selectionColor() == ThemeManager::SelectionBackgroundColor() && navPassed;
+			::SendMessageW(m_navigation, WM_KEYDOWN, VK_UP, 0); ::SendMessageW(m_navigation, WM_KEYUP, VK_UP, 0);
+			navPassed = ::SendMessageW(m_navigation, LB_GETCURSEL, 0, 0) == initialSelection &&
+				selectionColor() == ThemeManager::SelectionBackgroundColor() && navPassed;
+			if(oldFocus && ::IsWindow(oldFocus)) ::SetFocus(oldFocus);
+			::SetPropW(GetParent(), L"FBE_SETTINGS_NAV_PALETTE", reinterpret_cast<HANDLE>(navPassed ? 1 : 2));
+			passed = passed && navPassed;
+		}
 		if(paintOnly) {
 			probePageRepaint(page);
 			if(ThemeManager::UsesPaletteSurface()) probePageFrames(page);
