@@ -499,11 +499,22 @@ LRESULT HandleDarkHeaderMessage(HWND window, UINT message, WPARAM wParam, LPARAM
 	return ::DefSubclassProc(window, message, wParam, lParam);
 }
 
-void PaintDarkGroupBox(HWND window)
+void PaintDarkGroupBoxContent(HWND window, HDC dc)
 {
-	PAINTSTRUCT paint = {};
-	HDC dc = ::BeginPaint(window, &paint);
 	RECT client = {}; ::GetClientRect(window, &client);
+	// Dialog group boxes and the controls inside their borders are siblings.
+	// Do not erase those controls when a frame receives its own WM_PAINT.
+	const int saved = ::SaveDC(dc);
+	HWND parent = ::GetParent(window);
+	for(HWND sibling = parent ? ::GetWindow(parent, GW_CHILD) : NULL; sibling; sibling = ::GetWindow(sibling, GW_HWNDNEXT)) {
+		if(sibling == window || !(::GetWindowLongPtrW(sibling, GWL_STYLE) & WS_VISIBLE) || IsGroupBox(sibling)) continue;
+		RECT bounds = {}, overlap = {};
+		if(!::GetWindowRect(sibling, &bounds)) continue;
+		::MapWindowPoints(NULL, window, reinterpret_cast<POINT*>(&bounds), 2);
+		if(::IntersectRect(&overlap, &client, &bounds)) {
+			::ExcludeClipRect(dc, overlap.left, overlap.top, overlap.right, overlap.bottom);
+		}
+	}
 	::FillRect(dc, &client, ThemeManager::WindowBrush());
 
 	wchar_t caption[256] = {};
@@ -522,6 +533,13 @@ void PaintDarkGroupBox(HWND window)
 	::SetTextColor(dc, ::IsWindowEnabled(window) ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
 	::DrawTextW(dc, caption, -1, &captionRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX);
 	if(oldFont) ::SelectObject(dc, oldFont);
+	if(saved) ::RestoreDC(dc, saved);
+}
+
+void PaintDarkGroupBox(HWND window)
+{
+	PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(window, &paint);
+	if(dc) PaintDarkGroupBoxContent(window, dc);
 	::EndPaint(window, &paint);
 }
 
@@ -612,6 +630,40 @@ void PaintTreeScrollbars(HWND window)
 	::ReleaseDC(window, dc);
 }
 
+// Classic disabled buttons emboss their captions with a second light copy.
+// Paint disabled checkboxes once in palette colours while leaving input and
+// state transitions to the native button implementation.
+void PaintDisabledPaletteCheckbox(HWND window, HDC dc)
+{
+	const int saved = ::SaveDC(dc);
+	RECT client = {}; ::GetClientRect(window, &client);
+	::FillRect(dc, &client, ThemeManager::WindowBrush());
+	const LONG_PTR style = ::GetWindowLongPtrW(window, GWL_STYLE);
+	const UINT dpi = UiMetrics::DpiForWindow(window);
+	const int size = (std::min)(static_cast<int>(client.bottom), UiMetrics::ScaleForDpi(13, dpi));
+	const bool right = (style & BS_LEFTTEXT) != 0;
+	RECT box = {right ? client.right - size : client.left, (client.bottom - size) / 2,
+		right ? client.right : client.left + size, (client.bottom + size) / 2};
+	const LRESULT checked = ::SendMessageW(window, BM_GETCHECK, 0, 0);
+	UINT state = (checked == BST_INDETERMINATE ? DFCS_BUTTON3STATE : DFCS_BUTTONCHECK) | DFCS_INACTIVE;
+	if(checked != BST_UNCHECKED) state |= DFCS_CHECKED;
+	::DrawFrameControl(dc, &box, DFC_BUTTON, state);
+	RECT text = client; const int gap = UiMetrics::ScaleForDpi(4, dpi);
+	if(right) text.right = box.left - gap; else text.left = box.right + gap;
+	const int length = ::GetWindowTextLengthW(window);
+	std::vector<wchar_t> caption(static_cast<size_t>(length) + 1, 0);
+	::GetWindowTextW(window, caption.data(), length + 1);
+	HFONT font = reinterpret_cast<HFONT>(::SendMessageW(window, WM_GETFONT, 0, 0));
+	HGDIOBJ old = font ? ::SelectObject(dc, font) : NULL;
+	::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, ThemeManager::DisabledTextColor());
+	UINT flags = (style & BS_MULTILINE) ? DT_WORDBREAK : DT_SINGLELINE | DT_VCENTER;
+	flags |= right ? DT_RIGHT : DT_LEFT;
+	if(::SendMessageW(window, WM_QUERYUISTATE, 0, 0) & UISF_HIDEACCEL) flags |= DT_HIDEPREFIX;
+	::DrawTextW(dc, caption.data(), length, &text, flags);
+	if(old) ::SelectObject(dc, old);
+	if(saved) ::RestoreDC(dc, saved);
+}
+
 LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
 {
 	if(message == WM_NCDESTROY)
@@ -647,6 +699,17 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 		return 0;
 	}
 	if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);
+	if(ThemeManager::UsesPaletteSurface() && IsCheckBox(window) && !::IsWindowEnabled(window)) {
+		if(message == WM_ERASEBKGND) return 1;
+		if(message == WM_PAINT) {
+			PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(window, &paint);
+			if(dc) PaintDisabledPaletteCheckbox(window, dc);
+			::EndPaint(window, &paint); return 0;
+		}
+		if((message == WM_PRINTCLIENT || message == WM_PRINT) && wParam) {
+			PaintDisabledPaletteCheckbox(window, reinterpret_cast<HDC>(wParam)); return 0;
+		}
+	}
 	if(message == WM_PAINT && ThemeManager::UsesPaletteSurface() && IsComboBox(window) &&
 		!IsClass(::GetParent(window), TOOLBARCLASSNAMEW)) {
 		const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
@@ -704,6 +767,7 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 	{
 		if(message == WM_ERASEBKGND) return 1;
 		if(message == WM_PAINT) { PaintDarkGroupBox(window); return 0; }
+		if((message == WM_PRINTCLIENT || message == WM_PRINT) && wParam) { PaintDarkGroupBoxContent(window, reinterpret_cast<HDC>(wParam)); return 0; }
 	}
 	if(message == WM_CTLCOLORDLG)
 	{

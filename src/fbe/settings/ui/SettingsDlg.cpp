@@ -299,6 +299,12 @@ LRESULT CSettingsDlg::OnTimer(UINT, WPARAM timerId, LPARAM, BOOL&)
 		BOOL handled = FALSE;
 		return OnClickedCancel(0, IDCANCEL, NULL, handled);
 	}
+	if(RuntimeTests::IsScenario(L"settings-dialog-runtime")) {
+		wchar_t paintOnly[2] = {};
+		if(::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SETTINGS_PAINT_ONLY", paintOnly, _countof(paintOnly)) == 1 && paintOnly[0] == L'1') {
+			ProbeLayout(); EndDialog(IDCANCEL); return 0;
+		}
+	}
 	bool behaviorPassed = !RuntimeTests::IsScenario(L"settings-dialog-runtime") || ProbeFollowup();
 	if(RuntimeTests::IsScenario(L"settings-dialog-runtime"))
 	{
@@ -989,6 +995,41 @@ bool CSettingsDlg::ProbeLayout()
 	if(preferredFits && m_automaticSize)
 		passed = passed && original.Width() >= m_preferredWindowSize.cx &&
 			original.Height() >= m_preferredWindowSize.cy;
+	int paintAreas = 0, paintFailures = 0;
+	auto probePageFrames = [&](HWND page) {
+		::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+		RECT dialogBounds = {}, pageBounds = {}; ::GetWindowRect(m_hWnd, &dialogBounds); ::GetWindowRect(page, &pageBounds);
+		CImage dialog; if(!dialog.Create(dialogBounds.right - dialogBounds.left, dialogBounds.bottom - dialogBounds.top, 32)) { ++paintFailures; return; }
+		HDC source = dialog.GetDC(); if(!source || !::PrintWindow(m_hWnd, source, 0)) { if(source) dialog.ReleaseDC(); ++paintFailures; return; }
+		for(HWND frame = ::GetWindow(page, GW_CHILD); frame; frame = ::GetWindow(frame, GW_HWNDNEXT)) {
+			wchar_t kind[32] = {}; ::GetClassNameW(frame, kind, _countof(kind));
+			if(_wcsicmp(kind, L"Button") || !(::GetWindowLongPtrW(frame, GWL_STYLE) & WS_VISIBLE) ||
+				(::GetWindowLongPtrW(frame, GWL_STYLE) & BS_TYPEMASK) != BS_GROUPBOX) continue;
+			RECT frameBounds = {}; ::GetWindowRect(frame, &frameBounds);
+			for(HWND field = ::GetWindow(page, GW_CHILD); field; field = ::GetWindow(field, GW_HWNDNEXT)) {
+				if(field == frame || !(::GetWindowLongPtrW(field, GWL_STYLE) & WS_VISIBLE)) continue;
+				wchar_t fieldKind[32] = {}; ::GetClassNameW(field, fieldKind, _countof(fieldKind));
+				if(!_wcsicmp(fieldKind, L"Button") && (::GetWindowLongPtrW(field, GWL_STYLE) & BS_TYPEMASK) == BS_GROUPBOX) continue;
+				RECT bounds = {}, overlap = {}, visible = {}; ::GetWindowRect(field, &bounds);
+				if(!::IntersectRect(&overlap, &frameBounds, &bounds) || !::IntersectRect(&visible, &overlap, &pageBounds) ||
+					!::IntersectRect(&visible, &visible, &dialogBounds) || visible.right <= visible.left || visible.bottom <= visible.top) continue;
+				const int width = visible.right - visible.left, height = visible.bottom - visible.top;
+				CImage image; if(!image.Create(width, height, 32)) { ++paintFailures; continue; }
+				HDC target = image.GetDC(); if(!target) { ++paintFailures; continue; }
+				if(!::BitBlt(target, 0, 0, width, height, source, visible.left - dialogBounds.left, visible.top - dialogBounds.top, SRCCOPY)) { image.ReleaseDC(); ++paintFailures; continue; }
+				image.ReleaseDC(); std::vector<BYTE> before;
+				for(int y=0; y<height; ++y) { const BYTE* row=static_cast<const BYTE*>(image.GetPixelAddress(0,y)); for(int x=0; x<width; ++x) before.insert(before.end(),row+4*x,row+4*x+3); }
+				target = image.GetDC(); const int saved = ::SaveDC(target);
+				::SetViewportOrgEx(target, frameBounds.left - visible.left, frameBounds.top - visible.top, NULL);
+				::SendMessageW(frame, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(target), PRF_CLIENT);
+				if(saved) ::RestoreDC(target, saved); image.ReleaseDC();
+				bool same = true; size_t offset = 0;
+				for(int y=0; y<height && same; ++y) { const BYTE* row=static_cast<const BYTE*>(image.GetPixelAddress(0,y)); for(int x=0; x<width && same; ++x) for(int c=0; c<3; ++c) if(before[offset++] != row[4*x+c]) { same=false; break; } }
+				++paintAreas; if(!same) ++paintFailures;
+			}
+		}
+		dialog.ReleaseDC();
+	};
 	// Switching among all pages must not resize the outer dialog. On a
 	// monitor that can hold the preferred size, its initial pages need no bars.
 	for(int index = 0; index < PageIndex(SettingsPageId::Count); ++index)
@@ -998,6 +1039,96 @@ bool CSettingsDlg::ProbeLayout()
 		const CRect pageRect = controlRect(page);
 		passed = passed && inside(pageRect) && navigation.right <= pageRect.left && pageRect.bottom <= ok.top &&
 			controlRect(m_navigation).bottom == pageRect.bottom;
+		wchar_t paintProbe[2] = {};
+		const bool paintOnly = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SETTINGS_PAINT_ONLY", paintProbe, _countof(paintProbe)) == 1 && paintProbe[0] == L'1';
+		if(ThemeManager::IsDark() && paintOnly) probePageFrames(page);
+		if(index == PageIndex(SettingsPageId::Images) && ThemeManager::IsDark() && paintOnly) {
+			// Compare the real checkbox pixels before and after repainting its
+			// sibling group frame. Repainting the frame must not erase its label.
+			HWND field = ::GetDlgItem(page, IDC_OPTIONS_CLEARIMGS);
+			HWND frame = ::GetDlgItem(page, IDC_SETTINGS_OTHER_DIALOGS);
+			wchar_t caption[256] = {}; ::GetWindowTextW(field, caption, _countof(caption));
+			const CString expectedCaption = FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_other.clear_images", L"Insert empty images");
+			RECT fieldClient = {}; ::GetClientRect(field, &fieldClient);
+			HDC fieldDc = ::GetDC(field); SIZE textSize = {};
+			HFONT fieldFont = reinterpret_cast<HFONT>(::SendMessageW(field, WM_GETFONT, 0, 0));
+			HGDIOBJ oldFieldFont = fieldDc && fieldFont ? ::SelectObject(fieldDc, fieldFont) : NULL;
+			const bool measured = fieldDc && ::GetTextExtentPoint32W(fieldDc, caption, ::lstrlenW(caption), &textSize);
+			if(oldFieldFont) ::SelectObject(fieldDc, oldFieldFont); if(fieldDc) ::ReleaseDC(field, fieldDc);
+			const bool captionValid = expectedCaption == caption && measured &&
+				textSize.cx + UiMetrics::ScaleForDpi(20, m_layoutDpi) <= fieldClient.right && textSize.cy <= fieldClient.bottom &&
+				(::GetWindowLongPtrW(field, GWL_STYLE) & BS_TYPEMASK) == BS_AUTOCHECKBOX;
+			::SetPropW(GetParent(), L"FBE_SETTINGS_CHECKBOX_CAPTION_PASSED", reinterpret_cast<HANDLE>(captionValid ? 1 : 2));
+			::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+			RECT rect = {}; ::GetWindowRect(field, &rect);
+			::RedrawWindow(field, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+			RECT dialogRect = {}; ::GetWindowRect(m_hWnd, &dialogRect);
+			const int width = rect.right - rect.left, height = rect.bottom - rect.top;
+			CImage dialog;
+			const bool dialogCreated = dialog.Create(dialogRect.right - dialogRect.left, dialogRect.bottom - dialogRect.top, 32) != FALSE;
+			HDC dialogDc = dialogCreated ? dialog.GetDC() : NULL;
+			const bool captured = dialogDc && ::PrintWindow(m_hWnd, dialogDc, 0) != FALSE;
+			auto capture = [&](const wchar_t* filename, bool repaintFrame) {
+				std::vector<BYTE> pixels; CImage image;
+				if(captured && width > 0 && height > 0 && image.Create(width, height, 32)) {
+					HDC target = image.GetDC();
+					const bool copied = target && ::BitBlt(target, 0, 0, width, height, dialogDc, rect.left - dialogRect.left, rect.top - dialogRect.top, SRCCOPY);
+					if(copied && repaintFrame) {
+						RECT frameRect = {}; ::GetWindowRect(frame, &frameRect);
+						const int saved = ::SaveDC(target);
+						::SetViewportOrgEx(target, frameRect.left - rect.left, frameRect.top - rect.top, NULL);
+						::SendMessageW(frame, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(target), PRF_CLIENT);
+						if(saved) ::RestoreDC(target, saved);
+					}
+					if(target) image.ReleaseDC();
+					if(copied) {
+						wchar_t artifactDir[32768] = {};
+						const DWORD length = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_APPEARANCE_ARTIFACT_DIR", artifactDir, _countof(artifactDir));
+						if(length && length < _countof(artifactDir)) image.Save(CString(artifactDir) + filename);
+						for(int y = 0; y < height; ++y) {
+							const BYTE* row = static_cast<const BYTE*>(image.GetPixelAddress(0, y));
+							for(int x = 0; x < width; ++x) pixels.insert(pixels.end(), row + 4 * x, row + 4 * x + 3);
+						}
+					}
+				}
+				return pixels;
+			};
+			const auto before = capture(L"\\checkbox-before.bmp", false);
+			const auto after = capture(L"\\checkbox-after.bmp", true);
+			const BOOL wasEnabled = ::IsWindowEnabled(field);
+			const LRESULT originalCheck = ::SendMessageW(field, BM_GETCHECK, 0, 0);
+			::EnableWindow(field, FALSE); ::SendMessageW(field, BM_SETCHECK, BST_UNCHECKED, 0);
+			::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+			if(dialogDc) ::PrintWindow(m_hWnd, dialogDc, 0);
+			const auto disabled = capture(L"\\checkbox-disabled.bmp", false);
+			::SendMessageW(field, BM_SETCHECK, BST_CHECKED, 0);
+			::RedrawWindow(field, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+			if(dialogDc) ::PrintWindow(m_hWnd, dialogDc, 0);
+			const auto disabledChecked = capture(L"\\checkbox-disabled-checked.bmp", false);
+			::SendMessageW(field, BM_SETCHECK, originalCheck, 0); ::EnableWindow(field, wasEnabled);
+			if(dialogDc) dialog.ReleaseDC();
+			const COLORREF disabledColor = ThemeManager::DisabledTextColor();
+			int textPixels = 0, highlightPixels = 0;
+			const int textStart = UiMetrics::ScaleForDpi(20, m_layoutDpi);
+			for(int y = 0; y < height; ++y) for(int x = textStart; x < width; ++x) {
+				const size_t offset = static_cast<size_t>((y * width + x) * 3);
+				if(offset + 2 >= disabled.size()) continue;
+				const BYTE b = disabled[offset], g = disabled[offset + 1], r = disabled[offset + 2];
+				if(r == GetRValue(disabledColor) && g == GetGValue(disabledColor) && b == GetBValue(disabledColor)) ++textPixels;
+				if(r == 255 && g == 255 && b == 255) ++highlightPixels;
+			}
+			bool boxChanged = false, textUnchanged = disabled.size() == disabledChecked.size();
+			if(textUnchanged) for(int y = 0; y < height; ++y) for(int x = 0; x < width; ++x) {
+				const size_t offset = static_cast<size_t>((y * width + x) * 3);
+				const bool different = disabled[offset] != disabledChecked[offset] || disabled[offset + 1] != disabledChecked[offset + 1] || disabled[offset + 2] != disabledChecked[offset + 2];
+				if(x < textStart) boxChanged = boxChanged || different; else if(different) textUnchanged = false;
+			}
+			const bool disabledPassed = textPixels > 0 && highlightPixels == 0 && boxChanged && textUnchanged;
+			::SetPropW(GetParent(), L"FBE_SETTINGS_DISABLED_TEXT_PASSED", reinterpret_cast<HANDLE>(disabledPassed ? 1 : 2));
+			const bool paintPassed = !before.empty() && before == after && disabledPassed && captionValid;
+			::SetPropW(GetParent(), L"FBE_SETTINGS_GROUP_PAINT_PASSED", reinterpret_cast<HANDLE>(paintPassed ? 1 : 2));
+			passed = passed && paintPassed;
+		}
 		if(index == PageIndex(SettingsPageId::Appearance)) {
 			const CRect colours = controlRect(m_generalPage->GetDlgItem(IDC_OPTIONS_INTERFACE_GROUP));
 			const CRect tools = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_TOOLBARS_GROUP));
@@ -1481,6 +1612,9 @@ bool CSettingsDlg::ProbeLayout()
 	::SetWindowPos(m_hWnd, NULL, beforeScreenProbe.left, beforeScreenProbe.top,
 		beforeScreenProbe.Width(), beforeScreenProbe.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
 	SelectPage(SettingsPageId::General);
+	::SetPropW(::GetParent(m_hWnd), L"FBE_SETTINGS_PAINT_AREAS", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(paintAreas)));
+	::SetPropW(::GetParent(m_hWnd), L"FBE_SETTINGS_PAINT_FAILURES", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(paintFailures)));
+	if(paintAreas) passed = passed && paintFailures == 0;
 	::SetPropW(::GetParent(m_hWnd), L"FBE_SETTINGS_LAYOUT_PASSED", reinterpret_cast<HANDLE>(passed ? 1 : 2));
 	return passed;
 }

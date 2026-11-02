@@ -78,6 +78,15 @@ __declspec(noinline) LRESULT CMainFrame::RunSettingsDialogRuntime(CAtlFile& outp
 				::GetSysColor(COLOR_WINDOWTEXT) : RGB(255, 255, 255));
 		CStringA report;
 		report.Format("followup=%d\nsettings_dialog=%d\nlayout=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\nyo_usage=%d\napplied=%d\ncaret_persisted=%d\ncaret_applied=%d\ncaret_initial_system=%d\nsource_unchanged=%d\n", followupPassed, !verifyOnly, layoutPassed, persisted, backupPersisted, nbspPersisted, wrapPersisted, yoPersisted, applied, caretPersisted, caretApplied, initialSystem, sourceUnchanged);
+        const UINT_PTR groupPaint = reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd, L"FBE_SETTINGS_GROUP_PAINT_PASSED"));
+        report.AppendFormat("group-paint=%Iu\n", groupPaint);
+        report.AppendFormat("disabled-text=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_DISABLED_TEXT_PASSED")));
+        report.AppendFormat("checkbox-caption=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_CHECKBOX_CAPTION_PASSED")));
+        ::RemovePropW(m_hWnd,L"FBE_SETTINGS_CHECKBOX_CAPTION_PASSED");
+        ::RemovePropW(m_hWnd,L"FBE_SETTINGS_DISABLED_TEXT_PASSED");
+        report.AppendFormat("group-areas=%Iu group-failures=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_PAINT_AREAS")), reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_PAINT_FAILURES")));
+        ::RemovePropW(m_hWnd,L"FBE_SETTINGS_PAINT_AREAS"); ::RemovePropW(m_hWnd,L"FBE_SETTINGS_PAINT_FAILURES");
+        ::RemovePropW(m_hWnd, L"FBE_SETTINGS_GROUP_PAINT_PASSED");
         report.AppendFormat("interface-language=%lu\n", static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()));
         report.AppendFormat("appearance_screen_width=%Iu\nappearance_screen_height=%Iu\n",
             reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd, L"FBE_SETTINGS_SCREEN_WIDTH")),
@@ -93,7 +102,11 @@ __declspec(noinline) LRESULT CMainFrame::RunSettingsDialogRuntime(CAtlFile& outp
         ::RemovePropW(m_hWnd, L"FBE_SETTINGS_FOLLOWUP_THEME_STEPS");
         ::RemovePropW(m_hWnd, L"FBE_SETTINGS_FOLLOWUP_THEME_ERROR");
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(followupPassed && persisted && applied && layoutPassed && caretPersisted && caretApplied && sourceUnchanged ? 0 : 1);
+		wchar_t paintOnly[2] = {};
+		const bool paintProbe = !verifyOnly && ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SETTINGS_PAINT_ONLY", paintOnly, _countof(paintOnly)) == 1 && paintOnly[0] == L'1';
+		const bool passed = paintProbe ? (layoutPassed && groupPaint == 1 && sourceUnchanged) :
+			(followupPassed && persisted && applied && layoutPassed && caretPersisted && caretApplied && sourceUnchanged);
+		::PostQuitMessage(passed ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"backup-settings-save-runtime") || IsFbeTestScenario(L"backup-settings-save-runtime-verify"))

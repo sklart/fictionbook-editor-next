@@ -1,0 +1,30 @@
+<# Exercises real settings group painting in an isolated portable profile. #>
+[CmdletBinding()]
+param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 90, [ValidateSet('ru-RU','en-US','de-DE')][string]$Locale = 'ru-RU')
+$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'settings-group-paint'
+$passed = $false
+try {
+    $settings = Join-Path $isolation.DataPath 'Settings\Settings.xml'
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $settings) | Out-Null
+    [IO.File]::WriteAllText($settings, '<?xml version="1.0" encoding="utf-8"?><FBE><Settings ID="0"><DocumentTreeScripts>false</DocumentTreeScripts><InterfaceTheme>2</InterfaceTheme><InterfacePalette>catppuccin-mocha</InterfacePalette><TextCaretMode>0</TextCaretMode></Settings></FBE>', [Text.UTF8Encoding]::new($false))
+    $fixture = Join-Path $isolation.Root 'paint.fb2'
+    $report = Join-Path $isolation.Root 'paint.txt'
+    [IO.File]::WriteAllText($fixture, '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Paint</book-title><lang>en</lang></title-info><document-info><id>paint-test</id><version>1</version></document-info></description><body><section><p>Paint test</p></section></body></FictionBook>', [Text.UTF8Encoding]::new($false))
+    $originalHash = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
+    $keys = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SETTINGS_PAINT_ONLY','FBE_NEXT_UI_LOCALE')
+    $saved = @{}; foreach($key in $keys) { $saved[$key] = [Environment]::GetEnvironmentVariable($key) }
+    try {
+        $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='settings-dialog-runtime'; $env:FBE_NEXT_TEST_SETTINGS_PAINT_ONLY='1'; $env:FBE_NEXT_UI_LOCALE=$Locale
+        $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('--portable','-b',('"'+$report+'"'),('"'+$fixture+'"')) -PassThru
+        $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'settings-group-paint' -Report $report -TimeoutSeconds $TimeoutSeconds
+    } finally { foreach($key in $keys) { [Environment]::SetEnvironmentVariable($key, $saved[$key]) } }
+    $content = if(Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing>' }
+    if($exitCode -ne 0 -or $content -notmatch '(?m)^group-paint=1\r?$' -or $content -notmatch '(?m)^disabled-text=1\r?$' -or $content -notmatch '(?m)^checkbox-caption=1\r?$' -or $content -notmatch '(?m)^layout=1\r?$' -or $content -notmatch '(?m)^source_unchanged=1\r?$') { throw "Settings group paint regression: exit=$exitCode; $content" }
+    $areas = [regex]::Match($content, '(?m)^group-areas=(\d+) group-failures=(\d+)\r?$')
+    if(-not $areas.Success -or [int]$areas.Groups[1].Value -lt 10 -or [int]$areas.Groups[2].Value -ne 0) { throw "Settings group paint coverage failed: $content" }
+    if((Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $originalHash) { throw 'Settings paint test modified the FB2 fixture.' }
+    $passed = $true
+    Write-Host "Settings group paint and document preservation: PASS ($Locale, $($areas.Groups[1].Value) control regions)"
+} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed }
