@@ -1,6 +1,6 @@
 <# Exercises real settings group painting in an isolated portable profile. #>
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 90, [ValidateSet('ru-RU','en-US','de-DE')][string]$Locale = 'ru-RU', [ValidateSet('catppuccin-mocha','solarized-light','solarized-dark','graphite','custom-probe','custom-light-probe')][string]$Palette = 'catppuccin-mocha', [switch]$ControlOnly)
+param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 90, [ValidateSet('ru-RU','en-US','de-DE')][string]$Locale = 'ru-RU', [ValidateSet('sepia','navy','catppuccin-latte','catppuccin-mocha','solarized-light','solarized-dark','everforest-light-medium','dracula','catppuccin-frappe','high-contrast-light','high-contrast-dark','graphite','custom-probe','custom-light-probe')][string]$Palette = 'catppuccin-mocha', [switch]$ControlOnly)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'settings-group-paint'
@@ -8,7 +8,7 @@ $passed = $false
 try {
     $settings = Join-Path $isolation.DataPath 'Settings\Settings.xml'
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $settings) | Out-Null
-    $theme = if($Palette -in @('solarized-light','custom-light-probe')) { 1 } else { 2 }
+    $theme = if($Palette -in @('sepia','catppuccin-latte','solarized-light','everforest-light-medium','high-contrast-light','custom-light-probe')) { 1 } else { 2 }
     $paletteId = $Palette
     if($Palette -in @('custom-probe','custom-light-probe')) {
         $paletteId = 'custom:probe'

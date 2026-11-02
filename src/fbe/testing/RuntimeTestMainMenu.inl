@@ -140,7 +140,7 @@
                         self->geometryOk=popupBounds.right-popupBounds.left>=minWidth;
                         self->report->AppendFormat("menu_geometry_%ls=%ldx%ld\n",self->stage.c_str(),popupBounds.right-popupBounds.left,popupBounds.bottom-popupBounds.top);
                     }
-                    if(self->stage == L"palette-navy" || self->stage == L"palette-sepia") {
+                    if(self->stage.find(L"palette-") == 0) {
                         HMENU snapshot=reinterpret_cast<HMENU>(::GetPropW(self->owner,L"FBE.Test.MenuSnapshotRoot"));
                         if(snapshot) {
                             const HMENU source=::GetSubMenu(self->root,4); wchar_t caption[256]={};
@@ -369,6 +369,46 @@
                 check("palette_menu_light_body",probe.paletteColor); check("palette_menu_light_gutter",probe.paletteGutter); check("palette_menu_light_border",probe.paletteBorder);
                 check("palette_menu_light_selection",probe.paletteSelected&&probe.paletteSelectedText&&probe.paletteHover);
                 check("palette_menu_light_accessible",probe.snapshotText&&probe.accessibleText&&probe.mnemonicOk);
+                wchar_t matrix[2] = {};
+                if(::GetEnvironmentVariableW(L"FBE_NEXT_TEST_PALETTE_MENU_MATRIX", matrix, _countof(matrix))) {
+                    struct Case { InterfacePalette palette; InterfaceTheme theme; LPCWSTR name; };
+                    const Case cases[] = {
+                        {INTERFACE_PALETTE_CATPPUCCIN_LATTE, INTERFACE_THEME_LIGHT, L"latte"},
+                        {INTERFACE_PALETTE_SOLARIZED_LIGHT, INTERFACE_THEME_LIGHT, L"solarized-light"},
+                        {INTERFACE_PALETTE_EVERFOREST_LIGHT, INTERFACE_THEME_LIGHT, L"everforest-light"},
+                        {INTERFACE_PALETTE_GRAPHITE, INTERFACE_THEME_DARK, L"graphite"},
+                        {INTERFACE_PALETTE_CATPPUCCIN_MOCHA, INTERFACE_THEME_DARK, L"mocha"},
+                        {INTERFACE_PALETTE_SOLARIZED_DARK, INTERFACE_THEME_DARK, L"solarized-dark"},
+                        {INTERFACE_PALETTE_DRACULA, INTERFACE_THEME_DARK, L"dracula"},
+                        {INTERFACE_PALETTE_CATPPUCCIN_FRAPPE, INTERFACE_THEME_DARK, L"frappe"},
+                        {INTERFACE_PALETTE_HIGH_CONTRAST_LIGHT, INTERFACE_THEME_LIGHT, L"contrast-light"},
+                        {INTERFACE_PALETTE_HIGH_CONTRAST_DARK, INTERFACE_THEME_DARK, L"contrast-dark"}
+                    };
+                    for(const Case& test : cases) {
+                        ThemeManager::SetSelectedTheme(test.theme); ThemeManager::SetNamedPalette(test.palette);
+                        ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+                        probe.paletteColor=probe.paletteGutter=probe.paletteBorder=probe.paletteSelected=probe.paletteSelectedText=probe.paletteHover=probe.mnemonicOk=probe.snapshotText=probe.accessibleText=false;
+                        const std::wstring paletteStage = std::wstring(L"palette-") + test.name;
+                        route(4, paletteStage);
+                        CStringA name; name.Format("palette_matrix_%ls", test.name);
+                        check(name.GetString(), probe.paletteColor && probe.paletteGutter && probe.paletteBorder &&
+                            probe.paletteSelected && probe.paletteSelectedText && probe.paletteHover && probe.snapshotText && probe.accessibleText && probe.mnemonicOk);
+                    }
+                    ThemeManager::CustomPalette customProbe;
+                    customProbe.id = L"menu-matrix-probe"; customProbe.name = L"Menu matrix probe";
+                    customProbe.base = ThemeManager::CustomPaletteBase::Dark;
+                    for(ThemeColorRole role : {THEME_COLOR_CONTROL, THEME_COLOR_BORDER, THEME_COLOR_TEXT,
+                        THEME_COLOR_SELECTION_BACKGROUND, THEME_COLOR_SELECTION_TEXT}) customProbe.present[role] = true;
+                    customProbe.colors[THEME_COLOR_CONTROL] = RGB(31,72,94); customProbe.colors[THEME_COLOR_BORDER] = RGB(228,184,65);
+                    customProbe.colors[THEME_COLOR_TEXT] = RGB(245,230,208); customProbe.colors[THEME_COLOR_SELECTION_BACKGROUND] = RGB(112,48,92);
+                    customProbe.colors[THEME_COLOR_SELECTION_TEXT] = RGB(255,255,255);
+                    ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK); ThemeManager::SetCustomPalette(customProbe);
+                    ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+                    probe.paletteColor=probe.paletteGutter=probe.paletteBorder=probe.paletteSelected=probe.paletteSelectedText=probe.paletteHover=probe.mnemonicOk=probe.snapshotText=probe.accessibleText=false;
+                    route(4, L"palette-custom-probe");
+                    check("palette_matrix_custom", probe.paletteColor && probe.paletteGutter && probe.paletteBorder &&
+                        probe.paletteSelected && probe.paletteSelectedText && probe.paletteHover && probe.snapshotText && probe.accessibleText && probe.mnemonicOk);
+                }
             }
         if(hadCustom) ThemeManager::SetCustomPalette(custom); else ThemeManager::SetNamedPalette(savedPalette);
     }

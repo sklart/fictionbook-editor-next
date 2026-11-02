@@ -1182,7 +1182,10 @@ bool CSettingsDlg::ProbeLayout()
 				if(offset + 2 >= disabled.size()) continue;
 				const BYTE b = disabled[offset], g = disabled[offset + 1], r = disabled[offset + 2];
 				if(r == GetRValue(disabledColor) && g == GetGValue(disabledColor) && b == GetBValue(disabledColor)) ++textPixels;
-				if(r == 255 && g == 255 && b == 255) ++highlightPixels;
+				// White cannot reveal a white embossed shadow when it is also the
+				// actual surface colour. The contrasting custom-palette fixtures
+				// exercise that shadow check independently.
+				if(ThemeManager::WindowColor() != RGB(255,255,255) && r == 255 && g == 255 && b == 255) ++highlightPixels;
 			}
 			bool boxChanged = false, textUnchanged = disabled.size() == disabledChecked.size();
 			if(textUnchanged) for(int y = 0; y < height; ++y) for(int x = 0; x < width; ++x) {
