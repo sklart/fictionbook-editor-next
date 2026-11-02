@@ -8,7 +8,7 @@ param(
     [switch]$CustomPalette,
     [switch]$HotkeyTab,
     [switch]$WordsTab,
-    [ValidateSet('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')]
+    [ValidateSet('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'fr-FR', 'es-ES', 'it-IT', 'pl-PL', 'pt-PT', 'nl-NL', 'cs-CZ', 'bg-BG')]
     [string[]]$Locales = @('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')
 )
 $ErrorActionPreference = 'Stop'
@@ -222,13 +222,15 @@ try {
     & pwsh -NoProfile -File (Join-Path $PSScriptRoot '..\localization\export-runtime-lang.ps1') -OutputDirectory (Join-Path $isolation.Runtime 'Lang') -Clean | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Runtime localization export failed.' }
     $catalog = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $PSScriptRoot '..\..\localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
-    $languageIds = @{ 'ru-RU' = 0xFBE002; 'en-US' = 0xFBE001; 'de-DE' = 0xFBE004; 'uk-UA' = 0xFBE003; 'es-ES' = 0xFBE006; 'bg-BG' = 0xFBE00C }
+    $languageIds = @{ 'ru-RU' = 0xFBE002; 'en-US' = 0xFBE001; 'de-DE' = 0xFBE004; 'uk-UA' = 0xFBE003; 'fr-FR' = 0xFBE005; 'es-ES' = 0xFBE006; 'it-IT' = 0xFBE007; 'pl-PL' = 0xFBE008; 'pt-PT' = 0xFBE009; 'nl-NL' = 0xFBE00A; 'cs-CZ' = 0xFBE00B; 'bg-BG' = 0xFBE00C }
     $settingsDirectory = Join-Path $isolation.DataPath 'Settings'
     New-Item -ItemType Directory -Path $settingsDirectory -Force | Out-Null
     if ($WordsTab) {
         [IO.File]::WriteAllText((Join-Path $settingsDirectory 'Words.xml'), '<?xml version="1.0" encoding="UTF-8"?><FBE><Words><Word><Value>test-word</Value><Counted>0</Counted></Word></Words></FBE>', [Text.UTF8Encoding]::new($false))
     }
-    $settingsTemplate = [IO.File]::ReadAllText((Join-Path $isolation.Runtime 'Data\Settings\Settings.xml'))
+    # The isolated runtime deliberately excludes the developer's Data tree.
+    # Start from an owned profile; omitted values are filled by FBE defaults.
+    $settingsTemplate = '<?xml version="1.0" encoding="utf-8"?><FBE><Settings ID="0"><DocumentTreeScripts>false</DocumentTreeScripts><IntefaceLangID>0</IntefaceLangID><InterfacePalette>classic</InterfacePalette></Settings></FBE>'
     if ($CustomPalette) {
         if ($settingsTemplate -notmatch '<InterfacePalette>[^<]*</InterfacePalette>') { throw 'The isolated settings template lacks the palette setting.' }
         $settingsTemplate = [regex]::Replace($settingsTemplate, '<InterfacePalette>[^<]*</InterfacePalette>', '<InterfacePalette>custom:layout-audit</InterfacePalette>')
