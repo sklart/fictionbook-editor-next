@@ -1,10 +1,11 @@
 // Exercise the command bar's own popup lifecycle, including the modal settings pump.
     struct MenuRouteProbe {
-        HWND frame, bar; HMENU root; CStringA* report; bool seen=false, done=false; int choose=-1; ULONGLONG selectedAt=0; unsigned options=0, refresh=0, enters=0, exits=0, depth=0, maxDepth=0; HWND owner=NULL, selectedMenu=NULL; bool timedOut=false, refreshedOpen=false, refreshWhileOpen=false; unsigned readyEvents=0, cancelEvents=0, deactivations=0; ULONGLONG enteredAt=0, exitedAt=0; UINT readyMessage=0; unsigned serial=0; HWND readyMenu=NULL;
+        HWND frame, bar; HMENU root; CStringA* report; bool seen=false, done=false, geometryOk=true, paletteColor=false; int choose=-1; ULONGLONG selectedAt=0; unsigned options=0, refresh=0, enters=0, exits=0, depth=0, maxDepth=0; HWND owner=NULL, selectedMenu=NULL; bool timedOut=false, refreshedOpen=false, refreshWhileOpen=false; unsigned readyEvents=0, cancelEvents=0, deactivations=0; ULONGLONG enteredAt=0, exitedAt=0; UINT readyMessage=0; unsigned serial=0; HWND readyMenu=NULL;
         std::wstring stage;
         void Dump(const char* phase) {
             CStringA rows;rows.AppendFormat("stage=%ls phase=%s theme=%d\n",stage.c_str(),phase,ThemeManager::GetSelectedTheme());
-            const HMENU menu=::GetSubMenu(root,5);
+            const int menuIndex=stage.find(L"scripts-")==0?6:stage.find(L"style-")==0?4:5;
+            const HMENU menu=::GetSubMenu(root,menuIndex);
             for(int i=0;i<::GetMenuItemCount(menu);++i) {
                 wchar_t text[1024]={};MENUITEMINFO info={};info.cbSize=sizeof(info);
                 info.fMask=MIIM_STRING|MIIM_ID|MIIM_FTYPE|MIIM_STATE|MIIM_DATA|MIIM_BITMAP|MIIM_SUBMENU;
@@ -66,6 +67,24 @@
                         self->refreshedOpen=true;::SendMessageW(self->frame,WM_COMMAND,ID_TOOLS_REFRESH_SCRIPTS,0);
                         self->Dump("refreshed-open");
                     }
+                    RECT popupBounds={}; ::GetWindowRect(window,&popupBounds);
+                    if(self->stage.find(L"scripts-")==0 || self->stage.find(L"style-")==0) {
+                        const int minWidth=UiMetrics::ScaleForDpi(75,UiMetrics::DpiForWindow(self->frame));
+                        self->geometryOk=popupBounds.right-popupBounds.left>=minWidth;
+                        self->report->AppendFormat("menu_geometry_%ls=%ldx%ld\n",self->stage.c_str(),popupBounds.right-popupBounds.left,popupBounds.bottom-popupBounds.top);
+                    }
+                    if(self->stage == L"palette-navy") {
+                        RECT client={}; ::GetWindowRect(window,&client); CImage image;
+                        const int width=client.right-client.left, height=client.bottom-client.top;
+                        COLORREF pixel=CLR_INVALID;
+                        if(width>8 && height>0 && image.Create(width,height,32)) {
+                            HDC dc=image.GetDC();
+                            if(dc && ::PrintWindow(window,dc,0)) pixel=::GetPixel(dc,width-8,height/2);
+                            if(dc) image.ReleaseDC();
+                        }
+                        self->paletteColor=pixel==ThemeManager::ControlColor();
+                        self->report->AppendFormat("palette_menu_actual=%lu expected=%lu\n",static_cast<unsigned long>(pixel),static_cast<unsigned long>(ThemeManager::ControlColor()));
+                    }
                     PluginOptionsProbe::prefix=self->stage;
                     PluginOptionsProbe::Capture(window,L"commandbar");
                     if(self->choose>=0) {
@@ -88,7 +107,7 @@
         ++probe.serial; probe.readyMenu=NULL; probe.readyEvents=probe.cancelEvents=probe.deactivations=0;probe.enteredAt=probe.exitedAt=0;
         probe.refreshWhileOpen=refreshOpen;probe.refreshedOpen=false;
         const unsigned options=probe.options, refresh=probe.refresh;
-        probe.stage=stage;probe.seen=false;probe.done=false;probe.choose=choose;probe.selectedAt=0;probe.Dump("before");
+        probe.stage=stage;probe.seen=false;probe.done=false;probe.geometryOk=true;probe.choose=choose;probe.selectedAt=0;probe.Dump("before");
         RECT itemRect={};check("commandbar_button",m_MenuBar.GetItemRect(item,&itemRect)!=FALSE);
         const UINT_PTR timer=::SetTimer(NULL,0,150,MenuRouteProbe::Tick);
         m_MenuBar.SendMessage(WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM((itemRect.left+itemRect.right)/2,(itemRect.top+itemRect.bottom)/2));
@@ -104,7 +123,7 @@
             probe.readyEvents,probe.cancelEvents,probe.deactivations,
             probe.exitedAt>=probe.enteredAt?probe.exitedAt-probe.enteredAt:0,::GetForegroundWindow());
         check("menu_ready_observed",probe.readyEvents>0);
-        check("commandbar_popup",probe.seen);probe.Dump("after");toolsMenu();
+        check("commandbar_popup",probe.seen);check("popup_geometry",probe.geometryOk);probe.Dump("after");toolsMenu();
         bool mappingsAlive=true;
         for(int i=0;i<m_MenuBar.m_arrCommand.GetSize();++i) {
             const HBITMAP bitmap=ThemeManager::NativeMenuBitmap(m_MenuBar.m_arrCommand[i]);
@@ -138,6 +157,13 @@
     route(5,L"settings-automatic",1);::SetEnvironmentVariableW(L"FBE_NEXT_TEST_MENU_THEME",NULL);
     check("automatic_committed",ThemeManager::GetSelectedTheme()==INTERFACE_THEME_AUTOMATIC);
     route(5,L"route-automatic");
+    if(ThemeManager::IsDarkModeSupported()) {
+        const InterfacePalette savedPalette=ThemeManager::GetNamedPalette(); ThemeManager::CustomPalette custom;
+        const bool hadCustom=ThemeManager::GetCustomPalette(custom);
+        ThemeManager::SetNamedPalette(INTERFACE_PALETTE_NAVY); ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+        probe.paletteColor=false; route(4,L"palette-navy"); check("palette_menu_color",probe.paletteColor);
+        if(hadCustom) ThemeManager::SetCustomPalette(custom); else ThemeManager::SetNamedPalette(savedPalette);
+    }
     ThemeManager::SetSelectedTheme(static_cast<InterfaceTheme>(start));ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 
 

@@ -22,6 +22,8 @@ InterfaceTheme g_selected = INTERFACE_THEME_AUTOMATIC;
 InterfacePalette g_namedPalette = INTERFACE_PALETTE_CLASSIC;
 ThemeManager::CustomPalette g_customPalette;
 bool g_customPaletteActive = false;
+struct PreviewContext { InterfaceTheme theme; InterfacePalette palette; const ThemeManager::CustomPalette* custom; };
+thread_local const PreviewContext* g_previewContext = NULL;
 bool g_systemDark = false;
 bool g_highContrast = false;
 HHOOK g_themeCbtHook = NULL;
@@ -573,6 +575,43 @@ void PaintDisabledTextLabel(HWND window,HDC dc)
     ::DrawTextW(dc,text.data(),-1,&rect,flags);::SetBkMode(dc,mode);::SetTextColor(dc,previous);::SelectObject(dc,old);
 }
 
+// Paint over the native non-client scrollbar after Windows has laid it out.
+// Hit testing, keyboard input and thumb tracking remain with the tree control.
+void PaintTreeScrollbars(HWND window)
+{
+	RECT windowRect = {}; if(!::GetWindowRect(window, &windowRect)) return;
+	HDC dc = ::GetWindowDC(window); if(!dc) return;
+	for(LONG id : {static_cast<LONG>(OBJID_VSCROLL), static_cast<LONG>(OBJID_HSCROLL)}) {
+		SCROLLBARINFO info = {}; info.cbSize = sizeof(info);
+		if(!::GetScrollBarInfo(window, id, &info) || (info.rgstate[0] & STATE_SYSTEM_INVISIBLE)) continue;
+		RECT bar = info.rcScrollBar; ::OffsetRect(&bar, -windowRect.left, -windowRect.top);
+		if(bar.right <= bar.left || bar.bottom <= bar.top) continue;
+		::FillRect(dc, &bar, ThemeManager::ControlBrush());
+		const bool vertical = id == OBJID_VSCROLL;
+		RECT thumb = bar;
+		if(vertical) { thumb.top = bar.top + info.xyThumbTop; thumb.bottom = bar.top + info.xyThumbBottom; }
+		else { thumb.left = bar.left + info.xyThumbTop; thumb.right = bar.left + info.xyThumbBottom; }
+		if(thumb.right > thumb.left && thumb.bottom > thumb.top) {
+			::InflateRect(&thumb, -2, -2); ::FillRect(dc, &thumb, ThemeManager::Brush(THEME_COLOR_BORDER));
+		}
+		const int arrow = info.dxyLineButton, half = 3;
+		HBRUSH brush = ::CreateSolidBrush(ThemeManager::TextColor());
+		if(brush) {
+			HGDIOBJ oldBrush = ::SelectObject(dc, brush), oldPen = ::SelectObject(dc, ::GetStockObject(NULL_PEN));
+			for(int end = 0; end < 2; ++end) {
+				const int cx = vertical ? (bar.left + bar.right) / 2 : (end ? bar.right - arrow / 2 : bar.left + arrow / 2);
+				const int cy = vertical ? (end ? bar.bottom - arrow / 2 : bar.top + arrow / 2) : (bar.top + bar.bottom) / 2;
+				POINT points[3];
+				if(vertical) { const int d = end ? 1 : -1; points[0] = {cx-half, cy-d}; points[1] = {cx+half, cy-d}; points[2] = {cx, cy+d*2}; }
+				else { const int d = end ? 1 : -1; points[0] = {cx-d, cy-half}; points[1] = {cx-d, cy+half}; points[2] = {cx+d*2, cy}; }
+				::Polygon(dc, points, 3);
+			}
+			::SelectObject(dc, oldPen); ::SelectObject(dc, oldBrush); ::DeleteObject(brush);
+		}
+	}
+	::ReleaseDC(window, dc);
+}
+
 LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
 {
 	if(message == WM_NCDESTROY)
@@ -587,6 +626,13 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 		return 1;
 	}
 	if(IsNativeFileDialogWindow(window)) return ::DefSubclassProc(window, message, wParam, lParam);
+	if(IsClass(window, L"Tree") && ThemeManager::IsDark() && !IsHighContrastEnabled() &&
+		(message == WM_NCPAINT || message == WM_PAINT || message == WM_HSCROLL || message == WM_VSCROLL ||
+		 message == WM_NCMOUSEMOVE || message == WM_NCLBUTTONUP || (message == WM_MOUSEMOVE && ::GetCapture() == window))) {
+		const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
+		if(::IsWindow(window)) PaintTreeScrollbars(window);
+		return result;
+	}
 	if(message == WM_PARENTNOTIFY && LOWORD(wParam) == WM_CREATE)
 	{
 		// Child creation can precede WM_CREATE of the child itself. Apply after
@@ -793,14 +839,6 @@ void ApplyModernTitleBar(HWND window, bool dark)
 		setAttribute(window, kDwmBorderColor, &border, sizeof(border));
 	}
 	if(dwmapi) ::FreeLibrary(dwmapi);
-	HMODULE uxtheme = ::LoadLibraryW(L"uxtheme.dll");
-	if(uxtheme)
-	{
-		typedef BOOL (WINAPI* AllowDarkModeForWindowFn)(HWND, BOOL);
-		AllowDarkModeForWindowFn allow = reinterpret_cast<AllowDarkModeForWindowFn>(::GetProcAddress(uxtheme, MAKEINTRESOURCEA(133)));
-		if(allow) allow(window, dark ? TRUE : FALSE);
-		::FreeLibrary(uxtheme);
-	}
 }
 
 void ApplyWindowSurface(HWND window)
@@ -823,6 +861,17 @@ void ApplyWindowSurface(HWND window)
 	} guard = { window };
 	const DWORD userBefore = g_recordApplyDiagnostics ? ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS) : 0;
 	const bool dark = ThemeManager::IsDark() && !IsHighContrastEnabled();
+	if(SupportsDarkMode() && (IsClass(window, WC_TREEVIEWW) || IsClass(window, L"Tree") ||
+		((::GetWindowLongPtrW(window, GWL_STYLE) & (WS_CHILD | WS_CAPTION)) == WS_CAPTION))) {
+	HMODULE uxtheme = ::LoadLibraryW(L"uxtheme.dll");
+	if(uxtheme)
+	{
+		typedef BOOL (WINAPI* AllowDarkModeForWindowFn)(HWND, BOOL);
+		AllowDarkModeForWindowFn allow = reinterpret_cast<AllowDarkModeForWindowFn>(::GetProcAddress(uxtheme, MAKEINTRESOURCEA(133)));
+		if(allow) allow(window, dark ? TRUE : FALSE);
+		::FreeLibrary(uxtheme);
+	}
+	}
 	::SetWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId, 0);
 	if((ThemeManager::UsesPaletteSurface() && UsesClassicSurfacePalette(window)) ||
 		(!dark && ThemeManager::UsesPaletteSurface() && IsComboBox(window)) ||
@@ -1674,11 +1723,39 @@ void RestoreSystemControlColors(HWND window)
 	}
 }
 
+// Keep native menu layout and input handling while using the palette's surface.
+class ScopedPaletteMenuBackground
+{
+	struct Saved { HMENU menu; HBRUSH brush; };
+	std::vector<Saved> m_saved;
+	HBRUSH m_brush;
+public:
+	ScopedPaletteMenuBackground() : m_brush(::CreateSolidBrush(ThemeManager::ControlColor())) {}
+	void Apply(HMENU menu) {
+		if(!m_brush || !::IsMenu(menu)) return;
+		MENUINFO info = {}; info.cbSize = sizeof(info); info.fMask = MIM_BACKGROUND;
+		if(::GetMenuInfo(menu, &info)) {
+			m_saved.push_back({menu, info.hbrBack}); info.hbrBack = m_brush;
+			::SetMenuInfo(menu, &info);
+		}
+		for(int i = 0; i < ::GetMenuItemCount(menu); ++i) Apply(::GetSubMenu(menu, i));
+	}
+	~ScopedPaletteMenuBackground() {
+		for(const auto& saved : m_saved) if(::IsMenu(saved.menu)) {
+			MENUINFO info = {}; info.cbSize = sizeof(info); info.fMask = MIM_BACKGROUND; info.hbrBack = saved.brush;
+			::SetMenuInfo(saved.menu, &info);
+		}
+		if(m_brush) ::DeleteObject(m_brush);
+	}
+};
+
 UINT TrackPopupMenu(HMENU menu, UINT flags, int x, int y, HWND owner)
 {
 	if(menu == NULL || !::IsWindow(owner)) return 0;
 	ScopedNativeMenuBitmaps bitmaps;
 	bitmaps.Apply(menu, UiMetrics::DpiForWindow(owner));
+	ScopedPaletteMenuBackground background;
+	if(UsesPaletteSurface()) background.Apply(menu);
 	return ::TrackPopupMenuEx(menu, flags | TPM_RETURNCMD, x, y, owner, NULL);
 }
 
@@ -1790,10 +1867,13 @@ InterfaceTheme GetSelectedTheme() { return g_selected; }
 bool IsDarkModeSupported() { return SupportsDarkMode(); }
 bool IsDark() {
 	if(!SupportsDarkMode()) return false;
-	if(g_customPaletteActive && g_customPalette.base == CustomPaletteBase::Dark) return true;
-	if(g_customPaletteActive && g_customPalette.base == CustomPaletteBase::Light) return false;
-	if(g_namedPalette != INTERFACE_PALETTE_CLASSIC) return NamedPaletteIsDark(g_namedPalette);
-	return g_selected == INTERFACE_THEME_DARK || (g_selected == INTERFACE_THEME_AUTOMATIC && g_systemDark);
+	const CustomPalette* custom = g_previewContext ? g_previewContext->custom : (g_customPaletteActive ? &g_customPalette : NULL);
+	const InterfacePalette palette = g_previewContext ? g_previewContext->palette : g_namedPalette;
+	const InterfaceTheme theme = g_previewContext ? g_previewContext->theme : g_selected;
+	if(custom && custom->base == CustomPaletteBase::Dark) return true;
+	if(custom && custom->base == CustomPaletteBase::Light) return false;
+	if(palette != INTERFACE_PALETTE_CLASSIC) return NamedPaletteIsDark(palette);
+	return theme == INTERFACE_THEME_DARK || (theme == INTERFACE_THEME_AUTOMATIC && g_systemDark);
 }
 bool UsesPaletteSurface() { return !IsHighContrastEnabled() && (IsDark() || g_customPaletteActive || g_namedPalette != INTERFACE_PALETTE_CLASSIC); }
 InterfacePalette GetNamedPalette() { return g_namedPalette; }
@@ -1833,10 +1913,25 @@ bool SetCustomPalette(const CustomPalette& palette)
 	return true;
 }
 bool IsHighContrast() { return g_highContrast; }
+void PreviewColors(InterfaceTheme theme, InterfacePalette palette, const CustomPalette* custom, COLORREF* colors)
+{
+	if(!colors) return;
+	if(custom) {
+		palette = custom->base == CustomPaletteBase::Graphite ? INTERFACE_PALETTE_GRAPHITE :
+			custom->base == CustomPaletteBase::Navy ? INTERFACE_PALETTE_NAVY :
+			custom->base == CustomPaletteBase::Sepia ? INTERFACE_PALETTE_SEPIA : INTERFACE_PALETTE_CLASSIC;
+	}
+	const PreviewContext context = { theme, palette, custom };
+	const PreviewContext* previous = g_previewContext; g_previewContext = &context;
+	for(int role = 0; role < THEME_COLOR_COUNT; ++role) colors[role] = Color(static_cast<ThemeColorRole>(role));
+	g_previewContext = previous;
+}
 void ResetApplyDiagnostics() { g_applyDiagnostics = {}; g_recordApplyDiagnostics = true; }
 ApplyDiagnostics GetApplyDiagnostics() { return g_applyDiagnostics; }
 COLORREF Color(ThemeColorRole role)
 {
+	const CustomPalette* custom = g_previewContext ? g_previewContext->custom : (g_customPaletteActive ? &g_customPalette : NULL);
+	const InterfacePalette palette = g_previewContext ? g_previewContext->palette : g_namedPalette;
 	if(IsHighContrastEnabled())
 	{
 		switch(role)
@@ -1853,11 +1948,11 @@ COLORREF Color(ThemeColorRole role)
 		default: return ::GetSysColor(COLOR_WINDOWTEXT);
 		}
 	}
-	if(role >= THEME_COLOR_WINDOW && role < THEME_COLOR_COUNT && g_customPaletteActive && g_customPalette.present[role])
-		return g_customPalette.colors[role];
-	if(role >= THEME_COLOR_WINDOW && role < THEME_COLOR_COUNT && g_namedPalette >= INTERFACE_PALETTE_CATPPUCCIN_LATTE && g_namedPalette < INTERFACE_PALETTE_COUNT)
-		return kPopularInterfacePalettes[g_namedPalette - INTERFACE_PALETTE_CATPPUCCIN_LATTE].colors[role];
-	if(role >= THEME_COLOR_WINDOW && role < THEME_COLOR_COUNT && g_namedPalette != INTERFACE_PALETTE_CLASSIC)
+	if(role >= THEME_COLOR_WINDOW && role < THEME_COLOR_COUNT && custom && custom->present[role])
+		return custom->colors[role];
+	if(role >= THEME_COLOR_WINDOW && role < THEME_COLOR_COUNT && palette >= INTERFACE_PALETTE_CATPPUCCIN_LATTE && palette < INTERFACE_PALETTE_COUNT)
+		return kPopularInterfacePalettes[palette - INTERFACE_PALETTE_CATPPUCCIN_LATTE].colors[role];
+	if(role >= THEME_COLOR_WINDOW && role < THEME_COLOR_COUNT && palette != INTERFACE_PALETTE_CLASSIC)
 	{
 		// Role order is fixed by ThemeColorRole; preserve the legacy enum values.
 		static const COLORREF graphite[THEME_COLOR_COUNT] = {
@@ -1872,7 +1967,7 @@ COLORREF Color(ThemeColorRole role)
 			RGB(246,240,225), RGB(238,229,211), RGB(51,42,33), RGB(142,127,107), RGB(196,183,162),
 			RGB(93,78,62), RGB(110,97,82), RGB(208,192,164), RGB(44,35,27), RGB(229,216,193),
 			RGB(216,199,172), RGB(104,70,42), RGB(104,70,42), RGB(153,42,34), RGB(124,78,0), RGB(35,106,56) };
-		return (g_namedPalette == INTERFACE_PALETTE_GRAPHITE ? graphite : g_namedPalette == INTERFACE_PALETTE_NAVY ? navy : sepia)[role];
+		return (palette == INTERFACE_PALETTE_GRAPHITE ? graphite : palette == INTERFACE_PALETTE_NAVY ? navy : sepia)[role];
 	}
 	if(!IsDark())
 	{

@@ -1002,10 +1002,9 @@ bool CSettingsDlg::ProbeLayout()
 			const CRect colours = controlRect(m_generalPage->GetDlgItem(IDC_OPTIONS_INTERFACE_GROUP));
 			const CRect tools = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_TOOLBARS_GROUP));
 			const CRect description = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_DESCRIPTION_GROUP));
-			const CRect themePreview = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_THEME_PREVIEW));
 			const CRect iconPreview = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_ICON_PREVIEW));
 			passed = passed && colours.bottom <= tools.top && tools.bottom <= description.top &&
-				themePreview.top >= colours.top && themePreview.bottom <= colours.bottom &&
+				(::GetWindowLongPtrW(m_generalPage->GetDlgItem(IDC_APPEARANCE_THEME_PREVIEW), GWL_STYLE) & WS_VISIBLE) == 0 &&
 				iconPreview.top >= tools.top && iconPreview.bottom <= tools.bottom &&
 				(::GetWindowLongPtrW(m_generalPage->GetDlgItem(IDC_PALETTE_ROLE), GWL_STYLE) & WS_VISIBLE) == 0 &&
 				(::GetWindowLongPtrW(m_generalPage->GetDlgItem(IDC_PALETTE_MANAGE), GWL_STYLE) & WS_VISIBLE) != 0;
@@ -1024,25 +1023,62 @@ bool CSettingsDlg::ProbeLayout()
 				passed = captured && SUCCEEDED(screenshot.Save(path)) && passed;
 				m_navigation.SetCurSel(previousNavigation);
 			}
-			const int width = UiMetrics::ScaleForDpi(200, m_layoutDpi), height = UiMetrics::ScaleForDpi(42, m_layoutDpi);
+			const int width = UiMetrics::ScaleForDpi(200, m_layoutDpi), height = UiMetrics::ScaleForDpi(100, m_layoutDpi);
 			HDC source = ::GetDC(page), dc = source ? ::CreateCompatibleDC(source) : NULL;
 			HBITMAP bitmap = source ? ::CreateCompatibleBitmap(source, width, height) : NULL;
 			HGDIOBJ old = dc && bitmap ? ::SelectObject(dc, bitmap) : NULL;
 			if(!dc || !bitmap || !old) passed = false;
 			else {
 				DRAWITEMSTRUCT draw = {}; draw.CtlType = ODT_STATIC; draw.hDC = dc; draw.rcItem = {0, 0, width, height};
-				BOOL handled = FALSE; draw.CtlID = IDC_APPEARANCE_THEME_PREVIEW;
-				m_generalPage->OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
-				passed = ::GetPixel(dc, UiMetrics::ScaleForDpi(3, m_layoutDpi), UiMetrics::ScaleForDpi(3, m_layoutDpi)) == ThemeManager::ControlColor() && passed;
+				BOOL handled = FALSE;
 				const HWND mainSize = m_generalPage->GetDlgItem(IDC_MAIN_TOOLBAR_ICON_SIZE);
 				const HWND scriptSize = m_generalPage->GetDlgItem(IDC_SCRIPT_ICON_SIZE);
 				const LRESULT originalMain = ::SendMessageW(mainSize, CB_GETCURSEL, 0, 0), originalScript = ::SendMessageW(scriptSize, CB_GETCURSEL, 0, 0);
 				::SendMessageW(mainSize, CB_SETCURSEL, 0, 0); ::SendMessageW(scriptSize, CB_SETCURSEL, 0, 0);
 				draw.CtlID = IDC_APPEARANCE_ICON_PREVIEW; m_generalPage->OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
-				const int x = UiMetrics::ScaleForDpi(29, m_layoutDpi), y = height / 2 + UiMetrics::ScaleForDpi(5, m_layoutDpi);
-				const COLORREF smallPixel = ::GetPixel(dc, x, y);
+				const int edge = (std::max)(1, UiMetrics::ScaleForDpi(1, m_layoutDpi));
+				const int pad = UiMetrics::ScaleForDpi(5, m_layoutDpi);
+				const int menuHeight = UiMetrics::ScaleForDpi(22, m_layoutDpi);
+				const int iconSize = UiMetrics::ScaleForDpi(16, m_layoutDpi);
+				const int middle = menuHeight + (height - menuHeight) / 2;
+				const int buttonX = pad + 4 * (iconSize + pad) - edge;
+				const int buttonY = menuHeight + (middle - menuHeight - iconSize) / 2 - edge;
+				passed = ::GetPixel(dc, width - edge * 3, menuHeight - edge) == ThemeManager::BorderColor() &&
+					::GetPixel(dc, buttonX, buttonY) == ThemeManager::BorderColor() && passed;
+				const HWND paletteControl = m_generalPage->GetDlgItem(IDC_INTERFACE_PALETTE);
+				const LRESULT originalPalette = ::SendMessageW(paletteControl, CB_GETCURSEL, 0, 0);
+				const InterfacePalette appliedPalette = ThemeManager::GetNamedPalette();
+				for(InterfacePalette palette : {INTERFACE_PALETTE_SOLARIZED_LIGHT, INTERFACE_PALETTE_ROSE_PINE_MOON}) {
+					if(!ThemeManager::IsDarkModeSupported() && ThemeManager::NamedPaletteIsDark(palette)) continue;
+					::SendMessageW(paletteControl, CB_SETCURSEL, CSettingsGeneralPage::RowForPalette(palette), 0);
+					m_generalPage->OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, paletteControl, handled);
+					m_generalPage->OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
+					COLORREF preview[THEME_COLOR_COUNT] = {};
+					ThemeManager::PreviewColors(_Settings.GetInterfaceTheme(), palette, NULL, preview);
+					passed = ::GetPixel(dc, width - edge * 3, menuHeight - edge) == preview[THEME_COLOR_BORDER] &&
+						::GetPixel(dc, width - edge * 3, middle - edge) == preview[THEME_COLOR_BORDER] &&
+						preview[THEME_COLOR_BORDER] != preview[THEME_COLOR_CONTROL] &&
+						ThemeManager::GetNamedPalette() == appliedPalette && passed;
+					if(artifactLength && artifactLength < _countof(artifactDirectory)) {
+						CImage sample;
+						const bool created = sample.Create(width, height, 32) != FALSE;
+						HDC target = created ? sample.GetDC() : NULL;
+						const bool captured = target && ::BitBlt(target, 0, 0, width, height, dc, 0, 0, SRCCOPY) != FALSE;
+						if(target) sample.ReleaseDC();
+						const CString path = CString(artifactDirectory) + (palette == INTERFACE_PALETTE_SOLARIZED_LIGHT ? L"\\preview-solarized.bmp" : L"\\preview-rose-pine.bmp");
+						passed = captured && SUCCEEDED(sample.Save(path)) && passed;
+					}
+				}
+				::SendMessageW(paletteControl, CB_SETCURSEL, originalPalette, 0);
+				m_generalPage->OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, paletteControl, handled);
+				m_generalPage->OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
+				std::vector<COLORREF> smallPreview;
+				for(int y = 0; y < height; ++y) for(int x = 0; x < width; ++x) smallPreview.push_back(::GetPixel(dc, x, y));
 				::SendMessageW(mainSize, CB_SETCURSEL, 3, 0); m_generalPage->OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
-				passed = smallPixel == ThemeManager::WindowColor() && ::GetPixel(dc, x, y) == ThemeManager::HoverColor() && passed;
+				bool changed = false; size_t pixel = 0;
+				for(int y = 0; y < height; ++y) for(int x = 0; x < width; ++x, ++pixel)
+					if(smallPreview[pixel] != ::GetPixel(dc, x, y)) changed = true;
+				passed = changed && passed;
 				::SendMessageW(mainSize, CB_SETCURSEL, originalMain, 0); ::SendMessageW(scriptSize, CB_SETCURSEL, originalScript, 0);
 			}
 			if(old) ::SelectObject(dc, old); if(bitmap) ::DeleteObject(bitmap); if(dc) ::DeleteDC(dc); if(source) ::ReleaseDC(page, source);
@@ -1387,7 +1423,6 @@ bool CSettingsDlg::ProbeLayout()
 		const CRect colourGroup = controlRect(m_generalPage->GetDlgItem(IDC_OPTIONS_INTERFACE_GROUP));
 		const CRect toolbarGroup = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_TOOLBARS_GROUP));
 		const CRect descriptionGroup = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_DESCRIPTION_GROUP));
-		const CRect themeSample = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_THEME_PREVIEW));
 		const CRect iconSample = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_ICON_PREVIEW));
 		struct AppearanceRow { int label, field; CRect group; };
 		const AppearanceRow rows[] = {
@@ -1421,9 +1456,9 @@ bool CSettingsDlg::ProbeLayout()
 		};
 		passed = colourGroup.bottom <= toolbarGroup.top && toolbarGroup.bottom <= descriptionGroup.top &&
 			insideGroup(copy, colourGroup) && insideGroup(manage, colourGroup) &&
-			insideGroup(themeSample, colourGroup) && insideGroup(iconSample, toolbarGroup) &&
+			insideGroup(iconSample, toolbarGroup) &&
 			copy.right <= manage.left && copy.top >= paletteRowBottom && manage.top >= paletteRowBottom &&
-			themeSample.top >= max(copy.bottom, manage.bottom) && iconSample.top >= scriptRowBottom && passed;
+			iconSample.top >= scriptRowBottom && passed;
 	}
 	// At 100% DPI, exercise the actual preferred window size against a
 	// conservative 1366x728 work area (768px screen with a 40px taskbar).

@@ -131,7 +131,9 @@ void CMainFrame::RunPortableStateTestScenario()
         const InterfaceTheme mode = _Settings.GetInterfaceTheme();
         const CString xmlThemeBefore = _Settings.GetStoredXmlSrcThemeId();
         const bool dirtyBefore = DocChanged();
-        bool passed = INTERFACE_PALETTE_COUNT - INTERFACE_PALETTE_CATPPUCCIN_LATTE == 10;
+        bool passed = INTERFACE_PALETTE_COUNT - INTERFACE_PALETTE_CATPPUCCIN_LATTE == 12;
+        for(int row = 0; row < INTERFACE_PALETTE_COUNT; ++row)
+            passed = CSettingsGeneralPage::RowForPalette(CSettingsGeneralPage::PaletteForRow(row)) == row && passed;
         auto luminance = [](COLORREF color) {
             auto linear = [](BYTE value) { const double v = value / 255.0; return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4); };
             return 0.2126 * linear(GetRValue(color)) + 0.7152 * linear(GetGValue(color)) + 0.0722 * linear(GetBValue(color));
@@ -176,6 +178,14 @@ void CMainFrame::RunPortableStateTestScenario()
         passed = _Settings.GetInterfacePalette() == L"custom:dracula" && ThemeManager::IsCustomPaletteActive() && passed;
         passed = ThemeManager::DeleteCustomPaletteFromProfile(existingCustom.id, customError) && passed;
         _Settings.SetInterfacePalette(L"catppuccin-latte");
+        if(ThemeManager::IsDarkModeSupported()) {
+            COLORREF previewColors[THEME_COLOR_COUNT] = {};
+            const COLORREF actualBefore = ThemeManager::Color(THEME_COLOR_CONTROL);
+            ThemeManager::PreviewColors(INTERFACE_THEME_AUTOMATIC, INTERFACE_PALETTE_CATPPUCCIN_MOCHA, NULL, previewColors);
+            passed = previewColors[THEME_COLOR_CONTROL] != actualBefore &&
+                ThemeManager::Color(THEME_COLOR_CONTROL) == actualBefore &&
+                ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE && passed;
+        }
         CSettingsGeneralPage page;
         const bool corePassed = passed;
         bool focused = false, opened = true, downPreview = true, escaped = true, entered = true, returned = true, copiedOk = true;
@@ -197,7 +207,7 @@ void CMainFrame::RunPortableStateTestScenario()
             ::SendMessageW(modeChoice, WM_KEYDOWN, VK_DOWN, 0);
             ::SendMessageW(modeChoice, WM_KEYUP, VK_DOWN, 0);
             modePreview = ::SendMessageW(modeChoice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT &&
-                ThemeManager::GetSelectedTheme() == INTERFACE_THEME_LIGHT &&
+                ThemeManager::GetSelectedTheme() == mode &&
                 ::SendMessageW(modeChoice, CB_GETDROPPEDSTATE, 0, 0) && _Settings.GetInterfaceTheme() == mode;
             ::SendMessageW(modeChoice, WM_KEYDOWN, VK_ESCAPE, 0);
             ::SendMessageW(modeChoice, WM_KEYUP, VK_ESCAPE, 0);
@@ -209,7 +219,7 @@ void CMainFrame::RunPortableStateTestScenario()
             ::SendMessageW(modeChoice, WM_KEYDOWN, VK_RETURN, 0);
             ::SendMessageW(modeChoice, WM_KEYUP, VK_RETURN, 0);
             modeEnter = ::SendMessageW(modeChoice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT &&
-                ThemeManager::GetSelectedTheme() == INTERFACE_THEME_LIGHT && _Settings.GetInterfaceTheme() == mode &&
+                ThemeManager::GetSelectedTheme() == mode && _Settings.GetInterfaceTheme() == mode &&
                 !::SendMessageW(modeChoice, CB_GETDROPPEDSTATE, 0, 0);
             passed = modePreview && modeEscape && modeEnter && passed;
             // Restore a known state even on failure so later checks remain diagnostic.
@@ -217,22 +227,34 @@ void CMainFrame::RunPortableStateTestScenario()
             ::SendMessageW(page.m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_THEME, CBN_SELCHANGE), reinterpret_cast<LPARAM>(modeChoice));
             ::SetFocus(choice);
             focused = ::GetFocus() == choice && ::IsWindowVisible(choice);
-            passed = focused && ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CATPPUCCIN_LATTE && passed;
+            passed = focused && ::SendMessage(choice, CB_GETCURSEL, 0, 0) == CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_CATPPUCCIN_LATTE) && passed;
             if(ThemeManager::IsDarkModeSupported()) {
                 ::SendMessageW(choice, CB_SHOWDROPDOWN, TRUE, 0);
                 opened = ::SendMessageW(choice, CB_GETDROPPEDSTATE, 0, 0) != FALSE;
                 passed = opened && passed;
+                wchar_t artifactDirectory[32768] = {};
+                const DWORD artifactLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_APPEARANCE_ARTIFACT_DIR", artifactDirectory, _countof(artifactDirectory));
+                if(artifactLength && artifactLength < _countof(artifactDirectory)) {
+                    COMBOBOXINFO info = {}; info.cbSize = sizeof(info); RECT rect = {};
+                    const bool available = ::GetComboBoxInfo(choice, &info) && info.hwndList && ::GetWindowRect(info.hwndList, &rect);
+                    CImage image; const bool created = available && image.Create(rect.right - rect.left, rect.bottom - rect.top, 32) != FALSE;
+                    HDC dc = created ? image.GetDC() : NULL;
+                    const bool captured = dc && ::PrintWindow(info.hwndList, dc, 0) != FALSE;
+                    if(dc) image.ReleaseDC();
+                    const CString path = CString(artifactDirectory) + L"\\palette-groups.bmp";
+                    passed = captured && SUCCEEDED(image.Save(path)) && passed;
+                }
                 ::SendMessageW(choice, WM_KEYDOWN, VK_DOWN, 0);
                 ::SendMessageW(choice, WM_KEYUP, VK_DOWN, 0);
-                downPreview = ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CATPPUCCIN_MOCHA &&
-                    ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_MOCHA && _Settings.GetInterfacePalette() == L"catppuccin-latte" && ::GetFocus() == choice;
+                downPreview = ::SendMessage(choice, CB_GETCURSEL, 0, 0) == CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SOLARIZED_LIGHT) &&
+                    ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE && _Settings.GetInterfacePalette() == L"catppuccin-latte" && ::GetFocus() == choice;
                 passed = downPreview && passed;
                 droppedAfterDown = static_cast<int>(::SendMessageW(choice, CB_GETDROPPEDSTATE, 0, 0));
                 ::SendMessageW(choice, WM_KEYDOWN, VK_ESCAPE, 0);
                 ::SendMessageW(choice, WM_KEYUP, VK_ESCAPE, 0);
                 selectedAfterEscape = static_cast<int>(::SendMessage(choice, CB_GETCURSEL, 0, 0));
                 themeAfterEscape = static_cast<int>(ThemeManager::GetNamedPalette());
-                escaped = selectedAfterEscape == INTERFACE_PALETTE_CATPPUCCIN_LATTE &&
+                escaped = selectedAfterEscape == CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_CATPPUCCIN_LATTE) &&
                     ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE;
                 passed = escaped && passed;
                 ::SendMessageW(choice, CB_SHOWDROPDOWN, TRUE, 0);
@@ -242,16 +264,20 @@ void CMainFrame::RunPortableStateTestScenario()
                 ::SendMessageW(choice, WM_KEYUP, VK_RETURN, 0);
                 selectedAfterEnter = static_cast<int>(::SendMessage(choice, CB_GETCURSEL, 0, 0));
                 themeAfterEnter = static_cast<int>(ThemeManager::GetNamedPalette());
-                entered = selectedAfterEnter == INTERFACE_PALETTE_CATPPUCCIN_MOCHA &&
-                    ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_MOCHA &&
+                entered = selectedAfterEnter == CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SOLARIZED_LIGHT) &&
+                    ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE &&
                     !::SendMessageW(choice, CB_GETDROPPEDSTATE, 0, 0);
+                ::SetFocus(modeChoice);
+                ::SendMessageW(page.m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_PALETTE, CBN_SELENDCANCEL), reinterpret_cast<LPARAM>(choice));
+                entered = entered && ::SendMessageW(choice, CB_GETCURSEL, 0, 0) == CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SOLARIZED_LIGHT) &&
+                    ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE;
                 passed = entered && passed;
                 ::SendMessageW(choice, CB_SHOWDROPDOWN, TRUE, 0);
                 ::SendMessageW(choice, WM_KEYDOWN, VK_UP, 0);
                 ::SendMessageW(choice, WM_KEYUP, VK_UP, 0);
                 ::SendMessageW(choice, WM_KEYDOWN, VK_RETURN, 0);
                 ::SendMessageW(choice, WM_KEYUP, VK_RETURN, 0);
-                returned = ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CATPPUCCIN_LATTE &&
+                returned = ::SendMessage(choice, CB_GETCURSEL, 0, 0) == CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_CATPPUCCIN_LATTE) &&
                     ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE &&
                     !::SendMessageW(choice, CB_GETDROPPEDSTATE, 0, 0);
                 passed = returned && passed;
@@ -259,8 +285,7 @@ void CMainFrame::RunPortableStateTestScenario()
             copiedOk = page.StagePaletteCopy(L"Catppuccin copy");
             passed = copiedOk && passed;
             ThemeManager::CustomPalette copied, expected;
-            passed = ThemeManager::GetCustomPalette(copied) && ThemeManager::CopyNamedPaletteColors(INTERFACE_PALETTE_CATPPUCCIN_LATTE, expected) && passed;
-            for(int role = 0; role < THEME_COLOR_COUNT; ++role) passed = copied.present[role] && copied.colors[role] == expected.colors[role] && passed;
+            passed = !ThemeManager::GetCustomPalette(copied) && ThemeManager::CopyNamedPaletteColors(INTERFACE_PALETTE_CATPPUCCIN_LATTE, expected) && passed;
             passed = page.CancelChanges() && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE && passed;
             page.DestroyWindow();
         }
@@ -290,15 +315,15 @@ void CMainFrame::RunPortableStateTestScenario()
                     ::KillTimer(NULL, static_cast<UINT_PTR>(data));
                     if(dialogAction == 2) {
                         dialogPreview = ::SendMessageW(controls.mode, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT &&
-                            ::SendMessageW(controls.palette, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_SEPIA;
+                            ::SendMessageW(controls.palette, CB_GETCURSEL, 0, 0) == CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SEPIA);
                         ::PostMessageW(window, WM_COMMAND, MAKEWPARAM(IDCANCEL, BN_CLICKED), reinterpret_cast<LPARAM>(::GetDlgItem(window, IDCANCEL)));
                         return FALSE;
                     }
                     ::SendMessageW(controls.mode, CB_SETCURSEL, INTERFACE_THEME_LIGHT, 0);
                     ::SendMessageW(::GetParent(controls.mode), WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_THEME, CBN_SELCHANGE), reinterpret_cast<LPARAM>(controls.mode));
-                    ::SendMessageW(controls.palette, CB_SETCURSEL, INTERFACE_PALETTE_SEPIA, 0);
+                    ::SendMessageW(controls.palette, CB_SETCURSEL, CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SEPIA), 0);
                     ::SendMessageW(::GetParent(controls.palette), WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_PALETTE, CBN_SELCHANGE), reinterpret_cast<LPARAM>(controls.palette));
-                    dialogPreview = ThemeManager::GetSelectedTheme() == INTERFACE_THEME_LIGHT && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA;
+                    dialogPreview = ThemeManager::GetSelectedTheme() == _Settings.GetInterfaceTheme() && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE;
                     const int button = dialogAction == 1 ? IDOK : IDCANCEL;
                     ::PostMessageW(window, WM_COMMAND, MAKEWPARAM(button, BN_CLICKED), reinterpret_cast<LPARAM>(::GetDlgItem(window, button)));
                     return FALSE;
@@ -389,7 +414,7 @@ void CMainFrame::RunPortableStateTestScenario()
                 ::SetPropW(page.m_hWnd, L"FBE.PaletteManagerTest", reinterpret_cast<HANDLE>(1));
                 page.OnManagePalettes(BN_CLICKED, IDC_PALETTE_MANAGE, NULL, handled);
                 passed = reinterpret_cast<ULONG_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteManagerResult")) == 1 &&
-                    !ThemeManager::IsCustomPaletteActive() && passed;
+                    ThemeManager::IsCustomPaletteActive() && passed;
                 ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerTest");
                 ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerResult");
                 page.CancelChanges(); page.DestroyWindow();
@@ -448,7 +473,7 @@ void CMainFrame::RunPortableStateTestScenario()
             CSettingsGeneralPage page;
             passed = page.Create(m_hWnd) != NULL && passed;
             if(page.m_hWnd) {
-                passed = page.StagePaletteDelete() && !ThemeManager::IsCustomPaletteActive() &&
+                passed = page.StagePaletteDelete() && ThemeManager::IsCustomPaletteActive() &&
                     !::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_DELETE)) && ThemeManager::LoadCustomPaletteFromProfile(original.id, stored, error) && passed;
                 passed = page.CancelChanges() && ThemeManager::IsCustomPaletteActive() && ThemeManager::LoadCustomPaletteFromProfile(original.id, stored, error) && stored.name == L"Renamed" && passed;
                 page.DestroyWindow();
@@ -522,10 +547,12 @@ void CMainFrame::RunPortableStateTestScenario()
             g_paletteColorDialogFound = false; g_paletteColorDialogAccept = true;
             const UINT_PTR acceptTimer = ::SetTimer(page.m_hWnd, 0x7422, 100, CheckPaletteColorDialogForTest);
             if(acceptTimer) ::SendMessageW(page.m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_PALETTE_CHOOSE_COLOR, BN_CLICKED), reinterpret_cast<LPARAM>(chooseButton));
-            passed = acceptTimer && g_paletteColorDialogFound && ThemeManager::Color(THEME_COLOR_WINDOW) == RGB(80, 90, 100) && passed;
+            ThemeManager::CustomPalette previewDraft;
+            passed = acceptTimer && g_paletteColorDialogFound && ThemeManager::Color(THEME_COLOR_WINDOW) == RGB(17, 34, 51) &&
+                page.GetStagedCustomPalette(previewDraft) && previewDraft.colors[THEME_COLOR_WINDOW] == RGB(80, 90, 100) && passed;
             page.OnResetPaletteColor(BN_CLICKED, IDC_PALETTE_RESET_COLOR, resetButton, handled);
             ThemeManager::CustomPalette inherited;
-            passed = ThemeManager::GetCustomPalette(inherited) && !inherited.present[THEME_COLOR_WINDOW] && passed;
+            passed = page.GetStagedCustomPalette(inherited) && !inherited.present[THEME_COLOR_WINDOW] && passed;
             passed = page.StagePaletteColor(THEME_COLOR_WINDOW, RGB(80, 90, 100), true) && passed;
             passed = ThemeManager::LoadCustomPaletteFromProfile(L"restart-test", stored, error) && stored.colors[THEME_COLOR_WINDOW] == RGB(17, 34, 51) && passed;
             { SettingsFileTransaction files; CString detail; passed = page.PrepareCommit(files, detail) && passed; }
@@ -555,12 +582,12 @@ void CMainFrame::RunPortableStateTestScenario()
                 ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_COUNT && passed;
             passed = page.StagePaletteCopy(L"Derived copy") && passed;
             ThemeManager::CustomPalette derived;
-            passed = ThemeManager::GetCustomPalette(derived) && derived.id != L"restart-test" && derived.base == ThemeManager::CustomPaletteBase::Sepia &&
+            passed = page.GetStagedCustomPalette(derived) && derived.id != L"restart-test" && derived.base == ThemeManager::CustomPaletteBase::Sepia &&
                 derived.present[THEME_COLOR_WINDOW] && derived.colors[THEME_COLOR_WINDOW] == RGB(17, 34, 51) && page.CancelChanges() && passed;
-            ::SendMessage(choice, CB_SETCURSEL, INTERFACE_PALETTE_SEPIA, 0);
+            ::SendMessage(choice, CB_SETCURSEL, CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SEPIA), 0);
             page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, choice, handled);
-            passed = !ThemeManager::IsCustomPaletteActive() && page.CancelChanges() && ThemeManager::IsCustomPaletteActive() && passed;
-            ::SendMessage(choice, CB_SETCURSEL, INTERFACE_PALETTE_SEPIA, 0);
+            passed = ThemeManager::IsCustomPaletteActive() && page.CancelChanges() && ThemeManager::IsCustomPaletteActive() && passed;
+            ::SendMessage(choice, CB_SETCURSEL, CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SEPIA), 0);
             page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, choice, handled);
             ::SendMessage(choice, CB_SETCURSEL, INTERFACE_PALETTE_COUNT, 0);
             page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, choice, handled);
@@ -603,7 +630,7 @@ void CMainFrame::RunPortableStateTestScenario()
             CSettingsGeneralPage page; CString error;
             passed = page.Create(m_hWnd) != NULL && passed;
             if(page.m_hWnd) {
-                passed = page.StagePaletteImport(exportPath, error) && ThemeManager::IsCustomPaletteActive() && passed;
+                passed = page.StagePaletteImport(exportPath, error) && !ThemeManager::IsCustomPaletteActive() && passed;
                 passed = !page.StagePaletteImport(exportPath, error) && !error.IsEmpty() && passed;
                 passed = page.CancelChanges() && ThemeManager::ListCustomPalettesInProfile().empty() && passed;
                 page.DestroyWindow();
@@ -659,7 +686,7 @@ void CMainFrame::RunPortableStateTestScenario()
                     }
                     passed = areaFound && passed;
                 }
-                passed = page.StagePaletteCopy(L"Cancelled copy") && ThemeManager::IsCustomPaletteActive() && ::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_ROLE)) && passed;
+                passed = page.StagePaletteCopy(L"Cancelled copy") && !ThemeManager::IsCustomPaletteActive() && ::IsWindowEnabled(page.GetDlgItem(IDC_PALETTE_ROLE)) && passed;
                 {
                     SettingsFileTransaction transaction; CString error;
                     passed = page.PrepareCommit(transaction, error) && ThemeManager::ListCustomPalettesInProfile().empty() && passed;
@@ -786,7 +813,7 @@ void CMainFrame::RunPortableStateTestScenario()
             ::SendMessage(choice, CB_SETCURSEL, INTERFACE_PALETTE_CLASSIC, 0);
             BOOL handled = FALSE;
             customPage.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, choice, handled);
-            passed = !ThemeManager::IsCustomPaletteActive() && customPage.CancelChanges() && ThemeManager::IsCustomPaletteActive() && passed;
+            passed = ThemeManager::IsCustomPaletteActive() && customPage.CancelChanges() && ThemeManager::IsCustomPaletteActive() && passed;
             if(!highContrast) passed = ThemeManager::WindowColor() == RGB(244, 241, 234) && passed;
             customPage.DestroyWindow();
         }
@@ -802,11 +829,14 @@ void CMainFrame::RunPortableStateTestScenario()
             BOOL handled = FALSE;
             passed = choice && ::SendMessage(choice, CB_GETCOUNT, 0, 0) == INTERFACE_PALETTE_COUNT &&
                 ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CLASSIC && passed;
-            ::SendMessage(choice, CB_SETCURSEL, INTERFACE_PALETTE_SEPIA, 0);
+            ::SendMessage(choice, CB_SETCURSEL, CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SEPIA), 0);
             palettePage.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, choice, handled);
-            passed = ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA && _Settings.GetInterfacePalette() == L"classic" && passed;
+            COLORREF preview[THEME_COLOR_COUNT] = {};
+            ThemeManager::PreviewColors(initialTheme, INTERFACE_PALETTE_SEPIA, NULL, preview);
+            if(!highContrast) passed = preview[THEME_COLOR_WINDOW] != ThemeManager::WindowColor() && passed;
+            passed = ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CLASSIC && _Settings.GetInterfacePalette() == L"classic" && passed;
             passed = palettePage.CancelChanges() && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CLASSIC && passed;
-            ::SendMessage(choice, CB_SETCURSEL, INTERFACE_PALETTE_SEPIA, 0);
+            ::SendMessage(choice, CB_SETCURSEL, CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SEPIA), 0);
             palettePage.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, choice, handled);
             palettePage.Commit();
             passed = _Settings.GetInterfacePalette() == L"sepia" && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA && passed;
@@ -1070,7 +1100,7 @@ void CMainFrame::RunPortableStateTestScenario()
             ::SendMessage(paletteChoice, CB_SETCURSEL, INTERFACE_PALETTE_CLASSIC, 0);
             page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, paletteChoice, handled);
             ::SendMessage(paletteChoice, WM_KEYDOWN, VK_DOWN, 0);
-            passed = ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_SEPIA && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA && passed;
+            passed = ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SEPIA) && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA && passed;
             ::SendMessage(paletteChoice, WM_KEYDOWN, VK_UP, 0);
             passed = ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CLASSIC && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CLASSIC && passed;
             for(InterfacePalette light : {INTERFACE_PALETTE_SEPIA, INTERFACE_PALETTE_CATPPUCCIN_LATTE}) {
@@ -1141,7 +1171,7 @@ void CMainFrame::RunPortableStateTestScenario()
                 ::SendMessage(paletteChoice, CB_SETCURSEL, dark, 0);
                 page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, paletteChoice, handled);
                 passed = ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE &&
-                    ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CATPPUCCIN_LATTE && passed;
+                    ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_CATPPUCCIN_LATTE) && passed;
             }
             passed = page.CancelChanges() && passed;
             page.DestroyWindow();

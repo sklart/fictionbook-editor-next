@@ -56,6 +56,8 @@ enum InterfacePalette
 	INTERFACE_PALETTE_DRACULA,
 	INTERFACE_PALETTE_CATPPUCCIN_FRAPPE,
 	INTERFACE_PALETTE_CATPPUCCIN_MACCHIATO,
+	INTERFACE_PALETTE_HIGH_CONTRAST_LIGHT,
+	INTERFACE_PALETTE_HIGH_CONTRAST_DARK,
 	INTERFACE_PALETTE_COUNT
 };
 
@@ -111,6 +113,7 @@ namespace ThemeManager
 	bool IsDarkModeSupported();
 	bool IsHighContrast();
 	COLORREF Color(ThemeColorRole role);
+	void PreviewColors(InterfaceTheme theme, InterfacePalette palette, const CustomPalette* custom, COLORREF* colors);
 	COLORREF WindowColor();
 	COLORREF TextColor();
 	COLORREF ControlColor();

@@ -196,8 +196,8 @@ LRESULT CALLBACK ContextAttributeBoxThemeProc(HWND window, UINT message, WPARAM 
 		if(ThemeManager::UsesPaletteSurface())
 		{
 			::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
-			::SetBkColor(dc, ThemeManager::ControlColor());
-			return reinterpret_cast<LRESULT>(ThemeManager::ControlBrush());
+			::SetBkColor(dc, ThemeManager::WindowColor());
+			return reinterpret_cast<LRESULT>(ThemeManager::WindowBrush());
 		}
 		::SetTextColor(dc, ::GetSysColor(enabled ? COLOR_WINDOWTEXT : COLOR_GRAYTEXT));
 		::SetBkColor(dc, ::GetSysColor(enabled ? COLOR_WINDOW : COLOR_BTNFACE));
@@ -210,7 +210,10 @@ LRESULT CALLBACK ContextAttributeBoxThemeProc(HWND window, UINT message, WPARAM 
 		// follows a custom palette. Paint only the arrow button; native hit
 		// testing and dropdown behaviour remain with the control.
 		COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
-		if(::GetComboBoxInfo(window, &info)) {
+		// Simple/edit-only combos report an empty button rectangle. Drawing an
+		// arrow for that rectangle leaves a triangle at the field's top-left.
+		if(::GetComboBoxInfo(window, &info) && info.rcButton.right > info.rcButton.left &&
+			info.rcButton.bottom > info.rcButton.top) {
 			HDC client = ::GetDC(window);
 			if(client) {
 				::FillRect(client, &info.rcButton, ThemeManager::ControlBrush());

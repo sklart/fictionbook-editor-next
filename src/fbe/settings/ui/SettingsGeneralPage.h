@@ -42,6 +42,7 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	int m_paletteDropdownStart = -1;
 	bool m_paletteChangedBeforeDropdown = false;
 	bool m_reopeningPaletteDropdown = false;
+	bool m_applyingPalettePreview = false;
 	bool m_cancellingPaletteDropdown = false;
 	bool m_closing = false;
 	bool m_paletteChanged = false;
@@ -59,6 +60,13 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 
 public:
 	explicit CSettingsGeneralPage(bool darkThemeSupported = ThemeManager::IsDarkModeSupported()) : m_darkThemeSupported(darkThemeSupported) {}
+	static InterfacePalette PaletteForRow(int row);
+	static int RowForPalette(InterfacePalette palette);
+	bool GetStagedCustomPalette(ThemeManager::CustomPalette& palette) const {
+		const int index = m_acceptedPaletteIndex - INTERFACE_PALETTE_COUNT;
+		if(index < 0 || index >= static_cast<int>(m_customPalettes.size())) return false;
+		palette = m_customPalettes[index]; return true;
+	}
 	enum { IDD = IDD_SETTINGS_GENERAL };
 
 	BEGIN_MSG_MAP(CSettingsGeneralPage)
@@ -72,6 +80,7 @@ public:
 		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_DROPDOWN, OnThemeDropdown)
 		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_SELENDCANCEL, OnThemeDropdownCancel)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_SELCHANGE, OnInterfacePaletteChanged)
+		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_SELENDOK, OnPaletteDropdownAccept)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_DROPDOWN, OnPaletteDropdown)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE, CBN_SELENDCANCEL, OnPaletteDropdownCancel)
 		COMMAND_HANDLER(IDC_INTERFACE_PALETTE_COPY, BN_CLICKED, OnCopyPalette)
@@ -98,6 +107,7 @@ public:
 	LRESULT OnInterfacePaletteChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnPaletteDropdown(WORD, WORD, HWND, BOOL&);
 	LRESULT OnPaletteDropdownCancel(WORD, WORD, HWND, BOOL&);
+	LRESULT OnPaletteDropdownAccept(WORD, WORD, HWND, BOOL&);
 	LRESULT OnCopyPalette(WORD, WORD, HWND, BOOL&);
 	LRESULT OnManagePalettes(WORD, WORD, HWND, BOOL&);
 	LRESULT OnIconPreviewChanged(WORD, WORD, HWND, BOOL&);

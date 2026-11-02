@@ -109,7 +109,7 @@ bool ShowNativeDocumentTreeViewBarPopup(CTreeWithToolBar& tree, HWND commandBar,
 LRESULT CALLBACK DocumentTreeViewBarWindowThemeProc(HWND window, UINT message, WPARAM wParam,
 	LPARAM lParam, UINT_PTR, DWORD_PTR reference)
 {
-	if(ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
+	if(ThemeManager::UsesPaletteSurface())
 	{
 		int item = -1;
 		if(message == WM_LBUTTONDOWN)
@@ -150,7 +150,7 @@ LRESULT CALLBACK DocumentTreeViewBarThemeProc(HWND window, UINT message, WPARAM 
 		return ::DefSubclassProc(window, message, wParam, lParam);
 
 	NMTBCUSTOMDRAW* draw = reinterpret_cast<NMTBCUSTOMDRAW*>(header);
-	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
+	const bool dark = ThemeManager::UsesPaletteSurface();
 	if(draw->nmcd.dwDrawStage == CDDS_PREPAINT)
 	{
 		RECT client = {}; ::GetClientRect(viewBar, &client);
@@ -415,7 +415,7 @@ LRESULT CTreeWithToolBar::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 		::SendMessage(m_script_search, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFontForWindow(m_script_search)), TRUE);
 		ThemeManager::ApplyToWindow(m_script_search);
 	}
-	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
+	const bool dark = ThemeManager::UsesPaletteSurface();
 	ApplyStructureMenuCheckmarks();
 	if(m_rebar.IsWindow())
 	{
@@ -461,7 +461,7 @@ LRESULT CTreeWithToolBar::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CTreeWithToolBar::OnThemeEraseBackground(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
 {
-	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast()) { bHandled = FALSE; return 0; }
+	if(!ThemeManager::UsesPaletteSurface()) { bHandled = FALSE; return 0; }
 	RECT client = {}; GetClientRect(&client);
 	::FillRect(reinterpret_cast<HDC>(wParam), &client, ThemeManager::ControlBrush());
 	return 1;
@@ -469,7 +469,7 @@ LRESULT CTreeWithToolBar::OnThemeEraseBackground(UINT, WPARAM wParam, LPARAM, BO
 
 LRESULT CTreeWithToolBar::OnToolbarCustomDraw(int, LPNMHDR header, BOOL& bHandled)
 {
-	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast() || (header->hwndFrom != m_toolbar && header->hwndFrom != m_view_bar))
+	if(!ThemeManager::UsesPaletteSurface() || (header->hwndFrom != m_toolbar && header->hwndFrom != m_view_bar))
 	{
 		bHandled = FALSE;
 		return 0;
@@ -1187,7 +1187,7 @@ void CDocumentTree::PaintLightTitle(HDC dc)
 
 LRESULT CDocumentTree::OnThemeEraseBackground(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
 {
-	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast()) { bHandled = FALSE; return 0; }
+	if(!ThemeManager::UsesPaletteSurface()) { bHandled = FALSE; return 0; }
 	PaintDarkTitle(reinterpret_cast<HDC>(wParam));
 	return 1;
 }
@@ -1195,7 +1195,7 @@ LRESULT CDocumentTree::OnThemeEraseBackground(UINT, WPARAM wParam, LPARAM, BOOL&
 LRESULT CDocumentTree::OnThemePaint(UINT, WPARAM, LPARAM, BOOL& bHandled)
 {
 	PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(m_hWnd, &paint);
-	if(ThemeManager::IsDark() && !ThemeManager::IsHighContrast()) PaintDarkTitle(dc);
+	if(ThemeManager::UsesPaletteSurface()) PaintDarkTitle(dc);
 	else PaintLightTitle(dc);
 	::EndPaint(m_hWnd, &paint);
 	bHandled = TRUE;
@@ -1206,7 +1206,7 @@ LRESULT CDocumentTree::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 {
 	if(m_mode_button.IsWindow())
 	{
-		if(ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
+		if(ThemeManager::UsesPaletteSurface())
 		{
 			::SendMessage(m_mode_button, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
 			COLORSCHEME colours = {}; colours.dwSize = sizeof(colours);

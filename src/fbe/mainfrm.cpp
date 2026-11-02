@@ -222,6 +222,14 @@ const UINT_PTR kMainRebarThemeSubclassId = 0x46425242; // "FBRB"
 
 LRESULT CALLBACK MainRebarThemeProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
 {
+	if(message == WM_SETCURSOR && LOWORD(lParam) == HTCLIENT)
+	{
+		RBHITTESTINFO hit = {}; ::GetCursorPos(&hit.pt); ::ScreenToClient(window, &hit.pt);
+		if(::SendMessage(window, RB_HITTEST, 0, reinterpret_cast<LPARAM>(&hit)) >= 0 && (hit.flags & RBHT_GRABBER))
+		{
+			::SetCursor(::LoadCursor(NULL, IDC_SIZEALL)); return TRUE;
+		}
+	}
 	if(message == WM_NCDESTROY)
 	{
 		g_rebarBaseStyles.erase(window);
@@ -581,7 +589,7 @@ bool ShowNativeMainMenuPopup(HWND commandBar, int item)
 LRESULT CALLBACK MainMenuBarWindowThemeProc(HWND window, UINT message, WPARAM wParam,
 	LPARAM lParam, UINT_PTR, DWORD_PTR)
 {
-	if(ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
+	if(ThemeManager::UsesPaletteSurface())
 	{
 		int item = -1;
 		if(message == WM_LBUTTONDOWN)
