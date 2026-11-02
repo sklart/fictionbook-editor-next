@@ -2,7 +2,7 @@
 param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-function Read([string]$p) { Get-Content -Raw -LiteralPath (Join-Path $root $p) }
+function Read([string]$p) { Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root $p) }
 $spelling = Read 'src\fbe\settings\ui\SettingsSpellingPage.cpp'
 if ($spelling -match 'OPENFILENAME|GetOpenFileName') { throw 'Spelling dictionary picker must use ModernFileDialog.' }
 if ($spelling -notmatch 'ModernFileDialog::Request') { throw 'Spelling picker request is missing.' }
