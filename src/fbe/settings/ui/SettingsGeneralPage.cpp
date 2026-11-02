@@ -359,7 +359,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	m_acceptedPaletteIndex = RowForPalette(static_cast<InterfacePalette>(m_acceptedPaletteIndex));
 	for(const ThemeManager::CustomPalette& palette : ThemeManager::ListCustomPalettesInProfile()) {
-		const CString label = CString(palette.name.c_str()) + L" (" + palette.id.c_str() + L")";
+		const CString label(palette.name.c_str());
 		const int index = m_interfacePalette.AddString(label);
 		if(index < 0) break;
 		m_customPalettes.push_back(palette);
@@ -1225,7 +1225,7 @@ bool CSettingsGeneralPage::StagePaletteCopy(const CString& name)
 	copy.id = static_cast<LPCWSTR>(id); copy.name = static_cast<LPCWSTR>(name);
 	ThemeManager::CustomPalette validated; std::wstring error;
 	if(!ThemeManager::ParseCustomPalette(ThemeManager::SerializeCustomPalette(copy), validated, error) || validated.name != copy.name) return false;
-	const CString label = name + L" (" + id + L")";
+	const CString label(name);
 	const int index = m_interfacePalette.AddString(label);
 	if(index < 0) return false;
 	m_customPalettes.push_back(copy); m_pendingPalettes.push_back(copy); m_newPaletteIds.push_back(copy.id);
@@ -1266,7 +1266,7 @@ bool CSettingsGeneralPage::StagePaletteImport(const CString& path, CString& erro
 	if(dark && !m_darkThemeSupported) {
 		error = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.unavailable", L"This dark palette requires Windows 10 (1809) or newer."); return false;
 	}
-	const CString label = CString(imported.name.c_str()) + L" (" + imported.id.c_str() + L")";
+	const CString label(imported.name.c_str());
 	const int index = m_interfacePalette.AddString(label);
 	if(index < 0) { error = L"Cannot add palette to the list."; return false; }
 	m_customPalettes.push_back(imported); m_pendingPalettes.push_back(imported); m_newPaletteIds.push_back(imported.id);
@@ -1331,8 +1331,8 @@ bool CSettingsGeneralPage::StagePaletteRename(const CString& name)
 	ThemeManager::CustomPalette validated; std::wstring error;
 	if(!ThemeManager::ParseCustomPalette(ThemeManager::SerializeCustomPalette(draft), validated, error) || validated.name != draft.name) return false;
 	if(previous.name == draft.name) return true;
-	const CString oldLabel = CString(previous.name.c_str()) + L" (" + previous.id.c_str() + L")";
-	const CString label = name + L" (" + draft.id.c_str() + L")";
+	const CString oldLabel(previous.name.c_str());
+	const CString label(name);
 	m_interfacePalette.DeleteString(selection);
 	const int inserted = m_interfacePalette.InsertString(selection, label);
 	if(inserted != selection) {
@@ -1410,9 +1410,32 @@ LRESULT CSettingsGeneralPage::OnManagePalettes(WORD, WORD, HWND, BOOL&)
     return 0;
 }
 
+CString CSettingsGeneralPage::SuggestedPaletteCopyName() const
+{
+	CString original;
+	const int selection = m_interfacePalette.GetCurSel();
+	if(selection < 0) return CString();
+	m_interfacePalette.GetLBText(selection, original);
+	CString prefix = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.copy_prefix", L"Copy of ");
+	CString base = prefix + original;
+	if(base.GetLength() > 96) base = base.Left(96);
+	CString name(base);
+	for(int number = 2; ; ++number) {
+		bool exists = false;
+		for(int index = 0; index < m_interfacePalette.GetCount(); ++index) {
+			CString existing; m_interfacePalette.GetLBText(index, existing);
+			if(existing.CompareNoCase(name) == 0) { exists = true; break; }
+		}
+		if(!exists) break;
+		name.Format(L"%s %d", base.GetString(), number);
+	}
+	return name;
+}
+
 LRESULT CSettingsGeneralPage::OnCopyPalette(WORD, WORD, HWND, BOOL&)
 {
-	CString name;
+	CString name = SuggestedPaletteCopyName();
+	if(name.IsEmpty()) return 0;
 	if(AU::InputBoxOwned(name, FbeLoadRuntimeStringByKey(L"fbe.settings.palette.copy", L"Create copy..."),
 		FbeLoadRuntimeStringByKey(L"fbe.settings.palette.copy_name", L"Name of the new interface palette:"), m_hWnd) != IDYES) return 0;
 	name.Trim();

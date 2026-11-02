@@ -438,7 +438,17 @@ void CMainFrame::RunPortableStateTestScenario()
             CSettingsGeneralPage page;
             passed = page.Create(m_hWnd) != NULL && passed;
             if(page.m_hWnd) {
-                passed = page.StagePaletteCopy(L"Temporary copy") && page.StagePaletteDelete() && passed;
+                HWND list = page.GetDlgItem(IDC_INTERFACE_PALETTE);
+                const int originalRow = static_cast<int>(::SendMessageW(list, CB_GETCURSEL, 0, 0));
+                const CString suggested = page.SuggestedPaletteCopyName();
+                passed = !suggested.IsEmpty() && page.StagePaletteCopy(suggested) && passed;
+                const int row = static_cast<int>(::SendMessageW(list, CB_GETCURSEL, 0, 0));
+                wchar_t label[256] = {};
+                if(row >= 0) ::SendMessageW(list, CB_GETLBTEXT, row, reinterpret_cast<LPARAM>(label));
+                ::SendMessageW(list, CB_SETCURSEL, originalRow, 0);
+                passed = page.SuggestedPaletteCopyName() == suggested + L" 2" && passed;
+                ::SendMessageW(list, CB_SETCURSEL, row, 0);
+                passed = row >= 0 && suggested == label && page.StagePaletteDelete() && passed;
                 SettingsFileTransaction files; CString detail;
                 passed = page.PrepareCommit(files, detail) && files.Commit() && page.CancelChanges() &&
                     ThemeManager::ListCustomPalettesInProfile().size() == 1 && passed;

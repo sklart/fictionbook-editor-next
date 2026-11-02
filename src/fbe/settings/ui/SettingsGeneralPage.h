@@ -121,6 +121,7 @@ public:
 	LRESULT OnChoosePaletteColor(WORD, WORD, HWND, BOOL&);
 	LRESULT OnResetPaletteColor(WORD, WORD, HWND, BOOL&);
 	bool StagePaletteCopy(const CString& name);
+	CString SuggestedPaletteCopyName() const;
 	bool StagePaletteColor(ThemeColorRole role, COLORREF color, bool custom);
 	void ConfigureInterfaceTheme(bool darkThemeSupported);
 	void MakeAppearanceOnly();
