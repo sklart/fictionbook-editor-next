@@ -85,7 +85,7 @@ public:
         SetDlgItemText(IDOK, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_tools_settings.ok", L"OK"));
         SetDlgItemText(IDCANCEL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_tools_settings.cancel", L"Cancel"));
         FitLocalizedLayout();
-        CComboBox roles = GetDlgItem(IDC_PALETTE_ROLE);
+        CComboBox roles(GetDlgItem(IDC_PALETTE_ROLE).m_hWnd);
         for(int i = 0; i < m_page.m_paletteRole.GetCount(); ++i) { CString text; m_page.m_paletteRole.GetLBText(i, text); roles.AddString(text); }
         roles.SetCurSel(m_page.m_paletteRole.GetCurSel());
         m_tooltips.Initialize(m_hWnd);

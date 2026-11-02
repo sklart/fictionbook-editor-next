@@ -200,7 +200,8 @@ class AuditOutputTests(unittest.TestCase):
         source.parent.mkdir(parents=True)
         source.write_bytes(b'function Run(){}\r\n')
         digest = source.read_bytes()
-        proposal = {'path': name, 'changes': [{'field': 'usage', 'before': 'x', 'after': 'y'}], 'evidence': 'fixture'}
+        proposal = {'path': name, 'revisionStatus': 'current', 'codeSha256': 'fixture',
+                    'changes': [{'field': 'usage', 'before': 'x', 'after': 'y'}], 'evidence': 'fixture'}
         self.audit['write_reports']([], output, 'fixture', [proposal])
         text = (output / 'script-card-content-audit.html').read_text(encoding='utf-8')
         target = html.unescape(unquote(re.search(r"href='([^']+)'", text)[1]))

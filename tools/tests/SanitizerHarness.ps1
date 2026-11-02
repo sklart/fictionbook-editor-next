@@ -43,11 +43,16 @@ function Invoke-SanitizerCase {
     if($Sanitizer -eq 'Address' -and 3 -in $ExpectedChildExitCodes) { throw 'Exit 3 is reserved for ASan abort and cannot be an expected application exit.' }
     New-Item -ItemType Directory -Force $Directory | Out-Null
     $directoryPath=(Resolve-Path -LiteralPath $Directory).Path
-    $dump=Join-Path $directoryPath ('asan-'+[guid]::NewGuid().ToString('N')+'.dmp')
+    $repositoryRoot=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
+    $dumpPrefix=Join-Path $repositoryRoot ('build/asandump-'+[guid]::NewGuid().ToString('N').Substring(0,12))
     $saved=@{}
     foreach($key in @('ASAN_OPTIONS','ASAN_SAVE_DUMPS','UBSAN_OPTIONS')) { $saved[$key]=[Environment]::GetEnvironmentVariable($key) }
     if($Sanitizer -eq 'Address') {
-        $env:ASAN_SAVE_DUMPS=$dump
+        # MSVC ASan truncates long dump paths; workers may also change their
+        # current directory, so use a short absolute path and collect it below.
+        if($dumpPrefix.Length -gt 100) { throw 'Repository path is too long for ASan dump output.' }
+        New-Item -ItemType Directory -Force (Split-Path -Parent $dumpPrefix) | Out-Null
+        $env:ASAN_SAVE_DUMPS=$dumpPrefix+'.dmp'
         $logPrefix=(Join-Path $directoryPath 'asan').Replace('\','/')
         $symbolize=if($OfflineSymbolization) {0} else {1}
         $env:ASAN_OPTIONS="halt_on_error=1:abort_on_error=1:windows_hook_rtl_allocators=1:alloc_dealloc_mismatch=1:symbolize=${symbolize}:symbolize_inline_frames=0:log_path='$logPrefix'"
@@ -90,6 +95,9 @@ function Invoke-SanitizerCase {
         $pattern=if($Sanitizer -eq 'Address') {'ERROR:\s*(AddressSanitizer|LeakSanitizer)|AddressSanitizer:|AddressSanitizer failed|ASan runtime|Sanitizer CHECK failed|Shadow memory range interleaves'} else {'runtime error:|UndefinedBehaviorSanitizer|(?m)^\s*ubsan\b|Sanitizer CHECK failed'}
         $diagnostics=@($logs | Where-Object { Select-String -LiteralPath $_.FullName -Pattern $pattern -Quiet })
         $completedStacks=if($Sanitizer -eq 'Address') {@(Complete-SanitizerStack -Logs @($diagnostics | ForEach-Object FullName) -Executable $Executable -Force:$OfflineSymbolization)} else {@()}
+        foreach($file in @(Get-ChildItem -LiteralPath (Split-Path -Parent $dumpPrefix) -File -Filter ((Split-Path -Leaf $dumpPrefix)+'*.dmp'))) {
+            Move-Item -LiteralPath $file.FullName -Destination $directoryPath
+        }
         $dumps=@(Get-ChildItem -LiteralPath $directoryPath -File -Filter '*.dmp')
         $failure=($null -ne $monitor.ObservationError) -or $timedOut -or $workerExit -ne 0 -or $childFailures.Count -gt 0 -or $diagnostics.Count -gt 0 -or $dumps.Count -gt 0 -or $uninstrumented.Count -gt 0
         $result=[ordered]@{name=$Name;executable=$Executable;commit=(& git -C (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path rev-parse HEAD).Trim();sanitizer=$Sanitizer;status=$(if($failure){'FAIL'}else{'PASS'});exitCode=$workerExit;workerId=$workerId;allProcesses=$trace;timedOut=$timedOut;stdout=$stdout;stderr=$stderr;observationError=$monitor.ObservationError;stackTraceFiles=@($diagnostics | ForEach-Object FullName);dumpPaths=@($dumps | ForEach-Object FullName);childFailures=$childFailures;processes=$children}
@@ -104,7 +112,17 @@ function Invoke-SanitizerCase {
         return [pscustomobject]$result
     } finally {
         if($monitor) { $monitor.Dispose() }
-        foreach($key in $saved.Keys) { [Environment]::SetEnvironmentVariable($key,$saved[$key]) }
-        if($process) { $process.Dispose() }
+        try {
+            # Preserve a completed dump even if result collection itself failed.
+            $dumpDirectory=Split-Path -Parent $dumpPrefix
+            if(Test-Path -LiteralPath $dumpDirectory) {
+                foreach($file in @(Get-ChildItem -LiteralPath $dumpDirectory -File -Filter ((Split-Path -Leaf $dumpPrefix)+'*.dmp'))) {
+                    Move-Item -LiteralPath $file.FullName -Destination $directoryPath
+                }
+            }
+        } finally {
+            foreach($key in $saved.Keys) { [Environment]::SetEnvironmentVariable($key,$saved[$key]) }
+            if($process) { $process.Dispose() }
+        }
     }
 }
