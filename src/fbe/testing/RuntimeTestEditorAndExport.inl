@@ -2563,6 +2563,33 @@
 		}
 		if(partialScaled) ::DeleteObject(partialScaled); if(partialSource) ::DeleteObject(partialSource);
 		CStringA header("dpi\tsize\ttransparent_corners\tvisible_pixels\topaque_black_pixels\tmagenta_pixels\tinvalid_premultiplied_pixels\tmax_color_error\tcolor_fidelity_passed\tstandard_icons_passed\tstandard_failure\tstandard_intermediate_alpha_pixels\tstandard_silhouette_passed\tstandard_thin_line_width\tstandard_image_list_has_mask\tpartial_alpha_passed\treal_icon_blend_passed\tdark_supported\thigh_contrast\tpassed\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		auto mainIconGrowthPass = [](UINT dpi) {
+			int previousWidth[6] = {}, previousHeight[6] = {};
+			for(int logical : {16, 20, 24, 32}) {
+				const int size = UiMetrics::ScaleForDpi(logical, dpi); CImageList images;
+				if(!ToolbarFactory::CreateCommandToolbarImages(images, IDR_MAINFRAME, dpi, logical) || images.GetImageCount() < 6) return false;
+				HDC screen = ::GetDC(NULL); HDC dc = screen ? ::CreateCompatibleDC(screen) : NULL;
+				HBITMAP bitmap = dc ? ::CreateCompatibleBitmap(screen, size, size) : NULL;
+				if(!bitmap) { if(dc) ::DeleteDC(dc); if(screen) ::ReleaseDC(NULL, screen); return false; }
+				HGDIOBJ old = ::SelectObject(dc, bitmap); const COLORREF background = RGB(29, 67, 101);
+				HBRUSH brush = ::CreateSolidBrush(background); bool valid = brush != NULL; int increased = 0;
+				for(int icon = 0; icon < 6 && valid; ++icon) {
+					RECT rect = {0, 0, size, size}; ::FillRect(dc, &rect, brush);
+					if(!images.Draw(dc, icon, CPoint(0, 0), ILD_TRANSPARENT)) { valid = false; break; }
+					int left = size, top = size, right = -1, bottom = -1;
+					for(int y = 0; y < size; ++y) for(int x = 0; x < size; ++x) if(::GetPixel(dc, x, y) != background) {
+						left = min(left, x); top = min(top, y); right = max(right, x); bottom = max(bottom, y);
+					}
+					const int width = right - left + 1, height = bottom - top + 1;
+					if(width <= 0 || height <= 0 || width < previousWidth[icon] || height < previousHeight[icon]) valid = false;
+					if(width > previousWidth[icon] && height > previousHeight[icon]) ++increased;
+					previousWidth[icon] = width; previousHeight[icon] = height;
+				}
+				if(brush) ::DeleteObject(brush); ::SelectObject(dc, old); ::DeleteObject(bitmap); ::DeleteDC(dc); ::ReleaseDC(NULL, screen);
+				if(!valid || increased < 4) return false;
+			}
+			return true;
+		};
 		const UINT dpis[] = { 96, 120, 144, 168, 192 }; bool passed = true;
 		for(size_t index = 0; index < _countof(dpis); ++index)
 		{
@@ -2573,6 +2600,7 @@
 			const DWORD center = ready ? static_cast<const DWORD*>(scaledInfo.dsBm.bmBits)[(targetSize / 2) * targetSize + targetSize / 2] : 0; const int centerAlpha = center >> 24, centerRed = (center >> 16) & 0xFF, centerGreen = (center >> 8) & 0xFF, centerBlue = center & 0xFF; const int maxColorError = max(abs(centerRed - 210), max(abs(centerGreen - 150), abs(centerBlue - 80))); const bool colorFidelity = centerAlpha == 0xFF && maxColorError <= 2 && (center & 0x00FFFFFF) != 0x00FFFFFF; int standardFailure = 0, standardSilhouettePassed = 0, standardImageListHasMask = -1, standardThinLineWidth = -1; long standardIntermediateAlpha = -1; const bool standardIconsPassed = standardIconsPass(dpis[index], standardFailure, standardIntermediateAlpha, standardSilhouettePassed, standardImageListHasMask, standardThinLineWidth); const bool scriptsIconsPassed = compactAndScriptIconsPass(dpis[index], IDR_SCRIPTS, 24, 1, L"scripts"); const bool bottomIconsPassed = compactAndScriptIconsPass(dpis[index], IDR_DOCUMENT_TREE, 24, 5, L"document-tree"); const bool realBlend = realIconBlendPass(dpis[index]); const bool rowPassed = realBlend && ready && transparentCorners && visible > 0 && opaqueBlack == 0 && magenta == 0 && invalidPremultiplied == 0 && colorFidelity && standardIconsPassed && scriptsIconsPassed && bottomIconsPassed && standardSilhouettePassed && standardImageListHasMask == 0;
 			CStringA row; row.Format("%u\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\r\n", dpis[index], targetSize, transparentCorners ? 1 : 0, visible, opaqueBlack, magenta, invalidPremultiplied, maxColorError, colorFidelity ? 1 : 0, standardIconsPassed ? 1 : 0, standardFailure, standardIntermediateAlpha, standardSilhouettePassed, standardThinLineWidth, standardImageListHasMask, partialAlphaPassed ? 1 : 0, realBlend ? 1 : 0, ThemeManager::IsDarkModeSupported() ? 1 : 0, ThemeManager::IsHighContrast() ? 1 : 0, rowPassed && partialAlphaPassed ? 1 : 0); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); if(scaled) ::DeleteObject(scaled); passed = passed && rowPassed && partialAlphaPassed;
 		}
+		for(UINT dpi : {96U, 120U, 144U, 192U}) passed = mainIconGrowthPass(dpi) && passed;
 		for(InterfaceTheme theme : {INTERFACE_THEME_LIGHT, INTERFACE_THEME_DARK}) {
 			if(theme == INTERFACE_THEME_DARK && !ThemeManager::IsDarkModeSupported()) continue;
 			ThemeManager::SetSelectedTheme(theme);

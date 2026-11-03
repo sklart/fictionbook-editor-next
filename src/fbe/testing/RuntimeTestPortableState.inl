@@ -420,6 +420,30 @@ void CMainFrame::RunPortableStateTestScenario()
             CSettingsGeneralPage page;
             passed = page.Create(m_hWnd) != NULL && passed;
             if(page.m_hWnd) {
+                page.MakeAppearanceOnly(); BOOL handled = FALSE;
+                HWND mainSize = page.GetDlgItem(IDC_MAIN_TOOLBAR_ICON_SIZE), scriptSize = page.GetDlgItem(IDC_SCRIPT_ICON_SIZE);
+                auto previewHeight = [&]() {
+                    RECT bounds = {}; ::GetWindowRect(page.GetDlgItem(IDC_APPEARANCE_ICON_PREVIEW), &bounds);
+                    return bounds.bottom - bounds.top;
+                };
+                ::SendMessageW(mainSize, CB_SETCURSEL, 0, 0); ::SendMessageW(scriptSize, CB_SETCURSEL, 0, 0);
+                page.OnIconPreviewChanged(CBN_SELCHANGE, IDC_MAIN_TOOLBAR_ICON_SIZE, mainSize, handled);
+                const int baseHeight = previewHeight();
+                ::SendMessageW(mainSize, CB_SETCURSEL, 3, 0);
+                page.OnIconPreviewChanged(CBN_SELCHANGE, IDC_MAIN_TOOLBAR_ICON_SIZE, mainSize, handled);
+                const int mainHeight = previewHeight();
+                ::SendMessageW(mainSize, CB_SETCURSEL, 0, 0); ::SendMessageW(scriptSize, CB_SETCURSEL, 3, 0);
+                page.OnIconPreviewChanged(CBN_SELCHANGE, IDC_SCRIPT_ICON_SIZE, scriptSize, handled);
+                const int scriptHeight = previewHeight();
+                passed = baseHeight > 0 && mainHeight > baseHeight && scriptHeight > baseHeight &&
+                    abs(mainHeight - scriptHeight) <= 1 && ::SendMessageW(mainSize, CB_GETCURSEL, 0, 0) == 0 && passed;
+                page.CancelChanges(); page.DestroyWindow();
+            }
+        }
+        {
+            CSettingsGeneralPage page;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
                 HWND palette = page.GetDlgItem(IDC_INTERFACE_PALETTE); BOOL handled = FALSE;
                 ::SendMessageW(palette, CB_SETCURSEL, INTERFACE_PALETTE_CLASSIC, 0);
                 page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, palette, handled);
@@ -427,6 +451,23 @@ void CMainFrame::RunPortableStateTestScenario()
                 page.OnManagePalettes(BN_CLICKED, IDC_PALETTE_MANAGE, NULL, handled);
                 passed = reinterpret_cast<ULONG_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteManagerResult")) == 1 &&
                     ThemeManager::IsCustomPaletteActive() && passed;
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerTest");
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerResult");
+                page.CancelChanges(); page.DestroyWindow();
+            }
+        }
+        {
+            CSettingsGeneralPage page;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
+                HWND palette = page.GetDlgItem(IDC_INTERFACE_PALETTE); BOOL handled = FALSE;
+                ::SendMessageW(palette, CB_SETCURSEL, CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SOLARIZED_LIGHT), 0);
+                page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, palette, handled);
+                const LRESULT before = ::SendMessageW(palette, CB_GETCOUNT, 0, 0);
+                ::SetPropW(page.m_hWnd, L"FBE.PaletteManagerTest", reinterpret_cast<HANDLE>(4));
+                page.OnManagePalettes(BN_CLICKED, IDC_PALETTE_MANAGE, NULL, handled);
+                passed = reinterpret_cast<ULONG_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteManagerResult")) == 1 &&
+                    ::SendMessageW(palette, CB_GETCOUNT, 0, 0) == before && passed;
                 ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerTest");
                 ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerResult");
                 page.CancelChanges(); page.DestroyWindow();
@@ -770,6 +811,9 @@ void CMainFrame::RunPortableStateTestScenario()
             passed = page.Create(m_hWnd) != NULL && passed;
             if(page.m_hWnd) {
                 passed = !page.StagePaletteCopy(L"") && page.StagePaletteCopy(L"My copy") && passed;
+                const LRESULT countBeforeDuplicate = ::SendDlgItemMessageW(page, IDC_INTERFACE_PALETTE, CB_GETCOUNT, 0, 0);
+                passed = !page.StagePaletteCopy(L"my COPY") &&
+                    ::SendDlgItemMessageW(page, IDC_INTERFACE_PALETTE, CB_GETCOUNT, 0, 0) == countBeforeDuplicate && passed;
                 SettingsFileTransaction transaction; CString error;
                 passed = page.PrepareCommit(transaction, error) && ThemeManager::ListCustomPalettesInProfile().empty() && passed;
                 page.Commit();

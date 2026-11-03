@@ -288,7 +288,7 @@ bool ToolbarFactory::CreateCommandToolbarImages(CImageList& ownedImages, UINT to
 		if(toolbarResourceId == IDR_MAINFRAME) AdaptMonochromeGlyph(alpha,
 			command == ID_EDIT_BOLD || command == ID_EDIT_ITALIC || command == ID_EDIT_STRIK ||
 			command == ID_EDIT_SUP || command == ID_EDIT_SUB || command == ID_EDIT_CODE);
-		HBITMAP scaled = lastScriptHighResolution || documentTreeHighResolution || (toolbarResourceId == IDR_MAINFRAME && baseImageSize != 24)
+		HBITMAP scaled = lastScriptHighResolution || documentTreeHighResolution || toolbarResourceId == IDR_MAINFRAME
 			? ScaleHighResolutionAlphaBitmap(alpha, sourceSize, imageSize)
 			: sourceSize == 24 && baseImageSize == 24
 			? ScaleLegacyToolbarAlphaBitmap(alpha, sourceSize, imageSize)

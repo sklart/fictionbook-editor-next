@@ -409,7 +409,7 @@ try {
                         if($manageRow.Count -ne 1) { throw "$locale palette management button is missing." }
                         $manageHandle = [IntPtr]::new([Convert]::ToInt64($manageRow[0].Hwnd.Substring(2), 16))
                         $appearancePage = [SettingsGeneralLayoutWindow]::Parent($manageHandle)
-                        $appearanceTargets = [int[]]@(1161, 1828, 1829, 1839, 1826, 1821, 1824)
+                        $appearanceTargets = [int[]]@(1161, 1828, 1839, 1826, 1821, 1824)
                         if(-not [SettingsGeneralLayoutWindow]::HasTabTargets($appearancePage, $appearanceTargets)) {
                             throw "$locale appearance controls are missing from keyboard tab order."
                         }
@@ -424,7 +424,7 @@ try {
                         }
                         if($manager -eq [IntPtr]::Zero) { throw "$locale palette manager did not open." }
                         try {
-                            $managerTargets = if ($CustomPalette) { [int[]]@(1835, 1836, 1837, 1838, 1831, 1832, 1833, 1, 2) } else { [int[]]@(1835, 1, 2) }
+                            $managerTargets = if ($CustomPalette) { [int[]]@(1829, 1835, 1836, 1837, 1838, 1831, 1832, 1833, 1, 2) } else { [int[]]@(1829, 1835, 1, 2) }
                             if(-not [SettingsGeneralLayoutWindow]::HasTabTargets($manager, $managerTargets)) {
                                 throw "$locale palette manager actions are missing from keyboard tab order."
                             }
