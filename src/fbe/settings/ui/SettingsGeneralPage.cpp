@@ -90,6 +90,7 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
     HWND m_recent = NULL;
     HWND m_recentLabel = NULL;
     HWND m_roleList = NULL;
+    HWND m_roleDescription = NULL;
     HWND m_resetChanges = NULL;
     CImageList m_previewIcons;
     std::vector<HICON> m_previewScriptIcons;
@@ -511,6 +512,8 @@ public:
         }
         m_hex = ::CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL,
             0, 0, 1, 1, m_hWnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(kHexId)), _Module.GetModuleInstance(), NULL);
+        m_roleDescription = ::CreateWindowExW(0, L"STATIC", L"", WS_CHILD | WS_VISIBLE | SS_LEFT | SS_ENDELLIPSIS,
+            0, 0, 1, 1, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
         m_colorInfo = ::CreateWindowExW(0, L"STATIC", L"", WS_CHILD | WS_VISIBLE | SS_LEFT,
             0, 0, 1, 1, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
         if(m_colorInfo) ::SetWindowSubclass(m_colorInfo, ColorInfoProc, 1, reinterpret_cast<DWORD_PTR>(this));
@@ -524,6 +527,7 @@ public:
         HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_hWnd, WM_GETFONT, 0, 0));
         if(m_hex) { ::SendMessageW(m_hex, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE); ::SendMessageW(m_hex, EM_SETLIMITTEXT, 7, 0); }
         if(m_colorInfo) ::SendMessageW(m_colorInfo, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE);
+        if(m_roleDescription) ::SendMessageW(m_roleDescription, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE);
         if(m_previewMode) ::SendMessageW(m_previewMode, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE);
         if(m_roleList) { ::SendMessageW(m_roleList, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE); ::SendMessageW(m_roleList, LB_SETITEMHEIGHT, 0, UiMetrics::ScaleForDpi(26, UiMetrics::DpiForWindow(m_hWnd))); }
         if(m_recent) ::SendMessageW(m_recent, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE);
@@ -538,6 +542,7 @@ public:
         m_tooltips.Add(m_hex, L"fbe.settings.tooltip.palette.hex", L"Enter a colour as #RRGGBB.");
         m_tooltips.AddDisabledControlArea(m_hex, L"fbe.settings.tooltip.general.palette_builtin", L"Create a copy of the built-in scheme before editing it.");
         m_tooltips.Add(m_recent, L"fbe.settings.tooltip.palette.recent", L"Choose a recently used colour.");
+        m_tooltips.Add(m_roleDescription, L"fbe.settings.tooltip.palette.preview", L"Choose an interface colour by clicking the preview.");
         m_tooltips.Add(GetDlgItem(IDC_PALETTE_CURRENT), L"fbe.settings.tooltip.general.interface_palette", L"Selected colour scheme.");
         for(int id : {IDC_PALETTE_ROLE, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR}) {
             m_tooltips.Add(GetDlgItem(id), L"fbe.settings.tooltip.general.palette_color", L"Edit a colour in a custom palette.");
@@ -582,7 +587,7 @@ public:
         if(m_layoutActive) return;
         m_layoutActive = true;
         const UINT dpi = m_testLayoutDpi ? m_testLayoutDpi : UiMetrics::DpiForWindow(m_hWnd);
-        const int margin = UiMetrics::ScaleForDpi(8, dpi), gap = UiMetrics::ScaleForDpi(4, dpi);
+        const int margin = UiMetrics::ScaleForDpi(8, dpi), gap = UiMetrics::ScaleForDpi(3, dpi);
         HDC dc = ::GetDC(m_hWnd);
         HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_resetChanges, WM_GETFONT, 0, 0));
         if(!font) font = reinterpret_cast<HFONT>(::SendMessageW(m_hWnd, WM_GETFONT, 0, 0));
@@ -601,7 +606,7 @@ public:
         if(oldFont) ::SelectObject(dc, oldFont); if(dc) ::ReleaseDC(m_hWnd, dc);
         labelWidth += margin; // Leave room for text overhang and static-control padding.
         const int buttonWidth = max(UiMetrics::ScaleForDpi(95, dpi), buttonTextWidth + 2 * margin);
-        const int lineHeight = max(UiMetrics::ScaleForDpi(24, dpi), fontHeight + margin);
+        const int lineHeight = max(UiMetrics::ScaleForDpi(22, dpi), fontHeight + 2 * gap);
         RECT client = {}, window = {}; ::GetClientRect(m_hWnd, &client); ::GetWindowRect(m_hWnd, &window);
         MONITORINFO monitor = { sizeof(monitor) };
         ::GetMonitorInfoW(::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST), &monitor);
@@ -640,6 +645,7 @@ public:
         RECT combo = {}; ::GetWindowRect(GetDlgItem(IDC_PALETTE_ROLE), &combo);
         place(IDC_PALETTE_ROLE_LABEL, inspectorLeft, y, roleLabelWidth, lineHeight);
         place(IDC_PALETTE_ROLE, comboLeft, y, right - comboLeft, combo.bottom - combo.top); y += lineHeight + gap;
+        ::SetWindowPos(m_roleDescription, NULL, inspectorLeft, y, inspectorWidth, lineHeight, SWP_NOZORDER | SWP_NOACTIVATE); y += lineHeight + gap;
         ::SetWindowPos(m_hex, NULL, inspectorLeft, y, inspectorWidth, lineHeight, SWP_NOZORDER | SWP_NOACTIVATE); y += lineHeight + gap;
         ::SetWindowPos(m_colorInfo, NULL, inspectorLeft, y, inspectorWidth, 2 * lineHeight, SWP_NOZORDER | SWP_NOACTIVATE); y += 2 * lineHeight + gap;
         ::SetWindowPos(m_recentLabel, NULL, inspectorLeft, y, inspectorWidth / 2, lineHeight, SWP_NOZORDER | SWP_NOACTIVATE);
@@ -768,6 +774,11 @@ public:
     {
         const int role = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel();
         if(role < 0 || role >= THEME_COLOR_COUNT) return;
+        const int descriptionIndex[] = {0, 1, 2, 3, 3, 2, 2, 4, 4, 5, 5, 5, 6, 7, 7, 7};
+        CString descriptions = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.role_descriptions", L"Window backgrounds|Control backgrounds|Text and labels|Borders and separators|Selected items|Control states|Interface accents|Status messages");
+        int offset = 0; CString description;
+        for(int i = 0; i <= descriptionIndex[role]; ++i) description = descriptions.Tokenize(L"|", offset);
+        if(m_roleDescription) { ::SetWindowTextW(m_roleDescription, description); m_tooltips.UpdateText(m_roleDescription, description); }
         COLORREF colors[THEME_COLOR_COUNT] = {}; PreviewColors(colors);
         const COLORREF current = colors[role];
         m_currentColor = m_baseColor = current;
@@ -898,6 +909,20 @@ public:
             m_testLayoutDpi = dpi; FitLocalizedLayout(true);
             RECT frame = {}, client = {}; ::GetWindowRect(m_hWnd, &frame); ::GetClientRect(m_hWnd, &client);
             bool fits = frame.right - frame.left <= 1366 && frame.bottom - frame.top <= 728;
+            const int previousRole = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel();
+            for(int role = 0; role < THEME_COLOR_COUNT; ++role) {
+                ::SendMessageW(m_hWnd, kPreviewSelect, role, 0);
+                wchar_t description[256] = {}; ::GetWindowTextW(m_roleDescription, description, _countof(description));
+                RECT area = {}; ::GetClientRect(m_roleDescription, &area);
+                HDC descriptionDc = ::GetDC(m_roleDescription);
+                HGDIOBJ oldDescriptionFont = descriptionDc ? ::SelectObject(descriptionDc, font) : NULL;
+                SIZE measured = {}; const bool measuredOk = descriptionDc && description[0] &&
+                    ::GetTextExtentPoint32W(descriptionDc, description, static_cast<int>(wcslen(description)), &measured);
+                if(oldDescriptionFont) ::SelectObject(descriptionDc, oldDescriptionFont);
+                if(descriptionDc) ::ReleaseDC(m_roleDescription, descriptionDc);
+                fits = measuredOk && measured.cx <= area.right && measured.cy <= area.bottom && fits;
+            }
+            ::SendMessageW(m_hWnd, kPreviewSelect, previousRole, 0);
             ::SetPropW(m_page.m_hWnd, L"FBE.PaletteDpiWidth", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(frame.right - frame.left)));
             ::SetPropW(m_page.m_hWnd, L"FBE.PaletteDpiHeight", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(frame.bottom - frame.top)));
             ::RemovePropW(m_page.m_hWnd, L"FBE.PaletteDpiControl");
@@ -1055,6 +1080,7 @@ public:
             m_page.m_paletteRole.SetCurSel(originalRole);
             if(mode == 2 && editable) {
                 ::SendMessageW(m_hWnd, kPreviewSelect, THEME_COLOR_TEXT, 0);
+                wchar_t textDescription[256] = {}; ::GetWindowTextW(m_roleDescription, textDescription, _countof(textDescription));
                 ::RedrawWindow(m_preview, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
                 HDC markerDc = ::GetDC(m_preview);
                 const int markerX = MulDiv(bounds.right, 320, 1000) - 2;
@@ -1062,6 +1088,8 @@ public:
                 passed = markerDc && ::GetPixel(markerDc, markerX, markerY) == RGB(255,255,255) && passed;
                 if(markerDc) ::ReleaseDC(m_preview, markerDc);
                 ::SendMessageW(m_hWnd, kPreviewSelect, THEME_COLOR_CONTROL, 0);
+                wchar_t controlDescription[256] = {}; ::GetWindowTextW(m_roleDescription, controlDescription, _countof(controlDescription));
+                passed = textDescription[0] && controlDescription[0] && wcscmp(textDescription, controlDescription) != 0 && passed;
                 ::SetWindowTextW(m_hex, L"#123456");
                 COLORREF colors[THEME_COLOR_COUNT] = {}; PreviewColors(colors);
                 ::RedrawWindow(m_preview, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
