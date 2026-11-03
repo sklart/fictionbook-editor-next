@@ -538,6 +538,7 @@
     <ClInclude Include="settings\ui\PalettePreviewClip.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="settings\ui\AppearancePreviewLayout.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="settings\ui\PalettePreviewContrast.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="toolbars\ToolbarBitmapScaling.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="settings\ui\SettingsEditorPage.h">
       <Filter>Header Files</Filter>
     </ClInclude>

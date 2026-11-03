@@ -587,6 +587,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
 	<ClInclude Include="toolbars\ScriptToolbarManager.h" />
 	<ClInclude Include="toolbars\ToolbarLayoutAdapter.h" />
 	<ClInclude Include="toolbars\ToolbarFactory.h" />
+	<ClInclude Include="toolbars\ToolbarBitmapScaling.h" />
 	<ClInclude Include="toolbars\TableToolbarCommands.h" />
 	<ClInclude Include="UiMetrics.h" />
 	<ClInclude Include="source\ui\SourceEditorConfig.h" />

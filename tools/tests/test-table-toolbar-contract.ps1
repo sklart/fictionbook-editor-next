@@ -11,6 +11,7 @@ $cpp = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 $header = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.h')
 $runtimeUi = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ui\MainFrameRuntimeUi.inl')
 $factory = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\toolbars\ToolbarFactory.cpp')
+$bitmapScaler = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\toolbars\ToolbarBitmapScaling.h')
 $tableCatalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\toolbars\TableToolbarCommands.cpp')
 
 $selectControls = [regex]::Match($cpp, 'LRESULT\s+CMainFrame::OnSelectCtl\([\s\S]*?\r?\n}\r?\n\r?\nLRESULT\s+CMainFrame::OnNextItem').Value
@@ -38,11 +39,16 @@ if (-not $menuBitmapHelper.Success -or
 if ($menuBitmapHelper.Value -match 'm_clrMask') {
 	throw 'WTL table-menu bitmap registration must not modify CCommandBarCtrl global m_clrMask directly.'
 }
-if ($factory -notmatch '(?s)HBITMAP CreateAlphaBitmapCell\(.*?biBitCount = 32.*?bytesPerPixel.*?alpha == 0 \|\| \(blue == 0xFF && green == 0x00 && red == 0xFF\).*?return target;') {
+if ($bitmapScaler -notmatch '(?s)HBITMAP CreateAlphaBitmapCell\(.*?biBitCount = 32.*?bytesPerPixel.*?alpha == 0 \|\| \(blue == 0xFF && green == 0x00 && red == 0xFF\).*?return target;' -or
+    $factory -notmatch 'return ToolbarBitmapScaling::CreateAlphaBitmapCell\(source, cellSize, cellIndex\)') {
 	throw 'Command and table toolbar bitmap conversion must create 32-bit alpha pixels using only the exact magenta transparency key.'
 }
 if ($factory -notmatch '(?s)bool ToolbarFactory::CreateCommandToolbarImages\(.*?documentTreeNativeSize = documentTreeHighResolution.*?sourceSize = lastScriptHighResolution \? 48 : documentTreeHighResolution \? \(documentTreeNativeSize \? imageSize : 48\).*?ownedImages\.Create\(imageSize, imageSize, ILC_COLOR32,.*?documentTreeResources\[\] = \{ IDR_DOCUMENT_TREE, IDB_DOCUMENT_TREE_30, IDB_DOCUMENT_TREE_36, IDB_DOCUMENT_TREE_42, IDB_DOCUMENT_TREE_HIRES \}.*?CreateAlphaBitmapCell\(source, sourceSize, index\).*?lastScriptHighResolution \|\| documentTreeHighResolution.*?ScaleHighResolutionAlphaBitmap\(alpha, sourceSize, imageSize\).*?ScaleLegacyToolbarAlphaBitmap\(alpha, sourceSize, imageSize\).*?ImageList_Add\(') {
     throw 'Command-toolbar images must select native-size document icons and scale cells through the shared ARGB pipeline.'
+}
+if ($factory -notmatch 'lastScriptHighResolution \|\| documentTreeHighResolution \|\| toolbarResourceId == IDR_MAINFRAME' -or
+    $factory -notmatch 'return ToolbarBitmapScaling::ScaleHighResolutionAlphaBitmap\(alpha, sourceSize, targetSize\)') {
+    throw 'The main toolbar must use the shared scaler at all icon sizes, including fractional DPI.'
 }
 if ($factory -match 'ImageList_LoadImage|ImageList_GetIcon|ImageList_AddIcon|ILC_COLOR32 \| ILC_MASK') {
 	throw 'Command-toolbar ARGB images must not recompose a mask through the legacy image-list/icon path.'
@@ -50,10 +56,10 @@ if ($factory -match 'ImageList_LoadImage|ImageList_GetIcon|ImageList_AddIcon|ILC
 if ($factory -notmatch '(?s)HBITMAP ScaleLegacyToolbarAlphaBitmap\(.*?targetSize < sourceSize \* 2.*?const int offset = \(targetSize - sourceSize\) / 2.*?sourcePixels\[y \* sourceSize \+ x\].*?y \* sourceSize\) / targetSize.*?return scaled;' -or
     $factory -notmatch 'CreateScaledLegacyToolbarAlphaBitmap\(HBITMAP source, int sourceSize, int targetSize\).*?ScaleLegacyToolbarAlphaBitmap' -or
     $factory -notmatch 'HBITMAP ToolbarFactory::CreateScaledAlphaBitmap\(HBITMAP source, int sourceSize, int targetSize\) \{ return ScaleAlphaBitmap\(') {
-    throw 'Standard Toolbar.bmp icons must retain their original glyph at fractional DPI and use exact integer enlargement at 200%, while table bitmaps retain the premultiplied ARGB scaler.'
+    throw 'Legacy toolbar scaling must retain its existing fractional-DPI behavior, while table bitmaps retain the premultiplied ARGB scaler.'
 }
 foreach ($forbidden in @('connectedCanvas', 'edge-connected', 'pending.Enqueue', 'maximum =', 'minimum =')) {
-	if ($factory.Contains($forbidden)) { throw "Table toolbar alpha conversion must not use a brightness or flood-fill heuristic: $forbidden" }
+    if ($factory.Contains($forbidden) -or $bitmapScaler.Contains($forbidden)) { throw "Table toolbar alpha conversion must not use a brightness or flood-fill heuristic: $forbidden" }
 }
 if ($factory -notmatch '(?s)HWND ToolbarFactory::CreateCommandToolbarCtrl\(.*?UINT dpi.*?CreateCommandToolbarImages\(ownedImages, toolbarResourceId, dpi, baseImageSize\).*?ApplyCommandToolbarMetrics\(window, toolbarResourceId, dpi, baseImageSize\).*?TB_SETIMAGELIST.*?TB_ADDBUTTONS') {
     throw 'Command toolbar must install its current-DPI owned image list and geometry before adding buttons.'
