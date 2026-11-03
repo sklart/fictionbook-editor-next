@@ -150,15 +150,17 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
             {rect(0,239,1000,244), THEME_COLOR_SEPARATOR, L"", THEME_COLOR_SEPARATOR},
             {rect(0,246,300,545), THEME_COLOR_BORDER, L"", THEME_COLOR_BORDER},
             {rect(5,251,294,540), THEME_COLOR_WINDOW, L"", THEME_COLOR_WINDOW},
-            {rect(15,252,280,284), THEME_COLOR_SECONDARY_TEXT, L"Scripts", THEME_COLOR_WINDOW},
+            {rect(5,251,294,284), THEME_COLOR_CONTROL, L"Scripts", THEME_COLOR_CONTROL},
+            {rect(5,284,294,287), THEME_COLOR_SEPARATOR, L"", THEME_COLOR_SEPARATOR},
             {rect(12,287,288,330), THEME_COLOR_BORDER, L"", THEME_COLOR_BORDER},
             {rect(16,291,284,326), THEME_COLOR_CONTROL, L"", THEME_COLOR_CONTROL},
             {rect(24,294,277,323), THEME_COLOR_SECONDARY_TEXT, L"@find-script", THEME_COLOR_CONTROL},
-            {rect(15,337,280,376), THEME_COLOR_SELECTION_BACKGROUND, L"", THEME_COLOR_SELECTION_BACKGROUND},
-            {rect(80,340,275,373), THEME_COLOR_SELECTION_TEXT, L"@script0", THEME_COLOR_SELECTION_BACKGROUND},
-            {rect(15,380,280,419), THEME_COLOR_HOVER, L"", THEME_COLOR_HOVER},
-            {rect(80,383,275,416), THEME_COLOR_TEXT, L"@script1", THEME_COLOR_HOVER},
-            {rect(80,426,275,459), THEME_COLOR_DISABLED_TEXT, L"@script2", THEME_COLOR_WINDOW},
+            {rect(75,336,284,373), THEME_COLOR_SELECTION_BACKGROUND, L"", THEME_COLOR_SELECTION_BACKGROUND},
+            {rect(80,339,275,370), THEME_COLOR_SELECTION_TEXT, L"@script0", THEME_COLOR_SELECTION_BACKGROUND},
+            {rect(75,375,284,412), THEME_COLOR_HOVER, L"", THEME_COLOR_HOVER},
+            {rect(80,378,275,409), THEME_COLOR_TEXT, L"@script1", THEME_COLOR_HOVER},
+            {rect(80,417,275,448), THEME_COLOR_TEXT, L"@script2", THEME_COLOR_WINDOW},
+            {rect(80,456,275,487), THEME_COLOR_DISABLED_TEXT, L"@script3", THEME_COLOR_WINDOW},
             {rect(320,252,975,294), THEME_COLOR_CONTROL, L"  ID:             \x25BE", THEME_COLOR_CONTROL},
             {rect(320,300,975,340), THEME_COLOR_TEXT, L"Document", THEME_COLOR_WINDOW},
             {rect(320,346,610,388), THEME_COLOR_PRESSED, L"  OK", THEME_COLOR_PRESSED},
@@ -243,7 +245,7 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
                 RECT text = part.rect; text.left += 4;
                 CString localized;
                 LPCWSTR caption = part.text;
-                const bool scriptName = wcsncmp(part.text, L"@script", 7) == 0 && part.text[7] >= L'0' && part.text[7] <= L'2';
+                const bool scriptName = wcsncmp(part.text, L"@script", 7) == 0 && part.text[7] >= L'0' && part.text[7] <= L'3';
                 const int scriptIndex = scriptName ? part.text[7] - L'0' : -1;
                 if(scriptIndex >= 0 && scriptIndex < static_cast<int>(m_previewScriptNames.size())) {
                     localized = m_previewScriptNames[scriptIndex]; caption = localized;
@@ -309,7 +311,7 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
             ::RestoreDC(dc, saved);
         }
         if(::SendMessageW(m_previewMode, CB_GETCURSEL, 0, 0) == 0 && !m_previewScriptIcons.empty()) {
-            const int rowTop[] = {337, 380, 423}, rowBottom[] = {376, 419, 462};
+            const int rowTop[] = {336, 375, 414, 453}, rowBottom[] = {373, 412, 451, 490};
             const int iconX = MulDiv(client.right, 48, 1000);
             const int glyphX = MulDiv(client.right, 24, 1000);
             const int saved = ::SaveDC(dc);
@@ -317,7 +319,7 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
             HPEN pen = ::CreatePen(PS_SOLID, 1, colors[THEME_COLOR_SECONDARY_TEXT]);
             HGDIOBJ oldPen = pen ? ::SelectObject(dc, pen) : NULL;
             HGDIOBJ oldBrush = ::SelectObject(dc, ::GetStockObject(NULL_BRUSH));
-            for(int row = 0; row < 3 && row < static_cast<int>(m_previewScriptIcons.size()); ++row) {
+            for(int row = 0; row < 4 && row < static_cast<int>(m_previewScriptIcons.size()); ++row) {
                 const int top = MulDiv(client.bottom, rowTop[row], 600), bottom = MulDiv(client.bottom, rowBottom[row], 600);
                 const int iconSize = max(1, min(UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(m_preview)), bottom - top - 2));
                 const int middle = (top + bottom) / 2;
