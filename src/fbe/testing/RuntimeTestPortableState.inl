@@ -405,6 +405,7 @@ void CMainFrame::RunPortableStateTestScenario()
         UINT_PTR dpiFailure = 0, dpiWidth = 0, dpiHeight = 0, dpiControl = 0, dpiTextWidth = 0, dpiTextHeight = 0, dpiBoxWidth = 0, dpiBoxHeight = 0;
         UINT_PTR dpiGdiBefore = 0, dpiGdiAfter = 0, dpiUserBefore = 0, dpiUserAfter = 0;
         bool hexPersisted = false, copyE2e = false;
+        unsigned copySteps = 0, copyDialogSteps = 0, copyFontDetail = 0, resizeAudit = 0;
         const bool dirtyBefore = DocChanged();
         CString bodyBefore;
         bool documentReady = false;
@@ -488,6 +489,10 @@ void CMainFrame::RunPortableStateTestScenario()
                 ::SetPropW(page.m_hWnd, L"FBE.PaletteManagerTest", reinterpret_cast<HANDLE>(5));
                 page.OnManagePalettes(BN_CLICKED, IDC_PALETTE_MANAGE, NULL, handled);
                 const bool edited = reinterpret_cast<ULONG_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteManagerResult")) == 1;
+                copyDialogSteps = static_cast<unsigned>(reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteCopySteps")));
+                copyFontDetail = static_cast<unsigned>(reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteCopyFontDetail")));
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteCopySteps");
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteCopyFontDetail");
                 ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerTest");
                 ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerResult");
                 ThemeManager::CustomPalette draft; const bool staged = page.GetStagedCustomPalette(draft);
@@ -511,6 +516,8 @@ void CMainFrame::RunPortableStateTestScenario()
                 if(openedAgain) { reopened.CancelChanges(); reopened.DestroyWindow(); }
                 _Settings.SetInterfacePalette(L"custom:restart-test");
                 const bool removed = !saved || ThemeManager::DeleteCustomPaletteFromProfile(draft.id, detail);
+                copySteps = (edited ? 1U : 0U) | (staged ? 2U : 0U) | (notYetSaved ? 4U : 0U) |
+                    (saved ? 8U : 0U) | (reloaded ? 16U : 0U) | (selectedAgain ? 32U : 0U) | (removed ? 64U : 0U);
                 copyE2e = edited && staged && notYetSaved && saved && reloaded && selectedAgain && removed;
                 passed = copyE2e && passed;
             }
@@ -530,6 +537,8 @@ void CMainFrame::RunPortableStateTestScenario()
                 dpiBoxWidth = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteDpiBoxWidth")); dpiBoxHeight = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteDpiBoxHeight"));
                 dpiGdiBefore = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteGdiBefore")); dpiGdiAfter = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteGdiAfter"));
                 dpiUserBefore = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteUserBefore")); dpiUserAfter = reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteUserAfter"));
+                resizeAudit = static_cast<unsigned>(reinterpret_cast<UINT_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteResizeAudit")));
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteResizeAudit");
                 passed = reinterpret_cast<ULONG_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteManagerResult")) == 1 &&
                     ThemeManager::Color(THEME_COLOR_WINDOW) == before && ThemeManager::IsCustomPaletteActive() && passed;
                 ::RemovePropW(page.m_hWnd, L"FBE.PaletteDpiFailure");
@@ -654,6 +663,7 @@ void CMainFrame::RunPortableStateTestScenario()
         } catch(const _com_error&) {}
         passed = documentPreserved && passed;
         CStringA report; report.Format("custom-palette-manage=%d\ndocument-preserved=%d\nhex-persisted=%d\ncopy-e2e=%d\ninterface-language=%lu\ndpi-failure=%Iu\ndpi-size=%Iux%Iu\ndpi-control=%Iu\ndpi-text=%Iux%Iu box=%Iux%Iu\ndpi-gdi=%Iu:%Iu\ndpi-user=%Iu:%Iu\nresult=%s\n", passed ? 1 : 0, documentPreserved ? 1 : 0, hexPersisted ? 1 : 0, copyE2e ? 1 : 0, static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), dpiFailure, dpiWidth, dpiHeight, dpiControl, dpiTextWidth, dpiTextHeight, dpiBoxWidth, dpiBoxHeight, dpiGdiBefore, dpiGdiAfter, dpiUserBefore, dpiUserAfter, passed ? "pass" : "fail");
+        CStringA copyDetail; copyDetail.Format("copy-steps=%u dialog-steps=%u font-detail=%u resize-audit=%u\n", copySteps, copyDialogSteps, copyFontDetail, resizeAudit); report += copyDetail;
         WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report.GetString());
         PostMessage(WM_CLOSE); return;
     }

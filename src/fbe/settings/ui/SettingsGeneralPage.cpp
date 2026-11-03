@@ -97,6 +97,9 @@ public:
     END_MSG_MAP()
     LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
     {
+        // This dialog supplies its own action labels; the generic system-dialog
+        // localizer must not replace Create with the standard OK caption.
+        ::SetPropW(m_hWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION", reinterpret_cast<HANDLE>(1));
         SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.create_own", L"Create your own theme"));
         SetDlgItemText(IDC_PALETTE_COPY_PROMPT, FbeLoadRuntimeStringByKey(L"fbe.settings.palette.copy_name", L"Name of the new interface palette:"));
         SetDlgItemText(IDC_PALETTE_COPY_NAME, m_name);
@@ -104,6 +107,14 @@ public:
         SetDlgItemText(IDCANCEL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_tools_settings.cancel", L"Cancel"));
         ::SendDlgItemMessageW(m_hWnd, IDC_PALETTE_COPY_NAME, EM_SETLIMITTEXT, 100, 0);
         ThemeManager::ApplyToWindow(m_hWnd);
+        // Use the constructor's current DPI-aware font, including after it
+        // has moved to a monitor with a different scale.
+        const HFONT ownerFont = reinterpret_cast<HFONT>(::SendMessageW(GetParent(), WM_GETFONT, 0, 0));
+        if(ownerFont) {
+            ::SendMessageW(m_hWnd, WM_SETFONT, reinterpret_cast<WPARAM>(ownerFont), FALSE);
+            for(HWND child = ::GetWindow(m_hWnd, GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT))
+                ::SendMessageW(child, WM_SETFONT, reinterpret_cast<WPARAM>(ownerFont), TRUE);
+        }
         CenterWindow(GetParent());
         ::SetFocus(GetDlgItem(IDC_PALETTE_COPY_NAME));
         ::SendDlgItemMessageW(m_hWnd, IDC_PALETTE_COPY_NAME, EM_SETSEL, 0, -1);
@@ -124,6 +135,11 @@ public:
                 actual.lfHeight == expected.lfHeight && _wcsicmp(actual.lfFaceName, expected.lfFaceName) == 0 &&
                 create == FbeLoadRuntimeStringByKey(L"fbe.settings.palette.create", L"Create") &&
                 cancel == FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_tools_settings.cancel", L"Cancel");
+            const UINT_PTR detail = (font ? 1U : 0U) | (parentFont ? 2U : 0U) |
+                (actual.lfHeight == expected.lfHeight ? 4U : 0U) | (_wcsicmp(actual.lfFaceName, expected.lfFaceName) == 0 ? 8U : 0U) |
+                (create == FbeLoadRuntimeStringByKey(L"fbe.settings.palette.create", L"Create") ? 16U : 0U) |
+                (cancel == FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_tools_settings.cancel", L"Cancel") ? 32U : 0U);
+            ::SetPropW(m_page.m_hWnd, L"FBE.PaletteCopyFontDetail", reinterpret_cast<HANDLE>(detail));
             ::SetPropW(m_page.m_hWnd, L"FBE.PaletteCopyDialogAudit", reinterpret_cast<HANDLE>(typography ? 1 : 2));
             SetDlgItemText(IDC_PALETTE_COPY_NAME, L"Моя Solarized");
             const ULONG_PTR testMode = reinterpret_cast<ULONG_PTR>(::GetPropW(m_page.m_hWnd, L"FBE.PaletteManagerTest"));
@@ -772,7 +788,8 @@ public:
         if(m_layoutActive) return;
         m_layoutActive = true;
         const UINT dpi = m_testLayoutDpi ? m_testLayoutDpi : UiMetrics::DpiForWindow(m_hWnd);
-        const int margin = UiMetrics::ScaleForDpi(8, dpi), gap = UiMetrics::ScaleForDpi(3, dpi);
+        const int margin = UiMetrics::ScaleForDpi(dpi >= 144 ? 6 : 8, dpi);
+        const int gap = UiMetrics::ScaleForDpi(dpi >= 144 ? 2 : 3, dpi);
         HDC dc = ::GetDC(m_hWnd);
         HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_resetChanges, WM_GETFONT, 0, 0));
         if(!font) font = reinterpret_cast<HFONT>(::SendMessageW(m_hWnd, WM_GETFONT, 0, 0));
@@ -793,7 +810,10 @@ public:
         if(oldFont) ::SelectObject(dc, oldFont); if(dc) ::ReleaseDC(m_hWnd, dc);
         labelWidth += margin; // Leave room for text overhang and static-control padding.
         const int buttonWidth = max(UiMetrics::ScaleForDpi(95, dpi), buttonTextWidth + 2 * margin);
-        const int lineHeight = max(UiMetrics::ScaleForDpi(20, dpi), fontHeight + 2 * gap);
+        // At high DPI a 20-DIP minimum for every inspector row can push the
+        // dialog below a small work area. Preserve text padding while allowing
+        // the rows to use a slightly more compact minimum.
+        const int lineHeight = max(UiMetrics::ScaleForDpi(dpi >= 144 ? 18 : 20, dpi), fontHeight + 2 * gap);
         RECT client = {}, window = {}; ::GetClientRect(m_hWnd, &client); ::GetWindowRect(m_hWnd, &window);
         MONITORINFO monitor = { sizeof(monitor) };
         ::GetMonitorInfoW(::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST), &monitor);
@@ -849,7 +869,20 @@ public:
             ::SetWindowPos(m_helpText, NULL, margin, previewY, previewWidth, height, SWP_NOZORDER | SWP_NOACTIVATE);
             previewY += height + gap;
         }
-        ::SetWindowPos(m_preview, NULL, margin, previewY, previewWidth, max(1, y + previewHeight - previewY), SWP_NOZORDER | SWP_NOACTIVATE);
+        // The preview artwork uses a 1000:600 coordinate system. Keep that
+        // aspect ratio when the dialog is resized so its controls do not
+        // stretch independently in the horizontal and vertical directions.
+        const int previewAvailableHeight = max(1, y + previewHeight - previewY);
+        RECT edge = {0, 0, 100, 100};
+        ::AdjustWindowRectEx(&edge, static_cast<DWORD>(::GetWindowLongPtrW(m_preview, GWL_STYLE)), FALSE,
+            static_cast<DWORD>(::GetWindowLongPtrW(m_preview, GWL_EXSTYLE)));
+        const int edgeWidth = max(0, static_cast<int>(edge.right - edge.left - 100));
+        const int edgeHeight = max(0, static_cast<int>(edge.bottom - edge.top - 100));
+        const int clientWidth = max(1, previewWidth - edgeWidth);
+        const int clientHeight = max(1, previewAvailableHeight - edgeHeight);
+        const int canvasWidth = max(1, min(clientWidth, MulDiv(clientHeight, 1000, 600)));
+        const int canvasHeight = max(1, min(clientHeight, MulDiv(canvasWidth, 600, 1000)));
+        ::SetWindowPos(m_preview, NULL, margin, previewY, canvasWidth + edgeWidth, canvasHeight + edgeHeight, SWP_NOZORDER | SWP_NOACTIVATE);
         ::SetWindowPos(m_roleList, NULL, margin, previewY, previewWidth, max(1, y + previewHeight - previewY), SWP_NOZORDER | SWP_NOACTIVATE);
         const int previewBottom = y + previewHeight;
         const int inspectorLeft = margin + previewWidth + gap;
@@ -1222,6 +1255,14 @@ public:
         selectRole(THEME_COLOR_CONTROL); ok = capture(L"mocha-control.bmp") && ok;
         selectRole(THEME_COLOR_TEXT); ok = capture(L"mocha-text.bmp") && ok;
         selectRole(THEME_COLOR_SELECTION_BACKGROUND); ok = capture(L"mocha-selection.bmp") && ok;
+        draft = originalPalettes[index];
+        ok = ThemeManager::CopyNamedPaletteColors(INTERFACE_PALETTE_SOLARIZED_LIGHT, draft) && ok;
+        draft.name = L"Solarized Light";
+        m_page.m_customPalettes[index] = draft; m_page.m_acceptedThemeIndex = INTERFACE_THEME_LIGHT;
+        ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT); ok = ThemeManager::SetCustomPalette(draft) && ok;
+        ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId()); Refresh();
+        SetDlgItemText(IDC_PALETTE_CURRENT, L"Solarized Light");
+        selectRole(THEME_COLOR_CONTROL); ok = capture(L"solarized-control.bmp") && ok;
         draft = originalPalettes[index]; draft.name = L"Sepia"; draft.base = ThemeManager::CustomPaletteBase::Sepia;
         for(int role = 0; role < THEME_COLOR_COUNT; ++role) draft.present[role] = false;
         m_page.m_customPalettes[index] = draft; m_page.m_acceptedThemeIndex = INTERFACE_THEME_LIGHT;
@@ -1259,7 +1300,8 @@ public:
                 PostMessage(WM_COMMAND, MAKEWPARAM(IDCANCEL, BN_CLICKED), reinterpret_cast<LPARAM>(GetDlgItem(IDCANCEL).m_hWnd));
                 return 0;
             }
-            const bool created = reinterpret_cast<ULONG_PTR>(::GetPropW(m_page.m_hWnd, L"FBE.PaletteCopyDialogAudit")) == 1 &&
+            const ULONG_PTR copyDialogAudit = reinterpret_cast<ULONG_PTR>(::GetPropW(m_page.m_hWnd, L"FBE.PaletteCopyDialogAudit"));
+            const bool created = copyDialogAudit == 1 &&
                 ::IsWindowEnabled(GetDlgItem(IDC_PALETTE_CHOOSE_COLOR)) &&
                 ::IsWindowEnabled(m_hex) && !(::GetWindowLongPtrW(m_builtinNote, GWL_STYLE) & WS_VISIBLE);
             ::RemovePropW(m_page.m_hWnd, L"FBE.PaletteCopyDialogAudit");
@@ -1277,6 +1319,12 @@ public:
                 COLORREF colors[THEME_COLOR_COUNT] = {}; PreviewColors(colors);
                 edited = colors[THEME_COLOR_WINDOW] == RGB(0x21,0x43,0x65) &&
                     colors[THEME_COLOR_ACCENT] == RGB(0xA1,0xB2,0xC3) && edited;
+            }
+            if(mode == 5) {
+                const unsigned audit = (offered ? 1U : 0U) | (created ? 2U : 0U) | (edited ? 4U : 0U) |
+                    (copyDialogAudit == 1 ? 8U : 0U) | (::IsWindowEnabled(GetDlgItem(IDC_PALETTE_CHOOSE_COLOR)) ? 16U : 0U) |
+                    (::IsWindowEnabled(m_hex) ? 32U : 0U) | (!(::GetWindowLongPtrW(m_builtinNote, GWL_STYLE) & WS_VISIBLE) ? 64U : 0U);
+                ::SetPropW(m_page.m_hWnd, L"FBE.PaletteCopySteps", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(audit)));
             }
             ::SetPropW(m_page.m_hWnd, L"FBE.PaletteManagerResult", reinterpret_cast<HANDLE>(offered && created && edited ? 1 : 2));
             const int command = mode == 5 ? IDOK : IDCANCEL;
@@ -1505,6 +1553,24 @@ public:
             passed = limits.ptMinTrackSize.x == m_minTrack.cx && limits.ptMinTrackSize.y == m_minTrack.cy &&
                 m_minTrack.cx > 0 && m_minTrack.cy > 0 && passed;
             ::GetWindowRect(m_hWnd, &window); ::GetWindowRect(m_preview, &oldPreview);
+            auto previewKeepsProportions = [&]() {
+                RECT area = {}; ::GetClientRect(m_preview, &area);
+                const int width = area.right - area.left, height = area.bottom - area.top;
+                const POINT accent = {MulDiv(width, 400, 1000), MulDiv(height, 420, 600)};
+                const auto parts = PreviewParts(width, height);
+                const int hit = PreviewHitTest(accent);
+                return width > 0 && height > 0 && abs(width * 600 - height * 1000) <= 1000 &&
+                    hit >= 0 && hit < static_cast<int>(parts.size()) && parts[hit].role == THEME_COLOR_ACCENT;
+            };
+            unsigned resizeAudit = previewKeepsProportions() ? 1U : 0U;
+            ::SetWindowPos(m_hWnd, NULL, 0, 0, window.right - window.left + 200, window.bottom - window.top,
+                SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+            if(previewKeepsProportions()) resizeAudit |= 2U;
+            ::SetWindowPos(m_hWnd, NULL, 0, 0, window.right - window.left, window.bottom - window.top + 100,
+                SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+            if(previewKeepsProportions()) resizeAudit |= 4U;
+            ::SetPropW(m_page.m_hWnd, L"FBE.PaletteResizeAudit", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(resizeAudit)));
+            passed = resizeAudit == 7U && passed;
             ::SetWindowPos(m_hWnd, NULL, 0, 0, window.right - window.left + 80, window.bottom - window.top + 60,
                 SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
             ::GetWindowRect(m_preview, &newPreview);
