@@ -1098,6 +1098,11 @@ public:
             }
             ::SendMessageW(m_previewMode, CB_SETCURSEL, 3, 0);
             BOOL handled = FALSE; OnPreviewModeChanged(CBN_SELCHANGE, kPreviewModeId, m_previewMode, handled);
+            const HWND previousFocus = ::GetFocus();
+            ::SetFocus(m_previewMode);
+            MSG tab = {}; tab.hwnd = m_previewMode; tab.message = WM_KEYDOWN; tab.wParam = VK_TAB;
+            const bool tabHandled = ::IsDialogMessageW(m_hWnd, &tab) != FALSE;
+            passed = tabHandled && ::GetFocus() == m_roleList && passed;
             ::SendMessageW(m_roleList, LB_SETCURSEL, THEME_COLOR_WARNING - 1, 0);
             ::SendMessageW(m_roleList, WM_KEYDOWN, VK_DOWN, 0);
             ::SendMessageW(m_roleList, WM_KEYUP, VK_DOWN, 0);
@@ -1120,6 +1125,8 @@ public:
                 passed = keyboardBefore[role] == keyboardAfter[role] && passed;
             ::SendMessageW(m_previewMode, CB_SETCURSEL, 0, 0);
             OnPreviewModeChanged(CBN_SELCHANGE, kPreviewModeId, m_previewMode, handled);
+            passed = !::IsWindowVisible(m_roleList) && ::GetNextDlgTabItem(m_hWnd, m_previewMode, FALSE) != m_roleList && passed;
+            if(previousFocus && ::IsWindow(previousFocus)) ::SetFocus(previousFocus);
             CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).SetCurSel(originalRole);
             m_page.m_paletteRole.SetCurSel(originalRole);
             RECT window = {}, oldPreview = {}, newPreview = {};
