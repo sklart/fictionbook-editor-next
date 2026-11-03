@@ -760,12 +760,14 @@ void CMainFrame::RunPortableStateTestScenario()
                     contrastPassed = contrastPage.StagePaletteColor(role, RGB(0, 0, 0), true) && contrastPassed;
                 CString label; contrastPage.GetDlgItemText(IDC_PALETTE_CONTRAST, label);
                 contrastPassed = label == FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_ok", L"Text contrast check passed.") + CString(L" (21.00:1)") && contrastPassed;
+                CString suggestion;
+                suggestion.Format(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_suggestion", L"Try text %s on background %s."), L"#000000", L"#FFFFFF");
                 contrastPassed = contrastPage.StagePaletteColor(THEME_COLOR_TEXT, RGB(255, 255, 255), true) && contrastPassed;
                 contrastPage.GetDlgItemText(IDC_PALETTE_CONTRAST, label);
-                contrastPassed = label == FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_low", L"Warning: some text may be difficult to read against its background.") + CString(L" (1.00:1)") && contrastPassed;
+                contrastPassed = label == FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_low", L"Warning: some text may be difficult to read against its background.") + CString(L" (1.00:1)\n") + suggestion && contrastPassed;
                 contrastPassed = contrastPage.StagePaletteColor(THEME_COLOR_TEXT, RGB(119, 119, 119), true) && contrastPassed;
                 contrastPage.GetDlgItemText(IDC_PALETTE_CONTRAST, label);
-                contrastPassed = label == FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_low", L"Warning: some text may be difficult to read against its background.") + CString(L" (4.48:1)") && contrastPassed;
+                contrastPassed = label == FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_low", L"Warning: some text may be difficult to read against its background.") + CString(L" (4.48:1)\n") + suggestion && contrastPassed;
                 contrastPassed = contrastPage.StagePaletteColor(THEME_COLOR_TEXT, RGB(118, 118, 118), true) && contrastPassed;
                 contrastPage.GetDlgItemText(IDC_PALETTE_CONTRAST, label);
                 contrastPassed = label == FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_ok", L"Text contrast check passed.") + CString(L" (4.54:1)") && contrastPassed;

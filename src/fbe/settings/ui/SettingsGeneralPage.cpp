@@ -900,8 +900,8 @@ public:
         ::SetWindowPos(m_recent, NULL, inspectorLeft + inspectorWidth / 2, y, inspectorWidth - inspectorWidth / 2, 7 * lineHeight, SWP_NOZORDER | SWP_NOACTIVATE); y += lineHeight + gap;
         place(IDC_PALETTE_CHOOSE_COLOR, inspectorLeft, y, (inspectorWidth - gap) / 2, lineHeight);
         place(IDC_PALETTE_RESET_COLOR, inspectorLeft + (inspectorWidth + gap) / 2, y, (inspectorWidth - gap) / 2, lineHeight); y += lineHeight + gap;
-        place(IDC_PALETTE_CONTRAST, inspectorLeft, y, inspectorWidth, 3 * fontHeight + 2 * margin);
-        y = max(previewBottom, y + 3 * fontHeight + 2 * margin) + margin;
+        place(IDC_PALETTE_CONTRAST, inspectorLeft, y, inspectorWidth, 4 * fontHeight + 2 * margin);
+        y = max(previewBottom, y + 4 * fontHeight + 2 * margin) + margin;
         place(kResetChangesId, margin, y, buttonWidth, lineHeight);
         place(IDOK, right - 2 * buttonWidth - gap, y, buttonWidth, lineHeight);
         place(IDCANCEL, right - buttonWidth, y, buttonWidth, lineHeight); y += lineHeight + margin;
@@ -1201,8 +1201,14 @@ public:
                     CString text; ::GetWindowTextW(item.first, text.GetBuffer(length + 1), length + 1); text.ReleaseBuffer();
                     HDC dc = ::GetDC(item.first); HGDIOBJ oldFont = dc ? ::SelectObject(dc, font) : NULL;
                     RECT measured = {0, 0, max(1, static_cast<int>(bounds.right - bounds.left)), 0};
-                    const bool wrap = ::GetDlgCtrlID(item.first) == IDC_PALETTE_CONTRAST ||
-                        item.first == m_builtinNote || item.first == m_helpText;
+                    const bool contrastLabel = ::GetDlgCtrlID(item.first) == IDC_PALETTE_CONTRAST;
+                    const bool wrap = contrastLabel || item.first == m_builtinNote || item.first == m_helpText;
+                    if(contrastLabel) {
+                        text = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_low", L"Warning: some text may be difficult to read against its background.");
+                        CString suggestion;
+                        suggestion.Format(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_suggestion", L"Try text %s on background %s."), L"#000000", L"#FFFFFF");
+                        text += L" (1.00:1)\n"; text += suggestion;
+                    }
                     if(dc) ::DrawTextW(dc, text, text.GetLength(), &measured, DT_CALCRECT | (wrap ? DT_WORDBREAK : DT_SINGLELINE));
                     if(oldFont) ::SelectObject(dc, oldFont); if(dc) ::ReleaseDC(item.first, dc);
                     const int inset = button ? UiMetrics::ScaleForDpi(12, dpi) : 0;
@@ -2581,13 +2587,31 @@ void CSettingsGeneralPage::UpdatePaletteContrast()
 		const double a = luminance(colors[foreground]), b = luminance(colors[background]);
 		return ((std::max)(a, b) + 0.05) / ((std::min)(a, b) + 0.05);
 	};
-	const double minimum = (std::min)({contrast(THEME_COLOR_TEXT, THEME_COLOR_WINDOW), contrast(THEME_COLOR_TEXT, THEME_COLOR_CONTROL),
-		contrast(THEME_COLOR_SELECTION_TEXT, THEME_COLOR_SELECTION_BACKGROUND), contrast(THEME_COLOR_TEXT, THEME_COLOR_HOVER),
-		contrast(THEME_COLOR_TEXT, THEME_COLOR_PRESSED)});
+	const std::pair<ThemeColorRole, ThemeColorRole> pairs[] = {
+		{THEME_COLOR_TEXT, THEME_COLOR_WINDOW}, {THEME_COLOR_TEXT, THEME_COLOR_CONTROL},
+		{THEME_COLOR_SELECTION_TEXT, THEME_COLOR_SELECTION_BACKGROUND}, {THEME_COLOR_TEXT, THEME_COLOR_HOVER},
+		{THEME_COLOR_TEXT, THEME_COLOR_PRESSED}};
+	double minimum = contrast(pairs[0].first, pairs[0].second);
+	ThemeColorRole worstBackground = pairs[0].second;
+	for(const auto& pair : pairs) {
+		const double value = contrast(pair.first, pair.second);
+		if(value < minimum) { minimum = value; worstBackground = pair.second; }
+	}
 	CString message = minimum >= 4.5 ?
 		FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_ok", L"Text contrast check passed.") :
 		FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_low", L"Warning: some text may be difficult to read against its background.");
 	CString ratio; ratio.Format(L" (%.2f:1)", minimum); message += ratio;
+	if(minimum < 4.5) {
+		const COLORREF background = colors[worstBackground];
+		const COLORREF ink = PalettePreviewContrast::ReadableInk(background);
+		CString foregroundHex, backgroundHex;
+		foregroundHex.Format(L"#%02X%02X%02X", GetRValue(ink), GetGValue(ink), GetBValue(ink));
+		backgroundHex.Format(L"#%02X%02X%02X", GetRValue(background), GetGValue(background), GetBValue(background));
+		CString suggestion;
+		suggestion.Format(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.contrast_suggestion", L"Try text %s on background %s."),
+			foregroundHex.GetString(), backgroundHex.GetString());
+		message += L"\n"; message += suggestion;
+	}
 	SetDlgItemText(IDC_PALETTE_CONTRAST, message);
 }
 
