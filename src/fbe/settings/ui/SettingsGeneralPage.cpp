@@ -1098,6 +1098,26 @@ public:
             }
             ::SendMessageW(m_previewMode, CB_SETCURSEL, 3, 0);
             BOOL handled = FALSE; OnPreviewModeChanged(CBN_SELCHANGE, kPreviewModeId, m_previewMode, handled);
+            auto tabOrderValid = [&](bool expectRoleList) {
+                std::vector<HWND> forward, backward;
+                auto collect = [&](bool reverse, std::vector<HWND>& order) {
+                    HWND current = m_previewMode;
+                    for(int step = 0; step < 64; ++step) {
+                        current = ::GetNextDlgTabItem(m_hWnd, current, reverse ? TRUE : FALSE);
+                        if(!current) return false;
+                        if(current == m_previewMode) return true;
+                        if(std::find(order.begin(), order.end(), current) != order.end()) return false;
+                        order.push_back(current);
+                    }
+                    return false;
+                };
+                if(!collect(false, forward) || !collect(true, backward) || forward.size() != backward.size() ||
+                    !std::equal(forward.begin(), forward.end(), backward.rbegin())) return false;
+                for(HWND required : {GetDlgItem(IDOK).m_hWnd, GetDlgItem(IDCANCEL).m_hWnd, m_hex, m_resetChanges})
+                    if(::IsWindowVisible(required) && ::IsWindowEnabled(required) && std::find(forward.begin(), forward.end(), required) == forward.end()) return false;
+                return (std::find(forward.begin(), forward.end(), m_roleList) != forward.end()) == expectRoleList;
+            };
+            passed = tabOrderValid(true) && passed;
             const HWND previousFocus = ::GetFocus();
             ::SetFocus(m_previewMode);
             MSG tab = {}; tab.hwnd = m_previewMode; tab.message = WM_KEYDOWN; tab.wParam = VK_TAB;
@@ -1125,7 +1145,7 @@ public:
                 passed = keyboardBefore[role] == keyboardAfter[role] && passed;
             ::SendMessageW(m_previewMode, CB_SETCURSEL, 0, 0);
             OnPreviewModeChanged(CBN_SELCHANGE, kPreviewModeId, m_previewMode, handled);
-            passed = !::IsWindowVisible(m_roleList) && ::GetNextDlgTabItem(m_hWnd, m_previewMode, FALSE) != m_roleList && passed;
+            passed = !::IsWindowVisible(m_roleList) && ::GetNextDlgTabItem(m_hWnd, m_previewMode, FALSE) != m_roleList && tabOrderValid(false) && passed;
             if(previousFocus && ::IsWindow(previousFocus)) ::SetFocus(previousFocus);
             CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).SetCurSel(originalRole);
             m_page.m_paletteRole.SetCurSel(originalRole);
