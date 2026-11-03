@@ -848,6 +848,27 @@ void CMainFrame::RunPortableStateTestScenario()
         jsonPassed = ThemeManager::LoadCustomPaletteFromProfile(custom.id, fromFile, parseError) && fromFile.name == custom.name &&
             fromFile.colors[THEME_COLOR_WINDOW] == custom.colors[THEME_COLOR_WINDOW] && jsonPassed;
         ThemeManager::CustomPalette updated = custom; updated.name = L"Updated";
+        CString lockedPath(DeploymentContext::SettingsDirectory().c_str());
+        if(lockedPath.Right(1) != L"\\") lockedPath += L"\\";
+        lockedPath += L"InterfaceThemes\\my-theme.json";
+        const CString tempPattern = lockedPath.Left(lockedPath.ReverseFind(L'\\') + 1) + L"fbe*.tmp";
+        auto countTemporaryThemes = [&]() {
+            WIN32_FIND_DATAW data = {}; HANDLE search = ::FindFirstFileW(tempPattern, &data); int count = 0;
+            if(search != INVALID_HANDLE_VALUE) { do { ++count; } while(::FindNextFileW(search, &data)); ::FindClose(search); }
+            return count;
+        };
+        std::wstring originalJson, afterFailedSave;
+        const bool originalRead = FbeRuntimeLocalization::ReadUtf8TextFile(lockedPath, originalJson);
+        const int temporaryBefore = countTemporaryThemes();
+        HANDLE lock = ::CreateFileW(lockedPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        bool failedSavePreserved = false;
+        if(lock != INVALID_HANDLE_VALUE) {
+            const bool rejected = !ThemeManager::SaveCustomPaletteToProfile(updated, true, parseError) && !parseError.empty();
+            ::CloseHandle(lock);
+            failedSavePreserved = rejected && originalRead && FbeRuntimeLocalization::ReadUtf8TextFile(lockedPath, afterFailedSave) &&
+                originalJson == afterFailedSave && countTemporaryThemes() == temporaryBefore;
+        }
+        jsonPassed = failedSavePreserved && jsonPassed;
         jsonPassed = ThemeManager::SaveCustomPaletteToProfile(updated, true, parseError) &&
             ThemeManager::LoadCustomPaletteFromProfile(updated.id, fromFile, parseError) && fromFile.name == L"Updated" && jsonPassed;
         jsonPassed = !ThemeManager::DeleteCustomPaletteFromProfile(L"../bad", parseError) && jsonPassed;
