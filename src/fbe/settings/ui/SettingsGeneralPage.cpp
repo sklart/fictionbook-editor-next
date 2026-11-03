@@ -642,11 +642,9 @@ public:
         const int previewBottom = y + previewHeight;
         const int inspectorLeft = margin + previewWidth + gap;
         const int inspectorWidth = right - inspectorLeft;
-        const int roleLabelWidth = min(labelWidth, max(1, inspectorWidth - UiMetrics::ScaleForDpi(100, dpi) - gap));
-        const int comboLeft = inspectorLeft + roleLabelWidth + gap;
         RECT combo = {}; ::GetWindowRect(GetDlgItem(IDC_PALETTE_ROLE), &combo);
-        place(IDC_PALETTE_ROLE_LABEL, inspectorLeft, y, roleLabelWidth, lineHeight);
-        place(IDC_PALETTE_ROLE, comboLeft, y, right - comboLeft, combo.bottom - combo.top); y += lineHeight + gap;
+        place(IDC_PALETTE_ROLE_LABEL, inspectorLeft, y, inspectorWidth, lineHeight); y += lineHeight + gap;
+        place(IDC_PALETTE_ROLE, inspectorLeft, y, inspectorWidth, combo.bottom - combo.top); y += lineHeight + gap;
         ::SetWindowPos(m_roleDescription, NULL, inspectorLeft, y, inspectorWidth, lineHeight, SWP_NOZORDER | SWP_NOACTIVATE); y += lineHeight + gap;
         ::SetWindowPos(m_hex, NULL, inspectorLeft, y, inspectorWidth, lineHeight, SWP_NOZORDER | SWP_NOACTIVATE); y += lineHeight + gap;
         ::SetWindowPos(m_colorInfo, NULL, inspectorLeft, y, inspectorWidth, 2 * lineHeight, SWP_NOZORDER | SWP_NOACTIVATE); y += 2 * lineHeight + gap;
@@ -763,7 +761,7 @@ public:
         }
         SetDlgItemText(IDC_PALETTE_CURRENT, current);
         m_tooltips.UpdateText(GetDlgItem(IDC_PALETTE_CURRENT), current);
-        for(int id : {IDC_PALETTE_EXPORT, IDC_PALETTE_RENAME, IDC_PALETTE_DELETE, IDC_PALETTE_ROLE_LABEL,
+        for(int id : {IDC_PALETTE_EXPORT, IDC_PALETTE_RENAME, IDC_PALETTE_DELETE,
             IDC_PALETTE_ROLE, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR}) GetDlgItem(id).EnableWindow(editable);
         ::EnableWindow(m_hex, editable);
         ::EnableWindow(m_recent, editable && !m_recentColors.empty());
