@@ -50,6 +50,16 @@ public:
 		return CString(text);
 	}
 
+	CString TextAtOwnerPoint(POINT point) const
+	{
+		if(!m_owner || !m_tooltips.IsWindow()) return CString();
+		TTHITTESTINFOW hit = {}; hit.hwnd = m_owner; hit.pt = point; hit.ti.cbSize = sizeof(hit.ti);
+		if(!::SendMessageW(m_tooltips, TTM_HITTESTW, 0, reinterpret_cast<LPARAM>(&hit))) return CString();
+		wchar_t text[1024] = {};
+		m_tooltips.GetText(text, m_owner, hit.ti.uId);
+		return CString(text);
+	}
+
 	// Disabled child windows do not reliably receive mouse messages. Register
 	// the child's client rectangle on its enabled page instead, so the tooltip
 	// control subclasses the page and receives the parent's mouse stream.

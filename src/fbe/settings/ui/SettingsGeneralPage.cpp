@@ -536,6 +536,7 @@ public:
         m_tooltips.Initialize(m_hWnd);
         m_tooltips.Add(m_preview, L"fbe.settings.tooltip.palette.preview", L"Choose an interface colour by clicking the preview.");
         m_tooltips.Add(m_hex, L"fbe.settings.tooltip.palette.hex", L"Enter a colour as #RRGGBB.");
+        m_tooltips.AddDisabledControlArea(m_hex, L"fbe.settings.tooltip.general.palette_builtin", L"Create a copy of the built-in scheme before editing it.");
         m_tooltips.Add(m_recent, L"fbe.settings.tooltip.palette.recent", L"Choose a recently used colour.");
         m_tooltips.Add(GetDlgItem(IDC_PALETTE_CURRENT), L"fbe.settings.tooltip.general.interface_palette", L"Selected colour scheme.");
         for(int id : {IDC_PALETTE_ROLE, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR}) {
@@ -1005,6 +1006,13 @@ public:
             return 0;
         }
         bool passed = mode == 1 && !editable;
+        if(mode == 1 && !editable) {
+            RECT field = {}; ::GetWindowRect(m_hex, &field);
+            POINT center = {(field.left + field.right) / 2, (field.top + field.bottom) / 2};
+            ::ScreenToClient(m_hWnd, &center);
+            passed = !::IsWindowEnabled(m_hex) && m_tooltips.TextAtOwnerPoint(center) ==
+                FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.general.palette_builtin", L"Create a copy of the built-in scheme before editing it.") && passed;
+        }
         if(mode == 2 && editable) {
             const CString hexTip = m_tooltips.RegisteredText(m_hex);
             const CString recentTip = m_tooltips.RegisteredText(m_recent);
