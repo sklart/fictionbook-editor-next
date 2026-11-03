@@ -707,6 +707,36 @@ void CMainFrame::RunPortableStateTestScenario()
         }
         passed = ThemeManager::SaveCustomPaletteToProfile(original, false, error) && passed;
         _Settings.SetInterfacePalette(L"custom:restart-test"); _Settings.Save();
+        // Exercise the actual copy dialog under the other interface theme too.
+        // Mode 6 dismisses it with Escape and audits its inherited font and
+        // localized action labels without leaving a staged palette behind.
+        bool darkCopyPassed = !ThemeManager::IsDarkModeSupported();
+        if(ThemeManager::IsDarkModeSupported()) {
+            const InterfaceTheme savedTheme = ThemeManager::GetSelectedTheme();
+            ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+            const bool darkPalette = ThemeManager::SetNamedPalette(INTERFACE_PALETTE_GRAPHITE) && ThemeManager::IsDark();
+            ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+            CSettingsGeneralPage page;
+            const bool created = page.Create(m_hWnd) != NULL;
+            if(created) {
+                HWND palette = page.GetDlgItem(IDC_INTERFACE_PALETTE); BOOL handled = FALSE;
+                ::SendMessageW(palette, CB_SETCURSEL, CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SOLARIZED_LIGHT), 0);
+                page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, palette, handled);
+                const LRESULT count = ::SendMessageW(palette, CB_GETCOUNT, 0, 0);
+                ::SetPropW(page.m_hWnd, L"FBE.PaletteManagerTest", reinterpret_cast<HANDLE>(6));
+                page.OnManagePalettes(BN_CLICKED, IDC_PALETTE_MANAGE, NULL, handled);
+                darkCopyPassed = darkPalette && ThemeManager::GetSelectedTheme() == INTERFACE_THEME_DARK && ThemeManager::IsDark() &&
+                    reinterpret_cast<ULONG_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteManagerResult")) == 1 &&
+                    ::SendMessageW(palette, CB_GETCOUNT, 0, 0) == count;
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerTest");
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteManagerResult");
+                page.CancelChanges(); page.DestroyWindow();
+            }
+            ThemeManager::SetSelectedTheme(savedTheme);
+            passed = ThemeManager::SetCustomPalette(original) && passed;
+            ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+        }
+        passed = darkCopyPassed && passed;
         bool documentPreserved = false;
         try {
             documentPreserved = documentReady && m_doc && m_doc->m_body.Document() && m_doc->m_body.Document()->body &&
