@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "../../testing/RuntimeTestScenarioMode.h"
 #include "SettingsGeneralPage.h"
+#include "PalettePreviewClip.h"
 #include "..\\..\\Settings.h"
 #include "..\\..\\ThemeManager.h"
 #include "..\\..\\UiMetrics.h"
@@ -185,7 +186,7 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
     static constexpr int kRoleListId = 0x7e45;
     static constexpr int kResetChangesId = 0x7e46;
     static constexpr int kHelpButtonId = 0x7e47;
-    struct PreviewPart { RECT rect; int role; LPCWSTR text; int background; };
+    using PreviewPart = PalettePreviewClip::Part;
 
     static COLORREF ReadableInk(COLORREF background)
     {
@@ -196,6 +197,30 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
         const double luminance = 0.2126 * linear(GetRValue(background)) + 0.7152 * linear(GetGValue(background)) +
             0.0722 * linear(GetBValue(background));
         return luminance >= 0.1791287847 ? RGB(0,0,0) : RGB(255,255,255);
+    }
+
+    bool VerifyPreviewFrameClipping() const
+    {
+        HDC dc = ::CreateCompatibleDC(NULL); if(!dc) return false;
+        HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_resetChanges, WM_GETFONT, 0, 0));
+        HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
+        const RECT client = {0, 0, 800, 400}; bool valid = true;
+        for(int mode : {0, 1, 2, 4}) {
+            const auto parts = PreviewParts(client.right, client.bottom, mode);
+            for(int index = 0; index < static_cast<int>(parts.size()); ++index) {
+                const int saved = ::SaveDC(dc); if(!saved) { valid = false; break; }
+                PalettePreviewClip::Apply(dc, client, parts, index);
+                for(int next = index + 1; next < static_cast<int>(parts.size()); ++next)
+                    if(::RectVisible(dc, &parts[next].rect)) valid = false;
+                if(*parts[index].text) {
+                    const RECT text = PalettePreviewClip::TextBounds(dc, parts[index]);
+                    if(::RectVisible(dc, &text)) valid = false;
+                }
+                if(::PtVisible(dc, -1, 0) || ::PtVisible(dc, client.right, client.bottom - 1)) valid = false;
+                ::RestoreDC(dc, saved);
+            }
+        }
+        if(oldFont) ::SelectObject(dc, oldFont); ::DeleteDC(dc); return valid;
     }
 
     static std::vector<PreviewPart> PreviewParts(int width, int height, int mode = 0)
@@ -473,16 +498,9 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
             const auto& part = parts[index]; RECT outline = part.rect;
             if(outline.right <= outline.left || outline.bottom <= outline.top) return;
             const int saved = ::SaveDC(dc); if(!saved) return;
-            ::IntersectClipRect(dc, client.left, client.top, client.right, client.bottom);
             // Later parts are visually on top. Their pixels, including their
             // text, must never be covered by a frame for an underlying part.
-            for(int i = index + 1; i < static_cast<int>(parts.size()); ++i)
-                ::ExcludeClipRect(dc, parts[i].rect.left, parts[i].rect.top, parts[i].rect.right, parts[i].rect.bottom);
-            if(*part.text) {
-                TEXTMETRICW metric = {}; ::GetTextMetricsW(dc, &metric);
-                const int top = (outline.top + outline.bottom - metric.tmHeight) / 2;
-                ::ExcludeClipRect(dc, outline.left + 3, top - 1, outline.right, top + metric.tmHeight + 1);
-            }
+            PalettePreviewClip::Apply(dc, client, parts, index);
             const COLORREF background = colors[part.background];
             const COLORREF contrast = ReadableInk(background);
             COLORREF color = isSelected ? contrast : colors[THEME_COLOR_ACCENT];
@@ -1297,6 +1315,7 @@ public:
                 FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.general.palette_builtin", L"Create a copy of the built-in scheme before editing it.") && passed;
         }
         if(mode == 2 && editable) {
+            passed = VerifyPreviewFrameClipping() && passed;
             const CString hexTip = m_tooltips.RegisteredText(m_hex);
             const CString recentTip = m_tooltips.RegisteredText(m_recent);
             const bool tooltipTexts = hexTip == FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.palette.hex", L"Enter a colour as #RRGGBB.") &&

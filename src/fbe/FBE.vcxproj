@@ -649,6 +649,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
 	<ClInclude Include="settings\ui\SettingsTooltips.h" />
     <ClInclude Include="settings\ui\SettingsCommonPage.h" />
     <ClInclude Include="settings\ui\SettingsGeneralPage.h" />
+    <ClInclude Include="settings\ui\PalettePreviewClip.h" />
 	<ClInclude Include="settings\ui\SettingsImagesPage.h" />
     <ClInclude Include="settings\ui\SettingsEditorPage.h" />
 	<ClInclude Include="settings\EditorBackgrounds.h" />

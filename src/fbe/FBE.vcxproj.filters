@@ -535,6 +535,7 @@
     <ClInclude Include="settings\ui\SettingsGeneralPage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="settings\ui\PalettePreviewClip.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="settings\ui\SettingsEditorPage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
