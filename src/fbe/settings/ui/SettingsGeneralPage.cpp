@@ -1310,6 +1310,11 @@ public:
             ::ScreenToClient(m_hWnd, &center);
             passed = !::IsWindowEnabled(m_hex) && m_tooltips.TextAtOwnerPoint(center) ==
                 FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.general.palette_builtin", L"Create a copy of the built-in scheme before editing it.") && passed;
+            const bool builtinVisible = m_builtinNote && (::GetWindowLongPtrW(m_builtinNote, GWL_STYLE) & WS_VISIBLE);
+            if(m_helpText && !helpInitiallyVisible) ::SendMessageW(m_helpButton, BM_CLICK, 0, 0);
+            const bool dpiLayoutPassed = VerifySimulatedDpiLayout();
+            if(m_helpText && !helpInitiallyVisible) ::SendMessageW(m_helpButton, BM_CLICK, 0, 0);
+            passed = builtinVisible && dpiLayoutPassed && passed;
         }
         if(mode == 2 && editable) {
             const bool clippingPassed = VerifyPreviewFrameClipping();
