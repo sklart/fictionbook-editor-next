@@ -465,6 +465,13 @@ void CMainFrame::RunPortableStateTestScenario()
                 ::SendMessageW(palette, CB_SETCURSEL, CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SOLARIZED_LIGHT), 0);
                 page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, palette, handled);
                 const LRESULT before = ::SendMessageW(palette, CB_GETCOUNT, 0, 0);
+                CString existingName;
+                CComboBox paletteCombo(palette);
+                paletteCombo.GetLBText(paletteCombo.GetCurSel(), existingName);
+                CString duplicateName(existingName); duplicateName.MakeUpper();
+                const bool invalidNamesRejected = !page.StagePaletteCopy(L"") && !page.StagePaletteCopy(L"   ") &&
+                    !page.StagePaletteCopy(duplicateName) && ::SendMessageW(palette, CB_GETCOUNT, 0, 0) == before;
+                passed = invalidNamesRejected && passed;
                 ::SetPropW(page.m_hWnd, L"FBE.PaletteManagerTest", reinterpret_cast<HANDLE>(6));
                 page.OnManagePalettes(BN_CLICKED, IDC_PALETTE_MANAGE, NULL, handled);
                 passed = reinterpret_cast<ULONG_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteManagerResult")) == 1 &&
