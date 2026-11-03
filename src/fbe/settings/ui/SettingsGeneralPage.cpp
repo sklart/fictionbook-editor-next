@@ -1165,7 +1165,8 @@ public:
                     CString text; ::GetWindowTextW(item.first, text.GetBuffer(length + 1), length + 1); text.ReleaseBuffer();
                     HDC dc = ::GetDC(item.first); HGDIOBJ oldFont = dc ? ::SelectObject(dc, font) : NULL;
                     RECT measured = {0, 0, max(1, static_cast<int>(bounds.right - bounds.left)), 0};
-                    const bool wrap = ::GetDlgCtrlID(item.first) == IDC_PALETTE_CONTRAST;
+                    const bool wrap = ::GetDlgCtrlID(item.first) == IDC_PALETTE_CONTRAST ||
+                        item.first == m_builtinNote || item.first == m_helpText;
                     if(dc) ::DrawTextW(dc, text, text.GetLength(), &measured, DT_CALCRECT | (wrap ? DT_WORDBREAK : DT_SINGLELINE));
                     if(oldFont) ::SelectObject(dc, oldFont); if(dc) ::ReleaseDC(item.first, dc);
                     const int inset = button ? UiMetrics::ScaleForDpi(12, dpi) : 0;
@@ -1311,7 +1312,7 @@ public:
                 FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.general.palette_builtin", L"Create a copy of the built-in scheme before editing it.") && passed;
         }
         if(mode == 2 && editable) {
-            passed = VerifyPreviewFrameClipping() && passed;
+            const bool clippingPassed = VerifyPreviewFrameClipping();
             const CString hexTip = m_tooltips.RegisteredText(m_hex);
             const CString recentTip = m_tooltips.RegisteredText(m_recent);
             const bool tooltipTexts = hexTip == FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.palette.hex", L"Enter a colour as #RRGGBB.") &&
@@ -1323,7 +1324,7 @@ public:
             ::SendMessageW(m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_PALETTE_RESET_COLOR, BN_CLICKED),
                 reinterpret_cast<LPARAM>(GetDlgItem(IDC_PALETTE_RESET_COLOR).m_hWnd));
             ThemeManager::PreviewColors(static_cast<InterfaceTheme>(m_page.m_acceptedThemeIndex), INTERFACE_PALETTE_CLASSIC, &m_page.m_customPalettes[index], after);
-            passed = tooltipTexts && after[THEME_COLOR_WINDOW] != before[THEME_COLOR_WINDOW];
+            passed = clippingPassed && tooltipTexts && after[THEME_COLOR_WINDOW] != before[THEME_COLOR_WINDOW];
         }
         if(m_preview) {
             RECT bounds = {}; ::GetClientRect(m_preview, &bounds);
