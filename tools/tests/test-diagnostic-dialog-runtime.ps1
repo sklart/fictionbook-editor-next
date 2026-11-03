@@ -33,13 +33,13 @@ try {
  $rows=[IO.File]::ReadAllText($report)
  if([Convert]::ToBase64String([IO.File]::ReadAllBytes($damaged)) -cne [Convert]::ToBase64String($damagedBytes)){throw 'Manual review changed damaged report bytes'}
  if([Convert]::ToBase64String([IO.File]::ReadAllBytes($valid)) -cne [Convert]::ToBase64String($validBytes)){throw 'Automatic review changed report bytes'}
- foreach($check in 'automatic_review','review_worker_thread','review_stale_rejected','review_write_failed') {
+ foreach($check in 'automatic_review','review_worker_thread','review_stale_rejected','review_write_failed','themed_list_scroll') {
   if($rows -notmatch "$check=1"){throw "Incomplete review worker check: $check"}
  }
  if($rows -notmatch 'damaged_review=1'){throw 'Damaged-report review did not preserve snapshot'}
  if($rows -notmatch 'layout_dpi_theme=1' -or $rows -notmatch 'responsive_cancel_close=1'){throw 'Incomplete dialog checks'}
  $passed=$true
- Write-Host "PASS: diagnostic dialog 96/144/192 DPI geometry, 12 locales, light/dark application, worker heartbeat, cancellation and deferred close. Evidence: $evidence"
+ Write-Host "PASS: diagnostic dialog themed list scrolling, 96/144/192 DPI geometry, 12 locales, light/dark application, worker heartbeat, cancellation and deferred close. Evidence: $evidence"
 } finally {
  $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB=$oldBreadcrumb
  $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario; $env:FBE_NEXT_TRACE=$oldTrace

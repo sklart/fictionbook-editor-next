@@ -12,8 +12,59 @@
     StartupTrace::DiagnosticSession testReviewSession;
     ATL::CHandle testReviewLock;
     bool automaticReview=false, reviewWorkerThread=false, staleRejected=false, reviewWriteFailed=false;
+    bool themedListScroll=false;
+    int listScrollOffset=0, listScrollDifferences=0, listScrollTextPixels=0;
     unsigned int reviewHeartbeat=0;
     std::shared_ptr<Job> closingJob;
+    bool CheckThemedListScroll()
+    {
+        HWND list=::GetDlgItem(window,Components);
+        if(!list || ::SendMessageW(list,LB_GETCOUNT,0,0)<=0) return false;
+        const InterfaceTheme originalTheme=ThemeManager::GetSelectedTheme();
+        const InterfacePalette originalPalette=ThemeManager::GetNamedPalette();
+        ThemeManager::CustomPalette custom; const bool hadCustom=ThemeManager::GetCustomPalette(custom);
+        RECT original={}; ::GetWindowRect(list,&original); ::MapWindowPoints(NULL,window,reinterpret_cast<POINT*>(&original),2);
+        const LRESULT selected=::SendMessageW(list,LB_GETCURSEL,0,0);
+        const LRESULT extent=::SendMessageW(list,LB_GETHORIZONTALEXTENT,0,0);
+        ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK); ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CATPPUCCIN_MOCHA);
+        ThemeManager::ApplyToWindow(window);
+        ::SetWindowPos(list,NULL,original.left,original.top,140,original.bottom-original.top,SWP_NOZORDER|SWP_NOACTIVATE);
+        ::SendMessageW(list,LB_SETHORIZONTALEXTENT,500,0); ::SendMessageW(list,LB_SETCURSEL,0,0);
+        RECT item={}; bool passed=::SendMessageW(list,LB_GETITEMRECT,0,reinterpret_cast<LPARAM>(&item))!=LB_ERR;
+        CImage image;
+        if(passed && image.Create(140,original.bottom-original.top,32)) {
+            HDC dc=image.GetDC(); passed=dc!=NULL;
+            if(dc) {
+                ::SendMessageW(list,WM_PRINTCLIENT,reinterpret_cast<WPARAM>(dc),PRF_CLIENT);
+                wchar_t breadcrumb[32768]={}; const DWORD pathLength=::GetEnvironmentVariableW(L"FBE_NEXT_TEST_STARTUP_BREADCRUMB",breadcrumb,_countof(breadcrumb));
+                CString capturePath(breadcrumb); const int slash=capturePath.ReverseFind(L'\\'); if(pathLength && slash>=0) image.Save(capturePath.Left(slash)+L"\\list-before.bmp");
+                std::vector<COLORREF> before(140*item.bottom);
+                for(int y=0;y<item.bottom;++y) for(int x=0;x<140;++x) before[y*140+x]=::GetPixel(dc,x,y);
+                for(int step=0;step<4;++step) ::SendMessageW(list,WM_HSCROLL,SB_LINERIGHT,0);
+                const int offset=::GetScrollPos(list,SB_HORZ);
+                ::SendMessageW(list,WM_PRINTCLIENT,reinterpret_cast<WPARAM>(dc),PRF_CLIENT);
+                if(pathLength && slash>=0) image.Save(capturePath.Left(slash)+L"\\list-after.bmp");
+                RECT client={}; ::GetClientRect(list,&client);
+                int compared=0, differences=0, textPixels=0;
+                for(int y=item.top;y<item.bottom;++y) for(int x=2;x+offset<client.right-2;++x) {
+                    const COLORREF current=::GetPixel(dc,x,y);
+                    if(before[y*140+x+offset]!=current) ++differences;
+                    if(current!=ThemeManager::SelectionBackgroundColor()) ++textPixels;
+                    ++compared;
+                }
+                passed=offset>0 && compared>0 && textPixels>0 && differences==0 &&
+                    ::GetPixel(dc,client.right-3,item.top)==ThemeManager::SelectionBackgroundColor();
+                listScrollOffset=offset; listScrollDifferences=differences; listScrollTextPixels=textPixels;
+                image.ReleaseDC();
+            }
+        } else passed=false;
+        ThemeManager::SetSelectedTheme(originalTheme);
+        if(hadCustom) ThemeManager::SetCustomPalette(custom); else ThemeManager::SetNamedPalette(originalPalette);
+        ThemeManager::ApplyToWindow(window); Layout();
+        ::SendMessageW(list,WM_HSCROLL,SB_LEFT,0); ::SendMessageW(list,LB_SETHORIZONTALEXTENT,extent,0);
+        if(selected!=LB_ERR) ::SendMessageW(list,LB_SETCURSEL,selected,0);
+        return passed;
+    }
     bool CheckLayout()
     {
         const InterfaceTheme originalTheme=ThemeManager::GetSelectedTheme();
@@ -96,7 +147,8 @@
             for(const auto& session:sessions) if(session.id==L"DDDD0001-0000-0000-0000-000000000001") {
                 testReviewSession=session; automaticReview=automaticReview && session.crashReviewed;
             }
-            testPassed=testPassed && CheckLayout() && snapshot && snapshot->Valid();
+            themedListScroll=CheckThemedListScroll();
+            testPassed=testPassed && themedListScroll && CheckLayout() && snapshot && snapshot->Valid();
             testPassed=testPassed && automaticReview && reviewWorkerThread && !testReviewSession.crashPath.IsEmpty();
             testSnapshot=snapshot;
             int damaged=-1;
@@ -154,7 +206,7 @@
     }
 public:
     CStringA RuntimeTestDetails() const {
-        CStringA result(CW2A(testFailure,CP_UTF8)), state; state.Format("\ndamaged_review=%d\nautomatic_review=%d\nreview_worker_thread=%d\nreview_stale_rejected=%d\nreview_write_failed=%d\nphase=%u\nheartbeat=%u\ncancel_ready=%d\nclose_deferred=%d\n",damagedReview,automaticReview,reviewWorkerThread,staleRejected,reviewWriteFailed,testPhase,heartbeat,cancelledReady,closeDeferred); return result+state;
+        CStringA result(CW2A(testFailure,CP_UTF8)), state; state.Format("\nthemed_list_scroll=%d\nlist_scroll_offset=%d\nlist_scroll_differences=%d\nlist_scroll_text_pixels=%d\ndamaged_review=%d\nautomatic_review=%d\nreview_worker_thread=%d\nreview_stale_rejected=%d\nreview_write_failed=%d\nphase=%u\nheartbeat=%u\ncancel_ready=%d\nclose_deferred=%d\n",themedListScroll,listScrollOffset,listScrollDifferences,listScrollTextPixels,damagedReview,automaticReview,reviewWorkerThread,staleRejected,reviewWriteFailed,testPhase,heartbeat,cancelledReady,closeDeferred); return result+state;
     }
     CStringA TracePreferenceDetails() const {
         CStringA result;result.Format("current_mode=%d\nstored_preference=%d\nunchanged_until_restart=%d\nmode_control=%d\nresult=%s\n",traceCurrent,traceStored,traceUnchanged,traceControl,tracePreferenceDone ? "PASS" : "FAIL");return result;
