@@ -27,4 +27,20 @@ inline Metrics Calculate(UINT dpi, int mainSize, int scriptSize)
     result.totalHeight = result.menuHeight + result.mainRowHeight + result.scriptRowHeight + 1;
     return result;
 }
+
+inline bool ResizePage(RECT& preview, RECT& toolbarGroup, RECT& descriptionGroup,
+    RECT& descriptionLabel, RECT& descriptionField, LONG& contentHeight, int& naturalHeight, int desiredHeight)
+{
+    if(desiredHeight <= 0 || preview.bottom <= preview.top || toolbarGroup.bottom < preview.bottom) return false;
+    const int delta = desiredHeight - (preview.bottom - preview.top);
+    if(contentHeight + delta < 0 || naturalHeight + delta < 0) return false;
+    preview.bottom += delta;
+    toolbarGroup.bottom += delta;
+    ::OffsetRect(&descriptionGroup, 0, delta);
+    ::OffsetRect(&descriptionLabel, 0, delta);
+    ::OffsetRect(&descriptionField, 0, delta);
+    contentHeight += delta;
+    naturalHeight += delta;
+    return true;
+}
 }

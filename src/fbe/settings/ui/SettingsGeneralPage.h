@@ -7,6 +7,7 @@
 #include "SettingsTooltips.h"
 
 class CPaletteManagerDialog;
+constexpr UINT WM_FBE_APPEARANCE_PREVIEW_LAYOUT = WM_APP + 0x14A;
 
 class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public ISettingsPage
 {
@@ -125,5 +126,6 @@ public:
 	bool StagePaletteColor(ThemeColorRole role, COLORREF color, bool custom);
 	void ConfigureInterfaceTheme(bool darkThemeSupported);
 	void MakeAppearanceOnly();
+	int DesiredIconPreviewHeight(UINT dpi) const;
 	bool Validate(); bool PrepareCommit(SettingsFileTransaction&, CString&); void Commit(); void FinishCommit(); bool CancelChanges();
 };

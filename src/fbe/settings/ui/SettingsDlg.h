@@ -96,6 +96,7 @@ BEGIN_MSG_MAP(CSettingsDlg)
 	MESSAGE_HANDLER(WM_CLOSE, OnClose)
 	MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 	MESSAGE_HANDLER(WM_FBE_SOURCE_PREVIEW_LAYOUT, OnSourcePreviewLayout)
+	MESSAGE_HANDLER(WM_FBE_APPEARANCE_PREVIEW_LAYOUT, OnAppearancePreviewLayout)
 	COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
 	COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 	COMMAND_HANDLER(IDC_SETTINGS_NAV, LBN_SELCHANGE, OnNavigationChanged)
@@ -126,6 +127,8 @@ END_MSG_MAP()
 	LRESULT OnSystemAppearanceChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnSourcePreviewLayout(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnAppearancePreviewLayout(UINT, WPARAM, LPARAM, BOOL&);
+	bool UpdateAppearancePreviewLayout();
 
 private:
 	void SelectPage(SettingsPageId page);

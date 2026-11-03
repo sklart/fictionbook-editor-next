@@ -19,6 +19,24 @@ int main()
                 (mainSize == 32 || changedMain.mainRowHeight > layout.mainRowHeight) &&
                 (scriptSize == 32 || changedScript.scriptRowHeight > layout.scriptRowHeight) && passed;
         }
+        const int base = AppearancePreviewLayout::Calculate(dpi, 16, 16).totalHeight;
+        const int larger = AppearancePreviewLayout::Calculate(dpi, 32, 16).totalHeight;
+        RECT preview = {10, 30, 310, 30 + base}, toolbar = {0, 10, 320, 40 + base};
+        RECT description = {0, 50 + base, 320, 100 + base};
+        RECT label = {10, 60 + base, 100, 80 + base}, field = {110, 60 + base, 300, 80 + base};
+        const RECT originalPreview = preview, originalToolbar = toolbar, originalDescription = description;
+        const RECT originalLabel = label, originalField = field;
+        LONG content = 110 + base; int natural = 110 + base;
+        passed = AppearancePreviewLayout::ResizePage(preview, toolbar, description, label, field, content, natural, larger) &&
+            preview.bottom - preview.top == larger && toolbar.bottom >= preview.bottom &&
+            description.top >= toolbar.bottom && label.top >= description.top && field.top >= description.top &&
+            content == 110 + larger && natural == 110 + larger && passed;
+        passed = AppearancePreviewLayout::ResizePage(preview, toolbar, description, label, field, content, natural, base) &&
+            ::EqualRect(&preview, &originalPreview) && ::EqualRect(&toolbar, &originalToolbar) &&
+            ::EqualRect(&description, &originalDescription) && ::EqualRect(&label, &originalLabel) &&
+            ::EqualRect(&field, &originalField) && content == 110 + base && natural == 110 + base && passed;
+        passed = !AppearancePreviewLayout::ResizePage(preview, toolbar, description, label, field, content, natural, 0) &&
+            ::EqualRect(&preview, &originalPreview) && content == 110 + base && passed;
     }
     const auto fallback = AppearancePreviewLayout::Calculate(0, 20, 24);
     const auto normal = AppearancePreviewLayout::Calculate(96, 20, 24);

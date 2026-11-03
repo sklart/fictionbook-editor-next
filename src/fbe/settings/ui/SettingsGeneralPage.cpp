@@ -2006,10 +2006,7 @@ void CSettingsGeneralPage::MakeAppearanceOnly()
     const int toolbarTop = colourBottom + gap; y = toolbarTop + titleHeight;
     row(IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE);
     row(IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE);
-    const int mainSelection = m_mainToolbarIconSize.GetCurSel(), scriptSelection = m_scriptIconSize.GetCurSel();
-    const int mainSize = mainSelection == CB_ERR ? 16 : static_cast<int>(m_mainToolbarIconSize.GetItemData(mainSelection));
-    const int scriptSize = scriptSelection == CB_ERR ? 16 : static_cast<int>(m_scriptIconSize.GetItemData(scriptSelection));
-    const int iconPreviewHeight = AppearancePreviewLayout::Calculate(dpi, mainSize, scriptSize).totalHeight;
+    const int iconPreviewHeight = DesiredIconPreviewHeight(dpi);
     place(IDC_APPEARANCE_ICON_PREVIEW, left, y, right - left, iconPreviewHeight);
     y += iconPreviewHeight + margin;
     place(IDC_APPEARANCE_TOOLBARS_GROUP, group.left, toolbarTop, group.right - group.left, y - toolbarTop);
@@ -2030,9 +2027,18 @@ void CSettingsGeneralPage::MakeAppearanceOnly()
         requiredHeight + window.bottom - window.top - client.bottom, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
+int CSettingsGeneralPage::DesiredIconPreviewHeight(UINT dpi) const
+{
+    const int mainSelection = m_mainToolbarIconSize.GetCurSel(), scriptSelection = m_scriptIconSize.GetCurSel();
+    const int mainSize = mainSelection == CB_ERR ? 16 : static_cast<int>(m_mainToolbarIconSize.GetItemData(mainSelection));
+    const int scriptSize = scriptSelection == CB_ERR ? 16 : static_cast<int>(m_scriptIconSize.GetItemData(scriptSelection));
+    return AppearancePreviewLayout::Calculate(dpi, mainSize, scriptSize).totalHeight;
+}
+
 LRESULT CSettingsGeneralPage::OnIconPreviewChanged(WORD, WORD, HWND, BOOL&)
 {
-    MakeAppearanceOnly();
+    if(::SendMessageW(::GetParent(m_hWnd), WM_FBE_APPEARANCE_PREVIEW_LAYOUT, reinterpret_cast<WPARAM>(m_hWnd), 0) != 1)
+        MakeAppearanceOnly();
     GetDlgItem(IDC_APPEARANCE_ICON_PREVIEW).Invalidate();
     return 0;
 }

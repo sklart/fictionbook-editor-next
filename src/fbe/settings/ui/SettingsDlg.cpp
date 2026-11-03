@@ -4,6 +4,7 @@
 #include "../../utils/utils.h"
 #include "..\\..\\Settings.h"
 #include "SettingsDlg.h"
+#include "AppearancePreviewLayout.h"
 #include "EditorFontFamilies.h"
 #include "../SettingsEditSession.h"
 #include "../SettingsStore.h"
@@ -497,7 +498,10 @@ LRESULT CSettingsDlg::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 				control.rect = CRect(scale(control.rect.left), scale(control.rect.top),
 					scale(control.rect.right), scale(control.rect.bottom));
 		}
+		PageLayout& appearance = m_pageLayouts[PageIndex(SettingsPageId::Appearance)];
+		appearance.naturalContentHeight = scale(appearance.naturalContentHeight);
 		m_layoutDpi = dpi;
+		UpdateAppearancePreviewLayout();
 	}
 	const RECT* suggested = reinterpret_cast<const RECT*>(lParam);
 	if(suggested)
@@ -554,6 +558,31 @@ LRESULT CSettingsDlg::OnSourcePreviewLayout(UINT, WPARAM, LPARAM, BOOL&)
 		!m_pageLayouts[PageIndex(SettingsPageId::Source)].controls.empty())
 		LayoutPage(PageIndex(SettingsPageId::Source));
 	return 0;
+}
+
+bool CSettingsDlg::UpdateAppearancePreviewLayout()
+{
+	if(!m_generalPage || !::IsWindow(m_generalPage->m_hWnd)) return false;
+	PageLayout& layout = m_pageLayouts[PageIndex(SettingsPageId::Appearance)];
+	PageControlLayout *preview = NULL, *toolbar = NULL, *description = NULL, *label = NULL, *field = NULL;
+	for(PageControlLayout& control : layout.controls) {
+		if(control.id == IDC_APPEARANCE_ICON_PREVIEW) preview = &control;
+		else if(control.id == IDC_APPEARANCE_TOOLBARS_GROUP) toolbar = &control;
+		else if(control.id == IDC_APPEARANCE_DESCRIPTION_GROUP) description = &control;
+		else if(control.id == IDC_DESCRIPTION_LAYOUT_LABEL) label = &control;
+		else if(control.id == IDC_DESCRIPTION_LAYOUT) field = &control;
+	}
+	if(!preview || !toolbar || !description || !label || !field) return false;
+	const int desired = m_generalPage->DesiredIconPreviewHeight(m_layoutDpi);
+	return AppearancePreviewLayout::ResizePage(preview->rect, toolbar->rect, description->rect, label->rect,
+		field->rect, layout.contentSize.cy, layout.naturalContentHeight, desired);
+}
+
+LRESULT CSettingsDlg::OnAppearancePreviewLayout(UINT, WPARAM sender, LPARAM, BOOL&)
+{
+	if(!m_generalPage || reinterpret_cast<HWND>(sender) != m_generalPage->m_hWnd || !UpdateAppearancePreviewLayout()) return 0;
+	if(m_currentPage == SettingsPageId::Appearance) LayoutPage(PageIndex(SettingsPageId::Appearance));
+	return 1;
 }
 
 CRect CSettingsDlg::GetPageRect()
@@ -1576,7 +1605,7 @@ bool CSettingsDlg::ProbeLayout()
 			::EnableWindow(label,labelWasEnabled);
 			::SetPropW(GetParent(),L"FBE_SETTINGS_DISABLED_LABEL_PAINT",reinterpret_cast<HANDLE>(disabledLabel?1:2));
 			passed = passed && disabledLabel;
-			HWND button = m_generalPage->GetDlgItem(IDC_INTERFACE_PALETTE_COPY);
+			HWND button = m_generalPage->GetDlgItem(IDC_PALETTE_MANAGE);
 			RECT buttonRect = {}; ::GetClientRect(button, &buttonRect);
 			auto buttonPixel = [&](int x, int y) {
 				CImage image; if(!image.Create(buttonRect.right, buttonRect.bottom, 32)) return static_cast<COLORREF>(CLR_INVALID);
@@ -1728,7 +1757,7 @@ bool CSettingsDlg::ProbeLayout()
 				const int pad = UiMetrics::ScaleForDpi(5, m_layoutDpi);
 				const int menuHeight = UiMetrics::ScaleForDpi(22, m_layoutDpi);
 				const int iconSize = UiMetrics::ScaleForDpi(16, m_layoutDpi);
-				const int middle = menuHeight + (height - menuHeight) / 2;
+				const int middle = menuHeight + AppearancePreviewLayout::Calculate(m_layoutDpi, 16, 16).mainRowHeight;
 				const int buttonX = pad + 4 * (iconSize + pad) - edge;
 				const int buttonY = menuHeight + (middle - menuHeight - iconSize) / 2 - edge;
 				passed = ::GetPixel(dc, width - edge * 3, menuHeight - edge) == ThemeManager::BorderColor() &&
@@ -1768,6 +1797,22 @@ bool CSettingsDlg::ProbeLayout()
 					if(smallPreview[pixel] != ::GetPixel(dc, x, y)) changed = true;
 				passed = changed && passed;
 				::SendMessageW(mainSize, CB_SETCURSEL, originalMain, 0); ::SendMessageW(scriptSize, CB_SETCURSEL, originalScript, 0);
+				for(const auto& sizes : {std::make_pair(3, 0), std::make_pair(0, 3)}) {
+					::SendMessageW(mainSize, CB_SETCURSEL, sizes.first, 0);
+					::SendMessageW(scriptSize, CB_SETCURSEL, sizes.second, 0);
+					::SendMessageW(page, WM_COMMAND, MAKEWPARAM(IDC_MAIN_TOOLBAR_ICON_SIZE, CBN_SELCHANGE), reinterpret_cast<LPARAM>(mainSize));
+					const int expectedHeight = m_generalPage->DesiredIconPreviewHeight(m_layoutDpi);
+					const int savedScroll = m_pageLayouts[index].scrollY;
+					ScrollPage(index, SB_LINEDOWN, false); // Relayout, scrolling when the viewport requires it.
+					const CRect resized = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_ICON_PREVIEW));
+					const CRect resizedGroup = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_TOOLBARS_GROUP));
+					const CRect following = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_DESCRIPTION_GROUP));
+					passed = resized.Height() == expectedHeight && resized.bottom <= resizedGroup.bottom &&
+						resizedGroup.bottom <= following.top && passed;
+					m_pageLayouts[index].scrollY = savedScroll; LayoutPage(index);
+				}
+				::SendMessageW(mainSize, CB_SETCURSEL, originalMain, 0); ::SendMessageW(scriptSize, CB_SETCURSEL, originalScript, 0);
+				::SendMessageW(page, WM_COMMAND, MAKEWPARAM(IDC_MAIN_TOOLBAR_ICON_SIZE, CBN_SELCHANGE), reinterpret_cast<LPARAM>(mainSize));
 			}
 			if(old) ::SelectObject(dc, old); if(bitmap) ::DeleteObject(bitmap); if(dc) ::DeleteDC(dc); if(source) ::ReleaseDC(page, source);
 		}
@@ -2136,16 +2181,16 @@ bool CSettingsDlg::ProbeLayout()
 			if(row.field == IDC_INTERFACE_PALETTE) paletteRowBottom = previousBottom;
 			if(row.field == IDC_SCRIPT_ICON_SIZE) scriptRowBottom = previousBottom;
 		}
-		const CRect copy = controlRect(m_generalPage->GetDlgItem(IDC_INTERFACE_PALETTE_COPY));
 		const CRect manage = controlRect(m_generalPage->GetDlgItem(IDC_PALETTE_MANAGE));
 		auto insideGroup = [](const CRect& child, const CRect& group) {
 			return child.Width() > 0 && child.Height() > 0 && child.left >= group.left &&
 				child.right <= group.right && child.top >= group.top && child.bottom <= group.bottom;
 		};
 		passed = colourGroup.bottom <= toolbarGroup.top && toolbarGroup.bottom <= descriptionGroup.top &&
-			insideGroup(copy, colourGroup) && insideGroup(manage, colourGroup) &&
+			(::GetWindowLongPtrW(m_generalPage->GetDlgItem(IDC_INTERFACE_PALETTE_COPY), GWL_STYLE) & WS_VISIBLE) == 0 &&
+			insideGroup(manage, colourGroup) &&
 			insideGroup(iconSample, toolbarGroup) &&
-			copy.right <= manage.left && copy.top >= paletteRowBottom && manage.top >= paletteRowBottom &&
+			manage.top >= paletteRowBottom &&
 			iconSample.top >= scriptRowBottom && passed;
 	}
 	// At 100% DPI, exercise the actual preferred window size against a
