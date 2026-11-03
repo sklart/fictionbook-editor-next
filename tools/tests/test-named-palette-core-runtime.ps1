@@ -43,6 +43,7 @@ try {
         if($code -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw "Named palette core failed ($Mode/$scenario): $text" }
         if($scenario -eq 'custom-palette-manage' -and ($text -notmatch '(?m)^document-preserved=1\r?$' -or $text -notmatch '(?m)^hex-persisted=1\r?$' -or (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $fixtureHash)) { throw 'Palette management failed to persist HEX or changed the test document.' }
         if($scenario -eq 'custom-palette-manage') {
+            if($text -notmatch '(?m)^copy-e2e=1\r?$') { throw "Palette creation and two-colour persistence failed: $text" }
             if($text -notmatch '(?m)^dpi-failure=0\r?$') { throw "Palette manager DPI simulation failed: $text" }
             if($text -notmatch ("(?m)^interface-language=" + $expectedLanguageId + "\r?$")) { throw "Requested interface language not active ($Mode/$scenario): $text" }
             Write-Host "Palette manager simulated DPI 96/120/144/192, 1366x728 work area and scaled captions: PASS ($Mode/$Locale)."
