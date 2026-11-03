@@ -869,6 +869,40 @@ void CMainFrame::RunPortableStateTestScenario()
                 originalJson == afterFailedSave && countTemporaryThemes() == temporaryBefore;
         }
         jsonPassed = failedSavePreserved && jsonPassed;
+        const CString secondPath = lockedPath.Left(lockedPath.ReverseFind(L'\\') + 1) + L"palette-transaction-probe.txt";
+        auto writeProbe = [](const CString& path, const char* content) {
+            HANDLE file = ::CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            if(file == INVALID_HANDLE_VALUE) return false;
+            DWORD written = 0; const DWORD length = static_cast<DWORD>(strlen(content));
+            const bool ok = ::WriteFile(file, content, length, &written, NULL) && written == length;
+            ::CloseHandle(file); return ok;
+        };
+        bool batchRollback = writeProbe(secondPath, "before");
+        const int batchTemporaryBefore = countTemporaryThemes();
+        {
+            // Put the palette first: the locked second file forces a rollback after its replacement.
+            SettingsFileTransaction batch;
+            const CString batchStaged = SettingsFileTransaction::Temporary(secondPath);
+            if(batchStaged.IsEmpty()) batchRollback = false;
+            else {
+                const bool palettePrepared = ThemeManager::PrepareCustomPaletteSave(updated, true, batch, parseError);
+                batch.Add(secondPath, batchStaged);
+                const bool secondPrepared = writeProbe(batchStaged, "after");
+                HANDLE secondLock = ::CreateFileW(secondPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                if(secondLock == INVALID_HANDLE_VALUE) batchRollback = false;
+                else {
+                    const bool rejected = palettePrepared && secondPrepared && !batch.Commit();
+                    batchRollback = rejected && batch.Error() == ERROR_SHARING_VIOLATION && !batch.RollbackFailed() && batchRollback;
+                    ::CloseHandle(secondLock);
+                }
+            }
+        }
+        std::wstring secondAfter, paletteAfterBatch;
+        batchRollback = FbeRuntimeLocalization::ReadUtf8TextFile(lockedPath, paletteAfterBatch) && paletteAfterBatch == originalJson &&
+            FbeRuntimeLocalization::ReadUtf8TextFile(secondPath, secondAfter) && secondAfter == L"before" &&
+            countTemporaryThemes() == batchTemporaryBefore && batchRollback;
+        ::DeleteFileW(secondPath);
+        jsonPassed = batchRollback && jsonPassed;
         jsonPassed = ThemeManager::SaveCustomPaletteToProfile(updated, true, parseError) &&
             ThemeManager::LoadCustomPaletteFromProfile(updated.id, fromFile, parseError) && fromFile.name == L"Updated" && jsonPassed;
         jsonPassed = !ThemeManager::DeleteCustomPaletteFromProfile(L"../bad", parseError) && jsonPassed;
