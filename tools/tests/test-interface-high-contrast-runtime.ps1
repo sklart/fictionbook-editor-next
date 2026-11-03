@@ -22,7 +22,7 @@ try {
     $text = if(Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing report>' }
     Write-Host $text
     if($code -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw "High contrast theme policy failed ($Mode): $text" }
-    foreach($field in @('custom-before','entered','system-colors','tree-system','retained','exited','restored')) {
+    foreach($field in @('custom-before','entered','system-colors','tree-system','retained','exited','restored','menu-width')) {
         if($text -notmatch ("(?m)^" + [regex]::Escape($field) + "=1\r?$")) { throw "Missing high-contrast assertion: $field" }
     }
     $passed = $true

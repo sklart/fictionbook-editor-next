@@ -1085,10 +1085,32 @@ void CMainFrame::RunPortableStateTestScenario()
         const bool exited = ThemeManager::RefreshSystemTheme() && !ThemeManager::IsHighContrast() && ThemeManager::UsesPaletteSurface();
         const bool restored = ThemeManager::IsCustomPaletteActive() && ThemeManager::WindowColor() == palette.colors[THEME_COLOR_WINDOW] &&
             ThemeManager::ControlColor() == palette.colors[THEME_COLOR_CONTROL] && ThemeManager::TextColor() == palette.colors[THEME_COLOR_TEXT];
+
+        auto menuCaptionsFit = [&]() {
+            HDC dc = ::GetDC(m_MenuBar); if(!dc) return false;
+            HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_MenuBar, WM_GETFONT, 0, 0));
+            HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
+            const int count = m_MenuBar.GetButtonCount(); bool fits = count > 0;
+            for(int index = 0; index < count; ++index) {
+                TBBUTTON button = {}; RECT bounds = {}, measured = {}; wchar_t text[256] = {};
+                const bool read = ::SendMessageW(m_MenuBar, TB_GETBUTTON, index, reinterpret_cast<LPARAM>(&button)) &&
+                    ::SendMessageW(m_MenuBar, TB_GETITEMRECT, index, reinterpret_cast<LPARAM>(&bounds)) &&
+                    ::SendMessageW(m_MenuBar, TB_GETBUTTONTEXTW, button.idCommand, reinterpret_cast<LPARAM>(text)) > 0;
+                if(!read || !::DrawTextW(dc, text, -1, &measured, DT_CALCRECT | DT_SINGLELINE) ||
+                    measured.right > bounds.right - bounds.left) fits = false;
+            }
+            if(oldFont) ::SelectObject(dc, oldFont); ::ReleaseDC(m_MenuBar, dc); return fits;
+        };
+        ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_FORCE_HIGH_CONTRAST", L"1");
+        ThemeManager::RefreshSystemTheme();
+        const bool captionsBefore = menuCaptionsFit();
+        const bool switched = ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SEPIA);
+        ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+        const bool menuWidth = captionsBefore && switched && menuCaptionsFit();
         ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_FORCE_HIGH_CONTRAST", NULL); ThemeManager::RefreshSystemTheme();
-        const bool passed = customBefore && entered && systemColors && treeSystem && nativeMenu && retained && exited && restored;
-        CStringA report; report.Format("custom-before=%d\nentered=%d\nsystem-colors=%d\ntree-system=%d\nnative-menu=%d\nretained=%d\nexited=%d\nrestored=%d\nresult=%s\n",
-            customBefore, entered, systemColors, treeSystem, nativeMenu, retained, exited, restored, passed ? "pass" : "fail");
+        const bool passed = customBefore && entered && systemColors && treeSystem && nativeMenu && retained && exited && restored && menuWidth;
+        CStringA report; report.Format("custom-before=%d\nentered=%d\nsystem-colors=%d\ntree-system=%d\nnative-menu=%d\nretained=%d\nexited=%d\nrestored=%d\nmenu-width=%d\nresult=%s\n",
+            customBefore, entered, systemColors, treeSystem, nativeMenu, retained, exited, restored, menuWidth, passed ? "pass" : "fail");
         WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report);
         PostMessage(WM_CLOSE); return;
     }
