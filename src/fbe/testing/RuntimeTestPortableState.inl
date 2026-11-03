@@ -405,7 +405,7 @@ void CMainFrame::RunPortableStateTestScenario()
         UINT_PTR dpiFailure = 0, dpiWidth = 0, dpiHeight = 0, dpiControl = 0, dpiTextWidth = 0, dpiTextHeight = 0, dpiBoxWidth = 0, dpiBoxHeight = 0;
         UINT_PTR dpiGdiBefore = 0, dpiGdiAfter = 0, dpiUserBefore = 0, dpiUserAfter = 0;
         bool hexPersisted = false, copyE2e = false;
-        unsigned copySteps = 0, copyDialogSteps = 0, copyFontDetail = 0, resizeAudit = 0;
+        unsigned copySteps = 0, copyDialogSteps = 0, copyFontDetail = 0, resizeAudit = 0, toolbarCompare = 0;
         const bool dirtyBefore = DocChanged();
         CString bodyBefore;
         bool documentReady = false;
@@ -438,6 +438,50 @@ void CMainFrame::RunPortableStateTestScenario()
                 const int scriptHeight = previewHeight();
                 passed = baseHeight > 0 && mainHeight > baseHeight && scriptHeight > baseHeight &&
                     abs(mainHeight - scriptHeight) <= 1 && ::SendMessageW(mainSize, CB_GETCURSEL, 0, 0) == 0 && passed;
+                // Compare the six rendered preview icons with the ImageList
+                // actually attached to the editor's command toolbar.
+                const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+                const int oldMainSize = _Settings.GetMainToolbarIconSize();
+                HDC screen = ::GetDC(m_hWnd);
+                HDC previewDc = screen ? ::CreateCompatibleDC(screen) : NULL;
+                HDC referenceDc = screen ? ::CreateCompatibleDC(screen) : NULL;
+                const int canvasWidth = UiMetrics::ScaleForDpi(400, dpi), canvasHeight = UiMetrics::ScaleForDpi(150, dpi);
+                HBITMAP previewBitmap = screen ? ::CreateCompatibleBitmap(screen, canvasWidth, canvasHeight) : NULL;
+                HBITMAP referenceBitmap = screen ? ::CreateCompatibleBitmap(screen, canvasWidth, canvasHeight) : NULL;
+                HGDIOBJ oldPreviewBitmap = previewDc && previewBitmap ? ::SelectObject(previewDc, previewBitmap) : NULL;
+                HGDIOBJ oldReferenceBitmap = referenceDc && referenceBitmap ? ::SelectObject(referenceDc, referenceBitmap) : NULL;
+                for(int index = 0; index < 4 && oldPreviewBitmap && oldReferenceBitmap; ++index) {
+                    const int sizes[] = {16, 20, 24, 32}; const int size = sizes[index];
+                    _Settings.SetMainToolbarIconSize(size);
+                    if(!RebuildCommandToolbarImages(dpi)) continue;
+                    ::SendMessageW(mainSize, CB_SETCURSEL, index, 0); ::SendMessageW(scriptSize, CB_SETCURSEL, 0, 0);
+                    DRAWITEMSTRUCT draw = {}; draw.CtlType = ODT_STATIC; draw.CtlID = IDC_APPEARANCE_ICON_PREVIEW;
+                    draw.hDC = previewDc; draw.rcItem = {0, 0, canvasWidth, canvasHeight};
+                    page.OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
+                    const int pixels = UiMetrics::ScaleForDpi(size, dpi), pad = UiMetrics::ScaleForDpi(5, dpi);
+                    const int top = UiMetrics::ScaleForDpi(22, dpi) + UiMetrics::ScaleForDpi(10, dpi) / 2;
+                    HIMAGELIST images = reinterpret_cast<HIMAGELIST>(m_CmdToolbar.SendMessage(TB_GETIMAGELIST));
+                    bool equal = images && ::ImageList_GetImageCount(images) >= 6;
+                    for(int icon = 0; icon < 6 && equal; ++icon) {
+                        const int left = pad + icon * (pixels + pad);
+                        const COLORREF background = icon == 4 ? ThemeManager::Color(THEME_COLOR_PRESSED) :
+                            ::GetPixel(previewDc, canvasWidth - pad * 2, top);
+                        HBRUSH brush = ::CreateSolidBrush(background); RECT rect = {left, top, left + pixels, top + pixels};
+                        if(!brush) { equal = false; break; }
+                        ::FillRect(referenceDc, &rect, brush); ::DeleteObject(brush);
+                        equal = ::ImageList_Draw(images, icon, referenceDc, left, top, ILD_TRANSPARENT) != FALSE;
+                        for(int y = top; y < top + pixels && equal; ++y) for(int x = left; x < left + pixels; ++x)
+                            if(::GetPixel(previewDc, x, y) != ::GetPixel(referenceDc, x, y)) { equal = false; break; }
+                    }
+                    if(equal) toolbarCompare |= 1U << index;
+                }
+                _Settings.SetMainToolbarIconSize(oldMainSize);
+                const bool restoredToolbar = RebuildCommandToolbarImages(dpi);
+                if(oldPreviewBitmap) ::SelectObject(previewDc, oldPreviewBitmap);
+                if(oldReferenceBitmap) ::SelectObject(referenceDc, oldReferenceBitmap);
+                if(previewBitmap) ::DeleteObject(previewBitmap); if(referenceBitmap) ::DeleteObject(referenceBitmap);
+                if(previewDc) ::DeleteDC(previewDc); if(referenceDc) ::DeleteDC(referenceDc); if(screen) ::ReleaseDC(m_hWnd, screen);
+                passed = toolbarCompare == 15U && restoredToolbar && passed;
                 page.CancelChanges(); page.DestroyWindow();
             }
         }
@@ -670,7 +714,7 @@ void CMainFrame::RunPortableStateTestScenario()
         } catch(const _com_error&) {}
         passed = documentPreserved && passed;
         CStringA report; report.Format("custom-palette-manage=%d\ndocument-preserved=%d\nhex-persisted=%d\ncopy-e2e=%d\ninterface-language=%lu\ndpi-failure=%Iu\ndpi-size=%Iux%Iu\ndpi-control=%Iu\ndpi-text=%Iux%Iu box=%Iux%Iu\ndpi-gdi=%Iu:%Iu\ndpi-user=%Iu:%Iu\nresult=%s\n", passed ? 1 : 0, documentPreserved ? 1 : 0, hexPersisted ? 1 : 0, copyE2e ? 1 : 0, static_cast<unsigned long>(_Settings.GetEffectiveInterfaceLanguageID()), dpiFailure, dpiWidth, dpiHeight, dpiControl, dpiTextWidth, dpiTextHeight, dpiBoxWidth, dpiBoxHeight, dpiGdiBefore, dpiGdiAfter, dpiUserBefore, dpiUserAfter, passed ? "pass" : "fail");
-        CStringA copyDetail; copyDetail.Format("copy-steps=%u dialog-steps=%u font-detail=%u resize-audit=%u\n", copySteps, copyDialogSteps, copyFontDetail, resizeAudit); report += copyDetail;
+        CStringA copyDetail; copyDetail.Format("copy-steps=%u dialog-steps=%u font-detail=%u resize-audit=%u toolbar-compare=%u\n", copySteps, copyDialogSteps, copyFontDetail, resizeAudit, toolbarCompare); report += copyDetail;
         WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt", report.GetString());
         PostMessage(WM_CLOSE); return;
     }
