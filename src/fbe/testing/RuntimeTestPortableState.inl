@@ -1104,8 +1104,35 @@ void CMainFrame::RunPortableStateTestScenario()
         ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_FORCE_HIGH_CONTRAST", L"1");
         ThemeManager::RefreshSystemTheme();
         const bool captionsBefore = menuCaptionsFit();
-        const bool switched = ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SEPIA);
-        ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+        struct SettingsMenuProbe {
+            HWND owner; bool posted = false;
+            static void CALLBACK Tick(HWND, UINT, UINT_PTR timer, DWORD) {
+                auto* self = reinterpret_cast<SettingsMenuProbe*>(::GetPropW(PluginOptionsProbe::dialog, L"FBE.HighContrastSettingsProbe"));
+                if(!self) return;
+                ::EnumThreadWindows(::GetCurrentThreadId(), [](HWND dialog, LPARAM data) -> BOOL {
+                    auto* probe = reinterpret_cast<SettingsMenuProbe*>(data);
+                    if(::GetWindow(dialog, GW_OWNER) != probe->owner || !::GetPropW(dialog, L"FBE_THEME_TEST_SETTINGS_READY")) return TRUE;
+                    HWND paletteChoice = NULL;
+                    ::EnumChildWindows(dialog, [](HWND child, LPARAM target) -> BOOL {
+                        if(::GetDlgCtrlID(child) == IDC_INTERFACE_PALETTE) { *reinterpret_cast<HWND*>(target) = child; return FALSE; }
+                        return TRUE;
+                    }, reinterpret_cast<LPARAM>(&paletteChoice));
+                    if(!paletteChoice || !::GetDlgItem(dialog, IDOK)) return TRUE;
+                    const int row = CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SEPIA);
+                    if(::SendMessageW(paletteChoice, CB_SETCURSEL, row, 0) == CB_ERR) return TRUE;
+                    ::SendMessageW(::GetParent(paletteChoice), WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_PALETTE, CBN_SELCHANGE), reinterpret_cast<LPARAM>(paletteChoice));
+                    probe->posted = ::PostMessageW(dialog, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), reinterpret_cast<LPARAM>(::GetDlgItem(dialog, IDOK))) != FALSE;
+                    return FALSE;
+                }, reinterpret_cast<LPARAM>(self));
+                if(self->posted) ::KillTimer(NULL, timer);
+            }
+        } settingsProbe{m_hWnd};
+        PluginOptionsProbe::dialog = m_hWnd; ::SetPropW(m_hWnd, L"FBE.HighContrastSettingsProbe", &settingsProbe);
+        const UINT_PTR settingsTimer = ::SetTimer(NULL, 0, 50, SettingsMenuProbe::Tick);
+        if(settingsTimer) ::SendMessageW(m_hWnd, WM_COMMAND, MAKEWPARAM(ID_VIEW_OPTIONS, 0), 0);
+        if(settingsTimer) ::KillTimer(NULL, settingsTimer);
+        ::RemovePropW(m_hWnd, L"FBE.HighContrastSettingsProbe");
+        const bool switched = settingsProbe.posted && _Settings.GetInterfacePalette() == L"sepia" && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA;
         const bool menuWidth = captionsBefore && switched && menuCaptionsFit();
         ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_FORCE_HIGH_CONTRAST", NULL); ThemeManager::RefreshSystemTheme();
         const bool passed = customBefore && entered && systemColors && treeSystem && nativeMenu && retained && exited && restored && menuWidth;

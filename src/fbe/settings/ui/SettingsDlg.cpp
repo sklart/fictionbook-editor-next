@@ -226,7 +226,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	// Establish the modal dialog's initial focus once, after all pages/layouts
 	// are ready; FALSE prevents the dialog manager from assigning it again.
 	m_navigation.SetFocus();
-	if(RuntimeTests::IsScenario(L"popular-palette-write"))
+	if(RuntimeTests::IsScenario(L"popular-palette-write") || RuntimeTests::IsScenario(L"interface-high-contrast-runtime"))
 		::SetPropW(m_hWnd, L"FBE_THEME_TEST_SETTINGS_READY", reinterpret_cast<HANDLE>(1));
 	stage("layout_and_focus");
 	if (measure)
