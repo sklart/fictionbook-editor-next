@@ -1293,7 +1293,24 @@ bool CSettingsDlg::ProbeLayout()
 			HGDIOBJ oldFieldFont = fieldDc && fieldFont ? ::SelectObject(fieldDc, fieldFont) : NULL;
 			const bool measured = fieldDc && ::GetTextExtentPoint32W(fieldDc, caption, ::lstrlenW(caption), &textSize);
 			if(oldFieldFont) ::SelectObject(fieldDc, oldFieldFont); if(fieldDc) ::ReleaseDC(field, fieldDc);
-			const bool captionValid = expectedCaption == caption && measured &&
+			bool multilineAligned = false;
+			HWND multiline = ::GetDlgItem(page, IDC_SETTINGS_ASKIMAGE);
+			RECT multilineBounds = {}; ::GetClientRect(multiline, &multilineBounds);
+			CImage multilineImage;
+			if(multilineBounds.right > 0 && multilineBounds.bottom > 0 && multilineImage.Create(multilineBounds.right, multilineBounds.bottom, 32)) {
+				HDC dc = multilineImage.GetDC();
+				if(dc) {
+					::SendMessageW(multiline, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(dc), PRF_CLIENT);
+					const int textLeft = UiMetrics::ScaleForDpi(17, UiMetrics::DpiForWindow(multiline));
+					int top = multilineBounds.bottom, bottom = -1;
+					for(int y = 0; y < multilineBounds.bottom; ++y)
+						for(int x = textLeft; x < multilineBounds.right; ++x)
+							if(::GetPixel(dc, x, y) == ThemeManager::TextColor()) { top = (std::min)(top, y); bottom = (std::max)(bottom, y); }
+					multilineAligned = bottom >= top && abs((top + bottom) - (multilineBounds.bottom - 1)) <= UiMetrics::ScaleForDpi(6, m_layoutDpi);
+					multilineImage.ReleaseDC();
+				}
+			}
+			const bool captionValid = multilineAligned && expectedCaption == caption && measured &&
 				textSize.cx + UiMetrics::ScaleForDpi(20, m_layoutDpi) <= fieldClient.right && textSize.cy <= fieldClient.bottom &&
 				(::GetWindowLongPtrW(field, GWL_STYLE) & BS_TYPEMASK) == BS_AUTOCHECKBOX;
 			::SetPropW(GetParent(), L"FBE_SETTINGS_CHECKBOX_CAPTION_PASSED", reinterpret_cast<HANDLE>(captionValid ? 1 : 2));

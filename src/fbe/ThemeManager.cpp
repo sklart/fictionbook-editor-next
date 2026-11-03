@@ -695,6 +695,12 @@ void PaintPaletteToggle(HWND window, HDC dc)
 	UINT flags = (style & BS_MULTILINE) ? DT_WORDBREAK : DT_SINGLELINE | DT_VCENTER;
 	flags |= right ? DT_RIGHT : DT_LEFT;
 	if(::SendMessageW(window, WM_QUERYUISTATE, 0, 0) & UISF_HIDEACCEL) flags |= DT_HIDEPREFIX;
+	if(style & BS_MULTILINE) {
+		RECT measured = text;
+		const int textHeight = ::DrawTextW(dc, caption.data(), length, &measured, flags | DT_CALCRECT);
+		if(textHeight > 0 && textHeight < text.bottom - text.top)
+			text.top += (text.bottom - text.top - textHeight) / 2;
+	}
 	::DrawTextW(dc, caption.data(), length, &text, flags);
 	if(focused && !(::SendMessageW(window,WM_QUERYUISTATE,0,0)&UISF_HIDEFOCUS)) { RECT focus=text; ::DrawFocusRect(dc,&focus); }
 	if(old) ::SelectObject(dc, old);
