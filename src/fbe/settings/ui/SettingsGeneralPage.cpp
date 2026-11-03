@@ -836,7 +836,10 @@ public:
         y += lineHeight + gap;
         const int workHeight = monitor.rcWork.bottom - monitor.rcWork.top - (window.bottom - window.top - client.bottom);
         const int availablePreviewHeight = workHeight - y - lineHeight - 2 * margin;
-        const int previewHeight = resizeWindow ? max(UiMetrics::ScaleForDpi(120, dpi), min(UiMetrics::ScaleForDpi(260, dpi), availablePreviewHeight)) :
+        // Reserve room for the explanatory text as well as a usable preview.
+        // Otherwise the built-in scheme and first-use help can leave a tiny
+        // thumbnail even though the monitor has space for a larger dialog.
+        const int previewHeight = resizeWindow ? max(UiMetrics::ScaleForDpi(120, dpi), min(UiMetrics::ScaleForDpi(360, dpi), availablePreviewHeight)) :
             max(UiMetrics::ScaleForDpi(120, dpi), static_cast<int>(client.bottom) - y - lineHeight - 2 * margin);
         const int minimumInspector = max(2 * buttonWidth + gap, labelWidth + UiMetrics::ScaleForDpi(140, dpi) + gap);
         const int previewWidth = min((right - margin) * 2 / 3,
