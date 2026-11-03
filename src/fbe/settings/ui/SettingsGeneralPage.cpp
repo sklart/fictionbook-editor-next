@@ -164,7 +164,9 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
             {rect(80,456,275,487), THEME_COLOR_TEXT, L"@script3", THEME_COLOR_WINDOW},
             {rect(320,252,975,294), THEME_COLOR_CONTROL, L"  ID:             \x25BE", THEME_COLOR_CONTROL},
             {rect(320,300,975,340), THEME_COLOR_TEXT, L"Document", THEME_COLOR_WINDOW},
-            {rect(320,346,610,388), THEME_COLOR_PRESSED, L"  OK", THEME_COLOR_PRESSED},
+            {rect(320,346,610,388), THEME_COLOR_BORDER, L"", THEME_COLOR_BORDER},
+            {rect(324,350,606,384), THEME_COLOR_PRESSED, L"", THEME_COLOR_PRESSED},
+            {rect(330,350,420,384), THEME_COLOR_TEXT, L"  OK", THEME_COLOR_PRESSED},
             {rect(630,346,960,388), THEME_COLOR_FOCUS, L"  Focus", THEME_COLOR_FOCUS},
             {rect(320,400,470,440), THEME_COLOR_ACCENT, L"  Accent", THEME_COLOR_ACCENT},
             {rect(485,400,635,440), THEME_COLOR_ERROR, L"  Error", THEME_COLOR_ERROR},
@@ -1068,6 +1070,12 @@ public:
             const int originalRole = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel();
             COLORREF beforeSelection[THEME_COLOR_COUNT] = {}; PreviewColors(beforeSelection);
             ::RedrawWindow(m_preview, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+            for(const auto& target : {std::make_pair(321, THEME_COLOR_BORDER), std::make_pair(350, THEME_COLOR_TEXT),
+                std::make_pair(580, THEME_COLOR_PRESSED)}) {
+                const POINT point = {MulDiv(bounds.right, target.first, 1000), MulDiv(bounds.bottom, 365, 600)};
+                ::SendMessageW(m_preview, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(point.x, point.y));
+                passed = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel() == target.second && passed;
+            }
             for(int role = 0; role < THEME_COLOR_COUNT; ++role) {
                 if(!found[role]) { passed = false; continue; }
                 ::SendMessageW(m_preview, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(hits[role].x, hits[role].y));
