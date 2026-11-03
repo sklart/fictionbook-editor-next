@@ -2,6 +2,8 @@
 #include "../../testing/RuntimeTestScenarioMode.h"
 #include "SettingsGeneralPage.h"
 #include "PalettePreviewClip.h"
+#include "AppearancePreviewLayout.h"
+#include "PalettePreviewContrast.h"
 #include "..\\..\\Settings.h"
 #include "..\\..\\ThemeManager.h"
 #include "..\\..\\UiMetrics.h"
@@ -190,13 +192,7 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
 
     static COLORREF ReadableInk(COLORREF background)
     {
-        auto linear = [](BYTE value) {
-            const double channel = value / 255.0;
-            return channel <= 0.04045 ? channel / 12.92 : std::pow((channel + 0.055) / 1.055, 2.4);
-        };
-        const double luminance = 0.2126 * linear(GetRValue(background)) + 0.7152 * linear(GetGValue(background)) +
-            0.0722 * linear(GetBValue(background));
-        return luminance >= 0.1791287847 ? RGB(0,0,0) : RGB(255,255,255);
+        return PalettePreviewContrast::ReadableInk(background);
     }
 
     bool VerifyPreviewFrameClipping() const
@@ -2013,7 +2009,7 @@ void CSettingsGeneralPage::MakeAppearanceOnly()
     const int mainSelection = m_mainToolbarIconSize.GetCurSel(), scriptSelection = m_scriptIconSize.GetCurSel();
     const int mainSize = mainSelection == CB_ERR ? 16 : static_cast<int>(m_mainToolbarIconSize.GetItemData(mainSelection));
     const int scriptSize = scriptSelection == CB_ERR ? 16 : static_cast<int>(m_scriptIconSize.GetItemData(scriptSelection));
-    const int iconPreviewHeight = UiMetrics::ScaleForDpi(22 + mainSize + scriptSize + 20, dpi);
+    const int iconPreviewHeight = AppearancePreviewLayout::Calculate(dpi, mainSize, scriptSize).totalHeight;
     place(IDC_APPEARANCE_ICON_PREVIEW, left, y, right - left, iconPreviewHeight);
     y += iconPreviewHeight + margin;
     place(IDC_APPEARANCE_TOOLBARS_GROUP, group.left, toolbarTop, group.right - group.left, y - toolbarTop);
@@ -2172,10 +2168,11 @@ LRESULT CSettingsGeneralPage::OnDrawThemeItem(UINT, WPARAM, LPARAM parameter, BO
 			const int scriptSelection = m_scriptIconSize.GetCurSel();
 			const int mainSize = mainSelection == CB_ERR ? 16 : static_cast<int>(m_mainToolbarIconSize.GetItemData(mainSelection));
 			const int scriptSize = scriptSelection == CB_ERR ? 16 : static_cast<int>(m_scriptIconSize.GetItemData(scriptSelection));
-			const int scriptPixels = UiMetrics::ScaleForDpi(scriptSize, dpi);
-			const int menuHeight = UiMetrics::ScaleForDpi(22, dpi);
-			const int mainPixels = UiMetrics::ScaleForDpi(mainSize, dpi);
-			const int middle = bounds.top + menuHeight + mainPixels + UiMetrics::ScaleForDpi(10, dpi);
+			const auto metrics = AppearancePreviewLayout::Calculate(dpi, mainSize, scriptSize);
+			const int scriptPixels = metrics.scriptPixels;
+			const int menuHeight = metrics.menuHeight;
+			const int mainPixels = metrics.mainPixels;
+			const int middle = bounds.top + menuHeight + metrics.mainRowHeight;
 			RECT menu = {bounds.left + 1, bounds.top + 1, bounds.right - 1, bounds.top + menuHeight};
 			RECT upper = {bounds.left + 1, menu.bottom, bounds.right - 1, middle};
 			RECT lower = {bounds.left + 1, middle, bounds.right - 1, bounds.bottom - 1};
