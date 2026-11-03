@@ -1090,13 +1090,16 @@ void CMainFrame::RunPortableStateTestScenario()
             HDC dc = ::GetDC(m_MenuBar); if(!dc) return false;
             HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_MenuBar, WM_GETFONT, 0, 0));
             HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
-            const int count = m_MenuBar.GetButtonCount(); bool fits = count > 0;
+            const int count = m_MenuBar.GetButtonCount();
+            const HMENU sourceMenu = m_MenuBar.GetMenu();
+            bool fits = sourceMenu && count > 0 && ::GetMenuItemCount(sourceMenu) == count;
             for(int index = 0; index < count; ++index) {
-                TBBUTTON button = {}; RECT bounds = {}, measured = {}; wchar_t text[256] = {};
+                TBBUTTON button = {}; RECT bounds = {}, measured = {}; wchar_t text[256] = {}, sourceText[256] = {};
                 const bool read = ::SendMessageW(m_MenuBar, TB_GETBUTTON, index, reinterpret_cast<LPARAM>(&button)) &&
                     ::SendMessageW(m_MenuBar, TB_GETITEMRECT, index, reinterpret_cast<LPARAM>(&bounds)) &&
-                    ::SendMessageW(m_MenuBar, TB_GETBUTTONTEXTW, button.idCommand, reinterpret_cast<LPARAM>(text)) > 0;
-                if(!read || !::DrawTextW(dc, text, -1, &measured, DT_CALCRECT | DT_SINGLELINE) ||
+                    ::SendMessageW(m_MenuBar, TB_GETBUTTONTEXTW, button.idCommand, reinterpret_cast<LPARAM>(text)) > 0 &&
+                    sourceMenu && ::GetMenuStringW(sourceMenu, index, sourceText, _countof(sourceText), MF_BYPOSITION) > 0;
+                if(!read || wcscmp(text, sourceText) != 0 || !::DrawTextW(dc, sourceText, -1, &measured, DT_CALCRECT | DT_SINGLELINE) ||
                     measured.right > bounds.right - bounds.left) fits = false;
             }
             if(oldFont) ::SelectObject(dc, oldFont); ::ReleaseDC(m_MenuBar, dc); return fits;
