@@ -1310,7 +1310,33 @@ bool CSettingsDlg::ProbeLayout()
 					multilineImage.ReleaseDC();
 				}
 			}
-			const bool captionValid = multilineAligned && expectedCaption == caption && measured &&
+			bool wrappedAligned = false;
+			const int probeWidth = UiMetrics::ScaleForDpi(75, m_layoutDpi), probeHeight = UiMetrics::ScaleForDpi(60, m_layoutDpi);
+			HWND wrapped = ::CreateWindowExW(0, L"Button", L"First line Second line", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX | BS_MULTILINE,
+				-300, -300, probeWidth, probeHeight, page, NULL, _Module.GetModuleInstance(), NULL);
+			if(wrapped) {
+				::SendMessageW(wrapped, WM_SETFONT, reinterpret_cast<WPARAM>(fieldFont), FALSE);
+				ThemeManager::ApplyToWindow(wrapped);
+				CImage image;
+				if(image.Create(probeWidth, probeHeight, 32)) {
+					HDC dc = image.GetDC();
+					if(dc) {
+						::SendMessageW(wrapped, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(dc), PRF_CLIENT);
+						int top = probeHeight, bottom = -1, bands = 0; bool previousRow = false;
+						for(int y = 0; y < probeHeight; ++y) {
+							bool ink = false;
+							for(int x = UiMetrics::ScaleForDpi(17, m_layoutDpi); x < probeWidth; ++x)
+								if(::GetPixel(dc, x, y) == ThemeManager::TextColor()) { ink = true; break; }
+							if(ink) { top = (std::min)(top, y); bottom = y; if(!previousRow) ++bands; }
+							previousRow = ink;
+						}
+						wrappedAligned = bands >= 2 && bottom - top + 1 > textSize.cy && abs((top + bottom) - (probeHeight - 1)) <= UiMetrics::ScaleForDpi(6, m_layoutDpi);
+						image.ReleaseDC();
+					}
+				}
+				::DestroyWindow(wrapped);
+			}
+			const bool captionValid = multilineAligned && wrappedAligned && expectedCaption == caption && measured &&
 				textSize.cx + UiMetrics::ScaleForDpi(20, m_layoutDpi) <= fieldClient.right && textSize.cy <= fieldClient.bottom &&
 				(::GetWindowLongPtrW(field, GWL_STYLE) & BS_TYPEMASK) == BS_AUTOCHECKBOX;
 			::SetPropW(GetParent(), L"FBE_SETTINGS_CHECKBOX_CAPTION_PASSED", reinterpret_cast<HANDLE>(captionValid ? 1 : 2));
