@@ -160,7 +160,7 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
             {rect(75,375,284,412), THEME_COLOR_HOVER, L"", THEME_COLOR_HOVER},
             {rect(80,378,275,409), THEME_COLOR_TEXT, L"@script1", THEME_COLOR_HOVER},
             {rect(80,417,275,448), THEME_COLOR_TEXT, L"@script2", THEME_COLOR_WINDOW},
-            {rect(80,456,275,487), THEME_COLOR_DISABLED_TEXT, L"@script3", THEME_COLOR_WINDOW},
+            {rect(80,456,275,487), THEME_COLOR_TEXT, L"@script3", THEME_COLOR_WINDOW},
             {rect(320,252,975,294), THEME_COLOR_CONTROL, L"  ID:             \x25BE", THEME_COLOR_CONTROL},
             {rect(320,300,975,340), THEME_COLOR_TEXT, L"Document", THEME_COLOR_WINDOW},
             {rect(320,346,610,388), THEME_COLOR_PRESSED, L"  OK", THEME_COLOR_PRESSED},
@@ -169,6 +169,7 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
             {rect(485,400,635,440), THEME_COLOR_ERROR, L"  Error", THEME_COLOR_ERROR},
             {rect(650,400,800,440), THEME_COLOR_WARNING, L"  Warning", THEME_COLOR_WARNING},
             {rect(815,400,970,440), THEME_COLOR_SUCCESS, L"  OK", THEME_COLOR_SUCCESS},
+            {rect(320,455,610,490), THEME_COLOR_DISABLED_TEXT, L"Disabled", THEME_COLOR_WINDOW},
             {rect(0,548,1000,600), THEME_COLOR_CONTROL, L"  FB2                                           UTF-8", THEME_COLOR_CONTROL}
         };
     }
