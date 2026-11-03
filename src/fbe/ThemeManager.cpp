@@ -839,6 +839,7 @@ void PaintPaletteListSelection(HWND window, HDC dc)
 	const LRESULT count = ::SendMessageW(window, LB_GETCOUNT, 0, 0);
 	const LRESULT single = multiple ? LB_ERR : ::SendMessageW(window, LB_GETCURSEL, 0, 0);
 	const LRESULT caret = ::SendMessageW(window, LB_GETCARETINDEX, 0, 0);
+	const int horizontalOffset = ::GetScrollPos(window, SB_HORZ);
 	RECT client = {}; ::GetClientRect(window, &client);
 	HFONT font = reinterpret_cast<HFONT>(::SendMessageW(window, WM_GETFONT, 0, 0));
 	HGDIOBJ previous = font ? ::SelectObject(dc, font) : NULL;
@@ -852,8 +853,11 @@ void PaintPaletteListSelection(HWND window, HDC dc)
 		std::vector<wchar_t> caption(static_cast<size_t>(length) + 1, 0);
 		if(::SendMessageW(window, LB_GETTEXT, index, reinterpret_cast<LPARAM>(caption.data())) == LB_ERR) continue;
 		::FillRect(dc, &row, ThemeManager::Brush(THEME_COLOR_SELECTION_BACKGROUND));
-		RECT text = row; text.left += UiMetrics::ScaleForDpi(2, UiMetrics::DpiForWindow(window));
-		::DrawTextW(dc, caption.data(), static_cast<int>(length), &text, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX | DT_END_ELLIPSIS);
+		const int rowState = ::SaveDC(dc);
+		::IntersectClipRect(dc, row.left, row.top, row.right, row.bottom);
+		RECT text = row; text.left += UiMetrics::ScaleForDpi(2, UiMetrics::DpiForWindow(window)) - horizontalOffset;
+		::DrawTextW(dc, caption.data(), static_cast<int>(length), &text, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX);
+		if(rowState) ::RestoreDC(dc, rowState);
 		if(::GetFocus() == window && index == caret && !(::SendMessageW(window, WM_QUERYUISTATE, 0, 0) & UISF_HIDEFOCUS)) ::DrawFocusRect(dc, &row);
 	}
 	if(previous) ::SelectObject(dc, previous); if(saved) ::RestoreDC(dc, saved);
@@ -988,7 +992,10 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 	}
 	if(ThemeManager::UsesPaletteSurface() && IsPlainPaletteList(window)) {
 		if(message == WM_PAINT || ((message == WM_PRINTCLIENT || message == WM_PRINT) && wParam)) {
+			const HDC printDc = message == WM_PAINT ? NULL : reinterpret_cast<HDC>(wParam);
+			const int printState = printDc ? ::SaveDC(printDc) : 0;
 			const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
+			if(printState) ::RestoreDC(printDc, printState);
 			HDC dc = message == WM_PAINT ? ::GetDC(window) : reinterpret_cast<HDC>(wParam);
 			if(dc) { PaintPaletteListSelection(window, dc); if(message == WM_PAINT) ::ReleaseDC(window, dc); }
 			return result;

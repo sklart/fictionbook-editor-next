@@ -103,6 +103,9 @@ __declspec(noinline) LRESULT CMainFrame::RunSettingsDialogRuntime(CAtlFile& outp
         report.AppendFormat("hover-controls=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_CONTROLS")));
         report.AppendFormat("navigation-palette=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_NAV_PALETTE")));
         report.AppendFormat("list-palette=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_LIST_PALETTE")));
+        report.AppendFormat("list-scroll-offset=%Iu\nlist-scroll-mismatch=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_LIST_SCROLL_OFFSET")), reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_LIST_SCROLL_MISMATCH")));
+        report.AppendFormat("list-scroll-left-plus-1000=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_LIST_SCROLL_LEFT"))); ::RemovePropW(m_hWnd,L"FBE_LIST_SCROLL_LEFT");
+        ::RemovePropW(m_hWnd,L"FBE_LIST_SCROLL_OFFSET"); ::RemovePropW(m_hWnd,L"FBE_LIST_SCROLL_MISMATCH");
         ::RemovePropW(m_hWnd,L"FBE_SETTINGS_NAV_PALETTE");
         ::RemovePropW(m_hWnd,L"FBE_SETTINGS_LIST_PALETTE");
         report.AppendFormat("hover-failed-id=%Iu hover-failed-x=%Iu hover-failed-y=%Iu\n", reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILED_ID")), reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILED_X")), reinterpret_cast<UINT_PTR>(::GetPropW(m_hWnd,L"FBE_SETTINGS_HOVER_FAILED_Y")));

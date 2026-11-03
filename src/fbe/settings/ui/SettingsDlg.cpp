@@ -1238,7 +1238,42 @@ bool CSettingsDlg::ProbeLayout()
 				}
 				::DestroyWindow(multi);
 			}
-			const bool listPassed = pixel == ThemeManager::SelectionBackgroundColor() && multiPassed;
+			bool horizontalPassed = false;
+			HWND horizontal = ::CreateWindowExW(0, WC_LISTBOXW, L"", WS_CHILD | WS_VISIBLE | WS_HSCROLL,
+				-300, -300, 140, 90, page, NULL, _Module.GetModuleInstance(), NULL);
+			if(horizontal) {
+				ThemeManager::ApplyToWindow(horizontal);
+				::SendMessageW(horizontal, LB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Long diagnostic component name with a visible horizontal scroll"));
+				::SendMessageW(horizontal, LB_SETHORIZONTALEXTENT, 500, 0);
+				::SendMessageW(horizontal, LB_SETCURSEL, 0, 0);
+				CImage image;
+				if(image.Create(140, 90, 32)) {
+					HDC imageDc = image.GetDC(); RECT item = {};
+					if(imageDc && ::SendMessageW(horizontal, LB_GETITEMRECT, 0, reinterpret_cast<LPARAM>(&item)) != LB_ERR) {
+						::SendMessageW(horizontal, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(imageDc), PRF_CLIENT);
+						if(captureLength && captureLength < _countof(captureDirectory)) image.Save(CString(captureDirectory) + L"\\list-unscrolled.bmp");
+						std::vector<COLORREF> unscrolledPixels(140 * item.bottom);
+						for(int y = 0; y < item.bottom; ++y) for(int x = 0; x < 140; ++x) unscrolledPixels[y * 140 + x] = ::GetPixel(imageDc, x, y);
+						for(int step = 0; step < 4; ++step) ::SendMessageW(horizontal, WM_HSCROLL, SB_LINERIGHT, 0);
+						const int offset = ::GetScrollPos(horizontal, SB_HORZ);
+						RECT scrolledItem = {}; ::SendMessageW(horizontal, LB_GETITEMRECT, 0, reinterpret_cast<LPARAM>(&scrolledItem));
+						::SetPropW(GetParent(), L"FBE_LIST_SCROLL_LEFT", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(scrolledItem.left + 1000)));
+						::SendMessageW(horizontal, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(imageDc), PRF_CLIENT);
+						if(captureLength && captureLength < _countof(captureDirectory)) image.Save(CString(captureDirectory) + L"\\list-scrolled.bmp");
+						int compared = 0, mismatched = 0;
+						for(int y = item.top; y < item.bottom; ++y) for(int x = 2; x + offset < 130; ++x) {
+							if(unscrolledPixels[y * 140 + x + offset] != ::GetPixel(imageDc, x, y)) ++mismatched;
+							++compared;
+						}
+						horizontalPassed = offset > 0 && compared > 0 && mismatched == 0;
+						::SetPropW(GetParent(), L"FBE_LIST_SCROLL_OFFSET", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(offset)));
+						::SetPropW(GetParent(), L"FBE_LIST_SCROLL_MISMATCH", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(mismatched)));
+						image.ReleaseDC();
+					}
+				}
+				::DestroyWindow(horizontal);
+			}
+			const bool listPassed = pixel == ThemeManager::SelectionBackgroundColor() && multiPassed && horizontalPassed;
 			::SetPropW(GetParent(), L"FBE_SETTINGS_LIST_PALETTE", reinterpret_cast<HANDLE>(listPassed ? 1 : 2));
 			passed = listPassed && passed;
 		}
