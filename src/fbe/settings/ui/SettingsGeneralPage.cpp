@@ -336,7 +336,17 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
             ::RestoreDC(dc, saved);
         }
         const int selected = CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).GetCurSel();
-        for(const auto& part : parts) if(part.role == selected || part.role == m_hoverRole) {
+        for(const auto& part : parts) {
+            const bool usesNormalText = *part.text && part.role != THEME_COLOR_SELECTION_TEXT &&
+                part.role != THEME_COLOR_SECONDARY_TEXT && part.role != THEME_COLOR_DISABLED_TEXT;
+            if(part.role != selected && part.role != m_hoverRole && !(selected == THEME_COLOR_TEXT && usesNormalText)) continue;
+            if(selected == THEME_COLOR_TEXT && usesNormalText && part.role != m_hoverRole) {
+                RECT marker = {part.rect.left - 3, part.rect.top, part.rect.left - 1, part.rect.bottom};
+                ::FillRect(dc, &marker, static_cast<HBRUSH>(::GetStockObject(BLACK_BRUSH)));
+                marker.left = marker.right - 1;
+                ::FillRect(dc, &marker, static_cast<HBRUSH>(::GetStockObject(WHITE_BRUSH)));
+                continue;
+            }
             // Draw the selection outside the sample so it cannot cross the
             // text in compact rows such as a selected tree item.
             RECT outline = part.rect; ::InflateRect(&outline, 2, 2);
@@ -957,6 +967,7 @@ public:
         ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId()); Refresh();
         SetDlgItemText(IDC_PALETTE_CURRENT, L"Catppuccin Mocha");
         selectRole(THEME_COLOR_CONTROL); ok = capture(L"mocha-control.bmp") && ok;
+        selectRole(THEME_COLOR_TEXT); ok = capture(L"mocha-text.bmp") && ok;
         selectRole(THEME_COLOR_SELECTION_BACKGROUND); ok = capture(L"mocha-selection.bmp") && ok;
         draft = originalPalettes[index]; draft.name = L"Sepia"; draft.base = ThemeManager::CustomPaletteBase::Sepia;
         for(int role = 0; role < THEME_COLOR_COUNT; ++role) draft.present[role] = false;
@@ -1030,6 +1041,13 @@ public:
             CComboBox(GetDlgItem(IDC_PALETTE_ROLE)).SetCurSel(originalRole);
             m_page.m_paletteRole.SetCurSel(originalRole);
             if(mode == 2 && editable) {
+                ::SendMessageW(m_hWnd, kPreviewSelect, THEME_COLOR_TEXT, 0);
+                ::RedrawWindow(m_preview, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+                HDC markerDc = ::GetDC(m_preview);
+                const int markerX = MulDiv(bounds.right, 320, 1000) - 2;
+                const int markerY = MulDiv(bounds.bottom, 320, 600);
+                passed = markerDc && ::GetPixel(markerDc, markerX, markerY) == RGB(255,255,255) && passed;
+                if(markerDc) ::ReleaseDC(m_preview, markerDc);
                 ::SendMessageW(m_hWnd, kPreviewSelect, THEME_COLOR_CONTROL, 0);
                 ::SetWindowTextW(m_hex, L"#123456");
                 COLORREF colors[THEME_COLOR_COUNT] = {}; PreviewColors(colors);
