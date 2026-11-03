@@ -534,9 +534,9 @@ public:
         for(int i = 0; i < m_page.m_paletteRole.GetCount(); ++i) { CString text; m_page.m_paletteRole.GetLBText(i, text); roles.AddString(text); }
         roles.SetCurSel(m_page.m_paletteRole.GetCurSel());
         m_tooltips.Initialize(m_hWnd);
-        m_tooltips.Add(m_preview, L"fbe.settings.tooltip.general.palette_color", L"Choose an interface colour by clicking the preview.");
-        m_tooltips.Add(m_hex, L"fbe.settings.tooltip.general.palette_color", L"Enter a colour as #RRGGBB.");
-        m_tooltips.Add(m_recent, L"fbe.settings.tooltip.general.palette_color", L"Choose a recently used colour.");
+        m_tooltips.Add(m_preview, L"fbe.settings.tooltip.palette.preview", L"Choose an interface colour by clicking the preview.");
+        m_tooltips.Add(m_hex, L"fbe.settings.tooltip.palette.hex", L"Enter a colour as #RRGGBB.");
+        m_tooltips.Add(m_recent, L"fbe.settings.tooltip.palette.recent", L"Choose a recently used colour.");
         m_tooltips.Add(GetDlgItem(IDC_PALETTE_CURRENT), L"fbe.settings.tooltip.general.interface_palette", L"Selected colour scheme.");
         for(int id : {IDC_PALETTE_ROLE, IDC_PALETTE_ROLE_LABEL, IDC_PALETTE_CHOOSE_COLOR, IDC_PALETTE_RESET_COLOR}) {
             m_tooltips.Add(GetDlgItem(id), L"fbe.settings.tooltip.general.palette_color", L"Edit a colour in a custom palette.");
@@ -1006,13 +1006,18 @@ public:
         }
         bool passed = mode == 1 && !editable;
         if(mode == 2 && editable) {
+            const CString hexTip = m_tooltips.RegisteredText(m_hex);
+            const CString recentTip = m_tooltips.RegisteredText(m_recent);
+            const bool tooltipTexts = hexTip == FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.palette.hex", L"Enter a colour as #RRGGBB.") &&
+                recentTip == FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.palette.recent", L"Choose a recently used colour.") &&
+                hexTip.Find(L"#RRGGBB") >= 0 && hexTip != recentTip;
             const int index = m_page.m_acceptedPaletteIndex - INTERFACE_PALETTE_COUNT;
             COLORREF before[THEME_COLOR_COUNT] = {}, after[THEME_COLOR_COUNT] = {};
             ThemeManager::PreviewColors(static_cast<InterfaceTheme>(m_page.m_acceptedThemeIndex), INTERFACE_PALETTE_CLASSIC, &m_page.m_customPalettes[index], before);
             ::SendMessageW(m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_PALETTE_RESET_COLOR, BN_CLICKED),
                 reinterpret_cast<LPARAM>(GetDlgItem(IDC_PALETTE_RESET_COLOR).m_hWnd));
             ThemeManager::PreviewColors(static_cast<InterfaceTheme>(m_page.m_acceptedThemeIndex), INTERFACE_PALETTE_CLASSIC, &m_page.m_customPalettes[index], after);
-            passed = after[THEME_COLOR_WINDOW] != before[THEME_COLOR_WINDOW];
+            passed = tooltipTexts && after[THEME_COLOR_WINDOW] != before[THEME_COLOR_WINDOW];
         }
         if(m_preview) {
             RECT bounds = {}; ::GetClientRect(m_preview, &bounds);

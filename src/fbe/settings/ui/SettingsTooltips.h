@@ -42,6 +42,14 @@ public:
 		}
 	}
 
+	CString RegisteredText(HWND control) const
+	{
+		if(!control || !m_tooltips.IsWindow()) return CString();
+		wchar_t text[1024] = {};
+		m_tooltips.GetText(text, control);
+		return CString(text);
+	}
+
 	// Disabled child windows do not reliably receive mouse messages. Register
 	// the child's client rectangle on its enabled page instead, so the tooltip
 	// control subclasses the page and receives the parent's mouse stream.
