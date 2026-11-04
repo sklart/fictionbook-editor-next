@@ -6,6 +6,12 @@ Undo/Redo, Save -> reopen and FictionBook XSD.
 [CmdletBinding()]
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180)
 $ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'ci-runtime'
+$FbeExe = $isolation.Exe
+$isolationPassed = $false
+try {
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
 $schemaPath = Join-Path $PSScriptRoot '..\..\runtime\FictionBook.xsd'
@@ -52,3 +58,5 @@ try {
     Assert-Phase (Import-Csv -LiteralPath $reopen -Delimiter "`t") 'reopen' @('colspan=2','fbcolspan=2','rowspan=2','fbrowspan=2','align=','fbalign=','valign=bottom','fbvalign=bottom')
     Write-Host 'Production table attribute pairing, Undo/Redo, Save -> reopen and XSD passed.'
 } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+$isolationPassed = $true
+} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $isolationPassed }

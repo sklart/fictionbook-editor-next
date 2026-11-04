@@ -1362,29 +1362,38 @@ void CMainFrame::RunPortableStateTestScenario()
             page.ConfigureInterfaceTheme(false);
             const HWND choice = page.GetDlgItem(IDC_INTERFACE_THEME);
             passed = ::SendMessage(choice, CB_GETCOUNT, 0, 0) == 3 && ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT &&
-                ::GetWindowTextLength(page.GetDlgItem(IDC_INTERFACE_THEME_NOTE)) > 0;
+                ::GetWindowTextLength(page.GetDlgItem(IDC_INTERFACE_THEME_NOTE)) > 0 && passed;
+            comboPixelDiagnostics.AppendFormat("theme-initial=%d\n", passed);
             RECT notice = {}, openGroup = {}, interfaceGroup = {};
             ::GetWindowRect(page.GetDlgItem(IDC_INTERFACE_THEME_NOTE), &notice);
             ::GetWindowRect(page.GetDlgItem(IDC_SETTINGS_OTHER_OPEN_GROUP), &openGroup);
             ::GetWindowRect(page.GetDlgItem(IDC_OPTIONS_INTERFACE_GROUP), &interfaceGroup);
             passed = passed && notice.bottom <= openGroup.top && notice.right <= interfaceGroup.right && notice.left >= interfaceGroup.left;
+            comboPixelDiagnostics.AppendFormat("theme-layout=%d\n", passed);
+            const InterfaceTheme themeBeforeSelection = ThemeManager::GetSelectedTheme();
             page.SendMessage(WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_THEME, CBN_DROPDOWN), reinterpret_cast<LPARAM>(choice));
             ::SendMessage(choice, CB_SETCURSEL, INTERFACE_THEME_AUTOMATIC, 0);
             page.SendMessage(WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_THEME, CBN_SELCHANGE), reinterpret_cast<LPARAM>(choice));
             page.SendMessage(WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_THEME, CBN_SELENDCANCEL), reinterpret_cast<LPARAM>(choice));
             passed = passed && ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT &&
-                ThemeManager::GetSelectedTheme() == INTERFACE_THEME_LIGHT;
+                ThemeManager::GetSelectedTheme() == themeBeforeSelection;
+            comboPixelDiagnostics.AppendFormat("theme-cancel-selection=%d\n", passed);
             page.Commit(); passed = passed && _Settings.GetInterfaceTheme() == INTERFACE_THEME_DARK;
             page.CancelChanges(); passed = passed && _Settings.GetInterfaceTheme() == INTERFACE_THEME_DARK;
+            comboPixelDiagnostics.AppendFormat("theme-preserve=%d\n", passed);
             ::SendMessage(choice, CB_SETCURSEL, INTERFACE_THEME_AUTOMATIC, 0);
+            page.SendMessage(WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_THEME, CBN_SELCHANGE), reinterpret_cast<LPARAM>(choice));
             page.Commit(); passed = passed && _Settings.GetInterfaceTheme() == INTERFACE_THEME_AUTOMATIC;
+            comboPixelDiagnostics.AppendFormat("theme-automatic=%d\n", passed);
             _Settings.SetInterfaceTheme(INTERFACE_THEME_DARK); page.ConfigureInterfaceTheme(false);
             page.SendMessage(WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_THEME, CBN_SELENDOK), reinterpret_cast<LPARAM>(choice));
             page.Commit(); passed = passed && _Settings.GetInterfaceTheme() == INTERFACE_THEME_LIGHT;
+            comboPixelDiagnostics.AppendFormat("theme-commit=%d\n", passed);
             _Settings.SetInterfaceTheme(INTERFACE_THEME_DARK); page.ConfigureInterfaceTheme(true);
             passed = passed && ::SendMessage(choice, CB_GETCOUNT, 0, 0) == 3 && ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_DARK;
             page.ConfigureInterfaceTheme(false);
             const HWND paletteChoice = page.GetDlgItem(IDC_INTERFACE_PALETTE);
+            comboPixelDiagnostics.AppendFormat("phase-theme=%d\n", passed);
             BOOL handled = FALSE;
             const HFONT originalFont = reinterpret_cast<HFONT>(::SendMessage(paletteChoice, WM_GETFONT, 0, 0));
             const HFONT largeFont = ::CreateFontW(-28, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
@@ -1405,9 +1414,9 @@ void CMainFrame::RunPortableStateTestScenario()
             else {
                 DRAWITEMSTRUCT draw = {}; draw.CtlType = ODT_COMBOBOX; draw.hwndItem = paletteChoice; draw.CtlID = IDC_INTERFACE_PALETTE;
                 draw.hDC = memory; draw.rcItem = {0, 0, 300, 30};
-                draw.itemID = INTERFACE_PALETTE_GRAPHITE; page.OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
+                draw.itemID = CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_GRAPHITE); page.OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
                 passed = ::GetTextColor(memory) == ThemeManager::DisabledTextColor() && passed;
-                draw.itemID = INTERFACE_PALETTE_SEPIA; page.OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
+                draw.itemID = CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SEPIA); page.OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
                 passed = ::GetTextColor(memory) == ThemeManager::TextColor() && passed;
                 draw.CtlID = IDC_INTERFACE_THEME; draw.hwndItem = choice; draw.itemID = INTERFACE_THEME_DARK;
                 page.OnDrawThemeItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
@@ -1426,6 +1435,7 @@ void CMainFrame::RunPortableStateTestScenario()
             }, reinterpret_cast<LPARAM>(&tip));
             const CString unavailableTip = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.unavailable", L"This dark palette requires Windows 10 (1809) or newer.");
             passed = tip.text.Find(unavailableTip) >= 0 && passed;
+            comboPixelDiagnostics.AppendFormat("phase-draw=%d\n", passed);
             // Check the actual dropdown tools: light choices must not inherit
             // the explanatory text meant for unavailable dark choices.
             ::ShowWindow(page.m_hWnd, SW_SHOW);
@@ -1433,8 +1443,8 @@ void CMainFrame::RunPortableStateTestScenario()
                 COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
                 if(!::GetComboBoxInfo(combo, &info) || !info.hwndList) { passed = false; continue; }
                 ::SendMessage(combo, CB_SHOWDROPDOWN, TRUE, 0);
-                const int lightIndex = combo == choice ? INTERFACE_THEME_LIGHT : INTERFACE_PALETTE_CLASSIC;
-                const int darkIndex = combo == choice ? INTERFACE_THEME_DARK : INTERFACE_PALETTE_GRAPHITE;
+                const int lightIndex = combo == choice ? INTERFACE_THEME_LIGHT : CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_CLASSIC);
+                const int darkIndex = combo == choice ? INTERFACE_THEME_DARK : CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_GRAPHITE);
                 for(int index : {lightIndex, darkIndex}) {
                     RECT itemRect = {};
                     if(::SendMessage(info.hwndList, LB_GETITEMRECT, index, reinterpret_cast<LPARAM>(&itemRect)) == LB_ERR) { passed = false; continue; }
@@ -1476,27 +1486,30 @@ void CMainFrame::RunPortableStateTestScenario()
                 }
                 ::SendMessage(combo, CB_SHOWDROPDOWN, FALSE, 0);
             }
-            ::SendMessage(paletteChoice, CB_SETCURSEL, INTERFACE_PALETTE_CLASSIC, 0);
+            comboPixelDiagnostics.AppendFormat("phase-tooltips=%d\n", passed);
+            const InterfacePalette paletteBeforeSelection = ThemeManager::GetNamedPalette();
+            ::SendMessage(paletteChoice, CB_SETCURSEL, CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_CLASSIC), 0);
             page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, paletteChoice, handled);
             ::SendMessage(paletteChoice, WM_KEYDOWN, VK_DOWN, 0);
-            passed = ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SEPIA) && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_SEPIA && passed;
+            passed = ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_SEPIA) && ThemeManager::GetNamedPalette() == paletteBeforeSelection && passed;
             ::SendMessage(paletteChoice, WM_KEYDOWN, VK_UP, 0);
-            passed = ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == INTERFACE_PALETTE_CLASSIC && ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CLASSIC && passed;
+            passed = ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_CLASSIC) && ThemeManager::GetNamedPalette() == paletteBeforeSelection && passed;
             for(InterfacePalette light : {INTERFACE_PALETTE_SEPIA, INTERFACE_PALETTE_CATPPUCCIN_LATTE}) {
-                ::SendMessage(paletteChoice, CB_SETCURSEL, light, 0);
+                ::SendMessage(paletteChoice, CB_SETCURSEL, CSettingsGeneralPage::RowForPalette(light), 0);
                 page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, paletteChoice, handled);
-                passed = ThemeManager::GetNamedPalette() == light && ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == light && passed;
+                passed = ThemeManager::GetNamedPalette() == paletteBeforeSelection && ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == CSettingsGeneralPage::RowForPalette(light) && passed;
             }
+            comboPixelDiagnostics.AppendFormat("phase-selection=%d\n", passed);
             // Sample a real, non-owner-drawn settings combo and its popup.
-            // The unfocused field uses Window; the list uses Control.
+            // Both the unfocused field and the list use the control surface.
             ShowWindow(SW_SHOWNORMAL); ::SetForegroundWindow(m_hWnd);
             HWND ordinaryCombo = page.GetDlgItem(IDC_DESCRIPTION_LAYOUT);
             passed = ordinaryCombo && ::IsWindowVisible(ordinaryCombo) &&
                 ::SendMessage(ordinaryCombo, CB_GETCOUNT, 0, 0) > 0 && passed;
             for(InterfacePalette light : {INTERFACE_PALETTE_SEPIA, INTERFACE_PALETTE_SOLARIZED_LIGHT, INTERFACE_PALETTE_CATPPUCCIN_LATTE}) {
-                ::SendMessage(paletteChoice, CB_SETCURSEL, light, 0);
+                ::SendMessage(paletteChoice, CB_SETCURSEL, CSettingsGeneralPage::RowForPalette(light), 0);
                 page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, paletteChoice, handled);
-                passed = ThemeManager::GetNamedPalette() == light && passed;
+                passed = ThemeManager::SetNamedPalette(light) && passed;
                 ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
                 ::SetFocus(choice); // Measure the unfocused field, outside the selection highlight.
                 ::RedrawWindow(page.m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
@@ -1517,7 +1530,7 @@ void CMainFrame::RunPortableStateTestScenario()
                     if(listDc) ::ReleaseDC(ordinaryInfo.hwndList, listDc);
                     ::SendMessage(ordinaryCombo, CB_SHOWDROPDOWN, FALSE, 0);
                 }
-                const COLORREF comboExpected = ThemeManager::WindowColor();
+                const COLORREF comboExpected = ThemeManager::ControlColor();
                 const COLORREF listExpected = ThemeManager::ControlColor();
 				COLORREF ownerFieldPixel = CLR_INVALID;
 				COMBOBOXINFO ownerInfo = {}; ownerInfo.cbSize = sizeof(ownerInfo);
@@ -1543,15 +1556,17 @@ void CMainFrame::RunPortableStateTestScenario()
                 passed = comboPixel == comboExpected && listPixel == listExpected && disabledPixel == comboExpected &&
 					arrowPixel == comboExpected && ownerArrowPixel == comboExpected && ownerFieldPixel == comboExpected && passed;
             }
+            comboPixelDiagnostics.AppendFormat("phase-colors=%d\n", passed);
             ::SendMessage(choice, CB_SETCURSEL, INTERFACE_THEME_DARK, 0);
             page.OnInterfaceThemeChanged(CBN_SELCHANGE, IDC_INTERFACE_THEME, choice, handled);
             passed = ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT && passed;
             for(InterfacePalette dark : {INTERFACE_PALETTE_GRAPHITE, INTERFACE_PALETTE_NAVY, INTERFACE_PALETTE_DRACULA}) {
-                ::SendMessage(paletteChoice, CB_SETCURSEL, dark, 0);
+                ::SendMessage(paletteChoice, CB_SETCURSEL, CSettingsGeneralPage::RowForPalette(dark), 0);
                 page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, paletteChoice, handled);
                 passed = ThemeManager::GetNamedPalette() == INTERFACE_PALETTE_CATPPUCCIN_LATTE &&
                     ::SendMessage(paletteChoice, CB_GETCURSEL, 0, 0) == CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_CATPPUCCIN_LATTE) && passed;
             }
+            comboPixelDiagnostics.AppendFormat("phase-disabled=%d\n", passed);
             passed = page.CancelChanges() && passed;
             page.DestroyWindow();
         }

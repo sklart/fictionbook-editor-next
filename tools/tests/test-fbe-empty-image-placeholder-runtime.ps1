@@ -3,6 +3,12 @@
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 120)
 
 $ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'ci-runtime'
+$FbeExe = $isolation.Exe
+$isolationPassed = $false
+try {
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-empty-image-placeholder-' + [guid]::NewGuid().ToString('N'))
@@ -25,3 +31,6 @@ try {
     if(([regex]::Matches($saved, '(?:xlink|l):href="#undefined"')).Count -ne 2 -or $saved -match 'fbw-internal:#"') { throw 'Save/Reopen нарушил семантику #undefined.' }
     Write-Host 'Empty image placeholder MSHTML runtime round-trip passed.'
 } finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+
+$isolationPassed = $true
+} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $isolationPassed }

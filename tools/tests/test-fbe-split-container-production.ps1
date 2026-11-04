@@ -9,6 +9,12 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'ci-runtime'
+$FbeExe = $isolation.Exe
+$isolationPassed = $false
+try {
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "FBE.exe was not found: $FbeExe" }
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -136,6 +142,9 @@ try {
         $completed++; $passed++
         } catch {
             $failed++
+            foreach($evidence in @($fixture, $report, $trace, $reopenReport)) {
+                if(Test-Path -LiteralPath $evidence -PathType Leaf) { Copy-Item -LiteralPath $evidence -Destination $isolation.Root -Force }
+            }
             Write-Host "Split scenario counters: selected=$selected started=$started completed=$completed passed=$passed failed=$failed"
             throw
         }
@@ -147,3 +156,6 @@ try {
     if($KeepArtifacts) { Write-Host "Artifacts: $directory" }
     else { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
 }
+
+$isolationPassed = $true
+} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $isolationPassed }

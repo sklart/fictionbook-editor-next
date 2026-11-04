@@ -5,6 +5,12 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'ci-runtime'
+$FbeExe = $isolation.Exe
+$isolationPassed = $false
+try {
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "FBE not found: $FbeExe" }
 $root = Join-Path ([IO.Path]::GetTempPath()) ('fbe-fb2-binary-inspection-' + [guid]::NewGuid().ToString('N'))
@@ -38,3 +44,5 @@ try {
 } finally {
     Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
 }
+$isolationPassed = $true
+} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $isolationPassed }

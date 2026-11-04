@@ -324,7 +324,9 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 		if (!argumentError || *argumentError == UINT_MAX) argumentText = L"none";
 		else argumentText.Format(L"%u", *argumentError);
 		CString details;
-		details.Format(L"dispid=%ld; method=%s; result-type=VT_%u; argument-error=%s; excep.wCode=%u; excep.scode=0x%08lX; excep.helpContext=%lu", static_cast<long>(dispid), ExternalHelperMethodName(dispid), resultValue ? static_cast<unsigned int>(V_VT(resultValue)) : VT_EMPTY, (LPCWSTR)argumentText, exceptionInfo ? exceptionInfo->wCode : 0, static_cast<unsigned long>(exceptionInfo ? exceptionInfo->scode : S_OK), exceptionInfo ? exceptionInfo->dwHelpContext : 0);
+		VARIANT borrowedResult = {};
+		const unsigned int resultType = FbeAutomation::ReadBorrowedVariant(resultValue, borrowedResult) ? static_cast<unsigned int>(V_VT(&borrowedResult)) : VT_EMPTY;
+		details.Format(L"dispid=%ld; method=%s; result-type=VT_%u; argument-error=%s; excep.wCode=%u; excep.scode=0x%08lX; excep.helpContext=%lu", static_cast<long>(dispid), ExternalHelperMethodName(dispid), resultType, (LPCWSTR)argumentText, exceptionInfo ? exceptionInfo->wCode : 0, static_cast<unsigned long>(exceptionInfo ? exceptionInfo->scode : S_OK), exceptionInfo ? exceptionInfo->dwHelpContext : 0);
 		details += StartupTrace::FormatComExceptionMetadata(exceptionInfo, errorInfo);
 				RecordLogged(g_loggedInvokes, dispid);
 		StartupTrace::DispatchResult(L"external", FAILED(result) ? L"XH140" : L"XH131", result, details);

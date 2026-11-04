@@ -6,6 +6,12 @@ Exercises production CFBEView table handlers with live DOM snapshots and Undo/Re
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180, [switch]$KeepArtifacts, [switch]$RouteThroughFrame, [string]$Target, [string]$Operation, [string]$SecondOperation, [string]$FixtureId, [string]$RuntimeStyle, [string]$Fault)
 
 $ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'ci-runtime'
+$FbeExe = $isolation.Exe
+$isolationPassed = $false
+try {
 $requestedOperation = $Operation
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
@@ -143,3 +149,6 @@ try {
     Write-Host 'Production structural table handlers with Undo/Redo passed.'
 }
 finally { if($KeepArtifacts) { Write-Host "Артефакты structural test: $directory" } else { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue } }
+
+$isolationPassed = $true
+} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $isolationPassed }

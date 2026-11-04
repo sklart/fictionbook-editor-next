@@ -4,16 +4,24 @@ param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $FbeExe = (Resolve-Path -LiteralPath $FbeExe).Path
-$work = Join-Path $repo ('out\tests\script-hotkeys-' + [Guid]::NewGuid().ToString('N'))
-$null = New-Item -ItemType Directory -Path $work
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$installedIsolation = $null
+$installedPassed = $false
+$portableIsolation = $null
+$allPassed = $false
 $variables = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_HOTKEY_TEST_ROOT','FBE_NEXT_HOTKEY_TEST_PHASE','FBE_NEXT_HOTKEY_TEST_REFRESHES','FBE_NEXT_UI_LOCALE')
 $saved = @{}; foreach ($name in $variables) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
 try {
     foreach ($mode in 'installed','portable') {
-        $directory = Join-Path $work $mode
-        $null = New-Item -ItemType Directory -Path $directory
-        Copy-Item -Path (Join-Path $repo 'runtime\*') -Destination $directory -Recurse -Force
-        Copy-Item -LiteralPath $FbeExe -Destination (Join-Path $directory 'FBE.exe') -Force
+        if ($mode -eq 'installed') {
+            $installedIsolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'script-hotkeys'
+            $directory = $installedIsolation.Root
+        } else {
+            $portableIsolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'script-hotkeys-portable'
+            $directory = Join-Path $portableIsolation.Root $mode
+            $null = New-Item -ItemType Directory -Path $directory
+            Get-ChildItem -LiteralPath $portableIsolation.Root -Force | Where-Object { $_.Name -notin @('.fbe-runtime-owner.json', $mode) } | Move-Item -Destination $directory
+        }
         $builtLanguage = Join-Path (Split-Path -Parent $FbeExe) 'Lang'
         if (Test-Path -LiteralPath $builtLanguage) {
             $languageTarget = Join-Path $directory 'Lang'
@@ -30,9 +38,9 @@ try {
         [IO.File]::WriteAllText($document, '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>Test</first-name><last-name>Author</last-name></author><book-title>Hotkeys</book-title><lang>ru</lang></title-info><document-info><author><first-name>Test</first-name><last-name>Author</last-name></author><id>hotkey-test</id><version>1.0</version></document-info></description><body><section><p>Test</p></section></body></FictionBook>', [Text.UTF8Encoding]::new($false))
         foreach ($phase in 'write','read') {
             if ($mode -eq 'portable' -and $phase -eq 'read') {
-                $destination = Join-Path $work 'Portable moved with spaces'
+                $destination = Join-Path $portableIsolation.Root 'Portable moved with spaces'
                 foreach ($path in @($directory,$destination)) {
-                    if (-not [IO.Path]::GetFullPath($path).StartsWith($work + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe fixture move.' }
+                    if (-not [IO.Path]::GetFullPath($path).StartsWith($portableIsolation.Root + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe fixture move.' }
                 }
                 Move-Item -LiteralPath $directory -Destination $destination
                 $directory = $destination
@@ -50,6 +58,12 @@ try {
             if ($process.ExitCode -ne 0 -or $text -notmatch '(?m)^result=pass$') { throw "Hotkey $mode/$phase failed ($($process.ExitCode)):`n$text`nLogs: $directory" }
             Write-Host "Script hotkey management $mode/$phase runtime: PASS"
         }
+        if ($mode -eq 'installed') { $installedPassed = $true }
     }
-    Write-Host "Artifacts: $work"
-} finally { foreach ($name in $variables) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) } }
+    $allPassed = $true
+    Write-Host 'Script hotkey management runtime passed.'
+} finally {
+    foreach ($name in $variables) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) }
+    if ($installedIsolation) { Complete-IsolatedFbeRuntime -Isolation $installedIsolation -Passed $installedPassed }
+    if ($portableIsolation) { Complete-IsolatedFbeRuntime -Isolation $portableIsolation -Passed $allPassed -PreserveContents }
+}
