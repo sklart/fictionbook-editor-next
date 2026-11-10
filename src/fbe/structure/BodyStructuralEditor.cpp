@@ -60,11 +60,45 @@ StructuralOperationResult BodyStructuralEditor::InsertCite(bool checkOnly, CiteP
 		Before(L"parent-resolved"); MSHTML::IHTMLElementPtr parent(FindParentDiv(range->parentElement())); After(L"parent-resolved");
 		if (!parent) return StructuralOperationResult::NotApplicable();
 		Before(L"start-range-created"); MSHTML::IHTMLTxtRangePtr start(range->duplicate()); start->collapse(VARIANT_TRUE); After(L"start-range-created");
-		if (FindParentDiv(start->parentElement()) != parent) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
+		MSHTML::IHTMLTxtRangePtr finishRange(range->duplicate()); finishRange->collapse(VARIANT_FALSE);
+		auto ancestor = [](MSHTML::IHTMLElementPtr node, const wchar_t* tag, const wchar_t* cls) -> MSHTML::IHTMLElementPtr {
+			while (node && (U::scmp(node->tagName, tag) || (cls && U::scmp(node->className, cls)))) node = node->parentElement;
+			return node;
+		};
+		MSHTML::IHTMLElementPtr beginElement, endElement;
+		MSHTML::IHTMLElementPtr startPoem = ancestor(start->parentElement(), L"DIV", L"poem");
+		MSHTML::IHTMLElementPtr endPoem = ancestor(finishRange->parentElement(), L"DIV", L"poem");
+		const bool poemOnly = startPoem && startPoem == endPoem && range->compareEndPoints(L"StartToEnd", range) != 0;
+		if (poemOnly) {
+			MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(startPoem)->getElementsByTagName(L"P"));
+			MSHTML::IHTMLElementPtr first = paragraphs && paragraphs->length ? MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(0L), _variant_t())) : nullptr;
+			MSHTML::IHTMLElementPtr last = paragraphs && paragraphs->length ? MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(paragraphs->length - 1), _variant_t())) : nullptr;
+			if (!first || ancestor(start->parentElement(), L"P", nullptr) != first || ancestor(finishRange->parentElement(), L"P", nullptr) != last) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
+			parent = startPoem->parentElement;
+			beginElement = endElement = startPoem;
+		} else if (FindParentDiv(start->parentElement()) != parent) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
+		if (!parent) return StructuralOperationResult::NotApplicable();
 		_bstr_t cls(parent->className);
 		if (U::scmp(cls, L"section") && U::scmp(cls, L"epigraph") && U::scmp(cls, L"annotation") && U::scmp(cls, L"history")) return StructuralOperationResult::NotApplicable();
 		After(L"preflight-complete");
-		Before(L"expand"); MSHTML::IHTMLElementPtr beginElement, endElement; const HRESULT expandHr = ExpandRangeToParagraphs(range, beginElement, endElement); if (expandHr == S_FALSE) return StructuralOperationResult::NotApplicable(); if (FAILED(expandHr)) return StructuralOperationResult::Failed(expandHr); After(L"expand");
+		if (!poemOnly) {
+			Before(L"expand"); const HRESULT expandHr = ExpandRangeToParagraphs(range, beginElement, endElement); if (expandHr == S_FALSE) return StructuralOperationResult::NotApplicable(); if (FAILED(expandHr)) return StructuralOperationResult::Failed(expandHr); After(L"expand");
+		}
+		// Remove only siblings of the selected parent. A selection may end in
+		// the last verse of an existing poem; move that boundary to the whole
+		// poem so neither its markup nor following siblings are split or lost.
+		if (beginElement->parentElement != parent) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
+		if (endElement->parentElement != parent) {
+			MSHTML::IHTMLElementPtr block = endElement;
+			while (block && block->parentElement != parent) block = block->parentElement;
+			if (!block || U::scmp(block->tagName, L"DIV") || U::scmp(block->className, L"poem")) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
+			MSHTML::IHTMLElementCollectionPtr verses(MSHTML::IHTMLElement2Ptr(block)->getElementsByTagName(L"P"));
+			if (!verses || !verses->length || MSHTML::IHTMLElementPtr(verses->item(_variant_t(verses->length - 1), _variant_t())) != endElement) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
+			endElement = block;
+		}
+		MSHTML::IHTMLDOMNodePtr scan(beginElement), finish(endElement);
+		while (scan && scan != finish) scan = scan->nextSibling;
+		if (!scan) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
 		if (checkOnly) { After(L"cite-check-success"); return { StructuralOperationStatus::Applied, S_OK, false }; }
 		Before(L"capture-html");
 		CString html; MSHTML::IHTMLDOMNodePtr sibling = beginElement;
@@ -119,6 +153,12 @@ StructuralOperationResult BodyStructuralEditor::InsertPoem(bool checkOnly, CiteP
 		if (U::scmp(cls,L"section") && U::scmp(cls,L"epigraph") && U::scmp(cls,L"annotation") && U::scmp(cls,L"history") && U::scmp(cls,L"cite")) return StructuralOperationResult::NotApplicable();
 		After(L"preflight-complete");
 		Before(L"expand"); MSHTML::IHTMLElementPtr beginElement, endElement; const HRESULT expandHr = ExpandRangeToParagraphs(range, beginElement, endElement); if (expandHr == S_FALSE) return StructuralOperationResult::NotApplicable(); if (FAILED(expandHr)) return StructuralOperationResult::Failed(expandHr); After(L"expand");
+		// A poem cannot contain another poem. Never enter the sibling removal
+		// loop when either boundary belongs to a nested container.
+		if (beginElement->parentElement != parent || endElement->parentElement != parent) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
+		MSHTML::IHTMLDOMNodePtr scan(beginElement), finish(endElement);
+		while (scan && scan != finish) scan = scan->nextSibling;
+		if (!scan) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
 		if (checkOnly) { After(L"poem-check-success"); return { StructuralOperationStatus::Applied, S_OK, false }; }
 		Before(L"capture-html"); CString html; MSHTML::IHTMLDOMNodePtr sibling = beginElement;
 		do { html += MSHTML::IHTMLElementPtr(sibling)->outerHTML.GetBSTR(); if (sibling == endElement) break; sibling = sibling->nextSibling; } while (sibling);

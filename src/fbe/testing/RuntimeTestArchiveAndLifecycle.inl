@@ -2805,6 +2805,13 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		if (!body || !container || !paragraphs || paragraphs->length == 0) { writeFailure("missing-paragraph"); return 0; }
 		MSHTML::IHTMLElementPtr first(paragraphs->item(_variant_t(0L), _variant_t()));
 		MSHTML::IHTMLElementPtr last(paragraphs->item(_variant_t(paragraphs->length - 1), _variant_t()));
+		// Select from the first sibling paragraph into the final verse, leaving
+		// a later ordinary paragraph outside the selection as a capture oracle.
+		if (wcscmp(selectionMode, L"end-in-poem") == 0 && paragraphs->length >= 3)
+			last = MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(paragraphs->length - 2), _variant_t()));
+		if (wcscmp(selectionMode, L"mid-in-poem") == 0 && paragraphs->length >= 4)
+			last = MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(paragraphs->length - 3), _variant_t()));
+		if (wcscmp(selectionMode, L"poem-first-only") == 0) last = first;
 		MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 		MSHTML::IHTMLTxtRangePtr rangeEnd(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 		if (!first || !last || !range || !rangeEnd) { writeFailure("selection-create"); return 0; }
@@ -2857,6 +2864,17 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		};
 		const long beforeEmptyDivs = countEmpty(L"DIV"), beforeEmptyParagraphs = countEmpty(L"P"), beforeEmptyStanzas = countEmpty(L"DIV", L"stanza");
 		const CString before((const wchar_t*)body->innerHTML);
+		const bool endInPoem = wcscmp(selectionMode, L"end-in-poem") == 0 || wcscmp(selectionMode, L"poem-only") == 0;
+		MSHTML::IHTMLElementPtr originalPoem, originalOutside;
+		if (endInPoem) {
+			originalPoem = last->parentElement;
+			while (originalPoem && U::scmp(originalPoem->className, L"poem")) originalPoem = originalPoem->parentElement;
+			originalOutside = wcscmp(selectionMode, L"poem-only") == 0
+				? MSHTML::IHTMLElementPtr(MSHTML::IHTMLDOMNodePtr(originalPoem)->nextSibling)
+				: MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(paragraphs->length - 1), _variant_t()));
+		}
+		const CString poemBefore(originalPoem ? (const wchar_t*)originalPoem->outerHTML : L"");
+		const CString outsideBefore(originalOutside ? (const wchar_t*)originalOutside->outerHTML : L"");
 		const long beforeParagraphs = paragraphs->length;
 		const bool dirtyBefore = m_doc->DocChanged();
 		FbeStructure::StructuralTrace trace(traceLength ? tracePath : nullptr,
@@ -2895,6 +2913,29 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		const bool checkAllowed = checkResult.IsApplied();
 		const bool applied = applyResult.IsApplied();
 		const CString after((const wchar_t*)body->innerHTML);
+		bool preservedPoemAndOutside = !endInPoem;
+		if (endInPoem) {
+			MSHTML::IHTMLElementPtr foundCite, foundPoem;
+			MSHTML::IHTMLElementCollectionPtr blocks(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV"));
+			for (long i = 0; blocks && i < blocks->length; ++i) {
+				MSHTML::IHTMLElementPtr block(blocks->item(_variant_t(i), _variant_t()));
+				if (!U::scmp(block->className, L"cite")) foundCite = block;
+				if (!U::scmp(block->className, L"poem")) foundPoem = block;
+			}
+			MSHTML::IHTMLDOMNodePtr next(foundCite ? MSHTML::IHTMLDOMNodePtr(foundCite)->nextSibling : nullptr);
+			MSHTML::IHTMLElementPtr nextElement(next);
+			preservedPoemAndOutside = foundCite && foundPoem && foundPoem->parentElement == foundCite &&
+				poemBefore == CString((const wchar_t*)foundPoem->outerHTML) && nextElement &&
+				outsideBefore == CString((const wchar_t*)nextElement->outerHTML);
+		}
+		if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_STRUCTURE_SAVE_APPLIED", nullptr, 0)) {
+			int line = 0, column = 0;
+			const bool validated = applied && preservedPoemAndOutside && m_doc->Validate(line, column);
+			const bool savedApplied = validated && m_doc->Save();
+			const char* result = savedApplied ? "post-save=pass\r\n" : "post-save=fail\r\n";
+			output.Write(result, static_cast<DWORD>(strlen(result)), &written);
+			output.Flush(); output.Close(); ::PostQuitMessage(savedApplied ? 0 : 1); return 0;
+		}
 		if (citePoemFaultLength) {
 			MSHTML::IHTMLTxtRangePtr selectionAfterApply(m_doc->m_body.Document()->selection->createRange());
 			const bool selectionUnchanged = selectionAfterApply &&
@@ -3015,7 +3056,8 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 			const CString secondRestored((const wchar_t*)body->innerHTML);
 			sequential = secondApplied && before == secondUndo && secondAfter == secondRedo && before == secondRestored;
 		}
-		const bool structure = cite ? citeCount == 1 && poemCount == 0 : poemCount == 1 && stanzaCount >= 1;
+		bool structure = cite ? citeCount == 1 && poemCount == (endInPoem ? 1 : 0) : poemCount == 1 && stanzaCount >= 1;
+		structure = structure && preservedPoemAndOutside;
 		// MSHTML Save resets its undo/redo history.  Check the one-step Redo before
 		// saving, then persist the independently restored Undo state below.
 		int validationLine = 0, validationColumn = 0;

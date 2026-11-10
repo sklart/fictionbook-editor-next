@@ -38,6 +38,11 @@ try {
     $null = New-IsolatedFbeSettingsSeed -Isolation $isolation -StartupScriptsDirectory (Join-Path $isolation.Root 'startup-scripts')
     $cases = @(
         @{ id = 'cite-one'; operation = 'cite'; paragraphs = @('Text') },
+        @{ id = 'cite-existing-poem-save'; operation = 'cite'; target = 'poem'; selection = 'poem-only'; route = 'wrapper'; saveApplied = $true; body = '<section><p>Before</p><poem id="poem-id"><stanza><v><strong>First line</strong></v><v><a l:href="#anchor">Second line</a></v></stanza></poem><p id="anchor">Outside after</p></section>' },
+        @{ id = 'cite-existing-poem-incomplete'; operation = 'cite'; target = 'poem'; selection = 'poem-first-only'; route = 'wrapper'; expectRejected = $true; body = '<section><p>Before</p><poem id="poem-id"><stanza><v>First line</v><v>Second line</v></stanza></poem><p>Outside after</p></section>' },
+        @{ id = 'cite-existing-poem-only'; operation = 'cite'; target = 'poem'; selection = 'poem-only'; route = 'wrapper'; expectedCitePoems = 1; body = '<section><p>Before</p><poem id="poem-id"><stanza><v>First line</v><v>Second line</v></stanza></poem><p>Outside after</p></section>' },
+        @{ id = 'cite-partial-existing-poem'; operation = 'cite'; selection = 'mid-in-poem'; route = 'wrapper'; expectRejected = $true; body = '<section><p>Quote text</p><poem id="poem-id"><stanza><v>First line</v><v>Second line</v></stanza></poem><p>Outside after</p></section>' },
+        @{ id = 'cite-end-in-existing-poem'; operation = 'cite'; selection = 'end-in-poem'; route = 'wrapper'; expectedCitePoems = 1; body = '<section><p>Quote text</p><poem id="poem-id"><stanza><v>First line</v><v>Second line</v></stanza></poem><p>Outside after</p></section>' },
 		@{ id = 'cite-wrapper-success'; operation = 'cite'; route = 'wrapper'; paragraphs = @('Text') },
         @{ id = 'cite-many'; operation = 'cite'; paragraphs = @('First', 'Second') },
         @{ id = 'cite-sequential'; operation = 'cite'; repeat = $true; paragraphs = @('Text') },
@@ -46,6 +51,7 @@ try {
 		@{ id = 'cite-history'; operation = 'cite'; target = 'history'; documentInfoExtra = '<history><p>History text</p></history>'; paragraphs = @('Anchor') },
 		@{ id = 'cite-command'; operation = 'cite'; route = 'command'; paragraphs = @('Text') },
 		@{ id = 'poem-one'; operation = 'poem'; paragraphs = @('Line') },
+        @{ id = 'poem-end-in-existing-poem'; operation = 'poem'; selection = 'end-in-poem'; route = 'wrapper'; expectRejected = $true; body = '<section><p>Line</p><poem id="poem-id"><stanza><v>First line</v><v>Second line</v></stanza></poem><p>Outside after</p></section>' },
 		@{ id = 'poem-wrapper-success'; operation = 'poem'; route = 'wrapper'; paragraphs = @('Line') },
         @{ id = 'poem-sequential'; operation = 'poem'; repeat = $true; paragraphs = @('Line') },
         @{ id = 'poem-lines'; operation = 'poem'; paragraphs = @('First line', 'Second line') },
@@ -86,19 +92,22 @@ try {
 		$case = $testCase
         $expectedTarget = if($case.ContainsKey('target')) { $case.target } else { 'section' }
         $expectedSelection = if($case.ContainsKey('selection')) { $case.selection } else { 'selected' }
+        $reportedSelection = if($expectedSelection -in @('end-in-poem','poem-only')) { 'selected' } else { $expectedSelection }
         $paragraphs = if($case.ContainsKey('paragraphs')) { ($case.paragraphs | ForEach-Object { "<p>$([Security.SecurityElement]::Escape($_))</p>" }) -join '' } else { '' }
         $body = if($case.ContainsKey('body')) { $case.body } else { "<section>$paragraphs</section>" }
 		$documentInfoExtra = if($case.ContainsKey('documentInfoExtra')) { $case.documentInfoExtra } else { '' }
         $fixture = Join-Path $directory ($case.id + '.fb2')
         $report = Join-Path $directory ($case.id + '.tsv')
         $trace = Join-Path $directory ($case.id + '.trace.tsv')
-        @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><author><first-name>T</first-name><last-name>T</last-name></author><program-used>test</program-used><date>2026-09-20</date><id>$($case.id)</id><version>1.0</version>$documentInfoExtra</document-info></description><body>$body</body></FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
+        @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`" xmlns:l=`"http://www.w3.org/1999/xlink`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><author><first-name>T</first-name><last-name>T</last-name></author><program-used>test</program-used><date>2026-09-20</date><id>$($case.id)</id><version>1.0</version>$documentInfoExtra</document-info></description><body>$body</body></FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
         $beforeFixture = Get-Content -LiteralPath $fixture -Raw
+        $oldAppliedSave = $env:FBE_NEXT_TEST_STRUCTURE_SAVE_APPLIED
         $oldMode, $oldScenario, $oldOperation, $oldTarget, $oldSelection, $oldRepeat, $oldTrace, $oldTraceCase, $oldRoute, $oldFault = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION, $env:FBE_NEXT_TEST_STRUCTURE_TARGET, $env:FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE, $env:FBE_NEXT_TEST_STRUCTURE_REPEAT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_STRUCTURE_ROUTE, $env:FBE_NEXT_TEST_CITE_POEM_FAULT
         try {
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'cite-poem-undo'; $env:FBE_NEXT_TEST_STRUCTURE_OPERATION = $case.operation
             $env:FBE_NEXT_TEST_STRUCTURE_TARGET = $expectedTarget
             $env:FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE = $expectedSelection
+            $env:FBE_NEXT_TEST_STRUCTURE_SAVE_APPLIED = if($case.ContainsKey('saveApplied')) { '1' } else { $null }
             $env:FBE_NEXT_TEST_STRUCTURE_REPEAT = if($case.ContainsKey('repeat')) { '1' } else { $null }
             $env:FBE_NEXT_TEST_STRUCTURE_ROUTE = if($case.ContainsKey('route')) { $case.route } else { $null }
 			$env:FBE_NEXT_TEST_CITE_POEM_FAULT = if($case.ContainsKey('fault')) { $case.fault } else { $null }
@@ -116,7 +125,35 @@ try {
             if($process.ExitCode -ne 0 -and -not $case.ContainsKey('expectRejected')) { throw "FBE failed for $($case.id): exit $($process.ExitCode)." }
         }
         finally {
+            $env:FBE_NEXT_TEST_STRUCTURE_SAVE_APPLIED = $oldAppliedSave
             $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION, $env:FBE_NEXT_TEST_STRUCTURE_TARGET, $env:FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE, $env:FBE_NEXT_TEST_STRUCTURE_REPEAT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_STRUCTURE_ROUTE, $env:FBE_NEXT_TEST_CITE_POEM_FAULT = $oldMode, $oldScenario, $oldOperation, $oldTarget, $oldSelection, $oldRepeat, $oldTrace, $oldTraceCase, $oldRoute, $oldFault
+        }
+        if($case.ContainsKey('saveApplied')) {
+            if($process.ExitCode -ne 0 -or -not (Select-String -LiteralPath $report -SimpleMatch 'post-save=pass' -Quiet)) { throw 'Saving the applied cite failed.' }
+            function Assert-AppliedCite([string]$Path) {
+                Assert-Fb2Schema $Path
+                [xml]$savedBook = Get-Content -LiteralPath $Path -Raw
+                $ns = [Xml.XmlNamespaceManager]::new($savedBook.NameTable)
+                $ns.AddNamespace('fb','http://www.gribuser.ru/xml/fictionbook/2.0')
+                $poem = $savedBook.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:cite/fb:poem[@id="poem-id"]', $ns)
+                $before = $savedBook.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:p[1]', $ns)
+                $after = $savedBook.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:cite/following-sibling::*[1][self::fb:p]', $ns)
+                if(-not $poem -or -not $before -or -not $after -or $before.InnerText -ne 'Before' -or $after.InnerText -ne 'Outside after' -or
+                    $poem.SelectSingleNode('fb:stanza/fb:v[1]/fb:strong', $ns).InnerText -ne 'First line' -or
+                    $poem.SelectSingleNode('fb:stanza/fb:v[2]/fb:a', $ns).InnerText -ne 'Second line' -or
+                    $poem.SelectSingleNode('fb:stanza/fb:v[2]/fb:a', $ns).GetAttribute('href', 'http://www.w3.org/1999/xlink') -ne '#anchor' -or $after.GetAttribute('id') -ne 'anchor') { throw 'Applied cite lost structure, formatting, ID or adjacent text.' }
+            }
+            Assert-AppliedCite $fixture
+            $previousMode,$previousScenario = $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO
+            try {
+                $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='binary-roundtrip'
+                $reopenReport=Join-Path $directory ($case.id+'-reopen.txt')
+                $reopen=Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('--portable','-s','-b',$reopenReport,$fixture) -PassThru
+                $reopenExit=Wait-IsolatedFbeProcess -Process $reopen -Isolation $isolation -Scenario 'cite-poem-reopen' -Report $reopenReport -TimeoutSeconds $TimeoutSeconds
+                if($reopenExit -ne 0 -or -not (Select-String -LiteralPath $reopenReport -Pattern '^save-complete\s' -Quiet)) { throw 'Reopening and saving the applied cite failed.' }
+            } finally { $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO=$previousMode,$previousScenario }
+            Assert-AppliedCite $fixture
+            $completed++;$passed++;continue
         }
         $row = Import-Csv -LiteralPath $report -Delimiter "`t"
         if(@($row).Count -ne 1) { throw "Missing live MSHTML report for $($case.id)." }
@@ -147,8 +184,8 @@ try {
             if(@($traceRows | Where-Object { $_.event -in @('exception', 'failure') }).Count) { throw "Structural trace recorded a COM failure for $($case.id): $trace" }
         }
         if($case.ContainsKey('expectedPoemText') -and $row.poem_text_utf16 -ne $case.expectedPoemText) { throw "Poem text is wrong for $($case.id): $($row.poem_text_utf16)." }
-		if($row.operation -ne $case.operation -or $row.target -ne $expectedTarget -or $row.selection_mode -ne $expectedSelection -or $row.check_allowed -ne '1' -or $row.before_equals_undo -ne '1' -or $row.after_equals_redo -ne '1' -or $row.sequential_cycle -ne '1' -or $row.empty_divs -ne '0' -or $row.empty_paragraphs -ne '0' -or $row.empty_stanzas -ne '0' -or $row.undo_validated -ne '1' -or $row.undo_saved -ne '1' -or $row.saved -ne '1' -or $row.result -ne 'pass' -or $row.check_status -ne 'applied' -or $row.apply_status -ne 'applied' -or $row.hresult -ne '0x00000000' -or $row.document_changed -ne '1') { throw "Undo/Redo contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
-        if($case.operation -eq 'cite' -and ([int]$row.after_cites -ne 1 -or [int]$row.after_poems -ne 0)) { throw "Cite structure is wrong for $($case.id)." }
+		if($row.operation -ne $case.operation -or $row.target -ne $expectedTarget -or $row.selection_mode -ne $reportedSelection -or $row.check_allowed -ne '1' -or $row.before_equals_undo -ne '1' -or $row.after_equals_redo -ne '1' -or $row.sequential_cycle -ne '1' -or $row.empty_divs -ne '0' -or $row.empty_paragraphs -ne '0' -or $row.empty_stanzas -ne '0' -or $row.undo_validated -ne '1' -or $row.undo_saved -ne '1' -or $row.saved -ne '1' -or $row.result -ne 'pass' -or $row.check_status -ne 'applied' -or $row.apply_status -ne 'applied' -or $row.hresult -ne '0x00000000' -or $row.document_changed -ne '1') { throw "Undo/Redo contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
+        if($case.operation -eq 'cite' -and ([int]$row.after_cites -ne 1 -or [int]$row.after_poems -ne $(if($case.ContainsKey('expectedCitePoems')){$case.expectedCitePoems}else{0}))) { throw "Cite structure is wrong for $($case.id)." }
         if($case.operation -eq 'poem' -and ([int]$row.after_poems -ne 1 -or [int]$row.after_stanzas -lt 1)) { throw "Poem structure is wrong for $($case.id)." }
         Assert-Fb2Schema $fixture
         $completed++; $passed++
