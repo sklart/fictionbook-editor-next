@@ -10,8 +10,27 @@ if (IsFbeTestScenario(L"community-native-copy-paste"))
 	CStringA report;
 	bool passed = true;
 	auto check = [&](const char* label, bool value) { report.AppendFormat("%s=%d\n", label, value ? 1 : 0); passed = value && passed; DWORD written = 0; output.Seek(0, FILE_BEGIN); output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); };
-	CComPtr<IDataObject> previousClipboard;
-	const bool restoreClipboard = role != L"target" && SUCCEEDED(::OleGetClipboard(&previousClipboard));
+	bool restoreClipboard = false;
+	if (role != L"target") {
+		// OleGetClipboard can return a lazy proxy to the current clipboard. Putting
+		// that proxy back and flushing it may recursively request data from itself.
+		// A caller must snapshot its clipboard externally and start this probe with
+		// an empty clipboard; the cross-document target consumes the source's data.
+		const BOOL opened = ::OpenClipboard(m_doc->m_body);
+		UINT formats = 0; DWORD countError = ERROR_SUCCESS; BOOL closed = FALSE;
+		if (opened) {
+			::SetLastError(ERROR_SUCCESS);
+			formats = ::CountClipboardFormats(); countError = ::GetLastError();
+			closed = ::CloseClipboard();
+		}
+		const bool empty = opened && closed && formats == 0 && countError == ERROR_SUCCESS;
+		if (!empty) {
+			report = "clipboard_precondition=nonempty-or-unavailable\nresult=FAIL\n";
+			DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+			::PostQuitMessage(1); return 0;
+		}
+		restoreClipboard = true;
+	}
 	auto pump = [&](DWORD milliseconds) {
 		const ULONGLONG until = ::GetTickCount64() + milliseconds;
 		do {
@@ -110,19 +129,14 @@ if (IsFbeTestScenario(L"community-native-copy-paste"))
 	} catch (const _com_error& error) { report.AppendFormat("hresult=0x%08lX\n", static_cast<unsigned long>(error.Error())); passed = false; }
 	catch (const std::bad_alloc&) { report += "hresult=0x8007000E\n"; passed = false; }
 	if (restoreClipboard) {
-		HRESULT restored=E_FAIL,flushed=S_OK;
+		HRESULT restored=E_FAIL;
 		for(int attempt=0;attempt<10;++attempt) {
-			restored=::OleSetClipboard(previousClipboard);
+			restored=::OleSetClipboard(nullptr);
 			if(SUCCEEDED(restored)) break;
 			pump(20);
 		}
-		if(SUCCEEDED(restored) && previousClipboard) {
-			for(int attempt=0;attempt<10;++attempt) {
-				flushed=::OleFlushClipboard();if(SUCCEEDED(flushed)) break;pump(20);
-			}
-		}
-		if(FAILED(restored) || FAILED(flushed)) report.AppendFormat("clipboard_restore_hresult=0x%08lX\nclipboard_flush_hresult=0x%08lX\n",static_cast<unsigned long>(restored),static_cast<unsigned long>(flushed));
-		check("clipboard_restored", SUCCEEDED(restored) && SUCCEEDED(flushed));
+		if(FAILED(restored)) report.AppendFormat("clipboard_restore_hresult=0x%08lX\n",static_cast<unsigned long>(restored));
+		check("clipboard_restored", SUCCEEDED(restored));
 	}
 	report.AppendFormat("result=%s\n", passed ? "PASS" : "FAIL");
 	DWORD written = 0; output.Seek(0,FILE_BEGIN); output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
