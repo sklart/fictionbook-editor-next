@@ -38,6 +38,7 @@ try {
     $null = New-IsolatedFbeSettingsSeed -Isolation $isolation -StartupScriptsDirectory (Join-Path $isolation.Root 'startup-scripts')
     $cases = @(
         @{ id = 'cite-one'; operation = 'cite'; paragraphs = @('Text') },
+        @{ id = 'cite-paragraph-poem-save'; operation = 'cite'; selection = 'end-in-poem'; route = 'wrapper'; saveApplied = $true; body = '<section><p>Quote text</p><poem id="poem-id"><stanza><v><strong>First line</strong></v><v><a l:href="#anchor">Second line</a></v></stanza></poem><p id="anchor">Outside after</p></section>' },
         @{ id = 'cite-existing-poem-save'; operation = 'cite'; target = 'poem'; selection = 'poem-only'; route = 'wrapper'; saveApplied = $true; body = '<section><p>Before</p><poem id="poem-id"><stanza><v><strong>First line</strong></v><v><a l:href="#anchor">Second line</a></v></stanza></poem><p id="anchor">Outside after</p></section>' },
         @{ id = 'cite-existing-poem-incomplete'; operation = 'cite'; target = 'poem'; selection = 'poem-first-only'; route = 'wrapper'; expectRejected = $true; body = '<section><p>Before</p><poem id="poem-id"><stanza><v>First line</v><v>Second line</v></stanza></poem><p>Outside after</p></section>' },
         @{ id = 'cite-existing-poem-only'; operation = 'cite'; target = 'poem'; selection = 'poem-only'; route = 'wrapper'; expectedCitePoems = 1; body = '<section><p>Before</p><poem id="poem-id"><stanza><v>First line</v><v>Second line</v></stanza></poem><p>Outside after</p></section>' },
@@ -136,9 +137,11 @@ try {
                 $ns = [Xml.XmlNamespaceManager]::new($savedBook.NameTable)
                 $ns.AddNamespace('fb','http://www.gribuser.ru/xml/fictionbook/2.0')
                 $poem = $savedBook.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:cite/fb:poem[@id="poem-id"]', $ns)
-                $before = $savedBook.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:p[1]', $ns)
+                $beforePath = if($case.id -eq 'cite-paragraph-poem-save') { '/fb:FictionBook/fb:body/fb:section/fb:cite/fb:p[1]' } else { '/fb:FictionBook/fb:body/fb:section/fb:p[1]' }
+                $beforeText = if($case.id -eq 'cite-paragraph-poem-save') { 'Quote text' } else { 'Before' }
+                $before = $savedBook.SelectSingleNode($beforePath, $ns)
                 $after = $savedBook.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:cite/following-sibling::*[1][self::fb:p]', $ns)
-                if(-not $poem -or -not $before -or -not $after -or $before.InnerText -ne 'Before' -or $after.InnerText -ne 'Outside after' -or
+                if(-not $poem -or -not $before -or -not $after -or $before.InnerText -ne $beforeText -or $after.InnerText -ne 'Outside after' -or
                     $poem.SelectSingleNode('fb:stanza/fb:v[1]/fb:strong', $ns).InnerText -ne 'First line' -or
                     $poem.SelectSingleNode('fb:stanza/fb:v[2]/fb:a', $ns).InnerText -ne 'Second line' -or
                     $poem.SelectSingleNode('fb:stanza/fb:v[2]/fb:a', $ns).GetAttribute('href', 'http://www.w3.org/1999/xlink') -ne '#anchor' -or $after.GetAttribute('id') -ne 'anchor') { throw 'Applied cite lost structure, formatting, ID or adjacent text.' }
