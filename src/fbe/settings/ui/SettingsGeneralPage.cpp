@@ -1775,6 +1775,8 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_paletteRole.SetCurSel(0);
 	UpdatePaletteColorControls();
 	FitLocalizedLayout();
+	::ShowWindow(GetDlgItem(IDC_DESCRIPTION_LAYOUT_LABEL), SW_HIDE);
+	::ShowWindow(GetDlgItem(IDC_DESCRIPTION_LAYOUT), SW_HIDE);
 
 	m_language.SetDroppedWidth(320);
 	const DWORD currentLanguage = _Settings.GetInterfaceLanguageID();
@@ -2091,10 +2093,9 @@ void CSettingsGeneralPage::MakeAppearanceOnly()
     place(IDC_APPEARANCE_ICON_PREVIEW, left, y, right - left, iconPreviewHeight);
     y += iconPreviewHeight + margin;
     place(IDC_APPEARANCE_TOOLBARS_GROUP, group.left, toolbarTop, group.right - group.left, y - toolbarTop);
-    const int descriptionTop = y + gap; y = descriptionTop + titleHeight;
-    row(IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT);
-    y += margin;
-    place(IDC_APPEARANCE_DESCRIPTION_GROUP, group.left, descriptionTop, group.right - group.left, y - descriptionTop);
+    // The experimental Description layouts are not exposed in 3.0.11.
+    for(int id : {IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT, IDC_APPEARANCE_DESCRIPTION_GROUP})
+        ::ShowWindow(GetDlgItem(id), SW_HIDE);
     // Group boxes are siblings of their fields. Keep them behind the fields
     // and clip their custom background painting around higher siblings.
     for(int id : {IDC_OPTIONS_INTERFACE_GROUP, IDC_APPEARANCE_TOOLBARS_GROUP, IDC_APPEARANCE_DESCRIPTION_GROUP}) {

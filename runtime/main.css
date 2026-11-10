@@ -6,62 +6,137 @@ body {
 }
 
 div#fbw_desc {
- text-align: left;
- font: 10pt "Segoe UI", Tahoma, sans-serif;
- color: WindowText;
- background: Window;
- padding: 1em;
+	text-align: left;
+	font-size: 8pt;
+	font-family: Tahoma, sans-serif;
+	background-color: #DCDCDC;
+	padding: 0.4em;
 }
+
 div#fbw_desc fieldset {
- min-width: 0;
- width: auto;
- margin: 0 0 .8em;
- padding: .8em;
- border: 1px solid ThreeDShadow;
+	width: 61.5em;
+	margin: 0.1em;
+	padding-left: 0.5em;
+	padding-right: 0.5em;
+	padding-bottom: 0.5em;
+	padding-top: 0.5em;
+	border: 1px solid #C0C0C0;
 }
-div#fbw_desc legend { padding: 0 .4em; }
-div#fbw_desc br { line-height: .6em; }
-div#fbw_desc div { border: none; white-space: normal; clear: both; }
+
+div#fbw_desc legend {
+	padding-left: 0.5em;
+	padding-right: 0.5em;
+}
+
+div#fbw_desc br {
+	height: 0.5em;
+}
+
+div#fbw_desc div {
+	border: none;
+	white-space: nowrap;
+	clear: both;
+}
+
 div#fbw_desc div.float {
- visibility: hidden; position: absolute; z-index: 20;
- top: 0; left: 0; background: Window;
+	visibility: hidden;
+	position: absolute;
+	z-index: 1;
+	top: 0;
+	left: 0;
+	background: white;
 }
+
 div#fbw_desc button {
- font: inherit; color: ButtonText; background: ButtonFace;
- border: 1px solid ThreeDShadow; padding: .25em .55em;
- margin: .15em; min-height: 1.8em; float: right; cursor: pointer;
+	font-family: "Webdings";
+	font-size: 8pt;
+	color: Black;
+	float: right;
+	cursor: pointer;
 }
-div#fbw_desc button.popup_btn { float: none; }
-div#fbw_desc button:hover { border-color: Highlight; }
-div#fbw_desc input, div#fbw_desc textarea, div#fbw_desc select {
- font: inherit; color: WindowText; background: Window;
- border: 1px solid ThreeDShadow; padding: .25em;
- margin: .2em 0; max-width: 100%; box-sizing: border-box;
+
+div#fbw_desc button.popup_btn {
+	float: none;
 }
-div#fbw_desc input { width: 22%; }
-div#fbw_desc input.short { width: 4em; }
-div#fbw_desc input.middle { width: 58%; }
-div#fbw_desc input.wide, div#fbw_desc textarea#val { width: 78%; }
-div#fbw_desc input.url { width: 90%; margin-left: .3em; }
-div#fbw_desc input:focus, div#fbw_desc textarea:focus,
-div#fbw_desc select:focus, div#fbw_desc button:focus { outline: 2px solid Highlight; }
-div#fbw_desc input:disabled, div#fbw_desc button:disabled { color: GrayText; cursor: default; }
+
+div#fbw_desc input {
+	font-family: "Tahoma",sans-serif;
+	font-size: 8pt;
+	border: 1px solid #7F9DB8;
+	margin-top: 2px;
+	margin-bottom: 2px;
+}
+
+div#fbw_desc input.short {
+	width: 2em;
+}
+
+div#fbw_desc input.middle {
+	width: 35em;
+}
+
+div#fbw_desc input.wide {
+	width: 48em;
+}
+
+div#fbw_desc input.url {
+	width: 53.4em;
+	margin-left: 0.3em;
+	margin-top: 0.3em;
+	margin-bottom: 0.1em;
+}
+
+div#fbw_desc textarea#val {
+	width: 48em;
+	font-family: "Tahoma",sans-serif;
+	font-size: 8pt;
+	border: 1px solid Black;
+}
+
 div#fbw_desc label {
- display: inline-block; width: 7em; text-align: right;
- margin: .3em .4em .3em 0; vertical-align: middle;
+	width: 6.5em;
+	text-align: right;
+	margin-top: 0.3em;
+	padding-left: 0.4em;
+	padding-right: 0.3em;
+	vertical-align: 20%;
+	color: black;
 }
-div#fbw_desc label.hl { color: inherit; font-weight: 600; }
-div#fbw_desc label.short { width: 4em; }
-div#fbw_desc fieldset.kid { width: auto; padding: .6em; }
-div#fbw_desc legend.top { font-size: 1.15em; font-weight: 600; }
-div#fbw_desc textarea#stylesheetId { width: 100%; min-height: 12em; font-family: Consolas, monospace; }
-div#fbw_desc #binobj input { max-width: 90%; }
-@media screen and (max-width: 760px) {
- div#fbw_desc { padding: .5em; }
- div#fbw_desc label, div#fbw_desc fieldset label { text-align: left; }
- div#fbw_desc input.wide, div#fbw_desc input.middle,
- div#fbw_desc input.url, div#fbw_desc textarea#val { width: 100%; }
- div#fbw_desc input { width: 35%; }
+
+div#fbw_desc label.hl {
+	color: #EE0000;
+	font-weight: bold;
+}
+
+div#fbw_desc label.short {
+	width: 4em;
+}
+
+div#fbw_desc fieldset label {
+	width: 6.9em;
+}
+div#fbw_desc fieldset.kid {
+	width: 60em;
+	border: solid 1px #B0B0B0;
+}
+
+div#fbw_desc fieldset.kid label {
+	width: 6.5em;
+}
+
+div#fbw_desc legend.top {
+	font-size: 10pt;
+	color: #0000AA;
+	font-weight: bold;
+	margin-top: 1.7em;
+	margin-bottom: 0.4em;
+}
+
+div#fbw_desc textarea#stylesheetId {
+	width: 60em;
+	font-family: "Tahoma",sans-serif;
+	font-size: 10pt;
+	border: 1px solid Black;
 }
 
 span.top {
@@ -283,243 +358,3 @@ strong {
 	font-weight: bold;
 	color: #660066;
 }
-
-/* Modern uses the same controls and serializes through the Classic contract. */
-div#fbw_desc .description-section-toggle { float: none; margin-right: .5em; min-width: 2em; }
-div#fbw_desc fieldset.description-section-body { border: 0; padding: 0; margin: 0; }
-div#fbw_desc.description-modern .description-section { padding: 1em; margin-bottom: 1em; }
-div#fbw_desc.description-modern #tiAuthor > div,
-div#fbw_desc.description-modern #tiTrans > div,
-div#fbw_desc.description-modern #diAuthor > div,
-div#fbw_desc.description-modern #stiAuthor > div { padding: .6em 0; margin: .3em 0; border-bottom: 1px solid ThreeDShadow; }
-div#fbw_desc.description-modern #tiCover input, div#fbw_desc.description-modern #tiCover select { width: 100%; }
-div#fbw_desc .description-cover-preview { display: none; max-width: 100%; max-height: 14em; margin: .5em auto; }
-div#fbw_desc.description-classic .description-cover-preview { display: none !important; }
-div#fbw_desc #diID { width: 70% !important; }
-@media screen and (max-width: 760px) {
- div#fbw_desc.description-modern #tiCover { float: none; width: auto; margin-right: 0; }
-}
-
-div#fbw_desc .description-add-action { float: none; }
-div#fbw_desc.description-classic .description-add-action { display: none; }
-div#fbw_desc .description-validation { white-space: pre-line; padding: .6em; border: 1px solid; }
-div#fbw_desc .description-invalid { border: 1px solid; }
-div#fbw_desc .description-binary-thumbnail { display: none; }
-div#fbw_desc.description-modern .description-binary { padding: .5em 0; border-bottom: 1px solid ThreeDShadow; }
-div#fbw_desc.description-modern .description-binary-thumbnail { display: inline-block; width: 3em; height: auto; max-height: 4em; vertical-align: middle; margin-right: .5em; }
-div#fbw_desc.description-modern #binobj input { width: 18% !important; }
-div#fbw_desc.description-modern #binobj input:disabled { width: 6em !important; }
-div#fbw_desc.description-modern #binobj label { width: auto; margin-left: .4em; }
-@media screen and (max-width: 760px) {
- div#fbw_desc.description-modern #binobj input { width: 40% !important; }
- div#fbw_desc.description-modern #binobj button { float: none; }
-}
-
-/* Keep labels and controls together in MSHTML without flex/grid. */
-div#fbw_desc .description-person .description-field {
- display: inline-block; width: 31%; margin-right: 2%; vertical-align: top;
-}
-div#fbw_desc .description-field label,
-div#fbw_desc .description-date-field label {
- display: block; width: auto !important; text-align: left; margin: .3em 0 .1em;
-}
-div#fbw_desc .description-person .description-field input {
- width: 100%; max-width: 100%;
-}
-div#fbw_desc .description-action-break { clear: both; }
-div#fbw_desc .description-date-field {
- display: inline-block; width: 46%; margin-right: 2%; vertical-align: top;
-}
-div#fbw_desc .description-date-field input { width: 100%; }
-div#fbw_desc.description-modern #tiCover select { width: 16em; max-width: 100%; }
-div#fbw_desc.description-modern #tiCover .description-cover-preview {
- float: left; width: auto; max-width: 8em; max-height: 8em; margin: .3em 1em .3em 0;
-}
-div#fbw_desc.description-modern #tiCover .description-add-action { clear: both; }
-div#fbw_desc.description-modern #tiShowBtn { display: none; }
-@media screen and (max-width: 760px) {
- div#fbw_desc .description-person .description-field { width: 47%; }
- div#fbw_desc .description-date-field { display: block; width: 100%; margin-right: 0; }
-}
-@media screen and (max-width: 480px) {
- div#fbw_desc .description-person .description-field { display: block; width: 100%; margin-right: 0; }
-}
-/* IE7-mode counterpart of the media queries: driven by the actual pane width. */
-div#fbw_desc.description-narrow { padding: .5em; }
-div#fbw_desc.description-narrow legend {
- width: 90%; white-space: normal; word-wrap: break-word;
-}
-div#fbw_desc.description-narrow label {
- display: block; width: auto !important; text-align: left;
-}
-div#fbw_desc.description-narrow button { float: none; max-width: 95%; }
-div#fbw_desc.description-narrow input,
-div#fbw_desc.description-narrow select,
-div#fbw_desc.description-narrow textarea { max-width: 95% !important; }
-div#fbw_desc.description-narrow input.wide,
-div#fbw_desc.description-narrow input.middle,
-div#fbw_desc.description-narrow input.url,
-div#fbw_desc.description-narrow textarea#val { width: 94%; margin-left: 0; }
-div#fbw_desc.description-narrow .description-person .description-field { width: 47%; }
-div#fbw_desc.description-narrow .description-date-field { display: block; width: 94%; margin-right: 0; }
-div#fbw_desc.description-narrow input#diID { width: 90% !important; }
-div#fbw_desc.description-narrow input#name { width: 90% !important; }
-div#fbw_desc.description-narrow #binobj input { width: 40% !important; }
-div#fbw_desc.description-compact .description-person .description-field {
- display: block; width: 94%; margin-right: 0;
-}
-/* Compact desktop layout, shared by both representations of the metadata. */
-div#fbw_desc { padding: .35em .5em; }
-div#fbw_desc fieldset { margin: 0 0 .35em; padding: .3em .45em; }
-div#fbw_desc fieldset.kid { padding: .3em .45em; }
-div#fbw_desc legend { padding: 0 .2em; }
-div#fbw_desc legend.top { font-size: 1em; }
-div#fbw_desc input, div#fbw_desc select, div#fbw_desc textarea {
- padding: .12em .2em; margin: .08em 0;
-}
-div#fbw_desc button { padding: .12em .35em; margin: .05em; min-height: 1.6em; }
-div#fbw_desc button.description-icon-action {
- font-family: "Segoe UI Symbol", "Segoe UI", sans-serif; width: 1.9em;
- height: 1.8em; padding: 0; vertical-align: middle; float: none;
-}
-div#fbw_desc button.description-icon-action:active { border-style: inset; }
-div#fbw_desc .description-section-toggle { min-width: 1.8em; margin-right: .25em; }
-div#fbw_desc.description-modern .description-section { padding: .3em .45em; margin-bottom: .35em; }
-div#fbw_desc.description-modern #tiAuthor > div,
-div#fbw_desc.description-modern #tiTrans > div,
-div#fbw_desc.description-modern #diAuthor > div,
-div#fbw_desc.description-modern #stiAuthor > div,
-div#fbw_desc.description-modern .description-binary { padding: .1em 0; margin: .1em 0; }
-div#fbw_desc .description-person .description-field {
- width: 29%; margin-right: 1%; vertical-align: middle;
-}
-div#fbw_desc .description-field label {
- display: inline-block; width: 31% !important; text-align: left; margin: .1em .2em .1em 0;
-}
-div#fbw_desc .description-person .description-field input { width: 63%; }
-div#fbw_desc .description-date-field { width: 45%; margin-right: 1%; }
-div#fbw_desc .description-date-field label { display: inline-block; width: auto !important; margin: .1em .25em .1em 0; }
-div#fbw_desc .description-date-field input { width: 55%; }
-div#fbw_desc .description-action-break { display: none; }
-div#fbw_desc.description-modern #tiCover .description-cover-preview { max-height: 8em; margin: .1em .5em .1em 0; }
-div#fbw_desc .description-cover-preview,
-div#fbw_desc .description-binary-thumbnail,
-div#fbw_desc #fullImg { border: 1px solid ThreeDShadow; padding: .2em; background: Window; }
-div#fbw_desc.description-narrow .description-person .description-field { width: 47%; }
-div#fbw_desc.description-narrow .description-field label { display: block; width: auto !important; }
-div#fbw_desc.description-narrow .description-person .description-field input { width: 95%; }
-div#fbw_desc.description-narrow .description-date-field { width: 94%; }
-div#fbw_desc.description-narrow .description-date-field input { width: 94%; }
-div#fbw_desc.description-compact .description-person .description-field { width: 94%; }
-div#fbw_desc #descriptionCommands { padding: 0; margin: 0; }
-div#fbw_desc #tiGenre label, div#fbw_desc #stiGenre label { width: auto; margin: .1em .25em; white-space: nowrap; }
-div#fbw_desc.description-modern #tiGenre span#ti_genre_match { display: inline !important; }
-div#fbw_desc #tiGenre input#genre, div#fbw_desc #stiGenre input#genre { width: 12em; }
-div#fbw_desc #tiGenre input#match, div#fbw_desc #stiGenre input#match { width: 3em; }
-div#fbw_desc #descriptionAttachmentSummary { font-size: .9em; font-weight: normal; margin-left: 1em; }
-div#fbw_desc .binary-size-display, div#fbw_desc .binary-dims-display { display: inline-block; min-width: 5em; margin: 0 .3em; }
-div#fbw_desc.description-modern .description-binary #id { width: 18em !important; }
-div#fbw_desc.description-modern .description-binary #type { width: 8em !important; }
-div#fbw_desc.description-modern .description-binary-thumbnail { max-width: 2.5em; max-height: 2.5em; }
-div#fbw_desc #prevImg { border: 1px solid ThreeDShadow; padding: .2em; background: Window; }
-div#fbw_desc .description-binary button.description-icon-action img { width: 1.2em; height: 1.2em; vertical-align: middle; cursor: pointer; }
-div#fbw_desc .description-person span button, div#fbw_desc #tiGenre span button { float: none; }
-div#fbw_desc label.description-keywords-label { width: 9em; white-space: nowrap; }
-div#fbw_desc.description-modern #tiCover { float: left; width: 8.5em; margin: 0 .7em .3em 0; }
-div#fbw_desc.description-modern #tiCover .description-add-action { width: 100%; max-width: 100%; white-space: normal; word-wrap: break-word; }
-div#fbw_desc.description-modern #tiCover .description-cover-preview { max-width: 6em; max-height: 8em; }
-div#fbw_desc.description-modern #tiAuthor { overflow: hidden; }
-div#fbw_desc.description-modern #tiAuthor div { clear: none; }
-div#fbw_desc.description-modern #tiGenre { clear: both; }
-div#fbw_desc.description-narrow #tiCover { float: none; width: auto; margin-right: 0; }
-/* Reserve the same action width on both author rows so the columns line up. */
-div#fbw_desc .description-person span#ti_nic_mail_web > button {
- width: 1.9em; margin-right: 2em; padding: 0;
-}
-div#fbw_desc label { width: 9em; }
-div#fbw_desc .description-date-field label { width: 9em !important; }
-div#fbw_desc.description-narrow .description-date-field label { width: auto !important; }
-
-/* Final Description polish; IE7-compatible inline columns. */
-div#fbw_body img { cursor: move; }
-div#fbw_desc img { cursor: default; }
-div#fbw_desc select option { color: WindowText; background: Window; }
-div#fbw_desc input[readonly] { color: WindowText; background: ButtonFace; cursor: default; }
-div#fbw_desc .description-section-toggle { border-color: transparent; background: transparent; }
-div#fbw_desc.description-modern .description-section > .description-section-body > fieldset.kid { border-color: transparent; }
-div#fbw_desc.description-modern #tiCover select { width: 100%; }
-div#fbw_desc.description-narrow #tiCover { width: auto; }
-div#fbw_desc .description-date-field label { width: 9em !important; white-space: nowrap; }
-div#fbw_desc .description-date-value label { width: auto !important; }
-div#fbw_desc .description-date-field input { width: 35%; }
-div#fbw_desc.description-narrow .description-date-field label { width: auto !important; white-space: normal; }
-div#fbw_desc.description-narrow .description-date-field input { width: 94%; }
-div#fbw_desc #tiGenre button, div#fbw_desc #stiGenre button, div#fbw_desc #tiGenre input, div#fbw_desc #stiGenre input, div#fbw_desc #tiGenre label, div#fbw_desc #stiGenre label { vertical-align: middle; }
-div#fbw_desc.description-modern #binobj .description-binary { max-width: 68em; white-space: nowrap; }
-div#fbw_desc.description-modern #binobj .description-binary > label { display: inline-block; width: 2.7em; margin: 0 .2em; }
-div#fbw_desc.description-modern #binobj .description-binary #id { width: 16em !important; }
-div#fbw_desc.description-modern #binobj .description-binary #type { width: 7em !important; }
-div#fbw_desc.description-modern .binary-size-display, div#fbw_desc.description-modern .binary-dims-display { display: inline-block; width: 5.5em; min-width: 5.5em; margin: 0 .3em; vertical-align: middle; }
-div#fbw_desc.description-modern .description-binary-action-placeholder { display: inline-block; width: 2em; }
-div#fbw_desc.description-narrow #binobj .description-binary { white-space: normal; }
-div#fbw_desc.description-narrow #binobj .description-binary #id { max-width: 55% !important; }
-
-/* DESCRIPTION BINARY TABLE BEGIN: shared with main_fast.css */
-div#fbw_desc .description-binary-header { display: none; }
-div#fbw_desc.description-modern .description-binary-header { display: block; max-width: 54em; padding: .2em 0; white-space: nowrap; }
-div#fbw_desc.description-modern .description-binary-header span { display: inline-block; vertical-align: middle; overflow: hidden; white-space: nowrap; }
-div#fbw_desc.description-modern .description-binary-header-0 { width: 3em; }
-div#fbw_desc.description-modern .description-binary-header-1 { width: 16.5em; }
-div#fbw_desc.description-modern .description-binary-header-2 { width: 7.5em; }
-div#fbw_desc.description-modern .description-binary-header-3, div#fbw_desc.description-modern .description-binary-header-4 { width: 6.1em; }
-div#fbw_desc.description-modern #binobj .description-binary > label { display: none; }
-div#fbw_desc.description-modern #binobj .description-binary #id { width: 16em !important; margin: 0; }
-div#fbw_desc.description-modern #binobj .description-binary #type { width: 7em !important; margin: 0; }
-div#fbw_desc .description-binary-thumb-slot { display: none; }
-div#fbw_desc.description-modern .description-binary-thumb-slot { display: inline-block; width: 2.5em; height: 2.5em; margin-right: .5em; vertical-align: middle; text-align: center; }
-div#fbw_desc.description-modern .description-binary-thumb-slot .description-binary-thumbnail { display: inline; width: auto; height: auto; max-width: 2.4em; max-height: 2.4em; margin: 0; padding: 0; vertical-align: middle; }
-div#fbw_desc.description-modern .binary-size-display, div#fbw_desc.description-modern .binary-dims-display { width: 5.5em; min-width: 5.5em; margin: 0 .3em; }
-div#fbw_desc.description-modern .description-binary-action-placeholder { display: inline-block; width: 2em; vertical-align: middle; }
-div#fbw_desc .description-binary button.description-icon-action { background-position: center center; background-repeat: no-repeat; }
-div#fbw_desc .description-binary button#show { background-image: url('DescriptionIcons/view.png'); }
-div#fbw_desc .description-binary button#save { background-image: url('DescriptionIcons/save.png'); }
-div#fbw_desc .description-binary button#del { background-image: url('DescriptionIcons/delete.png'); }
-div#fbw_desc .description-binary button.description-icon-action img { visibility: hidden; }
-div#fbw_desc.description-narrow .description-binary-header { display: none; }
-div#fbw_desc.description-narrow #binobj .description-binary > label { display: inline-block; width: auto; }
-div#fbw_desc.description-narrow .description-binary-action-placeholder { display: inline-block; }
-div#fbw_desc.description-modern #tiCover { width: 13em; }
-div#fbw_desc.description-modern #tiCover .description-add-action { white-space: nowrap; }
-div#fbw_desc.description-narrow #tiCover { width: auto; }
-div#fbw_desc.description-narrow #tiCover select, div#fbw_desc.description-narrow #stiCover select { width: 90% !important; }
-div#fbw_desc.description-narrow #tiCover .description-add-action { white-space: normal; }
-div#fbw_desc #descriptionCommands { min-height: 0; }
-div#fbw_desc #tiShowBtn { float: none !important; margin: 0 0 .15em; }
-div#fbw_desc label { white-space: nowrap; }
-div#fbw_desc label.description-long-label { width: auto !important; }
-div#fbw_desc select + label.description-long-label { margin-left: .6em; }
-div#fbw_desc.description-narrow select + label.description-long-label { margin-left: 0; }
-div#fbw_desc.description-narrow label { white-space: normal; }
-/* DESCRIPTION BINARY TABLE END */
-
-/* DESCRIPTION MODERN NAVIGATION BEGIN: shared with main_fast.css */
-div#fbw_desc.description-modern { position: relative; padding-left: 16em; }
-div#fbw_desc .description-navigation { display: none; }
-div#fbw_desc.description-modern .description-navigation { display: block; position: absolute; left: 1em; top: 1em; width: 14em; padding: .3em; }
-div#fbw_desc.description-modern .description-navigation-item { display: block; float: none; width: 100%; height: auto; min-height: 2.4em; margin: 0 0 .2em; padding: .35em .5em; text-align: left; white-space: normal; cursor: pointer; border: 1px solid transparent; }
-div#fbw_desc.description-modern .description-navigation-text { display: block; white-space: normal; word-wrap: break-word; }
-div#fbw_desc.description-modern .description-navigation-active { font-weight: bold; border-left: .3em solid ThreeDShadow; }
-div#fbw_desc.description-modern .description-person .description-field { width: 27%; }
-div#fbw_desc.description-narrow.description-modern .description-person .description-field { width: 47%; }
-div#fbw_desc.description-compact.description-modern .description-person .description-field { width: 94%; }
-div#fbw_desc.description-modern #di_id button { float: none; vertical-align: middle; }
-div#fbw_desc.description-modern #di_id #diID { width: 55% !important; }
-div#fbw_desc.description-modern #tiCover .description-cover-preview { max-width: 9em; max-height: 12em; }
-div#fbw_desc.description-narrow.description-modern { padding-left: .5em; }
-div#fbw_desc.description-narrow .description-navigation { display: none; }
-div#fbw_desc.description-modern.description-navigation-compact .description-section > legend { max-width: 90%; white-space: normal; }
-div#fbw_desc.description-modern.description-navigation-compact .description-binary-header-1 { width: 11.5em; }
-div#fbw_desc.description-modern.description-navigation-compact .description-binary-header-2 { width: 6.5em; }
-div#fbw_desc.description-modern.description-navigation-compact #binobj .description-binary #id { width: 11em !important; }
-div#fbw_desc.description-modern.description-navigation-compact #binobj .description-binary #type { width: 6em !important; }
-/* DESCRIPTION MODERN NAVIGATION END */

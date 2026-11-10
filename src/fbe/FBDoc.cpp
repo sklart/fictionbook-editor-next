@@ -2566,6 +2566,8 @@ static void ApplyRuntimeBodyColors(MSHTML::IHTMLDocument2Ptr document)
 		descriptionText.GetString(), descriptionWindow.GetString(), descriptionBorder.GetString(),
 		descriptionText.GetString(), descriptionControl.GetString(), descriptionBorder.GetString(), descriptionBorder.GetString());
 	css.AppendFormat(L"div#fbw_desc legend{color:%s;}", descriptionText.GetString());
+	if (ThemeManager::IsDark() || IsHighContrastEnabled())
+		css.AppendFormat(L"div#fbw_desc label,div#fbw_desc label.hl{color:%s;}", descriptionText.GetString());
 	css.AppendFormat(L"div#fbw_desc .description-binary-header{background:%s;}"
 		L"div#fbw_desc .description-section{background:%s;}"
 		L"div#fbw_desc input[readonly],div#fbw_desc select option{color:%s;background:%s;}",

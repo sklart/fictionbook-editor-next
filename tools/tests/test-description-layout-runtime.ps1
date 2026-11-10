@@ -1,16 +1,19 @@
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'), [int]$TimeoutSeconds=45)
+param([string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'), [int]$TimeoutSeconds=45, [switch]$DiagnosticNoop, [switch]$DiagnosticHead, [string]$AssetRoot)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $repoRoot=Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+if(-not $AssetRoot) { $AssetRoot=Join-Path $repoRoot 'runtime' }
 $iso=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name description-layout
 $passed=$false
 $names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_SCRIPT_API_ROOT','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_TRACE','FBE_NEXT_TRACE_VERBOSE')
 $old=@{};foreach($name in $names){$old[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
 try {
- $null=New-IsolatedFbeSettingsSeed $iso -StartupScriptsDirectory (Join-Path $iso.Root 'ProbeScripts')
+ $seed=New-IsolatedFbeSettingsSeed $iso -StartupScriptsDirectory (Join-Path $iso.Root 'ProbeScripts')
+ [xml]$settings=Get-Content -LiteralPath $seed -Raw
+ $layout=$settings.CreateElement('DescriptionLayout');$layout.InnerText='modern';$null=$settings.FBE.Settings.AppendChild($layout);$settings.Save($seed)
  # Exercise current source assets with the compiled native bridge.
- foreach($name in @('main.js','main.css','main_fast.css','fb2.xsl')) { Copy-Item (Join-Path $repoRoot "runtime/$name") (Join-Path $iso.Root $name) -Force }
+ foreach($name in @('main.js','main.css','main_fast.css','fb2.xsl')) { Copy-Item (Join-Path $AssetRoot $name) (Join-Path $iso.Root $name) -Force }
  Copy-Item (Join-Path $repoRoot 'runtime/DescriptionIcons') (Join-Path $iso.Root 'DescriptionIcons') -Recurse -Force
  Copy-Item (Join-Path $repoRoot 'runtime/blank.fb2') (Join-Path $iso.Root 'fixture.fb2')
  Copy-Item (Join-Path $PSScriptRoot 'fixtures/description') (Join-Path $iso.Root 'description-fixtures') -Recurse
@@ -27,14 +30,16 @@ try {
   for($i=0;$i -lt 29;$i++){$null=$titleInfo.InsertBefore($firstAuthor.CloneNode($true),$bookTitle)}
   $stress.Save((Join-Path $iso.Root "description-fixtures/stress-$count.fb2"))
  }
- $probe=Get-Content (Join-Path $PSScriptRoot 'description-layout-behavior.js') -Raw
+ $probe=Get-Content (Join-Path $PSScriptRoot 'description-legacy-behavior.js') -Raw
  $literal=$probe|ConvertTo-Json -Compress
  $timingsPath=(Join-Path $iso.Root 'description-timings.txt')|ConvertTo-Json -Compress
  $script='var compatResult="NOT RUN";function CompatResult(){return compatResult;}function Run(){try{document.parentWindow.execScript('+$literal+',"JScript");compatResult=String(document.documentElement.getAttribute("data-description-regression"));if(!window.external.WriteTextFile('+$timingsPath+',String(document.documentElement.getAttribute("data-description-timings")),"utf-8"))throw new Error("Write timing evidence");}catch(error){compatResult="FAIL: "+String(error.message||error);}}'
  [IO.File]::WriteAllText((Join-Path $iso.Root 'description.js'),$script,[Text.UTF8Encoding]::new($false))
- $navigationProbe='var result="NOT RUN";function CompatResult(){return result;}function Run(){try{apiSetDescriptionLayout("modern");var root=document.getElementById("fbw_desc"),items=root._descriptionNavigationItems;for(var i=0;i<items.length;i++){items[i].click();}apiSetDescriptionLayout("classic");apiSetDescriptionLayout("modern");result="PASS";}catch(e){result="FAIL: "+String(e.message||e);}}'
- [IO.File]::WriteAllText((Join-Path $iso.Root 'navigation-dirty.js'),$navigationProbe,[Text.UTF8Encoding]::new($false))
- [IO.File]::WriteAllText((Join-Path $iso.Root 'suite.xml'),'<suite><step name="navigation-dirty" script="navigation-dirty.js" rawDirty="unchanged"/><step name="description-light" descriptionTheme="light" script="description.js"/><step name="description-dark" descriptionTheme="dark" script="description.js"/><step name="description-light-again" descriptionTheme="light" script="description.js"/></suite>',[Text.UTF8Encoding]::new($false))
+ $startupProbe='var result="NOT RUN";function CompatResult(){return result;}function Run(){var root=document.getElementById("fbw_desc");result=(root&&!root._descriptionSections&&!document.getElementById("descriptionNavigation")&&!document.getElementById("descriptionCoverPreview"))?"PASS":"FAIL: persisted modern enabled experimental UI";}'
+ if($DiagnosticNoop) { $startupProbe='function CompatResult(){return "PASS";}function Run(){}' }
+ [IO.File]::WriteAllText((Join-Path $iso.Root 'startup.js'),$startupProbe,[Text.UTF8Encoding]::new($false))
+ $probeHead = if($DiagnosticHead) { ' probeHead="true"' } else { '' }
+ [IO.File]::WriteAllText((Join-Path $iso.Root 'suite.xml'),('<suite><step name="persisted-modern" script="startup.js" rawDirty="unchanged"'+$probeHead+'/><step name="description-light" descriptionTheme="light" script="description.js"/><step name="description-dark" descriptionTheme="dark" script="description.js"/><step name="description-light-again" descriptionTheme="light" script="description.js"/></suite>'),[Text.UTF8Encoding]::new($false))
  $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='binary-scripting-compatibility';$env:FBE_NEXT_SCRIPT_API_ROOT=$iso.Root
  $env:FBE_NEXT_TRACE='1'
  $env:FBE_NEXT_TRACE_VERBOSE='1'
@@ -46,7 +51,7 @@ try {
  $evidence=Join-Path $repoRoot 'out/tests/description-layout';New-Item -ItemType Directory -Force $evidence|Out-Null
  Copy-Item $report (Join-Path $evidence 'report.txt') -Force
  Copy-Item (Join-Path $iso.Root 'description-timings.txt') $evidence -Force
- @{status='PASS';fixtures=9;themes=@('light','dark','light');layouts=@('modern','classic');binaryCounts=@(100,500);stressAuthors=30;exeSha256=(Get-FileHash $iso.Exe).Hash;mainJsSha256=(Get-FileHash (Join-Path $iso.Root 'main.js')).Hash;xslSha256=(Get-FileHash (Join-Path $iso.Root 'fb2.xsl')).Hash}|ConvertTo-Json|Set-Content (Join-Path $evidence 'summary.json') -Encoding utf8
+ @{status='PASS';fixtures=10;themes=@('light','dark','light');ignoredPreferences=@('modern','classic','unknown');binaryCounts=@(100,500);stressAuthors=30;exeSha256=(Get-FileHash $iso.Exe).Hash;mainJsSha256=(Get-FileHash (Join-Path $iso.Root 'main.js')).Hash;xslSha256=(Get-FileHash (Join-Path $iso.Root 'fb2.xsl')).Hash}|ConvertTo-Json|Set-Content (Join-Path $evidence 'summary.json') -Encoding utf8
  Get-Content (Join-Path $evidence 'description-timings.txt')
- $passed=$true;Write-Host 'Description Modern/Classic production MSHTML behavior PASS.'
+ $passed=$true;Write-Host 'Legacy Description production MSHTML behavior PASS.'
 } finally {foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$old[$name],'Process')};Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed}

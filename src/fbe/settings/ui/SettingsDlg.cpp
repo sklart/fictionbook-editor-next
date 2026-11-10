@@ -564,18 +564,15 @@ bool CSettingsDlg::UpdateAppearancePreviewLayout()
 {
 	if(!m_generalPage || !::IsWindow(m_generalPage->m_hWnd)) return false;
 	PageLayout& layout = m_pageLayouts[PageIndex(SettingsPageId::Appearance)];
-	PageControlLayout *preview = NULL, *toolbar = NULL, *description = NULL, *label = NULL, *field = NULL;
+	PageControlLayout *preview = NULL, *toolbar = NULL;
 	for(PageControlLayout& control : layout.controls) {
 		if(control.id == IDC_APPEARANCE_ICON_PREVIEW) preview = &control;
 		else if(control.id == IDC_APPEARANCE_TOOLBARS_GROUP) toolbar = &control;
-		else if(control.id == IDC_APPEARANCE_DESCRIPTION_GROUP) description = &control;
-		else if(control.id == IDC_DESCRIPTION_LAYOUT_LABEL) label = &control;
-		else if(control.id == IDC_DESCRIPTION_LAYOUT) field = &control;
 	}
-	if(!preview || !toolbar || !description || !label || !field) return false;
+	if(!preview || !toolbar) return false;
 	const int desired = m_generalPage->DesiredIconPreviewHeight(m_layoutDpi);
-	return AppearancePreviewLayout::ResizePage(preview->rect, toolbar->rect, description->rect, label->rect,
-		field->rect, layout.contentSize.cy, layout.naturalContentHeight, desired);
+	return AppearancePreviewLayout::ResizePageWithoutDescription(preview->rect, toolbar->rect,
+		layout.contentSize.cy, layout.naturalContentHeight, desired);
 }
 
 LRESULT CSettingsDlg::OnAppearancePreviewLayout(UINT, WPARAM sender, LPARAM, BOOL&)
@@ -2155,15 +2152,13 @@ bool CSettingsDlg::ProbeLayout()
 		SelectPage(SettingsPageId::Appearance);
 		const CRect colourGroup = controlRect(m_generalPage->GetDlgItem(IDC_OPTIONS_INTERFACE_GROUP));
 		const CRect toolbarGroup = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_TOOLBARS_GROUP));
-		const CRect descriptionGroup = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_DESCRIPTION_GROUP));
 		const CRect iconSample = controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_ICON_PREVIEW));
 		struct AppearanceRow { int label, field; CRect group; };
 		const AppearanceRow rows[] = {
 			{ IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME, colourGroup },
 			{ IDC_INTERFACE_PALETTE_LABEL, IDC_INTERFACE_PALETTE, colourGroup },
 			{ IDC_MAIN_TOOLBAR_ICON_SIZE_LABEL, IDC_MAIN_TOOLBAR_ICON_SIZE, toolbarGroup },
-			{ IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, toolbarGroup },
-			{ IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT, descriptionGroup }
+			{ IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE, toolbarGroup }
 		};
 		int previousBottom = 0, paletteRowBottom = 0, scriptRowBottom = 0;
 		for(const auto& row : rows) {
@@ -2186,7 +2181,9 @@ bool CSettingsDlg::ProbeLayout()
 			return child.Width() > 0 && child.Height() > 0 && child.left >= group.left &&
 				child.right <= group.right && child.top >= group.top && child.bottom <= group.bottom;
 		};
-		passed = colourGroup.bottom <= toolbarGroup.top && toolbarGroup.bottom <= descriptionGroup.top &&
+		passed = colourGroup.bottom <= toolbarGroup.top &&
+			!::IsWindowVisible(m_generalPage->GetDlgItem(IDC_DESCRIPTION_LAYOUT)) &&
+			!::IsWindowVisible(m_generalPage->GetDlgItem(IDC_APPEARANCE_DESCRIPTION_GROUP)) &&
 			(::GetWindowLongPtrW(m_generalPage->GetDlgItem(IDC_INTERFACE_PALETTE_COPY), GWL_STYLE) & WS_VISIBLE) == 0 &&
 			insideGroup(manage, colourGroup) &&
 			insideGroup(iconSample, toolbarGroup) &&

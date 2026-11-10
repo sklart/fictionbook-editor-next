@@ -28,6 +28,19 @@ inline Metrics Calculate(UINT dpi, int mainSize, int scriptSize)
     return result;
 }
 
+inline bool ResizePageWithoutDescription(RECT& preview, RECT& toolbarGroup,
+    LONG& contentHeight, int& naturalHeight, int desiredHeight)
+{
+    if(desiredHeight <= 0 || preview.bottom <= preview.top || toolbarGroup.bottom < preview.bottom) return false;
+    const int delta = desiredHeight - (preview.bottom - preview.top);
+    if(contentHeight + delta < 0 || naturalHeight + delta < 0) return false;
+    preview.bottom += delta;
+    toolbarGroup.bottom += delta;
+    contentHeight += delta;
+    naturalHeight += delta;
+    return true;
+}
+
 inline bool ResizePage(RECT& preview, RECT& toolbarGroup, RECT& descriptionGroup,
     RECT& descriptionLabel, RECT& descriptionField, LONG& contentHeight, int& naturalHeight, int desiredHeight)
 {

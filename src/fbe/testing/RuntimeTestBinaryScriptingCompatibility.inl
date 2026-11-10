@@ -124,12 +124,41 @@ __declspec(noinline) LRESULT CMainFrame::RunBinaryScriptingCompatibilityRuntime(
             _Settings.SetScriptsFolder(root);
             if (!script.IsEmpty()) {
                 const bool dirty = DocChanged();
+                if (attr(L"probeHead") == L"true") {
+                    MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+                    MSHTML::IHTMLDocument3Ptr document3(document);
+                    MSHTML::IHTMLElementPtr prior(document3->getElementById(L"userCmd"));
+                    MSHTML::IHTMLElementPtr fresh(document->createElement(L"SCRIPT"));
+                    fresh->id = L"userCmd";
+                    const long beforeReplace = m_doc->m_body.GetVersionNumber();
+                    MSHTML::IHTMLDOMNodePtr parent(MSHTML::IHTMLDOMNodePtr(prior)->parentNode);
+                    parent->replaceChild(MSHTML::IHTMLDOMNodePtr(fresh), MSHTML::IHTMLDOMNodePtr(prior));
+                    const long afterReplace = m_doc->m_body.GetVersionNumber();
+                    const CString source = CString(L"file:///") + root + L"\\" + script;
+                    fresh->setAttribute(L"src", _variant_t(source), 0);
+                    const long afterSource = m_doc->m_body.GetVersionNumber();
+                    CStringA diagnostic; diagnostic.Format("head-load-versions=%ld,%ld,%ld\r\n", beforeReplace, afterReplace, afterSource);
+                    DWORD bytes = 0; output.Write(diagnostic, diagnostic.GetLength(), &bytes); output.Flush();
+                }
+                const bool diagnoseDirty = attr(L"rawDirty") == L"unchanged";
+                const long versionBefore = diagnoseDirty ? m_doc->m_body.GetVersionNumber() : 0;
+                const bool formBefore = diagnoseDirty && m_doc->m_body.IsFormChanged();
+                const auto historyBefore = diagnoseDirty ? history() : std::vector<CComPtr<IOleUndoUnit>>();
+                CString xmlBefore;
+                if(diagnoseDirty) xmlBefore = static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml);
                 m_doc->RunScript(root + L"\\" + script);
                 if (attr(L"corpus").IsEmpty()) {
                     CComVariant result; CheckError(m_doc->InvokeFunc(L"CompatResult", nullptr, 0, result, true));
                     if (result.vt != VT_BSTR || wcscmp(result.bstrVal, L"PASS")) { if (result.vt == VT_BSTR) details += ": " + CStringA(CW2A(result.bstrVal, CP_UTF8)); CheckError(E_FAIL); }
                 }
-                if (attr(L"rawDirty") == L"unchanged") require(dirty == DocChanged(), "raw expando dirty semantics changed");
+                if (diagnoseDirty && dirty != DocChanged()) {
+                    const CString xmlAfter(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+                    details.Format("raw dirty changed: before=%d after=%d version=%ld->%ld form=%d->%d xml_equal=%d history_equal=%d",
+                        dirty ? 1 : 0, DocChanged() ? 1 : 0, versionBefore, m_doc->m_body.GetVersionNumber(),
+                        formBefore ? 1 : 0, m_doc->m_body.IsFormChanged() ? 1 : 0, xmlBefore == xmlAfter ? 1 : 0,
+                        historyBefore == history() ? 1 : 0);
+                    CheckError(E_FAIL);
+                }
             }
             if (!attr(L"reader").IsEmpty()) {
                 m_doc->RunScript(root + L"\\" + attr(L"reader")); CComVariant result;

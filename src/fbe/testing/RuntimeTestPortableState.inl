@@ -1503,7 +1503,7 @@ void CMainFrame::RunPortableStateTestScenario()
             // Sample a real, non-owner-drawn settings combo and its popup.
             // Both the unfocused field and the list use the control surface.
             ShowWindow(SW_SHOWNORMAL); ::SetForegroundWindow(m_hWnd);
-            HWND ordinaryCombo = page.GetDlgItem(IDC_DESCRIPTION_LAYOUT);
+            HWND ordinaryCombo = page.GetDlgItem(IDC_MAIN_TOOLBAR_ICON_SIZE);
             passed = ordinaryCombo && ::IsWindowVisible(ordinaryCombo) &&
                 ::SendMessage(ordinaryCombo, CB_GETCOUNT, 0, 0) > 0 && passed;
             for(InterfacePalette light : {INTERFACE_PALETTE_SEPIA, INTERFACE_PALETTE_SOLARIZED_LIGHT, INTERFACE_PALETTE_CATPPUCCIN_LATTE}) {

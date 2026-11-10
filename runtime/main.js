@@ -18,18 +18,11 @@ var ImagesInfo = new Array();
 var descriptionLayout = "modern";
 function DescriptionResize()
 {
- var root = document.getElementById("fbw_desc");
- if(!root) return;
- // MSHTML document mode 7 has no CSS media queries. Use the containing
- // viewport, not scrollWidth: a long LEGEND can extend beyond it in this mode.
- var width = root.parentNode == document.body && document.documentElement.clientWidth ? document.documentElement.clientWidth : root.parentNode.clientWidth;
- root.className = "description-" + descriptionLayout + (width <= 760 ? " description-narrow" : "") + (width <= 480 ? " description-compact" : "") + (width > 760 && width <= 1100 ? " description-navigation-compact" : "");
+ // The 3.0.11 internal build uses the original Description presentation.
 }
 function apiSetDescriptionLayout(value)
 {
- descriptionLayout = value == "classic" ? "classic" : "modern";
- var desc = document.getElementById("fbw_desc");
- if(desc) { DescriptionApplyPresentation(desc); DescriptionResize(); }
+ // The 3.0.11 internal build uses the original Description presentation.
  return true;
 }
 
@@ -248,85 +241,7 @@ function DescriptionApplyPresentation(root)
 
 function InitDescriptionUI(root)
 {
- TraceScript("J910", "operation=Description UI initialize");
- root._descriptionSections = [];
- root._descriptionMoved = [];
- root._descriptionOptional = [];
- root._descriptionApplied = "";
- var controls = ["tiTitle","stiTitle","diID","piName","ci","binobj","stylesheetId"];
- for(var i=0; i<controls.length; i++)
- {
-  var section = DescriptionTopFieldset(document.getElementById(controls[i]), root);
-  if(!section) continue;
-  section._descriptionClosed = i != 0 && i != 2;
-  section._descriptionClassicClosed = false;
-  section._descriptionSectionId = controls[i];
-  var legend = section.getElementsByTagName("LEGEND")[0];
-  section._descriptionTitle = legend.innerText;
-  // A FIELDSET keeps block children valid in IE7 mode without introducing an
-  // extra DIV into the legacy binary-row enumeration used by scripts.
-  var body = document.createElement("FIELDSET");
-  body.id = "description-section-body-" + controls[i];
-  body.className = "description-section-body";
-  body.style.display = "block";
-  var child = section.firstChild;
-  while(child) {
-   var next = child.nextSibling;
-   if(child != legend) body.appendChild(child);
-   child = next;
-  }
-  section.appendChild(body);
-  section._descriptionBody = body;
-  var button = document.createElement("BUTTON");
-  button.className = "description-section-toggle";
-  button.title = legend.innerText;
-  button._descriptionSection = section;
-  section._descriptionButton = button;
-  button.onclick = function() { DescriptionToggleSection(this); };
-  legend.insertBefore(button, legend.firstChild);
-  legend._descriptionSection = section;
-  legend.onclick = function() {
-   var source = window.event ? window.event.srcElement : null;
-   if(descriptionLayout == "modern" && source == this) DescriptionToggleSection(this._descriptionSection._descriptionButton);
-  };
-  root._descriptionSections.push(section);
- }
- TraceScript("J911", "operation=Description sections initialized");
- DescriptionBuildNavigation(root);
- var spans = root.getElementsByTagName("SPAN");
- for(var i=0; i<spans.length; i++)
- {
-  // Modern exposes supported optional fields without changing saved view prefs.
-  if(spans[i].id == "sti_all" || spans[i].id == "ci_all") { spans[i].style.display = "block"; continue; }
-  if(spans[i].id && spans[i].id != "id" && spans[i].className != "id" && spans[i].className != "description-section-body")
-   root._descriptionOptional.push({node:spans[i], display:spans[i].style.display});
- }
- var cover = document.getElementById("tiCover");
- if(cover)
- {
-  var preview = document.createElement("IMG");
-  preview.id = "descriptionCoverPreview";
-  preview.className = "description-cover-preview";
-  preview.alt = cover.getElementsByTagName("LEGEND")[0].innerText;
-  cover.insertBefore(preview, cover.firstChild.nextSibling);
- }
- TraceScript("J912", "operation=Description presentation");
- DescriptionApplyPresentation(root);
- DescriptionStyleButtons(root);
- InitDescriptionActions(root);
- DescriptionValidate();
- if(!window._descriptionResizeHook) {
-  window.attachEvent("onresize", DescriptionResize);
-  window.attachEvent("onscroll", DescriptionScheduleNavigationSync);
-  window._descriptionResizeHook = true;
- }
- if(!root._descriptionChangeHook) {
-  root.attachEvent("onchange", DescriptionValidationChanged);
-  // change does not bubble in the legacy MSHTML document mode; focusout does.
-  root.attachEvent("onfocusout", DescriptionValidationChanged);
-  root._descriptionChangeHook = true;
- }
- TraceScript("J919", "operation=Description UI ready");
+ // The 3.0.11 internal build uses the original Description presentation.
 }
 
 
@@ -345,49 +260,7 @@ function DescriptionLoadThumbnail(row)
 
 function DescriptionStyleBinary(row)
 {
- row.className = "description-binary";
- DescriptionStyleButtons(row);
- var type = GetBinaryInput(row, "type");
- var thumbSlot = document.createElement("SPAN"); thumbSlot.className = "description-binary-thumb-slot";
- row.insertBefore(thumbSlot, row.firstChild);
- if(type && IsImageBinaryType(type.value))
- {
-  var preview = document.createElement("IMG");
-  preview.className = "description-binary-thumbnail";
-  preview.setAttribute("data-description-preview", "true");
-  preview.alt = "";
-  thumbSlot.appendChild(preview);
-  row.onmouseover = function() { DescriptionLoadThumbnail(this); };
- }
- var size = GetBinaryInput(row, "size"), dims = GetBinaryInput(row, "dims");
- if(size) {
-  if(size.previousSibling && size.previousSibling.tagName == "LABEL") size.previousSibling.style.display = "none";
-  size.style.display = "none";
-  var displaySize = document.createElement("SPAN"); displaySize.className = "binary-size-display";
-  displaySize.innerText = DescriptionBinarySize(size.value);
-  size.parentNode.insertBefore(displaySize, size.nextSibling);
- }
- if(dims) {
-  if(dims.previousSibling && dims.previousSibling.tagName == "LABEL") dims.previousSibling.style.display = "none";
-  dims.style.display = "none";
-  var displayDims = document.createElement("SPAN"); displayDims.className = "binary-dims-display";
-  displayDims.innerText = String(dims.value).replace("x", " \u00d7 ");
-  dims.parentNode.insertBefore(displayDims, dims.nextSibling);
- }
- else { var displayDims = document.createElement("SPAN"); displayDims.className = "binary-dims-display"; row.appendChild(displayDims); }
- // Buttons remain direct children of the binary row for legacy handlers.
- var actionIds = ["show", "save", "del"];
- if(!GetBinaryInput(row, "show")) { var missingView = document.createElement("SPAN"); missingView.className = "description-binary-action-placeholder"; row.appendChild(missingView); }
- for(var i=0; i<actionIds.length; i++) {
-  var action = GetBinaryInput(row, actionIds[i]);
-  if(action) {
-   var iconName = actionIds[i] == "show" ? "view" : actionIds[i] == "del" ? "delete" : "save";
-   var label = actionIds[i] == "save" ? DescriptionText("save_attachment", "Save attachment") : actionIds[i] == "del" ? DescriptionText("remove_attachment", "Remove attachment") : DescriptionText("view", "View");
-   action.innerHTML = '<img src="DescriptionIcons/' + iconName + '.png" alt="" />';
-   action.title = label; action.setAttribute("aria-label", label);
-   row.appendChild(action);
-  }
- }
+ // The 3.0.11 internal build uses the original Description presentation.
 }
 
 var descriptionBinaryUnits = null;
@@ -575,25 +448,7 @@ function DescriptionText(key, fallback)
 
 function DescriptionStyleButtons(root)
 {
- var buttons = root.getElementsByTagName("BUTTON");
- for(var i=0; i<buttons.length; i++)
- {
-  var button = buttons[i];
-  if(button.tagName != "BUTTON") continue;
-  // The shared XSL still owns the handlers; only their captions change.
-  var text = button.innerText;
-  var key = "", fallback = "", icon = "";
-  if(text == "r") { key = "remove"; fallback = "Remove"; icon = "\u00d7"; }
-  else if(text == "2") { key = "duplicate"; fallback = "Duplicate"; icon = "\u29c9"; }
-  else if(text == "4") { key = "choose"; fallback = "Choose"; icon = "\u2026"; }
-  else if(text == "N") { key = "view"; fallback = "View"; icon = "\u2315"; }
-  else if(text == "\u00cd") { key = "save"; fallback = "Save"; icon = "\u2193"; }
-  if(key) {
-   var label = DescriptionText(key, fallback);
-   button.innerText = icon; button.title = label; button.setAttribute("aria-label", label);
-   button.className += (button.className ? " " : "") + "description-icon-action";
-  }
- }
+ // The 3.0.11 internal build uses the original Description presentation.
 }
 
 function InitDescriptionActions(root)
