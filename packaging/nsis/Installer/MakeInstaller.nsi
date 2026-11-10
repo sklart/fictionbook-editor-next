@@ -250,6 +250,8 @@ Var UninstallUserDataCheckbox
 Var CommandLineCurrentUser
 Var CommandLineAllUsers
 Var CommandLinePortable
+Var ExplicitInstallDirectory
+Var HasExplicitInstallDirectory
 Var ShellRecoveryRequested
 
 !macro FBE_RequireOrdinaryPath path
@@ -305,6 +307,16 @@ Function .onInit
     Return
   ${EndIf}
   !endif
+  ; NSIS removes /D= from $CMDLINE before .onInit but has already applied it
+  ; to $INSTDIR. Preserve that value while choosing the deployment scope.
+  StrCpy $HasExplicitInstallDirectory "0"
+  System::Call 'kernel32::GetCommandLineW() t.r0'
+  ClearErrors
+  ${GetOptions} $0 "/D=" $1
+  ${IfNot} ${Errors}
+    StrCpy $HasExplicitInstallDirectory "1"
+    StrCpy $ExplicitInstallDirectory "$INSTDIR"
+  ${EndIf}
   SetShellVarContext current
   StrCpy $DeploymentMode "installed"
   StrCpy $InstallScope "current"
@@ -330,6 +342,9 @@ Function .onInit
   Call DetectExistingInstallScope
 deployment_scope_detected:
   Call ApplyDeploymentCommandLine
+  ${If} $HasExplicitInstallDirectory == "1"
+    StrCpy $INSTDIR "$ExplicitInstallDirectory"
+  ${EndIf}
   ; GUI checks the conflict after the user has chosen scope.  Silent setup has
   ; no page-leave callback, so it must fail before elevation or file writes.
   IfSilent 0 +2
@@ -1317,6 +1332,10 @@ nthere:
   File "${INPUTDIR}\FictionBookLinks.xsd"
   File "${INPUTDIR}\genres.txt"
   File "${INPUTDIR}\genres.rus.txt"
+  File "${INPUTDIR}\genres.librusec.txt"
+  File "${INPUTDIR}\genres.rus.librusec.txt"
+  File "${INPUTDIR}\languages.txt"
+  File "${INPUTDIR}\root_genres.xml"
   File "${INPUTDIR}\genres.txt_L"
   File "${INPUTDIR}\genres.rus.txt_L"
   File "${INPUTDIR}\genres.ukr.txt"
@@ -1364,6 +1383,8 @@ skip_shell_mui:
 	RMDir "$INSTDIR\defaults"
 	SetOutPath "$INSTDIR\Resources"
 	File "${INPUTDIR}\Resources\Words.xml"
+	SetOutPath "$INSTDIR\DescriptionIcons"
+	File /r "${INPUTDIR}\DescriptionIcons\*.*"
 	SetOutPath "$INSTDIR"
   ; Bundled plug-ins are discovered from this local manifest. The DLLs are
   ; optional components below, but the catalog itself is part of the editor
@@ -1700,6 +1721,10 @@ Section !$(Scripts) Scripts_id
 SectionEnd
 
 SubSection !$(Dictionaries) Dictionaries_id
+	Section -DictionarySources
+	  SetOutPath "$INSTDIR\Dict"
+	  File "${INPUTDIR}\Dict\sources.json"
+	SectionEnd
 
         Section $(EnglishDict) Dict01
       SectionIn RO
@@ -2021,6 +2046,10 @@ fbd_uninstall_done:
   Delete "$INSTDIR\genres.txt"
   Delete "$INSTDIR\genres.rus.txt"
   Delete "$INSTDIR\genres.ukr.txt"
+  Delete "$INSTDIR\genres.librusec.txt"
+  Delete "$INSTDIR\genres.rus.librusec.txt"
+  Delete "$INSTDIR\languages.txt"
+  Delete "$INSTDIR\root_genres.xml"
   Delete "$INSTDIR\genres.txt_L"
   Delete "$INSTDIR\genres.rus.txt_L"
   Delete "$INSTDIR\FictionBookLinks.xsd"
@@ -2062,6 +2091,14 @@ fbd_uninstall_done:
   RMDir /r "$INSTDIR\THIRD-PARTY-LICENSES"
 	Delete "$INSTDIR\Resources\Words.xml"
 	RMDir "$INSTDIR\Resources"
+	Delete "$INSTDIR\DescriptionIcons\delete.png"
+	Delete "$INSTDIR\DescriptionIcons\save.png"
+	Delete "$INSTDIR\DescriptionIcons\view.png"
+	Delete "$INSTDIR\DescriptionIcons\dark\delete.png"
+	Delete "$INSTDIR\DescriptionIcons\dark\save.png"
+	Delete "$INSTDIR\DescriptionIcons\dark\view.png"
+	RMDir "$INSTDIR\DescriptionIcons\dark"
+	RMDir "$INSTDIR\DescriptionIcons"
 	; Clean up the obsolete seed location left by an older installation.
 	Delete "$INSTDIR\defaults\Words.xml"
 	RMDir "$INSTDIR\defaults"
