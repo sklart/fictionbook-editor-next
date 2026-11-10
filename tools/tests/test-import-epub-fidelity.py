@@ -165,6 +165,38 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertNotIn('First note paragraph', self.text(main))
         self.assertEqual(len(self.notes(root)[0].findall('f:p', NS)), 2)
 
+    def test_docutils_smartquotes_and_table_footnotes(self):
+        source = (
+            '<div class="document text-transform-smartquotes"><div class="section">'
+            '<h2>Chapter <a id="ref2" class="footnote-reference" href="#n2"><sup>2</sup></a></h2>'
+            '<p>Text <a class="footnote-reference" href="#n1"><sup>1</sup></a>.</p>'
+            '<div class="footnotes"><table class="footnote" id="n1"><tr><td><p>First note '
+            '<a id="nested-ref" class="footnote-reference smaller" href="#n2"><sup>2</sup></a></p></td></tr></table>'
+            '<table class="footnote" id="n2"><tr><td><p><a class="fn-backref" href="#nested-ref">Return</a>Second note</p></td></tr></table></div>'
+            '</div></div>')
+        root = self.convert(source)
+        main = root.find('f:body', NS)
+        self.assertIsNone(main.find('.//f:cite', NS))
+        self.assertIn('Chapter', self.text(main))
+        self.assertNotIn('First note', self.text(main))
+        notes = self.notes(root)
+        self.assertEqual(len(notes), 2)
+        self.assertEqual(sum(self.text(n).count('First note') for n in notes), 1)
+        self.assertNotIn('Return', self.text(root))
+        links = root.findall('.//f:a[@type="note"]', NS)
+        self.assertEqual(len(links), 3)
+        targets = {n.get('id') for n in notes}
+        self.assertTrue(all(a.get(HREF, '')[1:] in targets for a in links))
+        retained = self.convert(source, options=['--keep-footnote-backlinks'])
+        back, = [a for a in retained.findall('.//f:a', NS) if self.text(a) == 'Return']
+        self.assertTrue(any('#' + e.get('id', '') == back.get(HREF) for e in retained.iter()))
+        inline = self.convert(source, options=['--no-notes'])
+        self.assertEqual(self.notes(inline), [])
+        self.assertEqual(self.text(inline).count('First note'), 1)
+        self.assertEqual(inline.findall('.//f:a[@type="note"]', NS), [])
+        explicit = self.convert('<div class="text-transform-smartquotes quote"><p>Actual quotation</p></div>')
+        self.assertIn('Actual quotation', self.text(explicit.find('.//f:cite', NS)))
+
     def test_removed_backlink_keeps_referenced_anchor(self):
         for backlink in ('<a id="footnote-042-backlink" epub:type="backlink" href="#ref">Return</a>',
                          '<p><a id="footnote-042-backlink" epub:type="backlink" href="#ref">Return</a>Note end</p>',

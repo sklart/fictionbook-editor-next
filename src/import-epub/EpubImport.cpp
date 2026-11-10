@@ -1642,7 +1642,8 @@ namespace
         if (!g_options.removeFootnoteBacklinks)
             return false;
         return IsEpubType(node, L"backlink") || IsRoleToken(node, L"doc-backlink") ||
-            HasSemanticCssClass(node, L"backlink") || HasSemanticCssClass(node, L"backlinks");
+            HasSemanticCssClass(node, L"backlink") || HasSemanticCssClass(node, L"backlinks") ||
+            HasSemanticCssClass(node, L"fn-backref");
     }
 
     bool IsNoteReferenceElement(const MSXML2::IXMLDOMNodePtr& node)
@@ -1653,7 +1654,7 @@ namespace
         if (name.CompareNoCase(L"a") != 0)
             return false;
         return IsEpubType(node, L"noteref") || IsRoleToken(node, L"doc-noteref") ||
-            HasSemanticCssClass(node, L"noteref") || HasSemanticCssClass(node, L"footnote-ref") ||
+            HasSemanticCssClass(node, L"noteref") || HasSemanticCssClass(node, L"footnote-ref") || HasSemanticCssClass(node, L"footnote-reference") ||
             HasSemanticCssClass(node, L"fnref") || HasSemanticCssClass(node, L"footnote_reference");
     }
 
@@ -4337,8 +4338,19 @@ namespace
     {
         CStringW type = EpubType(node);
         CStringW cls = Attr(node, L"class");
-        return IsTokenInList(type, L"quote") || IsTokenInList(type, L"citation") ||
-            SemanticClassContains(cls, L"quote") || SemanticClassContains(cls, L"citation") || SemanticClassContains(cls, L"cite");
+        if (IsTokenInList(type, L"quote") || IsTokenInList(type, L"citation")) return true;
+        int position = 0;
+        CStringW item = cls.Tokenize(L" \t\r\n", position);
+        while (!item.IsEmpty())
+        {
+            // Typography classes such as text-transform-smartquotes describe
+            // punctuation, not a quotation container.
+            if (!ContainsNoCase(item, L"smartquote") &&
+                (SemanticClassContains(item, L"quote") || SemanticClassContains(item, L"citation") || SemanticClassContains(item, L"cite")))
+                return true;
+            item = cls.Tokenize(L" \t\r\n", position);
+        }
+        return false;
     }
 
     bool LooksLikeTextAuthor(const MSXML2::IXMLDOMNodePtr& node)
@@ -5755,6 +5767,10 @@ namespace
         CStringW content;
         ConvertContext noteContext = ctx;noteContext.collectingNotes = true;
         const CStringW name = LocalName(noteNode);
+        // A table used as one note is flattened through its rows below. Emit
+        // descendant anchors first so links back to nested references survive.
+        if (name == L"table")
+            content += AnchorMarkerParagraphsFromRawIds(CollectRawAnchorIds(noteNode), 0, noteContext);
         if (name == L"p")
         {
             CStringW extra;
