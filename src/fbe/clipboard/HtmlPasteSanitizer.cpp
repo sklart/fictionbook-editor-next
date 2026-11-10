@@ -4,8 +4,6 @@
 #include <algorithm>
 #include <string>
 #include <vector>
-#include <atlbase.h>
-#include <new>
 
 namespace FbeClipboard {
 namespace {
@@ -25,107 +23,6 @@ InternalMarkerPayload MarkerPayload(const GUID& origin) {
   payload.origin = origin;
   return payload;
 }
-
-// MSHTML owns its clipboard through OLE. Replacing that IDataObject preserves
-// delayed rendering and every original format while adding our marker.
-class MarkedDataObject final : public IDataObject {
-public:
-  MarkedDataObject(IDataObject* source, CLIPFORMAT marker, const GUID& origin) : source_(source), marker_(marker), origin_(origin) {}
-  STDMETHOD(QueryInterface)(REFIID iid, void** value) override {
-    if (!value) return E_POINTER;
-    *value = nullptr;
-    if (iid == IID_IUnknown || iid == IID_IDataObject) { *value = static_cast<IDataObject*>(this); AddRef(); return S_OK; }
-    return E_NOINTERFACE;
-  }
-  STDMETHOD_(ULONG, AddRef)() override { return static_cast<ULONG>(::InterlockedIncrement(&refs_)); }
-  STDMETHOD_(ULONG, Release)() override { const ULONG refs = static_cast<ULONG>(::InterlockedDecrement(&refs_)); if (!refs) delete this; return refs; }
-  STDMETHOD(GetData)(FORMATETC* format, STGMEDIUM* medium) override {
-    if (!format || !medium) return E_POINTER;
-    if (format->cfFormat != marker_) return source_->GetData(format, medium);
-    if (format->dwAspect != DVASPECT_CONTENT || format->lindex != -1 || !(format->tymed & TYMED_HGLOBAL)) return DV_E_FORMATETC;
-    HGLOBAL data = ::GlobalAlloc(GMEM_MOVEABLE, sizeof(InternalMarkerPayload));
-    if (!data) return E_OUTOFMEMORY;
-    void* bytes = ::GlobalLock(data);
-    if (!bytes) { ::GlobalFree(data); return E_OUTOFMEMORY; }
-    const InternalMarkerPayload payload = MarkerPayload(origin_);
-    memcpy(bytes, &payload, sizeof(payload));
-    ::GlobalUnlock(data);
-    medium->tymed = TYMED_HGLOBAL; medium->hGlobal = data; medium->pUnkForRelease = nullptr;
-    return S_OK;
-  }
-  STDMETHOD(GetDataHere)(FORMATETC* format, STGMEDIUM* medium) override { return source_->GetDataHere(format, medium); }
-  STDMETHOD(QueryGetData)(FORMATETC* format) override {
-    if (!format) return E_POINTER;
-    return format->cfFormat == marker_ ?
-      (format->dwAspect == DVASPECT_CONTENT && format->lindex == -1 && (format->tymed & TYMED_HGLOBAL) ? S_OK : DV_E_FORMATETC) :
-      source_->QueryGetData(format);
-  }
-  STDMETHOD(GetCanonicalFormatEtc)(FORMATETC* format, FORMATETC* result) override { return source_->GetCanonicalFormatEtc(format, result); }
-  STDMETHOD(SetData)(FORMATETC* format, STGMEDIUM* medium, BOOL release) override { return source_->SetData(format, medium, release); }
-  STDMETHOD(EnumFormatEtc)(DWORD direction, IEnumFORMATETC** result) override {
-    if (!result) return E_POINTER;
-    *result = nullptr;
-    if (direction != DATADIR_GET) return source_->EnumFormatEtc(direction, result);
-    CComPtr<IEnumFORMATETC> sourceEnum;
-    HRESULT hr = source_->EnumFormatEtc(direction, &sourceEnum);
-    if (FAILED(hr)) return hr;
-    auto enumerator = new (std::nothrow) MarkedFormatEnum(sourceEnum, marker_);
-    if (!enumerator) return E_OUTOFMEMORY;
-    *result = enumerator;
-    return S_OK;
-  }
-  STDMETHOD(DAdvise)(FORMATETC* format, DWORD flags, IAdviseSink* sink, DWORD* connection) override { return source_->DAdvise(format, flags, sink, connection); }
-  STDMETHOD(DUnadvise)(DWORD connection) override { return source_->DUnadvise(connection); }
-  STDMETHOD(EnumDAdvise)(IEnumSTATDATA** result) override { return source_->EnumDAdvise(result); }
-private:
-  class MarkedFormatEnum final : public IEnumFORMATETC {
-  public:
-    MarkedFormatEnum(IEnumFORMATETC* source, CLIPFORMAT marker) : source_(source), marker_(marker) {}
-    STDMETHOD(QueryInterface)(REFIID iid, void** value) override {
-      if (!value) return E_POINTER;
-      *value = nullptr;
-      if (iid == IID_IUnknown || iid == IID_IEnumFORMATETC) { *value = static_cast<IEnumFORMATETC*>(this); AddRef(); return S_OK; }
-      return E_NOINTERFACE;
-    }
-    STDMETHOD_(ULONG, AddRef)() override { return static_cast<ULONG>(::InterlockedIncrement(&refs_)); }
-    STDMETHOD_(ULONG, Release)() override { const ULONG refs = static_cast<ULONG>(::InterlockedDecrement(&refs_)); if (!refs) delete this; return refs; }
-    STDMETHOD(Next)(ULONG requested, FORMATETC* formats, ULONG* fetched) override {
-      if (!formats || (requested != 1 && !fetched)) return E_POINTER;
-      ULONG count = 0;
-      if (!marked_ && requested) {
-        formats[count++] = {marker_, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
-        marked_ = true;
-      }
-      ULONG fromSource = 0;
-      if (count < requested) source_->Next(requested - count, formats + count, &fromSource);
-      count += fromSource;
-      if (fetched) *fetched = count;
-      return count == requested ? S_OK : S_FALSE;
-    }
-    STDMETHOD(Skip)(ULONG count) override { FORMATETC format; while (count--) if (Next(1, &format, nullptr) != S_OK) return S_FALSE; return S_OK; }
-    STDMETHOD(Reset)() override { marked_ = false; return source_->Reset(); }
-    STDMETHOD(Clone)(IEnumFORMATETC** result) override {
-      if (!result) return E_POINTER;
-      CComPtr<IEnumFORMATETC> sourceClone;
-      HRESULT hr = source_->Clone(&sourceClone);
-      if (FAILED(hr)) return hr;
-      auto clone = new (std::nothrow) MarkedFormatEnum(sourceClone, marker_);
-      if (!clone) return E_OUTOFMEMORY;
-      clone->marked_ = marked_;
-      *result = clone;
-      return S_OK;
-    }
-  private:
-    volatile LONG refs_ = 1;
-    CComPtr<IEnumFORMATETC> source_;
-    CLIPFORMAT marker_;
-    bool marked_ = false;
-  };
-  volatile LONG refs_ = 1;
-  CComPtr<IDataObject> source_;
-  CLIPFORMAT marker_;
-  GUID origin_;
-};
 
 class ClipboardScope {
 public:
@@ -619,15 +516,11 @@ bool HtmlPasteSanitizer::MarkInternalCopy(HWND owner, const GUID& origin) {
     if (!::SetClipboardData(marker, data)) { ::GlobalFree(data); return false; }
     return true;
   }
-  CString renderedFragment;
-  if (!ReadClipboardFragment(owner, renderedFragment)) return false;
-  CComPtr<IDataObject> original;
-  if (FAILED(::OleGetClipboard(&original)) || !original) return false;
-  const DWORD sequence = ::GetClipboardSequenceNumber();
-  CComPtr<IDataObject> marked;
-  marked.Attach(new (std::nothrow) MarkedDataObject(original, static_cast<CLIPFORMAT>(marker), origin));
-  if (!marked || sequence != ::GetClipboardSequenceNumber()) return false;
-  return SUCCEEDED(::OleSetClipboard(marked));
+  // An OLE data object for a foreign owner may represent a clipboard that
+  // changed after Copy/Cut and may be a lazy proxy: replacing it
+  // can discard its formats, including when OleSetClipboard reports failure.
+  // Leave that clipboard untouched and treat it as external data on Paste.
+  return false;
 }
 
 bool HtmlPasteSanitizer::GetInternalCopyOrigin(HWND owner, GUID& origin) {
