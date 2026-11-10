@@ -20,10 +20,11 @@ $scenario = Get-Content -LiteralPath (Join-Path $root 'src\fbe\testing\RuntimeTe
 $runner = Get-Content -LiteralPath (Join-Path $root 'tools\tests\test-fbe-navigation-scripts-runtime.ps1') -Raw
 $runtimeRunner = Get-Content -LiteralPath (Join-Path $root 'tools\tests\test-fbe-script-live-reload-runtime.ps1') -Raw
 
-Require $runtime 'function LoadUserCommandScript\(path\)' 'Runtime no longer has the fresh user-script loader.'
+Require $runtime 'function LoadUserCommandScript\(path,\s*charset\)' 'Runtime no longer has the charset-aware fresh user-script loader.'
 Require $runtime 'replaceChild\(script,previous\)' 'Runtime must replace the previous userCmd node before each execution.'
 Require $runtime 'script\.id="userCmd"' 'Fresh script node must preserve the legacy userCmd id.'
-Require $runtime 'if\(!LoadUserCommandScript\(path\)\)\s*return;\s*Run\(\);' 'Run must use the fresh user-script loader.'
+Require $runtime 'if\(!LoadUserCommandScript\(path,\s*charset\)\)\s*return;\s*Run\(\);' 'Run must use the charset-aware fresh user-script loader.'
+Require $runtime 'if\(charset\)\s*script\.charset=charset' 'The fresh script node must receive the requested charset.'
 Require $ids 'ID_TOOLS_REFRESH_SCRIPTS\s+32901' 'Refresh Scripts command id must remain 32901.'
 Require $ids 'IDB_TOOLS_REFRESH_SCRIPTS' 'Refresh Scripts menu bitmap id is missing.'
 Require $resource 'MENUITEM "Refresh &scripts",\s+ID_TOOLS_REFRESH_SCRIPTS' 'Refresh Scripts menu item is missing.'
@@ -53,7 +54,7 @@ Require $frame 'LRESULT CMainFrame::OnToolsRefreshScripts[\s\S]*?InitializeScrip
 Require $frame 'RefreshNavigationScriptTree\(\)' 'Script initialization must refresh the navigation tree.'
 Require $scripts 'm_registryLoaded' 'Catalogue refresh must retain the in-process script identity registry.'
 Require $registry 'std::vector<bool> claimed' 'Script registry must not merge equal-content scripts during discovery.'
-Require $registry '!claimed\[i\] && m_identities\[i\]\.relativePath == script\.relativePath' 'Script registry must prefer an unclaimed matching path.'
+Require $registry '!claimed\[i\] && next\.m_identities\[i\]\.relativePath == resolved\[index\]\.relativePath' 'Script registry must prefer an unclaimed matching path.'
 Require $locale 'fbe\.menu\.idr_mainframe\.tools\.refresh_scripts' 'Refresh Scripts localization entry is missing.'
 Require $scenario 'script-live-reload-runtime' 'Runtime reload scenario is missing.'
 Require $scenario 'script-catalog-refresh-runtime' 'Runtime catalogue-refresh scenario is missing.'
