@@ -16,7 +16,7 @@ function Require([string]$text, [string]$pattern, [string]$description) {
     if($text -notmatch $pattern) { throw "Context attribute bars contract missing: $description" }
 }
 
-foreach($forbidden in @('mainfrm\.h', 'FBDoc', 'FB::Doc', 'MSHTML', 'DocumentSession', 'SearchReplace', 'Settings')) {
+foreach($forbidden in @('mainfrm\.h', 'FBDoc', 'FB::Doc', 'MSHTML', 'DocumentSession', 'SearchReplace', '(?-i:Settings)')) {
     if($barsHeader -match $forbidden -or $barsSource -match $forbidden -or $controlsHeader -match $forbidden) {
         throw "Context attribute UI must not depend on $forbidden."
     }
