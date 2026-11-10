@@ -25,8 +25,10 @@ function Assert-Fb2Schema([string]$Path) {
     if ($validation.errorCode -ne 0) { throw "FictionBook.xsd validation failed: $($validation.reason)" }
 }
 
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-table-roundtrip-' + [guid]::NewGuid().ToString('N'))
-[void](New-Item -ItemType Directory -Path $directory)
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'table-roundtrip'
+$FbeExe = $isolation.Exe
+$directory = $isolation.Root
 $fixture = Join-Path $directory 'table.fb2'
 $report = Join-Path $directory 'report.tsv'
 $reopenReport = Join-Path $directory 'reopen.tsv'
@@ -57,10 +59,10 @@ try {
 '@ | Set-Content -LiteralPath $fixture -Encoding utf8
     }
 
-    $arguments = @('-b', $report, $fixture)
-    $process = Start-Process -FilePath $FbeExe -ArgumentList $arguments -PassThru
-    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE не завершил table round-trip benchmark.' }
-    if ($process.ExitCode -ne 0) { throw "FBE вернул код $($process.ExitCode) для table round-trip." }
+    $arguments = @('--portable', '-b', $report, $fixture)
+    $process = Start-Process -FilePath $FbeExe -WorkingDirectory $isolation.Runtime -ArgumentList $arguments -WindowStyle Hidden -PassThru
+    $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'table-roundtrip' -Report $report -TimeoutSeconds $TimeoutSeconds
+    if ($exitCode -ne 0) { throw "FBE вернул код $exitCode для table round-trip." }
     if (-not (Test-Path -LiteralPath $report)) { throw 'FBE не записал отчёт table round-trip.' }
 
     $rows = Import-Csv -LiteralPath $report -Delimiter "`t"
@@ -85,9 +87,9 @@ try {
     if ($null -eq $cell -or $cell.GetAttribute('colspan') -ne '2' -or $cell.GetAttribute('rowspan') -ne '1' -or $cell.GetAttribute('align') -ne 'right' -or $cell.GetAttribute('valign') -ne 'bottom' -or $cell.InnerXml -notmatch 'emphasis|a') { throw 'Save изменил cell attributes or inline markup.' }
     }
 
-    $reopen = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $reopenReport, $fixture) -PassThru
-    if (-not $reopen.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $reopen.Id -Force; throw 'FBE не завершил повторное открытие таблицы.' }
-    if ($reopen.ExitCode -ne 0) { throw "FBE вернул код $($reopen.ExitCode) при повторном открытии таблицы." }
+    $reopen = Start-Process -FilePath $FbeExe -WorkingDirectory $isolation.Runtime -ArgumentList @('--portable', '-b', $reopenReport, $fixture) -WindowStyle Hidden -PassThru
+    $exitCode = Wait-IsolatedFbeProcess -Process $reopen -Isolation $isolation -Scenario 'table-roundtrip-reopen' -Report $reopenReport -TimeoutSeconds $TimeoutSeconds
+    if ($exitCode -ne 0) { throw "FBE вернул код $exitCode при повторном открытии таблицы." }
     if (-not (Test-Path -LiteralPath $reopenReport)) { throw 'FBE не записал отчёт повторного открытия таблицы.' }
     $reopenRows = @(Import-Csv -LiteralPath $reopenReport -Delimiter "`t" | Where-Object { $_.phase -eq 'save-1-complete' })
     if ($reopenRows.Count -ne 1 -or [int]$reopenRows[0].table_count -ne 1 -or [int]$reopenRows[0].tr_count -ne $(if ($Huge) { 356 } else { 2 }) -or [int]$reopenRows[0].td_count -ne $(if ($Huge) { 4984 } else { 4 }) -or [int]$reopenRows[0].th_count -ne $(if ($Huge) { 0 } else { 1 })) { throw 'Повторное открытие изменило структуру таблицы.' }
@@ -109,6 +111,5 @@ try {
 finally {
 	if ($null -eq $previousTestMode) { Remove-Item Env:FBE_NEXT_TEST_MODE -ErrorAction SilentlyContinue } else { $env:FBE_NEXT_TEST_MODE = $previousTestMode }
 	if ($null -eq $previousScenario) { Remove-Item Env:FBE_NEXT_TEST_SCENARIO -ErrorAction SilentlyContinue } else { $env:FBE_NEXT_TEST_SCENARIO = $previousScenario }
-    if ($completed -or -not $KeepArtifacts) { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
-    else { Write-Host "Артефакты незавершённого TABLE test: $directory" }
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $completed -KeepArtifacts:($KeepArtifacts -and -not $completed) -PreserveContents
 }

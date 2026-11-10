@@ -3,13 +3,19 @@
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 30, [string]$FixtureId)
 $ErrorActionPreference='Stop'; $FbeExe=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe)){throw "Не найден FBE: $FbeExe"}
-function Invoke-Fbe([string[]]$Arguments,[string]$Name) { $p=Start-Process -FilePath $FbeExe -ArgumentList $Arguments -PassThru; if(-not $p.WaitForExit($TimeoutSeconds*1000)){Stop-Process $p -Force;throw "FBE не завершил $Name"};if($p.ExitCode){throw "FBE вернул $($p.ExitCode): $Name"} }
+function Invoke-Fbe([string[]]$Arguments,[string]$Name) {
+ $p=Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList (@('--portable') + $Arguments) -WindowStyle Hidden -PassThru
+ $code=Wait-IsolatedFbeProcess -Process $p -Isolation $isolation -Scenario $Name -Report $report -TimeoutSeconds $TimeoutSeconds
+ if($code -ne 0){throw "FBE вернул ${code}: $Name"}
+}
 $viewPath = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..')) 'src\fbe\FBEview.cpp'
 $view = Get-Content -Raw -LiteralPath $viewPath
 $route = 'if \(oe && oe->keyCode == VK_TAB && MoveTableCell\(oe->shiftKey == VARIANT_TRUE\)\)\s*\{\s*oe->cancelBubble = VARIANT_TRUE;\s*oe->returnValue = VARIANT_FALSE;\s*return VARIANT_FALSE;\s*\}'
 if ($view -notmatch $route) { throw 'OnKeyDown no longer routes VK_TAB / Shift+Tab through successful MoveTableCell navigation.' }
 if ($view -notmatch 'return VARIANT_TRUE;\s*\}') { throw 'OnKeyDown no longer leaves unsuccessful Tab navigation to MSHTML.' }
-$dir=Join-Path ([IO.Path]::GetTempPath()) ('fbe-table-tab-'+[guid]::NewGuid().ToString('N')); New-Item -ItemType Directory -Path $dir | Out-Null
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'table-tab'
+$dir=$isolation.Root; $passed=$false
 try {
  $cases=@(
   @{id='plain'; table='<tr><td>A</td><td>B</td></tr><tr><td>C</td><td>D</td></tr>'; rows=2},
@@ -30,5 +36,6 @@ try {
   if($forward.position -notmatch ('^' + $case.rows + ',0$')){throw "Tab did not select the first logical cell of new row: $($case.id) / $($forward.position)"}
   if($reverse.before -ne $reverse.after){throw "Shift+Tab from first cell changed table structure: $($case.id)"};if($reverse.position -ne '0,0'){throw "Shift+Tab did not remain at first cell: $($case.id) / $($reverse.position)"}
  }
+ $passed=$true
  Write-Host 'Production Tab / Shift+Tab table navigation passed.'
-} finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -PreserveContents }
