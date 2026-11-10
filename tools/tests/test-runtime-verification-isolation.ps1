@@ -70,22 +70,36 @@ try {
     $newRoots = @(Get-ChildItem -LiteralPath ([IO.Path]::GetTempPath()) -Directory -Filter 'fr-*' | Where-Object { $_.FullName -notin $before })
     if (!$creationFailed -or $newRoots.Count) { throw 'A failed runtime creation must remove its partial copy.' }
     $env:FBE_RUNTIME_FAILURE_ARTIFACTS = $testArtifacts
-    $owned = New-IsolatedFbeScratchDirectory -Name 'owned-process'
-    $ownedExe = Join-Path $owned.Root 'owned-cmd.exe'
-    Copy-Item -LiteralPath $env:ComSpec -Destination $ownedExe
-    $ownedChild = Start-Process -FilePath $ownedExe -ArgumentList '/c ping -n 30 127.0.0.1 >nul' -WindowStyle Hidden -PassThru
+    $savedProcessPath = [Environment]::GetEnvironmentVariable('Path', 'Process')
     try {
-        $detected = $false
-        for ($i = 0; $i -lt 30 -and -not $detected; $i++) { $detected = @(Get-IsolatedRuntimeProcesses $owned | Where-Object ProcessId -eq $ownedChild.Id).Count -gt 0; if (-not $detected) { Start-Sleep -Milliseconds 100 } }
-        if (-not $detected) { throw 'The isolated non-FBE child was not detected.' }
-        $reported = $false
-        try { Complete-IsolatedFbeRuntime -Isolation $owned -Passed $true } catch { $reported = $_.Exception.Message -like 'Disposable runtime leaked process(es):*' }
-        $ownedChild.Refresh()
-        if (-not $reported -or -not $ownedChild.HasExited -or (Test-Path -LiteralPath $owned.Root)) { throw 'The isolated child must be stopped and the leaked-process failure reported.' }
-    } finally {
-        if (-not $ownedChild.HasExited) { Stop-Process -Id $ownedChild.Id -Force -ErrorAction SilentlyContinue; $ownedChild.WaitForExit() }
-        if (Test-Path -LiteralPath $owned.Root) { Complete-IsolatedFbeRuntime -Isolation $owned -Passed $true }
-    }
+        foreach ($restrictedPath in @($false, $true)) {
+            # cmd searches PATH for bare command names. The release gate may
+            # run with a different PATH, so use the system binary explicitly.
+            if ($restrictedPath) { [Environment]::SetEnvironmentVariable('Path', (Join-Path $testArtifacts 'no-path'), 'Process') }
+            $owned = New-IsolatedFbeScratchDirectory -Name 'owned-process'
+            $ownedExe = Join-Path $owned.Root 'owned-cmd.exe'
+            Copy-Item -LiteralPath $env:ComSpec -Destination $ownedExe
+            $ping = Join-Path $env:SystemRoot 'System32\ping.exe'
+            $commandLine = '/d /c ""' + $ping + '" -n 30 127.0.0.1 >nul"'
+            $ownedChild = Start-Process -FilePath $ownedExe -ArgumentList $commandLine -WindowStyle Hidden -PassThru
+            try {
+                $detected = $false
+                for ($i = 0; $i -lt 30 -and -not $detected; $i++) { $detected = @(Get-IsolatedRuntimeProcesses $owned | Where-Object ProcessId -eq $ownedChild.Id).Count -gt 0; if (-not $detected) { Start-Sleep -Milliseconds 100 } }
+                if (-not $detected) {
+                    $ownedChild.Refresh()
+                    $state = if ($ownedChild.HasExited) { "exited=$($ownedChild.ExitCode)" } else { 'still-running' }
+                    throw "The isolated non-FBE child was not detected: $state; restricted_path=$restrictedPath."
+                }
+                $reported = $false
+                try { Complete-IsolatedFbeRuntime -Isolation $owned -Passed $true } catch { $reported = $_.Exception.Message -like 'Disposable runtime leaked process(es):*' }
+                $ownedChild.Refresh()
+                if (-not $reported -or -not $ownedChild.HasExited -or (Test-Path -LiteralPath $owned.Root)) { throw 'The isolated child must be stopped and the leaked-process failure reported.' }
+            } finally {
+                if (-not $ownedChild.HasExited) { Stop-Process -Id $ownedChild.Id -Force -ErrorAction SilentlyContinue; $ownedChild.WaitForExit() }
+                if (Test-Path -LiteralPath $owned.Root) { Complete-IsolatedFbeRuntime -Isolation $owned -Passed $true }
+            }
+        }
+    } finally { [Environment]::SetEnvironmentVariable('Path', $savedProcessPath, 'Process') }
     $bounded = New-IsolatedFbeScratchDirectory -Name 'bounded'
     New-Item -ItemType Directory -Path (Join-Path $bounded.Root 'nested') | Out-Null
     Set-Content -LiteralPath (Join-Path $bounded.Root 'nested\evidence.txt') -Value 'diagnostic'
