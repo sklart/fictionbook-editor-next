@@ -27,7 +27,7 @@ if (-not [string]::IsNullOrWhiteSpace($directory)) {
 $prefix = @'
 <?xml version="1.0" encoding="utf-8"?>
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
-  <description><title-info><genre>prose</genre><author><first-name>Benchmark</first-name><last-name>Fixture</last-name></author><book-title>FBE Source memory benchmark</book-title><annotation><p>Generated fixture.</p></annotation><coverpage><image l:href="#cover"/></coverpage><lang>en</lang></title-info><document-info><program-used>FBE Next benchmark</program-used><id>fbe-memory-fixture</id><version>1.0</version></document-info></description>
+  <description><title-info><genre>prose</genre><author><first-name>Benchmark</first-name><last-name>Fixture</last-name></author><book-title>FBE Source memory benchmark</book-title><annotation><p>Generated fixture.</p></annotation><coverpage><image l:href="#cover"/></coverpage><lang>en</lang></title-info><document-info><author><first-name>Benchmark</first-name><last-name>Fixture</last-name></author><program-used>FBE Next benchmark</program-used><date value="2026-11-10">2026-11-10</date><id>fbe-memory-fixture</id><version>1.0</version></document-info></description>
   <body>
 '@
 $suffix = @'
@@ -38,7 +38,7 @@ $suffix = @'
 '@
 $paragraphFiller = (' This generated prose stays within an ordinary FictionBook paragraph and exercises text layout, source serialization, XML lexing, wrapping, navigation, and undo history.' * 28)
 $sectionTemplate = @'
-    <section id="section-{0}"><title><p>Section {0}</p></title><epigraph><p>Generated structural epigraph.</p></epigraph><p id="p-{0}">This is generated benchmark prose with a <a l:href="#note-1">note link</a>, nested <emphasis>markup</emphasis>, and enough ordinary XML text.{1}</p><section id="nested-{0}"><title><p>Nested section {0}</p></title><p>Nested paragraph keeps realistic FictionBook structure instead of binary payload.</p></section></section>
+    <section id="section-{0}"><title><p>Section {0}</p></title><epigraph><p>Generated structural epigraph.</p></epigraph><section><p id="p-{0}">This is generated benchmark prose with a <a l:href="#note-1">note link</a>, nested <emphasis>markup</emphasis>, and enough ordinary XML text.{1}</p></section><section id="nested-{0}"><title><p>Nested section {0}</p></title><p>Nested paragraph keeps realistic FictionBook structure instead of binary payload.</p></section></section>
 '@
 
 $encoding = [Text.UTF8Encoding]::new($false)
