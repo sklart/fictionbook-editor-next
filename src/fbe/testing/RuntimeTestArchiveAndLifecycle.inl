@@ -2885,6 +2885,7 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 				: wcscmp(citePoemFault, L"before-selection") == 0 ? FbeStructure::CitePoemFailurePoint::BeforeSelection
 				: FbeStructure::CitePoemFailurePoint::BeforeMutation)
 			: FbeStructure::CitePoemFailurePoint::None;
+		bool unsupportedWarningObserved = false;
 		auto apply = [&](bool checkOnly) -> FbeStructure::StructuralOperationResult {
 			// The command route deliberately goes through CMainFrame.  The check
 			// remains a direct production preflight; WM_COMMAND itself only has the
@@ -2893,7 +2894,32 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 				const CString commandBefore((const wchar_t*)body->innerHTML);
 				m_doc->m_body.SetFocus();
 				::SetFocus(m_doc->m_body);
+				const bool inspectWarning = wcscmp(traceCase, L"cite-incomplete-message") == 0;
+				std::atomic<bool> done(false), observed(false);
+				std::thread closer;
+				if (inspectWarning) closer = std::thread([&]() {
+					const ULONGLONG deadline = ::GetTickCount64() + 5000;
+					while (!done.load() && ::GetTickCount64() < deadline) {
+						::EnumWindows([](HWND window, LPARAM arg) -> BOOL {
+							DWORD pid = 0; ::GetWindowThreadProcessId(window, &pid);
+							if (pid != ::GetCurrentProcessId() || !::IsWindowVisible(window)) return TRUE;
+							wchar_t type[80] = {}; ::GetClassNameW(window, type, _countof(type));
+							if (wcscmp(type, L"#32770") && wcscmp(type, L"FBEThemedMessageDialog")) return TRUE;
+							HWND button = ::GetDlgItem(window, IDOK);
+							if (!button) button = ::GetDlgItem(window, IDCANCEL);
+							if (!button) return TRUE;
+							wchar_t title[128] = {}; ::GetWindowTextW(window, title, _countof(title));
+							if (wcscmp(title, L"FictionBook Editor")) return TRUE;
+							reinterpret_cast<std::atomic<bool>*>(arg)->store(true);
+							::PostMessageW(button, BM_CLICK, 0, 0); return FALSE;
+						}, reinterpret_cast<LPARAM>(&observed));
+						if (observed.load()) break;
+						::Sleep(10);
+					}
+				});
 				SendMessage(WM_COMMAND, MAKEWPARAM(cite ? ID_EDIT_INS_CITE : ID_EDIT_INS_POEM, 0), 0);
+				done.store(true); if (closer.joinable()) closer.join();
+				unsupportedWarningObserved = observed.load();
 				return commandBefore != CString((const wchar_t*)body->innerHTML)
 					? FbeStructure::StructuralOperationResult::Applied()
 					: FbeStructure::StructuralOperationResult::NotApplicable();
@@ -2903,6 +2929,7 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 			return cite ? extracted.InsertCite(checkOnly, failurePoint) : extracted.InsertPoem(checkOnly, failurePoint);
 		};
 		const FbeStructure::StructuralOperationResult checkResult = apply(true);
+		const bool warningCommandEnabled = wcscmp(traceCase, L"cite-incomplete-message") != 0 || m_doc->m_body.InsertCite(true);
 		MSHTML::IHTMLTxtRangePtr selectionAfterCheck(m_doc->m_body.Document()->selection->createRange());
 		const bool checkDomUnchanged = before == CString((const wchar_t*)body->innerHTML);
 		const bool checkSelectionUnchanged = selectionAfterCheck &&
@@ -2988,9 +3015,11 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 				range->compareEndPoints(L"EndToEnd", selectionAfterApply) == 0;
 			const bool applyDomUnchanged = before == after;
 			const bool applyDirtyUnchanged = dirtyBefore == m_doc->DocChanged();
-			const bool genuineNotApplicable = applyResult.status == FbeStructure::StructuralOperationStatus::NotApplicable &&
+			const bool genuineNotApplicable = (applyResult.status == FbeStructure::StructuralOperationStatus::NotApplicable ||
+				applyResult.status == FbeStructure::StructuralOperationStatus::UnsupportedRange) &&
 				checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged &&
-				applyDomUnchanged && applySelectionUnchanged && applyDirtyUnchanged;
+				applyDomUnchanged && applySelectionUnchanged && applyDirtyUnchanged &&
+				(wcscmp(traceCase, L"cite-incomplete-message") != 0 || (unsupportedWarningObserved && warningCommandEnabled));
 			const char* reason = genuineNotApplicable ? "not-applicable" : "operation-failed";
 			CStringA row;
 			row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t0\t0\t0\t%ld\t0\t0\t0\t-\t0\t0\t0\t0\t0\t0\t0\t%s\t%s\t%s\t0x%08lX\t%d\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, beforeParagraphs, reason, checkResult.IsApplied() ? "applied" : checkResult.HasTechnicalFailure() ? "failed" : "not-applicable", applyResult.IsApplied() ? "applied" : applyResult.HasTechnicalFailure() ? "failed" : "not-applicable", static_cast<unsigned long>(applyResult.error), applyResult.documentChanged ? 1 : 0);

@@ -9,6 +9,7 @@ namespace FbeStructure {
 enum class StructuralOperationStatus
 {
 	NotApplicable,
+	UnsupportedRange,
 	Applied,
 	Failed,
 };
@@ -23,9 +24,10 @@ struct StructuralOperationResult
 	bool documentChanged;
 
 	static StructuralOperationResult NotApplicable() { return { StructuralOperationStatus::NotApplicable, S_OK, false }; }
+	static StructuralOperationResult UnsupportedRange() { return { StructuralOperationStatus::UnsupportedRange, S_OK, false }; }
 	static StructuralOperationResult Applied(HRESULT warning = S_OK) { return { StructuralOperationStatus::Applied, warning, true }; }
 	static StructuralOperationResult Failed(HRESULT error, bool documentChanged = false) { return { StructuralOperationStatus::Failed, error, documentChanged }; }
-	bool IsApplicable() const { return status != StructuralOperationStatus::NotApplicable; }
+	bool IsApplicable() const { return status == StructuralOperationStatus::Applied || status == StructuralOperationStatus::Failed; }
 	bool IsApplied() const { return status == StructuralOperationStatus::Applied; }
 	bool HasTechnicalFailure() const { return status == StructuralOperationStatus::Failed; }
 };

@@ -1424,11 +1424,19 @@ static void FixupLinks(MSHTML::IHTMLDOMNode *dom) {
 	}
 }
 
+static void WarnUnsupportedStructuralRange(HWND owner)
+{
+	U::MessageBox(owner, FbeLoadRuntimeStringByKey(L"fbe.structure.unsupported_range",
+		L"This selection cannot be changed safely. Select whole paragraphs and the entire poem. The document was not changed."),
+		L"FictionBook Editor", MB_OK | MB_ICONWARNING);
+}
+
 bool CFBEView::InsertPoem(bool fCheck)
 {
 	const FbeStructure::StructuralOperationResult result = InsertPoemResult(fCheck);
-	if (!fCheck && FAILED(result.error)) U::ReportError(result.error);
-	return result.IsApplied();
+	if (!fCheck && result.status == FbeStructure::StructuralOperationStatus::UnsupportedRange) WarnUnsupportedStructuralRange(m_hWnd);
+	else if (!fCheck && FAILED(result.error)) U::ReportError(result.error);
+	return result.IsApplied() || (fCheck && result.status == FbeStructure::StructuralOperationStatus::UnsupportedRange);
 } // CFBEView::InsertPoem
 
 FbeStructure::StructuralOperationResult CFBEView::InsertPoemResult(bool fCheck, FbeStructure::CitePoemFailurePoint failurePoint)
@@ -1440,8 +1448,9 @@ FbeStructure::StructuralOperationResult CFBEView::InsertPoemResult(bool fCheck, 
 bool CFBEView::InsertCite(bool fCheck)
 {
 	const FbeStructure::StructuralOperationResult result = InsertCiteResult(fCheck);
-	if (!fCheck && FAILED(result.error)) U::ReportError(result.error);
-	return result.IsApplied();
+	if (!fCheck && result.status == FbeStructure::StructuralOperationStatus::UnsupportedRange) WarnUnsupportedStructuralRange(m_hWnd);
+	else if (!fCheck && FAILED(result.error)) U::ReportError(result.error);
+	return result.IsApplied() || (fCheck && result.status == FbeStructure::StructuralOperationStatus::UnsupportedRange);
 } // CFBEView::InsertCite
 
 FbeStructure::StructuralOperationResult CFBEView::InsertCiteResult(bool fCheck, FbeStructure::CitePoemFailurePoint failurePoint)

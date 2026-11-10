@@ -73,10 +73,10 @@ StructuralOperationResult BodyStructuralEditor::InsertCite(bool checkOnly, CiteP
 			MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(startPoem)->getElementsByTagName(L"P"));
 			MSHTML::IHTMLElementPtr first = paragraphs && paragraphs->length ? MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(0L), _variant_t())) : nullptr;
 			MSHTML::IHTMLElementPtr last = paragraphs && paragraphs->length ? MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(paragraphs->length - 1), _variant_t())) : nullptr;
-			if (!first || ancestor(start->parentElement(), L"P", nullptr) != first || ancestor(finishRange->parentElement(), L"P", nullptr) != last) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
+			if (!first || ancestor(start->parentElement(), L"P", nullptr) != first || ancestor(finishRange->parentElement(), L"P", nullptr) != last) { After(L"preflight-rejected"); return StructuralOperationResult::UnsupportedRange(); }
 			parent = startPoem->parentElement;
 			beginElement = endElement = startPoem;
-		} else if (FindParentDiv(start->parentElement()) != parent) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
+		} else if (FindParentDiv(start->parentElement()) != parent) { After(L"preflight-rejected"); return startPoem ? StructuralOperationResult::UnsupportedRange() : StructuralOperationResult::NotApplicable(); }
 		if (!parent) return StructuralOperationResult::NotApplicable();
 		_bstr_t cls(parent->className);
 		if (U::scmp(cls, L"section") && U::scmp(cls, L"epigraph") && U::scmp(cls, L"annotation") && U::scmp(cls, L"history")) return StructuralOperationResult::NotApplicable();
@@ -91,9 +91,9 @@ StructuralOperationResult BodyStructuralEditor::InsertCite(bool checkOnly, CiteP
 		if (endElement->parentElement != parent) {
 			MSHTML::IHTMLElementPtr block = endElement;
 			while (block && block->parentElement != parent) block = block->parentElement;
-			if (!block || U::scmp(block->tagName, L"DIV") || U::scmp(block->className, L"poem")) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
+			if (!block || U::scmp(block->tagName, L"DIV") || U::scmp(block->className, L"poem")) { After(L"preflight-rejected"); return StructuralOperationResult::UnsupportedRange(); }
 			MSHTML::IHTMLElementCollectionPtr verses(MSHTML::IHTMLElement2Ptr(block)->getElementsByTagName(L"P"));
-			if (!verses || !verses->length || MSHTML::IHTMLElementPtr(verses->item(_variant_t(verses->length - 1), _variant_t())) != endElement) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
+			if (!verses || !verses->length || MSHTML::IHTMLElementPtr(verses->item(_variant_t(verses->length - 1), _variant_t())) != endElement) { After(L"preflight-rejected"); return StructuralOperationResult::UnsupportedRange(); }
 			endElement = block;
 		}
 		MSHTML::IHTMLDOMNodePtr scan(beginElement), finish(endElement);
@@ -155,7 +155,7 @@ StructuralOperationResult BodyStructuralEditor::InsertPoem(bool checkOnly, CiteP
 		Before(L"expand"); MSHTML::IHTMLElementPtr beginElement, endElement; const HRESULT expandHr = ExpandRangeToParagraphs(range, beginElement, endElement); if (expandHr == S_FALSE) return StructuralOperationResult::NotApplicable(); if (FAILED(expandHr)) return StructuralOperationResult::Failed(expandHr); After(L"expand");
 		// A poem cannot contain another poem. Never enter the sibling removal
 		// loop when either boundary belongs to a nested container.
-		if (beginElement->parentElement != parent || endElement->parentElement != parent) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
+		if (beginElement->parentElement != parent || endElement->parentElement != parent) { After(L"preflight-rejected"); return StructuralOperationResult::UnsupportedRange(); }
 		MSHTML::IHTMLDOMNodePtr scan(beginElement), finish(endElement);
 		while (scan && scan != finish) scan = scan->nextSibling;
 		if (!scan) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }

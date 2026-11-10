@@ -38,6 +38,7 @@ try {
     $null = New-IsolatedFbeSettingsSeed -Isolation $isolation -StartupScriptsDirectory (Join-Path $isolation.Root 'startup-scripts')
     $cases = @(
         @{ id = 'cite-one'; operation = 'cite'; paragraphs = @('Text') },
+        @{ id = 'cite-incomplete-message'; operation = 'cite'; target = 'poem'; selection = 'poem-first-only'; route = 'command'; expectRejected = $true; body = '<section><p>Before</p><poem id="poem-id"><stanza><v>First line</v><v>Second line</v></stanza></poem><p>Outside after</p></section>' },
         @{ id = 'cite-paragraph-poem-save'; operation = 'cite'; selection = 'end-in-poem'; route = 'wrapper'; saveApplied = $true; body = '<section><p>Quote text</p><poem id="poem-id"><stanza><v><strong>First line</strong></v><v><a l:href="#anchor">Second line</a></v></stanza></poem><p id="anchor">Outside after</p></section>' },
         @{ id = 'cite-existing-poem-save'; operation = 'cite'; target = 'poem'; selection = 'poem-only'; route = 'wrapper'; saveApplied = $true; body = '<section><p>Before</p><poem id="poem-id"><stanza><v><strong>First line</strong></v><v><a l:href="#anchor">Second line</a></v></stanza></poem><p id="anchor">Outside after</p></section>' },
         @{ id = 'cite-existing-poem-incomplete'; operation = 'cite'; target = 'poem'; selection = 'poem-first-only'; route = 'wrapper'; expectRejected = $true; body = '<section><p>Before</p><poem id="poem-id"><stanza><v>First line</v><v>Second line</v></stanza></poem><p>Outside after</p></section>' },
