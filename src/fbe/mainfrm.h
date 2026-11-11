@@ -756,6 +756,10 @@ public:
 	bool CompleteToolbarQuickCustomize(HWND toolbar, POINT point);
 	void CancelToolbarQuickCustomize(HWND toolbar = NULL);
 	bool ApplyToolbarQuickCustomizeItems(HWND toolbar, const std::vector<PortableToolbarItem>& items);
+	bool BeginScriptToolbarAltRemove(HWND toolbar, POINT point);
+	void TrackScriptToolbarAltRemove(HWND toolbar, POINT point);
+	void CancelScriptToolbarAltRemove(HWND toolbar = NULL);
+	void CompleteScriptToolbarAltRemove(HWND toolbar, POINT point);
 
 
   int m_selBandID;
@@ -765,6 +769,12 @@ public:
 	POINT m_quickToolbarStart;
 	bool m_quickToolbarSourceSeparator;
 	bool m_quickToolbarDragging;
+	HWND m_altRemoveToolbar = NULL;
+	int m_altRemoveIndex = -1;
+	int m_altRemoveCommand = 0;
+	POINT m_altRemoveStart = {};
+	bool m_altRemoveDragging = false;
+	bool m_altRemoveImage = false;
 
   void ApplyRuntimeToolbarMenuLocalization(HMENU menu)
   {

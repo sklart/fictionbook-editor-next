@@ -4024,6 +4024,58 @@ void CMainFrame::RunPortableStateTestScenario()
 				toolbar.items[1].scriptUid == uidB && toolbar.items[2].separator && toolbar.items[3].scriptUid == uidC;
 		}
 		dragPersisted = dragPersisted && foundDrag;
+		std::vector<ScriptToolbarDefinition> beforeMissing, withMissing;
+		for(const auto& panel : m_scriptToolbars.Items()) beforeMissing.push_back(panel.definition);
+		withMissing = beforeMissing;
+		PortableToolbarItem missing = {}; missing.scriptUid = L"unavailable-alt-test"; missing.relativePath = L"missing/script.js"; missing.scriptName = L"Unavailable";
+		for(auto& panel : withMissing) if(panel.id == dragTarget.id) panel.items.push_back(missing);
+		const bool missingPrepared = ApplyScriptToolbarDefinitions(beforeMissing, withMissing);
+		dragRuntime = m_scriptToolbars.Find(dragTarget.id);
+		bool shiftMarker = false, shiftMarkerCleared = false, altClickSafe = false, altInsideSafe = false, altEscapeSafe = false, altCaptureSafe = false, altReleasedSafe = false, altDelete = false, altPersisted = false, altMarker = false, altImage = false;
+		BYTE oldKeys[256] = {}, altKeys[256] = {};
+		if(dragPersisted && missingPrepared && dragRuntime != NULL && ::GetKeyboardState(oldKeys)) {
+			memcpy(altKeys, oldKeys, sizeof(altKeys)); altKeys[VK_MENU] |= 0x80;
+			::SetKeyboardState(altKeys);
+			const HWND toolbar = dragRuntime->window;
+			RECT first = {}, last = {}, client = {};
+			const bool geometry = ::SendMessage(toolbar, TB_GETITEMRECT, 0, reinterpret_cast<LPARAM>(&first)) &&
+				::SendMessage(toolbar, TB_GETITEMRECT, 3, reinterpret_cast<LPARAM>(&last)) && ::GetClientRect(toolbar, &client);
+			const POINT start = { (first.left + first.right) / 2, (first.top + first.bottom) / 2 };
+			const POINT inside = { (last.left + last.right) / 2, (last.top + last.bottom) / 2 };
+			const POINT beyond = { client.right + 40, client.bottom + 40 };
+			if(geometry) {
+				::SetKeyboardState(oldKeys);
+				::SendMessage(toolbar, WM_LBUTTONDOWN, MK_LBUTTON | MK_SHIFT, MAKELPARAM(start.x, start.y));
+				::SendMessage(toolbar, WM_MOUSEMOVE, MK_LBUTTON | MK_SHIFT, MAKELPARAM(last.right - 1, inside.y));
+				TBINSERTMARK insertion = {}; insertion.iButton = -2;
+				::SendMessage(toolbar, TB_GETINSERTMARK, 0, reinterpret_cast<LPARAM>(&insertion));
+				shiftMarker = m_quickToolbarDragging && insertion.iButton == 3 && (insertion.dwFlags & TBIMHT_AFTER) != 0;
+				::SendMessage(toolbar, WM_MOUSEMOVE, MK_LBUTTON | MK_SHIFT, MAKELPARAM(beyond.x, beyond.y));
+				::SendMessage(toolbar, TB_GETINSERTMARK, 0, reinterpret_cast<LPARAM>(&insertion));
+				shiftMarkerCleared = insertion.iButton == -1;
+				::SendMessage(toolbar, WM_LBUTTONUP, MK_SHIFT, MAKELPARAM(beyond.x, beyond.y));
+				::SetKeyboardState(altKeys);
+			}
+			auto begin = [&]() { ::SendMessage(toolbar, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(start.x, start.y)); return m_altRemoveToolbar == toolbar; };
+			auto move = [&](POINT p) { ::SendMessage(toolbar, WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(p.x, p.y)); };
+			auto release = [&](POINT p) { ::SendMessage(toolbar, WM_LBUTTONUP, 0, MAKELPARAM(p.x, p.y)); };
+			auto count = [&]() { const auto* t = m_scriptToolbars.Find(dragTarget.id); return t == NULL ? 0 : t->definition.items.size(); };
+			if(geometry && (::GetKeyState(VK_MENU) & 0x8000)) {
+				if(begin()) { release(start); altClickSafe = count() == 5 && m_altRemoveToolbar == NULL; }
+				if(begin()) { move(inside); release(inside); altInsideSafe = count() == 5 && m_altRemoveToolbar == NULL; }
+				if(begin()) { move(beyond); MSG escape = {}; escape.message = WM_KEYDOWN; escape.wParam = VK_ESCAPE; altEscapeSafe = PreTranslateMessage(&escape) && count() == 5 && m_altRemoveToolbar == NULL && ::GetCapture() != toolbar; }
+				if(begin()) { move(beyond); ::ReleaseCapture(); altCaptureSafe = count() == 5 && m_altRemoveToolbar == NULL; }
+				if(begin()) { move(beyond); ::SetKeyboardState(oldKeys); release(beyond); altReleasedSafe = count() == 5 && m_altRemoveToolbar == NULL; ::SetKeyboardState(altKeys); }
+				if(begin()) {
+					move(beyond); altMarker = m_altRemoveDragging && ::GetCursor() == ::LoadCursor(NULL, IDC_NO); altImage = m_altRemoveImage;
+					release(beyond); const auto* t = m_scriptToolbars.Find(dragTarget.id);
+					altDelete = t != NULL && t->definition.items.size() == 4 && t->definition.items[0].scriptUid == uidB && t->definition.items[1].separator && t->definition.items[2].scriptUid == uidC && t->definition.items[3].scriptUid == missing.scriptUid;
+					PortableToolbarLayout saved; if(altDelete && PortableToolbarStore::Load(saved)) for(const auto& panel : saved.scriptToolbars)
+						if(panel.id == dragTarget.id) altPersisted = panel.items.size() == 4 && panel.items[0].scriptUid == uidB && panel.items[1].separator && panel.items[2].scriptUid == uidC && panel.items[3].scriptUid == missing.scriptUid;
+				}
+			}
+			CancelScriptToolbarAltRemove(); ::SetKeyboardState(oldKeys);
+		}
 		const ScriptToolbarRuntime* emptyRuntime = m_scriptToolbars.Find(emptyTarget.id);
 		RECT emptyRect = {};
 		const bool emptyGeometry = emptyRuntime != NULL && ::IsWindowVisible(emptyRuntime->window) &&
@@ -4047,9 +4099,11 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool removeAction = tree.SelectedScriptsAreAllFavorites();
 		const bool favoritesRemoved = removeAction && tree.ExecuteScriptPopupCommand(NavigationPopupToggleFavorite) &&
 			!tree.IsFavoriteScript(uidA) && !tree.IsFavoriteScript(uidB) && !tree.IsFavoriteScript(uidC);
-		const bool passed = initialized && folderNameExcluded && filenameMatch && threeSelected && rightClickPreserves && keyboardContextPreserves && unsafeDisabled && favoritesAdded && mixedFavoriteAdd && dedicatedImage && iconLightDark && virtualNodesExcluded && duplicateRepresentation && singleMenuDirect && multiMenuNamed && invalidRejected && toolbarOrder && noDuplicates && toolbarPersisted && insertedAtPosition && insertedPersisted && hiddenDropRejected && dragMark && dragSwitched && dragCanceled && dragCaptureCanceled && dragOutsideCanceled && dragDropped && dragPersisted && emptyGeometry && emptyMark && emptyMarkStable && emptyMarkCanceled && emptyDrop && favoritesRemoved;
+		const bool passed = initialized && folderNameExcluded && filenameMatch && threeSelected && rightClickPreserves && keyboardContextPreserves && unsafeDisabled && favoritesAdded && mixedFavoriteAdd && dedicatedImage && iconLightDark && virtualNodesExcluded && duplicateRepresentation && singleMenuDirect && multiMenuNamed && invalidRejected && toolbarOrder && noDuplicates && toolbarPersisted && insertedAtPosition && insertedPersisted && hiddenDropRejected && dragMark && dragSwitched && dragCanceled && dragCaptureCanceled && dragOutsideCanceled && dragDropped && dragPersisted && shiftMarker && shiftMarkerCleared && altClickSafe && altInsideSafe && altEscapeSafe && altCaptureSafe && altReleasedSafe && altDelete && altPersisted && altMarker && altImage && emptyGeometry && emptyMark && emptyMarkStable && emptyMarkCanceled && emptyDrop && favoritesRemoved;
 		CStringA dragReport; dragReport.Format("drag-geometry=%d\ndrag-hidden-rejected=%d\ndrag-mark=%d\ndrag-switched=%d\ndrag-canceled=%d\ndrag-capture-canceled=%d\ndrag-outside-canceled=%d\ndrag-dropped=%d\ndrag-persisted=%d\n", dragGeometry, hiddenDropRejected, dragMark, dragSwitched, dragCanceled, dragCaptureCanceled, dragOutsideCanceled, dragDropped, dragPersisted);
 		CStringA emptyReport; emptyReport.Format("drag-empty-geometry=%d\ndrag-empty-mark=%d\ndrag-empty-mark-stable=%d\ndrag-empty-canceled=%d\ndrag-empty-drop=%d\n", emptyGeometry, emptyMark, emptyMarkStable, emptyMarkCanceled, emptyDrop); dragReport += emptyReport;
+		dragReport.AppendFormat("alt-click-safe=%d\nalt-inside-safe=%d\nalt-escape-safe=%d\nalt-capture-safe=%d\nalt-released-safe=%d\nalt-delete=%d\nalt-persisted=%d\nalt-marker=%d\nalt-image=%d\n", altClickSafe, altInsideSafe, altEscapeSafe, altCaptureSafe, altReleasedSafe, altDelete, altPersisted, altMarker, altImage);
+		dragReport.AppendFormat("shift-marker=%d\nshift-marker-cleared=%d\n", shiftMarker, shiftMarkerCleared);
 		CStringA report; report.Format("phase=navigation-scripts-multiselect\nfolder-name-excluded=%d\nfilename-match=%d\nthree-selected=%d\nright-click-preserves=%d\nkeyboard-context-preserves=%d\nunsafe-disabled=%d\nfavorites-added=%d\nmixed-favorite-add=%d\ndedicated-image=%d\nicon-light-dark=%d\nvirtual-nodes-excluded=%d\nduplicate-representation=%d\nsingle-menu-direct=%d\nmulti-menu-named=%d\ninvalid-rejected=%d\ntoolbar-order=%d\nno-duplicates=%d\ntoolbar-persisted=%d\ninsert-position=%d\ninsert-persisted=%d\nremove-action=%d\nfavorites-removed=%d\nresult=%s\n",
 			folderNameExcluded, filenameMatch, threeSelected, rightClickPreserves, keyboardContextPreserves, unsafeDisabled, favoritesAdded, mixedFavoriteAdd, dedicatedImage, iconLightDark, virtualNodesExcluded, duplicateRepresentation, singleMenuDirect, multiMenuNamed, invalidRejected, toolbarOrder, noDuplicates, toolbarPersisted, insertedAtPosition, insertedPersisted, removeAction, favoritesRemoved, passed ? "pass" : "fail");
 		report += dragReport; WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;

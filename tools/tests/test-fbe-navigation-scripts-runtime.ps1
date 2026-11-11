@@ -1,4 +1,4 @@
-﻿<# Exercises the navigation Scripts mode against a real FBE process and a
+<# Exercises the navigation Scripts mode against a real FBE process and a
    nested user-script fixture. #>
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$FbeExe, [ValidateRange(30, 300)][int]$TimeoutSeconds = 120)
@@ -81,13 +81,15 @@ try {
 		foreach($path in @('A.js', 'B.js', 'C.js', 'Иллюстрации\Move image.js', 'Иллюстрации\Captions.js')) {
 			[IO.File]::WriteAllText((Join-Path $scripts $path), "function Run() {}`r`n", [Text.UTF8Encoding]::new($false))
 		}
+		Copy-Item -LiteralPath (Join-Path $repoRoot 'src\export-docx\res\ExportDOCX.ico') -Destination (Join-Path $scripts 'A.ico')
 		$env:FBE_NEXT_TEST_SCENARIO = 'navigation-scripts-multiselect-runtime'
 		$process = Start-Process -FilePath $FbeExe -WorkingDirectory $exeDirectory -ArgumentList @('--portable', $document) -PassThru
 		if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Navigation scripts multiselect runtime test timed out.' }
 		$text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
-		$required = @('folder-name-excluded','filename-match','three-selected','right-click-preserves','keyboard-context-preserves','unsafe-disabled','favorites-added','mixed-favorite-add','dedicated-image','icon-light-dark','virtual-nodes-excluded','duplicate-representation','single-menu-direct','multi-menu-named','invalid-rejected','toolbar-order','no-duplicates','toolbar-persisted','insert-position','insert-persisted','drag-geometry','drag-hidden-rejected','drag-mark','drag-switched','drag-canceled','drag-capture-canceled','drag-outside-canceled','drag-dropped','drag-persisted','drag-empty-geometry','drag-empty-mark','drag-empty-mark-stable','drag-empty-canceled','drag-empty-drop','remove-action','favorites-removed')
+		$required = @('folder-name-excluded','filename-match','three-selected','right-click-preserves','keyboard-context-preserves','unsafe-disabled','favorites-added','mixed-favorite-add','dedicated-image','icon-light-dark','virtual-nodes-excluded','duplicate-representation','single-menu-direct','multi-menu-named','invalid-rejected','toolbar-order','no-duplicates','toolbar-persisted','insert-position','insert-persisted','drag-geometry','drag-hidden-rejected','drag-mark','drag-switched','drag-canceled','drag-capture-canceled','drag-outside-canceled','drag-dropped','drag-persisted','shift-marker','shift-marker-cleared','alt-click-safe','alt-inside-safe','alt-escape-safe','alt-capture-safe','alt-released-safe','alt-delete','alt-persisted','alt-marker','alt-image','drag-empty-geometry','drag-empty-mark','drag-empty-mark-stable','drag-empty-canceled','drag-empty-drop','remove-action','favorites-removed')
 		if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^phase=navigation-scripts-multiselect$' -or $text -notmatch '(?m)^result=pass$') { throw "Navigation scripts multiselect runtime failed:`n$text" }
 		foreach($key in $required) { if($text -notmatch "(?m)^$key=1$") { throw "Navigation scripts multiselect runtime failed ($key):`n$text" } }
+		$text -split "`r?`n" | Where-Object { $_ -match '^(shift-marker|alt-)' } | ForEach-Object { Write-Host $_ }
 	} finally { $env:FBE_NEXT_TEST_MODE = $savedMode; $env:FBE_NEXT_TEST_SCENARIO = $savedScenario; $env:FBE_NEXT_UI_LOCALE = $savedLocale }
     Write-Host 'Navigation scripts runtime regression passed.'
 } finally {

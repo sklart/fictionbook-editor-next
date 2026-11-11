@@ -1883,6 +1883,11 @@ void  CMainFrame::GoTo(MSHTML::IHTMLElement *e) {
 // message handlers
 BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
 {
+	if(m_altRemoveToolbar != NULL &&
+		((pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_ESCAPE) ||
+		 (pMsg->message == WM_SYSKEYUP && pMsg->wParam == VK_MENU))) {
+		CancelScriptToolbarAltRemove(); return TRUE;
+	}
 	if(m_script_card_window.IsWindow() &&
 		(pMsg->hwnd == m_script_card_window.m_hWnd || ::IsChild(m_script_card_window, pMsg->hwnd)) &&
 		::IsDialogMessageW(m_script_card_window.m_hWnd, pMsg)) return TRUE;
@@ -3225,18 +3230,39 @@ bool CMainFrame::BeginToolbarQuickCustomize(HWND toolbar, POINT point)
 
 void CMainFrame::TrackToolbarQuickCustomize(HWND toolbar, POINT point)
 {
-	if(toolbar != m_quickToolbarWindow || m_quickToolbarDragging) return;
+	if(toolbar != m_quickToolbarWindow) return;
 	int horizontal = point.x - m_quickToolbarStart.x;
 	int vertical = point.y - m_quickToolbarStart.y;
 	if(horizontal < 0) horizontal = -horizontal;
 	if(vertical < 0) vertical = -vertical;
 	if(horizontal >= ::GetSystemMetrics(SM_CXDRAG) || vertical >= ::GetSystemMetrics(SM_CYDRAG))
 		m_quickToolbarDragging = true;
+	if(!m_quickToolbarDragging || m_quickToolbarSourceSeparator) return;
+	RECT bounds = {}; ::GetClientRect(toolbar, &bounds);
+	TBINSERTMARK mark = {}; mark.iButton = -1;
+	const int count = static_cast<int>(::SendMessage(toolbar, TB_BUTTONCOUNT, 0, 0));
+	if(::PtInRect(&bounds, point) && count > 0) {
+		const int target = static_cast<int>(::SendMessage(toolbar, TB_HITTEST, 0, reinterpret_cast<LPARAM>(&point)));
+		if(target < 0) { mark.iButton = count - 1; mark.dwFlags = TBIMHT_AFTER; }
+		else {
+			RECT targetRect = {};
+			if(::SendMessage(toolbar, TB_GETITEMRECT, target, reinterpret_cast<LPARAM>(&targetRect))) {
+				const int midpoint = targetRect.left + (targetRect.right - targetRect.left) / 2;
+				mark.iButton = target;
+				if(point.x > midpoint || (point.x == midpoint && target > m_quickToolbarSourceIndex)) mark.dwFlags = TBIMHT_AFTER;
+			}
+		}
+	}
+	::SendMessage(toolbar, TB_SETINSERTMARK, 0, reinterpret_cast<LPARAM>(&mark));
 }
 
 void CMainFrame::CancelToolbarQuickCustomize(HWND toolbar)
 {
 	if(toolbar != NULL && toolbar != m_quickToolbarWindow) return;
+	if(::IsWindow(m_quickToolbarWindow)) {
+		TBINSERTMARK clear = {}; clear.iButton = -1;
+		::SendMessage(m_quickToolbarWindow, TB_SETINSERTMARK, 0, reinterpret_cast<LPARAM>(&clear));
+	}
 	m_quickToolbarWindow = NULL;
 	m_quickToolbarSourceIndex = -1;
 	m_quickToolbarSourceSeparator = false;
@@ -3260,6 +3286,102 @@ bool CMainFrame::ApplyToolbarQuickCustomizeItems(HWND toolbar, const std::vector
 	if(!persisted && !ToolbarLayoutAdapter::Apply(toolbar, previous, catalog))
 		StartupTrace::Error(L"toolbar", L"TB234", L"toolbar quick-customization rollback failed");
 	return persisted;
+}
+
+bool CMainFrame::BeginScriptToolbarAltRemove(HWND toolbar, POINT point)
+{
+	if(FindScriptToolbarRuntime(toolbar) == NULL || m_altRemoveToolbar != NULL || m_quickToolbarWindow != NULL) return false;
+	const int index = static_cast<int>(::SendMessage(toolbar, TB_HITTEST, 0, reinterpret_cast<LPARAM>(&point)));
+	TBBUTTON button = {};
+	if(index < 0 || !::SendMessage(toolbar, TB_GETBUTTON, index, reinterpret_cast<LPARAM>(&button)) ||
+		(button.fsStyle & TBSTYLE_SEP) != 0 || button.idCommand == 0) return false;
+	m_altRemoveToolbar = toolbar; m_altRemoveIndex = index; m_altRemoveCommand = button.idCommand;
+	m_altRemoveStart = point; m_altRemoveDragging = false; m_altRemoveImage = false;
+	::SetCapture(toolbar);
+	if(::GetCapture() != toolbar) { CancelScriptToolbarAltRemove(); return false; }
+	return true;
+}
+
+void CMainFrame::TrackScriptToolbarAltRemove(HWND toolbar, POINT point)
+{
+	if(toolbar != m_altRemoveToolbar) return;
+	if(!m_altRemoveDragging && (abs(point.x - m_altRemoveStart.x) >= ::GetSystemMetrics(SM_CXDRAG) ||
+		abs(point.y - m_altRemoveStart.y) >= ::GetSystemMetrics(SM_CYDRAG))) {
+		m_altRemoveDragging = true;
+		TBBUTTON button = {};
+		HIMAGELIST images = reinterpret_cast<HIMAGELIST>(::SendMessage(toolbar, TB_GETIMAGELIST, 0, 0));
+		if(images != NULL && ::SendMessage(toolbar, TB_GETBUTTON, m_altRemoveIndex, reinterpret_cast<LPARAM>(&button)) &&
+			button.iBitmap >= 0 && button.iBitmap < ::ImageList_GetImageCount(images) && ::ImageList_BeginDrag(images, button.iBitmap, -12, -12)) {
+			POINT screen = point; ::ClientToScreen(toolbar, &screen);
+			m_altRemoveImage = ::ImageList_DragEnter(NULL, screen.x, screen.y) != FALSE;
+			if(!m_altRemoveImage) ::ImageList_EndDrag();
+		}
+	}
+	if(!m_altRemoveDragging) return;
+	POINT screen = point; ::ClientToScreen(toolbar, &screen);
+	if(m_altRemoveImage) ::ImageList_DragMove(screen.x, screen.y);
+	RECT bounds = {}; ::GetClientRect(toolbar, &bounds);
+	::SetCursor(::LoadCursor(NULL, ::PtInRect(&bounds, point) ? IDC_ARROW : IDC_NO));
+}
+
+void CMainFrame::CancelScriptToolbarAltRemove(HWND toolbar)
+{
+	if(toolbar != NULL && toolbar != m_altRemoveToolbar) return;
+	const HWND captured = m_altRemoveToolbar;
+	if(m_altRemoveImage) { ::ImageList_DragLeave(NULL); ::ImageList_EndDrag(); }
+	m_altRemoveToolbar = NULL; m_altRemoveIndex = -1; m_altRemoveCommand = 0;
+	m_altRemoveDragging = false; m_altRemoveImage = false;
+	if(captured != NULL && ::GetCapture() == captured) ::ReleaseCapture();
+	::SetCursor(::LoadCursor(NULL, IDC_ARROW));
+}
+
+void CMainFrame::CompleteScriptToolbarAltRemove(HWND toolbar, POINT point)
+{
+	if(toolbar != m_altRemoveToolbar) return;
+	const int index = m_altRemoveIndex, command = m_altRemoveCommand;
+	const bool dragging = m_altRemoveDragging && (::GetKeyState(VK_MENU) & 0x8000) != 0;
+	RECT bounds = {}; ::GetClientRect(toolbar, &bounds);
+	const bool outside = !::PtInRect(&bounds, point);
+	CancelScriptToolbarAltRemove(toolbar);
+	if(!dragging || !outside) return;
+	TBBUTTON button = {};
+	if(!::SendMessage(toolbar, TB_GETBUTTON, index, reinterpret_cast<LPARAM>(&button)) ||
+		button.idCommand != command || (button.fsStyle & TBSTYLE_SEP) != 0) return;
+	const ScriptToolbarRuntime* runtime = FindScriptToolbarRuntime(toolbar);
+	if(runtime == NULL) return;
+	const CString toolbarId = runtime->definition.id;
+	std::vector<ScriptToolbarDefinition> previous, current;
+	for(const auto& panel : m_scriptToolbars.Items()) previous.push_back(panel.definition);
+	current = previous;
+	for(auto& panel : current) {
+		if(panel.id != toolbarId) continue;
+		int visible = 0, removeIndex = -1;
+		for(size_t itemIndex = 0; itemIndex < panel.items.size(); ++itemIndex) {
+			const PortableToolbarItem& item = panel.items[itemIndex];
+			int projected = item.command;
+			if(!item.separator && (!item.scriptUid.IsEmpty() || !item.relativePath.IsEmpty())) {
+				projected = 0;
+				for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) {
+					const ScriptDescriptor& script = m_scripts.Menu().Item(scriptIndex);
+					if(!script.isFolder && script.commandId > 0 &&
+						((!item.scriptUid.IsEmpty() && script.uid == item.scriptUid) ||
+						 (item.scriptUid.IsEmpty() && !item.relativePath.IsEmpty() && script.relativePath == item.relativePath))) {
+						projected = ID_SCRIPT_BASE + script.commandId; break;
+					}
+				}
+				if(projected == 0) continue; // Preserve missing scripts in the stored layout.
+			}
+			TBBUTTON actual = {};
+			if(!::SendMessage(toolbar, TB_GETBUTTON, visible, reinterpret_cast<LPARAM>(&actual)) ||
+				((actual.fsStyle & TBSTYLE_SEP) != 0) != item.separator || (!item.separator && actual.idCommand != projected)) return;
+			if(visible == index) removeIndex = static_cast<int>(itemIndex);
+			++visible;
+		}
+		if(visible != static_cast<int>(::SendMessage(toolbar, TB_BUTTONCOUNT, 0, 0)) || removeIndex < 0) return;
+		panel.items.erase(panel.items.begin() + removeIndex);
+		ApplyScriptToolbarDefinitions(previous, current);
+		return;
+	}
 }
 
 bool CMainFrame::CompleteToolbarQuickCustomize(HWND toolbar, POINT point)
@@ -3327,16 +3449,20 @@ LRESULT CALLBACK CMainFrame::ToolbarCustomizeSubclassProc(HWND window, UINT mess
 		switch(message)
 		{
 		case WM_LBUTTONDOWN:
+			if((::GetKeyState(VK_MENU) & 0x8000) != 0 && frame->BeginScriptToolbarAltRemove(window, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) })) return 0;
 			if((wParam & MK_SHIFT) != 0 && frame->BeginToolbarQuickCustomize(window, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) })) return 0;
 			break;
 		case WM_MOUSEMOVE:
+			if(window == frame->m_altRemoveToolbar) { frame->TrackScriptToolbarAltRemove(window, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); return 0; }
 			if(window == frame->m_quickToolbarWindow) { frame->TrackToolbarQuickCustomize(window, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); return 0; }
 			break;
 		case WM_LBUTTONUP:
+			if(window == frame->m_altRemoveToolbar) { frame->CompleteScriptToolbarAltRemove(window, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); return 0; }
 			if(window == frame->m_quickToolbarWindow) { frame->CompleteToolbarQuickCustomize(window, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); return 0; }
 			break;
 		case WM_CANCELMODE:
 		case WM_CAPTURECHANGED:
+			frame->CancelScriptToolbarAltRemove(window);
 			frame->CancelToolbarQuickCustomize(window);
 			break;
 
