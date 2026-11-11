@@ -512,7 +512,7 @@ void CScriptsToolbarCustomizeDlg::DrawListItem(const DRAWITEMSTRUCT& item)
 		::InflateRect(&outline, -Scale(1), -Scale(1));
 		HBRUSH brush = ::CreateSolidBrush(themed ? ThemeManager::FocusColor() : ::GetSysColor(COLOR_HIGHLIGHT));
 		if(brush) {
-			for(int edge = 0; edge < Scale(2) && outline.right > outline.left && outline.bottom > outline.top; ++edge) {
+			for(int edge = 0; edge < Scale(1) && outline.right > outline.left && outline.bottom > outline.top; ++edge) {
 				::FrameRect(item.hDC, &outline, brush); ::InflateRect(&outline, -1, -1);
 			}
 			::DeleteObject(brush);
