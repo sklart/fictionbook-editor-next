@@ -15,7 +15,7 @@ try {
     $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'toolbar-selection' -Report $report -TimeoutSeconds $TimeoutSeconds
     if($code -ne 0 -or -not (Test-Path -LiteralPath $report)) { throw 'Toolbar selection runtime did not complete.' }
     $text = Get-Content -LiteralPath $report -Raw
-    foreach($key in @('result=pass','catalog-missing-paths=0','catalog-order=1','independent-selection=1','insert-before=1','multi-insert-remove=1','drag-insert=1','drag-insert-mask=63','keyboard-and-double-click-insert=1')) {
+    foreach($key in @('result=pass','catalog-missing-paths=0','catalog-order=1','group-headers-short=1','group-headers-unselectable=1','group-headers-filter=1','group-headers-input=1','independent-selection=1','insert-before=1','multi-insert-remove=1','drag-insert=1','drag-insert-mask=63','keyboard-and-double-click-insert=1')) {
         if(-not $text.Contains($key)) { throw "Toolbar selection runtime failed ($key): $text" }
     }
     if($text.Contains('keyboard-move=NOT_RUN')) { Write-Warning 'Ctrl+Up/Down was not exercised: the isolated input queue did not retain the Ctrl state.' }

@@ -11,6 +11,7 @@
 namespace
 {
 	const DWORD_PTR kSeparatorItem = static_cast<DWORD_PTR>(-1);
+	const DWORD_PTR kGroupHeaderItem = static_cast<DWORD_PTR>(-2);
 	const wchar_t kSkipSystemDialogLocalizationProperty[] = L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION";
 	const UINT_PTR kCtrlFSmokeTimer = 0x5346;
 
@@ -28,6 +29,11 @@ namespace
 		int catalogScriptCount = 0;
 		int catalogMissingPaths = 0;
 		bool catalogOrder = true;
+		int groupHeaders = 0;
+		bool groupHeadersShort = true;
+		bool groupHeadersUnselectable = true;
+		bool groupHeadersFilter = false;
+		bool groupHeadersInput = false;
 	} g_ctrlFSmoke;
 
 	UINT DpiForTargetMonitor(HMONITOR monitor, UINT fallback)
@@ -111,8 +117,21 @@ LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_ctrlFSmoke = RuntimeTests::IsScenario(L"scripts-toolbar-customize-ctrl-f-runtime");
 	if(m_ctrlFSmoke) {
 		CString previousDirectory, previousPath;
+		CString firstHeader;
+		int firstHeaderRow = -1;
 		for(int row = 0; row < m_availableList.GetCount(); ++row) {
 			const DWORD_PTR data = m_availableList.GetItemData(row);
+			if(data == kGroupHeaderItem) {
+				++g_ctrlFSmoke.groupHeaders;
+				if(firstHeader.IsEmpty()) { m_availableList.GetText(row, firstHeader); firstHeaderRow = row; }
+				g_ctrlFSmoke.groupHeadersShort = g_ctrlFSmoke.groupHeadersShort &&
+					::SendMessage(m_availableList, LB_GETITEMHEIGHT, row, 0) < Scale((std::max)(28, m_settings.GetScriptIconSize() + 8));
+				::SendMessage(m_availableList, LB_SETSEL, TRUE, row);
+				ClearHeaderSelection();
+				g_ctrlFSmoke.groupHeadersUnselectable = g_ctrlFSmoke.groupHeadersUnselectable &&
+					::SendMessage(m_availableList, LB_GETSEL, row, 0) == 0;
+				continue;
+			}
 			if(data == kSeparatorItem || data >= m_available.size()) continue;
 			const ScriptsToolbarCommand& item = m_available[static_cast<size_t>(data)];
 			if(item.command <= ID_SCRIPT_BASE || item.command >= ID_LAST_SCRIPT) continue;
@@ -126,6 +145,31 @@ LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 				g_ctrlFSmoke.catalogOrder = false;
 			previousDirectory = directory; previousPath = path;
 		}
+		if(firstHeaderRow > 0 && firstHeaderRow + 1 < m_availableList.GetCount()) {
+			m_availableList.SetTopIndex(firstHeaderRow);
+			CRect headerRect; m_availableList.GetItemRect(firstHeaderRow, &headerRect);
+			const LPARAM point = MAKELPARAM(headerRect.left + Scale(8), (headerRect.top + headerRect.bottom) / 2);
+			::SendMessage(m_availableList, WM_LBUTTONDOWN, MK_LBUTTON, point);
+			::SendMessage(m_availableList, WM_LBUTTONUP, 0, point);
+			const bool clickIgnored = ::SendMessage(m_availableList, LB_GETSEL, firstHeaderRow, 0) == 0;
+			::SendMessage(m_availableList, LB_SETSEL, FALSE, -1);
+			::SendMessage(m_availableList, LB_SETCARETINDEX, firstHeaderRow - 1, FALSE);
+			::SendMessage(m_availableList, LB_SETSEL, TRUE, firstHeaderRow - 1);
+			::SendMessage(m_availableList, WM_KEYDOWN, VK_DOWN, 0);
+			g_ctrlFSmoke.groupHeadersInput = clickIgnored &&
+				::SendMessage(m_availableList, LB_GETSEL, firstHeaderRow, 0) == 0 &&
+				::SendMessage(m_availableList, LB_GETCARETINDEX, 0, 0) == firstHeaderRow + 1 &&
+				::SendMessage(m_availableList, LB_GETSEL, firstHeaderRow + 1, 0) > 0;
+			::SendMessage(m_availableList, LB_SETSEL, FALSE, -1);
+			m_availableFilterSelection.clear(); m_availableList.SetTopIndex(0);
+		}
+		if(!firstHeader.IsEmpty()) {
+			SetDlgItemText(IDC_SCRIPTS_TOOLBAR_SEARCH, firstHeader);
+			for(int row = 0; row + 1 < m_availableList.GetCount(); ++row)
+				if(m_availableList.GetItemData(row) == kGroupHeaderItem && m_availableList.GetItemData(row + 1) < m_available.size())
+					g_ctrlFSmoke.groupHeadersFilter = true;
+			SetDlgItemText(IDC_SCRIPTS_TOOLBAR_SEARCH, L"");
+		}
 		::SetTimer(m_hWnd, kCtrlFSmokeTimer, 1, NULL);
 	}
 	return TRUE;
@@ -134,7 +178,8 @@ LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 std::vector<int> CScriptsToolbarCustomizeDlg::GetSelectedRows(const CListBox& list) const
 {
 	std::vector<int> rows; const int count = list.GetCount();
-	for(int i = 0; i < count; ++i) if(::SendMessage(list, LB_GETSEL, i, 0) > 0) rows.push_back(i);
+	for(int i = 0; i < count; ++i) if(::SendMessage(list, LB_GETSEL, i, 0) > 0 &&
+		(list.m_hWnd != m_availableList.m_hWnd || list.GetItemData(i) != kGroupHeaderItem)) rows.push_back(i);
 	return rows;
 }
 std::vector<DWORD_PTR> CScriptsToolbarCustomizeDlg::GetSelectedItemData(const CListBox& list) const
@@ -188,15 +233,54 @@ void CScriptsToolbarCustomizeDlg::PopulateAvailable(const std::vector<DWORD_PTR>
 		const int exactPath = m_available[left].relativePath.Compare(m_available[right].relativePath);
 		return exactPath != 0 ? exactPath < 0 : m_available[left].command < m_available[right].command;
 	});
+	CString lastDirectory;
 	for(size_t orderedIndex = 0; orderedIndex < ordered.size(); ++orderedIndex) {
 		const size_t i = ordered[orderedIndex];
 		if(ToolbarContainsCommand(m_available[i].command)) continue;
 		CString name(m_available[i].name); CString path(m_available[i].relativePath); CString probe(name + L"\n" + path); probe.MakeLower();
 		if(!search.IsEmpty() && probe.Find(search) < 0) continue;
+		if(m_showPanelSelector && !path.IsEmpty()) {
+			path.Replace(L'/', L'\\'); const int slash = path.ReverseFind(L'\\');
+			const CString directory = slash < 0 ? CString() : path.Left(slash);
+			if(!directory.IsEmpty() && directory.CompareNoCase(lastDirectory) != 0) {
+				CString absolute = m_settings.GetScriptsFolder();
+				if(!absolute.IsEmpty() && absolute[absolute.GetLength()-1] != L'\\') absolute += L'\\';
+				absolute += directory;
+				WIN32_FIND_DATAW found = {}; HANDLE handle = ::FindFirstFileW(absolute, &found);
+				if(handle != INVALID_HANDLE_VALUE) {
+					::FindClose(handle);
+					if(found.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+						CString title(found.cFileName); const int underscore = title.Find(L'_');
+						bool numbered = underscore > 0;
+						for(int c = 0; numbered && c < underscore; ++c) numbered = title[c] >= L'0' && title[c] <= L'9';
+						if(numbered && underscore + 1 < title.GetLength()) title = title.Mid(underscore + 1);
+						const int header = m_availableList.AddString(title);
+						m_availableList.SetItemData(header, kGroupHeaderItem);
+					}
+				}
+				lastDirectory = directory;
+			}
+		}
 		const int row = m_availableList.AddString(DisplayName(i)); m_availableList.SetItemData(row, static_cast<DWORD_PTR>(i));
 	}
+	UpdateAvailableRowHeights();
 	RestoreSelection(m_availableList, saved, top);
 	if(redraw) { ::SendMessage(m_availableList, WM_SETREDRAW, TRUE, 0); m_availableList.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW); }
+}
+
+void CScriptsToolbarCustomizeDlg::UpdateAvailableRowHeights()
+{
+	if(!::IsWindow(m_availableList)) return;
+	const int normal = Scale(m_showPanelSelector ? (std::max)(28, m_settings.GetScriptIconSize() + 8) : 28);
+	for(int row = 0; row < m_availableList.GetCount(); ++row)
+		::SendMessage(m_availableList, LB_SETITEMHEIGHT, row, m_availableList.GetItemData(row) == kGroupHeaderItem ? Scale(18) : normal);
+}
+
+void CScriptsToolbarCustomizeDlg::ClearHeaderSelection()
+{
+	for(int row = 0; row < m_availableList.GetCount(); ++row)
+		if(m_availableList.GetItemData(row) == kGroupHeaderItem && ::SendMessage(m_availableList, LB_GETSEL, row, 0) > 0)
+			::SendMessage(m_availableList, LB_SETSEL, FALSE, row);
 }
 
 CString CScriptsToolbarCustomizeDlg::DisplayName(size_t availableIndex) const
@@ -267,7 +351,7 @@ LRESULT CScriptsToolbarCustomizeDlg::OnSearchChanged(WORD, WORD, HWND, BOOL&) {
 	PopulateAvailable(&selection); UpdateButtonState(); return 0;
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnPanelChanged(WORD, WORD, HWND, BOOL&) { const int index = m_panelList.GetCurSel(); if(index >= 0 && index < static_cast<int>(m_panels.size())) { m_availableFilterSelection = GetSelectedItemData(m_availableList); m_toolbar = m_panels[index].toolbar; std::vector<DWORD_PTR> empty; RefreshLists(NULL, &empty); UpdateButtonState(); } return 0; }
-LRESULT CScriptsToolbarCustomizeDlg::OnSelectionChanged(WORD, WORD id, HWND, BOOL&) { if(id == IDC_SCRIPTS_TOOLBAR_AVAILABLE) m_availableFilterSelection = GetSelectedItemData(m_availableList); UpdateButtonState(); return 0; }
+LRESULT CScriptsToolbarCustomizeDlg::OnSelectionChanged(WORD, WORD id, HWND, BOOL&) { if(id == IDC_SCRIPTS_TOOLBAR_AVAILABLE) { ClearHeaderSelection(); m_availableFilterSelection = GetSelectedItemData(m_availableList); } UpdateButtonState(); return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnToolTipText(int, LPNMHDR hdr, BOOL& bHandled)
 {
 	LPNMTTDISPINFO info = reinterpret_cast<LPNMTTDISPINFO>(hdr);
@@ -496,6 +580,7 @@ void CScriptsToolbarCustomizeDlg::UpdateMetrics()
 		::SendMessage(GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE), LB_SETITEMHEIGHT, 0, rowHeight);
 		::SendMessage(GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT), LB_SETITEMHEIGHT, 0, rowHeight);
 	}
+	UpdateAvailableRowHeights();
 	m_minimumSize = CSize(Scale(560), Scale(330));
 }
 int CScriptsToolbarCustomizeDlg::Scale(int px) const { return UiMetrics::ScaleForDpi(px, m_dpi); }
@@ -516,7 +601,9 @@ void CScriptsToolbarCustomizeDlg::DrawListItem(const DRAWITEMSTRUCT& item)
 	const int savedDc = ::SaveDC(item.hDC); ::IntersectClipRect(item.hDC, item.rcItem.left, item.rcItem.top, item.rcItem.right, item.rcItem.bottom);
 	const bool available = item.CtlID == IDC_SCRIPTS_TOOLBAR_AVAILABLE;
 	CDCHandle dc(item.hDC); CRect rect(item.rcItem);
-	const bool selected = (item.itemState & ODS_SELECTED) != 0;
+	const DWORD_PTR data = ::SendMessage(item.hwndItem, LB_GETITEMDATA, item.itemID, 0);
+	const bool groupHeader = available && data == kGroupHeaderItem;
+	const bool selected = !groupHeader && (item.itemState & ODS_SELECTED) != 0;
 	const bool activeSelection = selected && ::GetFocus() == item.hwndItem;
 	const bool disabled = (item.itemState & ODS_DISABLED) != 0 || ::IsWindowEnabled(item.hwndItem) == FALSE;
 	const bool themed = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
@@ -543,7 +630,18 @@ void CScriptsToolbarCustomizeDlg::DrawListItem(const DRAWITEMSTRUCT& item)
 	dc.SetBkMode(TRANSPARENT);
 	const int textLength = static_cast<int>(::SendMessage(item.hwndItem, LB_GETTEXTLEN, item.itemID, 0));
 	CString text; LPWSTR textBuffer = text.GetBuffer(textLength); ::SendMessage(item.hwndItem, LB_GETTEXT, item.itemID, reinterpret_cast<LPARAM>(textBuffer)); text.ReleaseBuffer();
-	const DWORD_PTR data = ::SendMessage(item.hwndItem, LB_GETITEMDATA, item.itemID, 0);
+	if(groupHeader) {
+		const COLORREF muted = themed ? ThemeManager::DisabledTextColor() : ::GetSysColor(COLOR_GRAYTEXT);
+		dc.SetTextColor(muted);
+		CRect label(rect); label.left += Scale(8); label.right -= Scale(8);
+		SIZE extent = {}; ::GetTextExtentPoint32W(item.hDC, text, text.GetLength(), &extent);
+		const int textWidth = (std::min)(static_cast<int>(extent.cx), (std::max)(0, label.Width() - Scale(24)));
+		CRect textRect(label); textRect.left = label.right - textWidth;
+		dc.DrawText(text, -1, textRect, DT_SINGLELINE | DT_VCENTER | DT_RIGHT | DT_END_ELLIPSIS | DT_NOPREFIX);
+		const int lineRight = textRect.left - Scale(8);
+		if(lineRight > label.left) dc.FillSolidRect(label.left, (label.top + label.bottom) / 2, lineRight - label.left, Scale(1), muted);
+		::RestoreDC(item.hDC, savedDc); return;
+	}
 	const bool separator = (available && data == kSeparatorItem) ||
 		(!available && data < CurrentItems().size() && CurrentItems()[static_cast<size_t>(data)].separator);
 	TBBUTTON button = {}; bool drawIcon = false;
@@ -714,6 +812,7 @@ LRESULT CALLBACK CScriptsToolbarCustomizeDlg::AvailableListSubclassProc(HWND win
 	if(message == WM_LBUTTONDOWN) {
 		POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }; BOOL outside = FALSE;
 		const int row = list.ItemFromPoint(point, outside);
+		if(!outside && row >= 0 && list.GetItemData(row) == kGroupHeaderItem) { dialog->m_dragSource = -1; return 0; }
 		dialog->m_dragSource = outside ? -1 : row; dialog->m_dragStartPoint = point;
 		dialog->m_dragRows.clear();
 		if(!outside && !(wParam & (MK_CONTROL | MK_SHIFT)) && ::SendMessage(window, LB_GETSEL, row, 0) > 0) {
@@ -752,8 +851,29 @@ LRESULT CALLBACK CScriptsToolbarCustomizeDlg::AvailableListSubclassProc(HWND win
 	}
 	if(message == WM_KEYDOWN && wParam == VK_ESCAPE && dialog->m_dragging && dialog->m_dragFromAvailable) { POINT point = {}; dialog->FinishAvailableDrag(false, point); return 0; }
 	if(message == WM_KEYDOWN && wParam == 'F' && (::GetKeyState(VK_CONTROL) & 0x8000)) { dialog->FocusSearch(); return 0; }
-	if(message == WM_KEYDOWN && wParam == 'A' && (::GetKeyState(VK_CONTROL) & 0x8000)) { ::SendMessage(window, LB_SETSEL, TRUE, -1); dialog->UpdateButtonState(); return 0; }
+	if(message == WM_KEYDOWN && wParam == 'A' && (::GetKeyState(VK_CONTROL) & 0x8000)) { ::SendMessage(window, LB_SETSEL, TRUE, -1); dialog->ClearHeaderSelection(); dialog->m_availableFilterSelection = dialog->GetSelectedItemData(list); dialog->UpdateButtonState(); return 0; }
 	if(message == WM_KEYDOWN && wParam == VK_RETURN) { BOOL handled = FALSE; dialog->OnAdd(0, 0, window, handled); return 0; }
+	if(message == WM_LBUTTONDBLCLK) {
+		POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }; BOOL outside = FALSE;
+		const int row = list.ItemFromPoint(point, outside);
+		if(!outside && row >= 0 && list.GetItemData(row) == kGroupHeaderItem) return 0;
+	}
+	if(message == WM_KEYDOWN && (wParam == VK_UP || wParam == VK_DOWN || wParam == VK_HOME || wParam == VK_END || wParam == VK_PRIOR || wParam == VK_NEXT)) {
+		const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
+		dialog->ClearHeaderSelection();
+		int row = static_cast<int>(::SendMessage(window, LB_GETCARETINDEX, 0, 0));
+		const bool onHeader = row >= 0 && row < list.GetCount() && list.GetItemData(row) == kGroupHeaderItem;
+		const int direction = (wParam == VK_UP || wParam == VK_END || wParam == VK_PRIOR) ? -1 : 1;
+		while(row >= 0 && row < list.GetCount() && list.GetItemData(row) == kGroupHeaderItem) row += direction;
+		if(row >= 0 && row < list.GetCount()) {
+			::SendMessage(window, LB_SETCARETINDEX, row, FALSE);
+			if(onHeader && !(::GetKeyState(VK_CONTROL) & 0x8000)) {
+				::SendMessage(window, LB_SETSEL, TRUE, row);
+				::SendMessage(dialog->m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_AVAILABLE, LBN_SELCHANGE), reinterpret_cast<LPARAM>(window));
+			}
+		}
+		dialog->UpdateButtonState(); return result;
+	}
 	return ::DefSubclassProc(window, message, wParam, lParam);
 }
 
@@ -785,9 +905,10 @@ void CScriptsToolbarCustomizeDlg::RunCtrlFSmokePhase()
 {
 	int width = 0, height = 0;
 	const int rowHeight = Scale(m_showPanelSelector ? (std::max)(28, m_settings.GetScriptIconSize() + 8) : 28);
-	g_ctrlFSmoke.iconRowsFit = ::ImageList_GetIconSize(m_scriptImages, &width, &height) &&
-		::SendMessage(GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE), LB_GETITEMHEIGHT, 0, 0) == rowHeight &&
-		::SendMessage(GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT), LB_GETITEMHEIGHT, 0, 0) == rowHeight && rowHeight >= height + Scale(4);
+	if(m_availableList.GetCount() > 0 && m_availableList.GetItemData(0) != kGroupHeaderItem)
+		g_ctrlFSmoke.iconRowsFit = ::ImageList_GetIconSize(m_scriptImages, &width, &height) &&
+			::SendMessage(GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE), LB_GETITEMHEIGHT, 0, 0) == rowHeight &&
+			::SendMessage(GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT), LB_GETITEMHEIGHT, 0, 0) == rowHeight && rowHeight >= height + Scale(4);
 	const UINT controls[] = { IDC_SCRIPTS_TOOLBAR_RESET, IDC_SCRIPTS_TOOLBAR_PANEL, IDCANCEL, IDC_SCRIPTS_TOOLBAR_ADD, IDC_SCRIPTS_TOOLBAR_REMOVE };
 	const int controlCount = _countof(controls);
 	if((m_ctrlFSmokePhase & 1) == 0)
@@ -835,6 +956,7 @@ namespace ScriptsToolbarCustomizeRuntimeTest
 	{
 		const bool passed = g_ctrlFSmoke.active && g_ctrlFSmoke.iconRowsFit && g_ctrlFSmoke.testedControls >= 3 &&
 			g_ctrlFSmoke.catalogScriptCount >= 2 && g_ctrlFSmoke.catalogMissingPaths == 0 && g_ctrlFSmoke.catalogOrder &&
+			g_ctrlFSmoke.groupHeaders > 0 && g_ctrlFSmoke.groupHeadersShort && g_ctrlFSmoke.groupHeadersUnselectable && g_ctrlFSmoke.groupHeadersFilter && g_ctrlFSmoke.groupHeadersInput &&
 			g_ctrlFSmoke.handledCtrlF == g_ctrlFSmoke.testedControls &&
 			g_ctrlFSmoke.focusedSearch == g_ctrlFSmoke.testedControls &&
 			g_ctrlFSmoke.selectedSearch == g_ctrlFSmoke.testedControls &&
@@ -847,6 +969,8 @@ namespace ScriptsToolbarCustomizeRuntimeTest
 		report.AppendFormat("icon-rows-fit=%d\n", g_ctrlFSmoke.iconRowsFit);
 		report.AppendFormat("catalog-scripts=%d\ncatalog-missing-paths=%d\ncatalog-order=%d\n",
 			g_ctrlFSmoke.catalogScriptCount, g_ctrlFSmoke.catalogMissingPaths, g_ctrlFSmoke.catalogOrder);
+		report.AppendFormat("group-headers=%d\ngroup-headers-short=%d\ngroup-headers-unselectable=%d\ngroup-headers-filter=%d\ngroup-headers-input=%d\n",
+			g_ctrlFSmoke.groupHeaders, g_ctrlFSmoke.groupHeadersShort, g_ctrlFSmoke.groupHeadersUnselectable, g_ctrlFSmoke.groupHeadersFilter, g_ctrlFSmoke.groupHeadersInput);
 		return report;
 	}
 }

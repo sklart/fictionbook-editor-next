@@ -110,6 +110,8 @@ private:
 	static LRESULT CALLBACK AvailableListSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference);
 
 	void PopulateAvailable(const std::vector<DWORD_PTR>* selection = NULL, bool redraw = true);
+	void UpdateAvailableRowHeights();
+	void ClearHeaderSelection();
 	void PopulateCurrent(const std::vector<DWORD_PTR>* selection = NULL, bool redraw = true);
 	void RefreshLists(const std::vector<DWORD_PTR>* availableSelection = NULL, const std::vector<DWORD_PTR>* currentSelection = NULL);
 	void LayoutControls(int width, int height);
