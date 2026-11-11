@@ -100,6 +100,7 @@ namespace
         std::set<std::wstring> mainDocuments, noteContentAnchors, noteRootDocuments, residualDocuments;
         std::set<std::wstring> excludedServiceDocuments;
         std::set<std::wstring> warnedInlineCss;
+        std::set<std::wstring> warnedCssAtRules;
         std::set<std::wstring> warnedOrphanClosingTags;
         std::map<std::wstring, bool> imageOnlyCoverPages;
         std::set<std::wstring> fb2GenreIds;
@@ -3325,6 +3326,12 @@ namespace
             if (position >= css.GetLength()) break;
             if (css[position] == L'@')
             {
+                int nameEnd = position + 1;
+                while (nameEnd < css.GetLength() &&
+                    ((css[nameEnd] >= L'a' && css[nameEnd] <= L'z') ||
+                     (css[nameEnd] >= L'A' && css[nameEnd] <= L'Z') || css[nameEnd] == L'-')) ++nameEnd;
+                CStringW ruleName = css.Mid(position, nameEnd - position);
+                ruleName.MakeLower();
                 // Skip the entire unknown at-rule, including nested blocks. Never
                 // apply a rule inside @media as though it were unconditional.
                 int depth = 0;
@@ -3344,7 +3351,13 @@ namespace
                     else if (c == L'}' && depth > 0 && --depth == 0) { position = i + 1; finished = true; break; }
                     else if (c == L';' && depth == 0) { position = i + 1; finished = true; break; }
                 }
-                warning += L"Unsupported CSS at-rule; its contents were not applied.\r\n";
+                if (g_content.warnedCssAtRules.emplace(ruleName.GetString()).second)
+                {
+                    if (ruleName == L"@page")
+                        warning += L"Unsupported CSS at-rule @page: page layout settings cannot be represented in FB2 and were not applied.\r\n";
+                    else
+                        warning += L"Unsupported CSS at-rule " + ruleName + L"; its contents were not applied.\r\n";
+                }
                 if (!finished) break;
                 continue;
             }

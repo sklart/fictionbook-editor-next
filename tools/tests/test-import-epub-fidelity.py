@@ -738,6 +738,20 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertIsNotNone(later.find('.//f:emphasis', NS))
         self.assertIn('Unsupported CSS at-rule', self.diagnostics)
 
+    def test_page_layout_warning_is_specific_and_deduplicated(self):
+        root = self.convert('<p class="styled">Text stays italic</p>',
+                            head='<style>@page {margin: 5pt} @page :left {margin: 0} '
+                                 '.styled {font-style: italic}</style>'
+                                 '<style>@page {padding: 0} @media print {.styled {font-weight:bold}}</style>',
+                            navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Text stays italic' in self.text(p))
+        self.assertIsNotNone(paragraph.find('.//f:emphasis', NS))
+        self.assertIsNone(paragraph.find('.//f:strong', NS))
+        log = '\n'.join(p.read_text(encoding='utf-8-sig') for p in self.last_folder.glob('*.log'))
+        self.assertEqual(log.count('Unsupported CSS at-rule @page:'), 1)
+        self.assertIn('page layout settings cannot be represented in FB2', log)
+        self.assertEqual(log.count('Unsupported CSS at-rule @media;'), 1)
+
     def test_css_media_attribute_is_not_applied_unconditionally(self):
         root = self.convert('<p class="print-only">Print rule</p><p class="ordinary">Normal rule</p>',
                             head='<style media="print">.print-only {font-weight: bold}</style>'

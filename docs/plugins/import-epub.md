@@ -178,4 +178,4 @@ Manual corpus helpers live in `tools/tests/manual/import-epub`. They accept expl
 
 ## Limits and diagnostics
 
-DRM, fixed-layout EPUB, JavaScript, MathML, audio and video are not imported. Visual CSS is not reproduced wholesale; semantic classes and `epub:type` are used where applicable. ZIP extraction uses the Windows ZIP provider and guards against traversal and reparse-point escapes. MSXML is consumed through the SDK header, so static analysis does not need pre-generated type-library files.
+DRM, fixed-layout EPUB, JavaScript, MathML, audio and video are not imported. Visual CSS is not reproduced wholesale; semantic classes and `epub:type` are used where applicable. CSS `@page` controls page layout, which FB2 cannot represent; it is not applied and is reported once per import. Other unsupported at-rule types are also reported once per type, without treating their conditional contents as unconditional styles. ZIP extraction uses the Windows ZIP provider and guards against traversal and reparse-point escapes. MSXML is consumed through the SDK header, so static analysis does not need pre-generated type-library files.
