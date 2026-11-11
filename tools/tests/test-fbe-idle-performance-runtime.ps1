@@ -28,8 +28,9 @@ function Read-Report([string]$Path) {
     return $result
 }
 
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-idle-performance-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $directory | Out-Null
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'idle-performance'
+$directory = $isolation.Root; $passed = $false
 $oldMode, $oldScenario, $oldTrace, $oldIdleView = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TRACE, $env:FBE_NEXT_TEST_IDLE_VIEW
 try {
     $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'idle-performance'; $env:FBE_NEXT_TRACE = '1'
@@ -42,9 +43,10 @@ try {
         $reportPath = Join-Path $directory ($case.Name + '.tsv')
         New-Fixture $fixture $case.Paragraphs
         $env:FBE_NEXT_TEST_IDLE_VIEW = $case.View
-        $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $reportPath, $fixture) -PassThru
-        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "$($case.Name): FBE did not complete the idle scenario." }
-        if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $reportPath)) { throw "$($case.Name): FBE idle scenario failed: exit $($process.ExitCode)." }
+        $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('--portable', '-b', $reportPath, $fixture) -WindowStyle Hidden -PassThru
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; $process.WaitForExit(); throw "$($case.Name): FBE did not complete the idle scenario." }
+        $process.WaitForExit(); $process.Refresh()
+    if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $reportPath)) { throw "$($case.Name): FBE idle scenario failed: exit $($process.ExitCode)." }
         $result = Read-Report $reportPath
         if ($result.idle_cycles -ne 1000) { throw "$($case.Name): expected 1000 idle cycles, got $($result.idle_cycles)." }
         foreach ($metric in 'command_state_updates', 'selection_context_builds', 'toolbar_updates', 'clipboard_checks', 'check_command_calls', 'selection_container_queries', 'selection_struct_con_queries', 'selection_struct_table_con_queries', 'js_com_calls') {
@@ -55,8 +57,9 @@ try {
 		if ($case.View -eq 'description' -and $result.description_input_focused -ne 1) { throw "$($case.Name): tiTitle was not focused." }
         Write-Host "Idle performance runtime test passed: $($case.Name), paragraphs=$($case.Paragraphs), elapsed_ms=$($result.elapsed_ms)."
     }
+    $passed = $true
 } finally {
     $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TRACE = $oldMode, $oldScenario, $oldTrace
     $env:FBE_NEXT_TEST_IDLE_VIEW = $oldIdleView
-    Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -PreserveContents
 }

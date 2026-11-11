@@ -31,16 +31,18 @@ function Read-Report([string]$Path) {
     return $result
 }
 
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-idle-interaction-performance-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $directory | Out-Null
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'idle-performance'
+$directory = $isolation.Root; $passed = $false
 $oldMode, $oldScenario, $oldTrace = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TRACE
 try {
     $fixture = Join-Path $directory 'medium.fb2'
     $reportPath = Join-Path $directory 'report.tsv'
     New-Fixture $fixture $ParagraphCount
     $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = $Scenario; $env:FBE_NEXT_TRACE = '1'
-    $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $reportPath, $fixture) -PassThru
-    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE did not complete the idle interaction scenario.' }
+    $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('--portable', '-b', $reportPath, $fixture) -WindowStyle Hidden -PassThru
+    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; $process.WaitForExit(); throw 'FBE did not complete the idle interaction scenario.' }
+    $process.WaitForExit(); $process.Refresh()
     if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $reportPath)) { throw "FBE idle interaction scenario failed: exit $($process.ExitCode)." }
     $result = Read-Report $reportPath
     $expectedFields = @{ caret_moves = 1000; selection_changes = 1000; typing_edits = 10; interaction_idle_cycles = 2010 }
@@ -56,12 +58,9 @@ try {
             if ($result[$metric] -ne 0) { throw "Unchanged idle repeated $metric=$($result[$metric])." }
         }
     }
+    $passed = $true
     Write-Host "Idle interaction performance runtime test passed: scenario=$Scenario, paragraphs=$ParagraphCount, interaction_elapsed_ms=$($result.interaction_elapsed_ms), command_updates=$($result.command_state_updates)."
 } finally {
     $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TRACE = $oldMode, $oldScenario, $oldTrace
-    if (-not $KeepArtifacts) {
-        Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
-    } else {
-        Write-Host "Idle interaction artifacts retained: $directory"
-    }
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -KeepArtifacts:$KeepArtifacts -PreserveContents
 }

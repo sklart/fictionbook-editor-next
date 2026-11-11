@@ -9,8 +9,9 @@ $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if (-not (Test-Path -LiteralPath $FbeExe)) { throw "Не найден FBE: $FbeExe" }
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-export-html-e2e-' + [guid]::NewGuid().ToString('N'))
-[void](New-Item -ItemType Directory -Path $directory)
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'export-html-images'
+$directory = $isolation.Root; $passed = $false
 try {
     $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL1kQAAAABJRU5ErkJggg=='
     $jpg = '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAH/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAEFAqf/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/Aaf/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/Aaf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAY/Aqf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/IV//2gAMAwEAAgADAAAAEP/EABQRAQAAAAAAAAAAAAAAAAAAABD/2gAIAQMBAT8QH//EABQRAQAAAAAAAAAAAAAAAAAAABD/2gAIAQIBAT8QH//EABQQAQAAAAAAAAAAAAAAAAAAABD/2gAIAQEAAT8QH//Z'
@@ -77,8 +78,8 @@ try {
         try {
             $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='export-html'; $env:FBE_NEXT_TEST_EXPORT_HTML_PATH=$Output; $env:FBE_NEXT_TEST_EXPORT_HTML_MODE="$Mode"; $env:FBE_NEXT_TEST_EXPORT_HTML_DOM_PATH=(Join-Path $directory ("mode-$Mode-dom.xml"))
             $report = Join-Path $directory ("mode-$Mode.tsv")
-            $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -PassThru
-            if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE did not finish ExportHTML mode $Mode." }
+            $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('--portable', '-b', $report, $fixture) -WindowStyle Hidden -PassThru
+            if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; $process.WaitForExit(); throw "FBE did not finish ExportHTML mode $Mode." }
             if ($process.ExitCode -ne 0) { throw "FBE returned $($process.ExitCode) for ExportHTML mode $Mode." }
         } finally { $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO,$env:FBE_NEXT_TEST_EXPORT_HTML_PATH,$env:FBE_NEXT_TEST_EXPORT_HTML_MODE,$env:FBE_NEXT_TEST_EXPORT_HTML_DOM_PATH = $old }
     }
@@ -102,5 +103,6 @@ try {
     $unicodeExternal = Join-Path $unicodeDirectory 'внешние.html'; Invoke-Export 2 $unicodeExternal
     if (-not (Test-Path -LiteralPath $unicodeExternal) -or (Get-Content -Raw -LiteralPath $unicodeExternal) -match 'src="data:;base64,"') { throw 'External-image Unicode ExportHTML path failed.' }
     Assert-HtmlImages $unicodeExternal $unicodeDirectory $false
+    $passed = $true
     Write-Host 'ExportHTML images production E2E passed (modes 1-4).'
-} finally { if ($KeepArtifacts) { Write-Host "ExportHTML E2E artifacts: $directory" } else { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue } }
+} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -KeepArtifacts:$KeepArtifacts -PreserveContents }
