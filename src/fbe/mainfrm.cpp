@@ -2826,7 +2826,10 @@ void CMainFrame::ShowScriptsToolbarCustomizeDialog(HWND selectedToolbar)
 	std::vector<ScriptsToolbarCommand> commands;
 	auto addCommand = [&](int command, const CString& name, const CString& relativePath) {
 		for(size_t existing = 0; existing < commands.size(); ++existing)
-			if(commands[existing].command == command) return;
+			if(commands[existing].command == command) {
+				if(!relativePath.IsEmpty()) commands[existing].relativePath = relativePath;
+				return;
+			}
 		ScriptsToolbarCommand item = {}; item.command = command; item.name = name; item.relativePath = relativePath;
 		item.button.iBitmap = I_IMAGENONE; item.button.idCommand = command;
 		item.button.fsState = TBSTATE_ENABLED; item.button.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE;

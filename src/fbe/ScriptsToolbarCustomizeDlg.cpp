@@ -25,6 +25,9 @@ namespace
 		int filterUnregistered = 0;
 		bool active = false;
 		bool iconRowsFit = false;
+		int catalogScriptCount = 0;
+		int catalogMissingPaths = 0;
+		bool catalogOrder = true;
 	} g_ctrlFSmoke;
 
 	UINT DpiForTargetMonitor(HMONITOR monitor, UINT fallback)
@@ -106,7 +109,25 @@ LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	RefreshLists();
 	UpdateButtonState();
 	m_ctrlFSmoke = RuntimeTests::IsScenario(L"scripts-toolbar-customize-ctrl-f-runtime");
-	if(m_ctrlFSmoke) ::SetTimer(m_hWnd, kCtrlFSmokeTimer, 1, NULL);
+	if(m_ctrlFSmoke) {
+		CString previousDirectory, previousPath;
+		for(int row = 0; row < m_availableList.GetCount(); ++row) {
+			const DWORD_PTR data = m_availableList.GetItemData(row);
+			if(data == kSeparatorItem || data >= m_available.size()) continue;
+			const ScriptsToolbarCommand& item = m_available[static_cast<size_t>(data)];
+			if(item.command <= ID_SCRIPT_BASE || item.command >= ID_LAST_SCRIPT) continue;
+			++g_ctrlFSmoke.catalogScriptCount;
+			if(item.relativePath.IsEmpty()) { ++g_ctrlFSmoke.catalogMissingPaths; continue; }
+			CString path(item.relativePath); path.Replace(L'/', L'\\');
+			const int slash = path.ReverseFind(L'\\');
+			const CString directory = slash < 0 ? CString() : path.Left(slash);
+			const int dirOrder = previousDirectory.CompareNoCase(directory);
+			if(!previousPath.IsEmpty() && (dirOrder > 0 || (dirOrder == 0 && previousPath.CompareNoCase(path) > 0)))
+				g_ctrlFSmoke.catalogOrder = false;
+			previousDirectory = directory; previousPath = path;
+		}
+		::SetTimer(m_hWnd, kCtrlFSmokeTimer, 1, NULL);
+	}
 	return TRUE;
 }
 
@@ -813,6 +834,7 @@ namespace ScriptsToolbarCustomizeRuntimeTest
 	CStringA CtrlFSmokeReport()
 	{
 		const bool passed = g_ctrlFSmoke.active && g_ctrlFSmoke.iconRowsFit && g_ctrlFSmoke.testedControls >= 3 &&
+			g_ctrlFSmoke.catalogScriptCount >= 2 && g_ctrlFSmoke.catalogMissingPaths == 0 && g_ctrlFSmoke.catalogOrder &&
 			g_ctrlFSmoke.handledCtrlF == g_ctrlFSmoke.testedControls &&
 			g_ctrlFSmoke.focusedSearch == g_ctrlFSmoke.testedControls &&
 			g_ctrlFSmoke.selectedSearch == g_ctrlFSmoke.testedControls &&
@@ -823,6 +845,8 @@ namespace ScriptsToolbarCustomizeRuntimeTest
 			g_ctrlFSmoke.testedControls, g_ctrlFSmoke.handledCtrlF, g_ctrlFSmoke.focusedSearch, g_ctrlFSmoke.selectedSearch,
 			g_ctrlFSmoke.dialogSurvived, g_ctrlFSmoke.defaultInvoked, g_ctrlFSmoke.filterUnregistered, passed ? "pass" : "fail");
 		report.AppendFormat("icon-rows-fit=%d\n", g_ctrlFSmoke.iconRowsFit);
+		report.AppendFormat("catalog-scripts=%d\ncatalog-missing-paths=%d\ncatalog-order=%d\n",
+			g_ctrlFSmoke.catalogScriptCount, g_ctrlFSmoke.catalogMissingPaths, g_ctrlFSmoke.catalogOrder);
 		return report;
 	}
 }
