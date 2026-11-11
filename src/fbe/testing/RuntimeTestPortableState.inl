@@ -3,6 +3,17 @@
 #include "Script64ResultChecks.h"
 #include <ColorDlg.h>
 
+struct ToolbarRedrawProbe { int locks = 0; int unlocks = 0; int depth = 0; int partialPaint = 0; };
+static LRESULT CALLBACK ToolbarRedrawProbeProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR ref)
+{
+	ToolbarRedrawProbe* probe = reinterpret_cast<ToolbarRedrawProbe*>(ref);
+	if(message == WM_SETREDRAW) {
+		if(wParam == FALSE) { ++probe->locks; ++probe->depth; }
+		else { ++probe->unlocks; if(probe->depth > 0) --probe->depth; }
+	} else if(probe->depth > 0 && (message == WM_PAINT || message == WM_ERASEBKGND)) ++probe->partialPaint;
+	return ::DefSubclassProc(window, message, wParam, lParam);
+}
+
 // Test-only OLE parent for the Split undo probe.  It is intentionally kept
 // outside production structural code until MSHTML proves this composition.
 class CSplitUndoProbeParent : public CComObjectRootEx<CComSingleThreadModel>, public IOleParentUndoUnit {
@@ -2017,8 +2028,16 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool rollbackFailureObserved = capturedAfterRollbackFailure && !same(previous, actual);
 		ToolbarLayoutAdapter::SetTestFailurePointForTest(ToolbarLayoutAdapter::TestFailureNone);
 		const bool rollbackRecovered = ToolbarLayoutAdapter::Apply(m_CmdToolbar, previous, catalog) && ToolbarLayoutAdapter::Capture(m_CmdToolbar, actual) && same(previous, actual);
-		const bool passed = catalogReady && capturedPrevious && !previous.empty() && deleteRejected && deleteRolledBack && addRejected && addRolledBack && rollbackRejected && rollbackFailureObserved && rollbackRecovered;
+		ToolbarRedrawProbe redrawProbe;
+		const bool probeInstalled = ::SetWindowSubclass(m_CmdToolbar, ToolbarRedrawProbeProc, 0x4252, reinterpret_cast<DWORD_PTR>(&redrawProbe)) != FALSE;
+		const bool wasVisible = ::IsWindowVisible(m_CmdToolbar) != FALSE;
+		const bool reordered = probeInstalled && ToolbarLayoutAdapter::Apply(m_CmdToolbar, candidate, catalog) && ToolbarLayoutAdapter::Capture(m_CmdToolbar, actual) && same(candidate, actual);
+		const bool restored = reordered && ToolbarLayoutAdapter::Apply(m_CmdToolbar, previous, catalog) && ToolbarLayoutAdapter::Capture(m_CmdToolbar, actual) && same(previous, actual);
+		if(probeInstalled) ::RemoveWindowSubclass(m_CmdToolbar, ToolbarRedrawProbeProc, 0x4252);
+		const bool redrawAtomic = restored && (!wasVisible || (redrawProbe.locks >= 2 && redrawProbe.locks == redrawProbe.unlocks && redrawProbe.depth == 0 && redrawProbe.partialPaint == 0 && ::IsWindowVisible(m_CmdToolbar)));
+		const bool passed = catalogReady && capturedPrevious && !previous.empty() && deleteRejected && deleteRolledBack && addRejected && addRolledBack && rollbackRejected && rollbackFailureObserved && rollbackRecovered && redrawAtomic;
 		CStringA report; report.Format("phase=toolbar-layout-adapter-transaction\ncatalog=%d\ndelete-rejected=%d\ndelete-rollback=%d\nadd-rejected=%d\nadd-rollback=%d\nrollback-rejected=%d\nrollback-failure-observed=%d\nrollback-recovered=%d\nresult=%s\n", catalogReady, deleteRejected, deleteRolledBack, addRejected, addRolledBack, rollbackRejected, rollbackFailureObserved, rollbackRecovered, passed ? "pass" : "fail");
+		report.AppendFormat("redraw-atomic=%d\nredraw-visible=%d\nredraw-locks=%d\nredraw-partial-paint=%d\n", redrawAtomic, wasVisible, redrawProbe.locks, redrawProbe.partialPaint);
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(scriptsToolbarCustomizeCtrlF)
@@ -3899,13 +3918,25 @@ void CMainFrame::RunPortableStateTestScenario()
 		auto buildToolbarMenu = [&]() { HMENU menu = ::CreatePopupMenu(); if(menu != NULL) tree.AppendScriptToolbarMenu(menu); return menu; };
 		tree.SetScriptToolbarTargets(std::vector<ScriptTreeToolbarTarget>{ firstTarget });
 		HMENU singleMenu = buildToolbarMenu();
-		const bool singleMenuDirect = singleMenu != NULL && ::GetMenuItemCount(singleMenu) == 1 && ::GetSubMenu(singleMenu, 0) == NULL && ::GetMenuItemID(singleMenu, 0) == NavigationPopupAddToolbarBase;
+		wchar_t singleLabel[128] = {};
+		if(singleMenu != NULL) ::GetMenuString(singleMenu, 0, singleLabel, _countof(singleLabel), MF_BYPOSITION);
+		const bool singleMenuDirect = singleMenu != NULL && ::GetMenuItemCount(singleMenu) == 1 && ::GetSubMenu(singleMenu, 0) == NULL && ::GetMenuItemID(singleMenu, 0) == NavigationPopupAddToolbarBase && CString(singleLabel) == firstTarget.name;
 		if(singleMenu != NULL) ::DestroyMenu(singleMenu);
 		tree.SetScriptToolbarTargets(std::vector<ScriptTreeToolbarTarget>{ firstTarget, secondTarget });
-		HMENU multiMenu = buildToolbarMenu(); HMENU submenu = multiMenu == NULL ? NULL : ::GetSubMenu(multiMenu, 0);
+		HMENU multiMenu = buildToolbarMenu();
 		wchar_t firstLabel[128] = {}, secondLabel[128] = {};
-		if(submenu != NULL) { ::GetMenuString(submenu, 0, firstLabel, _countof(firstLabel), MF_BYPOSITION); ::GetMenuString(submenu, 1, secondLabel, _countof(secondLabel), MF_BYPOSITION); }
-		const bool multiMenuNamed = submenu != NULL && ::GetMenuItemCount(submenu) == 2 && CString(firstLabel) == firstTarget.name && CString(secondLabel) == secondTarget.name && ::GetMenuItemID(submenu, 0) == NavigationPopupAddToolbarBase && ::GetMenuItemID(submenu, 1) == NavigationPopupAddToolbarBase + 1;
+		if(multiMenu != NULL) { ::GetMenuString(multiMenu, 0, firstLabel, _countof(firstLabel), MF_BYPOSITION); ::GetMenuString(multiMenu, 1, secondLabel, _countof(secondLabel), MF_BYPOSITION); }
+		bool multiMenuNamed = multiMenu != NULL && ::GetMenuItemCount(multiMenu) == 2 && ::GetSubMenu(multiMenu, 0) == NULL && CString(firstLabel) == firstTarget.name && CString(secondLabel) == secondTarget.name && ::GetMenuItemID(multiMenu, 0) == NavigationPopupAddToolbarBase && ::GetMenuItemID(multiMenu, 1) == NavigationPopupAddToolbarBase + 1;
+		if(multiMenu != NULL) ::DestroyMenu(multiMenu);
+		ScriptTreeToolbarTarget thirdTarget; thirdTarget.id = L"third"; thirdTarget.name = L"Third";
+		ScriptTreeToolbarTarget fourthTarget; fourthTarget.id = L"fourth"; fourthTarget.name = L"Fourth";
+		tree.SetScriptToolbarTargets(std::vector<ScriptTreeToolbarTarget>{ firstTarget, secondTarget, thirdTarget });
+		multiMenu = buildToolbarMenu();
+		multiMenuNamed = multiMenuNamed && multiMenu != NULL && ::GetMenuItemCount(multiMenu) == 3 && ::GetSubMenu(multiMenu, 0) == NULL && ::GetMenuItemID(multiMenu, 2) == NavigationPopupAddToolbarBase + 2;
+		if(multiMenu != NULL) ::DestroyMenu(multiMenu);
+		tree.SetScriptToolbarTargets(std::vector<ScriptTreeToolbarTarget>{ firstTarget, secondTarget, thirdTarget, fourthTarget });
+		multiMenu = buildToolbarMenu(); HMENU submenu = multiMenu == NULL ? NULL : ::GetSubMenu(multiMenu, 0);
+		multiMenuNamed = multiMenuNamed && submenu != NULL && ::GetMenuItemCount(submenu) == 4 && ::GetMenuItemID(submenu, 3) == NavigationPopupAddToolbarBase + 3;
 		if(multiMenu != NULL) ::DestroyMenu(multiMenu);
 		tree.SetScriptToolbarTargets(actualTargets);
 		ScriptToolbarRuntime* mainToolbar = m_scriptToolbars.Find(L"scripts-main");
@@ -4618,8 +4649,43 @@ void CMainFrame::RunPortableStateTestScenario()
 						knownMetadata = item.scriptUid == script.uid && item.relativePath == script.relativePath &&
 							!item.scriptName.IsEmpty() && (script.name.IsEmpty() || item.scriptName == script.name);
 				}
-		const bool passed = defaultNames && created && renamedAndReordered && hidden && shown && deleted && incremental && untouchedStable && reloads && loaded && missingPreserved && orderPreserved && missingMetadata && missingLabel && knownMetadata;
+		bool hiddenRenderLight = false, hiddenRenderDark = false;
+		const bool darkRenderSupported = ThemeManager::IsDarkModeSupported();
+		{
+			ScriptToolbarManager visualManager;
+			visualManager.Collection().Items().clear();
+			ScriptToolbarDefinition visiblePanel; visiblePanel.id = L"visible"; visiblePanel.name = L"Panel"; visiblePanel.visible = true;
+			ScriptToolbarDefinition hiddenPanel = visiblePanel; hiddenPanel.id = L"hidden"; hiddenPanel.visible = false;
+			visualManager.Collection().Items().push_back(visiblePanel); visualManager.Collection().Items().push_back(hiddenPanel);
+			CScriptToolbarManagerDlg visual(visualManager, [](const std::vector<ScriptToolbarDefinition>&, const std::vector<ScriptToolbarDefinition>&) { return true; });
+			if(visual.Create(m_hWnd) != NULL) {
+				const InterfaceTheme originalTheme = ThemeManager::GetSelectedTheme();
+				const InterfacePalette originalPalette = ThemeManager::GetNamedPalette();
+				ThemeManager::CustomPalette originalCustom; const bool hadCustom = ThemeManager::GetCustomPalette(originalCustom);
+				auto markerPixels = [&](int row, bool selected) {
+					CImage image; if(!image.Create(240, 32, 32)) return -1;
+					HDC dc = image.GetDC(); if(dc == NULL) return -1;
+					const HFONT font = reinterpret_cast<HFONT>(::SendMessage(visual.GetDlgItem(IDC_SCRIPT_PANELS_LIST), WM_GETFONT, 0, 0));
+					HGDIOBJ previousFont = font ? ::SelectObject(dc, font) : NULL;
+					DRAWITEMSTRUCT draw = {}; draw.CtlID = IDC_SCRIPT_PANELS_LIST; draw.itemID = row; draw.itemState = selected ? ODS_SELECTED : 0;
+					draw.hwndItem = visual.GetDlgItem(IDC_SCRIPT_PANELS_LIST); draw.hDC = dc; ::SetRect(&draw.rcItem, 0, 0, 240, 32);
+					::SendMessage(visual, WM_DRAWITEM, IDC_SCRIPT_PANELS_LIST, reinterpret_cast<LPARAM>(&draw));
+					const COLORREF background = ::GetPixel(dc, 0, 0); int different = 0;
+					for(int y = 0; y < 32; ++y) for(int x = 210; x < 240; ++x) if(::GetPixel(dc, x, y) != background) ++different;
+					if(previousFont) ::SelectObject(dc, previousFont); image.ReleaseDC(); return different;
+				};
+				auto checkTheme = [&]() { return markerPixels(0, false) == 0 && markerPixels(1, false) > 0 && markerPixels(0, true) == 0 && markerPixels(1, true) > 0; };
+				ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CLASSIC);
+				ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT); hiddenRenderLight = !ThemeManager::IsDark() && checkTheme();
+				if(darkRenderSupported) { ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK); hiddenRenderDark = ThemeManager::IsDark() && checkTheme(); }
+				ThemeManager::SetSelectedTheme(originalTheme);
+				if(hadCustom) ThemeManager::SetCustomPalette(originalCustom); else ThemeManager::SetNamedPalette(originalPalette);
+				visual.DestroyWindow();
+			}
+		}
+		const bool passed = defaultNames && created && renamedAndReordered && hidden && shown && deleted && incremental && untouchedStable && reloads && loaded && missingPreserved && orderPreserved && missingMetadata && missingLabel && knownMetadata && hiddenRenderLight && (!darkRenderSupported || hiddenRenderDark);
 		CStringA metadataReport; metadataReport.Format("missing-metadata=%d\nmissing-label=%d\nknown-metadata=%d\n", missingMetadata, missingLabel, knownMetadata);
+		metadataReport.AppendFormat("hidden-render-light=%d\nhidden-render-dark-supported=%d\nhidden-render-dark=%s\n", hiddenRenderLight, darkRenderSupported, darkRenderSupported ? (hiddenRenderDark ? "1" : "0") : "NOT_RUN");
 		CStringA report; report.Format("phase=script-toolbar-lifecycle\nmode=%s\ndefault-names=%d\ncreated=%d\nrenamed-reordered=%d\nhidden=%d\nshown=%d\ndeleted=%d\nincremental=%d\nuntouched-stable=%d\nreloads=%d\nmissing-uid=%d\npersistence=%d\nresult=%s\n", DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable ? "portable" : "installed", defaultNames, created, renamedAndReordered, hidden, shown, deleted, incremental, untouchedStable, reloads, missingPreserved, loaded && orderPreserved, passed ? "pass" : "fail");
 		report += metadataReport;
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;

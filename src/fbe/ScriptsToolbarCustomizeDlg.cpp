@@ -297,7 +297,7 @@ CString CScriptsToolbarCustomizeDlg::DisplayName(size_t availableIndex) const
 	return item.name + L" — " + item.relativePath;
 }
 
-void CScriptsToolbarCustomizeDlg::PopulateCurrent(const std::vector<DWORD_PTR>* selected, bool redraw)
+void CScriptsToolbarCustomizeDlg::PopulateCurrent(const std::vector<DWORD_PTR>* selected, bool redraw, bool eraseBackground)
 {
 	const int top = m_currentList.GetTopIndex(); const std::vector<DWORD_PTR> saved = selected != NULL ? *selected : GetSelectedItemData(m_currentList);
 	if(redraw) ::SendMessage(m_currentList, WM_SETREDRAW, FALSE, 0);
@@ -318,7 +318,7 @@ void CScriptsToolbarCustomizeDlg::PopulateCurrent(const std::vector<DWORD_PTR>* 
 		const int row = m_currentList.AddString(name); m_currentList.SetItemData(row, static_cast<DWORD_PTR>(i));
 	}
 	RestoreSelection(m_currentList, saved, top);
-	if(redraw) { ::SendMessage(m_currentList, WM_SETREDRAW, TRUE, 0); m_currentList.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW); }
+	if(redraw) { ::SendMessage(m_currentList, WM_SETREDRAW, TRUE, 0); m_currentList.RedrawWindow(NULL, NULL, RDW_INVALIDATE | (eraseBackground ? RDW_ERASE : 0) | RDW_UPDATENOW); }
 }
 void CScriptsToolbarCustomizeDlg::RefreshLists(const std::vector<DWORD_PTR>* availableSelection, const std::vector<DWORD_PTR>* currentSelection)
 {
@@ -465,7 +465,7 @@ bool CScriptsToolbarCustomizeDlg::MoveSelectedButtons(bool down)
 	if(!moved) return false;
 	CurrentItems() = buttons; if(!CommitCurrentItems(previous)) return false; std::vector<DWORD_PTR> selection;
 	for(int i = 0; i < count; ++i) if(selected[i]) selection.push_back(i);
-	RefreshLists(NULL, &selection); return true;
+	PopulateCurrent(&selection, true, false); return true;
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnUp(WORD, WORD, HWND, BOOL&)
 {
@@ -689,8 +689,17 @@ void CScriptsToolbarCustomizeDlg::UpdateDragInsert(POINT point)
 		if(!outside && item >= 0) { CRect rect; m_currentList.GetItemRect(item, &rect); insert = point.y < (rect.top + rect.bottom) / 2 ? item : item + 1; }
 		else if(count > 0) { CRect last; m_currentList.GetItemRect(count - 1, &last); if(point.y >= last.bottom) insert = count; }
 	}
-	if(insert != m_dragInsert) { m_dragInsert = insert; m_currentList.Invalidate(); }
+	if(insert != m_dragInsert) { InvalidateDragIndicator(m_dragInsert); m_dragInsert = insert; InvalidateDragIndicator(m_dragInsert); }
 	UpdateDragScroll(point);
+}
+void CScriptsToolbarCustomizeDlg::InvalidateDragIndicator(int insert)
+{
+	const int count = m_currentList.GetCount();
+	if(insert < 0 || count == 0 || insert > count) return;
+	CRect row; if(m_currentList.GetItemRect(insert == count ? count - 1 : insert, &row) == LB_ERR) return;
+	const int y = insert == count ? row.bottom - Scale(2) : row.top;
+	CRect strip(row.left, y - Scale(1), row.right, y + Scale(3));
+	::InvalidateRect(m_currentList, &strip, FALSE);
 }
 void CScriptsToolbarCustomizeDlg::UpdateDragScroll(POINT point)
 {
@@ -706,10 +715,10 @@ void CScriptsToolbarCustomizeDlg::FinishDrag(bool commit, POINT point)
 	m_currentList.KillTimer(1); m_dragScrollDirection = 0;
 	CRect client; m_currentList.GetClientRect(client);
 	if(commit && client.PtInRect(point) && m_dragSource >= 0 && m_dragInsert >= 0) {
-		std::vector<DWORD_PTR> selection; if(MoveDraggedButtons(m_dragInsert, selection)) RefreshLists(NULL, &selection);
+		std::vector<DWORD_PTR> selection; if(MoveDraggedButtons(m_dragInsert, selection)) PopulateCurrent(&selection, true, false);
 		UpdateButtonState();
 	}
-	m_dragging = false; m_dragSource = m_dragInsert = -1; m_dragRows.clear(); m_currentList.Invalidate();
+	InvalidateDragIndicator(m_dragInsert); m_dragging = false; m_dragSource = m_dragInsert = -1; m_dragRows.clear();
 	if(::GetCapture() == m_currentList) ::ReleaseCapture();
 }
 void CScriptsToolbarCustomizeDlg::FinishAvailableDrag(bool commit, POINT point)
@@ -722,8 +731,8 @@ void CScriptsToolbarCustomizeDlg::FinishAvailableDrag(bool commit, POINT point)
 		if(m_dragInsert < m_currentList.GetCount()) ::SendMessage(m_currentList, LB_SETSEL, TRUE, m_dragInsert);
 		BOOL handled = FALSE; OnAdd(0, 0, m_availableList, handled);
 	}
-	m_dragging = false; m_dragFromAvailable = false; m_dragSource = m_dragInsert = -1; m_dragRows.clear();
-	m_currentList.Invalidate(); UpdateButtonState();
+	InvalidateDragIndicator(m_dragInsert); m_dragging = false; m_dragFromAvailable = false; m_dragSource = m_dragInsert = -1; m_dragRows.clear();
+	UpdateButtonState();
 	if(::GetCapture() == m_availableList) ::ReleaseCapture();
 }
 bool CScriptsToolbarCustomizeDlg::MoveDraggedButtons(int insert, std::vector<DWORD_PTR>& selection)
@@ -837,7 +846,7 @@ LRESULT CALLBACK CScriptsToolbarCustomizeDlg::AvailableListSubclassProc(HWND win
 			::MapWindowPoints(window, dialog->m_currentList, &point, 1);
 			CRect client; dialog->m_currentList.GetClientRect(client);
 			if(client.PtInRect(point)) dialog->UpdateDragInsert(point);
-			else { dialog->m_currentList.KillTimer(1); dialog->m_dragScrollDirection = 0; dialog->m_dragInsert = -1; dialog->m_currentList.Invalidate(); }
+			else { dialog->m_currentList.KillTimer(1); dialog->m_dragScrollDirection = 0; dialog->InvalidateDragIndicator(dialog->m_dragInsert); dialog->m_dragInsert = -1; }
 			return 0;
 		}
 	}

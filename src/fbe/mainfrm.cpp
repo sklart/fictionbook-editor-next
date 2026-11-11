@@ -3310,8 +3310,9 @@ void CMainFrame::TrackScriptToolbarAltRemove(HWND toolbar, POINT point)
 		m_altRemoveDragging = true;
 		TBBUTTON button = {};
 		HIMAGELIST images = reinterpret_cast<HIMAGELIST>(::SendMessage(toolbar, TB_GETIMAGELIST, 0, 0));
+		const int offset = UiMetrics::ScaleForDpi(4, UiMetrics::DpiForWindow(toolbar));
 		if(images != NULL && ::SendMessage(toolbar, TB_GETBUTTON, m_altRemoveIndex, reinterpret_cast<LPARAM>(&button)) &&
-			button.iBitmap >= 0 && button.iBitmap < ::ImageList_GetImageCount(images) && ::ImageList_BeginDrag(images, button.iBitmap, -12, -12)) {
+			button.iBitmap >= 0 && button.iBitmap < ::ImageList_GetImageCount(images) && ::ImageList_BeginDrag(images, button.iBitmap, -offset, -offset)) {
 			POINT screen = point; ::ClientToScreen(toolbar, &screen);
 			m_altRemoveImage = ::ImageList_DragEnter(NULL, screen.x, screen.y) != FALSE;
 			if(!m_altRemoveImage) ::ImageList_EndDrag();
@@ -3757,7 +3758,7 @@ bool CMainFrame::CreateScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 	runtime.images = images.Detach();
 	SetDialogFontForToolbarRow(runtime.window);
 	CToolBarCtrl toolbar = runtime.window;
-	toolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
+	toolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS | TBSTYLE_EX_DOUBLEBUFFER);
 	if(!InitToolBar(toolbar, IDR_SCRIPTS) || !UIAddToolBar(toolbar) || !PopulateScriptToolbarRuntime(runtime))
 		{ DestroyScriptToolbarRuntime(runtime); return false; }
 	ToolbarFactory::AutoSizeToolbar(runtime.window);
@@ -4135,7 +4136,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	if(!m_ScriptsToolbar) return -1;
 	m_scriptsToolbarImages = scriptsImages.Detach();
 	SetDialogFontForToolbarRow(m_ScriptsToolbar);
-  m_ScriptsToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
+  m_ScriptsToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS | TBSTYLE_EX_DOUBLEBUFFER);
   InitToolBar(m_ScriptsToolbar, IDR_SCRIPTS);
 	CImageList scriptsToolbarImages = m_ScriptsToolbar.GetImageList();
 	m_scriptsToolbarBaseImageCount = scriptsToolbarImages ? scriptsToolbarImages.GetImageCount() : 0;

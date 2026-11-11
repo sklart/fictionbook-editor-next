@@ -112,7 +112,7 @@ private:
 	void PopulateAvailable(const std::vector<DWORD_PTR>* selection = NULL, bool redraw = true);
 	void UpdateAvailableRowHeights();
 	void ClearHeaderSelection();
-	void PopulateCurrent(const std::vector<DWORD_PTR>* selection = NULL, bool redraw = true);
+	void PopulateCurrent(const std::vector<DWORD_PTR>* selection = NULL, bool redraw = true, bool eraseBackground = true);
 	void RefreshLists(const std::vector<DWORD_PTR>* availableSelection = NULL, const std::vector<DWORD_PTR>* currentSelection = NULL);
 	void LayoutControls(int width, int height);
 	void UpdateMetrics();
@@ -120,6 +120,7 @@ private:
 	void DrawListItem(const DRAWITEMSTRUCT& item);
 	void DrawDragIndicator(const DRAWITEMSTRUCT& item);
 	void UpdateDragInsert(POINT point);
+	void InvalidateDragIndicator(int insert);
 	void FinishDrag(bool commit, POINT point);
 	void UpdateDragScroll(POINT point);
 	std::vector<int> GetSelectedRows(const CListBox& list) const;

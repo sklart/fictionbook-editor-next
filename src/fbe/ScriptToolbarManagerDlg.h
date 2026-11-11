@@ -10,6 +10,9 @@ public:
 	CScriptToolbarManagerDlg(ScriptToolbarManager& manager, const std::function<bool(const std::vector<ScriptToolbarDefinition>&, const std::vector<ScriptToolbarDefinition>&)>& changed) : m_manager(manager), m_changed(changed) {}
 	BEGIN_MSG_MAP(CScriptToolbarManagerDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		MESSAGE_HANDLER(WM_DRAWITEM, OnDrawItem)
+		MESSAGE_HANDLER(WM_MEASUREITEM, OnMeasureItem)
+		MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
 		COMMAND_HANDLER(IDC_SCRIPT_PANELS_LIST, LBN_SELCHANGE, OnSelection)
 		COMMAND_HANDLER(IDC_SCRIPT_PANELS_LIST, LBN_DBLCLK, OnListDoubleClick)
 		COMMAND_HANDLER(IDC_SCRIPT_PANEL_INLINE_EDIT, EN_KILLFOCUS, OnInlineEditKillFocus)
@@ -26,6 +29,7 @@ private:
 	std::vector<ScriptToolbarDefinition> m_lastCommitted;
 	CString m_editingId;
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&); LRESULT OnSelection(WORD, WORD, HWND, BOOL&); LRESULT OnListDoubleClick(WORD, WORD, HWND, BOOL&);
+	LRESULT OnDrawItem(UINT, WPARAM, LPARAM, BOOL&); LRESULT OnMeasureItem(UINT, WPARAM, LPARAM, BOOL&); LRESULT OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnCreatePanel(WORD, WORD, HWND, BOOL&); LRESULT OnRename(WORD, WORD, HWND, BOOL&); LRESULT OnDelete(WORD, WORD, HWND, BOOL&);
 	LRESULT OnUp(WORD, WORD, HWND, BOOL&); LRESULT OnDown(WORD, WORD, HWND, BOOL&); LRESULT OnVisible(WORD, WORD, HWND, BOOL&); LRESULT OnClose(WORD, WORD, HWND, BOOL&); LRESULT OnInlineEditKillFocus(WORD, WORD, HWND, BOOL&);
 	void Refresh(const CString& preferredId = CString()); CString SelectedId() const; CString NextDefaultPanelName() const; bool Commit(const CString& preferredId = CString());

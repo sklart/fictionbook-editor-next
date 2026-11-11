@@ -1400,10 +1400,10 @@ void CTreeView::SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarge
 void CTreeView::AppendScriptToolbarMenu(HMENU menu) const
 {
 	CString label = FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.add_to_toolbar", L"Add to toolbar >");
-	if(m_script_toolbars.size() == 1)
+	if(!m_script_toolbars.empty() && m_script_toolbars.size() <= 3)
 	{
-		label.TrimRight(L" >");
-		::AppendMenu(menu, MF_STRING, NavigationPopupAddToolbarBase, label);
+		for(size_t index = 0; index < m_script_toolbars.size(); ++index)
+			::AppendMenu(menu, MF_STRING, NavigationPopupAddToolbarBase + static_cast<UINT>(index), m_script_toolbars[index].name);
 		return;
 	}
 	HMENU submenu = ::CreatePopupMenu();

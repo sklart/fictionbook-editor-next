@@ -8,6 +8,28 @@ namespace
 	const int kDefaultSeparatorWidth = 8;
 	ToolbarLayoutAdapter::TestFailurePoint g_testFailurePoint = ToolbarLayoutAdapter::TestFailureNone;
 
+	class ScopedToolbarRedraw
+	{
+	public:
+		explicit ScopedToolbarRedraw(HWND toolbar, bool erase) : m_toolbar(toolbar), m_parent(::GetParent(toolbar)),
+			m_toolbarVisible(::IsWindowVisible(toolbar) != FALSE), m_parentVisible(m_parent != NULL && ::IsWindowVisible(m_parent) != FALSE), m_erase(erase)
+		{
+			if(m_parentVisible) ::SendMessage(m_parent, WM_SETREDRAW, FALSE, 0);
+			if(m_toolbarVisible) ::SendMessage(m_toolbar, WM_SETREDRAW, FALSE, 0);
+		}
+		~ScopedToolbarRedraw()
+		{
+			if(m_toolbarVisible && ::IsWindow(m_toolbar)) ::SendMessage(m_toolbar, WM_SETREDRAW, TRUE, 0);
+			if(m_parentVisible && ::IsWindow(m_parent)) {
+				::SendMessage(m_parent, WM_SETREDRAW, TRUE, 0);
+				::RedrawWindow(m_parent, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN | (m_erase ? RDW_ERASE : 0));
+			} else if(m_toolbarVisible && ::IsWindow(m_toolbar)) ::RedrawWindow(m_toolbar, NULL, NULL, RDW_INVALIDATE | (m_erase ? RDW_ERASE : 0));
+		}
+	private:
+		HWND m_toolbar, m_parent;
+		bool m_toolbarVisible, m_parentVisible, m_erase;
+	};
+
 	bool ConsumeTestFailure(ToolbarLayoutAdapter::TestFailurePoint point)
 	{
 		if(g_testFailurePoint != point) return false;
@@ -137,6 +159,7 @@ bool ToolbarLayoutAdapter::Apply(HWND toolbar, const std::vector<PortableToolbar
 		StartupTrace::Error(L"toolbar", L"TB231", message);
 		return false;
 	}
+	ScopedToolbarRedraw redraw(toolbar, target.size() != original.size());
 	if(ReplaceChecked(toolbar, target, false)) return true;
 	StartupTrace::Error(L"toolbar", L"TB232", L"toolbar layout apply failed");
 	if(!ReplaceChecked(toolbar, original, true)) StartupTrace::Error(L"toolbar", L"TB233", L"toolbar layout rollback failed");

@@ -19,10 +19,12 @@ function Invoke-Lifecycle([string]$Mode, [string]$Scenario, [string]$ReportDirec
         $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
         if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^result=pass$') { throw "$Mode $Scenario failed:`n$text" }
 		if($Scenario -eq 'script-toolbar-lifecycle-runtime' -and ($text -notmatch '(?m)^missing-metadata=1$' -or $text -notmatch '(?m)^missing-label=1$' -or $text -notmatch '(?m)^known-metadata=1$')) { throw "$Mode Unavailable script metadata/label failed:`n$text" }
+		if($Scenario -eq 'script-toolbar-lifecycle-runtime' -and ($text -notmatch '(?m)^hidden-render-light=1$' -or ($text -match '(?m)^hidden-render-dark-supported=1$' -and $text -notmatch '(?m)^hidden-render-dark=1$') -or ($text -match '(?m)^hidden-render-dark-supported=0$' -and $text -notmatch '(?m)^hidden-render-dark=NOT_RUN$'))) { throw "$Mode Hidden panel appearance failed:`n$text" }
 		if($Scenario -eq 'script-toolbar-runtime-size' -and ($text -notmatch '(?m)^dpi-matrix=1$' -or $text -notmatch '(?m)^dpi-restored=1$')) { throw "$Mode Scripts toolbar DPI metrics failed:`n$text" }
 		if($Scenario -eq 'script-toolbar-runtime-size' -and ($text -notmatch '(?m)^size-switches-pass=1$' -or $text -notmatch '(?m)^initial-icon-size=16$')) { throw "$Mode Scripts toolbar default size/100-switch regression failed:`n$text" }
 		if($Scenario -eq 'script-toolbar-runtime-size' -and $text -notmatch '(?m)^multi-toolbar-rollback=1$') { throw "$Mode Scripts toolbar group rollback failed:`n$text" }
 		if($Scenario -eq 'script-toolbar-runtime-size' -and $text -notmatch '(?m)^multi-toolbar-restore-refusal=1$') { throw "$Mode Scripts toolbar restore refusal failed:`n$text" }
+		if($Scenario -eq 'toolbar-layout-adapter-transaction' -and ($text -notmatch '(?m)^redraw-visible=1$' -or $text -notmatch '(?m)^redraw-atomic=1$' -or $text -notmatch '(?m)^redraw-partial-paint=0$')) { throw "$Mode Toolbar redraw transaction failed:`n$text" }
     } finally { $env:FBE_NEXT_TEST_MODE = $savedMode; $env:FBE_NEXT_TEST_SCENARIO = $savedScenario }
 }
 
