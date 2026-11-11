@@ -2060,6 +2060,25 @@ void CMainFrame::RunPortableStateTestScenario()
 			sorted = sorted && ::SendMessage(list, LB_GETSEL, 1, 0) > 0 && ::SendMessage(list, LB_GETSEL, 2, 0) == 0 && ::SendMessage(list, LB_GETSEL, 3, 0) == 0;
 			sorting.DestroyWindow();
 		}
+		{
+			std::vector<ScriptsToolbarCommand> numbered(4);
+			for (int i = 0; i < 4; ++i) { numbered[i].command = 31000 + i; numbered[i].button.iBitmap = -1; }
+			numbered[0].name = L"Zulu"; numbered[0].relativePath = L"01_Register\\01_Zulu.js";
+			numbered[1].name = L"Alpha"; numbered[1].relativePath = L"01_Register\\02_Alpha.js";
+			numbered[2].name = L"Alpha"; numbered[2].relativePath = L"02_Notes\\01_Alpha.js";
+			numbered[3].name = L"Zulu"; numbered[3].relativePath = L"02_Notes\\02_Zulu.js";
+			std::swap(numbered[0], numbered[3]);
+			CScriptsToolbarCustomizeDlg numberedDialog(NULL, numbered, defaults, _Settings, std::vector<ScriptsToolbarTarget>(1, target),
+				[](const CString&, const std::vector<PortableToolbarItem>&) { return true; }, true, CString());
+			const bool created = numberedDialog.Create(m_hWnd) != NULL;
+			sorted = sorted && created;
+			if (created) {
+				CListBox list(numberedDialog.GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE));
+				sorted = sorted && list.GetCount() == 5 && list.GetItemData(1) == 3 && list.GetItemData(2) == 1 &&
+					list.GetItemData(3) == 2 && list.GetItemData(4) == 0;
+				numberedDialog.DestroyWindow();
+			}
+		}
 		PortableToolbarItem existing = {}; existing.command = sample[0].command; target.items.push_back(existing);
 		std::vector<PortableToolbarItem> savedItems;
 		CScriptsToolbarCustomizeDlg insertion(NULL, sample, defaults, _Settings, std::vector<ScriptsToolbarTarget>(1, target),

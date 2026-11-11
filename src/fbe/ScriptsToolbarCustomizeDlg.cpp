@@ -160,10 +160,10 @@ void CScriptsToolbarCustomizeDlg::PopulateAvailable(const std::vector<DWORD_PTR>
 		};
 		const int byDirectory = directory(m_available[left].relativePath).CompareNoCase(directory(m_available[right].relativePath));
 		if(byDirectory != 0) return byDirectory < 0;
-		const int byName = m_available[left].name.CompareNoCase(m_available[right].name);
-		if(byName != 0) return byName < 0;
 		const int byPath = m_available[left].relativePath.CompareNoCase(m_available[right].relativePath);
 		if(byPath != 0) return byPath < 0;
+		const int byName = m_available[left].name.CompareNoCase(m_available[right].name);
+		if(byName != 0) return byName < 0;
 		const int exactPath = m_available[left].relativePath.Compare(m_available[right].relativePath);
 		return exactPath != 0 ? exactPath < 0 : m_available[left].command < m_available[right].command;
 	});
