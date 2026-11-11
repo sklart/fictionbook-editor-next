@@ -44,7 +44,7 @@ function Assert-ManyBinaries([string]$Path, $Expected) {
 
 function Invoke-FbeMeasured([string[]]$Arguments, [string]$Phase) {
     $watch = [Diagnostics.Stopwatch]::StartNew()
-    $process = Start-Process -FilePath $FbeExe -ArgumentList $Arguments -PassThru
+    $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList (@('--portable') + $Arguments) -WindowStyle Hidden -PassThru
     [int64]$peakPrivate = 0; [int64]$peakWorkingSet = 0
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
     do {
@@ -53,7 +53,8 @@ function Invoke-FbeMeasured([string[]]$Arguments, [string]$Phase) {
         $peakPrivate = [Math]::Max($peakPrivate, $process.PrivateMemorySize64)
         $peakWorkingSet = [Math]::Max($peakWorkingSet, $process.WorkingSet64)
     } while (-not $process.HasExited -and [DateTime]::UtcNow -lt $deadline)
-    if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force; throw "FBE не завершил $Phase." }
+    if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force; $process.WaitForExit(); throw "FBE не завершил $Phase." }
+    $process.WaitForExit(); $process.Refresh()
     $watch.Stop()
     if ($process.ExitCode -ne 0) { throw "FBE вернул код $($process.ExitCode): $Phase." }
     [pscustomobject]@{ Phase = $Phase; ElapsedMs = $watch.ElapsedMilliseconds; PeakPrivateBytes = $peakPrivate; PeakWorkingSetBytes = $peakWorkingSet }
@@ -74,8 +75,9 @@ function Write-SoftPerformanceGuardrail($Measurements, [int]$BinaryCount) {
     }
 }
 
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-many-binaries-' + [guid]::NewGuid().ToString('N'))
-[void](New-Item -ItemType Directory -Path $directory)
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'binary-production'
+$directory = $isolation.Root; $passed = $false
 try {
     $previousMode = $env:FBE_NEXT_TEST_MODE; $previousScenario = $env:FBE_NEXT_TEST_SCENARIO
     $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'binary-roundtrip'
@@ -104,9 +106,10 @@ try {
         $measurements | Format-Table Phase,ElapsedMs,PeakPrivateBytes,PeakWorkingSetBytes -AutoSize | Out-Host
         Write-Host "Many-binary production Save -> Reopen -> Save stress passed ($binaryCount x $BinarySizeKiB KiB)."
     }
+    $passed = $true
 }
 finally {
     if ($null -eq $previousMode) { Remove-Item Env:FBE_NEXT_TEST_MODE -ErrorAction SilentlyContinue } else { $env:FBE_NEXT_TEST_MODE = $previousMode }
     if ($null -eq $previousScenario) { Remove-Item Env:FBE_NEXT_TEST_SCENARIO -ErrorAction SilentlyContinue } else { $env:FBE_NEXT_TEST_SCENARIO = $previousScenario }
-    Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -PreserveContents
 }

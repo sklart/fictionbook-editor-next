@@ -25,12 +25,14 @@ function Invoke-FbeScenario([string]$Scenario, [string]$Report, [string]$Fixture
     $env:FBE_NEXT_TEST_MODE = '1'
     $env:FBE_NEXT_TEST_SCENARIO = $Scenario
     for ($attempt = 1; $attempt -le 2; ++$attempt) {
-        $process = Start-Process -FilePath $FbeExe -WorkingDirectory $WorkingDirectory -ArgumentList @('-b', $Report, $Fixture) -PassThru
+        $process = Start-Process -FilePath $FbeExe -WorkingDirectory $WorkingDirectory -ArgumentList @('--portable', '-b', $Report, $Fixture) -WindowStyle Hidden -PassThru
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
             Stop-Process -Id $process.Id -Force
+            $process.WaitForExit()
             if ($attempt -lt 2) { Write-Host "Сценарий $Scenario превысил таймаут; повторный запуск."; continue }
             throw "FBE не завершил сценарий $Scenario."
         }
+        $process.WaitForExit(); $process.Refresh()
         if ($process.ExitCode -ne 0) {
             $details = if (Test-Path -LiteralPath $Report) { Get-Content -LiteralPath $Report -Raw } else { 'report unavailable' }
             throw "FBE вернул код $($process.ExitCode) для сценария $Scenario. Report: $details"
@@ -62,8 +64,10 @@ function Assert-ImportedImage([string]$Path, [byte[]]$ExpectedBytes, [string]$Ex
     if ($Inline -eq '0' -and ($null -eq $blockImage -or $null -ne $inlineImage)) { throw 'Block import не сохранил image как прямой дочерний section.' }
 }
 
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-image-generated-id-' + [guid]::NewGuid().ToString('N'))
-[void](New-Item -ItemType Directory -Path $directory)
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'image-generated-id'
+$FbeExe = $isolation.Exe
+$directory = $isolation.Root; $passed = $false
 $sourceDirectory = Join-Path $directory 'source'
 $cwdDirectory = Join-Path $directory 'cwd'
 [void](New-Item -ItemType Directory -Path $sourceDirectory)
@@ -117,6 +121,7 @@ try {
     Invoke-FbeScenario 'binary-roundtrip' $reopenReport $fixture $cwdDirectory
     Assert-ImportedImage $fixture $sourceBytes $sourceHash $Inline $imageName
     }
+    $passed = $true
     Write-Host 'Production image import generated-id -> Save -> Reopen -> Save passed.'
 }
 finally {
@@ -124,5 +129,5 @@ finally {
         if ($null -eq $savedEnvironment[$name]) { Remove-Item -Path "Env:$name" -ErrorAction SilentlyContinue }
         else { Set-Item -Path "Env:$name" -Value $savedEnvironment[$name] }
     }
-    Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -PreserveContents
 }

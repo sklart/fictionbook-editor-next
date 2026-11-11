@@ -39,7 +39,7 @@ function Assert-Fb2([string]$Path, $Expected) {
 
 function Invoke-FbeMeasured([string[]]$Arguments, [string]$Phase) {
     $started = [Diagnostics.Stopwatch]::StartNew()
-    $process = Start-Process -FilePath $FbeExe -ArgumentList $Arguments -PassThru
+    $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList (@('--portable') + $Arguments) -WindowStyle Hidden -PassThru
     [int64]$peakPrivate = 0; [int64]$peakWorkingSet = 0
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
     do {
@@ -48,14 +48,16 @@ function Invoke-FbeMeasured([string[]]$Arguments, [string]$Phase) {
         $peakPrivate = [Math]::Max($peakPrivate, $process.PrivateMemorySize64)
         $peakWorkingSet = [Math]::Max($peakWorkingSet, $process.WorkingSet64)
     } while (-not $process.HasExited -and [DateTime]::UtcNow -lt $deadline)
-    if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force; throw "FBE не завершил $Phase." }
+    if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force; $process.WaitForExit(); throw "FBE не завершил $Phase." }
+    $process.WaitForExit(); $process.Refresh()
     $started.Stop()
     if ($process.ExitCode -ne 0) { throw "FBE вернул код $($process.ExitCode): $Phase." }
     return [pscustomobject]@{ Phase = $Phase; ElapsedMs = $started.ElapsedMilliseconds; PrivateBytes = $peakPrivate; WorkingSetBytes = $peakWorkingSet }
 }
 
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-large-binary-' + [guid]::NewGuid().ToString('N'))
-[void](New-Item -ItemType Directory -Path $directory)
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'binary-production'
+$directory = $isolation.Root; $passed = $false
 try {
     $previousTestMode = $env:FBE_NEXT_TEST_MODE
     $previousScenario = $env:FBE_NEXT_TEST_SCENARIO
@@ -83,10 +85,11 @@ try {
         Assert-Fb2 $fixture $expected
     }
     $measurements | Format-Table Phase,ElapsedMs,PrivateBytes,WorkingSetBytes -AutoSize | Out-Host
+    $passed = $true
     Write-Host 'Large binary production Save -> reopen -> Save round-trip passed.'
 }
 finally {
     if ($null -eq $previousTestMode) { Remove-Item Env:FBE_NEXT_TEST_MODE -ErrorAction SilentlyContinue } else { $env:FBE_NEXT_TEST_MODE = $previousTestMode }
     if ($null -eq $previousScenario) { Remove-Item Env:FBE_NEXT_TEST_SCENARIO -ErrorAction SilentlyContinue } else { $env:FBE_NEXT_TEST_SCENARIO = $previousScenario }
-    Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -PreserveContents
 }
