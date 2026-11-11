@@ -14,9 +14,8 @@ $destination = Join-Path $root ('out/tests/installer-core-payload-' + [guid]::Ne
 New-Item -ItemType Directory -Path $destination | Out-Null
 & $SevenZip x $installerPath "-o$destination" -y | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Installer extraction failed: $destination" }
-$files = @('languages.txt', 'root_genres.xml', 'genres.librusec.txt', 'genres.rus.librusec.txt', 'Dict/sources.json',
-    'DescriptionIcons/delete.png', 'DescriptionIcons/save.png', 'DescriptionIcons/view.png',
-    'DescriptionIcons/dark/delete.png', 'DescriptionIcons/dark/save.png', 'DescriptionIcons/dark/view.png')
+$files = @('languages.txt', 'root_genres.xml', 'genres.librusec.txt', 'genres.rus.librusec.txt', 'Dict/sources.json')
+if (Test-Path -LiteralPath (Join-Path $destination 'DescriptionIcons')) { throw 'Installer contains unused DescriptionIcons.' }
 foreach ($relative in $files) {
     $expected = Join-Path $inputPath $relative; $actual = Join-Path $destination $relative
     if (-not (Test-Path -LiteralPath $expected -PathType Leaf)) { throw "Missing input $relative" }

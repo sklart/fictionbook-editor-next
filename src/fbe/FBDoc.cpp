@@ -2581,10 +2581,6 @@ static void ApplyRuntimeBodyColors(MSHTML::IHTMLDocument2Ptr document)
 		CssColor(ThemeManager::FocusColor()).GetString(), CssColor(ThemeManager::WarningColor()).GetString(),
 		CssColor(ThemeManager::WarningColor()).GetString());
 	// The same alpha artwork has a neutral variant for each interface palette.
-	const wchar_t* iconFolder = ThemeManager::IsDark() && !IsHighContrastEnabled() ? L"DescriptionIcons/dark/" : L"DescriptionIcons/";
-	css.AppendFormat(L"div#fbw_desc .description-binary button#show{background-image:url('%sview.png');}"
-		L"div#fbw_desc .description-binary button#save{background-image:url('%ssave.png');}"
-		L"div#fbw_desc .description-binary button#del{background-image:url('%sdelete.png');}", iconFolder, iconFolder, iconFolder);
 	sheet->cssText = static_cast<LPCWSTR>(css);
 }
 

@@ -132,14 +132,10 @@ void CScriptsToolbarCustomizeDlg::RestoreSelection(CListBox& list, const std::ve
 }
 void CScriptsToolbarCustomizeDlg::ActivateList(CListBox& list)
 {
-	if(list.m_hWnd == m_currentList.m_hWnd) m_savedInsert = -1;
-	CListBox& other = list.m_hWnd == m_availableList.m_hWnd ? m_currentList : m_availableList;
-	if(other.m_hWnd == m_currentList.m_hWnd) {
-		const std::vector<int> rows = GetSelectedRows(other);
-		if(!rows.empty()) m_savedInsert = rows.front();
-	}
-	if(other.m_hWnd == m_availableList.m_hWnd) m_availableFilterSelection.clear();
-	if(other.GetSelCount() > 0) { ::SendMessage(other, LB_SETSEL, FALSE, -1); UpdateButtonState(); }
+	// Each list owns its selection. Repaint both when focus moves so the
+	// inactive selection remains visible without looking like the active one.
+	list.Invalidate();
+	(list.m_hWnd == m_availableList.m_hWnd ? m_currentList : m_availableList).Invalidate();
 }
 void CScriptsToolbarCustomizeDlg::PopulateAvailable(const std::vector<DWORD_PTR>* selected, bool redraw)
 {
@@ -249,7 +245,7 @@ LRESULT CScriptsToolbarCustomizeDlg::OnSearchChanged(WORD, WORD, HWND, BOOL&) {
 	const std::vector<DWORD_PTR> selection = m_availableFilterSelection;
 	PopulateAvailable(&selection); UpdateButtonState(); return 0;
 }
-LRESULT CScriptsToolbarCustomizeDlg::OnPanelChanged(WORD, WORD, HWND, BOOL&) { const int index = m_panelList.GetCurSel(); if(index >= 0 && index < static_cast<int>(m_panels.size())) { m_savedInsert = -1; m_availableFilterSelection = GetSelectedItemData(m_availableList); m_toolbar = m_panels[index].toolbar; RefreshLists(); UpdateButtonState(); } return 0; }
+LRESULT CScriptsToolbarCustomizeDlg::OnPanelChanged(WORD, WORD, HWND, BOOL&) { const int index = m_panelList.GetCurSel(); if(index >= 0 && index < static_cast<int>(m_panels.size())) { m_availableFilterSelection = GetSelectedItemData(m_availableList); m_toolbar = m_panels[index].toolbar; std::vector<DWORD_PTR> empty; RefreshLists(NULL, &empty); UpdateButtonState(); } return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnSelectionChanged(WORD, WORD id, HWND, BOOL&) { if(id == IDC_SCRIPTS_TOOLBAR_AVAILABLE) m_availableFilterSelection = GetSelectedItemData(m_availableList); UpdateButtonState(); return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnToolTipText(int, LPNMHDR hdr, BOOL& bHandled)
 {
@@ -280,7 +276,9 @@ LRESULT CScriptsToolbarCustomizeDlg::OnAdd(WORD, WORD, HWND, BOOL&)
 {
 	const std::vector<int> rows = GetSelectedRows(m_availableList); if(rows.empty()) return 0;
 	const std::vector<PortableToolbarItem> previous = CurrentItems(); std::vector<DWORD_PTR> currentSelection;
-	size_t insert = m_savedInsert >= 0 && static_cast<size_t>(m_savedInsert) <= CurrentItems().size() ? static_cast<size_t>(m_savedInsert) : CurrentItems().size();
+	const std::vector<int> selectedCurrent = GetSelectedRows(m_currentList);
+	size_t insert = selectedCurrent.empty() ? CurrentItems().size() : static_cast<size_t>(m_currentList.GetItemData(selectedCurrent.front()));
+	if(insert > CurrentItems().size()) insert = CurrentItems().size();
 	for(size_t rowIndex = 0; rowIndex < rows.size(); ++rowIndex) {
 		const DWORD_PTR item = m_availableList.GetItemData(rows[rowIndex]);
 		if(item == kSeparatorItem) { PortableToolbarItem separator = {}; separator.separator = true; separator.width = 8; CurrentItems().insert(CurrentItems().begin() + insert, separator); currentSelection.push_back(insert++); continue; }
@@ -288,12 +286,11 @@ LRESULT CScriptsToolbarCustomizeDlg::OnAdd(WORD, WORD, HWND, BOOL&)
 		PortableToolbarItem command = {}; command.command = m_available[item].command;
 		CurrentItems().insert(CurrentItems().begin() + insert, command); currentSelection.push_back(insert++);
 	}
-	if(!currentSelection.empty() && CommitCurrentItems(previous)) { m_savedInsert = -1; std::vector<DWORD_PTR> empty; RefreshLists(&empty, &currentSelection); UpdateButtonState(); }
+	if(!currentSelection.empty() && CommitCurrentItems(previous)) { std::vector<DWORD_PTR> empty; RefreshLists(&empty, &currentSelection); UpdateButtonState(); }
 	return 0;
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnRemove(WORD, WORD, HWND, BOOL&)
 {
-	m_savedInsert = -1;
 	std::vector<int> rows = GetSelectedRows(m_currentList); if(rows.empty()) return 0;
 	const std::vector<PortableToolbarItem> previous = CurrentItems();
 	std::vector<DWORD_PTR> availableSelection;
@@ -499,16 +496,28 @@ void CScriptsToolbarCustomizeDlg::DrawListItem(const DRAWITEMSTRUCT& item)
 	const bool available = item.CtlID == IDC_SCRIPTS_TOOLBAR_AVAILABLE;
 	CDCHandle dc(item.hDC); CRect rect(item.rcItem);
 	const bool selected = (item.itemState & ODS_SELECTED) != 0;
+	const bool activeSelection = selected && ::GetFocus() == item.hwndItem;
 	const bool disabled = (item.itemState & ODS_DISABLED) != 0 || ::IsWindowEnabled(item.hwndItem) == FALSE;
 	const bool themed = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
 	// Keep owner-drawn rows on the same ControlColor surface as the listbox's
 	// unused area, so a short list does not split into two Dark backgrounds.
-	const COLORREF background = themed ? (selected ? ThemeManager::SelectionBackgroundColor() : ThemeManager::ControlColor()) :
-		::GetSysColor(selected ? COLOR_HIGHLIGHT : COLOR_WINDOW);
+	const COLORREF background = themed ? (activeSelection ? ThemeManager::SelectionBackgroundColor() : ThemeManager::ControlColor()) :
+		::GetSysColor(activeSelection ? COLOR_HIGHLIGHT : COLOR_WINDOW);
 	const COLORREF textColor = themed ? (disabled ? ThemeManager::DisabledTextColor() :
-		(selected ? ThemeManager::SelectionTextColor() : ThemeManager::TextColor())) :
-		::GetSysColor(disabled ? COLOR_GRAYTEXT : (selected ? COLOR_HIGHLIGHTTEXT : COLOR_WINDOWTEXT));
+		(activeSelection ? ThemeManager::SelectionTextColor() : ThemeManager::TextColor())) :
+		::GetSysColor(disabled ? COLOR_GRAYTEXT : (activeSelection ? COLOR_HIGHLIGHTTEXT : COLOR_WINDOWTEXT));
 	dc.FillSolidRect(rect, background);
+	if(selected && !activeSelection) {
+		RECT outline = item.rcItem;
+		::InflateRect(&outline, -Scale(1), -Scale(1));
+		HBRUSH brush = ::CreateSolidBrush(themed ? ThemeManager::FocusColor() : ::GetSysColor(COLOR_HIGHLIGHT));
+		if(brush) {
+			for(int edge = 0; edge < Scale(2) && outline.right > outline.left && outline.bottom > outline.top; ++edge) {
+				::FrameRect(item.hDC, &outline, brush); ::InflateRect(&outline, -1, -1);
+			}
+			::DeleteObject(brush);
+		}
+	}
 	dc.SetTextColor(textColor);
 	dc.SetBkMode(TRANSPARENT);
 	const int textLength = static_cast<int>(::SendMessage(item.hwndItem, LB_GETTEXTLEN, item.itemID, 0));
@@ -559,6 +568,7 @@ void CScriptsToolbarCustomizeDlg::UpdateDragInsert(POINT point)
 	else if(point.y > 0) {
 		BOOL outside = FALSE; const int item = m_currentList.ItemFromPoint(point, outside);
 		if(!outside && item >= 0) { CRect rect; m_currentList.GetItemRect(item, &rect); insert = point.y < (rect.top + rect.bottom) / 2 ? item : item + 1; }
+		else if(count > 0) { CRect last; m_currentList.GetItemRect(count - 1, &last); if(point.y >= last.bottom) insert = count; }
 	}
 	if(insert != m_dragInsert) { m_dragInsert = insert; m_currentList.Invalidate(); }
 	UpdateDragScroll(point);
@@ -582,6 +592,20 @@ void CScriptsToolbarCustomizeDlg::FinishDrag(bool commit, POINT point)
 	}
 	m_dragging = false; m_dragSource = m_dragInsert = -1; m_dragRows.clear(); m_currentList.Invalidate();
 	if(::GetCapture() == m_currentList) ::ReleaseCapture();
+}
+void CScriptsToolbarCustomizeDlg::FinishAvailableDrag(bool commit, POINT point)
+{
+	if(!m_dragging || !m_dragFromAvailable) return;
+	m_currentList.KillTimer(1); m_dragScrollDirection = 0;
+	CRect client; m_currentList.GetClientRect(client);
+	if(commit && client.PtInRect(point) && m_dragInsert >= 0) {
+		::SendMessage(m_currentList, LB_SETSEL, FALSE, -1);
+		if(m_dragInsert < m_currentList.GetCount()) ::SendMessage(m_currentList, LB_SETSEL, TRUE, m_dragInsert);
+		BOOL handled = FALSE; OnAdd(0, 0, m_availableList, handled);
+	}
+	m_dragging = false; m_dragFromAvailable = false; m_dragSource = m_dragInsert = -1; m_dragRows.clear();
+	m_currentList.Invalidate(); UpdateButtonState();
+	if(::GetCapture() == m_availableList) ::ReleaseCapture();
 }
 bool CScriptsToolbarCustomizeDlg::MoveDraggedButtons(int insert, std::vector<DWORD_PTR>& selection)
 {
@@ -622,6 +646,9 @@ LRESULT CALLBACK CScriptsToolbarCustomizeDlg::CurrentListSubclassProc(HWND windo
 	case WM_SETFOCUS:
 		dialog->ActivateList(list);
 		break;
+	case WM_KILLFOCUS:
+		list.Invalidate();
+		break;
 	case WM_MOUSEMOVE:
 		if(!(wParam & MK_LBUTTON) && !dialog->m_dragging) dialog->m_dragSource = -1;
 		if((wParam & MK_LBUTTON) && dialog->m_dragSource >= 0 && !dialog->m_dragging)
@@ -659,11 +686,53 @@ LRESULT CALLBACK CScriptsToolbarCustomizeDlg::CurrentListSubclassProc(HWND windo
 LRESULT CALLBACK CScriptsToolbarCustomizeDlg::AvailableListSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference)
 {
 	CScriptsToolbarCustomizeDlg* dialog = reinterpret_cast<CScriptsToolbarCustomizeDlg*>(reference);
+	if(dialog == NULL) return ::DefSubclassProc(window, message, wParam, lParam);
 	CListBox list(window);
-	if(dialog != NULL && (message == WM_LBUTTONDOWN || message == WM_SETFOCUS)) dialog->ActivateList(list);
-	if(message == WM_KEYDOWN && wParam == 'F' && (::GetKeyState(VK_CONTROL) & 0x8000) && dialog != NULL) { dialog->FocusSearch(); return 0; }
-	if(message == WM_KEYDOWN && wParam == 'A' && (::GetKeyState(VK_CONTROL) & 0x8000)) { ::SendMessage(window, LB_SETSEL, TRUE, -1); if(dialog != NULL) dialog->UpdateButtonState(); return 0; }
-	if(message == WM_KEYDOWN && wParam == VK_RETURN && dialog != NULL) { BOOL handled = FALSE; dialog->OnAdd(0, 0, window, handled); return 0; }
+	if(message == WM_LBUTTONDOWN || message == WM_SETFOCUS) dialog->ActivateList(list);
+	if(message == WM_KILLFOCUS) list.Invalidate();
+	if(message == WM_LBUTTONDOWN) {
+		POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }; BOOL outside = FALSE;
+		const int row = list.ItemFromPoint(point, outside);
+		dialog->m_dragSource = outside ? -1 : row; dialog->m_dragStartPoint = point;
+		dialog->m_dragRows.clear();
+		if(!outside && !(wParam & (MK_CONTROL | MK_SHIFT)) && ::SendMessage(window, LB_GETSEL, row, 0) > 0) {
+			const std::vector<int> selected = dialog->GetSelectedRows(list);
+			if(selected.size() > 1) dialog->m_dragRows = selected;
+		}
+	}
+	if(message == WM_MOUSEMOVE) {
+		if((wParam & MK_LBUTTON) && dialog->m_dragSource >= 0 && !dialog->m_dragging &&
+			(abs(GET_X_LPARAM(lParam) - dialog->m_dragStartPoint.x) >= max(2, ::GetSystemMetrics(SM_CXDRAG)) ||
+			 abs(GET_Y_LPARAM(lParam) - dialog->m_dragStartPoint.y) >= max(2, ::GetSystemMetrics(SM_CYDRAG)))) {
+			if(!dialog->m_dragRows.empty()) {
+				::SendMessage(window, LB_SETSEL, FALSE, -1);
+				for(int row : dialog->m_dragRows) ::SendMessage(window, LB_SETSEL, TRUE, row);
+			}
+			// The native listbox can synchronously send WM_CAPTURECHANGED while
+			// transferring its own capture. Start our drag after that transition.
+			::SetCapture(window); dialog->m_dragging = true; dialog->m_dragFromAvailable = true;
+		}
+		if(dialog->m_dragging && dialog->m_dragFromAvailable) {
+			POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+			::MapWindowPoints(window, dialog->m_currentList, &point, 1);
+			CRect client; dialog->m_currentList.GetClientRect(client);
+			if(client.PtInRect(point)) dialog->UpdateDragInsert(point);
+			else { dialog->m_currentList.KillTimer(1); dialog->m_dragScrollDirection = 0; dialog->m_dragInsert = -1; dialog->m_currentList.Invalidate(); }
+			return 0;
+		}
+	}
+	if(message == WM_LBUTTONUP && dialog->m_dragging && dialog->m_dragFromAvailable) {
+		POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+		::MapWindowPoints(window, dialog->m_currentList, &point, 1); dialog->FinishAvailableDrag(true, point); return 0;
+	}
+	if(message == WM_LBUTTONUP && !dialog->m_dragging) dialog->m_dragSource = -1;
+	if((message == WM_CANCELMODE || message == WM_CAPTURECHANGED) && dialog->m_dragging && dialog->m_dragFromAvailable) {
+		POINT point = {}; dialog->FinishAvailableDrag(false, point);
+	}
+	if(message == WM_KEYDOWN && wParam == VK_ESCAPE && dialog->m_dragging && dialog->m_dragFromAvailable) { POINT point = {}; dialog->FinishAvailableDrag(false, point); return 0; }
+	if(message == WM_KEYDOWN && wParam == 'F' && (::GetKeyState(VK_CONTROL) & 0x8000)) { dialog->FocusSearch(); return 0; }
+	if(message == WM_KEYDOWN && wParam == 'A' && (::GetKeyState(VK_CONTROL) & 0x8000)) { ::SendMessage(window, LB_SETSEL, TRUE, -1); dialog->UpdateButtonState(); return 0; }
+	if(message == WM_KEYDOWN && wParam == VK_RETURN) { BOOL handled = FALSE; dialog->OnAdd(0, 0, window, handled); return 0; }
 	return ::DefSubclassProc(window, message, wParam, lParam);
 }
 

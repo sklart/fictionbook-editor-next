@@ -22,10 +22,10 @@ namespace
 {
 const InterfacePalette kPaletteRows[] = {
 	INTERFACE_PALETTE_CLASSIC,
-	INTERFACE_PALETTE_SEPIA, INTERFACE_PALETTE_CATPPUCCIN_LATTE, INTERFACE_PALETTE_SOLARIZED_LIGHT, INTERFACE_PALETTE_EVERFOREST_LIGHT,
+	INTERFACE_PALETTE_SEPIA, INTERFACE_PALETTE_CATPPUCCIN_LATTE, INTERFACE_PALETTE_SOLARIZED_LIGHT, INTERFACE_PALETTE_EVERFOREST_LIGHT, INTERFACE_PALETTE_TURQUOISE_LIGHT,
 	INTERFACE_PALETTE_GRAPHITE, INTERFACE_PALETTE_NAVY, INTERFACE_PALETTE_CATPPUCCIN_MOCHA, INTERFACE_PALETTE_SOLARIZED_DARK,
 	INTERFACE_PALETTE_EVERFOREST_DARK, INTERFACE_PALETTE_ROSE_PINE_MOON, INTERFACE_PALETTE_DRACULA,
-	INTERFACE_PALETTE_CATPPUCCIN_FRAPPE, INTERFACE_PALETTE_CATPPUCCIN_MACCHIATO,
+	INTERFACE_PALETTE_CATPPUCCIN_FRAPPE, INTERFACE_PALETTE_CATPPUCCIN_MACCHIATO, INTERFACE_PALETTE_FOREST, INTERFACE_PALETTE_PLUM,
 	INTERFACE_PALETTE_HIGH_CONTRAST_LIGHT, INTERFACE_PALETTE_HIGH_CONTRAST_DARK
 };
 static_assert(_countof(kPaletteRows) == INTERFACE_PALETTE_COUNT, "Every built-in palette must be listed");
@@ -391,6 +391,9 @@ class CPaletteManagerDialog : public CDialogImpl<CPaletteManagerDialog>
             if(*part.text) {
                 ::SetTextColor(dc, colors[part.role == THEME_COLOR_SELECTION_TEXT || part.role == THEME_COLOR_TEXT ||
                     part.role == THEME_COLOR_SECONDARY_TEXT || part.role == THEME_COLOR_DISABLED_TEXT ? part.role : THEME_COLOR_TEXT]);
+                if(part.role == THEME_COLOR_FOCUS || part.role == THEME_COLOR_ACCENT ||
+                    part.role == THEME_COLOR_ERROR || part.role == THEME_COLOR_WARNING || part.role == THEME_COLOR_SUCCESS)
+                    ::SetTextColor(dc, ReadableInk(colors[part.background]));
                 RECT text = part.rect; text.left += 4;
                 CString localized;
                 LPCWSTR caption = part.text;
@@ -1283,6 +1286,23 @@ public:
         BOOL handled = FALSE; OnAction(BN_CLICKED, IDC_PALETTE_RESET_COLOR, GetDlgItem(IDC_PALETTE_RESET_COLOR), handled);
         SetDlgItemText(IDC_PALETTE_CURRENT, L"Sepia");
         ok = capture(L"sepia-reset.bmp") && ok;
+        // Candidate comparisons use the real manager controls and the editor's
+        // preview before any candidate is added to the built-in catalogue.
+        struct Candidate { LPCWSTR name; LPCWSTR file; bool dark; COLORREF colors[THEME_COLOR_COUNT]; };
+        const Candidate candidates[] = {
+            { L"Forest", L"candidate-forest.bmp", true, { RGB(19,38,31), RGB(29,55,43), RGB(229,241,228), RGB(92,151,120), RGB(65,103,80), RGB(195,220,199), RGB(158,184,164), RGB(54,102,75), RGB(255,255,255), RGB(40,73,55), RGB(54,102,75), RGB(144,210,168), RGB(144,210,168), RGB(255,162,157), RGB(255,209,122), RGB(160,224,164) } },
+            { L"Plum", L"candidate-plum.bmp", true, { RGB(48,28,42), RGB(68,39,56), RGB(248,232,239), RGB(171,111,143), RGB(112,69,91), RGB(224,194,210), RGB(205,172,190), RGB(112,52,77), RGB(255,255,255), RGB(86,48,68), RGB(112,52,77), RGB(244,166,197), RGB(244,166,197), RGB(255,167,170), RGB(255,211,147), RGB(178,224,174) } },
+            { L"Turquoise", L"candidate-turquoise.bmp", false, { RGB(230,247,245), RGB(207,233,229), RGB(20,65,66), RGB(40,119,116), RGB(145,196,190), RGB(44,89,88), RGB(75,121,119), RGB(31,105,103), RGB(255,255,255), RGB(187,222,217), RGB(158,205,198), RGB(0,95,94), RGB(0,95,94), RGB(154,34,52), RGB(122,68,0), RGB(17,102,64) } }
+        };
+        for(const Candidate& candidate : candidates) {
+            draft = originalPalettes[index]; draft.name = candidate.name;
+            draft.base = candidate.dark ? ThemeManager::CustomPaletteBase::Dark : ThemeManager::CustomPaletteBase::Light;
+            for(int role = 0; role < THEME_COLOR_COUNT; ++role) { draft.present[role] = true; draft.colors[role] = candidate.colors[role]; }
+            m_page.m_customPalettes[index] = draft; m_page.m_acceptedThemeIndex = candidate.dark ? INTERFACE_THEME_DARK : INTERFACE_THEME_LIGHT;
+            ThemeManager::SetSelectedTheme(static_cast<InterfaceTheme>(m_page.m_acceptedThemeIndex));
+            ok = ThemeManager::SetCustomPalette(draft) && ok; ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId()); Refresh();
+            SetDlgItemText(IDC_PALETTE_CURRENT, candidate.name); selectRole(THEME_COLOR_CONTROL); ok = capture(candidate.file) && ok;
+        }
         m_page.m_customPalettes = originalPalettes; m_page.m_pendingPalettes = originalPending;
         m_page.m_paletteChanged = originalChanged; m_page.m_acceptedThemeIndex = originalThemeIndex;
         ThemeManager::SetSelectedTheme(activeTheme);
@@ -1657,6 +1677,234 @@ public:
     LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&) { m_page.m_paletteManager = NULL; EndDialog(IDCANCEL); return 0; }
 };
 
+// The chooser stages a selection in the settings page only on Apply or Edit.
+// The existing editor remains responsible for advanced palette operations.
+class CPaletteChooserDialog : public CDialogImpl<CPaletteChooserDialog>
+{
+    CSettingsGeneralPage& m_page;
+    HWND m_group = NULL, m_list = NULL, m_sample = NULL, m_caption = NULL, m_note = NULL;
+    HWND m_edit = NULL, m_copy = NULL;
+    int m_row = 0;
+    static constexpr int kGroup = 0x7e51, kList = 0x7e52, kSample = 0x7e53;
+    static constexpr int kEdit = 0x7e54, kCopy = 0x7e55, kCaption = 0x7e56, kNote = 0x7e57;
+
+    int Scale(int value) const { return UiMetrics::ScaleForDpi(value, UiMetrics::DpiForWindow(m_hWnd)); }
+    CString Label(int row) const {
+        CString text; if(row >= 0 && row < m_page.m_interfacePalette.GetCount()) m_page.m_interfacePalette.GetLBText(row, text);
+        return text;
+    }
+    void Colors(int row, COLORREF (&colors)[THEME_COLOR_COUNT]) const {
+        const int custom = row - INTERFACE_PALETTE_COUNT;
+        const ThemeManager::CustomPalette* palette = custom >= 0 && custom < static_cast<int>(m_page.m_customPalettes.size()) ? &m_page.m_customPalettes[custom] : NULL;
+        ThemeManager::PreviewColors(static_cast<InterfaceTheme>(m_page.m_acceptedThemeIndex),
+            palette ? INTERFACE_PALETTE_CLASSIC : CSettingsGeneralPage::PaletteForRow(row), palette, colors);
+    }
+    bool IsDark(int row) const {
+        COLORREF colors[THEME_COLOR_COUNT] = {}; Colors(row, colors);
+        const COLORREF color = colors[THEME_COLOR_WINDOW];
+        return 299 * GetRValue(color) + 587 * GetGValue(color) + 114 * GetBValue(color) < 128000;
+    }
+    void FillList() {
+        const int group = static_cast<int>(::SendMessageW(m_group, CB_GETCURSEL, 0, 0));
+        ::SendMessageW(m_list, LB_RESETCONTENT, 0, 0);
+        int selected = -1;
+        for(int row = 0; row < m_page.m_interfacePalette.GetCount(); ++row) {
+            if(!m_page.PaletteItemAvailable(row)) continue;
+            const bool custom = row >= INTERFACE_PALETTE_COUNT, dark = IsDark(row);
+            if((group == 1 && (custom || dark)) || (group == 2 && (custom || !dark)) || (group == 3 && !custom)) continue;
+            const CString label = Label(row);
+            const LRESULT index = ::SendMessageW(m_list, LB_ADDSTRING, 0, reinterpret_cast<LPARAM>(label.GetString()));
+            if(index < 0) continue;
+            ::SendMessageW(m_list, LB_SETITEMDATA, index, row);
+            if(row == m_row) selected = static_cast<int>(index);
+        }
+        if(selected < 0 && ::SendMessageW(m_list, LB_GETCOUNT, 0, 0) > 0) selected = 0;
+        ::SendMessageW(m_list, LB_SETCURSEL, selected, 0);
+        m_row = selected >= 0 ? static_cast<int>(::SendMessageW(m_list, LB_GETITEMDATA, selected, 0)) : -1;
+        ::EnableWindow(GetDlgItem(IDOK), selected >= 0);
+        ::EnableWindow(m_copy, selected >= 0); ::EnableWindow(m_edit, selected >= 0);
+        UpdateSample();
+    }
+    void UpdateSample() {
+        CString caption = Label(m_row);
+        if(m_row >= 0) {
+            caption += L" — ";
+            caption += IsDark(m_row) ? FbeLoadRuntimeStringByKey(L"fbe.settings.palette.chooser_dark", L"Dark") : FbeLoadRuntimeStringByKey(L"fbe.settings.palette.chooser_light", L"Light");
+        }
+        ::SetWindowTextW(m_caption, caption);
+        ::InvalidateRect(m_sample, NULL, TRUE);
+    }
+    bool StageSelection() {
+        if(m_row < 0 || m_row >= m_page.m_interfacePalette.GetCount()) return false;
+        if(m_row == m_page.m_acceptedPaletteIndex) return true;
+        const int previous = m_page.m_acceptedPaletteIndex;
+        m_page.m_interfacePalette.SetCurSel(m_row);
+        BOOL handled = FALSE; m_page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, m_page.m_interfacePalette, handled);
+        if(m_page.m_acceptedPaletteIndex == m_row) return true;
+        m_page.m_interfacePalette.SetCurSel(previous); return false;
+    }
+    static void Fill(HDC dc, RECT rect, COLORREF color) {
+        HBRUSH brush = ::CreateSolidBrush(color); if(brush) { ::FillRect(dc, &rect, brush); ::DeleteObject(brush); }
+    }
+    void DrawSample(const DRAWITEMSTRUCT& item) {
+        COLORREF colors[THEME_COLOR_COUNT] = {}; Colors(m_row, colors);
+        RECT r = item.rcItem; Fill(item.hDC, r, colors[THEME_COLOR_WINDOW]);
+        const int gap = Scale(9), line = Scale(27);
+        RECT bar = {r.left, r.top, r.right, r.top + line}; Fill(item.hDC, bar, colors[THEME_COLOR_CONTROL]);
+        ::SetBkMode(item.hDC, TRANSPARENT); ::SetTextColor(item.hDC, colors[THEME_COLOR_TEXT]);
+        RECT text = bar; text.left += gap; ::DrawTextW(item.hDC, L"FBE Next", -1, &text, DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX);
+        RECT field = {r.left + gap, bar.bottom + gap, r.right - gap, bar.bottom + gap + line};
+        Fill(item.hDC, field, colors[THEME_COLOR_CONTROL]);
+        text = field; text.left += gap; ::DrawTextW(item.hDC, Label(m_row), -1, &text, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+        RECT selection = {field.left, field.bottom + gap, field.right, field.bottom + gap + line};
+        Fill(item.hDC, selection, colors[THEME_COLOR_SELECTION_BACKGROUND]); ::SetTextColor(item.hDC, colors[THEME_COLOR_SELECTION_TEXT]);
+        text = selection; text.left += gap; ::DrawTextW(item.hDC, FbeLoadRuntimeStringByKey(L"fbe.settings.palette.chooser_selected", L"Selected item"), -1, &text, DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX);
+        ::SetTextColor(item.hDC, colors[THEME_COLOR_DISABLED_TEXT]); text.top = selection.bottom + gap; text.bottom = text.top + line;
+        ::DrawTextW(item.hDC, FbeLoadRuntimeStringByKey(L"fbe.settings.palette.chooser_disabled", L"Inactive text"), -1, &text, DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX);
+        ::FrameRect(item.hDC, &r, reinterpret_cast<HBRUSH>(::GetStockObject(GRAY_BRUSH)));
+    }
+public:
+    static constexpr INT_PTR EditResult = 1001;
+    explicit CPaletteChooserDialog(CSettingsGeneralPage& page) : m_page(page), m_row(page.m_acceptedPaletteIndex) {}
+    enum { IDD = IDD_SETTINGS_PALETTE_MANAGER };
+    BEGIN_MSG_MAP(CPaletteChooserDialog)
+        MESSAGE_HANDLER(WM_INITDIALOG, OnInit)
+        MESSAGE_HANDLER(WM_DRAWITEM, OnDraw)
+        MESSAGE_HANDLER(WM_TIMER, OnTimer)
+        COMMAND_HANDLER(kGroup, CBN_SELCHANGE, OnGroup)
+        COMMAND_HANDLER(kList, LBN_SELCHANGE, OnSelection)
+        COMMAND_HANDLER(kList, LBN_DBLCLK, OnApply)
+        COMMAND_HANDLER(kEdit, BN_CLICKED, OnEdit)
+        COMMAND_HANDLER(kCopy, BN_CLICKED, OnCopy)
+        COMMAND_HANDLER(IDOK, BN_CLICKED, OnApply)
+        COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnCancel)
+        MESSAGE_HANDLER(WM_CLOSE, OnClose)
+    END_MSG_MAP()
+    LRESULT OnInit(UINT, WPARAM, LPARAM, BOOL&) {
+        ::SetPropW(m_hWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION", reinterpret_cast<HANDLE>(1));
+        m_page.m_paletteManager = m_hWnd;
+        for(HWND child = ::GetWindow(m_hWnd, GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT)) ::ShowWindow(child, SW_HIDE);
+        SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.settings.palette.manage", L"Manage colour schemes"));
+        const int gap = Scale(12), line = Scale(30);
+        MONITORINFO monitor = { sizeof(monitor) };
+        ::GetMonitorInfoW(::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST), &monitor);
+        const int width = min(Scale(760), max(1, static_cast<int>(monitor.rcWork.right - monitor.rcWork.left) - Scale(24)));
+        const int height = min(Scale(480), max(1, static_cast<int>(monitor.rcWork.bottom - monitor.rcWork.top) - Scale(64)));
+        const int left = min(Scale(300), (width - 3 * gap) / 2);
+        RECT window = {0, 0, width, height}; ::AdjustWindowRectEx(&window, static_cast<DWORD>(GetWindowLong(GWL_STYLE)), FALSE, static_cast<DWORD>(GetWindowLong(GWL_EXSTYLE)));
+        SetWindowPos(NULL, 0, 0, window.right-window.left, window.bottom-window.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        const HINSTANCE instance = _Module.GetModuleInstance(); HFONT font = reinterpret_cast<HFONT>(SendMessage(WM_GETFONT));
+        auto create = [&](LPCWSTR type, LPCWSTR text, DWORD style, int id, int x, int y, int w, int h) -> HWND {
+            HWND control = ::CreateWindowExW(0, type, text, WS_CHILD | WS_VISIBLE | style, x, y, w, h, m_hWnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)), instance, NULL);
+            if(control) ::SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE); return control;
+        };
+        m_group = create(WC_COMBOBOXW, L"", WS_TABSTOP | CBS_DROPDOWNLIST | WS_VSCROLL, kGroup, gap, gap, left, Scale(180));
+        CString groups = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.chooser_groups", L"All schemes|Light|Dark|User schemes");
+        int position = 0; for(int i = 0; i < 4; ++i) { CString label = groups.Tokenize(L"|", position); ::SendMessageW(m_group, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(label.GetString())); }
+        ::SendMessageW(m_group, CB_SETCURSEL, 0, 0);
+        m_list = create(L"LISTBOX", L"", WS_TABSTOP | WS_VSCROLL | LBS_NOTIFY | LBS_OWNERDRAWFIXED | LBS_HASSTRINGS | WS_BORDER, kList, gap, gap * 2 + line, left, height - line * 3 - gap * 4);
+        ::SendMessageW(m_list, LB_SETITEMHEIGHT, 0, Scale(34));
+        const int right = left + gap * 2, rightWidth = width - right - gap;
+        m_caption = create(L"STATIC", L"", SS_OWNERDRAW, kCaption, right, gap, rightWidth, line);
+        const int sampleTop = gap * 2 + line;
+        const int sampleHeight = max(1, min(Scale(210), height - sampleTop - 3 * line - 4 * gap));
+        m_sample = create(L"STATIC", L"", SS_OWNERDRAW, kSample, right, sampleTop, rightWidth, sampleHeight);
+        const int copyTop = sampleTop + sampleHeight + gap;
+        m_copy = create(L"BUTTON", FbeLoadRuntimeStringByKey(L"fbe.settings.palette.chooser_copy", L"Create based on this scheme"), WS_TABSTOP | BS_PUSHBUTTON, kCopy, right, copyTop, rightWidth, line);
+        m_edit = create(L"BUTTON", FbeLoadRuntimeStringByKey(L"fbe.settings.palette.chooser_edit", L"Edit..."), WS_TABSTOP | BS_PUSHBUTTON, kEdit, right, copyTop + line + gap, rightWidth, line);
+        const int noteTop = copyTop + 2 * line + 2 * gap;
+        m_note = create(L"STATIC", FbeLoadRuntimeStringByKey(L"fbe.settings.palette.chooser_auto_note", L"Windows mode applies to Classic; other schemes define their own light or dark appearance."), SS_OWNERDRAW, kNote,
+            right, noteTop, rightWidth, max(1, height - line - 2 * gap - noteTop));
+        SetDlgItemText(IDOK, FbeLoadRuntimeStringByKey(L"fbe.settings.palette.chooser_apply", L"Apply"));
+        SetDlgItemText(IDCANCEL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_tools_settings.cancel", L"Cancel"));
+        ::SetWindowPos(GetDlgItem(IDOK), NULL, width - Scale(210), height - line - gap, Scale(96), line, SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        ::SetWindowPos(GetDlgItem(IDCANCEL), NULL, width - Scale(108), height - line - gap, Scale(96), line, SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        ModifyStyle(WS_THICKFRAME | WS_MAXIMIZEBOX, 0); ThemeManager::ApplyToWindow(m_hWnd); FillList(); CenterWindow(GetParent());
+        if(RuntimeTests::IsScenario(L"custom-palette-manage") && ::GetPropW(m_page.m_hWnd, L"FBE.PaletteChooserTest")) SetTimer(0x5043, 1);
+        return TRUE;
+    }
+    LRESULT OnTimer(UINT, WPARAM timer, LPARAM, BOOL&) {
+        if(timer != 0x5043) return 0;
+        KillTimer(0x5043);
+        const ULONG_PTR mode = reinterpret_cast<ULONG_PTR>(::GetPropW(m_page.m_hWnd, L"FBE.PaletteChooserTest"));
+        const int initial = m_page.m_acceptedPaletteIndex;
+        bool passed = m_row == initial && ::SendMessageW(m_list, LB_GETCURSEL, 0, 0) >= 0;
+        wchar_t capturePath[MAX_PATH] = {};
+        const DWORD length = ::GetEnvironmentVariableW(L"FBE_NEXT_PALETTE_CHOOSER_CAPTURE", capturePath, _countof(capturePath));
+        if(length > 0 && length < _countof(capturePath)) {
+            ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+            RECT frame = {}; ::GetWindowRect(m_hWnd, &frame); CImage image;
+            bool captured = image.Create(frame.right-frame.left, frame.bottom-frame.top, 32) != FALSE;
+            HDC dc = captured ? image.GetDC() : NULL; captured = dc && ::PrintWindow(m_hWnd, dc, 0);
+            if(dc) image.ReleaseDC();
+            passed = captured && SUCCEEDED(image.Save(capturePath)) && passed;
+        }
+        ::SendMessageW(m_group, CB_SETCURSEL, 1, 0); FillList();
+        passed = ::SendMessageW(m_list, LB_GETCOUNT, 0, 0) > 0 && m_row >= 0 && !IsDark(m_row) && passed;
+        ::SendMessageW(m_group, CB_SETCURSEL, 2, 0); FillList();
+        if(::SendMessageW(m_list, LB_GETCOUNT, 0, 0) > 0) passed = m_row >= 0 && IsDark(m_row) && passed;
+        passed = m_page.m_acceptedPaletteIndex == initial && passed;
+        if(mode == 2 && m_row >= 0) passed = StageSelection() && m_page.m_acceptedPaletteIndex == m_row && passed;
+        ::SetPropW(m_page.m_hWnd, L"FBE.PaletteChooserResult", reinterpret_cast<HANDLE>(passed ? 1 : 2));
+        EndDialog(mode == 2 ? IDOK : IDCANCEL);
+        return 0;
+    }
+    LRESULT OnGroup(WORD, WORD, HWND, BOOL&) { FillList(); return 0; }
+    LRESULT OnSelection(WORD, WORD, HWND, BOOL&) {
+        const LRESULT index = ::SendMessageW(m_list, LB_GETCURSEL, 0, 0);
+        if(index >= 0) { m_row = static_cast<int>(::SendMessageW(m_list, LB_GETITEMDATA, index, 0)); UpdateSample(); }
+        return 0;
+    }
+    LRESULT OnDraw(UINT, WPARAM id, LPARAM parameter, BOOL& handled) {
+        const auto* item = reinterpret_cast<const DRAWITEMSTRUCT*>(parameter);
+        if(!item) return 0;
+        if(id == kSample) { DrawSample(*item); return TRUE; }
+        if(id == kCaption || id == kNote) {
+            const COLORREF background = ThemeManager::Color(THEME_COLOR_WINDOW);
+            Fill(item->hDC, item->rcItem, background);
+            const HWND control = id == kCaption ? m_caption : m_note;
+            CString text; const int length = ::GetWindowTextLengthW(control);
+            if(length > 0) { ::GetWindowTextW(control, text.GetBuffer(length + 1), length + 1); text.ReleaseBuffer(); }
+            RECT bounds = item->rcItem; ::SetBkMode(item->hDC, TRANSPARENT); ::SetTextColor(item->hDC, PalettePreviewContrast::ReadableInk(background));
+            ::DrawTextW(item->hDC, text, -1, &bounds, (id == kCaption ? DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS : DT_WORDBREAK | DT_END_ELLIPSIS) | DT_NOPREFIX);
+            return TRUE;
+        }
+        if(id != kList) { handled = FALSE; return 0; }
+        if(item->itemID == static_cast<UINT>(-1)) return TRUE;
+        const int row = static_cast<int>(item->itemData); const bool selected = (item->itemState & ODS_SELECTED) != 0;
+        const COLORREF background = ThemeManager::Color(selected ? THEME_COLOR_SELECTION_BACKGROUND : THEME_COLOR_WINDOW);
+        Fill(item->hDC, item->rcItem, background);
+        COLORREF colors[THEME_COLOR_COUNT] = {}; Colors(row, colors);
+        RECT swatch = item->rcItem; ::InflateRect(&swatch, -Scale(4), -Scale(5)); swatch.right = swatch.left + Scale(42);
+        Fill(item->hDC, swatch, colors[THEME_COLOR_WINDOW]); RECT control = swatch; control.left += Scale(14); Fill(item->hDC, control, colors[THEME_COLOR_CONTROL]);
+        RECT accent = swatch; accent.left = accent.right - Scale(10); Fill(item->hDC, accent, colors[THEME_COLOR_ACCENT]);
+        ::FrameRect(item->hDC, &swatch, reinterpret_cast<HBRUSH>(::GetStockObject(GRAY_BRUSH)));
+        RECT text = item->rcItem; text.left = swatch.right + Scale(8); ::SetBkMode(item->hDC, TRANSPARENT);
+        ::SetTextColor(item->hDC, PalettePreviewContrast::ReadableInk(background));
+        ::DrawTextW(item->hDC, Label(row), -1, &text, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+        if(item->itemState & ODS_FOCUS) ::DrawFocusRect(item->hDC, &item->rcItem); return TRUE;
+    }
+    LRESULT OnApply(WORD, WORD, HWND, BOOL&) { if(StageSelection()) EndDialog(IDOK); return 0; }
+    LRESULT OnEdit(WORD, WORD, HWND, BOOL&) {
+        if(!StageSelection()) return 0;
+        if(m_row < INTERFACE_PALETTE_COUNT) {
+            const CString message = FbeLoadRuntimeStringByKey(L"fbe.settings.palette.chooser_copy_prompt", L"Built-in schemes cannot be edited. Create a copy?");
+            if(MessageBox(message, FbeLoadRuntimeStringByKey(L"fbe.settings.palette.manage", L"Manage colour schemes"), MB_YESNO | MB_ICONQUESTION) != IDYES) return 0;
+            return CopyAndEdit();
+        }
+        EndDialog(EditResult); return 0;
+    }
+    LRESULT CopyAndEdit() {
+        const int previous = m_page.m_acceptedPaletteIndex; BOOL handled = FALSE;
+        m_page.OnCopyPalette(BN_CLICKED, IDC_INTERFACE_PALETTE_COPY, m_copy, handled);
+        if(m_page.m_acceptedPaletteIndex != previous && m_page.m_acceptedPaletteIndex >= INTERFACE_PALETTE_COUNT) EndDialog(EditResult);
+        return 0;
+    }
+    LRESULT OnCopy(WORD, WORD, HWND, BOOL&) { if(StageSelection()) return CopyAndEdit(); return 0; }
+    LRESULT OnCancel(WORD, WORD, HWND, BOOL&) { EndDialog(IDCANCEL); return 0; }
+    LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&) { EndDialog(IDCANCEL); return 0; }
+};
+
 LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_SETTINGS_GENERAL);
@@ -1688,7 +1936,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Initialize(m_hWnd);
 	m_tooltips.Add(m_language, L"fbe.settings.tooltip.general.language", L"Interface language. System default uses the Windows language.");
 	for(HWND control : {m_interfaceTheme.m_hWnd, GetDlgItem(IDC_INTERFACE_THEME_LABEL).m_hWnd})
-		m_tooltips.Add(control, L"fbe.settings.tooltip.general.interface_theme", L"Automatic follows the Windows app theme.");
+		m_tooltips.Add(control, L"fbe.settings.tooltip.general.interface_theme", L"Automatic follows Windows for the Classic scheme. Other schemes set their own light or dark appearance.");
 	for(HWND control : {m_interfacePalette.m_hWnd, GetDlgItem(IDC_INTERFACE_PALETTE_LABEL).m_hWnd})
 		m_tooltips.Add(control, L"fbe.settings.tooltip.general.interface_palette", L"Choose interface colours independently of the Windows mode. High Contrast uses system colours.");
 	m_tooltips.Add(GetDlgItem(IDC_INTERFACE_PALETTE_COPY), L"fbe.settings.tooltip.general.palette_copy", L"Create a copy of the selected palette. It is saved when you confirm settings.");
@@ -2367,9 +2615,9 @@ LRESULT CSettingsGeneralPage::OnDrawThemeItem(UINT, WPARAM, LPARAM parameter, BO
 	if(index >= 0) {
 		CComboBox combo(item->hwndItem); CString text; combo.GetLBText(index, text);
 		RECT rect = item->rcItem; rect.left += UiMetrics::ScaleForDpi(4, UiMetrics::DpiForWindow(m_hWnd)); rect.right -= 2;
-		if(item->CtlID == IDC_INTERFACE_PALETTE && !(item->itemState & ODS_COMBOBOXEDIT) && (index == 1 || index == 5 || index == 14 || index == INTERFACE_PALETTE_COUNT)) {
-			const wchar_t* key = index == 1 ? L"fbe.settings.palette.group.light" : index == 5 ? L"fbe.settings.palette.group.dark" : index == 14 ? L"fbe.settings.palette.group.contrast" : L"fbe.settings.palette.group.custom";
-			const wchar_t* fallback = index == 1 ? L"Light themes" : index == 5 ? L"Dark themes" : index == 14 ? L"High contrast themes" : L"Custom themes";
+		if(item->CtlID == IDC_INTERFACE_PALETTE && !(item->itemState & ODS_COMBOBOXEDIT) && (index == 1 || index == RowForPalette(INTERFACE_PALETTE_GRAPHITE) || index == RowForPalette(INTERFACE_PALETTE_HIGH_CONTRAST_LIGHT) || index == INTERFACE_PALETTE_COUNT)) {
+			const wchar_t* key = index == 1 ? L"fbe.settings.palette.group.light" : index == RowForPalette(INTERFACE_PALETTE_GRAPHITE) ? L"fbe.settings.palette.group.dark" : index == RowForPalette(INTERFACE_PALETTE_HIGH_CONTRAST_LIGHT) ? L"fbe.settings.palette.group.contrast" : L"fbe.settings.palette.group.custom";
+			const wchar_t* fallback = index == 1 ? L"Light themes" : index == RowForPalette(INTERFACE_PALETTE_GRAPHITE) ? L"Dark themes" : index == RowForPalette(INTERFACE_PALETTE_HIGH_CONTRAST_LIGHT) ? L"High contrast themes" : L"Custom themes";
 			const CString label = FbeLoadRuntimeStringByKey(key, fallback);
 			RECT group = rect; group.left = rect.left + (rect.right - rect.left) / 2;
 			::SetTextColor(item->hDC, !available ? ThemeManager::DisabledTextColor() : selected ? ThemeManager::SelectionTextColor() : ThemeManager::SecondaryTextColor());
@@ -2834,8 +3082,19 @@ LRESULT CSettingsGeneralPage::OnManagePalettes(WORD, WORD, HWND, BOOL&)
     const bool changedBefore = m_paletteChanged;
     std::vector<CString> labels;
     for(int i = 0; i < m_interfacePalette.GetCount(); ++i) { CString value; m_interfacePalette.GetLBText(i, value); labels.push_back(value); }
-    CPaletteManagerDialog dialog(*this);
-    const INT_PTR result = dialog.DoModal(m_hWnd);
+    INT_PTR result = IDCANCEL;
+    // The existing editor-specific harness exercises its own dialog directly.
+    if(RuntimeTests::IsScenario(L"custom-palette-manage") && ::GetPropW(m_hWnd, L"FBE.PaletteManagerTest")) {
+        CPaletteManagerDialog dialog(*this);
+        result = dialog.DoModal(m_hWnd);
+    } else {
+        CPaletteChooserDialog chooser(*this);
+        result = chooser.DoModal(m_hWnd);
+        if(result == CPaletteChooserDialog::EditResult) {
+            CPaletteManagerDialog editor(*this);
+            result = editor.DoModal(m_hWnd);
+        }
+    }
     m_paletteManager = NULL;
     if(result != IDOK) {
         m_customPalettes = customBefore; m_pendingPalettes = pendingBefore;

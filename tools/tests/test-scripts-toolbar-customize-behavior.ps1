@@ -57,11 +57,6 @@ function Move-SelectedByDrag([System.Collections.Generic.List[int]]$toolbar, [in
     for ($index = 0; $index -lt $toolbar.Count; ++$index) { if ($selectedSet.Contains($index)) { $moved.Add($toolbar[$index]) } else { $rest.Add($toolbar[$index]) } }
     $rest.InsertRange($destination, $moved); $toolbar.Clear(); $toolbar.AddRange($rest)
 }
-function Activate-Selection([bool[]]$active, [bool[]]$other) {
-    $changed = $other -contains $true
-    for ($index = 0; $index -lt $other.Length; ++$index) { $other[$index] = $false }
-    return $changed
-}
 
 # 0 models TBSTYLE_SEP: it occupies a real toolbar index and is movable/removable.
 $toolbar = [System.Collections.Generic.List[int]]@(101, 0, 102)
@@ -84,14 +79,6 @@ foreach ($item in $selectedAvailable) { if ($item -eq 0) { $toolbar.Add(0) } els
 Assert-Equal $toolbar @(101, 102, 0, 103, 0, 2, 3) 'multi-add preserves source order and permits separator'
 $remove = @(6, 4); foreach ($index in $remove) { $toolbar.RemoveAt($index) }
 Assert-Equal $toolbar @(101, 102, 0, 103, 2) 'multi-remove runs from end to beginning'
-$availableSelection = [bool[]]@($true, $true, $false); $currentSelection = [bool[]]@($false, $true, $true)
-if (-not (Activate-Selection $availableSelection $currentSelection)) { throw 'switching active list with selection must refresh button state' }
-if ($currentSelection -contains $true) { throw 'selecting available items must clear toolbar selection' }
-$currentSelection[0] = $true
-if (-not (Activate-Selection $currentSelection $availableSelection)) { throw 'switching active list with selection must refresh button state' }
-if ($availableSelection -contains $true) { throw 'selecting toolbar items must clear available selection' }
-$availableSelection = [bool[]]@($false, $false); $currentSelection = [bool[]]@($false, $false)
-if (Activate-Selection $availableSelection $currentSelection) { throw 'focus-only switch between empty lists must not refresh button state' }
 $availableSelection = [bool[]]@($false, $false, $false); $currentSelection = [bool[]]@($true, $true)
 if ($availableSelection -contains $true -or ($currentSelection | Where-Object { $_ }).Count -ne 2) { throw 'Add must transfer grouped selection to the toolbar list' }
 $availableSelection = [bool[]]@($true, $true); $currentSelection = [bool[]]@($false, $false)
@@ -162,8 +149,9 @@ foreach ($required in @('ActivateList', 'BeginDeferWindowPos', 'DeferWindowPos',
 foreach ($required in @('IDC_SCRIPTS_TOOLBAR_PANEL_LABEL), NULL, right, gap', 'IDC_SCRIPTS_TOOLBAR_PANEL), NULL, right + labelWidth, gap', 'const int top = Scale(64)', 'const int listHeight = (std::max)(Scale(120), height - top - bottom)', 'IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL), NULL, right, Scale(38)')) {
     if ($dialog -notmatch [regex]::Escape($required)) { throw "Scripts toolbar layout grid is incomplete: $required" }
 }
-if ($dialog -notmatch 'if\(other\.GetSelCount\(\) > 0\) \{ ::SendMessage\(other, LB_SETSEL, FALSE, -1\); UpdateButtonState\(\); \}') {
-    throw 'ActivateList must refresh buttons only after it clears the opposite selection.'
+if ($dialog -notmatch 'selectedCurrent\.empty\(\) \? CurrentItems\(\)\.size\(\)' -or
+    $dialog -notmatch 'selected && !activeSelection' -or $dialog -notmatch 'FrameRect') {
+    throw 'Insertion and inactive-selection rendering must use the retained current selection.'
 }
 foreach ($required in @('WS_CLIPCHILDREN', 'WS_CLIPSIBLINGS')) {
     if ($resource -notmatch [regex]::Escape($required)) { throw "Scripts toolbar resize clipping style is missing: $required" }

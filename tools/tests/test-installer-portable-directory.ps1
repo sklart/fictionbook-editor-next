@@ -24,7 +24,8 @@ $process = Start-Process -FilePath $testSetup -ArgumentList "/S /PORTABLE /D=$ta
 if ($process.ExitCode -ne 0) { throw "Portable setup exited $($process.ExitCode): $testRoot" }
 foreach($key in $keys) { if ((Snapshot $key) -cne $before[$key]) { throw "Portable setup changed $key" } }
 if (Test-Path -LiteralPath $default) { throw "Portable setup ignored /D and created default directory: $default" }
-foreach ($relative in @('FBE.exe','portable.ini','languages.txt','root_genres.xml','genres.librusec.txt','genres.rus.librusec.txt','Dict/sources.json','DescriptionIcons/delete.png','DescriptionIcons/dark/delete.png')) {
+if (Test-Path -LiteralPath (Join-Path $target 'DescriptionIcons')) { throw 'Portable setup contains unused DescriptionIcons.' }
+foreach ($relative in @('FBE.exe','portable.ini','languages.txt','root_genres.xml','genres.librusec.txt','genres.rus.librusec.txt','Dict/sources.json')) {
     $actual = Join-Path $target $relative
     if (-not (Test-Path -LiteralPath $actual -PathType Leaf)) { throw "Missing installed $relative in $target" }
     if ($relative -ne 'portable.ini' -and (Get-FileHash -LiteralPath $actual).Hash -ne (Get-FileHash -LiteralPath (Join-Path $inputPath $relative)).Hash) { throw "Installed file differs: $relative" }

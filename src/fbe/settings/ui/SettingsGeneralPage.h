@@ -7,11 +7,13 @@
 #include "SettingsTooltips.h"
 
 class CPaletteManagerDialog;
+class CPaletteChooserDialog;
 constexpr UINT WM_FBE_APPEARANCE_PREVIEW_LAYOUT = WM_APP + 0x14A;
 
 class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public ISettingsPage
 {
 	friend class CPaletteManagerDialog;
+	friend class CPaletteChooserDialog;
 	HWND m_paletteManager = NULL;
 	CComboBox m_language;
 	CComboBox m_interfaceTheme;

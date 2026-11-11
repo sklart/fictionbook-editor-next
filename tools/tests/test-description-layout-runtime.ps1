@@ -14,7 +14,6 @@ try {
  $layout=$settings.CreateElement('DescriptionLayout');$layout.InnerText='modern';$null=$settings.FBE.Settings.AppendChild($layout);$settings.Save($seed)
  # Exercise current source assets with the compiled native bridge.
  foreach($name in @('main.js','main.css','main_fast.css','fb2.xsl')) { Copy-Item (Join-Path $AssetRoot $name) (Join-Path $iso.Root $name) -Force }
- Copy-Item (Join-Path $repoRoot 'runtime/DescriptionIcons') (Join-Path $iso.Root 'DescriptionIcons') -Recurse -Force
  Copy-Item (Join-Path $repoRoot 'runtime/blank.fb2') (Join-Path $iso.Root 'fixture.fb2')
  Copy-Item (Join-Path $PSScriptRoot 'fixtures/description') (Join-Path $iso.Root 'description-fixtures') -Recurse
  foreach($count in @(100,500)) {

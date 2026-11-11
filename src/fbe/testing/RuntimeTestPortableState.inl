@@ -131,7 +131,7 @@ void CMainFrame::RunPortableStateTestScenario()
         const InterfaceTheme mode = _Settings.GetInterfaceTheme();
         const CString xmlThemeBefore = _Settings.GetStoredXmlSrcThemeId();
         const bool dirtyBefore = DocChanged();
-        bool passed = INTERFACE_PALETTE_COUNT - INTERFACE_PALETTE_CATPPUCCIN_LATTE == 12;
+        bool passed = INTERFACE_PALETTE_COUNT - INTERFACE_PALETTE_CATPPUCCIN_LATTE == 15;
         for(int row = 0; row < INTERFACE_PALETTE_COUNT; ++row)
             passed = CSettingsGeneralPage::RowForPalette(CSettingsGeneralPage::PaletteForRow(row)) == row && passed;
         auto luminance = [](COLORREF color) {
@@ -139,6 +139,17 @@ void CMainFrame::RunPortableStateTestScenario()
             return 0.2126 * linear(GetRValue(color)) + 0.7152 * linear(GetGValue(color)) + 0.0722 * linear(GetBValue(color));
         };
         auto ratio = [&](COLORREF a, COLORREF b) { const double x = luminance(a), y = luminance(b); return ((std::max)(x,y) + 0.05) / ((std::min)(x,y) + 0.05); };
+        for(InterfacePalette palette : {INTERFACE_PALETTE_FOREST, INTERFACE_PALETTE_PLUM, INTERFACE_PALETTE_TURQUOISE_LIGHT}) {
+            ThemeManager::CustomPalette colors;
+            passed = ThemeManager::CopyNamedPaletteColors(palette, colors) && passed;
+            passed = ratio(colors.colors[THEME_COLOR_TEXT], colors.colors[THEME_COLOR_WINDOW]) >= 4.5 &&
+                ratio(colors.colors[THEME_COLOR_TEXT], colors.colors[THEME_COLOR_CONTROL]) >= 4.5 &&
+                ratio(colors.colors[THEME_COLOR_SELECTION_TEXT], colors.colors[THEME_COLOR_SELECTION_BACKGROUND]) >= 4.5 &&
+                ratio(colors.colors[THEME_COLOR_DISABLED_TEXT], colors.colors[THEME_COLOR_CONTROL]) >= 3.0 &&
+                ratio(colors.colors[THEME_COLOR_ERROR], colors.colors[THEME_COLOR_WINDOW]) >= 4.5 &&
+                ratio(colors.colors[THEME_COLOR_WARNING], colors.colors[THEME_COLOR_WINDOW]) >= 4.5 &&
+                ratio(colors.colors[THEME_COLOR_FOCUS], colors.colors[THEME_COLOR_WINDOW]) >= 3.0 && passed;
+        }
         for(int index = INTERFACE_PALETTE_CATPPUCCIN_LATTE; index < INTERFACE_PALETTE_COUNT; ++index) {
             const InterfacePalette palette = static_cast<InterfacePalette>(index);
             InterfacePalette parsed = INTERFACE_PALETTE_CLASSIC;
@@ -482,6 +493,27 @@ void CMainFrame::RunPortableStateTestScenario()
                 if(previewBitmap) ::DeleteObject(previewBitmap); if(referenceBitmap) ::DeleteObject(referenceBitmap);
                 if(previewDc) ::DeleteDC(previewDc); if(referenceDc) ::DeleteDC(referenceDc); if(screen) ::ReleaseDC(m_hWnd, screen);
                 passed = toolbarCompare == 15U && restoredToolbar && passed;
+                page.CancelChanges(); page.DestroyWindow();
+            }
+        }
+        {
+            CSettingsGeneralPage page;
+            passed = page.Create(m_hWnd) != NULL && passed;
+            if(page.m_hWnd) {
+                HWND palette = page.GetDlgItem(IDC_INTERFACE_PALETTE); BOOL handled = FALSE;
+                const int initial = CSettingsGeneralPage::RowForPalette(INTERFACE_PALETTE_CATPPUCCIN_MOCHA);
+                ::SendMessageW(palette, CB_SETCURSEL, initial, 0);
+                page.OnInterfacePaletteChanged(CBN_SELCHANGE, IDC_INTERFACE_PALETTE, palette, handled);
+                const int accepted = static_cast<int>(::SendMessageW(palette, CB_GETCURSEL, 0, 0));
+                ::SetPropW(page.m_hWnd, L"FBE.PaletteChooserTest", reinterpret_cast<HANDLE>(1));
+                page.OnManagePalettes(BN_CLICKED, IDC_PALETTE_MANAGE, NULL, handled);
+                passed = reinterpret_cast<ULONG_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteChooserResult")) == 1 &&
+                    ::SendMessageW(palette, CB_GETCURSEL, 0, 0) == accepted && passed;
+                ::SetPropW(page.m_hWnd, L"FBE.PaletteChooserTest", reinterpret_cast<HANDLE>(2));
+                page.OnManagePalettes(BN_CLICKED, IDC_PALETTE_MANAGE, NULL, handled);
+                passed = reinterpret_cast<ULONG_PTR>(::GetPropW(page.m_hWnd, L"FBE.PaletteChooserResult")) == 1 && passed;
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteChooserTest");
+                ::RemovePropW(page.m_hWnd, L"FBE.PaletteChooserResult");
                 page.CancelChanges(); page.DestroyWindow();
             }
         }
@@ -2033,13 +2065,49 @@ void CMainFrame::RunPortableStateTestScenario()
 		CScriptsToolbarCustomizeDlg insertion(NULL, sample, defaults, _Settings, std::vector<ScriptsToolbarTarget>(1, target),
 			[&savedItems](const CString&, const std::vector<PortableToolbarItem>& items) { savedItems = items; return true; }, true, CString());
 		bool inserted = insertion.Create(m_hWnd) != NULL;
-		bool keyboardMove = false;
+		bool keyboardMove = false, keyboardModifierAvailable = false; CStringA keyboardDetails;
+		bool independentSelection = false;
 		if (inserted) {
 			CListBox current(insertion.GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT));
 			CListBox available(insertion.GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE));
 			::SendMessage(current, LB_SETSEL, TRUE, 0);
 			::SendMessage(available, WM_SETFOCUS, 0, 0);
 			::SendMessage(available, LB_SETSEL, TRUE, 1);
+			independentSelection = ::SendMessage(current, LB_GETSEL, 0, 0) > 0;
+			::SendMessage(current, WM_SETFOCUS, 0, 0);
+			independentSelection = independentSelection && ::SendMessage(available, LB_GETSEL, 1, 0) > 0;
+			::SendMessage(available, WM_SETFOCUS, 0, 0);
+			wchar_t captureDirectory[MAX_PATH] = {};
+			const DWORD captureLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TOOLBAR_SELECTION_CAPTURE_DIR", captureDirectory, _countof(captureDirectory));
+			if(captureLength > 0 && captureLength < _countof(captureDirectory)) {
+				::ShowWindow(insertion, SW_SHOWNOACTIVATE);
+				::SendMessage(insertion, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_AVAILABLE, LBN_SELCHANGE), reinterpret_cast<LPARAM>(available.m_hWnd));
+				auto capture = [&](HWND focus, LPCWSTR name) {
+					::SetFocus(focus); ::RedrawWindow(insertion, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+					RECT frame = {}; ::GetWindowRect(insertion, &frame); CImage image;
+					if(!image.Create(frame.right - frame.left, frame.bottom - frame.top, 32)) return false;
+					HDC dc = image.GetDC(); const bool painted = dc && ::PrintWindow(insertion, dc, 0);
+					if(dc) image.ReleaseDC();
+					return painted && SUCCEEDED(image.Save(CString(captureDirectory) + L"\\" + name));
+				};
+				const InterfaceTheme originalTheme = ThemeManager::GetSelectedTheme();
+				const InterfacePalette originalPalette = ThemeManager::GetNamedPalette();
+				ThemeManager::CustomPalette originalCustom; const bool hadCustom = ThemeManager::GetCustomPalette(originalCustom);
+				ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
+				independentSelection = ThemeManager::SetNamedPalette(INTERFACE_PALETTE_SEPIA) && independentSelection;
+				ThemeManager::ApplyToWindow(insertion);
+				independentSelection = capture(current, L"toolbar-light-current-active.bmp") && capture(available, L"toolbar-light-available-active.bmp") && independentSelection;
+				if(ThemeManager::IsDarkModeSupported()) {
+					ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+					independentSelection = ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CATPPUCCIN_MOCHA) && independentSelection;
+					ThemeManager::ApplyToWindow(insertion);
+					independentSelection = capture(current, L"toolbar-dark-current-active.bmp") && capture(available, L"toolbar-dark-available-active.bmp") && independentSelection;
+				}
+				ThemeManager::SetSelectedTheme(originalTheme);
+				if(hadCustom) ThemeManager::SetCustomPalette(originalCustom); else ThemeManager::SetNamedPalette(originalPalette);
+				ThemeManager::ApplyToWindow(insertion);
+				::ShowWindow(insertion, SW_HIDE);
+			}
 			::SendMessage(insertion, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_ADD, BN_CLICKED), reinterpret_cast<LPARAM>(insertion.GetDlgItem(IDC_SCRIPTS_TOOLBAR_ADD).m_hWnd));
 			inserted = savedItems.size() == 2 && savedItems[0].command == sample[1].command && savedItems[1].command == sample[0].command;
 			HWND down = insertion.GetDlgItem(IDC_SCRIPTS_TOOLBAR_DOWN), up = insertion.GetDlgItem(IDC_SCRIPTS_TOOLBAR_UP);
@@ -2081,14 +2149,22 @@ void CMainFrame::RunPortableStateTestScenario()
 			::SendMessage(current, LB_SETSEL, FALSE, -1);
 			::SendMessage(current, LB_SETSEL, TRUE, 1);
 			::SendMessage(insertion, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_CURRENT, LBN_SELCHANGE), reinterpret_cast<LPARAM>(current.m_hWnd));
+			// GetKeyState reads the active input queue; the modeless test dialog
+			// must be visible and focused just like the real modal dialog.
+			::ShowWindow(insertion, SW_SHOWNOACTIVATE); ::SetActiveWindow(insertion); ::SetFocus(current);
 			BYTE originalKeys[256] = {}, ctrlKeys[256] = {};
 			if (::GetKeyboardState(originalKeys)) {
-				memcpy(ctrlKeys, originalKeys, sizeof(ctrlKeys)); ctrlKeys[VK_CONTROL] |= 0x80;
+				memcpy(ctrlKeys, originalKeys, sizeof(ctrlKeys)); ctrlKeys[VK_CONTROL] |= 0x80; ctrlKeys[VK_LCONTROL] |= 0x80;
 				if (::SetKeyboardState(ctrlKeys)) {
-					::SendMessage(current, WM_KEYDOWN, VK_DOWN, 0);
-					const bool movedDown = savedItems.size() == 4 && savedItems[0].separator && savedItems[1].separator && savedItems[2].command == sample[1].command && savedItems[3].command == sample[0].command && ::SendMessage(current, LB_GETSEL, 2, 0) > 0;
-					::SendMessage(current, WM_KEYDOWN, VK_UP, 0);
-					keyboardMove = movedDown && savedItems.size() == 4 && savedItems[0].separator && savedItems[1].command == sample[1].command && savedItems[2].separator && savedItems[3].command == sample[0].command && ::SendMessage(current, LB_GETSEL, 1, 0) > 0;
+					const int controlState = ::GetKeyState(VK_CONTROL);
+					keyboardModifierAvailable = (controlState & 0x8000) != 0;
+					if(keyboardModifierAvailable) {
+						::SendMessage(current, WM_KEYDOWN, VK_DOWN, 0);
+						const bool movedDown = savedItems.size() == 4 && savedItems[0].separator && savedItems[1].separator && savedItems[2].command == sample[1].command && savedItems[3].command == sample[0].command && ::SendMessage(current, LB_GETSEL, 2, 0) > 0;
+						::SendMessage(current, WM_KEYDOWN, VK_UP, 0);
+						keyboardMove = movedDown && savedItems.size() == 4 && savedItems[0].separator && savedItems[1].command == sample[1].command && savedItems[2].separator && savedItems[3].command == sample[0].command && ::SendMessage(current, LB_GETSEL, 1, 0) > 0;
+					}
+					keyboardDetails.Format("keyboard-detail=ctrl:%d\n", controlState);
 				}
 				::SetKeyboardState(originalKeys);
 			}
@@ -2117,13 +2193,76 @@ void CMainFrame::RunPortableStateTestScenario()
 			multiInsert = multiInsert && multiSaved.size() == 4 && multiSaved[0].command == sample[0].command && multiSaved[1].command == sample[1].command && multiSaved[2].command == sample[2].command && multiSaved[3].command == sample[3].command;
 			multi.DestroyWindow();
 		}
+		bool dragInsert = true; unsigned dragMask = 0; CStringA dragDetails;
+		for(int position = 0; position < 6; ++position) {
+			ScriptsToolbarTarget dragTarget = {}; dragTarget.id = L"drag-test"; dragTarget.name = L"drag-test";
+			if(position != 3) {
+				PortableToolbarItem first = {}; first.command = sample[0].command; dragTarget.items.push_back(first);
+				if(position != 5) { PortableToolbarItem separator = {}; separator.separator = true; dragTarget.items.push_back(separator); }
+				PortableToolbarItem last = {}; last.command = sample[1].command; dragTarget.items.push_back(last);
+			}
+			std::vector<PortableToolbarItem> dragSaved;
+			CScriptsToolbarCustomizeDlg drag(NULL, sample, defaults, _Settings, std::vector<ScriptsToolbarTarget>(1, dragTarget),
+				[&dragSaved](const CString&, const std::vector<PortableToolbarItem>& items) { dragSaved = items; return true; }, true, CString());
+			if(!drag.Create(m_hWnd)) { dragInsert = false; continue; }
+			::ShowWindow(drag, SW_SHOWNOACTIVATE);
+			CListBox available(drag.GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE)), current(drag.GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT));
+			int source = -1; for(int row = 0; row < available.GetCount(); ++row) if(available.GetItemData(row) == 2) { source = row; break; }
+			if(source < 0) { dragInsert = false; drag.DestroyWindow(); continue; }
+			if(position == 4) {
+				::SendMessage(available, LB_SETSEL, TRUE, source);
+				for(int row = 0; row < available.GetCount(); ++row) if(available.GetItemData(row) == 3) ::SendMessage(available, LB_SETSEL, TRUE, row);
+			}
+			CRect sourceRect; available.GetItemRect(source, &sourceRect);
+			POINT start = {sourceRect.left + 5, (sourceRect.top + sourceRect.bottom) / 2}, destination = {5, 5};
+			if(position == 1 || position == 4 || position == 5) { CRect rect; current.GetItemRect(1, &rect); destination.y = rect.top + 2; }
+			else if(position == 2) { CRect rect; current.GetItemRect(2, &rect); destination.y = rect.bottom + 3; }
+			::MapWindowPoints(current, available, &destination, 1);
+			::SendMessage(available, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(start.x, start.y));
+			const int selectedBeforeDrag = static_cast<int>(::SendMessage(available, LB_GETSELCOUNT, 0, 0));
+			::SendMessage(available, WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(destination.x, destination.y));
+			const bool capturedDrag = ::GetCapture() == available.m_hWnd;
+			::SendMessage(available, WM_LBUTTONUP, 0, MAKELPARAM(destination.x, destination.y));
+			dragDetails.AppendFormat("drag-case-%d=source:%d selected:%d capture:%d start:%ld,%ld dest:%ld,%ld saved:%u\n", position, source, selectedBeforeDrag, capturedDrag, start.x, start.y, destination.x, destination.y, static_cast<unsigned>(dragSaved.size()));
+			const int expectedIndex = position == 0 || position == 3 ? 0 : position == 1 || position == 4 || position == 5 ? 1 : 3;
+			const size_t expectedSize = position == 3 ? 1U : position == 4 ? 5U : position == 5 ? 3U : 4U;
+			const bool casePassed = dragSaved.size() == expectedSize && dragSaved[expectedIndex].command == sample[2].command &&
+				(position != 4 || dragSaved[2].command == sample[3].command);
+			if(casePassed) dragMask |= 1U << position;
+			dragInsert = casePassed && dragInsert;
+			drag.DestroyWindow();
+		}
+		bool inputInsert = true;
+		for(int method = 0; method < 2; ++method) {
+			ScriptsToolbarTarget inputTarget = {}; inputTarget.id = L"input-test"; inputTarget.name = L"input-test";
+			std::vector<PortableToolbarItem> inputSaved;
+			CScriptsToolbarCustomizeDlg input(NULL, sample, defaults, _Settings, std::vector<ScriptsToolbarTarget>(1, inputTarget),
+				[&inputSaved](const CString&, const std::vector<PortableToolbarItem>& items) { inputSaved = items; return true; }, true, CString());
+			if(!input.Create(m_hWnd)) { inputInsert = false; continue; }
+			CListBox available(input.GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE));
+			int source = -1; for(int row = 0; row < available.GetCount(); ++row) if(available.GetItemData(row) == 2) { source = row; break; }
+			if(source >= 0) {
+				::SendMessage(available, LB_SETSEL, TRUE, source);
+				if(method == 0) ::SendMessage(available, WM_KEYDOWN, VK_RETURN, 0);
+				else ::SendMessage(input, WM_COMMAND, MAKEWPARAM(IDC_SCRIPTS_TOOLBAR_AVAILABLE, LBN_DBLCLK), reinterpret_cast<LPARAM>(available.m_hWnd));
+			}
+			inputInsert = source >= 0 && inputSaved.size() == 1 && inputSaved[0].command == sample[2].command && inputInsert;
+			input.DestroyWindow();
+		}
 		ScriptsToolbarCustomizeRuntimeTest::ResetCtrlFSmoke();
 		ShowScriptsToolbarCustomizeDialog(m_ScriptsToolbar);
 		CStringA report = ScriptsToolbarCustomizeRuntimeTest::CtrlFSmokeReport();
-		if (!sorted || !inserted || !keyboardMove || !multiInsert) report.Replace("result=pass", "result=fail");
+		if (!sorted || !inserted || (keyboardModifierAvailable && !keyboardMove) || !multiInsert || !independentSelection || !dragInsert || !inputInsert) report.Replace("result=pass", "result=fail");
 		report.AppendFormat("directory-sort=%d\n", sorted);
 		report.AppendFormat("insert-before=%d\n", inserted);
-		report.AppendFormat("keyboard-move=%d\n", keyboardMove);
+		report.AppendFormat("independent-selection=%d\n", independentSelection);
+		report.AppendFormat("drag-insert=%d\n", dragInsert);
+		report.AppendFormat("drag-insert-mask=%u\n", dragMask);
+		report += dragDetails;
+		report.AppendFormat("keyboard-and-double-click-insert=%d\n", inputInsert);
+		if(keyboardModifierAvailable) report.AppendFormat("keyboard-move=%d\n", keyboardMove);
+		else report += "keyboard-move=NOT_RUN (Ctrl state unavailable in isolated input queue)\n";
+		report += keyboardDetails;
 		report.AppendFormat("multi-insert-remove=%d\n", multiInsert);
 		WritePortableStateTestText(reportPath, report);
 		PostMessage(WM_CLOSE); return;

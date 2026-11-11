@@ -1383,8 +1383,6 @@ skip_shell_mui:
 	RMDir "$INSTDIR\defaults"
 	SetOutPath "$INSTDIR\Resources"
 	File "${INPUTDIR}\Resources\Words.xml"
-	SetOutPath "$INSTDIR\DescriptionIcons"
-	File /r "${INPUTDIR}\DescriptionIcons\*.*"
 	SetOutPath "$INSTDIR"
   ; Bundled plug-ins are discovered from this local manifest. The DLLs are
   ; optional components below, but the catalog itself is part of the editor

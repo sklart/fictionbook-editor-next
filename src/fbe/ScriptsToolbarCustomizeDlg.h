@@ -67,7 +67,6 @@ private:
 	CListBox m_availableList;
 	CListBox m_currentList;
 	std::vector<DWORD_PTR> m_availableFilterSelection;
-	int m_savedInsert = -1;
 	CComboBox m_panelList;
 	CToolTipCtrl m_toolTip;
 	HIMAGELIST m_scriptImages;
@@ -78,6 +77,7 @@ private:
 	bool m_showPanelSelector;
 	CString m_caption;
 	bool m_dragging;
+	bool m_dragFromAvailable = false;
 	int m_dragSource;
 	int m_dragInsert;
 	POINT m_dragStartPoint;
@@ -124,6 +124,7 @@ private:
 	std::vector<DWORD_PTR> GetSelectedItemData(const CListBox& list) const;
 	void RestoreSelection(CListBox& list, const std::vector<DWORD_PTR>& selection, int topIndex);
 	void ActivateList(CListBox& list);
+	void FinishAvailableDrag(bool commit, POINT point);
 	void FocusSearch();
 	bool CommitCurrentItems(const std::vector<PortableToolbarItem>& previous);
 	bool ApplyCurrentItemsToRuntimeToolbar();
