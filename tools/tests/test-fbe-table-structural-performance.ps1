@@ -8,8 +8,9 @@ param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [
 $ErrorActionPreference='Stop'
 $FbeExe=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
-$directory=Join-Path ([IO.Path]::GetTempPath()) ('fbe-table-structural-performance-'+[guid]::NewGuid().ToString('N'))
-[void](New-Item -ItemType Directory -Path $directory)
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'table-structural-performance'
+$directory=$isolation.Root; $passed=$false
 try {
     $fixture=Join-Path $directory 'huge-structural.fb2'; $report=Join-Path $directory 'huge-structural.tsv'
     $table=New-Object Text.StringBuilder
@@ -18,9 +19,9 @@ try {
     $oldMode=$env:FBE_NEXT_TEST_MODE; $oldScenario=$env:FBE_NEXT_TEST_SCENARIO
     try {
         $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='table-structural'
-        $process=Start-Process -FilePath $FbeExe -ArgumentList @('-b',$report,$fixture) -PassThru
-        if(-not $process.WaitForExit($TimeoutSeconds*1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE не завершил huge structural benchmark.' }
-        if($process.ExitCode -ne 0) { throw "FBE вернул код $($process.ExitCode) для huge structural benchmark." }
+        $process=Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('--portable','-b',$report,$fixture) -WindowStyle Hidden -PassThru
+        $code=Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'huge-structural-benchmark' -Report $report -TimeoutSeconds $TimeoutSeconds
+        if($code -ne 0) { throw "FBE вернул код $code для huge structural benchmark." }
     } finally {
         if($null -eq $oldMode){Remove-Item Env:FBE_NEXT_TEST_MODE -ErrorAction SilentlyContinue}else{$env:FBE_NEXT_TEST_MODE=$oldMode}
         if($null -eq $oldScenario){Remove-Item Env:FBE_NEXT_TEST_SCENARIO -ErrorAction SilentlyContinue}else{$env:FBE_NEXT_TEST_SCENARIO=$oldScenario}
@@ -37,5 +38,6 @@ try {
     $measurements | Format-Table -AutoSize | Out-Host
     $complete=$rows|Where-Object phase -eq 'save-complete'
     if(@($complete).Count -ne 1 -or [int]$complete.table_count -ne 1) { throw 'Huge structural benchmark не сохранил таблицу.' }
+    $passed=$true
     Write-Host 'Huge structural table benchmark passed (356 x 14, 4984 initial TD).'
-} finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -PreserveContents }
