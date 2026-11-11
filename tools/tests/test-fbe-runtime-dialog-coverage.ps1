@@ -109,11 +109,33 @@ function Test-DescriptionRuntimeKey([string]$Key, [string]$ConsumerText) {
         $ConsumerText -match ('warn\([^;\r\n]*,\s*"' + $suffix + '"') -or
         $ConsumerText -match ('key\s*=\s*"' + $suffix + '"')
 }
+# These catalog keys belong to action styling in the postponed modern
+# Description. Keep them translated, but do not require removed controls in
+# the legacy UI. Fail closed if either legacy styling hook gains behavior or
+# the modern action initializer becomes callable from another site.
+function Test-RetiredDescriptionAction([string]$Key, [string]$ConsumerText) {
+    $retired = @('fbe.description.save_attachment', 'fbe.description.remove_attachment',
+        'fbe.description.remove', 'fbe.description.duplicate', 'fbe.description.choose',
+        'fbe.description.view', 'fbe.description.save')
+    if ($Key -notin $retired) { return $false }
+    foreach ($name in @('DescriptionStyleBinary', 'DescriptionStyleButtons')) {
+        $body = [regex]::Match($ConsumerText, '(?s)function\s+' + $name + '\([^)]*\)\s*\{(?<body>[^{}]*)\}')
+        if (-not $body.Success -or ($body.Groups['body'].Value -replace '(?m)//[^\r\n]*', '').Trim()) { return $false }
+    }
+    return [regex]::Matches($ConsumerText, '\bInitDescriptionActions\s*\(').Count -eq 1 -and
+        $ConsumerText -match 'function\s+InitDescriptionActions\s*\('
+}
 function Test-DescriptionPluralReplacement([string]$ConsumerText) {
     return (Test-DescriptionRuntimeKey 'fbe.description.binary_file_forms' $ConsumerText) -and
         $ConsumerText.Contains('summary.innerText = DescriptionFileCount(rows.length)')
 }
 $descriptionConsumer = $consumers['runtime/main.js'].Text
+if (-not (Test-RetiredDescriptionAction 'fbe.description.save_attachment' $descriptionConsumer) -or
+    (Test-RetiredDescriptionAction 'fbe.description.fixture_unbound' $descriptionConsumer) -or
+    (Test-RetiredDescriptionAction 'fbe.description.save_attachment' ($descriptionConsumer + "`nInitDescriptionActions(document);")) -or
+    (Test-RetiredDescriptionAction 'fbe.description.save_attachment' $descriptionConsumer.Replace('// The 3.0.11 internal build uses the original Description presentation.', 'row.title = "changed";'))) {
+    throw 'Retired Description action keys must remain limited to the disabled modern presentation.'
+}
 if (-not (Test-DescriptionRuntimeKey 'fbe.description.add_source' $descriptionConsumer) -or
     -not (Test-DescriptionRuntimeKey 'fbe.description.binary_id' $descriptionConsumer) -or
     (Test-DescriptionRuntimeKey 'fbe.description.binary_id' $descriptionConsumer.Replace('"binary_id"', '"fixture.removed.binding"')) -or
@@ -173,6 +195,7 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
         $mainFrameSource.Contains('MessageBox(FbeLoadRuntimeStringByKey(L"' + $key + '"') -and
         $mainFrameSource.Contains('HasNbspDisplayHistory()')
     $retainedReplacement = Test-ReplacedDialogKey $key
+    $retiredDescriptionAction = $value.resource -eq 'runtime/main.js' -and (Test-RetiredDescriptionAction $key $consumerText)
     $dynamicDescriptionKey = $value.resource -eq 'runtime/main.js' -and
         (Test-DescriptionRuntimeKey $key $consumerText)
     # Retain the former fixed plural for older clients; the live summary uses
@@ -182,7 +205,7 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
         $null -ne $catalog.strings.PSObject.Properties['fbe.description.binary_file_forms']
     if (-not $genericBinding -and -not $manifestDrivenBackgroundPreset -and -not $dynamicSearchPresetKey -and
         -not $dynamicQualityRuleKey -and -not $dynamicQualityHelpKey -and -not $nativeOverwritePrompt -and
-        -not $retainedReplacement -and -not $dynamicDescriptionKey -and -not $retainedDescriptionPlural -and -not $paletteStartupWarning -and -not $toolbarRestoreWarning -and -not $nbspHistoryWarning -and -not $consumerText.Contains($key)) {
+        -not $retainedReplacement -and -not $retiredDescriptionAction -and -not $dynamicDescriptionKey -and -not $retainedDescriptionPlural -and -not $paletteStartupWarning -and -not $toolbarRestoreWarning -and -not $nbspHistoryWarning -and -not $consumerText.Contains($key)) {
         throw "JSON dialog key has no binding in its concrete runtime consumer: $key ($($value.resource))."
     }
 }
