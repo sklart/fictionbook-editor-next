@@ -60,7 +60,9 @@ function Write-Utf8FileIfChanged {
     } else {
         $null
     }
-    if ($current -ceq $Content) {
+    # Git checkouts can legitimately preserve LF or CRLF. A newline-only
+    # difference is not a version change and must not dirty the checkout.
+    if ($null -ne $current -and $current.Replace("`r`n", "`n") -ceq $Content.Replace("`r`n", "`n")) {
         Write-Host "Generated-файл уже синхронизирован: $Path"
         return
     }
