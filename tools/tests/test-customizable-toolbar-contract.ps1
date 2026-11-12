@@ -78,7 +78,8 @@ foreach ($required in @('MESSAGE_HANDLER(WM_CLOSE, OnWindowClose)', 'MESSAGE_HAN
     }
 }
 foreach ($listId in @('IDC_SCRIPTS_TOOLBAR_AVAILABLE', 'IDC_SCRIPTS_TOOLBAR_CURRENT')) {
-    if ($resource -notmatch "$listId,[^\r\n]*LBS_EXTENDEDSEL[^\r\n]*LBS_HASSTRINGS[^\r\n]*LBS_OWNERDRAWFIXED[^\r\n]*WS_CLIPSIBLINGS") {
+    $ownerDraw = if ($listId -eq 'IDC_SCRIPTS_TOOLBAR_AVAILABLE') { 'LBS_OWNERDRAWVARIABLE' } else { 'LBS_OWNERDRAWFIXED' }
+    if ($resource -notmatch "$listId,[^\r\n]*LBS_EXTENDEDSEL[^\r\n]*LBS_HASSTRINGS[^\r\n]*$ownerDraw[^\r\n]*WS_CLIPSIBLINGS") {
         throw "Owner-draw listbox $listId must retain strings and extended selection."
     }
 }
@@ -102,7 +103,7 @@ if ($dialogSource.IndexOf('rect.top + (rect.Height() - Scale(16)) / 2', [StringC
     throw 'Customize owner-draw list must not vertically center icons with a fixed 16 px size.'
 }
 foreach ($required in @('const bool themed = ThemeManager::IsDark() && !ThemeManager::IsHighContrast()',
-    'themed ? (selected ? ThemeManager::SelectionBackgroundColor() : ThemeManager::ControlColor())',
+    'themed ? (activeSelection ? ThemeManager::SelectionBackgroundColor() : ThemeManager::ControlColor())',
     'themed ? (disabled ? ThemeManager::DisabledTextColor()')) {
     if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
         throw "DrawListItem must retain its explicit Dark/Light palette split: $required"
@@ -113,8 +114,8 @@ foreach ($required in @('BeginDeferWindowPos', 'DeferWindowPos', 'EndDeferWindow
         throw "Диалог не содержит безопасную layout/paint-защиту: $required"
     }
 }
-if ($dialogSource.IndexOf('if(other.GetSelCount() > 0) { ::SendMessage(other, LB_SETSEL, FALSE, -1); UpdateButtonState(); }', [StringComparison]::Ordinal) -lt 0) {
-    throw 'ActivateList must update button state only after clearing the opposite list.'
+if ($dialogSource.IndexOf('(list.m_hWnd == m_availableList.m_hWnd ? m_currentList : m_availableList).Invalidate();', [StringComparison]::Ordinal) -lt 0) {
+    throw 'ActivateList must repaint the opposite list while retaining its selection.'
 }
 foreach ($required in @(
     'SetWindowSubclass(m_currentList, CurrentListSubclassProc', 'WM_LBUTTONDOWN', 'WM_MOUSEMOVE', 'WM_LBUTTONUP',

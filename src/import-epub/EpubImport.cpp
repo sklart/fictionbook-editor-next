@@ -245,8 +245,9 @@ namespace
             if (ch == 0x00A0 || ch == 0x2007 || ch == 0x202F || ch == L'\t' || ch == L'\r' || ch == L'\n')
                 ch = L' ';
 
-            // Drop zero-width layout marks which sometimes leak from EPUB.
-            if (ch == 0x200B || ch == 0x200C || ch == 0x200D || ch == 0xFEFF)
+            // ZWNJ/ZWJ affect spelling and emoji composition, so they are not
+            // disposable layout marks even when typography cleanup is enabled.
+            if (ch == 0x200B || ch == 0xFEFF)
                 continue;
 
             // Normalize the most common typographic separators to stable Unicode.
@@ -581,7 +582,17 @@ namespace
                     out += html.Mid(tagStart);
                     break;
                 }
-                out += html.Mid(tagStart, tagEnd - tagStart + 1);
+                // The fallback self-closes HTML void elements below. Some
+                // XHTML producers also emit explicit closing tags for them;
+                // retaining those closers would make the normalized XML invalid.
+                CStringW closingName;
+                if (next == L'/')
+                {
+                    closingName = html.Mid(tagStart + 2, tagEnd - tagStart - 2);
+                    closingName.Trim();
+                }
+                if (next != L'/' || !IsHtmlVoidElementName(closingName))
+                    out += html.Mid(tagStart, tagEnd - tagStart + 1);
                 pos = tagEnd + 1;
                 continue;
             }
@@ -1191,6 +1202,27 @@ namespace
 
     bool ExpandEpubToDirectory(const CStringW& epubPath, const CStringW& tempRoot, CStringW& extractDir, CStringW& errorText)
     {
+        // A 7z archive can be misnamed .epub. Passing it to the Windows ZIP
+        // shell provider can block indefinitely instead of returning an error.
+        // Reject this distinct signature before calling the shell; a valid EPUB
+        // is a ZIP container and cannot begin with the 7z signature.
+        HANDLE input = ::CreateFileW(epubPath, GENERIC_READ, FILE_SHARE_READ, nullptr,
+                                     OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (input != INVALID_HANDLE_VALUE)
+        {
+            BYTE signature[6] = {};
+            DWORD read = 0;
+            const bool isSevenZip = ::ReadFile(input, signature, sizeof(signature), &read, nullptr) &&
+                read == sizeof(signature) && signature[0] == 0x37 && signature[1] == 0x7a &&
+                signature[2] == 0xbc && signature[3] == 0xaf && signature[4] == 0x27 && signature[5] == 0x1c;
+            ::CloseHandle(input);
+            if (isSevenZip)
+            {
+                errorText = L"7z: " + LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_OPEN_FAILED,
+                    L"Windows could not open EPUB as a ZIP container. The file may be damaged or blocked.");
+                return false;
+            }
+        }
         // No PowerShell Expand-Archive and no tar.exe. EPUB is copied to a
         // temporary .zip name and extracted through the built-in Windows ZIP
         // folder provider. The rest of the importer still works with a temp
@@ -3071,10 +3103,12 @@ namespace
         CStringW declarations, visibilityDeclarations;
         CStringW backgroundHref, backgroundDir;
         bool backgroundSet = false, backgroundImportant = false;
+        bool hasVertical = false;
         std::vector<CssSelectorPart> parts;
         int classSpecificity = 0, elementSpecificity = 0;
     };
     thread_local const std::vector<CssFontRule>* g_cssFontRules = nullptr;
+    thread_local bool g_cssHasVerticalRules = false;
     CStringW SupportedCssFontDeclarations(CStringW declarations, CStringW& warning, bool* hasFont = nullptr);
 
     bool ParseCssNumericWeight(const CStringW& value, int& weight)
@@ -3260,6 +3294,45 @@ namespace
         }
     }
 
+    void ApplyCssVertical(CStringW declarations, int& vertical, bool important, bool& specified)
+    {
+        declarations.MakeLower();
+        int position = 0;
+        while (position != -1)
+        {
+            const CStringW declaration = declarations.Tokenize(L";", position);
+            const int colon = declaration.Find(L':');
+            if (colon < 0) continue;
+            CStringW key = declaration.Left(colon), value = declaration.Mid(colon + 1);
+            key.Trim(); value.Trim();
+            if (key != L"vertical-align" || ExtractCssImportant(value) != important) continue;
+            if (value == L"super") { vertical = 1; specified = true; }
+            else if (value == L"sub") { vertical = -1; specified = true; }
+            else if (value == L"baseline" || value == L"initial" || value == L"unset") { vertical = 0; specified = true; }
+        }
+    }
+
+    int CssVerticalForNode(const MSXML2::IXMLDOMNodePtr& node, bool* hasValue = nullptr)
+    {
+        int vertical = 0;
+        bool specified = false;
+        const CStringW inlineStyle = Attr(node, L"style");
+        if (!g_cssHasVerticalRules && inlineStyle.IsEmpty())
+        {
+            if (hasValue) *hasValue = false;
+            return 0;
+        }
+        for (int priority = 0; priority != 2; ++priority)
+        {
+            if (g_cssFontRules) for (const auto& rule : *g_cssFontRules)
+                if (rule.hasVertical && MatchesCssRule(node, rule))
+                    ApplyCssVertical(rule.declarations, vertical, priority != 0, specified);
+            ApplyCssVertical(inlineStyle, vertical, priority != 0, specified);
+        }
+        if (hasValue) *hasValue = specified;
+        return vertical;
+    }
+
     bool IsCssIdentifier(const CStringW& value)
     {
         if (value.IsEmpty()) return false;
@@ -3284,9 +3357,17 @@ namespace
             if (colon < 0) continue;
             CStringW key = declaration.Left(colon), value = declaration.Mid(colon + 1);
             key.Trim(); key.MakeLower(); value.Trim(); value.MakeLower();
-            if (key != L"font-style" && key != L"font-weight" && key != L"font") continue;
+            if (key != L"font-style" && key != L"font-weight" && key != L"font" && key != L"vertical-align") continue;
             if (hasFont) *hasFont = true;
             const bool important = ExtractCssImportant(value);
+            if (key == L"vertical-align")
+            {
+                if (value == L"super" || value == L"sub" || value == L"baseline" || value == L"initial" || value == L"unset")
+                    supported += key + L":" + value + (important ? L"!important;" : L";");
+                else
+                    warning += L"Unsupported CSS vertical-align declaration: " + value + L"\r\n";
+                continue;
+            }
             int weight = 0;
             const bool numericWeight = ParseCssNumericWeight(value, weight);
             const bool inheritedKeyword = value == L"inherit" || value == L"initial" || value == L"unset";
@@ -3298,7 +3379,7 @@ namespace
         return supported;
     }
 
-    void ParseCssFontRules(CStringW css, const CStringW& baseDir, std::vector<CssFontRule>& rules, CStringW& warning)
+    void ParseCssFontRules(CStringW css, const CStringW& baseDir, std::vector<CssFontRule>& rules, CStringW& warning, int nesting = 0)
     {
         wchar_t commentQuote = 0;
         for (int index = 0; index < css.GetLength(); ++index)
@@ -3332,9 +3413,10 @@ namespace
                      (css[nameEnd] >= L'A' && css[nameEnd] <= L'Z') || css[nameEnd] == L'-')) ++nameEnd;
                 CStringW ruleName = css.Mid(position, nameEnd - position);
                 ruleName.MakeLower();
-                // Skip the entire unknown at-rule, including nested blocks. Never
-                // apply a rule inside @media as though it were unconditional.
+                // Only the exact media type "all" is unconditional. Other
+                // conditions remain skipped and explicitly reported.
                 int depth = 0;
+                int blockOpen = -1;
                 wchar_t quote = 0;
                 bool finished = false;
                 for (int i = position; i < css.GetLength(); ++i)
@@ -3347,9 +3429,16 @@ namespace
                         continue;
                     }
                     if (c == L'\'' || c == L'"') { quote = c; continue; }
-                    if (c == L'{') ++depth;
+                    if (c == L'{') { if (depth == 0) blockOpen = i; ++depth; }
                     else if (c == L'}' && depth > 0 && --depth == 0) { position = i + 1; finished = true; break; }
                     else if (c == L';' && depth == 0) { position = i + 1; finished = true; break; }
+                }
+                CStringW mediaCondition;
+                if (blockOpen >= 0) { mediaCondition = css.Mid(nameEnd, blockOpen - nameEnd); mediaCondition.Trim(); }
+                if (finished && ruleName == L"@media" && mediaCondition.CompareNoCase(L"all") == 0 && blockOpen >= 0 && nesting < 16)
+                {
+                    ParseCssFontRules(css.Mid(blockOpen + 1, position - blockOpen - 2), baseDir, rules, warning, nesting + 1);
+                    continue;
                 }
                 if (g_content.warnedCssAtRules.emplace(ruleName.GetString()).second)
                 {
@@ -3420,6 +3509,7 @@ namespace
                     valid = valid && !rule.parts.empty();
                     if (!valid) { warning += L"Unsupported CSS font selector or declaration: " + selector + L"\r\n"; continue; }
                     rule.declarations = supported;
+                    rule.hasVertical = supported.Find(L"vertical-align:") >= 0;
                     if (affectsVisibility) rule.visibilityDeclarations = declarations;
                     rule.backgroundSet = backgroundSet;
                     rule.backgroundImportant = backgroundImportant;
@@ -3435,10 +3525,11 @@ namespace
     class ScopedCssFontRules
     {
         const std::vector<CssFontRule>* previous_;
+        bool previousHasVertical_;
         std::vector<CssFontRule> rules_;
     public:
         ScopedCssFontRules(const MSXML2::IXMLDOMDocument2Ptr& doc, const CStringW& path,
-            const ConvertContext& ctx, CStringW& warning) : previous_(g_cssFontRules)
+            const ConvertContext& ctx, CStringW& warning) : previous_(g_cssFontRules), previousHasVertical_(g_cssHasVerticalRules)
         {
             const auto head = FindFirstElementByLocalName(MsxmlGetDocumentElement(doc), L"head");
             const auto children = MsxmlGetChildNodes(head);
@@ -3480,8 +3571,9 @@ namespace
                 return a.classSpecificity != b.classSpecificity ? a.classSpecificity < b.classSpecificity : a.elementSpecificity < b.elementSpecificity;
             });
             g_cssFontRules = &rules_;
+            g_cssHasVerticalRules = std::any_of(rules_.begin(), rules_.end(), [](const CssFontRule& rule) { return rule.hasVertical; });
         }
-        ~ScopedCssFontRules() { g_cssFontRules = previous_; }
+        ~ScopedCssFontRules() { g_cssFontRules = previous_; g_cssHasVerticalRules = previousHasVertical_; }
     };
 
     bool CssComputedHidden(const MSXML2::IXMLDOMNodePtr& node)
@@ -3572,7 +3664,23 @@ namespace
     };
     bool LooksLikePageBreak(const MSXML2::IXMLDOMNodePtr& node);
     bool PageBreakHasContent(const MSXML2::IXMLDOMNodePtr& node);
+    bool IsInlineBoundarySpace(wchar_t ch)
+    {
+        return iswspace(ch) || ch == 0x00A0 || ch == 0x2007 || ch == 0x202F;
+    }
+
+    CStringW WrapInlinePreservingBoundarySpace(const CStringW& content, LPCWSTR tag)
+    {
+        int first = 0, last = content.GetLength();
+        while (first < last && IsInlineBoundarySpace(content[first])) ++first;
+        while (last > first && IsInlineBoundarySpace(content[last - 1])) --last;
+        if (first == last) return content;
+        return content.Left(first) + L"<" + tag + L">" + content.Mid(first, last - first) +
+            L"</" + tag + L">" + content.Mid(last);
+    }
+
     CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, InlineFontState font);
+    CStringW InlineToFb2Impl(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, InlineFontState font, bool applyVertical);
     CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
     {
         MSXML2::IXMLDOMNode* parent = nullptr;
@@ -3600,6 +3708,11 @@ namespace
 
     CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, InlineFontState font)
     {
+        return InlineToFb2Impl(node, ctx, font, true);
+    }
+
+    CStringW InlineToFb2Impl(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, InlineFontState font, bool applyVertical)
+    {
         if (!node)
             return CStringW();
 
@@ -3608,8 +3721,8 @@ namespace
         {
             CStringW text = XmlEscape(NormalizeImportedText(MsxmlGetNodeText(node)));
             if (text.IsEmpty()) return text;
-            if (font.italic) text = L"<emphasis>" + text + L"</emphasis>";
-            if (font.bold) text = L"<strong>" + text + L"</strong>";
+            if (font.italic) text = WrapInlinePreservingBoundarySpace(text, L"emphasis");
+            if (font.bold) text = WrapInlinePreservingBoundarySpace(text, L"strong");
             return text;
         }
 
@@ -3634,6 +3747,15 @@ namespace
             return CStringW();
 
         CStringW name = LocalName(node);
+        if (applyVertical && name.CompareNoCase(L"sup") != 0 && name.CompareNoCase(L"sub") != 0)
+        {
+            const int vertical = CssVerticalForNode(node);
+            if (vertical != 0)
+            {
+                CStringW content = InlineToFb2Impl(node, ctx, font, false);
+                return WrapInlinePreservingBoundarySpace(content, vertical > 0 ? L"sup" : L"sub");
+            }
+        }
         if (name == L"span")
         {
             const CStringW backgroundImage = EmptyBackgroundImage(node, ctx, true);
@@ -3649,16 +3771,34 @@ namespace
                 g_content.warnings += L"CSS background image on non-empty inline content was not imported.\r\n";
         }
         ApplyInlineFont(node, font);
+        if (name.CompareNoCase(L"li") == 0)
+        {
+            // Nested list entries rendered inline are separate blocks in the
+            // source. Without a boundary adjacent link labels merge (83 + 105
+            // becomes 83105), changing the book's text and index references.
+            CStringW text = ChildrenInlineToFb2(node, ctx, font);
+            return text.IsEmpty() ? CStringW() : L" " + text;
+        }
         if (name.CompareNoCase(L"em") == 0 || name.CompareNoCase(L"i") == 0 || name.CompareNoCase(L"strong") == 0 || name.CompareNoCase(L"b") == 0)
             return ChildrenInlineToFb2(node, ctx, font);
-        if (name.CompareNoCase(L"sup") == 0)
-            return L"<sup>" + ChildrenInlineToFb2(node, ctx, font) + L"</sup>";
-        if (name.CompareNoCase(L"sub") == 0)
-            return L"<sub>" + ChildrenInlineToFb2(node, ctx, font) + L"</sub>";
+        if (name.CompareNoCase(L"sup") == 0 || name.CompareNoCase(L"sub") == 0)
+        {
+            bool specified = false;
+            const int cssVertical = CssVerticalForNode(node, &specified);
+            const int vertical = specified ? cssVertical : (name.CompareNoCase(L"sup") == 0 ? 1 : -1);
+            const CStringW content = ChildrenInlineToFb2(node, ctx, font);
+            if (vertical == 0) return content;
+            return WrapInlinePreservingBoundarySpace(content, vertical > 0 ? L"sup" : L"sub");
+        }
         if (name.CompareNoCase(L"code") == 0 || name.CompareNoCase(L"kbd") == 0 || name.CompareNoCase(L"samp") == 0 || name.CompareNoCase(L"var") == 0)
-            return L"<code>" + ChildrenInlineToFb2(node, ctx, font) + L"</code>";
+        {
+            const CStringW content = ChildrenInlineToFb2(node, ctx, font);
+            // The editor discards whitespace-only inline elements on save.
+            // Keep an unformatted separator so adjacent words do not merge.
+            return WrapInlinePreservingBoundarySpace(content, L"code");
+        }
         if (name.CompareNoCase(L"del") == 0 || name.CompareNoCase(L"s") == 0 || name.CompareNoCase(L"strike") == 0)
-            return L"<strikethrough>" + ChildrenInlineToFb2(node, ctx, font) + L"</strikethrough>";
+            return WrapInlinePreservingBoundarySpace(ChildrenInlineToFb2(node, ctx, font), L"strikethrough");
         if (name.CompareNoCase(L"q") == 0)
             return L"«" + ChildrenInlineToFb2(node, ctx, font) + L"»";
         if (name.CompareNoCase(L"abbr") == 0 || name.CompareNoCase(L"acronym") == 0)
@@ -4505,12 +4645,39 @@ namespace
         }
     }
 
+    void AppendPreNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx);
+
+    bool IsQuoteTextDiv(const MSXML2::IXMLDOMNodePtr& node)
+    {
+        if (LocalName(node) != L"div" || TrimString(NodeText(node)).IsEmpty()) return false;
+        const auto children = MsxmlGetChildNodes(node);
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        for (long i = 0; i < count; ++i)
+        {
+            const auto child = MsxmlGetNodeListItem(children, i);
+            if (MsxmlGetNodeType(child) != MSXML2::NODE_ELEMENT) continue;
+            const CStringW name = LocalName(child);
+            if (name == L"p" || name == L"div" || name == L"section" || name == L"article" ||
+                name == L"aside" || name == L"ul" || name == L"ol" || name == L"li" ||
+                name == L"table" || name == L"pre" || name == L"figure" || name == L"blockquote" ||
+                IsHeadingName(name)) return false;
+        }
+        return true;
+    }
+
     void CollectQuoteBlocks(const MSXML2::IXMLDOMNodePtr& node, std::vector<MSXML2::IXMLDOMNodePtr>& blocks)
     {
-        if (!node || IsHiddenElement(node))
+        if (!node)
             return;
+        const auto type = MsxmlGetNodeType(node);
+        if (type == MSXML2::NODE_TEXT || type == MSXML2::NODE_CDATA_SECTION)
+        {
+            blocks.push_back(node);
+            return;
+        }
+        if (IsHiddenElement(node)) return;
         const CStringW name = LocalName(node);
-        if (name == L"p" || name == L"img" || name == L"image" || name == L"picture" || name == L"object")
+        if (name == L"p" || name == L"pre" || IsHeadingName(name) || IsQuoteTextDiv(node) || name == L"img" || name == L"image" || name == L"picture" || name == L"object")
         {
             blocks.push_back(node);
             return;
@@ -4523,9 +4690,6 @@ namespace
 
     void AppendEpigraphOrCiteNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx, bool epigraph)
     {
-        if (!g_options.importPoemsEpigraphs)
-            return;
-
         std::vector<MSXML2::IXMLDOMNodePtr> paragraphs;
         CollectQuoteBlocks(node, paragraphs);
 
@@ -4535,7 +4699,8 @@ namespace
         int count = 0;
         bool hasParagraph = false;
         for (const auto& block : paragraphs)
-            if (LocalName(block) == L"p") { hasParagraph = true; break; }
+            if (MsxmlGetNodeType(block) == MSXML2::NODE_TEXT || MsxmlGetNodeType(block) == MSXML2::NODE_CDATA_SECTION ||
+                LocalName(block) == L"p" || LocalName(block) == L"pre" || IsHeadingName(LocalName(block)) || IsQuoteTextDiv(block)) { hasParagraph = true; break; }
         if (!hasParagraph)
         {
             CStringW text = ChildrenInlineToFb2(node, ctx);
@@ -4548,9 +4713,36 @@ namespace
         }
         else
         {
+            CStringW pendingInline;
+            const auto flushInline = [&]() {
+                CStringW text(pendingInline);
+                pendingInline.Empty();
+                text.Trim();
+                if (text.IsEmpty()) return;
+                if (afterAuthor) { blocks.push_back(xml); xml.Empty(); }
+                xml += L"        <p>" + text + L"</p>\r\n";
+                afterAuthor = false;
+                ++count;
+            };
             for (size_t i = 0; i < paragraphs.size(); ++i)
             {
-                if (LocalName(paragraphs[i]) != L"p")
+                const auto type = MsxmlGetNodeType(paragraphs[i]);
+                const bool directText = type == MSXML2::NODE_TEXT || type == MSXML2::NODE_CDATA_SECTION;
+                if (directText)
+                {
+                    pendingInline += InlineToFb2(paragraphs[i], ctx);
+                    continue;
+                }
+                flushInline();
+                if (LocalName(paragraphs[i]) == L"pre")
+                {
+                    if (afterAuthor) { blocks.push_back(xml); xml.Empty(); afterAuthor = false; }
+                    const int previousLength = xml.GetLength();
+                    AppendPreNode(paragraphs[i], xml, ctx);
+                    if (xml.GetLength() != previousLength) ++count;
+                    continue;
+                }
+                if (!directText && LocalName(paragraphs[i]) != L"p" && !IsHeadingName(LocalName(paragraphs[i])) && !IsQuoteTextDiv(paragraphs[i]))
                 {
                     const CStringW image = Fb2ImageElementForNode(ctx, paragraphs[i]);
                     if (!image.IsEmpty())
@@ -4584,6 +4776,7 @@ namespace
                     ++count;
                 }
             }
+            flushInline();
         }
         if (count > 0)
         {
@@ -4790,6 +4983,8 @@ namespace
         return prefix;
     }
 
+    void AppendBlockNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx);
+
     void AppendListNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx)
     {
         if (!g_options.importLists)
@@ -4808,8 +5003,15 @@ namespace
         for (long i = 0; i < count; ++i)
         {
             MSXML2::IXMLDOMNodePtr child = MsxmlGetNodeListItem(children, i);
-            if (!child || MsxmlGetNodeType(child) != MSXML2::NODE_ELEMENT || LocalName(child).CompareNoCase(L"li") != 0)
+            if (!child || MsxmlGetNodeType(child) != MSXML2::NODE_ELEMENT)
                 continue;
+            if (LocalName(child).CompareNoCase(L"li") != 0)
+            {
+                // Real-world XHTML can place anchors and blocks directly inside a list.
+                // Preserve them in document order without assigning list numbering.
+                AppendBlockNode(child, out, ctx);
+                continue;
+            }
             if (!ctx.collectingNotes && g_options.importNotes && IsCollectedNoteNode(child, ctx)) continue;
 
             int itemNumber = number;
@@ -4918,9 +5120,9 @@ namespace
         for (int i = 0; i < s.GetLength(); ++i)
         {
             wchar_t ch = s[i];
-            if (ch == 0x00AD || ch == 0x200B || ch == 0x200C || ch == 0x200D || ch == 0xFEFF)
+            if (g_options.cleanTypography && (ch == 0x00AD || ch == 0x200B || ch == 0xFEFF))
                 continue;
-            if (ch == 0x00A0 || ch == 0x2007 || ch == 0x202F)
+            if (g_options.cleanTypography && (ch == 0x00A0 || ch == 0x2007 || ch == 0x202F))
                 ch = L' ';
             out += ch;
         }
@@ -4929,39 +5131,165 @@ namespace
         return out;
     }
 
+    struct PreAnchorOffset
+    {
+        CStringW id;
+        int offset = 0;
+    };
+
+    struct PreImageOffset
+    {
+        MSXML2::IXMLDOMNodePtr node;
+        int offset = 0;
+    };
+
+    void CollectPreContent(const MSXML2::IXMLDOMNodePtr& node, bool root, CStringW& raw,
+                           std::vector<PreAnchorOffset>& anchors, std::vector<PreImageOffset>& images,
+                           bool hiddenAncestor = false)
+    {
+        if (!node) return;
+        const auto type = MsxmlGetNodeType(node);
+        if (type == MSXML2::NODE_TEXT || type == MSXML2::NODE_CDATA_SECTION)
+        {
+            raw += MsxmlGetNodeText(node);
+            return;
+        }
+        if (type != MSXML2::NODE_ELEMENT) return;
+        const bool hidden = hiddenAncestor || IsHiddenElement(node);
+        const CStringW id = RawAnchorId(node);
+        if (!root && !id.IsEmpty()) anchors.push_back({ id, raw.GetLength() });
+        const CStringW name = LocalName(node);
+        if (name == L"img" || name == L"image" || name == L"picture" || name == L"object")
+        {
+            if (!hidden) images.push_back({ node, raw.GetLength() });
+            return;
+        }
+        if (name == L"br")
+        {
+            raw += L'\n';
+            return;
+        }
+        const auto children = MsxmlGetChildNodes(node);
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        for (long i = 0; i < count; ++i)
+            CollectPreContent(MsxmlGetNodeListItem(children, i), false, raw, anchors, images, hidden);
+    }
+
     void AppendPreNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx)
     {
         if (!node)
             return;
 
-        CStringW text = PreTextNormalize(MsxmlGetNodeText(node));
-        text.Trim(L"\n\r");
-        if (text.IsEmpty())
-            return;
-
-        int start = 0;
-        CStringW line = text.Tokenize(L"\n", start);
-        int lineCount = 0;
-        CStringW firstLineId = OptionalIdAttribute(node, ctx);
-        while (start != -1 || !line.IsEmpty())
+        CStringW raw;
+        std::vector<PreAnchorOffset> anchors;
+        std::vector<PreImageOffset> images;
+        CollectPreContent(node, true, raw, anchors, images);
+        CStringW text = PreTextNormalize(raw);
+        if (text.IsEmpty() && images.empty())
         {
-            CStringW cleanLine(line);
-            cleanLine.TrimRight();
-            CStringW nonEmptyCheck(cleanLine);
-            nonEmptyCheck.Trim();
-            if (!nonEmptyCheck.IsEmpty())
-            {
-                CStringW idAttr = lineCount == 0 ? firstLineId : CStringW();
-                out += L"      <p" + idAttr + L"><code>" + EscapePreLinePreservingIndent(cleanLine) + L"</code></p>\r\n";
-                ++lineCount;
-            }
-            if (start == -1)
-                break;
-            line = text.Tokenize(L"\n", start);
+            out += AnchorMarkerParagraphsFromRawIds(CollectRawAnchorIds(node), 0, ctx);
+            return;
         }
 
-        if (lineCount == 0)
-            out += L"      <p" + firstLineId + L"><code>" + EscapePreLinePreservingIndent(text) + L"</code></p>\r\n";
+        // First map raw offsets through encoding repair. CP1251 is single-byte;
+        // successful repair decodes that byte stream as UTF-8, which can change
+        // the number of UTF-16 code units before an anchor or image.
+        const CStringW repaired = g_options.repairEncoding ? TryRepairUtf8DecodedAsCp1251(raw) : raw;
+        std::vector<int> rawToRepaired(static_cast<size_t>(raw.GetLength()) + 1, 0);
+        if (repaired == raw)
+        {
+            for (int i = 0; i <= raw.GetLength(); ++i) rawToRepaired[static_cast<size_t>(i)] = i;
+        }
+        else
+        {
+            const int byteCount = ::WideCharToMultiByte(1251, 0, raw.GetString(), raw.GetLength(), nullptr, 0, nullptr, nullptr);
+            std::vector<char> bytes(static_cast<size_t>(max(0, byteCount)));
+            if (byteCount > 0)
+                ::WideCharToMultiByte(1251, 0, raw.GetString(), raw.GetLength(), bytes.data(), byteCount, nullptr, nullptr);
+            int sourceOffset = 0;
+            int repairedOffset = 0;
+            while (sourceOffset < byteCount)
+            {
+                const unsigned char lead = static_cast<unsigned char>(bytes[static_cast<size_t>(sourceOffset)]);
+                const int count = lead < 0x80 ? 1 : lead < 0xE0 ? 2 : lead < 0xF0 ? 3 : 4;
+                for (int i = 0; i < count && sourceOffset + i < byteCount; ++i)
+                    rawToRepaired[static_cast<size_t>(sourceOffset + i)] = repairedOffset;
+                sourceOffset += count;
+                repairedOffset += count == 4 ? 2 : 1;
+                if (sourceOffset <= raw.GetLength()) rawToRepaired[static_cast<size_t>(sourceOffset)] = repairedOffset;
+            }
+        }
+        // Then map repaired offsets through typography cleanup and CRLF folding.
+        std::vector<int> repairedToNormalized(static_cast<size_t>(repaired.GetLength()) + 1, 0);
+        int normalizedOffset = 0;
+        for (int i = 0; i < repaired.GetLength(); ++i)
+        {
+            repairedToNormalized[static_cast<size_t>(i)] = normalizedOffset;
+            const wchar_t ch = repaired[i];
+            if (g_options.cleanTypography && (ch == 0x00AD || ch == 0x200B || ch == 0xFEFF)) continue;
+            ++normalizedOffset;
+            if (ch == L'\r' && i + 1 < repaired.GetLength() && repaired[i + 1] == L'\n')
+            {
+                repairedToNormalized[static_cast<size_t>(i + 1)] = normalizedOffset;
+                ++i;
+            }
+        }
+        repairedToNormalized[static_cast<size_t>(repaired.GetLength())] = normalizedOffset;
+        std::vector<int> mapped(static_cast<size_t>(raw.GetLength()) + 1, 0);
+        for (int i = 0; i <= raw.GetLength(); ++i)
+            mapped[static_cast<size_t>(i)] = repairedToNormalized[static_cast<size_t>(rawToRepaired[static_cast<size_t>(i)])];
+        int start = 0;
+        int lineCount = 0;
+        CStringW firstLineId = OptionalIdAttribute(node, ctx);
+        size_t nextAnchor = 0;
+        size_t nextImage = 0;
+        while (start <= text.GetLength())
+        {
+            const int newline = text.Find(L'\n', start);
+            const int end = newline < 0 ? text.GetLength() : newline;
+            CStringW line = text.Mid(start, end - start);
+            while (nextAnchor < anchors.size())
+            {
+                const int rawOffset = max(0, min(anchors[nextAnchor].offset, raw.GetLength()));
+                if (mapped[static_cast<size_t>(rawOffset)] > end) break;
+                const CStringW markerId = OptionalIdAttributeFromRaw(anchors[nextAnchor++].id, ctx);
+                if (!markerId.IsEmpty()) out += L"      <p" + markerId + L"></p>\r\n";
+            }
+            CStringW escapedLine = EscapePreLinePreservingIndent(line);
+            std::vector<std::pair<int, CStringW>> lineImages;
+            while (nextImage < images.size())
+            {
+                const int rawOffset = max(0, min(images[nextImage].offset, raw.GetLength()));
+                const int imageOffset = mapped[static_cast<size_t>(rawOffset)];
+                if (imageOffset > end) break;
+                const int localOffset = max(0, min(imageOffset - start, line.GetLength()));
+                const int escapedOffset = EscapePreLinePreservingIndent(line.Left(localOffset)).GetLength();
+                const CStringW image = InlineToFb2(images[nextImage].node, ctx);
+                if (!image.IsEmpty()) lineImages.push_back({ escapedOffset, image });
+                ++nextImage;
+            }
+            for (auto image = lineImages.rbegin(); image != lineImages.rend(); ++image)
+                escapedLine.Insert(image->first, image->second);
+            if (!line.IsEmpty() || !lineImages.empty())
+            {
+                CStringW idAttr = lineCount == 0 ? firstLineId : CStringW();
+                out += L"      <p" + idAttr + L"><code>" + escapedLine + L"</code></p>\r\n";
+                ++lineCount;
+            }
+            else
+                out += L"      <empty-line/>\r\n";
+            if (newline < 0) break;
+            start = newline + 1;
+        }
+
+        while (nextAnchor < anchors.size())
+        {
+            const CStringW markerId = OptionalIdAttributeFromRaw(anchors[nextAnchor++].id, ctx);
+            if (!markerId.IsEmpty()) out += L"      <p" + markerId + L"></p>\r\n";
+        }
+
+        if (lineCount == 0 && !firstLineId.IsEmpty())
+            out += L"      <p" + firstLineId + L"></p>\r\n";
     }
 
     void AppendDefinitionListNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx)
@@ -5343,6 +5671,16 @@ namespace
             return;
         }
 
+        if (g_options.importNotes && !ctx.collectingNotes && IsEndnotesContainerElement(node))
+        {
+            // Walk note containers normally: quote/sidebar conversion would
+            // otherwise render already-collected notes again in the main body.
+            const auto children = MsxmlGetChildNodes(node);
+            const long count = children ? MsxmlGetNodeListLength(children) : 0;
+            for (long i = 0; i < count; ++i) AppendBlockNode(MsxmlGetNodeListItem(children, i), out, ctx);
+            return;
+        }
+
         if (LooksLikeSidebar(node) && !IsEndnoteElement(node))
         {
             AppendEpigraphOrCiteNode(node, out, ctx, false);
@@ -5365,10 +5703,13 @@ namespace
         {
             CStringW author = ChildrenInlineToFb2(node, ctx);
             author.Trim();
-            if (!author.IsEmpty())
+            const auto ids = CollectRawAnchorIds(node);
+            const CStringW id = ids.empty() ? CStringW() : OptionalIdAttributeFromRaw(ids.front(), ctx);
+            out += AnchorMarkerParagraphsFromRawIds(ids, 1, ctx);
+            if (!author.IsEmpty() || !id.IsEmpty())
                 // A standalone attribution is a section block, not a child of
                 // an epigraph, cite or poem. Keep it in place as a paragraph.
-                out += L"      <p" + OptionalIdAttribute(node, ctx) + L">" + author + L"</p>\r\n";
+                out += L"      <p" + id + L">" + author + L"</p>\r\n";
             return;
         }
 
@@ -5632,6 +5973,79 @@ namespace
         for (long i = 0; i < count; ++i) IndexSourceNodes(MsxmlGetNodeListItem(children, i), path, nodes);
     }
 
+    bool HasTextBeforeInBlock(const MSXML2::IXMLDOMNodePtr& node, bool ignoreMarkerPunctuation = false)
+    {
+        auto current = node;
+        for (int depth = 0; current && depth < 16; ++depth)
+        {
+            const auto parent = ParentNode(current);
+            if (!parent) break;
+            const auto children = MsxmlGetChildNodes(parent);
+            const long count = children ? MsxmlGetNodeListLength(children) : 0;
+            for (long i = 0; i < count; ++i)
+            {
+                const auto child = MsxmlGetNodeListItem(children, i);
+                if (child == current) break;
+                if (!child || IsHiddenElement(child)) continue;
+                const CStringW text = TrimString(NodeText(child));
+                if (!ignoreMarkerPunctuation && !text.IsEmpty()) return true;
+                if (ignoreMarkerPunctuation)
+                    for (int c = 0; c < text.GetLength(); ++c)
+                        if (!iswspace(text[c]) && wcschr(L"[](){}.,:;", text[c]) == nullptr) return true;
+            }
+            const CStringW name = LocalName(parent);
+            if (name == L"p" || name == L"li" || name == L"td" || name == L"section" || name == L"body") break;
+            current = parent;
+        }
+        return false;
+    }
+
+    bool IsInsideSuperscript(const MSXML2::IXMLDOMNodePtr& node)
+    {
+        if (LocalName(node) == L"a")
+        {
+            std::vector<MSXML2::IXMLDOMNodePtr> superscripts;
+            CollectElementsByLocalName(node, L"sup", superscripts);
+            if (!superscripts.empty()) return true;
+        }
+        for (auto current = node; current; current = ParentNode(current))
+        {
+            const CStringW name = LocalName(current);
+            if (name == L"sup") return true;
+            if (name == L"p" || name == L"li" || IsHeadingName(name) || name == L"body") break;
+        }
+        return false;
+    }
+
+    bool IsWithinContents(const MSXML2::IXMLDOMNodePtr& node)
+    {
+        for (auto current = node; current; current = ParentNode(current))
+        {
+            if (IsEpubType(current, L"toc") || IsRoleToken(current, L"doc-toc") ||
+                HasSemanticCssClass(current, L"toc") || HasSemanticCssClass(current, L"contents"))
+                return true;
+            if (LocalName(current) == L"body") break;
+        }
+        return false;
+    }
+
+    bool IsBibliographyEntry(const MSXML2::IXMLDOMNodePtr& node)
+    {
+        bool referenceEntry = false;
+        MSXML2::IXMLDOMNodePtr body;
+        for (auto current = node; current; current = ParentNode(current))
+        {
+            if (HasSemanticCssClass(current, L"ref") || HasSemanticCssClass(current, L"ref1") ||
+                HasSemanticCssClass(current, L"bibliography"))
+                referenceEntry = true;
+            if (LocalName(current) == L"body") { body = current; break; }
+        }
+        if (!referenceEntry || !body) return false;
+        CStringW heading = LowerMapKey(TrimString(NodeText(FindFirstHeadingChild(body))));
+        return heading == L"references" || heading == L"bibliography" ||
+            heading == L"библиография" || heading == L"список литературы";
+    }
+
     void PrepareContentInventory(const EpubPackage& package, std::map<std::wstring, std::wstring>& anchors)
     {
         std::set<std::wstring> spinePaths;
@@ -5707,30 +6121,131 @@ namespace
                 const auto target = nodes.find(std::wstring(PathAnchorMapKey(path, fragment)));
                 const CStringW sourceId = RawAnchorId(link);
                 bool noteShape = false;
+                if (!IsNoteReferenceElement(link) && IsWithinContents(link)) continue;
                 if (target != nodes.end())
                 {
+                    // Numbered citations in a spine bibliography are links
+                    // to entries, not a request to relocate them into notes.
+                    if (!IsNoteReferenceElement(link) &&
+                        spinePaths.count(LowerMapKey(path).GetString()) && IsBibliographyEntry(target->second))
+                        continue;
+                    // A marker may contain a link to its own enclosing anchor.
+                    // It cannot be a reference to a separate note; treating the
+                    // self-link as a backlink moves its paragraph into notes.
+                    bool selfTarget = false;
+                    for (auto current = link; current; current = ParentNode(current))
+                        if (current == target->second) { selfTarget = true; break; }
+                    if (selfTarget) continue;
+                    if (!IsNoteReferenceElement(link) &&
+                        (IsEpubType(target->second, L"chapter") || IsRoleToken(target->second, L"doc-chapter") ||
+                         HasSemanticCssClass(target->second, L"chapter")))
+                        continue;
+                    // A reference in another document may point to the inline
+                    // superscript marker, not to the footnote itself. Moving
+                    // its containing paragraph to notes would lose main text.
+                    if (!IsNoteReferenceElement(link) && IsInsideSuperscript(target->second) &&
+                        HasTextBeforeInBlock(target->second))
+                        continue;
+                    // A chapter heading may link back to its entry in a
+                    // visible table of contents. That entry is navigation,
+                    // even when the heading consists of a numeric link.
+                    bool targetIsContents = false;
+                    MSXML2::IXMLDOMNodePtr ancestor = target->second;
+                    while (ancestor)
+                    {
+                        const CStringW css = LowerMapKey(Attr(ancestor, L"class"));
+                        if (IsEpubType(ancestor, L"toc") || IsRoleToken(ancestor, L"doc-toc") ||
+                            HasSemanticCssClass(ancestor, L"toc") || css.Left(4) == L"toc_")
+                        {
+                            targetIsContents = true;
+                            break;
+                        }
+                        IXMLDOMNode* rawAncestor = nullptr;
+                        ancestor->get_parentNode(&rawAncestor);
+                        ancestor = MSXML2::IXMLDOMNodePtr(rawAncestor, false);
+                    }
+                    if (targetIsContents && !IsNoteReferenceElement(link)) continue;
                     const CStringW targetName = LocalName(target->second);
                     noteShape = targetName == L"p" || targetName == L"li" || targetName == L"div" ||
-                        targetName == L"aside" || targetName == L"section" || targetName == L"a" || targetName == L"span";
+                        targetName == L"aside" || targetName == L"section" || targetName == L"article" ||
+                        targetName == L"a" || targetName == L"span";
                     if (FindFirstHeadingChild(target->second) && !noteFile) noteShape = false;
                 }
                 std::vector<MSXML2::IXMLDOMNodePtr> superscripts;CollectElementsByLocalName(link, L"sup", superscripts);
                 IXMLDOMNode* rawParent = nullptr;link->get_parentNode(&rawParent);
                 MSXML2::IXMLDOMNodePtr parent(rawParent, false);
                 const bool superscript = !superscripts.empty() || LocalName(parent) == L"sup";
-                if (target != nodes.end() && !sourceId.IsEmpty())
+                std::vector<CStringW> sourceIds;
+                if (!sourceId.IsEmpty()) sourceIds.push_back(sourceId);
+                if (numeric || symbolic || letter)
+                {
+                    // Some notes put the target ID on a sibling empty anchor,
+                    // rather than on the backlink itself.
+                    bool foundBlock = false;
+                    int ownerDepth = 0;
+                    for (auto owner = ParentNode(link); owner && ownerDepth++ < 12; owner = ParentNode(owner))
+                    {
+                        const CStringW ownerName = LocalName(owner);
+                        if (ownerName == L"body" || IsHeadingName(ownerName)) break;
+                        if (!foundBlock && (ownerName == L"p" || ownerName == L"li"))
+                        {
+                            const auto ownerIds = CollectRawAnchorIds(owner);
+                            sourceIds.insert(sourceIds.end(), ownerIds.begin(), ownerIds.end());
+                            foundBlock = true;
+                        }
+                        else if (foundBlock)
+                        {
+                            const CStringW ownerId = RawAnchorId(owner);
+                            if (!ownerId.IsEmpty()) sourceIds.push_back(ownerId);
+                        }
+                    }
+                }
+                if (target != nodes.end() && !sourceIds.empty())
                 {
                     std::vector<MSXML2::IXMLDOMNodePtr> backLinks;
                     CollectElementsByLocalName(LogicalNoteContainer(target->second, path), L"a", backLinks);
                     for (const auto& back : backLinks)
                     {
                         const CStringW backHref = Attr(back, L"href");
-                        if (IsExternalHref(backHref) || HrefFragment(backHref) != sourceId) continue;
+                        const CStringW backFragment = HrefFragment(backHref);
+                        bool matchesSource = false;
+                        for (const auto& sourceAnchor : sourceIds)
+                            if (backFragment == sourceAnchor) { matchesSource = true; break; }
+                        if (IsExternalHref(backHref) || !matchesSource) continue;
                         const int backHash = backHref.Find(L'#');
                         const CStringW backPath = backHash == 0 ? path : CombineAndCanonicalizePath(DirectoryOf(path), backHref.Left(backHash));
                         backlink = backlink || backPath.CompareNoCase(item.absPath) == 0;
                     }
                 }
+                // A numeric link from an unmarked notes document back to a
+                // spine reference can have the same bidirectional shape as a
+                // noteref. Treating both directions as notes pulls the entire
+                // surrounding chapter paragraph into body name="notes".
+                const CStringW sourceName = LowerMapKey(FileNameOnly(item.absPath));
+                const bool sourceNotesFile = sourceName == L"notes" || sourceName == L"footnotes" || sourceName == L"endnotes" ||
+                    sourceName.Right(6) == L"_notes" || sourceName.Right(6) == L"-notes" ||
+                    sourceName.Right(10) == L"_footnotes" || sourceName.Right(10) == L"-footnotes" ||
+                    sourceName.Right(9) == L"_endnotes" || sourceName.Right(9) == L"-endnotes";
+                const bool explicitBacklink = IsEpubType(link, L"backlink") || IsRoleToken(link, L"doc-backlink") ||
+                    HasSemanticCssClass(link, L"backlink") || HasSemanticCssClass(link, L"backlinks") || HasSemanticCssClass(link, L"fn-backref");
+                const CStringW targetText = !backlink || target == nodes.end() ? CStringW() :
+                    TrimString(NodeText(LogicalNoteContainer(target->second, path)));
+                int proseStart = 0;
+                while (proseStart < targetText.GetLength() &&
+                    (iswspace(targetText[proseStart]) || targetText[proseStart] == L'\"' ||
+                     targetText[proseStart] == L'\'' || targetText[proseStart] == L'(' ||
+                     targetText[proseStart] == L'.' || targetText[proseStart] == L'-' ||
+                     targetText[proseStart] == 0x2018 || targetText[proseStart] == 0x2019 ||
+                     targetText[proseStart] == 0x201C || targetText[proseStart] == 0x201D ||
+                     targetText[proseStart] == 0x00AB || targetText[proseStart] == 0x2013 ||
+                     targetText[proseStart] == 0x2014 || targetText[proseStart] == 0x2026))
+                    ++proseStart;
+                const bool targetStartsWithProse = proseStart < targetText.GetLength() && iswalpha(targetText[proseStart]) != 0;
+                const bool startsNoteButTargetFollowsText = backlink && target != nodes.end() &&
+                    !HasTextBeforeInBlock(link, true) && (HasTextBeforeInBlock(target->second) || targetStartsWithProse);
+                if (explicitBacklink || (backlink && (sourceNotesFile || startsNoteButTargetFollowsText) && !noteFile &&
+                    spinePaths.count(LowerMapKey(path).GetString()) && !IsNoteReferenceElement(link)))
+                    continue;
                 const bool marked = numeric || ((symbolic || letter) && (noteFile || backlink ||
                     (target != nodes.end() && IsEndnoteElement(LogicalNoteContainer(target->second, path)))));
                 if (IsNoteReferenceElement(link) || (marked &&
@@ -6773,6 +7288,70 @@ namespace
         return value.Left(i);
     }
 
+    bool AnnotationInline(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, bool allowParagraph = true)
+    {
+        const MSXML2::DOMNodeType type = MsxmlGetNodeType(node);
+        if (type == MSXML2::NODE_TEXT || type == MSXML2::NODE_CDATA_SECTION)
+        {
+            out += XmlEscape(MsxmlGetNodeText(node));
+            return true;
+        }
+        if (type != MSXML2::NODE_ELEMENT) return false;
+        const auto attributes = MsxmlGetAttributes(node);
+        if (attributes && MsxmlGetNamedNodeMapLength(attributes) != 0) return false;
+        CStringW name = LocalName(node);
+        name.MakeLower();
+        if (name == L"p" && !allowParagraph) return false;
+        if (name != L"p" && name != L"strong" && name != L"b" && name != L"em" && name != L"i") return false;
+        CStringW content;
+        MSXML2::IXMLDOMNodeListPtr children = MsxmlGetChildNodes(node);
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        for (long i = 0; i < count; ++i)
+            if (!AnnotationInline(MsxmlGetNodeListItem(children, i), content, false)) return false;
+        if (name == L"strong" || name == L"b") content = WrapInlinePreservingBoundarySpace(content, L"strong");
+        if (name == L"em" || name == L"i") content = WrapInlinePreservingBoundarySpace(content, L"emphasis");
+        out += content;
+        return true;
+    }
+
+    bool AnnotationHtmlParagraphs(const CStringW& description, CStringW& paragraphs)
+    {
+        CStringW source = TrimString(description);
+        CStringW lower(source); lower.MakeLower();
+        // Only recognize a complete, narrowly supported paragraph fragment.
+        // Plain descriptions and ambiguous HTML retain their original text.
+        if (lower.Left(3) != L"<p>" || source.GetLength() > 262144) return false;
+        MSXML2::IXMLDOMDocument2Ptr dom;
+        if (FAILED(CreateMsxmlDom(dom))) return false;
+        CStringW wrapped = L"<root>" + SanitizeMarkupForXml(source, true) + L"</root>";
+        VARIANT_BOOL loaded = VARIANT_FALSE;
+        HRESULT hr = dom->loadXML(CComBSTR(wrapped), &loaded);
+        if (FAILED(hr) || loaded != VARIANT_TRUE)
+        {
+            // Publishers sometimes truncate a description in its final <p>.
+            // XML parsing still validates every other tag after this repair.
+            wrapped = L"<root>" + SanitizeMarkupForXml(source, true) + L"</p></root>";
+            loaded = VARIANT_FALSE;
+            hr = dom->loadXML(CComBSTR(wrapped), &loaded);
+            if (FAILED(hr) || loaded != VARIANT_TRUE) return false;
+        }
+        MSXML2::IXMLDOMNodeListPtr children = MsxmlGetChildNodes(MsxmlGetDocumentElement(dom));
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        CStringW result;
+        for (long i = 0; i < count; ++i)
+        {
+            MSXML2::IXMLDOMNodePtr child = MsxmlGetNodeListItem(children, i);
+            if (MsxmlGetNodeType(child) == MSXML2::NODE_TEXT && TrimString(MsxmlGetNodeText(child)).IsEmpty()) continue;
+            if (MsxmlGetNodeType(child) != MSXML2::NODE_ELEMENT || LocalName(child).CompareNoCase(L"p") != 0) return false;
+            CStringW content;
+            if (!AnnotationInline(child, content)) return false;
+            result += L"        <p>" + content + L"</p>\r\n";
+        }
+        if (result.IsEmpty()) return false;
+        paragraphs = result;
+        return true;
+    }
+
     CStringW BuildDescriptionXml(const EpubPackage& package)
     {
         CStringW xml;
@@ -6804,7 +7383,9 @@ namespace
         if (!package.description.IsEmpty())
         {
             xml += L"      <annotation>\r\n";
-            xml += L"        <p>" + XmlEscape(package.description) + L"</p>\r\n";
+            CStringW paragraphs;
+            if (AnnotationHtmlParagraphs(package.description, paragraphs)) xml += paragraphs;
+            else xml += L"        <p>" + XmlEscape(package.description) + L"</p>\r\n";
             xml += L"      </annotation>\r\n";
         }
         if (!package.date.IsEmpty()) {

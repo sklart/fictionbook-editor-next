@@ -142,6 +142,43 @@ Write-Output 'Independent FB2 XSD validation: PASS'
     def text(self, root):
         return ''.join(root.itertext())
 
+    def test_description_html_paragraphs_and_truncated_last_paragraph(self):
+        root = self.convert('<p>Body</p>', metadata_extra=('<dc:description>'
+            '&lt;p&gt;&lt;strong&gt;First&lt;/strong&gt; &amp;rsquo; text&lt;/p&gt;'
+            '&lt;p&gt;Last paragraph...'
+            '</dc:description>'))
+        paragraphs = root.findall('f:description/f:title-info/f:annotation/f:p', NS)
+        self.assertEqual([''.join(p.itertext()) for p in paragraphs], ['First ’ text', 'Last paragraph...'])
+        self.assertEqual(paragraphs[0].find('f:strong', NS).text, 'First')
+
+    def test_description_plain_text_angle_brackets_are_not_markup(self):
+        root = self.convert('<p>Body</p>', metadata_extra='<dc:description>value &lt; 5 &amp; more</dc:description>')
+        paragraph = root.find('f:description/f:title-info/f:annotation/f:p', NS)
+        self.assertEqual(''.join(paragraph.itertext()), 'value &lt; 5 &amp; more'.replace('&lt;', '<').replace('&amp;', '&'))
+
+    def test_description_unsupported_html_is_preserved(self):
+        for markup in ('<p><a href="https://example.org">Link</a></p>',
+                       '<p><strong title="detail">Text</strong></p>', '<p>First<p>Second</p></p>'):
+            with self.subTest(markup=markup):
+                escaped = markup.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                root = self.convert('<p>Body</p>', metadata_extra=f'<dc:description>{escaped}</dc:description>')
+                paragraph = root.find('f:description/f:title-info/f:annotation/f:p', NS)
+                self.assertEqual(''.join(paragraph.itertext()), markup)
+
+    def test_seven_zip_mislabeled_as_epub_fails_promptly(self):
+        archive = base64.b64decode('N3q8ryccAARJ3cU/CwAAAAAAAACiAAAAAAAAANRFoZgBAAZmaXh0dXJlAAEEBgABCQsABwsBAAEhIQEADAcACAoB7kDlBQAABQEZDAAAAAAAAAAAAAAAABFdAGIAdQBpAGwAZAAvAGUAcAB1AGIALQBmAGkAZABlAGwAaQB0AHkALQAyADAAMgA2ADEAMQAxADEALwBmAGkAeAB0AHUAcgBlAC0ANwB6AC8AeAAuAHQAeAB0AAAAFAoBAOJlS9n1cd0BFQYBACAAAAAAAA==')
+        with tempfile.TemporaryDirectory(prefix='not-epub-') as folder:
+            source, output = Path(folder) / 'input.epub', Path(folder) / 'output.fb2'
+            source.write_bytes(archive)
+            try:
+                result = subprocess.run([str(BATCH), str(source), str(output)], capture_output=True,
+                                        timeout=10, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+            except subprocess.TimeoutExpired:
+                self.fail('7z file disguised as EPUB hung instead of returning an error')
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b'7z', result.stdout + result.stderr)
+            self.assertFalse(output.exists())
+
     def test_long_temporary_path_with_long_archive_entry(self):
         long_name = 'Text/' + ('chapter_' * 12) + '.xhtml'
         root = self.convert('<p>Control chapter.</p>',
@@ -738,6 +775,83 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertIsNotNone(later.find('.//f:emphasis', NS))
         self.assertIn('Unsupported CSS at-rule', self.diagnostics)
 
+    def test_css_media_all_preserves_semantic_font_and_vertical_alignment(self):
+        root = self.convert('<p><span class="italic">Emphasized</span> '
+                            '<span class="sup">Raised</span> <span class="sub">Lowered</span> '
+                            '<a class="sup" href="#target">Link</a> '
+                            '<span class="reset" style="vertical-align:baseline">Baseline</span></p>'
+                            '<p id="target">Destination</p>',
+                            head='<style>@media all {.italic {font-style:italic} .sup {vertical-align:super} '
+                                 '.sub {vertical-align:sub} .reset {vertical-align:super}} '
+                                 '@media print {.italic {font-weight:bold}}</style>', navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Emphasized' in self.text(p))
+        self.assertTrue(any('Emphasized' in self.text(n) for n in paragraph.findall('.//f:emphasis', NS)))
+        self.assertTrue(any('Raised' in self.text(n) for n in paragraph.findall('.//f:sup', NS)))
+        self.assertTrue(any('Lowered' in self.text(n) for n in paragraph.findall('.//f:sub', NS)))
+        self.assertTrue(any(n.get(HREF) == '#target' and 'Link' in self.text(n) for n in paragraph.findall('.//f:sup/f:a', NS)))
+        self.assertFalse(any('Baseline' in self.text(n) for n in paragraph.findall('.//f:sup', NS)))
+        self.assertIsNone(paragraph.find('.//f:strong', NS))
+        self.assertIn('Unsupported CSS at-rule @media', self.diagnostics)
+
+    def test_css_vertical_alignment_cascade_and_unsupported_value(self):
+        root = self.convert('<p><span class="raised" style="vertical-align:baseline">Important raised</span> '
+                            '<span class="lowered">Inline lower</span> '
+                            '<span style="vertical-align:3px">Unsupported retained</span> '
+                            '<sup style="vertical-align:baseline">Native reset</sup> '
+                            '<sub style="vertical-align:super">Native override</sub> '
+                            '<SUP style="vertical-align:baseline">Upper reset</SUP> '
+                            '<SUB style="vertical-align:super">Upper override</SUB></p>',
+                            head='<style>.raised {vertical-align:super !important} '
+                                 '.lowered {vertical-align:sub}</style>', navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Important raised' in self.text(p))
+        self.assertTrue(any('Important raised' in self.text(n) for n in paragraph.findall('.//f:sup', NS)))
+        self.assertTrue(any('Inline lower' in self.text(n) for n in paragraph.findall('.//f:sub', NS)))
+        self.assertFalse(any('Native reset' in self.text(n) for n in paragraph.findall('.//f:sup', NS)))
+        self.assertFalse(any('Upper reset' in self.text(n) for n in paragraph.findall('.//f:sup', NS)))
+        self.assertTrue(any('Native override' in self.text(n) for n in paragraph.findall('.//f:sup', NS)))
+        self.assertEqual(sum('Upper override' in self.text(n) for n in paragraph.findall('.//f:sup', NS)), 1)
+        self.assertIn('Unsupported retained', self.text(paragraph))
+        self.assertIn('Unsupported CSS vertical-align', self.diagnostics)
+
+    def test_css_media_all_nested_rules_and_whitespace_preserved(self):
+        root = self.convert('<p>One<span class="empty"> </span>two '
+                            '<span class="mark">nested</span> '
+                            '<span class="outside">outside</span></p>',
+                            head='<style>@media ALL { @media all { .mark {font-weight:bold} } '
+                                 '.empty {vertical-align:super} } '
+                                 '.outside {font-style:italic}</style>', navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'nested' in self.text(p))
+        self.assertIn('One two', self.text(paragraph))
+        self.assertTrue(any('nested' in self.text(n) for n in paragraph.findall('.//f:strong', NS)))
+        self.assertTrue(any('outside' in self.text(n) for n in paragraph.findall('.//f:emphasis', NS)))
+        self.assertNotIn('Unsupported CSS at-rule @media', self.diagnostics)
+
+    def test_styled_word_boundary_spaces_remain_outside_inline_markup(self):
+        root = self.convert('<p>alpha<em> beta </em>gamma<strong> delta </strong>epsilon '
+                            'one<span class="raised"> two </span>three</p>',
+                            head='<style>.raised {vertical-align:super}</style>', navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'alpha' in self.text(p))
+        self.assertEqual(self.text(paragraph), 'alpha beta gamma delta epsilon one two three')
+        emphasis = paragraph.find('f:emphasis', NS)
+        strong = paragraph.find('f:strong', NS)
+        raised = paragraph.find('f:sup', NS)
+        self.assertEqual(paragraph.text, 'alpha ')
+        self.assertEqual(emphasis.text, 'beta')
+        self.assertEqual(emphasis.tail, ' gamma ')
+        self.assertEqual(strong.text, 'delta')
+        self.assertEqual(strong.tail, ' epsilon one ')
+        self.assertEqual(raised.text, 'two')
+        self.assertEqual(raised.tail, ' three')
+
+    def test_styled_boundary_nbsp_survives_without_typography_cleanup(self):
+        root = self.convert('<p>alpha<em>&#160;beta&#160;</em>gamma</p>',
+                            options=['--no-clean-typography'], navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'beta' in self.text(p))
+        emphasis = paragraph.find('f:emphasis', NS)
+        self.assertEqual(paragraph.text, 'alpha\u00a0')
+        self.assertEqual(emphasis.text, 'beta')
+        self.assertEqual(emphasis.tail, '\u00a0gamma')
+
     def test_page_layout_warning_is_specific_and_deduplicated(self):
         root = self.convert('<p class="styled">Text stays italic</p>',
                             head='<style>@page {margin: 5pt} @page :left {margin: 0} '
@@ -1099,6 +1213,133 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                             spine=['chapter', 'other'])
         self.assertEqual(len(self.notes(root)), 1)
         self.assertIn('Backlinked note', self.text(self.notes(root)[0]))
+
+    def test_heading_link_to_backlinked_contents_is_not_a_note(self):
+        root = self.convert('<h1><a id="chapter1" href="contents.xhtml#entry1">1</a> Chapter</h1><p>Chapter text</p>',
+                            {'Text/contents.xhtml': ('contents', 'application/xhtml+xml',
+                             '<section epub:type="frontmatter" title="Contents"><p class="toc_chap"><a id="entry1" href="chapter.xhtml#chapter1">1. Chapter</a></p></section>')},
+                            spine=['contents', 'chapter'])
+        self.assertEqual(self.notes(root), [])
+        self.assertIn('1. Chapter', self.text(root.find('f:body', NS)))
+
+    def test_numeric_contents_link_to_chapter_container_is_not_note(self):
+        root = self.convert('<div class="chapter" id="chapter1"><div class="chapterHead"><h2><a href="contents.xhtml#entry1">1</a></h2></div>'
+                            '<div class="chapterBody"><p>Essential chapter paragraph</p></div></div>',
+                            {'Text/contents.xhtml': ('contents', 'application/xhtml+xml',
+                             '<div class="contents"><div id="entry1" class="contentsEntry"><p class="contentsEntryNumber">'
+                             '<a href="chapter.xhtml#chapter1">1</a></p></div></div>')}, spine=['contents','chapter'])
+        self.assertIn('Essential chapter paragraph', self.text(root.find('f:body', NS)))
+        self.assertEqual(self.notes(root), [])
+
+    def test_numeric_link_to_epub_chapter_is_not_note(self):
+        root = self.convert('<section epub:type="chapter" id="chapter1"><p>Essential chapter paragraph</p></section>',
+                            {'Text/contents.xhtml': ('contents', 'application/xhtml+xml',
+                             '<p><a href="chapter.xhtml#chapter1">1</a></p>')}, spine=['contents','chapter'])
+        self.assertIn('Essential chapter paragraph', self.text(root.find('f:body', NS)))
+        self.assertEqual(self.notes(root), [])
+
+    def test_standalone_quote_attribution_preserves_nested_note_anchor(self):
+        root = self.convert('<p class="CHAP-QUOTE-ATTRIBUTION" id="attribution">(Author)<span id="extra"></span><a href="#n9" id="c9"><sup>9</sup></a></p>'
+                            '<p class="FOOTNOTE-MID"><a href="#c9" id="n9"><span>9</span></a> Note text</p>')
+        targets = {node.get('id') for node in root.iter() if node.get('id')}
+        self.assertTrue({'attribution', 'extra', 'c9'}.issubset(targets))
+        for link in root.findall('.//f:a', NS):
+            href = link.get(HREF, '')
+            if href.startswith('#'):
+                self.assertIn(href[1:], targets)
+
+    def test_numeric_same_document_note_backlink_keeps_chapter_paragraph(self):
+        root = self.convert('<div class="Chapter_section"><p>Ordinary chapter text <sup><a href="#ft1" id="fn1">1</a></sup></p>'
+                            '<p class="notes"><a href="#fn1" id="ft1">1</a> Genuine note</p></div>')
+        main = self.text(root.find('f:body', NS))
+        self.assertIn('Ordinary chapter text', main)
+        self.assertNotIn('Ordinary chapter text', self.text(next(b for b in root.findall('f:body',NS) if b.get('name')=='notes')))
+
+    def test_cross_document_link_to_note_reference_keeps_chapter_paragraph(self):
+        root = self.convert('<p>Ordinary chapter text <sup><a href="#ft1" id="fn1">1</a></sup></p>'
+                            '<p class="notes"><a href="#fn1" id="ft1">1</a> Genuine note</p>',
+                            {'Text/other.xhtml': ('other', 'application/xhtml+xml',
+                             '<h1>Other chapter<sup><a href="chapter.xhtml#fn1">1</a></sup></h1><p>Other text</p>')},
+                            spine=['chapter', 'other'])
+        self.assertIn('Ordinary chapter text', self.text(root.find('f:body', NS)))
+        self.assertNotIn('Genuine note', self.text(root.find('f:body', NS)))
+        notes = next(b for b in root.findall('f:body', NS) if b.get('name') == 'notes')
+        self.assertNotIn('Ordinary chapter text', self.text(notes))
+        self.assertIn('Genuine note', self.text(notes))
+
+    def test_cross_link_to_reference_wrapping_superscript(self):
+        root = self.convert('<p>Ordinary chapter text <a href="#ft1" id="fn1"><sup>1</sup></a></p>'
+                            '<p class="notes"><a href="#fn1" id="ft1">1</a> Genuine note</p>',
+                            {'Text/other.xhtml': ('other', 'application/xhtml+xml',
+                             '<p>Other text <a href="chapter.xhtml#fn1">1</a></p>')}, spine=['chapter', 'other'])
+        self.assertIn('Ordinary chapter text', self.text(root.find('f:body', NS)))
+        notes = next(b for b in root.findall('f:body', NS) if b.get('name') == 'notes')
+        self.assertNotIn('Ordinary chapter text', self.text(notes))
+        self.assertIn('Genuine note', self.text(notes))
+
+    def test_note_backlink_to_anchor_at_start_of_paragraph(self):
+        root = self.convert('<p><a id="ref"></a>Ordinary chapter text <a href="#note"><sup>1</sup></a> continues.</p>'
+                            '<p><a id="note"></a><a href="#ref"><sup>1</sup></a> Genuine note.</p>')
+        self.assertIn('Ordinary chapter text', self.text(root.find('f:body', NS)))
+        notes = next(b for b in root.findall('f:body', NS) if b.get('name') == 'notes')
+        self.assertNotIn('Ordinary chapter text', self.text(notes))
+        self.assertIn('Genuine note', self.text(notes))
+
+    def test_symbolic_note_backlink_to_quoted_paragraph(self):
+        root = self.convert('<p><a id="ref"></a>“Ordinary dialogue.” <a href="#note"><sup>*</sup></a></p>'
+                            '<p><a id="note"></a><a href="#ref"><sup>*</sup></a> Genuine note.</p>')
+        self.assertIn('Ordinary dialogue', self.text(root.find('f:body', NS)))
+        notes = next(b for b in root.findall('f:body', NS) if b.get('name') == 'notes')
+        self.assertNotIn('Ordinary dialogue', self.text(notes))
+        self.assertIn('Genuine note', self.text(notes))
+
+    def test_note_backlink_to_dialogue_with_opening_punctuation(self):
+        for opening in ('‘’ey, ordinary dialogue.', '‘…ordinary dialogue.'):
+            with self.subTest(opening=opening):
+                root = self.convert('<p><a id="ref"></a>' + opening + ' <a href="#note"><sup>1</sup></a></p>'
+                                    '<p><a id="note"></a><a href="#ref"><sup>1</sup></a> Genuine note.</p>')
+                self.assertIn('ordinary dialogue', self.text(root.find('f:body', NS)).lower())
+                notes = next(b for b in root.findall('f:body', NS) if b.get('name') == 'notes')
+                self.assertNotIn('ordinary dialogue', self.text(notes).lower())
+                self.assertIn('Genuine note', self.text(notes))
+
+    def test_note_backlink_uses_parent_id_when_link_has_own_id(self):
+        root = self.convert('<p>Ordinary chapter text <a href="#note"><sup>1</sup></a><a id="ref"></a> continues.</p>'
+                            '<p id="note"><a id="backlink" href="#ref"><sup>1</sup></a> Genuine note.</p>')
+        self.assertIn('Ordinary chapter text', self.text(root.find('f:body', NS)))
+        notes = next(b for b in root.findall('f:body', NS) if b.get('name') == 'notes')
+        self.assertNotIn('Ordinary chapter text', self.text(notes))
+        self.assertIn('Genuine note', self.text(notes))
+
+    def test_note_backlink_uses_outer_container_id(self):
+        root = self.convert('<p><a id="ref"></a>Ordinary chapter text <a href="#note"><sup>1</sup></a> continues.</p>'
+                            '<div id="note"><div><p><a id="backlink" href="#ref"><sup>1</sup></a> Genuine note.</p></div></div>')
+        self.assertIn('Ordinary chapter text', self.text(root.find('f:body', NS)))
+        notes = next(b for b in root.findall('f:body', NS) if b.get('name') == 'notes')
+        self.assertNotIn('Ordinary chapter text', self.text(notes))
+        self.assertIn('Genuine note', self.text(notes))
+
+    def test_bracket_before_note_backlink_keeps_main_paragraph(self):
+        root = self.convert('<p>Ordinary chapter text <a href="#note" id="ref">[1]</a>.</p>'
+                            '<p class="footnotes" id="note">[<a href="#ref" id="note-link">1</a>] Genuine note.</p>')
+        self.assertIn('Ordinary chapter text', self.text(root.find('f:body', NS)))
+        notes = next(b for b in root.findall('f:body', NS) if b.get('name') == 'notes')
+        self.assertNotIn('Ordinary chapter text', self.text(notes))
+        self.assertIn('Genuine note', self.text(notes))
+
+    def test_article_note_in_footnotes_aside_keeps_main_and_note(self):
+        source = ('<p>Ordinary chapter text <a href="#note" id="ref">[1]</a>.</p>'
+                  '<aside id="footnotes"><article id="note"><hr/><p class="footnotes">['
+                  '<a href="#ref" id="note-link">1</a>] Genuine note.</p></article></aside>')
+        root = self.convert(source)
+        self.assertIn('Ordinary chapter text', self.text(root.find('f:body', NS)))
+        self.assertNotIn('Genuine note', self.text(root.find('f:body', NS)))
+        notes = next(b for b in root.findall('f:body', NS) if b.get('name') == 'notes')
+        self.assertNotIn('Ordinary chapter text', self.text(notes))
+        self.assertIn('Genuine note', self.text(notes))
+        self.assertEqual(len(root.findall('.//f:a[@type="note"]', NS)), 1)
+        inline = self.convert(source, options=['--no-notes'])
+        self.assertIn('Genuine note', self.text(inline.find('f:body', NS)))
 
     def test_mixed_structural_sections_preserve_order(self):
         root = self.convert('<section id="parent"><h1>Parent</h1><p>Intro</p><section><h2>Child</h2><p>Child text</p></section><p>Tail</p></section>')
@@ -1745,6 +1986,20 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assertIn('Gallery caption', self.text(root))
                 self.assertIn(PNG, {base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)})
 
+    def test_preformatted_images_respect_hidden_ancestors_and_order(self):
+        root = self.convert('<pre>start<img src="../images/one.png"/><img src="../images/two.jpg"/>'
+                            '<span hidden="hidden"><img src="../images/hidden.jpg"/></span>end</pre>',
+                            extra={'images/one.png': ('one', 'image/png', PNG),
+                                   'images/two.jpg': ('two', 'image/jpeg', JPEG),
+                                   'images/hidden.jpg': ('hidden', 'image/jpeg', JPEG)}, navigation=False)
+        code = root.find('.//f:code', NS)
+        images = code.findall('f:image', NS)
+        self.assertEqual(len(images), 2)
+        binaries = {n.get('id'): base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)}
+        self.assertEqual([binaries[image.get(HREF)[1:]] for image in images], [PNG, JPEG])
+        self.assertEqual(code.text, 'start')
+        self.assertEqual(images[-1].tail, 'end')
+
     def test_inline_background_with_text_is_reported(self):
         root = self.convert('<p><span style="background-image:url(../images/cap.png)">A</span>fter</p>',
                             extra={'images/cap.png': ('cap', 'image/png', PNG)}, navigation=False)
@@ -2002,6 +2257,170 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 binaries = {base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)}
                 self.assertTrue({PNG, JPEG}.issubset(binaries))
 
+    def test_sidebar_headings_and_content_survive_without_poem_import(self):
+        for version in ('2.0', '3.0'):
+            for options in ((), ('--no-poems',)):
+                with self.subTest(version=version, options=options):
+                    root = self.convert('<p>Before</p><aside epub:type="sidebar">'
+                                        '<h2 id="sidebar-heading">Sidebar heading</h2>'
+                                        '<p>Sidebar paragraph</p></aside><p>After</p>',
+                                        version=version, navigation=False, options=options)
+                    self.assert_once(root, 'Before', 'Sidebar heading', 'Sidebar paragraph', 'After')
+                    text = self.text(root)
+                    positions = [text.index(value) for value in ('Before', 'Sidebar heading', 'Sidebar paragraph', 'After')]
+                    self.assertEqual(positions, sorted(positions))
+                    self.assertTrue(any(node.get('id') == 'sidebar-heading' for node in root.iter()))
+
+    def test_aside_with_paragraph_divs_keeps_all_text(self):
+        for options in ((), ('--no-poems',)):
+            with self.subTest(options=options):
+                root = self.convert('<aside><div epub:type="appendix"><section><h2>Appendix heading</h2>'
+                                    '<p>First paragraph.</p><div>List <strong>introduction</strong> here.<div><p>List content.</p></div></div>'
+                                    '<section><div class="Para" id="p2">'
+                                    'Nested paragraph <em>with emphasis</em> survives.</div>'
+                                    '<div><div class="FixedLine">const example = 42;</div></div>'
+                                    '</section></section></div></aside>', navigation=False, options=options)
+                self.assert_once(root, 'First paragraph.', 'List introduction here.', 'List content.', 'Nested paragraph', 'const example = 42;')
+                self.assertTrue(any('introduction' in self.text(node) for node in root.findall('.//f:strong', NS)))
+                self.assertTrue(any(node.get('id') == 'p2' for node in root.iter()))
+                text = self.text(root)
+                self.assertLess(text.index('First paragraph.'), text.index('Nested paragraph'))
+                self.assertLess(text.index('Nested paragraph'), text.index('const example = 42;'))
+
+    def test_preformatted_lines_inside_blockquote_survive(self):
+        root = self.convert('<blockquote><p>Before code.</p><pre id="example">'
+                            'first line\n  second line</pre><p>After code.</p></blockquote>', navigation=False)
+        lines = [''.join(node.itertext()) for node in root.findall('.//f:code', NS)]
+        self.assertEqual([line.replace('\u00a0', ' ') for line in lines], ['first line', '  second line'])
+        self.assertTrue(any(node.get('id') == 'example' for node in root.iter()))
+        self.assert_once(root, 'Before code.', 'After code.')
+
+    def test_preformatted_inline_images_preserve_line_order(self):
+        for wrapper in ('', 'blockquote'):
+            with self.subTest(wrapper=wrapper):
+                source = ('<pre id="example">first <img src="../images/callout.png"/> end\n'
+                          '<img src="../images/callout.png"/>second\n'
+                          '<img src="../images/callout.png"/></pre>')
+                if wrapper:
+                    source = '<blockquote>' + source + '</blockquote>'
+                root = self.convert(source, extra={'images/callout.png': ('callout', 'image/png', PNG)}, navigation=False)
+                codes = root.findall('.//f:code', NS)
+                self.assertEqual(len(codes), 3)
+                self.assertEqual([''.join(code.itertext()).replace('\u00a0', ' ') for code in codes],
+                                 ['first  end', 'second', ''])
+                self.assertEqual([len(code.findall('f:image', NS)) for code in codes], [1, 1, 1])
+                self.assertEqual(codes[0].find('f:image', NS).tail, ' end')
+                self.assertEqual(codes[1].find('f:image', NS).tail, 'second')
+                self.assertIn(PNG, {base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)})
+
+    def test_preformatted_image_offsets_after_encoding_repair(self):
+        damaged = 'Привет'.encode('utf8').decode('cp1251')
+        root = self.convert('<pre>' + damaged + '<img src="../images/callout.png"/>tail\n'
+                            '<span id="second">' + damaged + '</span><img src="../images/callout.png"/>end</pre>',
+                            extra={'images/callout.png': ('callout', 'image/png', PNG)}, navigation=False)
+        codes = root.findall('.//f:code', NS)
+        self.assertEqual(len(codes), 2)
+        for code, suffix in zip(codes, ('tail', 'end')):
+            self.assertEqual(code.text, 'Привет')
+            image = code.find('f:image', NS)
+            self.assertIsNotNone(image)
+            self.assertEqual(image.tail, suffix)
+        self.assertTrue(any(node.get('id') == 'second' for node in root.iter()))
+
+    def test_blockquote_remains_when_poem_import_is_disabled(self):
+        root = self.convert('<p>Before</p><blockquote><p>Quotation survives</p></blockquote><p>After</p>',
+                            navigation=False, options=['--no-poems'])
+        self.assert_once(root, 'Before', 'Quotation survives', 'After')
+
+    def test_nested_list_link_labels_do_not_merge(self):
+        root = self.convert('<ul><li>Entries<ul><li><a href="#a">82–83</a></li>'
+                            '<li><a href="#b">105–106</a></li></ul></li></ul>'
+                            '<p id="a">First target</p><p id="b">Second target</p>', navigation=False)
+        paragraphs = [''.join(node.itertext()) for node in root.findall('.//f:p', NS)]
+        entry = next(text for text in paragraphs if 'Entries' in text)
+        self.assertIn('82–83 105–106', ' '.join(entry.split()))
+        links = [a.get(HREF) for a in root.findall('.//f:a', NS)]
+        self.assertIn('#a', links)
+        self.assertIn('#b', links)
+
+    def test_bibliography_references_remain_in_main_body(self):
+        chapter = '<p>Chapter citation [<a id="ref1a" href="refs.xhtml#ref1">1</a>].</p>'
+        for css_class in ('ref', 'ref1'):
+            with self.subTest(css_class=css_class):
+                refs = ('<h2>References</h2><p class="' + css_class + '">'
+                        '[<a id="ref1" href="chapter.xhtml#ref1a">1</a>] Bibliography entry.</p>')
+                root = self.convert(chapter, extra={'Text/refs.xhtml': ('refs', 'application/xhtml+xml', refs)},
+                                    spine=['chapter', 'refs'], navigation=False)
+                main = next(body for body in root.findall('f:body', NS) if body.get('name') != 'notes')
+                self.assertIn('Bibliography entry.', self.text(main))
+                self.assert_once(root, 'Chapter citation', 'Bibliography entry.')
+
+    def test_self_linked_inline_marker_does_not_capture_main_paragraph(self):
+        root = self.convert('<p>Main paragraph <span class="Footnote-reference">'
+                            '<span id="footnote-001-backlink"><a href="#footnote-001-backlink">1</a>'
+                            '</span></span> continues here.</p><p class="Body_Body--Footnote---First">'
+                            '<a href="#footnote-001-backlink">1</a> Actual note text.</p>', navigation=False)
+        main = next(body for body in root.findall('f:body', NS) if body.get('name') != 'notes')
+        self.assertIn('Main paragraph', self.text(main))
+        self.assertIn('continues here', self.text(main))
+        self.assert_once(root, 'Main paragraph', 'Actual note text.')
+
+    def test_unmarked_numeric_note_backlink_does_not_capture_main_paragraph(self):
+        for filename in ('volume_notes.xhtml', 'other.xhtml'):
+            with self.subTest(filename=filename):
+                chapter = ('<p>Main paragraph before <a id="ref1" href="' + filename + '#note1">1</a> and after.</p>'
+                           '<p>Next chapter paragraph.</p>')
+                notes = ('<section epub:type="backmatter"><p class="notes-hd"><span>'
+                         '<a id="note1" href="chapter.xhtml#ref1">1</a></span> Actual note content.</p></section>')
+                root = self.convert(chapter, extra={'Text/' + filename: ('notes', 'application/xhtml+xml', notes)},
+                                    spine=['chapter', 'notes'], navigation=False)
+                main = next(body for body in root.findall('f:body', NS) if body.get('name') != 'notes')
+                notes_body = next(body for body in root.findall('f:body', NS) if body.get('name') == 'notes')
+                self.assertIn('Main paragraph before', self.text(main))
+                self.assertIn('Next chapter paragraph', self.text(main))
+                self.assertNotIn('Main paragraph before', self.text(notes_body))
+                self.assertIn('Actual note content', self.text(notes_body))
+
+    def test_preformatted_nested_anchor_stays_near_its_line(self):
+        root = self.convert('<p><a href="#page2">Page link</a></p>'
+                            '<pre>First line\n<span epub:type="pagebreak" id="page2"/>Second line\nThird line</pre>',
+                            navigation=False)
+        paragraphs = root.findall('.//f:p', NS)
+        marker = next(index for index, node in enumerate(paragraphs) if node.get('id') == 'page2')
+        self.assertLess(marker, len(paragraphs) - 1)
+        self.assertIn('Second line', self.text(paragraphs[marker + 1]))
+        self.assertTrue(any(link.get(HREF) == '#page2' for link in root.findall('.//f:a', NS)))
+
+    def test_preformatted_multiple_anchors_crlf_and_empty_target(self):
+        root = self.convert('<p><a href="#first">A</a><a href="#second">B</a><a href="#empty">C</a></p>'
+                            '<pre id="block">\r\nStart\r\n<span id="first"/>Middle\n<span id="second"/>End</pre>'
+                            '<pre><span id="empty"/></pre>', navigation=False)
+        paragraphs = root.findall('.//f:p', NS)
+        ids = {node.get('id'): index for index, node in enumerate(paragraphs) if node.get('id')}
+        self.assertTrue({'block', 'first', 'second', 'empty'}.issubset(ids))
+        self.assertIn('Middle', self.text(paragraphs[ids['first'] + 1]))
+        self.assertIn('End', self.text(paragraphs[ids['second'] + 1]))
+        self.assertLess(ids['first'], ids['second'])
+
+    def test_preformatted_br_and_blank_lines_preserve_boundaries(self):
+        root = self.convert('<pre>First<br/>Second<br/><br/>Third</pre>', navigation=False)
+        code_nodes = root.findall('.//f:p/f:code', NS)
+        self.assertEqual([self.text(node) for node in code_nodes], ['First', 'Second', 'Third'])
+        self.assertTrue(root.findall('.//f:empty-line', NS))
+
+    def test_zero_width_joiners_survive_text_and_preformatted_blocks(self):
+        text = 'می\u200cروم 👩\u200d🔬'
+        root = self.convert('<p>' + text + '</p><pre>' + text + '</pre>', navigation=False)
+        body = next(body for body in root.findall('f:body', NS) if body.get('name') != 'notes')
+        self.assertEqual(self.text(body).count(text), 2)
+
+    def test_disabling_typography_cleanup_preserves_preformatted_nbsp(self):
+        text = 'A\u00a0B\u00adC'
+        root = self.convert('<p>' + text + '</p><pre>' + text + '</pre>',
+                            navigation=False, options=['--no-clean-typography'])
+        body = next(body for body in root.findall('f:body', NS) if body.get('name') != 'notes')
+        self.assertEqual(self.text(body).count(text), 2)
+
     def test_sidebar_and_late_epigraph_keep_link_targets(self):
         for version in ('2.0', '3.0'):
             with self.subTest(version=version):
@@ -2027,6 +2446,16 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertTrue(any(n.get('id') == 'quotation' for n in root.iter()))
         self.assertIn('Quoted text', self.text(root))
 
+    def test_list_preserves_non_item_anchors_and_blocks(self):
+        root = self.convert('<p><a href="#target">Target</a></p><ol><li>First item</li>'
+                            '<a id="target"></a><hr/><div><table><tr><td>Intervening table</td>'
+                            '</tr></table></div><li>Last item</li></ol>', navigation=False)
+        self.assertTrue(any(n.get('id') == 'target' for n in root.iter()))
+        self.assert_once(root, 'First item', 'Intervening table', 'Last item')
+        text = self.text(root)
+        self.assertLess(text.index('First item'), text.index('Intervening table'))
+        self.assertLess(text.index('Intervening table'), text.index('Last item'))
+
     def test_list_nested_anchors_remain_linkable(self):
         for version in ('2.0', '3.0'):
             with self.subTest(version=version):
@@ -2039,6 +2468,22 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assertTrue({'list', 'item', 'nested', 'last'}.issubset(ids))
                 self.assertIn('Item text', self.text(root))
                 self.assertIn('Nested text', self.text(root))
+
+    def test_whitespace_only_inline_formatting_preserves_word_boundary(self):
+        root = self.convert('<p>Before<code> </code>after; first<strong> </strong>second; '
+                            'one<em> </em>two.</p>', navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Before' in self.text(p))
+        self.assertIn('Before after; first second; one two.', self.text(paragraph))
+        for node in paragraph.iter():
+            if node.tag.rsplit('}', 1)[-1] in ('code', 'strong', 'emphasis'):
+                self.assertTrue(self.text(node).strip())
+
+    def test_html_entity_fallback_keeps_explicit_void_closing_tags(self):
+        root = self.convert('<p>Before&nbsp;table</p><table><colgroup><col></col>'
+                            '<col></col></colgroup><tr><td>Table text</td><td>Other cell</td>'
+                            '</tr></table><p>After table</p>', navigation=False)
+        self.assert_once(root, 'Table text', 'Other cell', 'After table')
+        self.assertEqual(len(root.findall('.//f:table/f:tr', NS)), 1)
 
     def test_table_row_and_cell_anchors_remain_linkable(self):
         for version in ('2.0', '3.0'):
