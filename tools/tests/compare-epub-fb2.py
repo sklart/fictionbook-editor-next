@@ -97,7 +97,7 @@ def visible(root):
     if local(root.tag) in ('script', 'style'):
         return ''
     text = (root.text or '') + ''.join(visible(child) + (child.tail or '') for child in root)
-    return text + (' ' if local(root.tag) in ('p', 'v', 'li', 'td', 'th', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'subtitle', 'text-author') else '')
+    return text + (' ' if local(root.tag) in ('br', 'p', 'v', 'li', 'td', 'th', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'subtitle', 'text-author') else '')
 
 
 def block_signature(node):
@@ -396,7 +396,7 @@ def fb2_inventory(path, include_characters=False):
     root = ET.fromstring(Path(path).read_bytes())
     bodies = [node for node in root if local(node.tag) == 'body']
     result = {'bodies': len(bodies), 'sections': 0, 'titles': 0, 'paragraphs': 0,
-              'links': 0, 'note_references': 0, 'image_references': 0,
+              'links': 0, 'note_references': 0, 'image_references': 0, 'relative_xhtml_link_candidates': 0,
               'block_sequence': [], 'blocks': [], 'heading_outline': [], 'note_signatures': [], 'internal_link_targets': []}
     result['metadata_hashes'] = fb2_metadata(root)
     id_nodes = [node for node in root.iter() if node.get('id')]
@@ -442,6 +442,11 @@ def fb2_inventory(path, include_characters=False):
                 result['note_references'] += node.get('type') == 'note'
                 if href.startswith('#'):
                     references.append((href[1:], block_signature(node), node.get('type') == 'note'))
+                elif href:
+                    parsed = urlsplit(href)
+                    path = unquote(parsed.path).lower()
+                    if not parsed.scheme and not parsed.netloc and not path.startswith(('/', '\\')) and path.endswith(('.xhtml', '.html', '.htm')):
+                        result['relative_xhtml_link_candidates'] += 1
             elif tag == 'image':
                 result['image_references'] += 1
                 if href.startswith('#') and href[1:] in binaries:

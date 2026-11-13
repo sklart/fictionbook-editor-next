@@ -14,6 +14,30 @@ spec.loader.exec_module(audit)
 
 
 class PairAudit(unittest.TestCase):
+    def test_xhtml_line_break_separates_words_in_comparison(self):
+        with tempfile.TemporaryDirectory() as temp:
+            epub, fb2 = self.pair(Path(temp))
+            with zipfile.ZipFile(epub) as archive:
+                entries = {name: archive.read(name) for name in archive.namelist()}
+            entries['OPS/chapter.xhtml'] = b'<html><body><p>first<br/>second</p></body></html>'
+            with zipfile.ZipFile(epub, 'w') as archive:
+                for name, data in entries.items(): archive.writestr(name, data)
+            fb2.write_text('<FictionBook><body><section><p>first second</p></section></body></FictionBook>', encoding='utf-8')
+            differences = audit.compare(epub, fb2)['differences']
+            self.assertEqual(differences['missing_spine_word_occurrences'], 0)
+            self.assertTrue(differences['blocks_identical_in_order'])
+
+    def test_relative_xhtml_link_is_reported_as_review_candidate(self):
+        with tempfile.TemporaryDirectory() as temp:
+            epub, fb2 = self.pair(Path(temp))
+            fb2.write_text('<FictionBook xmlns:l="http://www.w3.org/1999/xlink"><body><section>'
+                           '<p><a l:href="chapter.xhtml#cover">Cover</a> '
+                           '<a l:href="https://example.org/chapter.xhtml">Web</a></p>'
+                           '</section></body></FictionBook>', encoding='utf-8')
+            report = audit.compare(epub, fb2)
+            self.assertEqual(report['fb2']['relative_xhtml_link_candidates'], 1)
+            self.assertEqual(report['status'], 'REVIEW')
+
     def test_metadata_comparison_counts_matching_values_without_exposing_them(self):
         source = ET.fromstring('<package><metadata><title>Secret Title</title><creator>Jane Doe</creator><language>en</language></metadata></package>')
         result = ET.fromstring('<FictionBook><description><title-info><book-title>Secret Title</book-title><author><first-name>Jane</first-name><last-name>Doe</last-name></author><lang>en</lang></title-info></description></FictionBook>')

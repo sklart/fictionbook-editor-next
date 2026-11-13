@@ -98,6 +98,7 @@ namespace
         std::map<std::wstring, ManifestItem> extraImages;
         std::set<std::wstring> reservedIds, emittedIds, noteTargets, requestedNotes;
         std::set<std::wstring> mainDocuments, noteContentAnchors, noteRootDocuments, residualDocuments;
+        std::map<std::wstring, ManifestItem> linkedNonSpineDocuments;
         std::set<std::wstring> excludedServiceDocuments;
         std::set<std::wstring> warnedInlineCss;
         std::set<std::wstring> warnedCssAtRules;
@@ -6051,6 +6052,7 @@ namespace
         std::set<std::wstring> spinePaths;
         std::map<std::wstring, MSXML2::IXMLDOMDocument2Ptr> documents;
         std::map<std::wstring, MSXML2::IXMLDOMNodePtr> nodes;
+        std::map<std::wstring, std::wstring> nonSpineByPath;
         for (const auto& id : package.spine)
         {
             const auto item = package.manifest.find(std::wstring(id));
@@ -6062,6 +6064,10 @@ namespace
             const auto& item = entry.second;
             if (!g_options.unifyImageNames && (IsImageMediaType(item.mediaType) || IsImageHrefByExtension(item.href)))
                 g_content.binaryIds.emplace(entry.first, UniqueContentId(BinaryIdForImageItem(item)));
+            const std::wstring path(LowerMapKey(item.absPath).GetString());
+            if (!spinePaths.count(path) && (IsProbablyXhtmlHref(item.href) ||
+                item.mediaType.CompareNoCase(L"application/xhtml+xml") == 0 || item.mediaType.CompareNoCase(L"text/html") == 0))
+                nonSpineByPath.emplace(path, entry.first);
         }
         for (const auto& entry : package.manifest)
         {
@@ -6089,6 +6095,87 @@ namespace
             const CStringW documentKey = PathAnchorMapKey(item.absPath, documentRaw);
             if (!anchors.count(std::wstring(documentKey))) AddAnchorIdMap(ctx, documentRaw, UniqueContentId(NormalizeFb2Id(documentRaw)));
             AddDocumentHrefMap(ctx, CStringW(anchors[std::wstring(documentKey)].c_str()));
+        }
+        // Only explicit whole-document links from spine content qualify. Do
+        // not infer targets from filenames or follow links out of the archive.
+        if (g_options.preserveLinks) for (const auto& entry : package.manifest)
+        {
+            const auto& item = entry.second;
+            if (!spinePaths.count(std::wstring(LowerMapKey(item.absPath).GetString()))) continue;
+            const auto doc = documents.find(entry.first);
+            if (doc == documents.end()) continue;
+            ConvertContext scanContext = {}; scanContext.package = &package; scanContext.currentXhtmlPath = item.absPath;
+            CStringW scanWarnings;
+            const auto previousCssWarnings = g_content.warnedCssAtRules;
+            ScopedCssFontRules scanCss(doc->second, item.absPath, scanContext, scanWarnings);
+            g_content.warnedCssAtRules = previousCssWarnings;
+            std::vector<MSXML2::IXMLDOMNodePtr> links;
+            CollectElementsByLocalName(MsxmlGetDocumentElement(doc->second), L"a", links);
+            for (const auto& link : links)
+            {
+                if (IsBacklinkElement(link)) continue;
+                bool hidden = false;
+                for (auto current = link; current; current = ParentNode(current))
+                    if (IsHiddenElement(current)) { hidden = true; break; }
+                if (hidden) continue;
+                CStringW href = TrimString(Attr(link, L"href"));
+                if (href.IsEmpty() || IsExternalHref(href)) continue;
+                const int hash = href.Find(L'#');
+                if (hash >= 0 && !TrimString(href.Mid(hash + 1)).IsEmpty()) continue;
+                CStringW path = hash < 0 ? href : href.Left(hash);
+                const int query = path.Find(L'?');
+                if (query >= 0) path = path.Left(query);
+                if (path.IsEmpty()) continue;
+                const CStringW absolute = CombineAndCanonicalizePath(DirectoryOf(item.absPath), path);
+                if (absolute.IsEmpty()) continue;
+                const std::wstring targetKey(LowerMapKey(absolute).GetString());
+                if (spinePaths.count(targetKey) || g_content.linkedNonSpineDocuments.count(targetKey)) continue;
+                const auto found = nonSpineByPath.find(targetKey);
+                ManifestItem targetItem;
+                MSXML2::IXMLDOMDocument2Ptr targetDoc;
+                bool unmanifested = false;
+                if (found != nonSpineByPath.end())
+                {
+                    const auto manifest = package.manifest.find(found->second);
+                    const auto targetDocument = documents.find(found->second);
+                    if (manifest == package.manifest.end() || targetDocument == documents.end()) continue;
+                    targetItem = manifest->second;
+                    targetDoc = targetDocument->second;
+                }
+                else
+                {
+                    if (!IsProbablyXhtmlHref(path) || !FileExists(absolute)) continue;
+                    CStringW error;
+                    if (!LoadXmlFile(absolute, targetDoc, error)) continue;
+                    targetItem.href = path; targetItem.absPath = absolute;
+                    targetItem.mediaType = L"application/xhtml+xml";
+                    unmanifested = true;
+                }
+                if (IsTokenInList(targetItem.properties, L"nav")) continue;
+                if (g_options.skipServicePages && g_options.removeServiceSections &&
+                    package.guideServiceDocuments.count(std::wstring(targetItem.absPath.GetString()))) continue;
+                const auto root = MsxmlGetDocumentElement(targetDoc);
+                const auto body = FindFirstElementByLocalName(root, L"body");
+                if (!body || IsEndnotesBody(body) || TrimString(NodeText(body)).IsEmpty()) continue;
+                if (unmanifested)
+                {
+                    ConvertContext targetCtx = {}; targetCtx.currentXhtmlPath = absolute; targetCtx.anchorIdMap = &anchors;
+                    IndexSourceNodes(root, absolute, nodes);
+                    for (const auto& raw : CollectRawAnchorIds(root))
+                    {
+                        const CStringW key = PathAnchorMapKey(absolute, raw);
+                        if (!anchors.count(std::wstring(key))) AddAnchorIdMap(targetCtx, raw, UniqueContentId(NormalizeFb2Id(raw)));
+                    }
+                    CStringW documentRaw = RawAnchorId(body);
+                    if (documentRaw.IsEmpty()) documentRaw = RawAnchorId(FindFirstHeadingChild(body));
+                    if (documentRaw.IsEmpty()) documentRaw = FirstDescendantAnchorId(FindFirstHeadingChild(body));
+                    if (documentRaw.IsEmpty()) documentRaw = FileNameOnly(absolute);
+                    const CStringW documentKey = PathAnchorMapKey(absolute, documentRaw);
+                    if (!anchors.count(std::wstring(documentKey))) AddAnchorIdMap(targetCtx, documentRaw, UniqueContentId(NormalizeFb2Id(documentRaw)));
+                    AddDocumentHrefMap(targetCtx, CStringW(anchors[std::wstring(documentKey)].c_str()));
+                }
+                g_content.linkedNonSpineDocuments.emplace(targetKey, targetItem);
+            }
         }
         for (const auto& entry : package.manifest)
         {
@@ -6691,7 +6778,7 @@ namespace
         return true;
     }
 
-    bool ConvertXhtmlFileToFb2Section(const CStringW& xhtmlPath, const CStringW& fallbackTitle, const ConvertContext& ctx, CStringW& outSection, CStringW& warning)
+    bool ConvertXhtmlFileToFb2Section(const CStringW& xhtmlPath, const CStringW& fallbackTitle, const ConvertContext& ctx, CStringW& outSection, CStringW& warning, bool supplementary = false)
     {
         MSXML2::IXMLDOMDocument2Ptr doc;
         CStringW error;
@@ -6775,7 +6862,7 @@ namespace
             sectionTitle = XmlEscape(fallbackTitle);
 
         const int sectionOffset = outSection.GetLength();
-        const bool firstGeneratedBookTitle = sectionOffset == 0 && !titleTaken && ctx.package &&
+        const bool firstGeneratedBookTitle = !supplementary && sectionOffset == 0 && !titleTaken && ctx.package &&
             !sectionTitle.IsEmpty() && sectionTitle.CompareNoCase(XmlEscape(ctx.package->title)) == 0;
         AppendFb2Section(outSection, sectionTitle, content, sectionIdAttr);
         if (firstGeneratedBookTitle)
@@ -7288,12 +7375,22 @@ namespace
         return value.Left(i);
     }
 
-    bool AnnotationInline(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, bool allowParagraph = true)
+    CStringW ReplaceAnnotationHtmlEntities(CStringW text)
+    {
+        struct Entity { LPCWSTR name; LPCWSTR value; };
+        static const Entity entities[] = {
+#include "Html4Entities.inl"
+        };
+        for (const auto& entity : entities) text.Replace(entity.name, entity.value);
+        return text;
+    }
+
+    bool AnnotationInline(const MSXML2::IXMLDOMNodePtr& node, std::vector<CStringW>& out, bool allowParagraph = true)
     {
         const MSXML2::DOMNodeType type = MsxmlGetNodeType(node);
         if (type == MSXML2::NODE_TEXT || type == MSXML2::NODE_CDATA_SECTION)
         {
-            out += XmlEscape(MsxmlGetNodeText(node));
+            out.back() += XmlEscape(MsxmlGetNodeText(node));
             return true;
         }
         if (type != MSXML2::NODE_ELEMENT) return false;
@@ -7301,16 +7398,25 @@ namespace
         if (attributes && MsxmlGetNamedNodeMapLength(attributes) != 0) return false;
         CStringW name = LocalName(node);
         name.MakeLower();
+        if (name == L"br")
+        {
+            out.emplace_back();
+            return true;
+        }
         if (name == L"p" && !allowParagraph) return false;
         if (name != L"p" && name != L"strong" && name != L"b" && name != L"em" && name != L"i") return false;
-        CStringW content;
+        std::vector<CStringW> content(1);
         MSXML2::IXMLDOMNodeListPtr children = MsxmlGetChildNodes(node);
         const long count = children ? MsxmlGetNodeListLength(children) : 0;
         for (long i = 0; i < count; ++i)
             if (!AnnotationInline(MsxmlGetNodeListItem(children, i), content, false)) return false;
-        if (name == L"strong" || name == L"b") content = WrapInlinePreservingBoundarySpace(content, L"strong");
-        if (name == L"em" || name == L"i") content = WrapInlinePreservingBoundarySpace(content, L"emphasis");
-        out += content;
+        for (size_t i = 0; i < content.size(); ++i)
+        {
+            if (name == L"strong" || name == L"b") content[i] = WrapInlinePreservingBoundarySpace(content[i], L"strong");
+            if (name == L"em" || name == L"i") content[i] = WrapInlinePreservingBoundarySpace(content[i], L"emphasis");
+            if (i == 0) out.back() += content[i];
+            else out.push_back(content[i]);
+        }
         return true;
     }
 
@@ -7323,14 +7429,15 @@ namespace
         if (lower.Left(3) != L"<p>" || source.GetLength() > 262144) return false;
         MSXML2::IXMLDOMDocument2Ptr dom;
         if (FAILED(CreateMsxmlDom(dom))) return false;
-        CStringW wrapped = L"<root>" + SanitizeMarkupForXml(source, true) + L"</root>";
+        const CStringW sanitized = SanitizeMarkupForXml(ReplaceAnnotationHtmlEntities(source), true);
+        CStringW wrapped = L"<root>" + sanitized + L"</root>";
         VARIANT_BOOL loaded = VARIANT_FALSE;
         HRESULT hr = dom->loadXML(CComBSTR(wrapped), &loaded);
         if (FAILED(hr) || loaded != VARIANT_TRUE)
         {
             // Publishers sometimes truncate a description in its final <p>.
             // XML parsing still validates every other tag after this repair.
-            wrapped = L"<root>" + SanitizeMarkupForXml(source, true) + L"</p></root>";
+            wrapped = L"<root>" + sanitized + L"</p></root>";
             loaded = VARIANT_FALSE;
             hr = dom->loadXML(CComBSTR(wrapped), &loaded);
             if (FAILED(hr) || loaded != VARIANT_TRUE) return false;
@@ -7343,9 +7450,10 @@ namespace
             MSXML2::IXMLDOMNodePtr child = MsxmlGetNodeListItem(children, i);
             if (MsxmlGetNodeType(child) == MSXML2::NODE_TEXT && TrimString(MsxmlGetNodeText(child)).IsEmpty()) continue;
             if (MsxmlGetNodeType(child) != MSXML2::NODE_ELEMENT || LocalName(child).CompareNoCase(L"p") != 0) return false;
-            CStringW content;
+            std::vector<CStringW> content(1);
             if (!AnnotationInline(child, content)) return false;
-            result += L"        <p>" + content + L"</p>\r\n";
+            for (const auto& line : content)
+                result += line.IsEmpty() ? CStringW(L"        <empty-line/>\r\n") : L"        <p>" + line + L"</p>\r\n";
         }
         if (result.IsEmpty()) return false;
         paragraphs = result;
@@ -8413,6 +8521,41 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         log.AddFormatInt(L"Notes found: %d", static_cast<int>(notes.size()));
     }
 
+    // Prepare explicitly linked, textual non-spine documents before resolving
+    // links in the main body, but append them only after the spine chapters.
+    CStringW linkedNonSpineBody;
+    for (const auto& linked : g_content.linkedNonSpineDocuments)
+    {
+        const ManifestItem& item = linked.second;
+        if (!item.id.IsEmpty() && noteDocumentIds.count(std::wstring(item.id.GetString()))) continue;
+        ConvertContext ctx = {};
+        ctx.package = &package; ctx.currentXhtmlDir = DirectoryOf(item.absPath); ctx.currentXhtmlPath = item.absPath;
+        ctx.usedImageIds = &usedImageIds; ctx.noteIds = &noteIds; ctx.usedFb2Ids = &usedFb2Ids; ctx.anchorIdMap = &anchorIdMap;
+        CStringW converted;
+        if (!ConvertXhtmlFileToFb2Section(item.absPath, FileNameOnly(item.href), ctx, converted, warning, true) || converted.IsEmpty())
+        {
+            warning += L"Could not preserve linked non-spine document: " + item.href + L"\r\n";
+            continue;
+        }
+        const auto anchor = anchorIdMap.find(std::wstring(LowerMapKey(item.absPath).GetString()));
+        if (anchor == anchorIdMap.end())
+        {
+            errorText = L"Cannot identify preserved linked non-spine document: " + item.href;
+            return false;
+        }
+        if (!g_content.emittedIds.count(anchor->second))
+        {
+            g_content.emittedIds.emplace(anchor->second);
+            CStringW wrapped;
+            AppendFb2Section(wrapped, CStringW(), converted, L" id=\"" + XmlEscape(CStringW(anchor->second.c_str())) + L"\"");
+            converted = wrapped;
+        }
+        g_content.mainDocuments.emplace(LowerMapKey(item.absPath).GetString());
+        linkedNonSpineBody += converted;
+        ++importedSections;
+        log.AddFormat(L"Preserved linked non-spine document: %s", item.href);
+    }
+
     g_importStage = L"chapter conversion";
     for (size_t i = 0; i < package.spine.size(); ++i)
     {
@@ -8502,6 +8645,8 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         else if (mandatory) { errorText=L"Cannot import mandatory EPUB chapter: "+item.href+L"\r\n"+warning; return false; }
         else log.AddFormat(L"Skipped invalid optional EPUB chapter: %s", item.href);
     }
+
+    body += linkedNonSpineBody;
 
     // Recover only unaccounted content from documents actually used for notes.
     // Append after spine text so navigation can never reorder mandatory chapters.

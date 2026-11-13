@@ -156,6 +156,71 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         paragraph = root.find('f:description/f:title-info/f:annotation/f:p', NS)
         self.assertEqual(''.join(paragraph.itertext()), 'value &lt; 5 &amp; more'.replace('&lt;', '<').replace('&amp;', '&'))
 
+    def test_description_html_line_breaks_keep_text_and_styles(self):
+        markup = '<p>Alpha<br/>Beta<br/><br/>Gamma</p><p><strong>First<br/>Second</strong></p>'
+        escaped = markup.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        root = self.convert('<p>Body</p>', metadata_extra=f'<dc:description>{escaped}</dc:description>')
+        annotation = root.find('f:description/f:title-info/f:annotation', NS)
+        self.assertEqual([x.tag.rsplit('}', 1)[-1] for x in annotation], ['p', 'p', 'empty-line', 'p', 'p', 'p'])
+        self.assertEqual([''.join(x.itertext()) for x in annotation], ['Alpha', 'Beta', '', 'Gamma', 'First', 'Second'])
+        self.assertEqual(annotation[-2].find('f:strong', NS).text, 'First')
+        self.assertEqual(annotation[-1].find('f:strong', NS).text, 'Second')
+
+    def test_description_html_named_entities_are_decoded_without_losing_unknown(self):
+        root = self.convert('<p>Body</p>', metadata_extra=(
+            '<dc:description>&lt;p&gt;caf&amp;eacute;&lt;br/&gt;'
+            '&amp;Omega; &amp;unknownentity;&lt;/p&gt;</dc:description>'))
+        annotation = root.find('f:description/f:title-info/f:annotation', NS)
+        self.assertEqual([''.join(x.itertext()) for x in annotation], ['café', 'Ω &unknownentity;'])
+
+    def test_description_feff_is_kept_when_typography_cleanup_disabled(self):
+        root = self.convert('<p>Body</p>', metadata_extra='<dc:description>&lt;p&gt;A&#65279;B&lt;/p&gt;</dc:description>',
+                            options=('--no-clean-typography',))
+        paragraph = root.find('f:description/f:title-info/f:annotation/f:p', NS)
+        self.assertEqual(''.join(paragraph.itertext()), 'A\ufeffB')
+
+    def test_referenced_non_spine_document_is_imported_once_and_linked(self):
+        for version in ('2.0', '3.0'):
+            with self.subTest(version=version):
+                extra = {'Text/author.xhtml': ('author-page', 'application/xhtml+xml',
+                         '<h1>About the author</h1><p>Author biography text</p>')}
+                root = self.convert('<p>Chapter text</p><p><a href="author.xhtml">Author</a> '
+                                    '<a href="author.xhtml">Biography</a></p>',
+                                    extra, version=version, spine=['chapter'], navigation=False)
+                self.assertEqual(self.text(root).count('Author biography text'), 1)
+                links = root.findall('.//f:body/f:section//f:a', NS)
+                self.assertEqual(len(links), 2)
+                self.assertTrue(all((link.get(HREF) or '').startswith('#') for link in links))
+                ids = {node.get('id') for node in root.iter() if node.get('id')}
+                self.assertTrue(all(link.get(HREF)[1:] in ids for link in links))
+
+    def test_hidden_or_disabled_links_do_not_import_non_spine_document(self):
+        extra = {'Text/author.xhtml': ('author-page', 'application/xhtml+xml', '<p>Supplementary text</p>')}
+        for body, options in (('<p hidden="hidden"><a href="author.xhtml">Author</a></p>', ()),
+                              ('<p><a href="author.xhtml">Author</a></p>', ('--no-links',))):
+            with self.subTest(body=body, options=options):
+                root = self.convert(body + '<p>Chapter text</p>', extra, spine=['chapter'],
+                                    navigation=False, options=options)
+                self.assertNotIn('Supplementary text', self.text(root))
+
+    def test_referenced_unmanifested_local_document_is_preserved(self):
+        raw = {'OEBPS/Text/author.xhtml': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Author</title></head>'
+               '<body><p>Unlisted author biography</p></body></html>'}
+        root = self.convert('<p><a href="author.xhtml">Author</a></p>', raw=raw, navigation=False)
+        self.assertEqual(self.text(root).count('Unlisted author biography'), 1)
+        link = root.find('.//f:body/f:section//f:a', NS)
+        self.assertIsNotNone(link)
+        self.assertTrue((link.get(HREF) or '').startswith('#'))
+        self.assertTrue(any(node.get('id') == link.get(HREF)[1:] for node in root.iter()))
+
+    def test_stylesheet_hidden_link_does_not_import_non_spine_document(self):
+        extra = {'Text/author.xhtml': ('author-page', 'application/xhtml+xml', '<p>Hidden supplementary text</p>'),
+                 'styles/book.css': ('sheet', 'text/css', '.hidden { display: none; }')}
+        root = self.convert('<p class="hidden"><a href="author.xhtml">Author</a></p><p>Chapter text</p>',
+                            extra, spine=['chapter'], navigation=False,
+                            head='<link rel="stylesheet" href="../styles/book.css" />')
+        self.assertNotIn('Hidden supplementary text', self.text(root))
+
     def test_description_unsupported_html_is_preserved(self):
         for markup in ('<p><a href="https://example.org">Link</a></p>',
                        '<p><strong title="detail">Text</strong></p>', '<p>First<p>Second</p></p>'):
