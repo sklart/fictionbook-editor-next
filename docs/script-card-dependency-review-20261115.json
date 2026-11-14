@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "originalCommit": "c3cbb38433daa0e370f0e3b4d06eb640a92eaff1",
-  "reviewedSourceCommit": "7a60c3bf23274d513bf34c4e7131c53faca2d8df",
+  "reviewedSourceCommit": "f66cda5ae0c7e3881b03e5b58223906138718db8",
   "scope": "Файловые зависимости штатных скриптов; статический обзор не подтверждает поведение каждого скрипта в FBE.",
   "scripts": [
     {
@@ -235,7 +235,7 @@
     },
     {
       "card": "05_Иллюстрации/54_Проверить качество иллюстраций.json",
-      "codeSha256": "7f00543aa4632b51392f6681f3c5b7cabf6151bad89fcc2416af25b80da8148e",
+      "codeSha256": "49f27cedd3532801109eee344a8b0563547e68637254ed4f68cd0b518fad6076",
       "method": "static-source-and-system-command-test",
       "dependencies": []
     },

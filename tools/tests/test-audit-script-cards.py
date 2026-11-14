@@ -173,7 +173,8 @@ def main() -> None:
     assert len(dependency_review) == 7
     assert len([item for item in historical if item['revisionCommits'] == [
         'b157ea2b64fdf977d1cd47fe732eafeb2dd21fa5',
-        '7a60c3bf23274d513bf34c4e7131c53faca2d8df']]) == 1
+        '7a60c3bf23274d513bf34c4e7131c53faca2d8df',
+        'f66cda5ae0c7e3881b03e5b58223906138718db8']]) == 1
     changed_review = next(item for item in dependency_review if item['path'].startswith('09_Стихи/39_'))
     changed_proposal = next(item for item in proposals if item['path'] == changed_review['path'])
     changed_document = card_tool['inspect_file'](scripts_root / changed_review['path'], None, None)[0]
