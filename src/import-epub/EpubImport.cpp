@@ -255,11 +255,10 @@ namespace
 
             // Visible hyphens and dashes carry distinct typography and line-breaking
             // semantics; unlike a discretionary soft hyphen, preserve them verbatim.
+            if (ch == L' ' && !out.IsEmpty() && out[out.GetLength() - 1] == L' ')
+                continue;
             out += ch;
         }
-
-        while (out.Find(L"  ") >= 0)
-            out.Replace(L"  ", L" ");
         return out;
     }
 
@@ -5169,7 +5168,7 @@ namespace
 
     bool IsQuoteTextDiv(const MSXML2::IXMLDOMNodePtr& node)
     {
-        if (LocalName(node) != L"div" || TrimString(NodeText(node)).IsEmpty()) return false;
+        if (LocalName(node) != L"div") return false;
         const auto children = MsxmlGetChildNodes(node);
         const long count = children ? MsxmlGetNodeListLength(children) : 0;
         for (long i = 0; i < count; ++i)
@@ -5183,7 +5182,7 @@ namespace
                 IsHeadingName(name)) return false;
             if (LinkContainsBlockContent(child)) return false;
         }
-        return true;
+        return !TrimString(NodeText(node)).IsEmpty();
     }
 
     void AppendListNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx);

@@ -3215,6 +3215,20 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertTrue(any(n.get('id') == 'quotation' for n in root.iter()))
         self.assertIn('Quoted text', self.text(root))
 
+    def test_large_whitespace_div_preserves_content_with_bounded_scaling(self):
+        timings = []
+        for count in (40000, 160000):
+            body = ('<div id="outer"><p>Before</p>' + ' ' * count +
+                    '<p>After <strong>bold</strong>.</p></div>')
+            start = time.perf_counter()
+            root = self.convert(body, navigation=False)
+            timings.append(time.perf_counter() - start)
+            paragraphs = [self.text(p) for p in root.findall('.//f:body//f:p', NS)]
+            self.assertIn('Before', paragraphs)
+            self.assertIn('After bold.', paragraphs)
+            self.assertTrue(any(e.get('id') == 'outer' for e in root.iter()))
+        self.assertLess(timings[1], timings[0] * 5 + 1.0, f'Whitespace scaling: {timings}')
+
     def test_list_item_preserves_nested_paragraph_boundaries(self):
         root = self.convert('<ol><li id="item">First <a id="index"></a>sentence.<p id="note">Note</p>'
                             '<p><em>Explanation.</em></p></li><li>Next</li></ol>'
