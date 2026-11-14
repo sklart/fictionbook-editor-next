@@ -61,6 +61,8 @@ class ComboDependencies(unittest.TestCase):
                     self.assertIn('GetTempName()', text)
                     self.assertIn('ExpandEnvironmentStrings("%ComSpec%")', text)
                     self.assertIn('[Console]::OutputEncoding=[System.Text.Encoding]::Unicode;', text)
+                    if category == '05_Иллюстрации' and prefix == '54_':
+                        self.assertEqual(text.count('filePath.replace(/\'/g, "\'\'")'), 3)
                     card = json.loads((RUNTIME / 'ScriptCards' / category / (script.stem + '.json')).read_text(encoding='utf-8'))
                     self.assertEqual(card['sourceRevision']['sha256'], hashlib.sha256(source).hexdigest())
                     self.assertTrue(card['dependenciesComplete'])

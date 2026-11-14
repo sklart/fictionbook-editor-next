@@ -166,7 +166,7 @@ function Run() {
             var fso = new ActiveXObject("Scripting.FileSystemObject");
             tempOutput = fso.BuildPath(fso.GetSpecialFolder(2), fso.GetTempName());
             
-            var psCmd = "powershell -ExecutionPolicy Bypass -command \"[Console]::OutputEncoding=[System.Text.Encoding]::Unicode; $b = [System.IO.File]::ReadAllBytes('" + filePath.replace(/\\/g, "\\\\") + "'); $r = ''; $n = [Math]::Min(" + maxBytes + ", $b.Length); for ($i = 0; $i -lt $n; $i++) { $r += $b[$i].ToString('X2') + ' ' }; Write-Output $r\" > \"" + tempOutput + "\" 2>&1";
+            var psCmd = "powershell -ExecutionPolicy Bypass -command \"[Console]::OutputEncoding=[System.Text.Encoding]::Unicode; $b = [System.IO.File]::ReadAllBytes('" + filePath.replace(/'/g, "''").replace(/\\/g, "\\\\") + "'); $r = ''; $n = [Math]::Min(" + maxBytes + ", $b.Length); for ($i = 0; $i -lt $n; $i++) { $r += $b[$i].ToString('X2') + ' ' }; Write-Output $r\" > \"" + tempOutput + "\" 2>&1";
             
             shell.Run(shell.ExpandEnvironmentStrings("%ComSpec%") + " /d /s /c \"" + psCmd + "\"", 0, true);
             
@@ -191,7 +191,7 @@ function Run() {
             var fso = new ActiveXObject("Scripting.FileSystemObject");
             tempOutput = fso.BuildPath(fso.GetSpecialFolder(2), fso.GetTempName());
             
-            var psCmd = "powershell -ExecutionPolicy Bypass -command \"[Console]::OutputEncoding=[System.Text.Encoding]::Unicode; $b = [System.IO.File]::ReadAllBytes('" + filePath.replace(/\\/g, "\\\\") + "'); $lastSof = ''; for ($i = 0; $i -lt $b.Length - 10; $i++) { if ($b[$i] -eq 0xFF -and ($b[$i+1] -eq 0xC0 -or $b[$i+1] -eq 0xC2)) { $lastSof = $i.ToString() + ':' + $b[$i+4].ToString() + ':' + $b[$i+9].ToString() } }; Write-Output $lastSof\" > \"" + tempOutput + "\" 2>&1";
+            var psCmd = "powershell -ExecutionPolicy Bypass -command \"[Console]::OutputEncoding=[System.Text.Encoding]::Unicode; $b = [System.IO.File]::ReadAllBytes('" + filePath.replace(/'/g, "''").replace(/\\/g, "\\\\") + "'); $lastSof = ''; for ($i = 0; $i -lt $b.Length - 10; $i++) { if ($b[$i] -eq 0xFF -and ($b[$i+1] -eq 0xC0 -or $b[$i+1] -eq 0xC2)) { $lastSof = $i.ToString() + ':' + $b[$i+4].ToString() + ':' + $b[$i+9].ToString() } }; Write-Output $lastSof\" > \"" + tempOutput + "\" 2>&1";
             
             shell.Run(shell.ExpandEnvironmentStrings("%ComSpec%") + " /d /s /c \"" + psCmd + "\"", 0, true);
             
@@ -217,7 +217,7 @@ function Run() {
             var fso = new ActiveXObject("Scripting.FileSystemObject");
             tempOutput = fso.BuildPath(fso.GetSpecialFolder(2), fso.GetTempName());
             
-            var psCmd = "powershell -ExecutionPolicy Bypass -command \"[Console]::OutputEncoding=[System.Text.Encoding]::Unicode; Add-Type -AssemblyName System.Drawing; $bytes = [System.IO.File]::ReadAllBytes('" + filePath.replace(/\\/g, "\\\\") + "'); $ms = New-Object System.IO.MemoryStream(,$bytes); $img = [System.Drawing.Image]::FromStream($ms); $bmp = New-Object System.Drawing.Bitmap($img); $isGray = 'True'; for ($y = 0; $y -lt $bmp.Height; $y += " + pixelStep + ") { for ($x = 0; $x -lt $bmp.Width; $x += " + pixelStep + ") { $p = $bmp.GetPixel($x, $y); if ($p.A -gt 10) { $d1 = [Math]::Abs($p.R - $p.G); $d2 = [Math]::Abs($p.G - $p.B); $dev = [Math]::Max($d1, $d2); if ($dev -gt " + maxColorDeviation + ") { $isGray = 'False'; break } } }; if ($isGray -eq 'False') { break } }; $bmp.Dispose(); $img.Dispose(); $ms.Dispose(); Write-Output $isGray\" > \"" + tempOutput + "\" 2>&1";
+            var psCmd = "powershell -ExecutionPolicy Bypass -command \"[Console]::OutputEncoding=[System.Text.Encoding]::Unicode; Add-Type -AssemblyName System.Drawing; $bytes = [System.IO.File]::ReadAllBytes('" + filePath.replace(/'/g, "''").replace(/\\/g, "\\\\") + "'); $ms = New-Object System.IO.MemoryStream(,$bytes); $img = [System.Drawing.Image]::FromStream($ms); $bmp = New-Object System.Drawing.Bitmap($img); $isGray = 'True'; for ($y = 0; $y -lt $bmp.Height; $y += " + pixelStep + ") { for ($x = 0; $x -lt $bmp.Width; $x += " + pixelStep + ") { $p = $bmp.GetPixel($x, $y); if ($p.A -gt 10) { $d1 = [Math]::Abs($p.R - $p.G); $d2 = [Math]::Abs($p.G - $p.B); $dev = [Math]::Max($d1, $d2); if ($dev -gt " + maxColorDeviation + ") { $isGray = 'False'; break } } }; if ($isGray -eq 'False') { break } }; $bmp.Dispose(); $img.Dispose(); $ms.Dispose(); Write-Output $isGray\" > \"" + tempOutput + "\" 2>&1";
             
             shell.Run(shell.ExpandEnvironmentStrings("%ComSpec%") + " /d /s /c \"" + psCmd + "\"", 0, true);
             
