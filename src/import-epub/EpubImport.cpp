@@ -7222,6 +7222,7 @@ namespace
                     // numbered heading linking back to that entry is still
                     // navigation; reciprocal notes in other files remain notes.
                     if (!IsNoteReferenceElement(link) && reciprocal &&
+                        !IsEndnoteElement(LogicalNoteContainer(target->second, path)) &&
                         (filename == L"toc" || filename == L"contents"))
                         targetIsContents = true;
                     if (targetIsContents)

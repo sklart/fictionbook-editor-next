@@ -1765,6 +1765,15 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertFalse(any('Chapter title' in self.text(n) for n in self.notes(root)))
         self.assertTrue(any('Actual note text' in self.text(n) for n in self.notes(root)))
 
+    def test_reciprocal_real_note_in_toc_named_file_remains_note(self):
+        chapter = '<p>Body<a id="ref1" href="toc.xhtml#n1"><sup>1</sup></a></p>'
+        contents = '<p class="footnote"><a id="n1" href="chapter.xhtml#ref1">1</a> Actual note text.</p>'
+        root = self.convert(chapter, {'Text/toc.xhtml': ('contents', 'application/xhtml+xml', contents)},
+                            spine=['chapter', 'contents'], navigation=False)
+        link = next(a for a in root.findall('.//f:a', NS) if self.text(a) == '1')
+        self.assertEqual(link.get('type'), 'note')
+        self.assertTrue(any('Actual note text' in self.text(n) for n in self.notes(root)))
+
     def test_numeric_contents_link_to_chapter_container_is_not_note(self):
         root = self.convert('<div class="chapter" id="chapter1"><div class="chapterHead"><h2><a href="contents.xhtml#entry1">1</a></h2></div>'
                             '<div class="chapterBody"><p>Essential chapter paragraph</p></div></div>',
