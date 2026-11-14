@@ -164,10 +164,28 @@ def main() -> None:
             assert isinstance(issue["line"], int) and 1 <= issue["line"] <= line_count
             assert isinstance(issue["issue"], str) and issue["issue"].strip()
     historical = [item for item in resolved if item["revisionStatus"] == "historical"]
-    assert len(historical) == 14
+    assert len(historical) == 22
     cleanup = [item for item in historical if item["path"].startswith("06_Чистка/")]
     assert len(cleanup) == 2 and all(item["revisionCommits"] == ["5c7aeb51"] for item in cleanup)
     assert len([item for item in historical if item["path"] in current_notes]) == 12
+    dependency_review = [item for item in historical if item["revisionCommits"] ==
+                         ["b157ea2b64fdf977d1cd47fe732eafeb2dd21fa5"]]
+    assert len(dependency_review) == 7
+    assert len([item for item in historical if item['revisionCommits'] == [
+        'b157ea2b64fdf977d1cd47fe732eafeb2dd21fa5',
+        '7a60c3bf23274d513bf34c4e7131c53faca2d8df']]) == 1
+    changed_review = next(item for item in dependency_review if item['path'].startswith('09_Стихи/39_'))
+    changed_proposal = next(item for item in proposals if item['path'] == changed_review['path'])
+    changed_document = card_tool['inspect_file'](scripts_root / changed_review['path'], None, None)[0]
+    tampered_chain = copy.deepcopy(executable_changes)
+    changed_link = next(item for item in tampered_chain if item['path'] == changed_review['path'] and item.get('cardChanges'))
+    changed_link['cardChanges'][0]['before'] = 'unreviewed value'
+    try:
+        audit['reviewed_revision'](changed_proposal, changed_document, tampered_chain)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('unreviewed card change was accepted')
     for item in historical:
         if item["path"] in current_notes:
             assert item["revisionCommits"] == ["ca4a777066c6786fbd75a4cfbc03637dd924b6d3", "ea1f9115c7a194fec5f023315f9e4c5e12692b01"], item["path"]

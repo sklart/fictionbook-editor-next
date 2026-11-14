@@ -67,6 +67,23 @@ class ComboDependencies(unittest.TestCase):
                     self.assertEqual(card['sourceRevision']['sha256'], hashlib.sha256(source).hexdigest())
                     self.assertTrue(card['dependenciesComplete'])
 
+    def test_dependency_review_matches_cards_and_sources(self):
+        report = json.loads((RUNTIME.parent / 'docs/script-card-dependency-review-20261115.json').read_text(encoding='utf-8'))
+        self.assertEqual(len(report['scripts']), 69)
+        self.assertEqual(len({item['card'] for item in report['scripts']}), 69)
+        for item in report['scripts']:
+            with self.subTest(card=item['card']):
+                relative = Path(item['card'])
+                card = json.loads((RUNTIME / 'ScriptCards' / relative).read_text(encoding='utf-8'))
+                script = RUNTIME / 'Scripts' / relative.with_suffix('.js')
+                self.assertTrue(card['dependenciesComplete'])
+                self.assertEqual(card['sourceRevision']['sha256'], item['codeSha256'])
+                self.assertEqual(hashlib.sha256(script.read_bytes()).hexdigest(), item['codeSha256'])
+                self.assertEqual(card['dependencies'], item['dependencies'])
+                for dependency in item['dependencies']:
+                    data = (RUNTIME / dependency['path']).read_bytes()
+                    self.assertEqual(hashlib.sha256(data).hexdigest(), dependency['sha256'])
+
 
 if __name__ == '__main__':
     unittest.main()

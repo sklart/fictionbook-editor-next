@@ -1,0 +1,582 @@
+{
+  "schema": 1,
+  "originalCommit": "c3cbb38433daa0e370f0e3b4d06eb640a92eaff1",
+  "reviewedSourceCommit": "7a60c3bf23274d513bf34c4e7131c53faca2d8df",
+  "scope": "Файловые зависимости штатных скриптов; статический обзор не подтверждает поведение каждого скрипта в FBE.",
+  "scripts": [
+    {
+      "card": "01_Регистр/01_В верхний регистр.json",
+      "codeSha256": "8961749d180e43ae5bc01387e77759dccf41fa4cdf14edd079833667e4b45258",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "01_Регистр/02_В нижний регистр.json",
+      "codeSha256": "48b422d26b55a20fc7120e279240dc8d017df0c32bb140e865c5de03a916100f",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "01_Регистр/04_Первую букву - в верхний регистр, остальные - в нижний.json",
+      "codeSha256": "9fdaacd5a8f0f5529a173b2b028f22fc0fd15efeb25fe8c0085ef48120c52019",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "01_Регистр/05_Капитализация выделения.json",
+      "codeSha256": "12d66edffe9b3702aada0bb3191803ee8efc1281ae124fc7a65399d085142a58",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "01_Регистр/06_Первую букву абзаца - в верхний регистр.json",
+      "codeSha256": "f38e970f75fcc2838d03f7c292a0df45a463c0bce928be6f8b1d7c4b55e6af8a",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "01_Регистр/07_Циклическое изменение регистра.json",
+      "codeSha256": "5b60019bfa6dc7b70f76bcbb2ef9605a37fcd9cbabdd3a1235205bc3ca832274",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "01_Регистр/42_Сверка «Дизайна».json",
+      "codeSha256": "49b0d3ba92bd3ee83f505d24e47af4644d3ad0651b280d4fe049493648705af0",
+      "method": "static-source-and-transitive-resource-review",
+      "dependencies": [
+        {
+          "path": "HTML/Настройка скриптов.html",
+          "sha256": "27c353d6f4470dd65e34fe821babbb37b56c5c24740125ae53ce563322b9643b",
+          "optional": false
+        },
+        {
+          "path": "HTML/АК-скрипт - Сообщение.html",
+          "sha256": "294f3d08e214ea095380a3720c87d6526ff880064a5ee08bd43afb6adb4d6182",
+          "optional": false
+        },
+        {
+          "path": "HTML/Сверка «Дизайна».html",
+          "sha256": "3e21fc91061ee91164720179f246b0e7d72a2e7db9b8f089ab638f9e04446a2b",
+          "optional": false
+        },
+        {
+          "path": "HTML/АК-скрипт - Результаты.html",
+          "sha256": "cf169dae2e625dc33762afca516f2cc0a177aa9884608a9504398f2993404f2b",
+          "optional": false
+        },
+        {
+          "path": "HTML/Дополнительные функции.js",
+          "sha256": "bd9d053b9479b79f159c2e41d6872ae1c5f9e9bba7a95106d79ec84fd664a5a0",
+          "optional": true
+        },
+        {
+          "path": "HTML/Settings/Параметры скриптов.js",
+          "sha256": "5e537d54f67e02cedac7c7d28fae60db5536a564ce44807dea3340a7cf2f899e",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "card": "02_Примечания/01_Добавить примечание, остаться на его ссылке.json",
+      "codeSha256": "b62037d2bfb3338ea7639a5419deeada3e73055a899b6ee5d69e383e6a6b21dc",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "02_Примечания/02_Добавить примечание, введя его текст в окошке.json",
+      "codeSha256": "44d15a814e9059c7c42cb8085956bf51908f3e739dd884c9e9da77b10b78eeec",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "02_Примечания/03_Добавить примечание, перейти на его раздел.json",
+      "codeSha256": "0b727ff47b885404f67eb716d8f66d6dfa35d30e20a0a4617a8529cfc04f09ec",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "02_Примечания/04_Добавить последнее примечание, остаться на его ссылке.json",
+      "codeSha256": "22efdb9baf9c63adba630fdab4585d88631ba75e9fa740a006e3cfc2279d3346",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "02_Примечания/05_Добавить последнее примечание, введя его текст в окошке.json",
+      "codeSha256": "09443abfa8eba73a33069b21e56304a15502ad440a5f5ecdb44f3312f898c4cb",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "02_Примечания/06_Добавить последнее примечание, перейти на его раздел.json",
+      "codeSha256": "a5ca945600c7994200cdad94e1636cb74a6a9b6fe0b2206fa75e1de063ac46f6",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "02_Примечания/07_Перенумеровать примечания.json",
+      "codeSha256": "8dc92dc28b05b00fa021b2eda3fe4f10fcb60a5429520f1841067ad28b7e9a4e",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "02_Примечания/08_Перенумеровать примечания, удаляя неиспользуемые разделы примечаний.json",
+      "codeSha256": "0deb562b675c838bd88ef6fb1107c333b3e7f1fc13835cfa0594a3238f7c250c",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "02_Примечания/09_Перенумеровать примечания (расширенная версия).json",
+      "codeSha256": "dc8ab62ee2f5443d5b178fdfa8570719c5e3cdcbc6e156d831bf68f17819605c",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "02_Примечания/30_Проверить корректность оформления примечаний.json",
+      "codeSha256": "cca8608190c759c1b390ca721e103a581825fadc6d0a91c6c74e41892288ab7e",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "02_Примечания/38_Превратить внешние ссылки в примечания.json",
+      "codeSha256": "6e91bcae4aa6c80911d99f39b0b8d9cb62b749932dd2e89c0e4332f6fe5425a8",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "02_Примечания/39_Унифицировать примечания (при их наличии).json",
+      "codeSha256": "4b21a6cb5dccb00380ab22279e7cfe48f078bd3c8dcee5086d6af8b2070341bd",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "02_Примечания/41_Диагностика структуры примечаний и комментариев.json",
+      "codeSha256": "9d70c4d7d53d0046bfdf905cbd257646aaaabac8773fa7fd0b7078925c164f57",
+      "method": "static-source-and-transitive-resource-review",
+      "dependencies": [
+        {
+          "path": "HTML/Диагностика структуры примечаний и комментариев.html",
+          "sha256": "8214fbb7f48cbf46b29685564080478eecae55c711342186829a5d0edf14fc94",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "card": "03_Комментарии/01_Добавить комментарий, остаться на его ссылке.json",
+      "codeSha256": "bf709b0d645b147dbbe9114feb32db35a8c8e8d9731ef78046a31bbdedd982f8",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "03_Комментарии/02_Добавить комментарий, введя его текст в окошке.json",
+      "codeSha256": "cbf0dca7a86ab7c41cc1021005688d5416bbaf146ae11de27d482ecb1d594eee",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "03_Комментарии/03_Добавить комментарий, перейти на его раздел.json",
+      "codeSha256": "aa796185b02dc80c526c98e3263627959bc74af934a7ecec92d61d9dbf16521c",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "03_Комментарии/04_Добавить последний комментарий, остаться на его ссылке.json",
+      "codeSha256": "c217928eacc4d4e3121145a52ee33f797385f5e80b19280036a67d5573d16a3e",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "03_Комментарии/05_Добавить последний комментарий, введя его текст в окошке.json",
+      "codeSha256": "48684eb555cc8638405dbe991f23e9246f589ec0bade1a59e22c7ff01e642c96",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "03_Комментарии/06_Добавить последний комментарий, перейти на его раздел.json",
+      "codeSha256": "94ea34839723123d96f8289b53d8e93f61c6442e40168bfb5e02df21a4a60040",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "03_Комментарии/07_Перенумеровать комментарии.json",
+      "codeSha256": "53d83850b53bac58a6d2985e0dd4ae8fad248080ca1f01cab3d6555c4b46f1b9",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "03_Комментарии/08_Перенумеровать комментарии, удаляя неиспользуемые разделы комментариев.json",
+      "codeSha256": "5c1ea68af5ebacc2a277f46355f128165c2903a7931247822f4c674fa2a19e7b",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "03_Комментарии/20_Проверить корректность оформления комментариев.json",
+      "codeSha256": "a52196ea9b8bd3323ced19a3ec71dee73461ce0547f545258502ef5f846a6754",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "03_Комментарии/38_Превратить внешние ссылки в комментарии.json",
+      "codeSha256": "f687c38a06e5c8175776e9ece253e69276b584ba162c9806fc786bdd83beb492",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "05_Иллюстрации/48_Создать реперную карту fb2 документа для переноса иллюстраций.json",
+      "codeSha256": "3a3e442dbaba165def5addd427518f2c6a5adbcf3e3346e6370ed6ec146cf1ec",
+      "method": "static-source-and-system-command-test",
+      "dependencies": []
+    },
+    {
+      "card": "05_Иллюстрации/49_Расставить маркеры иллюстраций по реперной карте.json",
+      "codeSha256": "4477f085b11ba4b6c36716c360554fd85e11483bd14dfced67a0a20b40a35c23",
+      "method": "static-source-and-system-command-test",
+      "dependencies": []
+    },
+    {
+      "card": "05_Иллюстрации/54_Проверить качество иллюстраций.json",
+      "codeSha256": "7f00543aa4632b51392f6681f3c5b7cabf6151bad89fcc2416af25b80da8148e",
+      "method": "static-source-and-system-command-test",
+      "dependencies": []
+    },
+    {
+      "card": "09_Стихи/01_Объединить выделенные подряд идущие стихи в один стих.json",
+      "codeSha256": "23534f9fb7680f23578a3110bda950ef319ba456fe8ba2a03cad95fa7dec60d3",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "09_Стихи/39_Расформатировать все стихи от жирности и курсива.json",
+      "codeSha256": "73a7721b1b929b07574fa885db0da32b8adce8da1da96eccbf35b350b6c83196",
+      "method": "static-source-and-corrected-script-targets",
+      "dependencies": [
+        {
+          "path": "Scripts/34_Управление курсором либо выделением/001_Установить курсор в начало документа.js",
+          "sha256": "605cb9150cdbbaebabfd6974d423c69d839c7e235ec9427b62953f62ee26bb85",
+          "optional": false
+        },
+        {
+          "path": "Scripts/19_Обработка форматирования/55_Расформатировать абзац(ы) от жирности.js",
+          "sha256": "2aa3d2d0048942853d69580ac9658788d2c52213c8abc1337802e5b0f55f9d77",
+          "optional": false
+        },
+        {
+          "path": "Scripts/19_Обработка форматирования/56_Расформатировать абзац(ы) от курсива.js",
+          "sha256": "bf389784a9391d971e7866609d2e424b8e58c003320ed196e3683e4557459068",
+          "optional": false
+        },
+        {
+          "path": "Scripts/16_Поиск форматирования/154_Выделить следующий стих (poem).js",
+          "sha256": "3268a6a82a1f2277d977f29a6fdc86b8ad69cb85a5786e10537a3d3ccf96007a",
+          "optional": false
+        }
+      ]
+    },
+    {
+      "card": "10_Статистика/01_Показать все ссылки.json",
+      "codeSha256": "7df03223a5715ffd5c73bb1833d8eb7515eaaf42bceb7e5f2deb0f6073a4fa7b",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "10_Статистика/02_Показать все-все ссылки.json",
+      "codeSha256": "1f41affdd4c55408680f3d89cfa1314a2396aaceebd384bfe7fa2a15db782394",
+      "method": "static-source-and-transitive-resource-review",
+      "dependencies": [
+        {
+          "path": "HTML/Показать все-все ссылки.html",
+          "sha256": "0911ec8c8e7a60fc023c13359e156ee8a9a4780aa8209a24f66917d1cbf17f43",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "card": "13_Заголовки, подзаголовки, пустые строки/820_Создать заголовок книги из названия v1.1.json",
+      "codeSha256": "ca3e57ae5296f43292ffddb3cbc156219142dcb7107c0b2be1fb1228982e3105",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "17_Перенос примечаний в скобки/03_Перенести одно примечание в скобки.json",
+      "codeSha256": "7f081d20c614b914d81b0548bb970030e159ba00e4837ba8b03148da08830d66",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "18_Мелочи редактирования/17_Удалить все пробелы в выделении.json",
+      "codeSha256": "764f4c195f214330b25e687c2e45e22d869ba5e0c0af3ba6eb5b4e43e5dd8456",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "18_Мелочи редактирования/18_Удалить все пробелы и дефисы в выделении.json",
+      "codeSha256": "87edefd6b42bbf421e708198608f6c6af1e0c8fbdc4cb013c56ee1a86d3b0597",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "18_Мелочи редактирования/20_Удалить все символы подчеркивания в выделении.json",
+      "codeSha256": "ee4561f2a8c9c4c4dd0be4c3995b711bf5ce24ed81b27b79732df5c14da8afd4",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "18_Мелочи редактирования/39_Исправление крякозябров (кривые кодировки).json",
+      "codeSha256": "7cc8ed991b09bbc3ea7b1e5015482a43eebe81eae4da35a1ba2f0ea1db426a5c",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "21_Поиск и замена/64_Замена символов по списку из буфера обмена.json",
+      "codeSha256": "a2cdab24a97864b881a3356aa3373f993aac724316e9da7e27f0da22f4e61c4a",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "30_'Числовые' скрипты/01_В началах выделенных абзацев добавить нумерацию вида '1.' (не нумеровать пустые строки).json",
+      "codeSha256": "131046ec85e0c6f1cb45943e7463401614cd20c3d0eb18b8b4b2fb811c715596",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "30_'Числовые' скрипты/10_В началах выделенных абзацев добавить нумерацию вида '1.' (нумеровать и пустые строки).json",
+      "codeSha256": "eee956c7b380de69bb85f3d6e26a16f104ca3d36be170045a3e042cab4c999ed",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "30_'Числовые' скрипты/15_В началах выделенных абзацев добавить нумерацию вида '1)' (не нумеровать пустые строки).json",
+      "codeSha256": "41f88b04f1e872ccc8041b0306be3121314f73e6b87e1024cc4921da9fd4aa03",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "30_'Числовые' скрипты/20_В началах выделенных абзацев добавить нумерацию вида '1)' (нумеровать и пустые строки).json",
+      "codeSha256": "bce6773325dd8972345d7f9c9c674e88778e74e4b4debbcfdd51f3f0264223b2",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "30_'Числовые' скрипты/22_Добавить маркеры списка (по выбору пользователя) (не маркировать пустые строки)....json",
+      "codeSha256": "fa56bbc500529aa06ac460efb3c54f29f75b083f7870150c9f4580b2110883ce",
+      "method": "static-source-and-transitive-resource-review",
+      "dependencies": [
+        {
+          "path": "HTML/Добавить маркеры списка (по выбору пользователя) - основной диалог.htm",
+          "sha256": "9763f4defb84e4071dd8e3538e84e16e72d3587a98aa7810680094a0ae9cbfed",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "card": "30_'Числовые' скрипты/25_Удалить 'один слой' нумерации вида '1)' в началах выделенных абзацев.json",
+      "codeSha256": "09f5fc5ba5a9529827034d01c556afce051e72e9a3375de8540e899b44f39cb1",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "30_'Числовые' скрипты/28_Удалить 'один слой' нумерации вида '1.' в началах выделенных абзацев.json",
+      "codeSha256": "11a859b8379a8454bfa3f7d833ebd6e9db333ab30228c2ca898ef50a99ac911a",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "30_'Числовые' скрипты/31_Удалить 'один слой' нумерации вида '1.' или '1)' и '1' в началах выделенных абзацев.json",
+      "codeSha256": "d86640777d749c7fd48d4d71f51dfe8c1dc34c62d6cfaec19b47668ffef40bd9",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "30_'Числовые' скрипты/33_Удалить все 'слои' нумерации вида '1)' в началах выделенных абзацев.json",
+      "codeSha256": "147b522c9ee6f000c232b92b2b8f19f10c7c85d02fa5efcced03e0d5bf4376a9",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "30_'Числовые' скрипты/35_Удалить все 'слои' нумерации вида '1.' в началах выделенных абзацев.json",
+      "codeSha256": "1ef761a4d273b6818bf911c3a9b92dc1a9c3c727a645196cab4b6d5354c8ce6f",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "30_'Числовые' скрипты/37_Удалить все 'слои' нумерации вида '1.' или '1)' и '1' в началах выделенных абзацев.json",
+      "codeSha256": "f8277a99ac5da707e540a9b1017a8b055264fe5a1805298d05f518b3d39a64fb",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "30_'Числовые' скрипты/40_Нумерацию 'число пробел' в началах выделенных абзацев сделать надстрочным текстом.json",
+      "codeSha256": "cc1c6f827c288daa03a98bed72041a5a281a882d00ff1eb852f5386870748767",
+      "method": "static-source-no-file-loaders",
+      "dependencies": []
+    },
+    {
+      "card": "32_Маркеры сносок/01_Поиск некорректных маркеров постраничных сносок с постраничной нумерацией.json",
+      "codeSha256": "4e70d97be96fd950ad864a48e3abdb04ac803df4947a527810a10fb18856b671",
+      "method": "static-source-and-transitive-resource-review",
+      "dependencies": [
+        {
+          "path": "HTML/Поиск некорректных маркеров сносок - выбор из вариантов.htm",
+          "sha256": "96578f2fd36acc7e07ac124a157ca343944c6c649fcb1cb62646807646198b10",
+          "optional": true
+        },
+        {
+          "path": "HTML/Поиск некорректных маркеров сносок - справка.htm",
+          "sha256": "9ed1b080f48dde2b3b8470928477616c27ac0541bf56298803bfd1f3240cd282",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "card": "32_Маркеры сносок/02_Поиск некорректных маркеров концевых сносок.json",
+      "codeSha256": "05dc92622e3b62f87fca3e9679287d19af421bccc92bdf8b5c3940ddc01f7104",
+      "method": "static-source-and-transitive-resource-review",
+      "dependencies": [
+        {
+          "path": "HTML/Поиск некорректных маркеров сносок - выбор из вариантов.htm",
+          "sha256": "96578f2fd36acc7e07ac124a157ca343944c6c649fcb1cb62646807646198b10",
+          "optional": true
+        },
+        {
+          "path": "HTML/Поиск некорректных маркеров сносок - справка.htm",
+          "sha256": "9ed1b080f48dde2b3b8470928477616c27ac0541bf56298803bfd1f3240cd282",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "card": "32_Маркеры сносок/03_Поиск некорректных маркеров постраничных сносок со сквозной нумерацией.json",
+      "codeSha256": "6abba32aedcc1547c16b6e17a309c9198ff8e2527b4707f8a4220d3389d4fced",
+      "method": "static-source-and-transitive-resource-review",
+      "dependencies": [
+        {
+          "path": "HTML/Поиск некорректных маркеров сносок - выбор из вариантов.htm",
+          "sha256": "96578f2fd36acc7e07ac124a157ca343944c6c649fcb1cb62646807646198b10",
+          "optional": true
+        },
+        {
+          "path": "HTML/Поиск некорректных маркеров сносок - справка.htm",
+          "sha256": "9ed1b080f48dde2b3b8470928477616c27ac0541bf56298803bfd1f3240cd282",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "card": "32_Маркеры сносок/04_Поиск некорректных маркеров концевых сносок с постраничной нумерацией.json",
+      "codeSha256": "0c2295ffff06faa31a929abed2d3bc01a630ee040e61429238a8933b6cf6e6e6",
+      "method": "static-source-and-transitive-resource-review",
+      "dependencies": [
+        {
+          "path": "HTML/Поиск некорректных маркеров сносок - выбор из вариантов.htm",
+          "sha256": "96578f2fd36acc7e07ac124a157ca343944c6c649fcb1cb62646807646198b10",
+          "optional": true
+        },
+        {
+          "path": "HTML/Поиск некорректных маркеров сносок - справка.htm",
+          "sha256": "9ed1b080f48dde2b3b8470928477616c27ac0541bf56298803bfd1f3240cd282",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "card": "32_Маркеры сносок/11_Создать таблицу расположения имеющихся маркеров сносок.json",
+      "codeSha256": "603f1ed40bd21d5cc26038d921fe7d8902f602f40d008a2f920ce3e99d32acb4",
+      "method": "static-source-and-transitive-resource-review",
+      "dependencies": [
+        {
+          "path": "HTML/Создать таблицу маркеров-сносок.htm",
+          "sha256": "c2981048f7f71a730521b5ab09960699d4f4b225a655db49fe1175c636af0dc2",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "card": "32_Маркеры сносок/12_Создать таблицу соответствия маркеров будущих сносок.json",
+      "codeSha256": "95fcf742c3a6b2182ed334948842ad56eae8853946d37997ed06e9b777db11cc",
+      "method": "static-source-and-transitive-resource-review",
+      "dependencies": [
+        {
+          "path": "HTML/Создать таблицу маркеров-сносок.htm",
+          "sha256": "c2981048f7f71a730521b5ab09960699d4f4b225a655db49fe1175c636af0dc2",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "card": "32_Маркеры сносок/51_Создать таблицу соответствий готовых примечаний и комментариев.json",
+      "codeSha256": "062ebd53bd833652f7e50ab730dbce21206182d99c26ecb2f23cead1ab83320d",
+      "method": "static-source-and-transitive-resource-review",
+      "dependencies": [
+        {
+          "path": "HTML/Создать таблицу соответствий готовых примечаний и комментариев.html",
+          "sha256": "ae0d82f3822c2aaa06e1dcdbf2a45667fa82f3f38ca56989fec80489824faa4a",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "card": "37_Эпиграфы/20_Расформатировать все эпиграфы (Комбо).json",
+      "codeSha256": "79707a53f1cdbc16ec70075b2120165e51eeae804b7bf650a5c81035e4d4c41b",
+      "method": "static-source-and-corrected-script-targets",
+      "dependencies": [
+        {
+          "path": "Scripts/34_Управление курсором либо выделением/001_Установить курсор в начало документа.js",
+          "sha256": "605cb9150cdbbaebabfd6974d423c69d839c7e235ec9427b62953f62ee26bb85",
+          "optional": false
+        },
+        {
+          "path": "Scripts/19_Обработка форматирования/05_Снять форматирование блочным элементом.js",
+          "sha256": "fb34ee87d092459005f49dc69031b37311493e483c77741ccb07de91aa3abc15",
+          "optional": false
+        },
+        {
+          "path": "Scripts/16_Поиск форматирования/150_Выделить следующий эпиграф.js",
+          "sha256": "30b144f881045f2789b0bc93d181885cdc81b8b78461de6284d8453745b0a750",
+          "optional": false
+        }
+      ]
+    },
+    {
+      "card": "40_Таблицы/01_Показать следующую таблицу в HTML-виде.json",
+      "codeSha256": "bb1c461d8485e8be9f0c139ba7202ee15293398b1b85cd7e600dbe70cd864496",
+      "method": "static-source-and-transitive-resource-review",
+      "dependencies": [
+        {
+          "path": "HTML/Показать таблицы в HTML-виде.html",
+          "sha256": "6574f2d3824d82289f857b2f570d8ee7150fbbf750043838acb427937c923c27",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "card": "40_Таблицы/02_Показать все-все таблицы в HTML-виде.json",
+      "codeSha256": "ef31b2cc67645bf8b9298280f6d79cc16de0c65d0a2877fdbca34b7d51ab25bb",
+      "method": "static-source-and-transitive-resource-review",
+      "dependencies": [
+        {
+          "path": "HTML/Показать таблицы в HTML-виде.html",
+          "sha256": "6574f2d3824d82289f857b2f570d8ee7150fbbf750043838acb427937c923c27",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "card": "95_Для программистов/08_Текст fb2 в буфер (экспорт в txt).json",
+      "codeSha256": "22a280ad3d6cc007eed77384f63458759f7205817548b4f5db5024252b378d50",
+      "method": "static-source-and-system-command-test",
+      "dependencies": []
+    },
+    {
+      "card": "95_Для программистов/14_Оглавление fb2 в буфер.json",
+      "codeSha256": "a017a0441a92fac3662a0d8319556f2e2b7d62623be5ff07e6e073619a01b1f7",
+      "method": "static-source-and-system-command-test",
+      "dependencies": []
+    },
+    {
+      "card": "95_Для программистов/15_Найти путь к текущему fb2 документу.json",
+      "codeSha256": "2e0fb3ea11e1396db52938020234ee9c876c037e335d01ae6c18e0b307f6db30",
+      "method": "static-source-and-system-command-test",
+      "dependencies": []
+    }
+  ]
+}

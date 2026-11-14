@@ -516,6 +516,15 @@ def reviewed_revision(proposal: dict, document, executable_changes: list[dict]) 
     for change in proposal["changes"]:
         actual = document.card.get(change["field"])
         expected = change["after"]
+        for revision_change in chain:
+            matching = [item for item in revision_change.get("cardChanges", [])
+                        if item.get("field") == change["field"]]
+            if len(matching) > 1:
+                raise ValueError(f"ambiguous card revision: {proposal['path']}")
+            if matching:
+                if matching[0].get("before") != expected:
+                    raise ValueError(f"stale card revision: {proposal['path']}")
+                expected = matching[0].get("after")
         if chain and change["field"] == "sourceRevision":
             # Only the digest may advance. Preserve algorithm and review status.
             if not isinstance(expected, dict) or not isinstance(actual, dict):
