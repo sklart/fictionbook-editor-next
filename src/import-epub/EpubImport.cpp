@@ -6931,7 +6931,7 @@ namespace
         return false;
     }
 
-    bool IsBibliographyEntry(const MSXML2::IXMLDOMNodePtr& node)
+    bool IsBibliographyEntry(const MSXML2::IXMLDOMNodePtr& node, bool searchNearbyHeading)
     {
         bool referenceEntry = false;
         MSXML2::IXMLDOMNodePtr body;
@@ -6949,7 +6949,7 @@ namespace
         // the chapter, using ordinary paragraphs and reciprocal numeric links.
         // Inspect nearby siblings only; the nearest heading determines the
         // paragraph's context and an explicitly marked endnote stays a note.
-        auto previous = paragraph;
+        auto previous = searchNearbyHeading ? paragraph : MSXML2::IXMLDOMNodePtr();
         for (int count = 0; previous && count < 128; ++count)
         {
             IXMLDOMNode* raw = nullptr;
@@ -7198,7 +7198,7 @@ namespace
                     // Numbered citations in a spine bibliography are links
                     // to entries, not a request to relocate them into notes.
                     if (!IsNoteReferenceElement(link) &&
-                        spinePaths.count(LowerMapKey(path).GetString()) && IsBibliographyEntry(target->second))
+                        spinePaths.count(LowerMapKey(path).GetString()) && IsBibliographyEntry(target->second, numeric))
                         continue;
                     // A marker may contain a link to its own enclosing anchor.
                     // It cannot be a reference to a separate note; treating the
