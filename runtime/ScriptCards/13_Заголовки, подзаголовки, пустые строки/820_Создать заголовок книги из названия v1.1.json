@@ -19,7 +19,7 @@
   ],
   "warnings": [],
   "dependencies": [],
-  "dependenciesComplete": false,
+  "dependenciesComplete": true,
   "sourceRevision": {
     "algorithm": "sha256-raw-js-v1",
     "sha256": "ca3e57ae5296f43292ffddb3cbc156219142dcb7107c0b2be1fb1228982e3105",

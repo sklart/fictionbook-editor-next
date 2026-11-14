@@ -38,7 +38,7 @@
       "optional": true
     }
   ],
-  "dependenciesComplete": false,
+  "dependenciesComplete": true,
   "sourceRevision": {
     "algorithm": "sha256-raw-js-v1",
     "sha256": "bb1c461d8485e8be9f0c139ba7202ee15293398b1b85cd7e600dbe70cd864496",

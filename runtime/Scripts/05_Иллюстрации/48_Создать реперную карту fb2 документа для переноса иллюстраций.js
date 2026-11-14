@@ -132,10 +132,10 @@ function Run() {
         } catch(e) {}
 
         if (shell && fso) {
-            var tempFile = "C:\\__fbe_path_result.txt";
+            var tempFile = fso.BuildPath(fso.GetSpecialFolder(2), fso.GetTempName());
             try {
-                var psCmd = "powershell -ExecutionPolicy Bypass -command \"(Get-Process -Name 'fbe' -ErrorAction SilentlyContinue).MainWindowTitle\" > \"" + tempFile + "\" 2>&1";
-                shell.Run(psCmd, 0, true);
+                var psCmd = "powershell -ExecutionPolicy Bypass -command \"[Console]::OutputEncoding=[System.Text.Encoding]::Unicode; (Get-Process -Name 'fbe' -ErrorAction SilentlyContinue).MainWindowTitle\" > \"" + tempFile + "\" 2>&1";
+                shell.Run(shell.ExpandEnvironmentStrings("%ComSpec%") + " /d /s /c \"" + psCmd + "\"", 0, true);
 
                 if (fso.FileExists(tempFile)) {
                     var file = fso.OpenTextFile(tempFile, 1, false, -1);
@@ -184,7 +184,7 @@ function Run() {
                 window.external.SaveBinary(testId, binData, 0);
             } catch(e) {}
 
-            var tempFile = "C:\\__fbe_path_result.txt";
+            var tempFile = fso.BuildPath(fso.GetSpecialFolder(2), fso.GetTempName());
             var drivesToCheck = ["C:"];
             try {
                 var allDrives = fso.Drives;

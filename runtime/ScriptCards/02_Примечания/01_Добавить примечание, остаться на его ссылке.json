@@ -23,7 +23,7 @@
     "При исключении во время применения или перенумерации возможен частичный результат; его можно отменить одной операцией. При отказе DOM/COM в самой очистке возможно сохранение созданной разметки."
   ],
   "dependencies": [],
-  "dependenciesComplete": false,
+  "dependenciesComplete": true,
   "sourceRevision": {
     "algorithm": "sha256-raw-js-v1",
     "sha256": "b62037d2bfb3338ea7639a5419deeada3e73055a899b6ee5d69e383e6a6b21dc",

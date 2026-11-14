@@ -21,7 +21,7 @@
     "Текущее содержимое буфера обмена может быть заменено или очищено."
   ],
   "dependencies": [],
-  "dependenciesComplete": false,
+  "dependenciesComplete": true,
   "sourceRevision": {
     "algorithm": "sha256-raw-js-v1",
     "sha256": "147b522c9ee6f000c232b92b2b8f19f10c7c85d02fa5efcced03e0d5bf4376a9",

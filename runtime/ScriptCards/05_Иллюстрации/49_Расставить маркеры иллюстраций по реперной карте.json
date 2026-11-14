@@ -29,13 +29,14 @@
   ],
   "warnings": [
     "Файловые операции не отменяются обычным Ctrl+Z в книге.",
-    "Скрипт запускает PowerShell для определения пути книги и читает TXT-файл реперной карты. Проверьте выбранный файл."
+    "Скрипт запускает PowerShell для определения пути книги и читает TXT-файл реперной карты. Проверьте выбранный файл.",
+    "Для соответствующих резервных операций требуются Windows Script Host, cmd.exe и Windows PowerShell."
   ],
   "dependencies": [],
-  "dependenciesComplete": false,
+  "dependenciesComplete": true,
   "sourceRevision": {
     "algorithm": "sha256-raw-js-v1",
-    "sha256": "7c8116bdba2e2a312b291c3eeffb1f02baef00f8236c3a2d1d7f9f7605487eec",
+    "sha256": "4477f085b11ba4b6c36716c360554fd85e11483bd14dfced67a0a20b40a35c23",
     "reviewStatus": "generated"
   },
   "tags": [

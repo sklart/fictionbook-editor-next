@@ -29,13 +29,14 @@
   "warnings": [
     "Файловые операции не отменяются обычным Ctrl+Z в книге.",
     "В резервном режиме скрипт запускает PowerShell для поиска пути к текущей книге.",
-    "Для несохранённой книги штатный API может вернуть пустой путь. Резервный поиск по диску может быть длительным."
+    "Для несохранённой книги штатный API может вернуть пустой путь. Резервный поиск по диску может быть длительным.",
+    "Для соответствующих резервных операций требуются Windows Script Host, cmd.exe и Windows PowerShell."
   ],
   "dependencies": [],
-  "dependenciesComplete": false,
+  "dependenciesComplete": true,
   "sourceRevision": {
     "algorithm": "sha256-raw-js-v1",
-    "sha256": "30ec074c59db786e023c20e7fa8f7cbe9d3687f8eac49e4cbf9ce726e6bb616e",
+    "sha256": "2e0fb3ea11e1396db52938020234ee9c876c037e335d01ae6c18e0b307f6db30",
     "reviewStatus": "generated"
   },
   "tags": [

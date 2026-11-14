@@ -24,7 +24,7 @@
     "Если структура ссылок или разделов некорректна, скрипт может остановиться после частичных изменений."
   ],
   "dependencies": [],
-  "dependenciesComplete": false,
+  "dependenciesComplete": true,
   "sourceRevision": {
     "algorithm": "sha256-raw-js-v1",
     "sha256": "0deb562b675c838bd88ef6fb1107c333b3e7f1fc13835cfa0594a3238f7c250c",

@@ -23,7 +23,7 @@
     "При вложенных разделах примечаний штатная ветка ошибки может завершиться сбоем."
   ],
   "dependencies": [],
-  "dependenciesComplete": false,
+  "dependenciesComplete": true,
   "sourceRevision": {
     "algorithm": "sha256-raw-js-v1",
     "sha256": "dc8ab62ee2f5443d5b178fdfa8570719c5e3cdcbc6e156d831bf68f17819605c",

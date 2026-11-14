@@ -32,7 +32,7 @@
     "Скрипт меняет ID разделов и тексты связанных ссылок по всей книге."
   ],
   "dependencies": [],
-  "dependenciesComplete": false,
+  "dependenciesComplete": true,
   "sourceRevision": {
     "algorithm": "sha256-raw-js-v1",
     "sha256": "4b21a6cb5dccb00380ab22279e7cfe48f078bd3c8dcee5086d6af8b2070341bd",

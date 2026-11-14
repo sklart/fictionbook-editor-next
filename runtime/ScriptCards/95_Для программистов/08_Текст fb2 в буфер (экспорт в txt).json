@@ -29,13 +29,14 @@
   "warnings": [
     "Текущее содержимое буфера обмена может быть заменено или очищено.",
     "Файловые операции не отменяются обычным Ctrl+Z в книге.",
-    "Скрипт запускает PowerShell для определения пути книги; при включённом сохранении записывает текст в TXT-файл."
+    "Скрипт запускает PowerShell для определения пути книги; при включённом сохранении записывает текст в TXT-файл.",
+    "Для соответствующих резервных операций требуются Windows Script Host, cmd.exe и Windows PowerShell."
   ],
   "dependencies": [],
-  "dependenciesComplete": false,
+  "dependenciesComplete": true,
   "sourceRevision": {
     "algorithm": "sha256-raw-js-v1",
-    "sha256": "892fb82d3f0d674ebc8e44f43c764caf38f1abbf0c72940a5826152dd589afd8",
+    "sha256": "22a280ad3d6cc007eed77384f63458759f7205817548b4f5db5024252b378d50",
     "reviewStatus": "generated"
   },
   "tags": [

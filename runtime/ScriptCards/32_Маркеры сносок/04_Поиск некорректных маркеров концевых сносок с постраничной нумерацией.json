@@ -23,9 +23,14 @@
       "path": "HTML/Поиск некорректных маркеров сносок - выбор из вариантов.htm",
       "sha256": "96578f2fd36acc7e07ac124a157ca343944c6c649fcb1cb62646807646198b10",
       "optional": true
+    },
+    {
+      "path": "HTML/Поиск некорректных маркеров сносок - справка.htm",
+      "sha256": "9ed1b080f48dde2b3b8470928477616c27ac0541bf56298803bfd1f3240cd282",
+      "optional": true
     }
   ],
-  "dependenciesComplete": false,
+  "dependenciesComplete": true,
   "sourceRevision": {
     "algorithm": "sha256-raw-js-v1",
     "sha256": "0c2295ffff06faa31a929abed2d3bc01a630ee040e61429238a8933b6cf6e6e6",

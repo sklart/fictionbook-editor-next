@@ -33,7 +33,7 @@
     "Если первый текстовый узел выбранной части абзаца не содержит букв, следующий узел может остаться без обработки."
   ],
   "dependencies": [],
-  "dependenciesComplete": false,
+  "dependenciesComplete": true,
   "sourceRevision": {
     "algorithm": "sha256-raw-js-v1",
     "sha256": "f38e970f75fcc2838d03f7c292a0df45a463c0bce928be6f8b1d7c4b55e6af8a",
