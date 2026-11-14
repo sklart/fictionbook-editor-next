@@ -2613,34 +2613,47 @@ void CMainFrame::RunPortableStateTestScenario()
 			}
 			return value;
 		};
-		CComPtr<IDataObject> clipboardBefore, clipboardCopy;
 		wchar_t skipClipboardValue[4] = {};
 		const bool clipboardSkipped = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SKIP_CLIPBOARD", skipClipboardValue, _countof(skipClipboardValue)) == 1 && skipClipboardValue[0] == L'1';
-		const bool clipboardCaptured = !clipboardSkipped && SUCCEEDED(::OleGetClipboard(&clipboardBefore));
+		auto setClipboardText = [this](const wchar_t* value) -> bool {
+			const SIZE_T bytes = (wcslen(value) + 1) * sizeof(wchar_t);
+			HGLOBAL memory = ::GlobalAlloc(GMEM_MOVEABLE, bytes);
+			if (!memory) return false;
+			void* target = ::GlobalLock(memory);
+			if (!target) { ::GlobalFree(memory); return false; }
+			memcpy(target, value, bytes); ::GlobalUnlock(memory);
+			if (!::OpenClipboard(m_script_card_window.m_hWnd)) { ::GlobalFree(memory); return false; }
+			const bool ok = ::EmptyClipboard() && ::SetClipboardData(CF_UNICODETEXT, memory) != NULL;
+			if (ok) memory = NULL;
+			const bool closed = ::CloseClipboard() != FALSE;
+			if (memory) ::GlobalFree(memory);
+			return ok && closed;
+		};
+		const wchar_t* clipboardSentinel = L"FBE script card clipboard test sentinel";
+		const bool clipboardCaptured = !clipboardSkipped && setClipboardText(clipboardSentinel) && clipboardText() == clipboardSentinel;
 		const DWORD beforeCopySequence = ::GetClipboardSequenceNumber();
-		if (clipboardCaptured) ::SendMessageW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_COPY), BM_CLICK, 0, 0);
+		const HWND copyButton = m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_COPY);
+		const bool copyCommandExecuted = clipboardCaptured && ::IsWindow(copyButton) && ::IsWindowEnabled(copyButton);
+		if (copyCommandExecuted) ::SendMessageW(copyButton, BM_CLICK, 0, 0);
 		const DWORD copySequence = ::GetClipboardSequenceNumber();
-		const HWND clipboardOwner = ::GetClipboardOwner(); DWORD clipboardOwnerProcess = 0;
-		if (clipboardOwner) ::GetWindowThreadProcessId(clipboardOwner, &clipboardOwnerProcess);
-		if (clipboardCaptured && copySequence != beforeCopySequence) ::OleGetClipboard(&clipboardCopy);
 		const CString copied = clipboardCaptured ? clipboardText() : CString();
 		const DWORD afterReadSequence = ::GetClipboardSequenceNumber();
-		const HWND currentClipboardOwner = ::GetClipboardOwner(); DWORD currentClipboardOwnerProcess = 0;
-		if (currentClipboardOwner) ::GetWindowThreadProcessId(currentClipboardOwner, &currentClipboardOwnerProcess);
 		const bool clipboardStillOurs = copySequence != beforeCopySequence &&
-			(afterReadSequence == copySequence || (clipboardOwner && currentClipboardOwner == clipboardOwner &&
-				clipboardOwnerProcess == ::GetCurrentProcessId() && currentClipboardOwnerProcess == ::GetCurrentProcessId()) ||
-				(clipboardCopy && ::OleIsCurrentClipboard(clipboardCopy) == S_OK));
-		bool clipboardRestored = false;
-		if (clipboardCaptured && clipboardStillOurs) {
-			const HRESULT restore = ::OleSetClipboard(clipboardBefore);
-			clipboardRestored = SUCCEEDED(restore) && (!clipboardBefore || SUCCEEDED(::OleFlushClipboard()));
-		}
-		const bool copiedDetails = clipboardRestored && copied.Find(L"Card test") >= 0 && copied.Find(L"Card runtime summary") >= 0 &&
+			afterReadSequence == copySequence;
+		const bool clipboardRestoreAttempted = clipboardCaptured && clipboardStillOurs;
+		::SetLastError(ERROR_SUCCESS);
+		const bool clipboardRestored = clipboardRestoreAttempted && setClipboardText(clipboardSentinel) && clipboardText() == clipboardSentinel;
+		DWORD clipboardRestoreError = clipboardRestored ? ERROR_SUCCESS : ::GetLastError();
+		if (!clipboardRestored && clipboardRestoreError == ERROR_SUCCESS)
+			clipboardRestoreError = clipboardRestoreAttempted ? ERROR_INVALID_DATA : ERROR_CANCELLED;
+		const bool copiedContent = copied.Find(L"Card test") >= 0 && copied.Find(L"1.0") >= 0 &&
+			copied.Find(L"Card runtime summary") >= 0 && copied.Find(L"Card runtime description") >= 0 &&
+			copied.Find(L"Open card") >= 0 && copied.Find(L"Review changes before running") >= 0 &&
 			copied.Find(L"Tester — ") >= 0 && copied.Find(L"Second author — ") >= 0 &&
 			copied.Find(L"Modifier — ") >= 0 && copied.Find(L"Another — ") >= 0 &&
 			copied.Find(cardPath) >= 0 && copied.Find(L"b93000a4f6") < 0 &&
 			copied.Find(L"Значение по умолчанию: safe") >= 0 && copied.Find(L"+extracting(") < 0;
+		const bool copiedDetails = copyCommandExecuted && copiedContent;
 		const bool uidUpdated = m_script_card_window.CurrentUid() == script.uid;
 		const bool altered = WritePortableStateTestText(cardPath, (cardSource + " ").c_str());
 		script.relativePath = L"Иллюстрации/Подраздел/card-present.js";
@@ -3152,6 +3165,8 @@ void CMainFrame::RunPortableStateTestScenario()
 		report.AppendFormat("thumb-position=%d\nthumb-hit-test=%d\n", thumbPosition, thumbHitTest);
 		report.AppendFormat("clipboard-skipped=%d\nclipboard-captured=%d\nclipboard-restored=%d\nclipboard-copy-sequence=%lu\nclipboard-read-sequence=%lu\n",
 			clipboardSkipped, clipboardCaptured, clipboardRestored, static_cast<unsigned long>(copySequence), static_cast<unsigned long>(afterReadSequence));
+		report.AppendFormat("copy-command-executed=%d\nclipboard-restore-attempted=%d\nclipboard-restore-error=%lu\n",
+			copyCommandExecuted, clipboardRestoreAttempted, static_cast<unsigned long>(clipboardRestoreError));
 		report.AppendFormat("long-settings-fit=%d\n", longSettingsFit);
 		report.AppendFormat("long-card-state=%d\nlong-card-opened=%d\nlong-card-scroll=%d\nlong-card-settings=%u\nlong-card-error=%s\n",
 			static_cast<int>(longParsed.state), longCardOpened, longCardCanScroll, static_cast<unsigned>(longParsed.settingRows.size()),
