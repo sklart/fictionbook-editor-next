@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "title": "Расставить одинаковые инлайн иллюстрации взамен пустых картинок",
+  "version": "1.0",
+  "authors": [
+    {
+      "name": "TaKir",
+      "role": "author",
+      "contribution": "идея и реализация"
+    },
+    {
+      "name": "DeepSeek",
+      "role": "ai_assistance",
+      "contribution": "реализация"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Заменяет пустые инлайн-изображения одной указанной иллюстрацией в выбранных разделах документа.",
+  "description": "Ищет JPG/JPEG/PNG по заданному базовому имени среди бинарных вложений, с вариантами префиксов. Если в binobj совпадения нет, принимает совпадающий href блочной иллюстрации. В выбранных body заменяет SPAN.image с href #undefined или #nobin_undefined новыми SPAN.image с одинаковым href и IMG src; бинарные файлы не копирует.",
+  "scope": "Все SPAN с классом, содержащим image, в основных body документа; notes и comments по умолчанию пропускаются и могут включаться настройками. Выделение не ограничивает обработку.",
+  "modifiesDocument": true,
+  "requiresSelection": false,
+  "usage": [
+    "Задайте в исходном JS базовое имя уже присутствующей иллюстрации и разместите пустые инлайн-изображения.",
+    "Запустите скрипт, проверьте количество замен и подтвердите выполнение; после проверьте ссылки в затронутых разделах."
+  ],
+  "warnings": [
+    "Запасной поиск источника принимает href блочной иллюстрации без проверки бинарного вложения; новые SPAN могут ссылаться на отсутствующий файл.",
+    "Скрипт обрабатывает все подходящие изображения в включённых body, даже если выделен только фрагмент."
+  ],
+  "dependencies": [],
+  "dependenciesComplete": true,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "da4f3da63e5e096960d18812b51ae91e4570f10e788ee065f696bb964ca38239",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Иллюстрации",
+    "изображения",
+    "параметры"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": ""
+  },
+  "settings": [
+    {
+      "name": "UserImageName",
+      "title": "Имя вставляемой иллюстрации",
+      "value": "1234567",
+      "expression": "\"1234567\"",
+      "description": "Базовое имя файла без расширения; ищет JPG, JPEG и PNG с вариантами префиксов _, unused_ и unused__.",
+      "source": "code"
+    },
+    {
+      "name": "showActualFileName",
+      "title": "Имя файла в сообщениях",
+      "value": 1,
+      "expression": "1",
+      "description": "1 — показывать фактическое имя вложения; 0 — заданное базовое имя.",
+      "source": "code"
+    },
+    {
+      "name": "showStatistics",
+      "title": "Подтверждение и итог",
+      "value": 1,
+      "expression": "1",
+      "description": "1 — запросить подтверждение и показать результат; 0 — выполнить без этих сообщений, сообщения об ошибках остаются.",
+      "source": "code"
+    },
+    {
+      "name": "processNotesSection",
+      "title": "Обрабатывать примечания",
+      "value": 0,
+      "expression": "0",
+      "description": "0 — пропустить body notes; 1 — включить.",
+      "source": "code"
+    },
+    {
+      "name": "processCommentsSection",
+      "title": "Обрабатывать комментарии",
+      "value": 0,
+      "expression": "0",
+      "description": "0 — пропустить body comments; 1 — включить.",
+      "source": "code"
+    }
+  ]
+}

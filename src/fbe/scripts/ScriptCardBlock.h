@@ -20,5 +20,7 @@ Status Find(const BYTE* bytes, size_t length, Span& span);
 // Hashes the original byte stream with exactly the detected card span removed.
 // Returns empty on malformed cards or cryptographic failure.
 CString Sha256WithoutCard(const BYTE* bytes, size_t length);
+// Hash the exact bytes, including any embedded comment and BOM.
+CString Sha256Raw(const BYTE* bytes, size_t length);
 
 }

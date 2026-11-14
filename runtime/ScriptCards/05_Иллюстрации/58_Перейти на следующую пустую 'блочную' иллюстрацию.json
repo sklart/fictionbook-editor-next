@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "title": "Перейти на следующую пустую 'блочную' иллюстрацию",
+  "version": "1.0",
+  "authors": [
+    {
+      "name": "TaKir",
+      "role": "author",
+      "contribution": "идея и реализация"
+    },
+    {
+      "name": "DeepSeek",
+      "role": "ai_assistance",
+      "contribution": "реализация"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Находит следующую пустую блочную иллюстрацию и выделяет её без изменения книги.",
+  "description": "Ищет следующую DIV.image, у которого href и src непосредственного IMG содержат строку undefined. Выделяет найденный элемент и прокручивает к центру окна. Это проверка текстового маркера, а не фактического отсутствия бинарника.",
+  "scope": "От курсора или выделенного элемента к конца документа среди DIV.image внутри fbw_body; notes и comments по умолчанию исключены, другие body отдельно не фильтруются.",
+  "modifiesDocument": false,
+  "requiresSelection": false,
+  "usage": [
+    "Поставьте курсор в тексте или выделите иллюстрацию и запустите скрипт. Непустое текстовое выделение не требуется.",
+    "Повторный запуск ищет следующую подходящую блочную иллюстрацию; при достижении конца документа появится сообщение даже в тихом режиме."
+  ],
+  "warnings": [
+    "Пустота определяется по вхождению слова undefined одновременно в href и src; существующий файл с таким фрагментом имени может попасть в результаты."
+  ],
+  "dependencies": [],
+  "dependenciesComplete": true,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "caf177fca6d3bf0392114ec6d15d76f63151692272d8d43766af7944b9132cd9",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Иллюстрации",
+    "поиск",
+    "навигация",
+    "изображения",
+    "параметры"
+  ],
+  "undo": {
+    "status": "no_explicit_grouping",
+    "description": ""
+  },
+  "settings": [
+    {
+      "name": "processNotesSection",
+      "title": "Искать в примечаниях",
+      "value": 0,
+      "expression": "0",
+      "description": "0 — пропустить notes; 1 — включить этот раздел.",
+      "source": "code"
+    },
+    {
+      "name": "processCommentsSection",
+      "title": "Искать в комментариях",
+      "value": 0,
+      "expression": "0",
+      "description": "0 — пропустить comments; 1 — включить этот раздел.",
+      "source": "code"
+    },
+    {
+      "name": "showMessages",
+      "title": "Сообщения о переходе",
+      "value": 0,
+      "expression": "0",
+      "description": "0 — скрыть сообщения об успешном переходе и части ошибок; сообщение об отсутствии совпадения остаётся; 1 — показывать их.",
+      "source": "code"
+    }
+  ]
+}

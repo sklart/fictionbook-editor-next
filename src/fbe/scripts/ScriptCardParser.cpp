@@ -2,7 +2,10 @@
 #include "ScriptCardParser.h"
 #include "ScriptCardBlock.h"
 #include "..\..\common\RuntimeLocalizationCommon.h"
+#include "..\..\common\DeploymentContext.h"
+#include "..\utils\utils.h"
 #include <cwctype>
+#include <mutex>
 #include <set>
 
 namespace ScriptCards {
@@ -390,19 +393,11 @@ bool Dependencies(const std::wstring& json, size_t object, std::vector<Dependenc
 }
 }
 
-Card Parse(const BYTE* bytes, size_t length)
+static Card ParseJsonDocument(const std::wstring& json, const BYTE* bytes, size_t length, bool external)
 {
 	Card card;
-	ScriptCardBlock::Span span;
-	const ScriptCardBlock::Status block = ScriptCardBlock::Find(bytes, length, span);
-	if(block == ScriptCardBlock::Status::Missing) return card;
 	card.state = State::Invalid;
-	if(block == ScriptCardBlock::Status::Malformed) { card.error = L"Card markers or size are invalid"; return card; }
-	std::wstring text;
-	std::wstring json;
-	if(!DecodeCard(bytes, span, text) || !ExtractJson(text, json))
-		{ card.error = L"Card encoding or markers are invalid"; return card; }
-	if(json.find(L"*/") != std::wstring::npos) { card.error = L"Unsafe comment terminator"; return card; }
+	if(!external && json.find(L"*/") != std::wstring::npos) { card.error = L"Unsafe comment terminator"; return card; }
 	size_t cursor = 0;
 	if(!ValidateJson(json, cursor, 0)) { card.error = L"Card JSON is invalid or has duplicate keys"; return card; }
 	FbeRuntimeLocalization::JsonSkipWhitespace(json, cursor);
@@ -424,7 +419,8 @@ Card Parse(const BYTE* bytes, size_t length)
 		!StringArray(json, 0, L"usage", card.usage) || !StringArray(json, 0, L"warnings", card.warnings) ||
 		!Authors(json, 0, card.authors) || !Dependencies(json, 0, card.dependencies) ||
 		!Member(json, 0, L"sourceRevision", revision) || json[revision] != L'{' ||
-		!StringMember(json, revision, L"algorithm", algorithm) || algorithm != L"sha256-exclude-fbe-card-v1" ||
+		!StringMember(json, revision, L"algorithm", algorithm) ||
+		algorithm != (external ? L"sha256-raw-js-v1" : L"sha256-exclude-fbe-card-v1") ||
 		!StringMember(json, revision, L"reviewStatus", card.reviewStatus) ||
 		(card.reviewStatus != L"generated" && card.reviewStatus != L"reviewed" && card.reviewStatus != L"unknown") ||
 		!Member(json, revision, L"sha256", digest))
@@ -453,7 +449,7 @@ Card Parse(const BYTE* bytes, size_t length)
 		(Member(json, 0, L"tags", complete) && !StringArray(json, 0, L"tags", card.tags)))
 		{ card.error = L"Optional card fields are invalid"; return card; }
 	card.authorshipStatus = ObjectField(json, 0, L"authorshipStatus");
-	card.currentSha256 = ScriptCardBlock::Sha256WithoutCard(bytes, length);
+	card.currentSha256 = external ? ScriptCardBlock::Sha256Raw(bytes, length) : ScriptCardBlock::Sha256WithoutCard(bytes, length);
 	if(json.compare(digest, 4, L"null") == 0)
 	{
 		card.state = State::Unchecked;
@@ -469,17 +465,207 @@ Card Parse(const BYTE* bytes, size_t length)
 	return card;
 }
 
+Card Parse(const BYTE* bytes, size_t length)
+{
+	Card card;
+	ScriptCardBlock::Span span;
+	const ScriptCardBlock::Status block = ScriptCardBlock::Find(bytes, length, span);
+	if(block == ScriptCardBlock::Status::Missing) return card;
+	card.state = State::Invalid;
+	if(block == ScriptCardBlock::Status::Malformed) { card.error = L"Card markers or size are invalid"; return card; }
+	std::wstring text, json;
+	if(!DecodeCard(bytes, span, text) || !ExtractJson(text, json))
+		{ card.error = L"Card encoding or markers are invalid"; return card; }
+	return ParseJsonDocument(json, bytes, length, false);
+}
+
+namespace {
+CString LongPath(const CString& path)
+{
+	CString normalized(path);
+	normalized.Replace(L'/', L'\\');
+	if(normalized.Left(4) == L"\\\\?\\") return normalized;
+	if(normalized.Left(2) == L"\\\\") return CString(L"\\\\?\\UNC\\") + normalized.Mid(2);
+	if(normalized.GetLength() >= 3 && normalized[1] == L':' && normalized[2] == L'\\') return CString(L"\\\\?\\") + normalized;
+	return normalized;
+}
+
+bool ReadBytes(const CString& path, std::vector<BYTE>& bytes, size_t limit)
+{
+	HANDLE file = ::CreateFileW(LongPath(path), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+	if(file == INVALID_HANDLE_VALUE) return false;
+	BY_HANDLE_FILE_INFORMATION info = {}; LARGE_INTEGER size = {};
+	bool ok = ::GetFileInformationByHandle(file, &info) && !(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) &&
+		::GetFileSizeEx(file, &size) && size.QuadPart >= 0 && static_cast<ULONGLONG>(size.QuadPart) <= limit;
+	if(ok) bytes.resize(static_cast<size_t>(size.QuadPart));
+	for(size_t offset = 0; ok && offset < bytes.size(); )
+	{
+		DWORD read = 0;
+		ok = ::ReadFile(file, bytes.data() + offset, static_cast<DWORD>((std::min)(bytes.size() - offset, size_t(65536))), &read, NULL) && read > 0;
+		offset += read;
+	}
+	::CloseHandle(file);
+	return ok;
+}
+
+bool Utf8Json(const std::vector<BYTE>& bytes, std::wstring& json)
+{
+	size_t start = bytes.size() >= 3 && bytes[0] == 0xef && bytes[1] == 0xbb && bytes[2] == 0xbf ? 3 : 0;
+	if(bytes.size() <= start || bytes.size() - start > INT_MAX) return false;
+	const char* input = reinterpret_cast<const char*>(bytes.data() + start);
+	const int length = static_cast<int>(bytes.size() - start);
+	const int count = ::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, input, length, NULL, 0);
+	if(count <= 0) return false;
+	json.resize(count);
+	return ::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, input, length, &json[0], count) == count;
+}
+
+bool EnsureCardDirectories(const CString& root, const CString& relative)
+{
+	if(::SHCreateDirectoryExW(NULL, root, NULL) != ERROR_SUCCESS && ::GetFileAttributesW(LongPath(root)) == INVALID_FILE_ATTRIBUTES)
+		return false;
+	CString rootEntry(root); rootEntry.TrimRight(L"\\/");
+	const DWORD rootAttributes = ::GetFileAttributesW(LongPath(rootEntry));
+	if(rootAttributes == INVALID_FILE_ATTRIBUTES || !(rootAttributes & FILE_ATTRIBUTE_DIRECTORY) ||
+		(rootAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) return false;
+	CString directory(root);
+	int begin = 0;
+	for(;;)
+	{
+		const int slash = relative.Find(L'\\', begin);
+		if(slash < 0) return true;
+		const CString part = relative.Mid(begin, slash - begin);
+		if(part.IsEmpty() || part == L"." || part == L".." || part.Find(L':') >= 0) return false;
+		directory += part + L"\\";
+		if(!::CreateDirectoryW(LongPath(directory), NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) return false;
+		CString entry(directory); entry.TrimRight(L"\\/");
+		const DWORD attributes = ::GetFileAttributesW(LongPath(entry));
+		if(attributes == INVALID_FILE_ATTRIBUTES || !(attributes & FILE_ATTRIBUTE_DIRECTORY) || (attributes & FILE_ATTRIBUTE_REPARSE_POINT)) return false;
+		begin = slash + 1;
+	}
+}
+
+CString RawDigest(const std::vector<BYTE>& data)
+{
+	return ScriptCardBlock::Sha256Raw(data.empty() ? reinterpret_cast<const BYTE*>("") : data.data(), data.size());
+}
+}
+
+CString ExternalCardPath(const CString& scriptPath)
+{
+	static std::mutex syncMutex;
+	const std::lock_guard<std::mutex> guard(syncMutex);
+	const CString settings(DeploymentContext::SettingsDirectory().c_str());
+	if(settings.IsEmpty()) return CString();
+	CString root(settings); root.TrimRight(L"\\/"); root += L"\\ScriptCards\\";
+	CString normalizedScript(scriptPath);
+	normalizedScript.Replace(L'/', L'\\');
+	const CString script = U::GetFullPathName(normalizedScript);
+	CString stock = U::GetFullPathName(U::GetProgDir() + L"Scripts\\");
+	stock.TrimRight(L"\\/"); stock += L"\\";
+	CString relative;
+	const bool bundled = script.GetLength() > stock.GetLength() && _wcsnicmp(script, stock, stock.GetLength()) == 0;
+	if(bundled)
+	{
+		relative = script.Mid(stock.GetLength());
+		if(relative.GetLength() < 4 || relative.Right(3).CompareNoCase(L".js") != 0) return CString();
+		relative = relative.Left(relative.GetLength() - 3) + L".json";
+	}
+	else
+	{
+		CString canonical(script); canonical.MakeLower();
+		const CString digest = ScriptCardBlock::Sha256Raw(reinterpret_cast<const BYTE*>(canonical.GetString()), canonical.GetLength() * sizeof(wchar_t));
+		if(digest.IsEmpty()) return CString();
+		// The distinct suffix cannot collide with a bundled *.json card,
+		// even if a bundled category happens to be named _external.
+		relative = L"_external\\" + digest + L".json.fbe-external";
+	}
+	if(relative.Find(L'/') >= 0 || relative.Find(L':') >= 0 || !EnsureCardDirectories(root, relative)) return CString();
+	const CString destination = LongPath(root + relative);
+	if(!bundled) return destination;
+	const CString source = U::GetProgDir() + L"ScriptCards\\" + relative;
+	std::vector<BYTE> incoming;
+	if(!ReadBytes(source, incoming, 64 * 1024)) return destination;
+	const CString incomingHash = RawDigest(incoming);
+	if(incomingHash.IsEmpty()) return destination;
+	CString key(relative); key.MakeLower();
+	key = ScriptCardBlock::Sha256Raw(reinterpret_cast<const BYTE*>(key.GetString()), key.GetLength() * sizeof(wchar_t));
+	const CString manifest = root + L".fbe-defaults.ini";
+	const DWORD manifestAttributes = ::GetFileAttributesW(manifest);
+	if(manifestAttributes != INVALID_FILE_ATTRIBUTES && (manifestAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) return destination;
+	if(::GetFileAttributesW(destination) == INVALID_FILE_ATTRIBUTES)
+	{
+		if(::CopyFileW(LongPath(source), destination, TRUE)) ::WritePrivateProfileStringW(L"cards", key, incomingHash, manifest);
+		return destination;
+	}
+	std::vector<BYTE> current;
+	if(!ReadBytes(destination, current, 64 * 1024))
+	{
+		const CString pending = destination + L".fbe-new-" + incomingHash.Left(12);
+		::CopyFileW(LongPath(source), pending, TRUE);
+		::WritePrivateProfileStringW(L"conflicts", key, incomingHash, manifest);
+		return destination;
+	}
+	const CString currentHash = RawDigest(current);
+	wchar_t baseline[80] = {};
+	::GetPrivateProfileStringW(L"cards", key, L"", baseline, _countof(baseline), manifest);
+	if(currentHash == incomingHash)
+	{
+		if(CString(baseline) != incomingHash) ::WritePrivateProfileStringW(L"cards", key, incomingHash, manifest);
+		wchar_t conflict[80] = {};
+		if(::GetPrivateProfileStringW(L"conflicts", key, L"", conflict, _countof(conflict), manifest) != 0)
+			::WritePrivateProfileStringW(L"conflicts", key, NULL, manifest);
+		if(::GetPrivateProfileStringW(L"updates", key, L"", conflict, _countof(conflict), manifest) != 0)
+			::WritePrivateProfileStringW(L"updates", key, NULL, manifest);
+	}
+	else if(CString(baseline) != incomingHash)
+	{
+		// Never overwrite an existing user file, including an unchanged older
+		// default. Deliver the new revision separately for review instead.
+		const CString pending = destination + L".fbe-new-" + incomingHash.Left(12);
+		::CopyFileW(LongPath(source), pending, TRUE);
+		const wchar_t* section = baseline[0] != 0 && currentHash == baseline ? L"updates" : L"conflicts";
+		::WritePrivateProfileStringW(section, key, incomingHash, manifest);
+	}
+	return destination;
+}
+
+void SynchronizeBundledCards()
+{
+	static std::once_flag once;
+	std::call_once(once, []() {
+		const CString defaults = U::GetProgDir() + L"ScriptCards\\";
+		std::vector<CString> directories(1, CString());
+		while(!directories.empty())
+		{
+			const CString relative = directories.back(); directories.pop_back();
+			WIN32_FIND_DATAW entry = {};
+			HANDLE find = ::FindFirstFileW(LongPath(defaults + relative + L"*"), &entry);
+			if(find == INVALID_HANDLE_VALUE) continue;
+			do {
+				if(wcscmp(entry.cFileName, L".") == 0 || wcscmp(entry.cFileName, L"..") == 0 ||
+					(entry.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) continue;
+				CString name(relative + entry.cFileName);
+				if(entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) directories.push_back(name + L"\\");
+				else if(name.GetLength() > 5 && name.Right(5).CompareNoCase(L".json") == 0)
+					ExternalCardPath(U::GetProgDir() + L"Scripts\\" + name.Left(name.GetLength() - 5) + L".js");
+			} while(::FindNextFileW(find, &entry));
+			::FindClose(find);
+		}
+	});
+}
+
 Card LoadFile(const CString& path)
 {
 	Card card;
-	HANDLE file = ::CreateFileW(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+	HANDLE file = ::CreateFileW(LongPath(path), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
 		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(file == INVALID_HANDLE_VALUE) { card.state = State::Invalid; card.error = L"Script file cannot be opened"; return card; }
 	LARGE_INTEGER size = {};
 	if(!::GetFileSizeEx(file, &size) || size.QuadPart < 0 || size.QuadPart > INT_MAX)
 		{ ::CloseHandle(file); card.state = State::Invalid; card.error = L"Script file is too large"; return card; }
 	std::vector<BYTE> bytes(static_cast<size_t>(size.QuadPart));
-	if(bytes.empty()) { ::CloseHandle(file); return card; }
 	size_t position = 0;
 	while(position < bytes.size())
 	{
@@ -489,12 +675,42 @@ Card LoadFile(const CString& path)
 		position += read;
 	}
 	::CloseHandle(file);
-	return Parse(bytes.data(), bytes.size());
+	const CString externalPath = ExternalCardPath(path);
+	if(!externalPath.IsEmpty())
+	{
+		const DWORD attributes = ::GetFileAttributesW(externalPath);
+		const DWORD error = attributes == INVALID_FILE_ATTRIBUTES ? ::GetLastError() : ERROR_SUCCESS;
+		if(attributes != INVALID_FILE_ATTRIBUTES || (error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND))
+		{
+			std::vector<BYTE> external; std::wstring json;
+			if(!ReadBytes(externalPath, external, 64 * 1024) || !Utf8Json(external, json))
+				{ card.state = State::Invalid; card.error = L"External card cannot be read as UTF-8 JSON"; return card; }
+			return ParseJsonDocument(json, bytes.empty() ? reinterpret_cast<const BYTE*>("") : bytes.data(), bytes.size(), true);
+		}
+	}
+	return Parse(bytes.empty() ? reinterpret_cast<const BYTE*>("") : bytes.data(), bytes.size());
 }
 
 CString ReadPreviewSummary(const CString& path)
 {
-	HANDLE file = ::CreateFileW(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+	const CString externalPath = ExternalCardPath(path);
+	if(!externalPath.IsEmpty())
+	{
+		const DWORD attributes = ::GetFileAttributesW(externalPath);
+		const DWORD error = attributes == INVALID_FILE_ATTRIBUTES ? ::GetLastError() : ERROR_SUCCESS;
+		if(attributes != INVALID_FILE_ATTRIBUTES || (error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND))
+		{
+			std::vector<BYTE> bytes; std::wstring json;
+			if(!ReadBytes(externalPath, bytes, 64 * 1024) || !Utf8Json(bytes, json)) return CString();
+			size_t cursor = 0;
+			if(!ValidateJson(json, cursor, 0)) return CString();
+			FbeRuntimeLocalization::JsonSkipWhitespace(json, cursor);
+			if(cursor != json.size()) return CString();
+			CString summary;
+			return StringMember(json, 0, L"summary", summary) ? summary : CString();
+		}
+	}
+	HANDLE file = ::CreateFileW(LongPath(path), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
 		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(file == INVALID_HANDLE_VALUE) return CString();
 	// The card format permits at most 64 KiB, including its markers and BOM.

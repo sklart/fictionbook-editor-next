@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "title": "Удалить все пробелы в выделении",
+  "version": "1.3",
+  "authors": [
+    {
+      "name": "Sclex",
+      "role": "author"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Удаляет все пробелы в выделении.",
+  "description": "Берёт выделенный текст, обрабатывает его текстовые узлы регулярными выражениями и удаляет выбранный класс символов — пробелы, дефисы либо подчёркивания. Служебные маркеры сохраняют границы; соседний невыделенный текст не является целью операции.",
+  "scope": "Выделенный диапазон либо полные абзацы, которые он пересекает; см. описание варианта.",
+  "modifiesDocument": true,
+  "requiresSelection": true,
+  "usage": [
+    "Выделите текст, из которого нужно удалить пробелы. Скрипт обрабатывает текст в границах выделения."
+  ],
+  "warnings": [],
+  "dependencies": [],
+  "dependenciesComplete": false,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "764f4c195f214330b25e687c2e45e22d869ba5e0c0af3ba6eb5b4e43e5dd8456",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Мелочи редактирования",
+    "параметры"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": ""
+  },
+  "settings": []
+}

@@ -1,39 +1,3 @@
-/*<FBE-SCRIPT-CARD version="1">
-{
-  "schema": 1,
-  "title": "Показать все ссылки",
-  "version": "Не указана",
-  "authors": [
-    {
-      "role": "unknown"
-    }
-  ],
-  "authorshipStatus": "not_stated",
-  "summary": "Разделяет ссылки документа на внутренние и внешние и показывает их текст и адреса.",
-  "description": "Внешними считает адреса с http:// или https://. Остальные относит к внутренним; адреса, не начинающиеся с #, помечает [!!!]. Результат выводится в сообщении.",
-  "scope": "Все ссылки визуального документа; выделение не используется.",
-  "modifiesDocument": false,
-  "requiresSelection": false,
-  "usage": [
-    "Запустите команду без выделения. В сообщении появятся отдельные списки внутренних и внешних ссылок с текстом и адресом."
-  ],
-  "warnings": [],
-  "dependencies": [],
-  "dependenciesComplete": false,
-  "sourceRevision": {
-    "algorithm": "sha256-exclude-fbe-card-v1",
-    "sha256": "7df03223a5715ffd5c73bb1833d8eb7515eaaf42bceb7e5f2deb0f6073a4fa7b",
-    "reviewStatus": "generated"
-  },
-  "tags": [
-    "Статистика"
-  ],
-  "undo": {
-    "status": "no_explicit_grouping",
-    "description": ""
-  }
-}
-</FBE-SCRIPT-CARD>*/
 //======================================
 // Shows all the link in the document
 //======================================

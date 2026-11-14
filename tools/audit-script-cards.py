@@ -1,4 +1,4 @@
-"""Inventory embedded script cards and record evidence for a content review.
+"""Inventory external or embedded script cards for a content review.
 
 The default mode is read-only.  Apply accepts an explicit, reviewed proposal
 file; a heuristic finding alone never changes a card.
@@ -24,10 +24,20 @@ from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "runtime" / "Scripts"
+CARDS = ROOT / "runtime" / "ScriptCards"
 CARD_TOOL = runpy.run_path(str(ROOT / "tools" / "script-card-tool.py"))
 read_document = CARD_TOOL["read_document"]
 validate_schema = CARD_TOOL["validate_schema"]
 serialize = CARD_TOOL["serialize"]
+inspect_file = CARD_TOOL["inspect_file"]
+
+
+def load_document(path: Path):
+    try:
+        card = CARDS / path.relative_to(SCRIPTS).with_suffix('.json')
+    except ValueError:
+        card = None
+    return inspect_file(path, None, None, card)[0]
 
 GENERIC_USAGE = (
     "Откройте нужную книгу в FBE Next",
@@ -230,7 +240,7 @@ def linked_resource_candidates(source: Source) -> list[dict]:
 
 def inspect(path: Path) -> dict:
     relative = path.relative_to(SCRIPTS).as_posix()
-    document = read_document(path.read_bytes())
+    document = load_document(path)
     if document.card is None:
         return {"path": relative, "result": "invalid", "findings": [
             finding("requires_review", "card", None, None, "Карточка отсутствует", "high")]}
@@ -437,7 +447,7 @@ def apply_proposals(proposals: list[dict], records: list[dict]) -> int:
         touched.add(relative)
         path = SCRIPTS / Path(relative)
         original = path.read_bytes()
-        document = read_document(original)
+        document = load_document(path)
         if document.sha256 != proposal["codeSha256"]:
             raise ValueError(f"code SHA changed: {relative}")
         card = json.loads(json.dumps(document.card, ensure_ascii=False))
@@ -456,14 +466,18 @@ def apply_proposals(proposals: list[dict], records: list[dict]) -> int:
             continue
         if validate_schema(card):
             raise ValueError(f"invalid proposed card: {relative}")
-        span_start, span_end = document.span
-        newline = "\r\n" if b"\r\n" in document.data[span_start:span_end] else "\n"
-        updated = original[:span_start] + serialize(card, document.encoding, newline) + original[span_end:]
-        if read_document(updated).code_bytes != document.code_bytes:
-            raise ValueError(f"code bytes changed: {relative}")
-        if read_document(updated).sha256 != document.sha256:
-            raise ValueError(f"source hash changed: {relative}")
-        pending.append((path, original, updated))
+        if document.span is None:
+            destination = CARDS / Path(relative).with_suffix('.json')
+            original_card = destination.read_bytes()
+            updated = (json.dumps(card, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
+            pending.append((destination, original_card, updated))
+        else:
+            span_start, span_end = document.span
+            newline = "\r\n" if b"\r\n" in document.data[span_start:span_end] else "\n"
+            updated = original[:span_start] + serialize(card, document.encoding, newline) + original[span_end:]
+            if read_document(updated).code_bytes != document.code_bytes or read_document(updated).sha256 != document.sha256:
+                raise ValueError(f"code bytes changed: {relative}")
+            pending.append((path, original, updated))
     written: list[tuple[Path, bytes]] = []
     try:
         for path, original, updated in pending:
@@ -509,6 +523,11 @@ def reviewed_revision(proposal: dict, document, executable_changes: list[dict]) 
             if expected.get("sha256") != proposal["codeSha256"]:
                 raise ValueError(f"historical source revision differs from review: {proposal['path']}")
             expected = dict(expected, sha256=current)
+        if (change['field'] == 'sourceRevision' and isinstance(actual, dict) and
+                isinstance(expected, dict) and actual.get('algorithm') == 'sha256-raw-js-v1' and
+                expected.get('algorithm') == 'sha256-exclude-fbe-card-v1'):
+            # Migration preserves the exact executable digest and review status.
+            expected = dict(expected, algorithm='sha256-raw-js-v1')
         if actual != expected:
             raise ValueError(f"reviewed proposal differs from current card: {proposal['path']}")
 
@@ -641,7 +660,7 @@ def main() -> int:
     reviewed = []
     for proposal in proposals:
         path = SCRIPTS / Path(proposal["path"])
-        document = read_document(path.read_bytes())
+        document = load_document(path)
         reviewed.append(reviewed_revision(proposal, document, baseline_data.get("executableChanges", [])))
     write_reports(records, args.output_dir, baseline, reviewed)
     print(f"Audited {len(records)} files; detailed report: {args.output_dir / 'script-card-content-audit.json'}")

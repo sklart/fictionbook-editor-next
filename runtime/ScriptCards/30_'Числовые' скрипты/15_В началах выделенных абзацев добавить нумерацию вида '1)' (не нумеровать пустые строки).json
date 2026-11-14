@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "title": "В началах выделенных абзацев добавить нумерацию вида '1)' (не нумеровать пустые строки)",
+  "version": "1.2",
+  "authors": [
+    {
+      "name": "Sclex",
+      "role": "author"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Нумерует полные абзацы выделения с единицы, используя вид «1)». Пустые строки пропускаются.",
+  "description": "Нумерует полные абзацы выделения с единицы, используя вид «1)». Пустые строки пропускаются. Даже частично выделенный абзац обрабатывается целиком.",
+  "scope": "Полные абзацы, пересекающие выделенный диапазон в тексте книги.",
+  "modifiesDocument": true,
+  "requiresSelection": true,
+  "usage": [
+    "Выделите абзацы списка и запустите скрипт. Пустые строки пропускаются."
+  ],
+  "warnings": [],
+  "dependencies": [],
+  "dependenciesComplete": false,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "41f88b04f1e872ccc8041b0306be3121314f73e6b87e1024cc4921da9fd4aa03",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "'Числовые' скрипты",
+    "параметры"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": ""
+  },
+  "settings": []
+}

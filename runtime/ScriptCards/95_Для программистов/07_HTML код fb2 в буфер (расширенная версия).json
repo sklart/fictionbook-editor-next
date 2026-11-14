@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "title": "HTML код fb2 в буфер (расширенная версия)",
+  "version": "1.7",
+  "authors": [
+    {
+      "name": "TaKir",
+      "role": "author"
+    },
+    {
+      "name": "TaKir",
+      "role": "contributor",
+      "contribution": "idea"
+    },
+    {
+      "name": "DeepSeek",
+      "role": "ai_assistance"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Копирует в буфер выбранные разделы внутреннего HTML-представления книги.",
+  "description": "Собирает outerHTML отмеченных исходником разделов: аннотации, истории, основного текста, сносок, комментариев и, по выбору, description и служебных полей. Добавляет переносы перед DIV и P, кладёт результат в буфер обмена и по умолчанию показывает статистику. Выделение не используется. Полученный фрагмент относится к HTML редактора и при отключённых служебных полях не обязан быть полным HTML-документом.",
+  "scope": "Все включённые настройками области текущего HTML-документа; по умолчанию без description и служебных полей.",
+  "modifiesDocument": false,
+  "requiresSelection": false,
+  "usage": [
+    "Выберите нужные разделы флагами в начале скрипта и запустите команду.",
+    "Вставьте содержимое буфера в текстовый редактор и проверьте состав и полноту скопированного HTML."
+  ],
+  "warnings": [
+    "Скрипт заменяет прежнее содержимое буфера обмена; запись в буфер не проверяется по возвращаемому результату.",
+    "Показатель «символов» считает длину HTML-строк вместе с тегами, а не длину видимого текста книги.",
+    "Выборочные разделы дают HTML-фрагмент; при включении служебной шапки и концовки их поиск зависит от точного вида сериализованных тегов."
+  ],
+  "dependencies": [],
+  "dependenciesComplete": true,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "d1201e270f183635e05bd8a39eaffe8abe65f0059a65cf7445b3fd1f2039d621",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Для программистов",
+    "буфер обмена",
+    "параметры"
+  ],
+  "undo": {
+    "status": "no_explicit_grouping",
+    "description": ""
+  },
+  "settings": [
+    {
+      "name": "showStatistics",
+      "value": 1,
+      "expression": "1",
+      "description": "1 — показать отчёт после копирования; 0 — тихий режим.",
+      "title": "Показывать статистику"
+    },
+    {
+      "name": "processMainSection",
+      "value": 1,
+      "expression": "1",
+      "description": "Включить основной раздел книги.",
+      "title": "Включать основной раздел"
+    },
+    {
+      "name": "processNotesSection",
+      "value": 1,
+      "expression": "1",
+      "description": "Включить раздел сносок.",
+      "title": "Обрабатывать примечания"
+    },
+    {
+      "name": "processCommentsSection",
+      "value": 1,
+      "expression": "1",
+      "description": "Включить раздел комментариев.",
+      "title": "Обрабатывать комментарии"
+    },
+    {
+      "name": "processDescriptionSection",
+      "value": 0,
+      "expression": "0",
+      "description": "Включить HTML-раздел description.",
+      "title": "Включать описание книги"
+    },
+    {
+      "name": "processAnnotationSection",
+      "value": 1,
+      "expression": "1",
+      "description": "Включить аннотацию.",
+      "title": "Включать аннотацию"
+    },
+    {
+      "name": "processHistorySection",
+      "value": 1,
+      "expression": "1",
+      "description": "Включить историю изменений.",
+      "title": "Включать историю"
+    },
+    {
+      "name": "processServiceFields",
+      "value": 0,
+      "expression": "0",
+      "description": "Добавить служебную шапку и концовку HTML.",
+      "title": "Включать служебную шапку и концовку"
+    }
+  ]
+}

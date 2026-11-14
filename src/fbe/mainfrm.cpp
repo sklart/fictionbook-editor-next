@@ -3891,6 +3891,7 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 			}
 	}
 	StartupTrace::Event(L"plugin", L"P100", L"script directory resolved");
+	ScriptCards::SynchronizeBundledCards();
 	CString serializedCommandIds;
 	HMENU mainMenu = m_MenuBar.GetMenu();
 	if(m_scripts.Initialize(_Settings.GetScriptsFolder(), _Settings.GetScriptCommandIds(), serializedCommandIds, ::GetSubMenu(mainMenu, 6),

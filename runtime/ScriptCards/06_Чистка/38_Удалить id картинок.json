@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "title": "Удалить id картинок",
+  "version": "1.2",
+  "authors": [
+    {
+      "name": "Sclex",
+      "role": "author"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Удаляет непустые ID блочных иллюстраций в обрабатываемых разделах книги.",
+  "description": "Удаляет непустые атрибуты id у блочных DIV.image во всех body книги. Внутриабзацные SPAN.image и имена бинарных вложений не меняет.",
+  "scope": "Все DIV.image внутри всех body, включая notes и comments; SPAN.image не обрабатываются.",
+  "modifiesDocument": true,
+  "requiresSelection": false,
+  "usage": [
+    "Откройте книгу и запустите скрипт для удаления ID блочных иллюстраций в указанной области.",
+    "После выполнения проверьте число удалений в сообщении и ссылки на обработанные элементы."
+  ],
+  "warnings": [
+    "Удаляются ID оболочек блочных изображений, а не имена бинарных вложений; ссылки на удалённые ID оболочек могут перестать работать."
+  ],
+  "dependencies": [],
+  "dependenciesComplete": true,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "769ff8dc89d7235651d6b7a721c3fefe174500036c21c6b60de87cfc88a5dcdb",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Чистка",
+    "изображения"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": ""
+  }
+}

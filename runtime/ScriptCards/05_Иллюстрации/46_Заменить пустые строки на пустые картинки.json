@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "title": "Заменить пустые строки на пустые картинки",
+  "version": "1.2",
+  "authors": [
+    {
+      "name": "TaKir",
+      "role": "author"
+    },
+    {
+      "name": "TaKir",
+      "role": "contributor",
+      "contribution": "idea"
+    },
+    {
+      "name": "DeepSeek",
+      "role": "ai_assistance"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Заменяет подходящие пустые абзацы на блочные пустые изображения в выделении либо в разделах книги.",
+  "description": "Пустые абзацы заменяются на DIV.image с ссылкой #undefined. Скрипт не обрабатывает history, аннотации, стихи, цитаты, заголовки и эпиграфы; соседство с изображениями, заголовками и подзаголовками зависит от параметров.",
+  "scope": "При наличии текстового выделения — его абзацы в основном body, а также в notes/comments при включении. Без выделения — весь основной body и включённые разделы notes/comments. Другие body пропускаются.",
+  "modifiesDocument": true,
+  "requiresSelection": false,
+  "usage": [
+    "При необходимости выделите фрагмент книги; без выделения скрипт проверит весь основной раздел.",
+    "Проверьте параметры обработки примечаний, комментариев и соседства с иллюстрациями, заголовками и подзаголовками в начале исходного файла.",
+    "Запустите скрипт и проверьте вставленные пустые изображения. Итоговое сообщение показывается всегда."
+  ],
+  "warnings": [
+    "Вложенные структурные блоки и пустые строки рядом с некоторыми элементами намеренно пропускаются."
+  ],
+  "dependencies": [],
+  "dependenciesComplete": true,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "a7a3c055498f989d25dad149c19663f045c333ed9238ab3211b5a48c1ef4813a",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Иллюстрации",
+    "изображения",
+    "параметры"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": ""
+  },
+  "settings": [
+    {
+      "name": "processNotesSection",
+      "title": "Обрабатывать примечания",
+      "value": 0,
+      "expression": "0",
+      "description": "0 — пропустить body notes; 1 — включить.",
+      "source": "code"
+    },
+    {
+      "name": "processCommentsSection",
+      "title": "Обрабатывать комментарии",
+      "value": 0,
+      "expression": "0",
+      "description": "0 — пропустить body comments; 1 — включить.",
+      "source": "code"
+    },
+    {
+      "name": "processImages",
+      "title": "Рядом с иллюстрациями",
+      "value": 0,
+      "expression": "0",
+      "description": "0 — пропускать соседние с DIV.image абзацы; 1 — разрешить замену.",
+      "source": "code"
+    },
+    {
+      "name": "processTitles",
+      "title": "Рядом с заголовками",
+      "value": 0,
+      "expression": "0",
+      "description": "0 — пропускать соседние с DIV.title абзацы; 1 — разрешить замену.",
+      "source": "code"
+    },
+    {
+      "name": "processSubtitles",
+      "title": "Рядом с подзаголовками",
+      "value": 0,
+      "expression": "0",
+      "description": "0 — пропускать соседние с P.subtitle абзацы; 1 — разрешить замену.",
+      "source": "code"
+    }
+  ]
+}

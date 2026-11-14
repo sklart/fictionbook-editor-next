@@ -81,6 +81,10 @@ protected:
 		CString summary;
 		FILETIME written = {};
 		ULONGLONG size = 0;
+		CString cardPath;
+		FILETIME cardWritten = {};
+		ULONGLONG cardSize = 0;
+		bool cardExists = false;
 	};
 	std::map<std::wstring, ScriptPreviewCache> m_script_preview_cache;
 	std::function<bool(const std::vector<CString>&, const CString&)> m_add_scripts_to_toolbar;

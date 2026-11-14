@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "title": "Удалить id абзацев",
+  "version": "1.2",
+  "authors": [
+    {
+      "name": "Sclex",
+      "role": "author"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Удаляет непустые ID абзацев в обрабатываемых разделах книги.",
+  "description": "Удаляет непустые атрибуты id у абзацев во всех body книги, включая примечания и комментарии. Текст абзацев сохраняет, ссылки на удалённые ID заранее не проверяет.",
+  "scope": "Все P внутри всех body, включая notes и comments; выделение не учитывается.",
+  "modifiesDocument": true,
+  "requiresSelection": false,
+  "usage": [
+    "Откройте книгу и запустите скрипт для удаления ID абзацев в указанной области.",
+    "После выполнения проверьте число удалений в сообщении и ссылки на обработанные элементы."
+  ],
+  "warnings": [
+    "Ссылки на абзацы с удалёнными ID могут перестать работать; скрипт не ищет входящие ссылки."
+  ],
+  "dependencies": [],
+  "dependenciesComplete": true,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "504ae4c2186077eeed8de585ae947b683ba503f6ee422c697b4ee426795e952d",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Чистка"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": ""
+  }
+}

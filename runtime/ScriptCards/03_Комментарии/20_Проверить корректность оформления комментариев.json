@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "title": "Проверить корректность оформления комментариев",
+  "version": "1.4",
+  "authors": [
+    {
+      "role": "unknown"
+    }
+  ],
+  "authorshipStatus": "not_stated",
+  "summary": "Проверяет согласованность ссылок и разделов комментариев.",
+  "description": "Строит соответствия между ссылками и body comments, учитывая наличие body notes. Выдаёт сообщения о проблемах оформления, а не исправляет документ.",
+  "scope": "Ссылки документа и разделы комментариев в comments с учётом notes.",
+  "modifiesDocument": false,
+  "requiresSelection": false,
+  "usage": [
+    "Запустите проверку ссылок и разделов комментариев. Скрипт сообщает о несогласованных ссылках и разделах, не исправляя их."
+  ],
+  "warnings": [],
+  "dependencies": [],
+  "dependenciesComplete": false,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "a52196ea9b8bd3323ced19a3ec71dee73461ce0547f545258502ef5f846a6754",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Комментарии",
+    "сноски"
+  ],
+  "undo": {
+    "status": "no_explicit_grouping",
+    "description": ""
+  }
+}

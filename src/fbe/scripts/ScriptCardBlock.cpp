@@ -94,10 +94,10 @@ Status Find(const BYTE* bytes, size_t length, Span& span)
 	return Status::Malformed;
 }
 
-CString Sha256WithoutCard(const BYTE* bytes, size_t length)
+static CString Sha256(const BYTE* bytes, size_t length, bool removeCard)
 {
 	Span span;
-	const Status status = Find(bytes, length, span);
+	const Status status = removeCard ? Find(bytes, length, span) : Status::Missing;
 	if(status == Status::Malformed || length > ULONG_MAX) return CString();
 	BCRYPT_ALG_HANDLE algorithm = NULL;
 	BCRYPT_HASH_HANDLE hash = NULL;
@@ -117,4 +117,7 @@ CString Sha256WithoutCard(const BYTE* bytes, size_t length)
 	::BCryptCloseAlgorithmProvider(algorithm, 0);
 	return result;
 }
+
+CString Sha256WithoutCard(const BYTE* bytes, size_t length) { return Sha256(bytes, length, true); }
+CString Sha256Raw(const BYTE* bytes, size_t length) { return Sha256(bytes, length, false); }
 }

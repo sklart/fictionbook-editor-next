@@ -485,12 +485,26 @@ CString CTreeView::ScriptPreviewSummary(const ScriptDescriptor& script)
 	WIN32_FILE_ATTRIBUTE_DATA data = {};
 	if(!::GetFileAttributesExW(script.path, GetFileExInfoStandard, &data)) return CString();
 	const ULONGLONG size = (static_cast<ULONGLONG>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
+	const CString cardPath = ScriptCards::ExternalCardPath(script.path);
+	WIN32_FILE_ATTRIBUTE_DATA cardData = {};
+	const bool cardExists = !cardPath.IsEmpty() && ::GetFileAttributesExW(cardPath, GetFileExInfoStandard, &cardData);
+	// A card editor can preserve its file size and modification time. Read the
+	// small external JSON on demand so such edits never leave a stale preview;
+	// this does not hash the script during tree enumeration or painting.
+	if(cardExists) return ScriptCards::ReadPreviewSummary(script.path);
+	const ULONGLONG cardSize = (static_cast<ULONGLONG>(cardData.nFileSizeHigh) << 32) | cardData.nFileSizeLow;
 	ScriptPreviewCache& cached = m_script_preview_cache[std::wstring(script.uid.GetString())];
-	if(cached.path != script.path || cached.size != size || ::CompareFileTime(&cached.written, &data.ftLastWriteTime) != 0)
+	if(cached.path != script.path || cached.size != size || ::CompareFileTime(&cached.written, &data.ftLastWriteTime) != 0 ||
+		cached.cardPath != cardPath || cached.cardExists != cardExists || cached.cardSize != cardSize ||
+		::CompareFileTime(&cached.cardWritten, &cardData.ftLastWriteTime) != 0)
 	{
 		cached.path = script.path;
 		cached.written = data.ftLastWriteTime;
 		cached.size = size;
+		cached.cardPath = cardPath;
+		cached.cardWritten = cardData.ftLastWriteTime;
+		cached.cardSize = cardSize;
+		cached.cardExists = cardExists;
 		cached.summary = ScriptCards::ReadPreviewSummary(script.path);
 	}
 	return cached.summary;

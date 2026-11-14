@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "title": "Удалить id разделов",
+  "version": "1.2",
+  "authors": [
+    {
+      "name": "Sclex",
+      "role": "author"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Удаляет непустые ID разделов в обрабатываемых разделах книги.",
+  "description": "Удаляет непустые атрибуты id у DIV.section в обычных body книги. Разделы notes и comments пропускает; входящие ссылки заранее не проверяет.",
+  "scope": "Все DIV.section в body, кроме notes и comments; выделение не учитывается.",
+  "modifiesDocument": true,
+  "requiresSelection": false,
+  "usage": [
+    "Откройте книгу и запустите скрипт для удаления ID разделов в указанной области.",
+    "После выполнения проверьте число удалений в сообщении и ссылки на обработанные элементы."
+  ],
+  "warnings": [
+    "Ссылки на разделы с удалёнными ID могут перестать работать; примечания и комментарии пропускаются."
+  ],
+  "dependencies": [],
+  "dependenciesComplete": true,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "a2bc033ed540af3b44b419d9daccc9e67e706cc1f5e5f9135b9b188c2814efc6",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Чистка"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": ""
+  }
+}

@@ -213,6 +213,26 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Flush(); output.Close();
 		::PostQuitMessage(opened && first && ordered && deduplicated && closeButton && escape ? 0 : 1); return 0;
 	}
+	if (IsFbeTestScenario(L"script-card-external-runtime"))
+	{
+		wchar_t path[32768] = {};
+		const DWORD pathLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_CARD_SCRIPT", path, _countof(path));
+		if(pathLength == 0 || pathLength >= _countof(path)) { ::PostQuitMessage(2); return 0; }
+		ScriptCards::Card card = ScriptCards::LoadFile(path);
+		wchar_t resources[32768] = {};
+		const DWORD resourceLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_CARD_RESOURCE_ROOT", resources, _countof(resources));
+		if(resourceLength > 0 && resourceLength < _countof(resources)) ScriptCards::VerifyDependencies(card, resources);
+		const CString preview = ScriptCards::ReadPreviewSummary(path);
+		const CString external = ScriptCards::ExternalCardPath(path);
+		CStringA report;
+		report.Format("state=%d\ndependency-state=%d\nsummary=%s\npreview=%s\nexternal=%s\n", static_cast<int>(card.state),
+			static_cast<int>(card.dependencyState),
+			static_cast<LPCSTR>(CStringA(CW2A(card.summary, CP_UTF8))),
+			static_cast<LPCSTR>(CStringA(CW2A(preview, CP_UTF8))),
+			static_cast<LPCSTR>(CStringA(CW2A(external, CP_UTF8))));
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(0); return 0;
+	}
 	if (IsFbeTestScenario(L"script-card-block-runtime"))
 	{
 		const BYTE ascii[] = "\xEF\xBB\xBF/*<FBE-SCRIPT-CARD version=\"1\">\r\n{}\r\n</FBE-SCRIPT-CARD>*/\r\nABC";

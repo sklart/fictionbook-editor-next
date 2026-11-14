@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "title": "Нумерацию 'число пробел' в началах выделенных абзацев сделать надстрочным текстом",
+  "version": "1.2",
+  "authors": [
+    {
+      "name": "Sclex",
+      "role": "author"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Оформляет начальный номер абзаца верхним индексом, убирая пробел перед текстом.",
+  "description": "В полных абзацах выделения ищет числовой префикс с пробелом и помещает номер в верхний индекс.",
+  "scope": "Полные абзацы, пересекающие выделенный диапазон в тексте книги.",
+  "modifiesDocument": true,
+  "requiresSelection": true,
+  "usage": [
+    "Выделите абзацы с началом «число пробел». Скрипт изменит оформление номера в каждом подходящем абзаце."
+  ],
+  "warnings": [],
+  "dependencies": [],
+  "dependenciesComplete": false,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "cc1c6f827c288daa03a98bed72041a5a281a882d00ff1eb852f5386870748767",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "'Числовые' скрипты",
+    "параметры"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": ""
+  },
+  "settings": []
+}

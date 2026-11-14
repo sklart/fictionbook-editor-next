@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "title": "Выделить предыдущий подзаголовок (любой)",
+  "version": "1.4",
+  "authors": [
+    {
+      "name": "Sclex",
+      "role": "author"
+    },
+    {
+      "name": "TaKir",
+      "role": "contributor",
+      "contribution": "assembly"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Выделяет предыдущий любой подзаголовок.",
+  "description": "От начала текущего диапазона ищет любой P.subtitle, включая пустой. Начинает со следующего абзаца, поэтому текущий подзаголовок пропускает; найденный абзац выделяет и прокручивает к нему окно. Книгу не меняет.",
+  "scope": "Поиск назад от начала диапазона среди абзацев P внутри fbw_body.",
+  "modifiesDocument": false,
+  "requiresSelection": false,
+  "usage": [
+    "Поставьте курсор в книге или выделите фрагмент, от границы которого нужно начать поиск.",
+    "Запустите команду; при успехе редактор выделит подходящий блок и прокрутит окно к нему.",
+    "Если совпадений дальше в выбранном направлении нет, скрипт покажет сообщение; книгу он не изменяет."
+  ],
+  "warnings": [],
+  "dependencies": [],
+  "dependenciesComplete": true,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "32875ac1e3962b6d0449156d26b95069c697dba348bafd5fdbd7a26e682dad84",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Поиск форматирования",
+    "поиск",
+    "навигация"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": ""
+  }
+}

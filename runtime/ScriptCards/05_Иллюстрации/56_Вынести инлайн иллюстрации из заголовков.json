@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "title": "Вынести инлайн иллюстрации из заголовков",
+  "version": "1.2",
+  "authors": [
+    {
+      "name": "TaKir",
+      "role": "author",
+      "contribution": "идея и реализация"
+    },
+    {
+      "name": "DeepSeek",
+      "role": "ai_assistance",
+      "contribution": "реализация"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Преобразует встроенные иллюстрации заголовков в блочные изображения после заголовка.",
+  "description": "Находит SPAN.image внутри заголовков под fbw_body, создаёт для каждого DIV.image с копией содержимого, удаляет исходный SPAN и вставляет новые блоки после заголовка с пустыми абзацами между ними. Если заголовок стал пустым, по умолчанию добавляет текстовый маркер. Режим заготовок меняет href нового блока на #undefined, но копирует содержимое исходного SPAN.",
+  "scope": "Все DIV.title внутри fbw_body, включая заголовки различных body; без ограничения на выделение.",
+  "modifiesDocument": true,
+  "requiresSelection": false,
+  "usage": [
+    "Запустите скрипт на открытой книге; при стандартном режиме проверьте число затронутых заголовков и подтвердите перенос.",
+    "После обработки проверьте новые блочные изображения, пустые заголовки и вставленные маркеры до сохранения."
+  ],
+  "warnings": [
+    "Режим replaceWithEmpty не очищает скопированный IMG src, поэтому созданная заготовка может сохранить ссылку на исходную картинку."
+  ],
+  "dependencies": [],
+  "dependenciesComplete": true,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "4f2d6bd32fecbb65777b6887fe8dda23af0a8671396887d8eb7ea431e8e8fa53",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Иллюстрации",
+    "изображения",
+    "параметры"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": ""
+  },
+  "settings": [
+    {
+      "name": "showStatistics",
+      "title": "Показывать подтверждение и итог",
+      "value": 1,
+      "expression": "1",
+      "description": "1 — запросить подтверждение и показать результат; 0 — выполнять без этих сообщений.",
+      "source": "code"
+    },
+    {
+      "name": "replaceWithEmpty",
+      "title": "Режим пустых иллюстраций",
+      "value": 0,
+      "expression": "0",
+      "description": "0 — сохранить href исходной иллюстрации; 1 — записать #undefined в href нового блока, содержимое SPAN при этом копируется.",
+      "source": "code"
+    },
+    {
+      "name": "addMarkerToEmptyTitle",
+      "title": "Помечать пустые заголовки",
+      "value": 1,
+      "expression": "1",
+      "description": "1 — добавить текстовый маркер, если после удаления иллюстраций заголовок пуст; 0 — оставить без маркера.",
+      "source": "code"
+    },
+    {
+      "name": "emptyTitleMarker",
+      "title": "Текст маркера заголовка",
+      "value": "ZZZ_empty_title",
+      "expression": "\"ZZZ_empty_title\"",
+      "description": "Текст, который добавляется в опустевший заголовок при включённом маркере.",
+      "source": "code"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "source": "embedded-fbe-next-card-v1",
+  "source": "script-cards-v1",
   "scripts": [
     {
       "path": "01_Регистр/01_В верхний регистр.js",

@@ -1704,6 +1704,8 @@ Section !$(Scripts) Scripts_id
 ;Scripts and dependances
 	SetOutPath "$INSTDIR\Scripts"
 	File /r ${INPUTDIR}\Scripts\*.*
+	SetOutPath "$INSTDIR\ScriptCards"
+	File /r ${INPUTDIR}\ScriptCards\*.*
 	SetOutPath "$INSTDIR\TreeCmd"
 	File /r ${INPUTDIR}\TreeCmd\*.*
 	SetOutPath "$INSTDIR\HTML"
@@ -2112,6 +2114,7 @@ fbd_uninstall_done:
   RMDir /r "$INSTDIR\Dict"
   RMDir /r "$INSTDIR\Backgrounds"
   RMDir /r "$INSTDIR\Scripts"
+  RMDir /r "$INSTDIR\ScriptCards"
   RMDir /r "$INSTDIR\TreeCmd"
   RMDir /r "$INSTDIR\HTML"
   RMDir /r "$INSTDIR\Help"

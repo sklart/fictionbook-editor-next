@@ -1,0 +1,139 @@
+{
+  "schema": 1,
+  "title": "Перенумеровать комментарии",
+  "version": "2.7",
+  "authors": [
+    {
+      "name": "Sclex",
+      "role": "author"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Согласует номера ссылок на комментарии, ID и заголовки соответствующих разделов.",
+  "description": "Обходит ссылки и разделы в body comments, обновляет маркеры, ID и заголовки по шаблонам. Существующие разделы не удаляет; итог показывает отдельным сообщением, если включён параметр уведомления.",
+  "scope": "Точка вставки у курсора и связанные структуры во всей книге.",
+  "modifiesDocument": true,
+  "requiresSelection": false,
+  "usage": [
+    "Запустите скрипт для книги с существующими ссылками и разделами комментариев.",
+    "Скрипт согласует номера ссылок с ID и заголовками разделов; ввод текста не требуется.",
+    "Проверьте обновлённые ссылки и разделы комментариев перед сохранением."
+  ],
+  "warnings": [
+    "При некорректной структуре ссылок или разделов скрипт может остановиться после частичных изменений."
+  ],
+  "dependencies": [],
+  "dependenciesComplete": false,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "53d83850b53bac58a6d2985e0dd4ae8fad248080ca1f01cab3d6555c4b46f1b9",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Комментарии",
+    "сноски",
+    "параметры"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": "При остановке перенумерации из-за некорректной структуры группа отмены не закрывается."
+  },
+  "settings": [
+    {
+      "name": "strConst1",
+      "value": "c_%N",
+      "expression": "\"c_%N\"",
+      "description": "ID раздела; %N заменяется номером.",
+      "title": "Шаблон ID комментария",
+      "source": "script"
+    },
+    {
+      "name": "strConst2",
+      "value": "%N",
+      "expression": "\"%N\"",
+      "description": "Заголовок раздела; %N заменяется номером.",
+      "title": "Заголовок комментария",
+      "source": "script"
+    },
+    {
+      "name": "strConst3",
+      "value": "",
+      "expression": "\"\"",
+      "description": "Шаблон содержимого, используемый при добавлении нового раздела.",
+      "title": "Содержимое комментария",
+      "source": "script"
+    },
+    {
+      "name": "strConst4",
+      "value": "<SUP>{%N}</SUP>",
+      "expression": "\"<SUP>{%N}</SUP>\"",
+      "description": "Разметка ссылки на комментарий; %N заменяется номером.",
+      "title": "Текст ссылки",
+      "source": "script"
+    },
+    {
+      "name": "strConst5",
+      "value": "Комментарии",
+      "expression": "\"Комментарии\"",
+      "description": "Заголовок body comments, если он создаётся.",
+      "title": "Заголовок раздела комментариев",
+      "source": "script"
+    },
+    {
+      "name": "strConst6",
+      "value": "comments",
+      "expression": "\"comments\"",
+      "description": "Значение fbname для body comments.",
+      "title": "Имя раздела комментариев",
+      "source": "script"
+    },
+    {
+      "name": "EndWindow",
+      "value": true,
+      "expression": "true",
+      "description": "При true показывает сообщение о завершении обработки.",
+      "title": "Показывать итог",
+      "source": "script"
+    },
+    {
+      "name": "addSnoska",
+      "value": false,
+      "expression": "false",
+      "description": "При false выполняет обработку существующих ссылок без новой вставки.",
+      "title": "Добавлять комментарий",
+      "source": "script"
+    },
+    {
+      "name": "InputSnoskaText",
+      "value": false,
+      "expression": "false",
+      "description": "При true запрашивает текст для нового раздела; по умолчанию отключено.",
+      "title": "Запрашивать текст комментария",
+      "source": "script"
+    },
+    {
+      "name": "MoveFocusToNote",
+      "value": false,
+      "expression": "false",
+      "description": "При true переводит видимую позицию к новому разделу.",
+      "title": "Переходить к новому разделу",
+      "source": "script"
+    },
+    {
+      "name": "lastSnoskaMode",
+      "value": false,
+      "expression": "false",
+      "description": "При true допускает вставку только после последней ссылки этого типа.",
+      "title": "Добавлять в конец списка",
+      "source": "script"
+    },
+    {
+      "name": "forsazh",
+      "value": false,
+      "expression": "false",
+      "description": "Отключает часть проверок и нумерацию; менять только при понимании структуры документа.",
+      "title": "Ускоренный режим",
+      "source": "script"
+    }
+  ]
+}

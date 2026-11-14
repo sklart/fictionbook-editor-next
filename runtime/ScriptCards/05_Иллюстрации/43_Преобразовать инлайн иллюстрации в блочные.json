@@ -1,0 +1,167 @@
+{
+  "schema": 1,
+  "title": "Преобразовать инлайн иллюстрации в блочные",
+  "version": "2.0",
+  "authors": [
+    {
+      "name": "TaKir",
+      "role": "author"
+    },
+    {
+      "name": "TaKir",
+      "role": "contributor",
+      "contribution": "idea"
+    },
+    {
+      "name": "DeepSeek",
+      "role": "ai_assistance"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Выносит иллюстрации из абзацев в отдельные блоки image.",
+  "description": "Преобразует SPAN.image внутри абзацев P в блочные DIV.image, сохраняя ссылку и содержимое изображения. В зависимости от положения изображения заменяет пустой абзац, переносит блок перед или после абзаца либо разделяет абзац на две части. Может добавлять пользовательские текстовые маркеры и пустые строки согласно настройкам.",
+  "scope": "При текстовом выделении — только SPAN.image, целиком находящиеся в диапазоне; при выделении одного элемента управления — этот SPAN.image; без выделения — все инлайн иллюстрации в fbw_body. По умолчанию исключены body notes/comments и защищённые DIV history, annotation, epigraph, title, poem, cite, table.",
+  "modifiesDocument": true,
+  "requiresSelection": null,
+  "usage": [
+    "При необходимости выделите целиком нужные инлайн иллюстрации; без выделения скрипт рассмотрит всю книгу.",
+    "Проверьте переключатели для четырёх положений иллюстрации, текстовых маркеров и пустых строк в начале исходного файла.",
+    "При обычном режиме подтвердите преобразование, затем проверьте разделённые абзацы, блоки image и статистику."
+  ],
+  "warnings": [
+    "Частично попавшая в текстовое выделение инлайн иллюстрация не обрабатывается.",
+    "Тихий режим showStatistics=0 пропускает и запрос подтверждения перед изменением документа.",
+    "При замене единственного абзаца секции пустой абзац добавляется даже при AddEmptyLines=0.",
+    "Области history, annotation, epigraph, title, poem, cite и table не обрабатываются независимо от переключателей разделов notes/comments."
+  ],
+  "dependencies": [],
+  "dependenciesComplete": true,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "a4b25c4b4fc842ff7fb6ac10154daf19b1e07b065fbd81f4a5ecc4160207c499",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Иллюстрации",
+    "изображения",
+    "параметры"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": ""
+  },
+  "settings": [
+    {
+      "name": "showStatistics",
+      "title": "Подтверждение и статистика",
+      "value": 1,
+      "expression": "1",
+      "description": "1 — спросить перед обработкой и показать результат; 0 — выполнить без этих окон.",
+      "source": "script"
+    },
+    {
+      "name": "processNotesSection",
+      "title": "Раздел примечаний",
+      "value": 0,
+      "expression": "0",
+      "description": "1 — обрабатывать body notes; по умолчанию пропускать.",
+      "source": "script"
+    },
+    {
+      "name": "processCommentsSection",
+      "title": "Раздел комментариев",
+      "value": 0,
+      "expression": "0",
+      "description": "1 — обрабатывать body comments; по умолчанию пропускать.",
+      "source": "script"
+    },
+    {
+      "name": "processEmptyPic",
+      "title": "Изображение в пустом абзаце",
+      "value": 1,
+      "expression": "1",
+      "description": "1 — преобразовывать, заменяя абзац блоком image.",
+      "source": "script"
+    },
+    {
+      "name": "processStartPic",
+      "title": "Изображение в начале абзаца",
+      "value": 1,
+      "expression": "1",
+      "description": "1 — выносить изображение перед абзацем.",
+      "source": "script"
+    },
+    {
+      "name": "processEndPic",
+      "title": "Изображение в конце абзаца",
+      "value": 1,
+      "expression": "1",
+      "description": "1 — выносить изображение после абзаца.",
+      "source": "script"
+    },
+    {
+      "name": "processCenterPic",
+      "title": "Изображение в середине абзаца",
+      "value": 1,
+      "expression": "1",
+      "description": "1 — разделить абзац и поместить блок между частями.",
+      "source": "script"
+    },
+    {
+      "name": "processMarkersStart",
+      "title": "Маркер в начале",
+      "value": 0,
+      "expression": "0",
+      "description": "1 — оставить текстовый маркер в прежней позиции изображения.",
+      "source": "script"
+    },
+    {
+      "name": "processMarkersEnd",
+      "title": "Маркер в конце",
+      "value": 0,
+      "expression": "0",
+      "description": "1 — оставить текстовый маркер в прежней позиции изображения.",
+      "source": "script"
+    },
+    {
+      "name": "processMarkersCenter",
+      "title": "Маркер в середине",
+      "value": 1,
+      "expression": "1",
+      "description": "1 — добавить маркер в конец первой части разделённого абзаца.",
+      "source": "script"
+    },
+    {
+      "name": "InlinePicMarkerStart",
+      "title": "Текст маркера начала",
+      "value": "ZZZ_INLINE_PIC_START_",
+      "expression": "\"ZZZ_INLINE_PIC_START_\"",
+      "description": "Вставляется при включённом processMarkersStart.",
+      "source": "script"
+    },
+    {
+      "name": "InlinePicMarkerEnd",
+      "title": "Текст маркера конца",
+      "value": "_ZZZ_INLINE_PIC_END",
+      "expression": "\"_ZZZ_INLINE_PIC_END\"",
+      "description": "Вставляется при включённом processMarkersEnd.",
+      "source": "script"
+    },
+    {
+      "name": "InlinePicMarkerCenter",
+      "title": "Текст маркера середины",
+      "value": "_ZZZ_INLINE_PIC_CENTER",
+      "expression": "\"_ZZZ_INLINE_PIC_CENTER\"",
+      "description": "Вставляется при включённом processMarkersCenter.",
+      "source": "script"
+    },
+    {
+      "name": "AddEmptyLines",
+      "title": "Пустые строки рядом с блоком",
+      "value": 1,
+      "expression": "1",
+      "description": "1 — добавлять при необходимости; при замене единственного абзаца секции пустой абзац добавляется независимо от флага.",
+      "source": "script"
+    }
+  ]
+}

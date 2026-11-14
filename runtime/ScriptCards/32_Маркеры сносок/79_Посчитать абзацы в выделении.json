@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "title": "Посчитать абзацы в выделении",
+  "version": "1.1",
+  "authors": [
+    {
+      "name": "TaKir",
+      "role": "author"
+    },
+    {
+      "name": "TaKir",
+      "role": "contributor",
+      "contribution": "idea"
+    },
+    {
+      "name": "DeepSeek",
+      "role": "ai_assistance"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Считает полные абзацы, пересекающие выделение, и делит их на пустые, нумерованные и остальные.",
+  "description": "Проверяет непустое выделение внутри текста книги, собирает все пересекающие его p-элементы и считает пустые строки, абзацы с номером в начале и прочие абзацы. Ничего в книге не изменяет.",
+  "scope": "Все целые p-абзацы, которые пересекает выделение, включая частично захваченные границы.",
+  "modifiesDocument": false,
+  "requiresSelection": true,
+  "usage": [
+    "Выделите фрагмент текста книги и запустите подсчёт.",
+    "Смотрите в отчёте общее число абзацев и разбивку на пустые, нумерованные и прочие."
+  ],
+  "warnings": [
+    "Если выделение захватило хотя бы часть абзаца, в статистику входит весь абзац."
+  ],
+  "dependencies": [],
+  "dependenciesComplete": true,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "afdae3c18909da817f530017983852164f77f3ea254f6717ea71a5674185cb12",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Маркеры сносок",
+    "параметры"
+  ],
+  "undo": {
+    "status": "no_explicit_grouping",
+    "description": ""
+  },
+  "settings": []
+}

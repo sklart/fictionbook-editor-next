@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "title": "Удалить все эпиграфы и их содержимое",
+  "version": "1.0",
+  "authors": [
+    {
+      "name": "Sclex",
+      "role": "author"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Удаляет из книги все эпиграфы вместе с их содержимым.",
+  "description": "Обходит все DIV внутри корня книги и удаляет каждый DIV.epigraph вместе с дочерними узлами. Результат выводит в строку состояния; если эпиграфов нет, показывает сообщение.",
+  "scope": "Все DIV.epigraph внутри корня fbw_body, включая вложенные блоки.",
+  "modifiesDocument": true,
+  "requiresSelection": false,
+  "usage": [
+    "Откройте книгу и запустите скрипт для удаления всех эпиграфов с текстом.",
+    "Проверьте число удалённых эпиграфов в строке состояния и связанные ссылки."
+  ],
+  "warnings": [
+    "Удаляются и контейнеры эпиграфов, и весь их текст; ссылки на удалённые элементы могут перестать работать. Сохраните копию книги перед запуском."
+  ],
+  "dependencies": [],
+  "dependenciesComplete": true,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "462028cca300eb4cbd952e43d423986108124b878d8fd79ae21f85be18e609db",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Эпиграфы"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": ""
+  }
+}

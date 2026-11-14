@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "title": "Расформатировать все аннотации разделов",
+  "version": "1.0",
+  "authors": [
+    {
+      "name": "Sclex",
+      "role": "author"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Снимает оболочки аннотаций, вложенных в разделы книги, сохраняя их текст.",
+  "description": "Обходит DIV.annotation внутри корня книги и удаляет оболочку с сохранением дочерних узлов, если родитель аннотации не является самим корнем fbw_body. Аннотации, непосредственно вложенные в корень, пропускает.",
+  "scope": "Все DIV.annotation внутри fbw_body, кроме его непосредственных дочерних элементов.",
+  "modifiesDocument": true,
+  "requiresSelection": false,
+  "usage": [
+    "Откройте книгу и запустите скрипт для снятия разметки аннотаций разделов.",
+    "Проверьте оставшийся текст и число обработанных аннотаций в строке состояния."
+  ],
+  "warnings": [
+    "Текст остаётся, но разметка аннотаций исчезает."
+  ],
+  "dependencies": [],
+  "dependenciesComplete": true,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "49abebd178d118a1494ef0fc0c9d50bb50e9d5ccc49e12753e3dce55aa32d5d8",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Обработка форматирования"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": ""
+  }
+}

@@ -2938,8 +2938,14 @@ void CMainFrame::RunPortableStateTestScenario()
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 		const CString alteredComment = scriptsDirectory + L"comment-changed.js";
 		const bool commentCopied = ::CopyFileW(commentPath, alteredComment, FALSE) != FALSE;
+		// The copied user script has its own external-card identity. Preserve
+		// the original expected revision to exercise the Changed warning.
+		const CString originalCardPath = ScriptCards::ExternalCardPath(commentPath);
+		const CString alteredCardPath = ScriptCards::ExternalCardPath(alteredComment);
+		const bool alteredCardCopied = !originalCardPath.IsEmpty() && !alteredCardPath.IsEmpty() &&
+			::CopyFileW(originalCardPath, alteredCardPath, FALSE) != FALSE;
 		bool commentAltered = false;
-		if(commentCopied) {
+		if(commentCopied && alteredCardCopied) {
 			HANDLE file = ::CreateFileW(alteredComment, FILE_APPEND_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 			if(file != INVALID_HANDLE_VALUE) { DWORD written = 0; commentAltered = ::WriteFile(file, " ", 1, &written, NULL) && written == 1; ::CloseHandle(file); }
 		}
@@ -3070,8 +3076,10 @@ void CMainFrame::RunPortableStateTestScenario()
 		longCard.uid = L"long-heading-card";
 		const bool longCardOpened = m_script_card_window.ShowScript(m_hWnd, longCard, runtimePath,
 			[&commentRunCount](const CString&) { ++commentRunCount; }) && awaitCard();
+		const ScriptCards::Card longParsed = ScriptCards::LoadFile(longCard.path);
 		if (longCardOpened) ::SendMessageW(m_script_card_window.ViewportWindow(), WM_VSCROLL, SB_BOTTOM, 0);
-		const bool longSettingsFit = longCardOpened && m_script_card_window.CanScroll() && m_script_card_window.SettingsLastLineFits();
+		const bool longCardCanScroll = m_script_card_window.CanScroll();
+		const bool longSettingsFit = longCardOpened && longCardCanScroll && m_script_card_window.SettingsLastLineFits();
 		ScriptDescriptor symbols = {};
 		symbols.name = L"Спецсимволы";
 		symbols.path = runtimePath + L"\\Scripts\\07_Символы\\01_Спецсимволы.js";
@@ -3145,6 +3153,9 @@ void CMainFrame::RunPortableStateTestScenario()
 		report.AppendFormat("clipboard-skipped=%d\nclipboard-captured=%d\nclipboard-restored=%d\nclipboard-copy-sequence=%lu\nclipboard-read-sequence=%lu\n",
 			clipboardSkipped, clipboardCaptured, clipboardRestored, static_cast<unsigned long>(copySequence), static_cast<unsigned long>(afterReadSequence));
 		report.AppendFormat("long-settings-fit=%d\n", longSettingsFit);
+		report.AppendFormat("long-card-state=%d\nlong-card-opened=%d\nlong-card-scroll=%d\nlong-card-settings=%u\nlong-card-error=%s\n",
+			static_cast<int>(longParsed.state), longCardOpened, longCardCanScroll, static_cast<unsigned>(longParsed.settingRows.size()),
+			static_cast<LPCSTR>(CStringA(CW2A(longParsed.error, CP_UTF8))));
 		report.AppendFormat("category-formatted=%d\nmetadata-semantics=%d\nunknown-author=%d\nunverified-undo-hidden=%d\nverified-undo=%d\n", categoryFormatted, metadataSemantics, unknownShown, unverifiedHidden, verifiedShown);
 		report.AppendFormat("preview-bridge-timer=%d\npreview-bridge-exit=%d\npreview-pointer-link=%d\npreview-pointer-exit=%d\npreview-pointer-crossing=%d\npreview-deactivated=%d\n",
 			previewBridgeTimer, previewBridgeExit, previewPointerLink, previewPointerExit, previewPointerCrossing, previewDeactivated);

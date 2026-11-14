@@ -1,4 +1,4 @@
-"""Short regression for all embedded script cards and the derived index."""
+"""Check all bundled external cards, unchanged JS revisions and the index."""
 
 from __future__ import annotations
 
@@ -23,6 +23,8 @@ def main() -> None:
     for path in files:
         document, result = inspect_file(path, None, ROOT / "runtime")
         assert result["status"] == "current", (path, result)
+        assert document.span is None and result.get('cardPath'), path
+        assert document.card['sourceRevision']['algorithm'] == 'sha256-raw-js-v1', path
         assert result["dependencyStatus"] != "invalid", (path, result)
         for dependency in result["dependencies"]:
             assert dependency["status"] != "changed", (path, dependency)

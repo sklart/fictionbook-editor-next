@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "title": "Превратить внешние ссылки в примечания",
+  "version": "1.3",
+  "authors": [
+    {
+      "name": "Sclex",
+      "role": "original_author"
+    },
+    {
+      "name": "stokber",
+      "role": "modifier"
+    },
+    {
+      "name": "stokber",
+      "role": "contributor",
+      "contribution": "rules_compiler"
+    },
+    {
+      "role": "unknown"
+    }
+  ],
+  "authorshipStatus": "partial_attribution",
+  "summary": "Превращает внешние ссылки в примечания.",
+  "description": "Сначала превращает адреса внешних ссылок во временно помеченные фрагменты, затем переносит их в отдельные примечания/комментарии и формирует внутренние ссылки. Меняет структуру книги и использует служебные маркеры в буфере обмена; проверяет существующие связи и вложенность секций.",
+  "scope": "Внешние ссылки в абзацах книги; история и аннотация включаются параметрами. Раздел notes и ссылки на него перенумеровываются.",
+  "modifiesDocument": true,
+  "requiresSelection": false,
+  "usage": [
+    "Запустите скрипт для переноса адресов внешних ссылок в примечания. На их месте будут созданы внутренние ссылки на раздел notes."
+  ],
+  "warnings": [
+    "Текущее содержимое буфера обмена может быть заменено или очищено."
+  ],
+  "dependencies": [],
+  "dependenciesComplete": false,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "6e91bcae4aa6c80911d99f39b0b8d9cb62b749932dd2e89c0e4332f6fe5425a8",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "Примечания",
+    "буфер обмена",
+    "сноски",
+    "параметры"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": ""
+  },
+  "settings": [
+    {
+      "name": "ObrabotkaHistory",
+      "value": true,
+      "expression": "true",
+      "description": "обрабатывать ли history",
+      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя.",
+      "title": "Обрабатывать историю"
+    },
+    {
+      "name": "ObrabotkaAnnotation",
+      "value": true,
+      "expression": "true",
+      "description": "обрабатывать ли annotation",
+      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя.",
+      "title": "Обрабатывать аннотацию"
+    }
+  ]
+}

@@ -38,7 +38,7 @@ def main() -> None:
     assert escaped[0]["reachability"] == "unknown"
     script = ROOT / "runtime" / "Scripts" / "03_Комментарии" / "01_Добавить комментарий, остаться на его ссылке.js"
     original = script.read_bytes()
-    original_document = card_tool["read_document"](original)
+    original_document = card_tool["inspect_file"](script, None, None)[0]
     record = audit["inspect"](script)
     assert record["codeSha256"] == original_document.sha256
     assert len(record["claims"]["settings"]) == 11
@@ -46,7 +46,9 @@ def main() -> None:
     with TemporaryDirectory() as temporary:
         root = Path(temporary)
         copied_script = root / "example.js"
-        copied_script.write_bytes(original)
+        legacy_card = copy.deepcopy(original_document.card)
+        legacy_card['sourceRevision']['algorithm'] = card_tool['ALGORITHM']
+        copied_script.write_bytes(card_tool['insert_card'](original, legacy_card))
         apply = audit["apply_proposals"]
         apply.__globals__["SCRIPTS"] = root
         edited_summary = original_document.card["summary"] + " "
@@ -84,7 +86,7 @@ def main() -> None:
         code = ("function Run() { var ns='http://www.w3.org/1999/xlink'; "
                 "window.external.BeginUndoUnit(document); if (!document.body) return; "
                 "window.external.EndUndoUnit(document); }\n").encode("utf-8")
-        card = copy.deepcopy(original_document.card)
+        card = copy.deepcopy(legacy_card)
         card["settings"] = []
         card["usage"] = ["Запустите команду и ответьте на её диалоги."]
         card["warnings"] = ["Есть запуск внешнего приложения или открытие сетевого адреса; проверьте сформированную команду и передаваемые данные."]
@@ -137,7 +139,7 @@ def main() -> None:
     resolved = []
     for proposal in proposals:
         assert isinstance(proposal["codeIssues"], list), proposal["path"]
-        document = card_tool["read_document"]((scripts_root / proposal["path"]).read_bytes())
+        document = card_tool["inspect_file"](scripts_root / proposal["path"], None, None)[0]
         if proposal["path"] in previous_notes:
             # These proposals retain their reviewed historical source revision.
             # The newer COM fix has only two rerun scenarios, not the prior 94.
@@ -152,7 +154,12 @@ def main() -> None:
         assert not audit["GENERIC_UNDO"].search(document.card.get("undo", {}).get("description", "")), proposal["path"]
         # Older records can use physical file lines, while newer records use
         # executable-code lines after the embedded card.
-        line_count = len(document.data.decode(document.encoding).splitlines())
+        # Existing audit evidence records physical lines before extraction.
+        # Reconstruct the former block solely to bound historical line numbers.
+        previous_card = copy.deepcopy(document.card)
+        previous_card['sourceRevision']['algorithm'] = card_tool['ALGORITHM']
+        former = card_tool['serialize'](previous_card, document.encoding, '\n')
+        line_count = len(document.data.decode(document.encoding).splitlines()) + len(former.decode(document.encoding).splitlines())
         for issue in proposal["codeIssues"]:
             assert isinstance(issue["line"], int) and 1 <= issue["line"] <= line_count
             assert isinstance(issue["issue"], str) and issue["issue"].strip()
@@ -166,7 +173,7 @@ def main() -> None:
             assert item["revisionCommits"] == ["ca4a777066c6786fbd75a4cfbc03637dd924b6d3", "ea1f9115c7a194fec5f023315f9e4c5e12692b01"], item["path"]
             assert item["currentCodeSha256"] == current_notes[item["path"]]["codeSha256"]
     historical_proposal = next(item for item in proposals if item["path"] in current_notes)
-    historical_document = card_tool["read_document"]((scripts_root / historical_proposal["path"]).read_bytes())
+    historical_document = card_tool["inspect_file"](scripts_root / historical_proposal["path"], None, None)[0]
     for changed_chain in ([], executable_changes + [next(item for item in executable_changes
                             if item["path"] == historical_proposal["path"] and
                             item["previousCodeSha256"] == historical_proposal["codeSha256"]) ]):
@@ -250,7 +257,7 @@ def main() -> None:
     assert update["previousCodeSha256"] == "3d38de988b6294c81d63edc9af50b9f341474289417b11e2c4aee28f7a0cab96"
     assert update["codeSha256"] == runtime["sourceCodeSha256"]
     for path in files:
-        card = card_tool["read_document"]((scripts_root / path).read_bytes()).card
+        card = card_tool["inspect_file"](scripts_root / path, None, None)[0].card
         assert not re.search(r"ссылк[аи] на (?:примечаний|комментариев)", str(card["usage"]) + str(card["warnings"])), path
     print("Script 64 runtime evidence hash and reported outcome are consistent.")
 

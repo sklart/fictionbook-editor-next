@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "title": "Перенумеровать текстовые маркеры",
+  "version": "1.0",
+  "authors": [
+    {
+      "name": "TaKir",
+      "role": "author"
+    },
+    {
+      "name": "TaKir",
+      "role": "contributor",
+      "contribution": "idea"
+    },
+    {
+      "name": "DeepSeek",
+      "role": "ai_assistance"
+    }
+  ],
+  "authorshipStatus": "declared",
+  "summary": "Перенумеровывает отдельные абзацы-маркеры zzz_pic по порядку.",
+  "description": "Ищет отдельные абзацы с zzz_pic либо с этим маркером и номером из трёх или более цифр, затем заменяет их на последовательность zzz_pic_001, zzz_pic_002 и далее. По умолчанию разделы примечаний и комментариев пропускаются.",
+  "scope": "Полные абзацы, пересекающие выделенный диапазон в тексте книги.",
+  "modifiesDocument": true,
+  "requiresSelection": true,
+  "usage": [
+    "Проверьте, что нужные маркеры занимают отдельные абзацы и имеют выбранный тип zzz_pic.",
+    "При необходимости измените параметры обработки примечаний и комментариев в исходнике.",
+    "Запустите команду, подтвердите действие в сообщении и проверьте результат по всей книге."
+  ],
+  "warnings": [
+    "Все найденные номера назначаются заново в порядке абзацев; прежняя связь маркера с внешним объектом может измениться.",
+    "Содержимое совпавшего абзаца заменяется новым текстовым узлом; прежнее оформление внутри маркера теряется."
+  ],
+  "dependencies": [],
+  "dependenciesComplete": true,
+  "sourceRevision": {
+    "algorithm": "sha256-raw-js-v1",
+    "sha256": "8c11bc4bd7944f0d483683ceb59869c99d6b34e88c3c71156f134b591967fcda",
+    "reviewStatus": "generated"
+  },
+  "tags": [
+    "'Числовые' скрипты",
+    "параметры"
+  ],
+  "undo": {
+    "status": "explicit_calls_found",
+    "description": ""
+  },
+  "settings": [
+    {
+      "name": "markerType",
+      "title": "Тип маркера",
+      "value": "zzz_pic",
+      "expression": "\"zzz_pic\"",
+      "description": "Текст маркера без номера; по умолчанию zzz_pic.",
+      "source": "script"
+    },
+    {
+      "name": "showStatistics",
+      "title": "Подтверждение и статистика",
+      "value": 1,
+      "expression": "1",
+      "description": "1 — спрашивать подтверждение и показывать итог; 0 — тихий режим.",
+      "source": "script"
+    },
+    {
+      "name": "processNotesSection",
+      "title": "Обрабатывать примечания",
+      "value": 0,
+      "expression": "0",
+      "description": "1 — включить body примечаний; 0 — пропустить.",
+      "source": "script"
+    },
+    {
+      "name": "processCommentsSection",
+      "title": "Обрабатывать комментарии",
+      "value": 0,
+      "expression": "0",
+      "description": "1 — включить body комментариев; 0 — пропустить.",
+      "source": "script"
+    }
+  ]
+}

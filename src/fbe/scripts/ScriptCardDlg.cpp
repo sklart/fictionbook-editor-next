@@ -1003,7 +1003,7 @@ void CScriptCardDlg::ShowCard(const ScriptCards::Card& card)
 	switch(card.state)
 	{
 	case ScriptCards::State::Missing: state = Label(L"fbe.script_card.missing", L"Detailed information about this script is not available yet."); break;
-	case ScriptCards::State::Invalid: state = Label(L"fbe.script_card.invalid", L"The embedded description is invalid."); break;
+	case ScriptCards::State::Invalid: state = Label(L"fbe.script_card.invalid", L"The script description is invalid."); break;
 	case ScriptCards::State::Unchecked: break;
 	case ScriptCards::State::Current: break;
 	case ScriptCards::State::Changed: state = Label(L"fbe.script_card.changed", L"⚠ Code changed. Description may be outdated"); break;

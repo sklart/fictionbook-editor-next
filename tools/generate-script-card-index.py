@@ -1,4 +1,4 @@
-"""Build a deterministic search index from embedded JS cards, or check freshness."""
+"""Build a deterministic search index from external cards, falling back to embedded cards."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ def build() -> bytes:
             "tags": card.get("tags", []),
             "codeSha256": result["codeSha256"],
         })
-    return (json.dumps({"schema": 1, "source": "embedded-fbe-next-card-v1", "scripts": entries},
+    return (json.dumps({"schema": 1, "source": "script-cards-v1", "scripts": entries},
                        ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 

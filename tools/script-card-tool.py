@@ -1,4 +1,4 @@
-"""Inspect, validate and explicitly stamp embedded FBE Next script cards."""
+"""Inspect, validate and explicitly stamp external or legacy embedded cards."""
 
 from __future__ import annotations
 
@@ -10,13 +10,14 @@ from pathlib import Path, PurePosixPath
 import re
 import stat
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 OPEN = '/*<FBE-SCRIPT-CARD version="1">'
 CLOSE = '</FBE-SCRIPT-CARD>*/'
 LEGACY_OPEN = '/*<FBE-NEXT-CARD version="1">'
 LEGACY_CLOSE = '</FBE-NEXT-CARD>*/'
 ALGORITHM = "sha256-exclude-fbe-card-v1"
+RAW_ALGORITHM = "sha256-raw-js-v1"
 MAX_CARD_BYTES = 64 * 1024
 REQUIRED = (
     "schema", "title", "version", "authors", "summary", "description",
@@ -171,7 +172,7 @@ def validate_schema(card: dict) -> list[str]:
     if not isinstance(revision, dict):
         problems.append("sourceRevision must be an object")
     else:
-        if revision.get("algorithm") != ALGORITHM:
+        if revision.get("algorithm") not in (ALGORITHM, RAW_ALGORITHM):
             problems.append("unsupported sourceRevision algorithm")
         digest = revision.get("sha256")
         if digest is not None and (not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest)):
@@ -252,15 +253,54 @@ def dependency_status(card: dict, resource_root: Path | None) -> tuple[str, list
     return overall, results
 
 
-def inspect_file(path: Path, encoding: str | None, resource_root: Path | None) -> tuple[Document, dict]:
-    document = read_document(path.read_bytes(), encoding)
+def external_card_path(path: Path, cards_root: Path | None = None, scripts_root: Path | None = None) -> Path | None:
+    scripts_root = scripts_root or Path(__file__).resolve().parent.parent / 'runtime' / 'Scripts'
+    cards_root = cards_root or Path(__file__).resolve().parent.parent / 'runtime' / 'ScriptCards'
+    try:
+        relative = path.resolve().relative_to(scripts_root.resolve())
+    except ValueError:
+        return None
+    candidate = cards_root / relative.with_suffix('.json')
+    if not candidate.resolve().is_relative_to(cards_root.resolve()):
+        raise CardError('card path leaves the card root')
+    return candidate
+
+
+def inspect_file(path: Path, encoding: str | None, resource_root: Path | None,
+                 card_path: Path | None = None) -> tuple[Document, dict]:
+    card_path = card_path if card_path is not None else external_card_path(path)
+    external = card_path is not None and card_path.exists()
+    data = path.read_bytes()
+    if external:
+        codec, bom_size = _encoding(data, encoding)
+        document = Document(data, codec, bom_size, None, None)
+    else:
+        document = read_document(data, encoding)
+    if external:
+        try:
+            payload = card_path.read_bytes()
+            if len(payload) > MAX_CARD_BYTES:
+                raise CardError('card exceeds 64 KiB')
+            card = json.loads(payload.decode('utf-8-sig', errors='strict'), object_pairs_hook=_unique_pairs)
+            if not isinstance(card, dict):
+                raise CardError('card JSON must be an object')
+            document = replace(document, card=card)
+        except (OSError, UnicodeError, ValueError) as error:
+            raise CardError(f'external card is invalid: {error}') from error
     result: dict = {"path": str(path), "encoding": document.encoding, "codeSha256": document.sha256}
+    if external:
+        result['cardPath'] = str(card_path)
+        result['codeSha256'] = hashlib.sha256(document.data).hexdigest()
     if document.card is None:
         result["status"] = "missing"
         return document, result
     problems = validate_schema(document.card)
+    expected_algorithm = RAW_ALGORITHM if external else ALGORITHM
+    revision = document.card.get('sourceRevision')
+    if not isinstance(revision, dict) or revision.get('algorithm') != expected_algorithm:
+        problems.append(f'sourceRevision algorithm must be {expected_algorithm}')
     expected = document.card.get("sourceRevision", {}).get("sha256") if isinstance(document.card.get("sourceRevision"), dict) else None
-    result.update({"status": "invalid" if problems else "unchecked" if expected is None else "current" if expected == document.sha256 else "changed",
+    result.update({"status": "invalid" if problems else "unchecked" if expected is None else "current" if expected == result['codeSha256'] else "changed",
                    "expectedSha256": expected, "reviewStatus": document.card.get("sourceRevision", {}).get("reviewStatus") if isinstance(document.card.get("sourceRevision"), dict) else None,
                    "problems": problems})
     result["dependencyStatus"], result["dependencies"] = dependency_status(document.card, resource_root)
@@ -287,16 +327,26 @@ def main() -> int:
     parser.add_argument("file", type=Path)
     parser.add_argument("--encoding", help="Override detection for files without a BOM")
     parser.add_argument("--resource-root", type=Path, help="Root for literal dependency paths")
+    parser.add_argument("--card", type=Path, help="Explicit external card path")
+    parser.add_argument("--cards-root", type=Path, help="External ScriptCards directory")
+    parser.add_argument("--scripts-root", type=Path, help="Script tree used to map a relative card path")
     parser.add_argument("--accept-revision", action="store_true", help="Explicitly accept the current source revision for stamp")
     args = parser.parse_args()
     try:
-        document, result = inspect_file(args.file, args.encoding, args.resource_root)
+        card_path = args.card or external_card_path(args.file, args.cards_root, args.scripts_root)
+        document, result = inspect_file(args.file, args.encoding, args.resource_root, card_path)
         if args.command == "stamp":
             if not args.accept_revision:
                 raise CardError("stamp requires --accept-revision after reviewing the description")
             if document.card is None or result["problems"]:
                 raise CardError("stamp requires a valid embedded card")
-            document.card["sourceRevision"]["sha256"] = document.sha256
+            document.card["sourceRevision"]["sha256"] = result['codeSha256']
+            if result.get('cardPath'):
+                card_path = Path(result['cardPath'])
+                _atomic_write(card_path, (json.dumps(document.card, ensure_ascii=False, indent=2) + '\n').encode('utf-8'))
+                _, result = inspect_file(args.file, args.encoding, args.resource_root, card_path)
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+                return 0
             old_card = document.data[document.span[0]:document.span[1]]
             newline = "\r\n" if "\r\n".encode(document.encoding) in old_card else "\n"
             replacement = serialize(document.card, document.encoding, newline)
