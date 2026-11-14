@@ -7217,6 +7217,13 @@ namespace
                         ancestor->get_parentNode(&rawAncestor);
                         ancestor = MSXML2::IXMLDOMNodePtr(rawAncestor, false);
                     }
+                    // Some publishers use a plain toc.xhtml with private CSS
+                    // names such as tocCt and reciprocal chapter links. A
+                    // numbered heading linking back to that entry is still
+                    // navigation; reciprocal notes in other files remain notes.
+                    if (!IsNoteReferenceElement(link) && reciprocal &&
+                        (filename == L"toc" || filename == L"contents"))
+                        targetIsContents = true;
                     if (targetIsContents)
                     {
                         g_content.navigationTargets.emplace(PathAnchorMapKey(path, fragment).GetString());

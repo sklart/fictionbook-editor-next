@@ -1751,6 +1751,20 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertEqual(self.notes(root), [])
         self.assertIn('1. Chapter', self.text(root.find('f:body', NS)))
 
+    def test_reciprocal_numbered_heading_to_toc_file_is_not_note(self):
+        chapter = ('<p class="cn"><a id="chapter1" href="toc.xhtml#entry1">1</a></p>'
+                   '<p class="ct">Chapter title</p><p>Body<a href="#note1"><sup>2</sup></a></p>'
+                   '<p class="footnote" id="note1">Actual note text</p>')
+        contents = '<p class="tocCt"><a id="entry1" href="chapter.xhtml#chapter1">1. Chapter title</a></p>'
+        root = self.convert(chapter, {'Text/toc.xhtml': ('contents', 'application/xhtml+xml', contents)},
+                            spine=['contents', 'chapter'], navigation=False)
+        number = next(a for a in root.findall('.//f:a', NS) if self.text(a) == '1')
+        self.assertIsNone(number.get('type'))
+        self.assertEqual(number.get(HREF), '#entry1')
+        self.assertTrue(any(e.get('id') == 'entry1' for e in root.find('f:body', NS).iter()))
+        self.assertFalse(any('Chapter title' in self.text(n) for n in self.notes(root)))
+        self.assertTrue(any('Actual note text' in self.text(n) for n in self.notes(root)))
+
     def test_numeric_contents_link_to_chapter_container_is_not_note(self):
         root = self.convert('<div class="chapter" id="chapter1"><div class="chapterHead"><h2><a href="contents.xhtml#entry1">1</a></h2></div>'
                             '<div class="chapterBody"><p>Essential chapter paragraph</p></div></div>',
