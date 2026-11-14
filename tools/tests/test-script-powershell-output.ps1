@@ -13,16 +13,17 @@ try {
     $reader = $fso.OpenTextFile($output, 1, $false, -1)
     try { $value = $reader.ReadAll().Trim() } finally { $reader.Close() }
     if ($value -cne 'FBE_TEST') { throw 'Unicode result was not decoded as expected.' }
-    $inputFile = Join-Path $testDirectory "image's sample.bin"
+    $env:FBE_DEP_TEST = 'expanded'
+    $inputFile = Join-Path $testDirectory "image's %FBE_DEP_TEST% пример.bin"
     [IO.File]::WriteAllBytes($inputFile, [byte[]](65, 66))
     $secondOutput = $fso.BuildPath($testDirectory, $fso.GetTempName())
-    $literal = $inputFile.Replace("'", "''").Replace('\', '\\')
-    $command = 'powershell -ExecutionPolicy Bypass -command "[Console]::OutputEncoding=[System.Text.Encoding]::Unicode; $b=[System.IO.File]::ReadAllBytes(''' + $literal + '''); Write-Output $b.Length" > "' + $secondOutput + '" 2>&1'
+    $literal = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($inputFile))
+    $command = 'powershell -ExecutionPolicy Bypass -command "[Console]::OutputEncoding=[System.Text.Encoding]::Unicode; $b=[System.IO.File]::ReadAllBytes([Text.Encoding]::Unicode.GetString([Convert]::FromBase64String(''' + $literal + '''))); Write-Output $b.Length" > "' + $secondOutput + '" 2>&1'
     $exitCode = $shell.Run($shell.ExpandEnvironmentStrings('%ComSpec%') + ' /d /s /c "' + $command + '"', 0, $true)
     if ($exitCode -ne 0 -or -not $fso.FileExists($secondOutput)) { throw 'Image path command failed.' }
     $reader = $fso.OpenTextFile($secondOutput, 1, $false, -1)
     try { $value = $reader.ReadAll().Trim() } finally { $reader.Close() }
-    if ($value -cne '2') { throw 'An image path with an apostrophe was not read correctly.' }
+    if ($value -cne '2') { throw 'A Unicode image path with shell metacharacters was not read correctly.' }
     Write-Host 'WScript.Shell, cmd redirection and FSO Unicode decoding passed.'
 } finally {
     $resolved = (Resolve-Path -LiteralPath $testDirectory).Path
