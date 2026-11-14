@@ -215,20 +215,46 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 	}
 	if (IsFbeTestScenario(L"script-card-external-runtime"))
 	{
-		wchar_t path[32768] = {};
-		const DWORD pathLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_CARD_SCRIPT", path, _countof(path));
-		if(pathLength == 0 || pathLength >= _countof(path)) { ::PostQuitMessage(2); return 0; }
-		ScriptCards::Card card = ScriptCards::LoadFile(path);
-		wchar_t resources[32768] = {};
-		const DWORD resourceLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_CARD_RESOURCE_ROOT", resources, _countof(resources));
-		if(resourceLength > 0 && resourceLength < _countof(resources)) ScriptCards::VerifyDependencies(card, resources);
-		const CString preview = ScriptCards::ReadPreviewSummary(path);
-		const CString external = ScriptCards::ExternalCardPath(path);
+		std::vector<wchar_t> path(32768, L'\0');
+		const DWORD pathLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_CARD_SCRIPT", path.data(), static_cast<DWORD>(path.size()));
+		if(pathLength == 0 || pathLength >= path.size()) { ::PostQuitMessage(2); return 0; }
+		ScriptCards::Card card = ScriptCards::LoadFile(path.data());
+		std::vector<wchar_t> resources(32768, L'\0');
+		const DWORD resourceLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_CARD_RESOURCE_ROOT", resources.data(), static_cast<DWORD>(resources.size()));
+		if(resourceLength > 0 && resourceLength < resources.size()) ScriptCards::VerifyDependencies(card, resources.data());
+		const CString preview = ScriptCards::ReadPreviewSummary(path.data());
+		ScriptDescriptor previewScript = {}; previewScript.path = path.data(); previewScript.uid = L"external-card-probe";
+		const CString treePreview = m_document_tree.m_tree.m_tree.ScriptPreviewSummary(previewScript);
+		const CString external = ScriptCards::ExternalCardPath(path.data());
+		std::vector<wchar_t> replacement(32768, L'\0');
+		const DWORD replacementLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_CARD_REPLACEMENT", replacement.data(), static_cast<DWORD>(replacement.size()));
+		bool cacheRefreshed = false, cacheRestored = true;
+		if(replacementLength > 0 && replacementLength < replacement.size() && !external.IsEmpty())
+		{
+			WIN32_FILE_ATTRIBUTE_DATA oldInfo = {}, replacementInfo = {};
+			const CString backup = external + L".probe-backup";
+			const bool sameSize = ::GetFileAttributesExW(external, GetFileExInfoStandard, &oldInfo) &&
+				::GetFileAttributesExW(replacement.data(), GetFileExInfoStandard, &replacementInfo) &&
+				oldInfo.nFileSizeHigh == replacementInfo.nFileSizeHigh && oldInfo.nFileSizeLow == replacementInfo.nFileSizeLow;
+			const bool backedUp = sameSize && ::CopyFileW(external, backup, TRUE);
+			if(backedUp && ::CopyFileW(replacement.data(), external, FALSE))
+			{
+				HANDLE changed = ::CreateFileW(external, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 0, NULL);
+				const bool timeRestored = changed != INVALID_HANDLE_VALUE && ::SetFileTime(changed, NULL, NULL, &oldInfo.ftLastWriteTime);
+				if(changed != INVALID_HANDLE_VALUE) ::CloseHandle(changed);
+				const CString nextPreview = m_document_tree.m_tree.m_tree.ScriptPreviewSummary(previewScript);
+				cacheRefreshed = timeRestored && nextPreview != treePreview && nextPreview == L"External updated";
+			}
+			cacheRestored = backedUp && ::CopyFileW(backup, external, FALSE);
+			if(backedUp) ::DeleteFileW(backup);
+		}
 		CStringA report;
-		report.Format("state=%d\ndependency-state=%d\nsummary=%s\npreview=%s\nexternal=%s\n", static_cast<int>(card.state),
+		report.Format("state=%d\ndependency-state=%d\ncache-refreshed=%d\ncache-restored=%d\nsummary=%s\npreview=%s\ntree-preview=%s\nexternal=%s\n", static_cast<int>(card.state),
 			static_cast<int>(card.dependencyState),
+			cacheRefreshed, cacheRestored,
 			static_cast<LPCSTR>(CStringA(CW2A(card.summary, CP_UTF8))),
 			static_cast<LPCSTR>(CStringA(CW2A(preview, CP_UTF8))),
+			static_cast<LPCSTR>(CStringA(CW2A(treePreview, CP_UTF8))),
 			static_cast<LPCSTR>(CStringA(CW2A(external, CP_UTF8))));
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(0); return 0;

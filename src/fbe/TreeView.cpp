@@ -483,7 +483,14 @@ void CTreeView::HideScriptPreviewOnDeactivate()
 CString CTreeView::ScriptPreviewSummary(const ScriptDescriptor& script)
 {
 	WIN32_FILE_ATTRIBUTE_DATA data = {};
-	if(!::GetFileAttributesExW(script.path, GetFileExInfoStandard, &data)) return CString();
+	CString metadataPath(script.path); metadataPath.Replace(L'/', L'\\');
+	if(metadataPath.Left(4) != L"\\\\?\\")
+	{
+		if(metadataPath.Left(2) == L"\\\\") metadataPath = CString(L"\\\\?\\UNC\\") + metadataPath.Mid(2);
+		else if(metadataPath.GetLength() >= 3 && metadataPath[1] == L':' && metadataPath[2] == L'\\')
+			metadataPath = CString(L"\\\\?\\") + metadataPath;
+	}
+	if(!::GetFileAttributesExW(metadataPath, GetFileExInfoStandard, &data)) return CString();
 	const ULONGLONG size = (static_cast<ULONGLONG>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
 	const CString cardPath = ScriptCards::ExternalCardPath(script.path);
 	WIN32_FILE_ATTRIBUTE_DATA cardData = {};

@@ -11,7 +11,7 @@ $firstIso = $iso
 $otherIso = $null
 $passed = $false
 $saved = @{}
-foreach($name in @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_CARD_SCRIPT','FBE_NEXT_TEST_CARD_RESOURCE_ROOT','FBE_NEXT_TEST_SETTINGS_DIRECTORY')) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
+foreach($name in @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_CARD_SCRIPT','FBE_NEXT_TEST_CARD_RESOURCE_ROOT','FBE_NEXT_TEST_CARD_REPLACEMENT','FBE_NEXT_TEST_SETTINGS_DIRECTORY')) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
 try {
     $emptyScripts = Join-Path $iso.Root 'fixture-empty'
     New-Item -ItemType Directory -Force $emptyScripts | Out-Null
@@ -31,6 +31,13 @@ try {
     $card.dependencies = @(@{path='dep.bin'; sha256=(Get-FileHash -LiteralPath $dependency).Hash.ToLowerInvariant(); optional=$false}); $card.dependenciesComplete = $true
     function Write-Card($path, $value) { [IO.File]::WriteAllText($path, ($value | ConvertTo-Json -Depth 100), [Text.UTF8Encoding]::new($false)) }
     Write-Card $default $card
+    $longCategory = 'Категория' + ('x' * 90); $longStem = 'Скрипт' + ('y' * 95)
+    $longFixtureScript = Join-Path $iso.Root ("Scripts\$longCategory\$longStem.js")
+    $longFixtureCard = Join-Path $iso.Root ("ScriptCards\$longCategory\$longStem.json")
+    [void][IO.Directory]::CreateDirectory((Split-Path $longFixtureScript)); [void][IO.Directory]::CreateDirectory((Split-Path $longFixtureCard))
+    [IO.File]::WriteAllBytes($longFixtureScript, $code); Write-Card $longFixtureCard $card
+    $replacementCard = $card.Clone(); $replacementCard.summary = 'External updated'
+    $replacementPath = Join-Path $iso.Root 'replacement.json'; Write-Card $replacementPath $replacementCard
     $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'script-card-external-runtime'; $env:FBE_NEXT_TEST_CARD_SCRIPT = $script; $env:FBE_NEXT_TEST_CARD_RESOURCE_ROOT = $iso.Root
     $report = Join-Path $iso.Root 'card-probe.txt'
     function Run-Probe([string]$mode = '--portable') {
@@ -41,7 +48,9 @@ try {
         return Get-Content -LiteralPath $report -Raw -Encoding utf8
     }
     function Require([string]$text, [string]$expression) { if($text -notmatch $expression) { throw "Expected $expression in: $text" } }
-    $first = Run-Probe; Require $first '(?m)^state=3\r?$'; Require $first '(?m)^dependency-state=1\r?$'; Require $first '(?m)^preview=External initial\r?$'
+    $env:FBE_NEXT_TEST_CARD_REPLACEMENT = $replacementPath
+    $first = Run-Probe; Require $first '(?m)^state=3\r?$'; Require $first '(?m)^dependency-state=1\r?$'; Require $first '(?m)^preview=External initial\r?$'; Require $first '(?m)^tree-preview=External initial\r?$'; Require $first '(?m)^cache-refreshed=1\r?$'; Require $first '(?m)^cache-restored=1\r?$'
+    Remove-Item Env:FBE_NEXT_TEST_CARD_REPLACEMENT
     [IO.File]::WriteAllText($dependency, 'new', [Text.UTF8Encoding]::new($false))
     $dependencyChanged = Run-Probe; Require $dependencyChanged '(?m)^state=3\r?$'; Require $dependencyChanged '(?m)^dependency-state=2\r?$'
     [IO.File]::WriteAllText($dependency, 'old', [Text.UTF8Encoding]::new($false))
@@ -59,6 +68,14 @@ try {
     if(-not (Test-Path -LiteralPath $manifest -PathType Leaf)) { throw 'Bundled card manifest was not created.' }
     $manifestEntries = @((Get-Content -LiteralPath $manifest) | Where-Object { $_ -match '^[0-9a-f]{64}=[0-9a-f]{64}$' })
     if($manifestEntries.Count -ne $bundledFiles.Count) { throw "Manifest has $($manifestEntries.Count) entries for $($bundledFiles.Count) bundled cards." }
+    $longScript = Get-ChildItem -LiteralPath (Join-Path $iso.Root 'Scripts') -File -Recurse -Filter '*.js' | Sort-Object { $_.FullName.Length } -Descending | Select-Object -First 1
+    if($longScript.FullName.Length -le 260) { throw 'The long-path test fixture did not exceed MAX_PATH.' }
+    $longRelative = [IO.Path]::GetRelativePath((Join-Path $iso.Root 'Scripts'), $longScript.FullName)
+    $longCard = Join-Path $settingsCardsRoot ([IO.Path]::ChangeExtension($longRelative, '.json'))
+    $longSummary = (Get-Content -LiteralPath $longCard -Raw -Encoding utf8 | ConvertFrom-Json).summary
+    $env:FBE_NEXT_TEST_CARD_SCRIPT = $longScript.FullName
+    $longResult = Run-Probe; Require $longResult '(?m)^state=3\r?$'; Require $longResult ('(?m)^tree-preview=' + [regex]::Escape($longSummary) + '\r?$')
+    $env:FBE_NEXT_TEST_CARD_SCRIPT = $script
     $uneditedHash = (Get-FileHash $userCard).Hash
     $card.summary = 'Unedited default update'; Write-Card $default $card
     $update = Run-Probe; Require $update '(?m)^state=3\r?$'; Require $update '(?m)^preview=External initial\r?$'
@@ -68,7 +85,7 @@ try {
     $user = Get-Content $userCard -Raw -Encoding utf8 | ConvertFrom-Json -AsHashtable
     $user.summary = 'User changed'; Write-Card $userCard $user; $userHash = (Get-FileHash $userCard).Hash
     $card.summary = 'New bundled revision'; Write-Card $default $card
-    $second = Run-Probe; Require $second '(?m)^state=3\r?$'; Require $second '(?m)^preview=User changed\r?$'
+    $second = Run-Probe; Require $second '(?m)^state=3\r?$'; Require $second '(?m)^preview=User changed\r?$'; Require $second '(?m)^tree-preview=User changed\r?$'
     if((Get-FileHash $userCard).Hash -ne $userHash -or -not (Get-ChildItem (Split-Path $userCard) -Filter '*.fbe-new-*')) { throw 'User card was overwritten or updated default was not preserved.' }
     $firstIso = $iso; $firstFixture = $fixture; $firstScript = $script; $firstReport = $report
     $otherIso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'card-external-copy'
