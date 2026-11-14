@@ -6,6 +6,7 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
         const bool dirty=DocChanged();
         FbeScriptDiagnostics::ScopedDialogSuppression suppress;
         m_doc->RunScript(script);
+        const bool dirtyAfterSetup=DocChanged(); const auto revisionAfterSetup=m_doc->m_body.GetVersionNumber();
         CComPtr<IDispatch> external;CheckError(m_doc->m_body.Document()->parentWindow->get_external(&external));
         const wchar_t* names[]={L"ShowMessage",L"SelectFromList",L"SelectMultipleFromList",L"ChooseColor",L"GetClipboardText",L"SetClipboardText",L"GetClipboardHtml",L"SetClipboardHtml",L"PushStatusBarText",L"PopStatusBarText",L"ClearStatusBarText"};
         for(DISPID i=0;i<11;++i){LPOLESTR name=const_cast<LPOLESTR>(names[i]);DISPID id=DISPID_UNKNOWN;CheckError(external->GetIDsOfNames(IID_NULL,&name,1,LOCALE_USER_DEFAULT,&id));if(id!=153+i){details="DISPID changed";CheckError(E_FAIL);}}
@@ -26,6 +27,7 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
         invoke(L"stage3cResult");
         const auto revision=m_doc->m_body.GetVersionNumber();
         const CString xml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+        CStringA initialState; initialState.Format("setup-dirty=%d,%d,%d revision=%ld,%ld\r\n",dirty?1:0,dirtyAfterSetup?1:0,DocChanged()?1:0,revisionAfterSetup,revision); DWORD initialBytes=0; output.Write(initialState,initialState.GetLength(),&initialBytes); output.Flush();
         const InterfaceTheme initialTheme=ThemeManager::GetSelectedTheme();
         struct RestoreTheme { InterfaceTheme value; ~RestoreTheme(){ThemeManager::SetSelectedTheme(value);} } restoreTheme={initialTheme};
         FbeScripts::ScriptExecutionScope context(script);
@@ -142,8 +144,10 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
             ::SetEvent(release);holder.join();CheckError(failure);
             details="isolated OLE formats and real busy access PASS; user clipboard unchanged";
         } else for(int index=0;index<8;++index) {
+            const auto revisionBeforeTheme=m_doc->m_body.GetVersionNumber(); const bool dirtyBeforeTheme=DocChanged();
             if(index==2) ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
             if(index==3) ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+            const auto revisionBeforeDialog=m_doc->m_body.GetVersionNumber(); const bool dirtyBeforeDialog=DocChanged();
             CString title; title.Format(L"FBE stage3c %lu %d",::GetCurrentProcessId(),index);
             const HWND priorFocus=::GetFocus(); const DWORD uiThread=::GetCurrentThreadId();
             struct Driver { DWORD thread; HWND owner,dialog=nullptr,button=nullptr; bool owned=false; } driver={uiThread,m_hWnd};
@@ -169,10 +173,18 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
             HRESULT failure=S_OK;
             try { invoke(L"stage3cDialog",args,2); } catch(const _com_error& error) { failure=error.Error(); }
             input.join(); CheckError(failure);
+            CStringA transition; transition.Format("dialog=%d revision=%ld,%ld,%ld dirty=%d,%d,%d\r\n",index,revisionBeforeTheme,revisionBeforeDialog,m_doc->m_body.GetVersionNumber(),dirtyBeforeTheme?1:0,dirtyBeforeDialog?1:0,DocChanged()?1:0); DWORD transitionBytes=0; output.Write(transition,transition.GetLength(),&transitionBytes); output.Flush();
             if(!driver.owned||(::IsWindow(priorFocus)&&::GetFocus()!=priorFocus)) { details="dialog owner/focus"; CheckError(E_FAIL); }
             CStringA row; row.Format("dialog=%d PASS\r\n",index); DWORD written=0; output.Write(row,row.GetLength(),&written); output.Flush();
         }
-        if(dirty!=DocChanged()||xml!=CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml))) { details="dialog changed document"; CheckError(E_FAIL); }
+        const bool dirtyAfter=DocChanged();
+        const CString xmlAfter(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+        if(dirty!=dirtyAfter||xml!=xmlAfter) {
+            int firstDifference=0; const int commonLength=(std::min)(xml.GetLength(),xmlAfter.GetLength());
+            while(firstDifference<commonLength && xml[firstDifference]==xmlAfter[firstDifference]) ++firstDifference;
+            details.Format("dialog changed document: dirty=%d->%d xml_equal=%d xml_length=%d->%d first_difference=%d revision=%ld->%ld",dirty?1:0,dirtyAfter?1:0,xml==xmlAfter?1:0,xml.GetLength(),xmlAfter.GetLength(),firstDifference,revision,m_doc->m_body.GetVersionNumber());
+            CheckError(E_FAIL);
+        }
         CStringA versions;versions.Format("revision-before=%ld revision-after=%ld\r\n",revision,m_doc->m_body.GetVersionNumber());
         DWORD versionBytes=0;output.Write(versions,versions.GetLength(),&versionBytes);
         passed=true;
