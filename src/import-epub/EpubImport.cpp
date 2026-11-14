@@ -6053,6 +6053,58 @@ namespace
             CStringW name = LocalName(child);
             if (name.CompareNoCase(L"dt") != 0 && name.CompareNoCase(L"dd") != 0)
                 continue;
+            const auto parts = MsxmlGetChildNodes(child);
+            const long partCount = parts ? MsxmlGetNodeListLength(parts) : 0;
+            bool hasBlocks = false;
+            for (long j = 0; j < partCount; ++j)
+            {
+                const CStringW partName = LocalName(MsxmlGetNodeListItem(parts, j));
+                if (partName == L"p" || partName == L"div" || partName == L"pre" ||
+                    partName == L"ul" || partName == L"ol" || partName == L"dl" ||
+                    partName == L"table" || IsHeadingName(partName)) { hasBlocks = true; break; }
+            }
+            if (name == L"dd" && hasBlocks)
+            {
+                CStringW content, pending, inlineMarkers;
+                const InlineFontState font = InheritedInlineFont(child);
+                const auto flush = [&]() {
+                    pending.Trim();
+                    if (!pending.IsEmpty()) content += L"      <p>" + pending + L"</p>\r\n";
+                    pending.Empty();
+                };
+                for (long j = 0; j < partCount; ++j)
+                {
+                    const auto part = MsxmlGetNodeListItem(parts, j);
+                    const CStringW partName = LocalName(part);
+                    if (MsxmlGetNodeType(part) == MSXML2::NODE_ELEMENT &&
+                        (partName == L"p" || partName == L"div" || partName == L"pre" ||
+                         partName == L"ul" || partName == L"ol" || partName == L"dl" ||
+                         partName == L"table" || IsHeadingName(partName)))
+                    {
+                        flush();
+                        AppendBlockNode(part, content, ctx);
+                    }
+                    else
+                    {
+                        inlineMarkers += AnchorMarkerParagraphsFromRawIds(CollectRawAnchorIds(part), 0, ctx);
+                        pending += InlineToFb2(part, ctx, font);
+                    }
+                }
+                flush();
+                const CStringW id = OptionalIdAttribute(child, ctx);
+                if (!id.IsEmpty()) out += L"      <p" + id + L"></p>\r\n";
+                out += inlineMarkers;
+                int scan = 0;
+                while ((scan = content.Find(L"<p", scan)) >= 0)
+                {
+                    const int end = content.Find(L'>', scan);
+                    if (end < 0) break;
+                    if (content.Mid(end + 1, 4) != L"</p>") { content.Insert(end + 1, L"— "); break; }
+                    scan = end + 1;
+                }
+                out += content;
+                continue;
+            }
             CStringW text = ChildrenInlineToFb2(child, ctx);
             text.Trim();
             const auto ids = CollectRawAnchorIds(child);

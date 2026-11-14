@@ -3229,6 +3229,19 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             self.assertTrue(any(e.get('id') == 'outer' for e in root.iter()))
         self.assertLess(timings[1], timings[0] * 5 + 1.0, f'Whitespace scaling: {timings}')
 
+    def test_definition_list_preserves_nested_block_boundaries(self):
+        root = self.convert('<dl><dt>Term</dt><dd id="definition"><p>First paragraph.</p>'
+                            '<div id="note"><h3>note</h3><p>It is separate.</p></div>'
+                            '<p>Last paragraph.</p></dd></dl><p><a href="#note">See note</a></p>',
+                            navigation=False)
+        paragraphs = [self.text(p) for p in root.findall('.//f:body//f:p', NS)]
+        self.assertTrue(any('First paragraph.' in p for p in paragraphs))
+        self.assertIn('It is separate.', paragraphs)
+        self.assertIn('Last paragraph.', paragraphs)
+        self.assertFalse(any('noteIt' in p or 'paragraph.note' in p for p in paragraphs))
+        ids = {e.get('id') for e in root.iter() if e.get('id')}
+        self.assertTrue({'definition', 'note'}.issubset(ids))
+
     def test_list_item_preserves_nested_paragraph_boundaries(self):
         root = self.convert('<ol><li id="item">First <a id="index"></a>sentence.<p id="note">Note</p>'
                             '<p><em>Explanation.</em></p></li><li>Next</li></ol>'
