@@ -2451,7 +2451,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			"{\"schema\":1,\"title\":\"Card test\",\"summary\":\"Card runtime summary\","
 			"\"description\":\"Card runtime description\",\"version\":\"1.0\","
 			"\"scope\":\"Current document, including every section, annotation, image caption and nested body selected for processing by this script\",\"modifiesDocument\":false,\"requiresSelection\":false,"
-			"\"usage\":[\"Open card\"],\"warnings\":[\"Review changes before running\"],\"dependencies\":[],"
+			"\"usage\":[\"Open card\"],\"warnings\":[\"Review changes before running\"],\"dependencies\":[{\"path\":\"card-test-dependency.txt\",\"sha256\":null,\"optional\":true}],"
 			"\"settings\":[{\"title\":\"Mode\",\"name\":\"ModeCode\",\"value\":\"safe\","
 			"\"expression\":\"+extracting(0)\",\"valueMeaning\":\"fallback value\",\"description\":\"Change mode\"},"
 			"{\"name\":\"Second\",\"value\":false,\"expression\":\"false\",\"description\":\"Selection enabled: false \\u2014 \\u043d\\u0435\\u0442, true \\u2014 \\u0434\\u0430.\"},"
@@ -2649,6 +2649,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool copiedContent = copied.Find(L"Card test") >= 0 && copied.Find(L"1.0") >= 0 &&
 			copied.Find(L"Card runtime summary") >= 0 && copied.Find(L"Card runtime description") >= 0 &&
 			copied.Find(L"Open card") >= 0 && copied.Find(L"Review changes before running") >= 0 &&
+			copied.Find(L"card-test-dependency.txt") >= 0 &&
 			copied.Find(L"Tester — ") >= 0 && copied.Find(L"Second author — ") >= 0 &&
 			copied.Find(L"Modifier — ") >= 0 && copied.Find(L"Another — ") >= 0 &&
 			copied.Find(cardPath) >= 0 && copied.Find(L"b93000a4f6") < 0 &&
@@ -2936,6 +2937,32 @@ void CMainFrame::RunPortableStateTestScenario()
 			m_script_card_window.BodyText().Find(L"Запуск внешнего приложения") < 0 &&
 			m_script_card_window.StatusText().IsEmpty() &&
 			!::IsWindowVisible(m_script_card_window.WarningWindow());
+		auto readTestFile = [](const CString& path, std::vector<BYTE>& bytes) -> bool {
+			HANDLE file = ::CreateFileW(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+				NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			if (file == INVALID_HANDLE_VALUE) return false;
+			LARGE_INTEGER size = {}; DWORD read = 0;
+			const bool sized = ::GetFileSizeEx(file, &size) && size.QuadPart > 0 && size.QuadPart <= 1024 * 1024;
+			if (sized) bytes.resize(static_cast<size_t>(size.QuadPart));
+			const bool ok = sized && ::ReadFile(file, bytes.data(), static_cast<DWORD>(bytes.size()), &read, NULL) && static_cast<size_t>(read) == bytes.size();
+			::CloseHandle(file); return ok;
+		};
+		const CString commentJsonPath = ScriptCards::ExternalCardPath(commentPath);
+		std::vector<BYTE> jsBeforeCopy, jsAfterCopy, jsonBeforeCopy, jsonAfterCopy;
+		const bool commentFilesCaptured = readTestFile(commentPath, jsBeforeCopy) && readTestFile(commentJsonPath, jsonBeforeCopy);
+		bool commentCopyValid = false, commentCopyRestored = false;
+		if (!clipboardSkipped && commentOpened && commentFilesCaptured) {
+			const DWORD beforeCommentCopy = ::GetClipboardSequenceNumber();
+			::SendMessageW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_COPY), BM_CLICK, 0, 0);
+			const DWORD afterCommentCopy = ::GetClipboardSequenceNumber();
+			const CString commentText = clipboardText();
+			commentCopyValid = commentText.Find(comment.name) >= 0 && commentText.Find(L"Sclex") >= 0 &&
+				commentText.Find(commentPath) >= 0;
+			if (afterCommentCopy != beforeCommentCopy && ::GetClipboardSequenceNumber() == afterCommentCopy)
+				commentCopyRestored = setClipboardText(clipboardSentinel) && clipboardText() == clipboardSentinel;
+		}
+		const bool commentFilesUnchanged = commentFilesCaptured && readTestFile(commentPath, jsAfterCopy) &&
+			readTestFile(commentJsonPath, jsonAfterCopy) && jsBeforeCopy == jsAfterCopy && jsonBeforeCopy == jsonAfterCopy;
 		::SetWindowPos(m_script_card_window.m_hWnd, NULL, 0, 0,
 			UiMetrics::ScaleForDpi(620, cardDpi), UiMetrics::ScaleForDpi(460, cardDpi),
 			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
@@ -3145,7 +3172,8 @@ void CMainFrame::RunPortableStateTestScenario()
 			cardScreenshot && treeScreenshot && darkCardScreenshot && darkTreeScreenshot &&
 			commentContent && commentNarrow && commentSettings && commentDark &&
 			commentWarning && commentTooltip && commentWide && commentChangedDark &&
-			infoUidMatched && infoRunCount == 0 && commentRunCount == 0;
+			infoUidMatched && infoRunCount == 0 && commentRunCount == 0 &&
+			(clipboardSkipped || (commentCopyValid && commentFilesUnchanged));
 		CStringA report;
 		report.Format("phase=script-card-dialog\nmissing=%d\nreused=%d\nrendered=%d\nstructured=%d\nresponsive=%d\noptional=%d\nhashes-hidden=%d\norigin-hidden=%d\norigin-states-hidden=%d\ntechnical-absent=%d\nwindow-icons=%d\nbold-heading=%d\ncopied-details=%d\ncategory=%d\npreview-delayed=%d\npreview-shown=%d\npreview-reusable=%d\npreview-bridge=%d\npreview-crossing=%d\npreview-switch=%d\npreview-surface=%d\npreview-link=%d\npreview-fallback=%d\nmissing-row=%d\nfallback-visible=%d\nfallback-window=%d\nfallback-text=%d\npreview-scroll-hidden=%d\nuid=%d\nchanged-warning=%d\nbuttons=%d\ninfo-click=%d\ninfo-double-click-safe=%d\ncontext-opens=%d\nmulti-card-disabled=%d\ncomment-content=%d\ncomment-narrow=%d\ncomment-settings=%d\ncomment-dark=%d\ncomment-warning=%d\ncomment-tooltip=%d\ncomment-wide=%d\ncomment-changed-dark=%d\ninfo-initialized=%d\ninfo-item=%d\ninfo-row=%d\ninfo-nodes=%u\ninfo-uid=%d\ninfo-selection=%d\nrun-count=%d\nresult=%s\n",
 			missingFallback, reused, rendered, structured, responsive, optionalRendered, hashesHidden, originHidden, originStates, technicalAbsent, windowIcons, boldHeading,
@@ -3167,6 +3195,8 @@ void CMainFrame::RunPortableStateTestScenario()
 			clipboardSkipped, clipboardCaptured, clipboardRestored, static_cast<unsigned long>(copySequence), static_cast<unsigned long>(afterReadSequence));
 		report.AppendFormat("copy-command-executed=%d\nclipboard-restore-attempted=%d\nclipboard-restore-error=%lu\n",
 			copyCommandExecuted, clipboardRestoreAttempted, static_cast<unsigned long>(clipboardRestoreError));
+		report.AppendFormat("external-copy-valid=%d\nexternal-copy-files-unchanged=%d\nexternal-copy-restored=%d\n",
+			commentCopyValid, commentFilesUnchanged, commentCopyRestored);
 		report.AppendFormat("long-settings-fit=%d\n", longSettingsFit);
 		report.AppendFormat("long-card-state=%d\nlong-card-opened=%d\nlong-card-scroll=%d\nlong-card-settings=%u\nlong-card-error=%s\n",
 			static_cast<int>(longParsed.state), longCardOpened, longCardCanScroll, static_cast<unsigned>(longParsed.settingRows.size()),

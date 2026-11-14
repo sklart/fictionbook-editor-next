@@ -56,8 +56,8 @@ try {
             Write-Host 'Card checks excluding clipboard: PASS; full card test remains NOT RUN because clipboard was skipped.'
             return
         }
-        if($text -notmatch '(?m)^copy-command-executed=1\r?$' -or $text -notmatch '(?m)^copied-details=1\r?$' -or $text -notmatch '(?m)^result=pass\r?$') { throw "Script-card runtime scenario failed:`n$text" }
-        if($text -match '(?m)^clipboard-restored=1\r?$') { Write-Host 'CLIPBOARD RESTORE: PASS (test sentinel only)' }
+        if($text -notmatch '(?m)^copy-command-executed=1\r?$' -or $text -notmatch '(?m)^copied-details=1\r?$' -or $text -notmatch '(?m)^external-copy-valid=1\r?$' -or $text -notmatch '(?m)^external-copy-files-unchanged=1\r?$' -or $text -notmatch '(?m)^result=pass\r?$') { throw "Script-card runtime scenario failed:`n$text" }
+        if($text -match '(?m)^clipboard-restored=1\r?$' -and $text -match '(?m)^external-copy-restored=1\r?$') { Write-Host 'CLIPBOARD RESTORE: PASS (test sentinel only)' }
         else { Write-Warning 'CLIPBOARD RESTORE: ENVIRONMENT BLOCKED / NOT VERIFIED' }
         if($exitCode -ne 0) { throw "Script-card process exit code ${exitCode}:`n$text" }
     } finally {
