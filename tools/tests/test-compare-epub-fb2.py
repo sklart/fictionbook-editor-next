@@ -14,6 +14,10 @@ spec.loader.exec_module(audit)
 
 
 class PairAudit(unittest.TestCase):
+    def test_word_inventory_separates_blocks_but_not_inline_runs(self):
+        root = audit.parse_xhtml(b'<body><div>one</div><pre>two<span>part</span></pre><table><tr><td>three</td><td>four</td></tr></table></body>')
+        self.assertEqual(audit.words(audit.word_visible(root)), {'one': 1, 'twopart': 1, 'three': 1, 'four': 1})
+
     def test_xhtml_line_break_separates_words_in_comparison(self):
         with tempfile.TemporaryDirectory() as temp:
             epub, fb2 = self.pair(Path(temp))
@@ -193,6 +197,72 @@ class PairAudit(unittest.TestCase):
         self.assertEqual(''.join(audit.elements(root, 'p')[0].itertext()), '\u00a0&nbsp;')
         with self.assertRaises(ET.ParseError):
             audit.parse_xhtml(b'<html><body>&notARealEntity;</body></html>')
+
+    def test_malformed_xhtml_partial_mode_is_explicit_and_strict_by_default(self):
+        with tempfile.TemporaryDirectory() as temp:
+            epub, fb2 = self.pair(Path(temp))
+            with zipfile.ZipFile(epub) as archive:
+                entries = {name: archive.read(name) for name in archive.namelist()}
+            entries['OPS/chapter.xhtml'] = b'<html><body><p>broken</body></html>'
+            with zipfile.ZipFile(epub, 'w') as archive:
+                for name, data in entries.items(): archive.writestr(name, data)
+            with self.assertRaises(ET.ParseError):
+                audit.compare(epub, fb2)
+            report = audit.compare(epub, fb2, skip_malformed_xhtml=True)
+            self.assertEqual(report['status'], 'PARTIAL')
+            self.assertEqual(report['epub']['skipped_malformed_documents'][0]['path'], 'OPS/chapter.xhtml')
+            self.assertEqual(report['epub']['skipped_malformed_documents'][0]['role'], 'spine')
+            self.assertIn('incomplete', report['limitations'][0])
+
+    def test_unsafe_references_are_skipped_only_in_partial_mode(self):
+        with tempfile.TemporaryDirectory() as temp:
+            epub, fb2 = self.pair(Path(temp))
+            with zipfile.ZipFile(epub) as archive:
+                entries = {name: archive.read(name) for name in archive.namelist()}
+            entries['OPS/chapter.xhtml'] = b'<html><body><p>Safe text</p><a href="../../outside.xhtml#x">link</a><img src="../../outside.png"/></body></html>'
+            with zipfile.ZipFile(epub, 'w') as archive:
+                for name, data in entries.items(): archive.writestr(name, data)
+            with self.assertRaises(ValueError):
+                audit.compare(epub, fb2)
+            report = audit.compare(epub, fb2, skip_unsafe_references=True)
+            self.assertEqual(report['status'], 'PARTIAL')
+            self.assertEqual({x['kind'] for x in report['epub']['skipped_unsafe_references']}, {'link', 'image'})
+            self.assertIn('incomplete', report['limitations'][0])
+
+    def test_recovered_malformed_xhtml_is_always_partial(self):
+        try:
+            import lxml  # noqa: F401
+        except ImportError:
+            self.skipTest('lxml is optional for diagnostic recovery')
+        with tempfile.TemporaryDirectory() as temp:
+            epub, fb2 = self.pair(Path(temp))
+            with zipfile.ZipFile(epub) as archive:
+                entries = {name: archive.read(name) for name in archive.namelist()}
+            entries['OPS/chapter.xhtml'] = b'<html><body><p>Fran&ccedil;ois &amp; text</body></html>'
+            with zipfile.ZipFile(epub, 'w') as archive:
+                for name, data in entries.items(): archive.writestr(name, data)
+            report = audit.compare(epub, fb2, recover_malformed_xhtml=True)
+            self.assertEqual(report['status'], 'PARTIAL')
+            self.assertEqual(report['epub']['recovered_malformed_documents'][0]['path'], 'OPS/chapter.xhtml')
+            self.assertGreater(report['epub']['word_occurrences_by_document_role']['spine'], 0)
+            self.assertIn('heuristically', report['limitations'][0])
+            _, source_words, _ = audit.epub_inventory(epub, recover_malformed_xhtml=True)
+            self.assertIn('François', source_words)
+
+    def test_recovery_reports_suspicious_oversized_heading(self):
+        try:
+            import lxml  # noqa: F401
+        except ImportError:
+            self.skipTest('lxml is optional for diagnostic recovery')
+        with tempfile.TemporaryDirectory() as temp:
+            epub, fb2 = self.pair(Path(temp))
+            with zipfile.ZipFile(epub) as archive:
+                entries = {name: archive.read(name) for name in archive.namelist()}
+            entries['OPS/chapter.xhtml'] = b'<html><body><h1>Title<p>' + b'x' * 4100 + b'</p></body></html>'
+            with zipfile.ZipFile(epub, 'w') as archive:
+                for name, data in entries.items(): archive.writestr(name, data)
+            report = audit.compare(epub, fb2, recover_malformed_xhtml=True)
+            self.assertEqual(report['epub']['recovered_malformed_documents'][0]['oversized_headings'], 1)
 
     def test_sequence_reports_reordering_without_claiming_missing_text(self):
         result = audit.compare_block_sequences(['a', 'b', 'c'], ['a', 'c', 'b'])

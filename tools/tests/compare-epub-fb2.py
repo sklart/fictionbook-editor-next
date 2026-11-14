@@ -100,6 +100,19 @@ def visible(root):
     return text + (' ' if local(root.tag) in ('br', 'p', 'v', 'li', 'td', 'th', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'subtitle', 'text-author') else '')
 
 
+def word_visible(root):
+    """Separate block boundaries without splitting words across inline markup."""
+    tag = local(root.tag).lower()
+    if tag in ('script', 'style'):
+        return ''
+    blocks = {'body', 'section', 'div', 'article', 'aside', 'p', 'pre', 'blockquote',
+              'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table',
+              'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'br', 'title',
+              'subtitle', 'text-author', 'poem', 'stanza', 'v', 'cite', 'epigraph'}
+    content = (root.text or '') + ''.join(word_visible(child) + (child.tail or '') for child in root)
+    return ' ' + content + ' ' if tag in blocks else content
+
+
 def block_signature(node):
     return digest(normalized(visible(node)).encode('utf-8'))
 
@@ -273,17 +286,8 @@ def archive_name(base, href):
     return path
 
 
-def parse_xhtml(data):
-    """Read valid XML first, then expand standard HTML named entities safely.
-
-    No external DTD is fetched. Unknown or malformed entities still fail.
-    XML predefined names remain escaped, so text cannot become markup.
-    """
-    try:
-        return ET.fromstring(data)
-    except ET.ParseError as error:
-        if 'undefined entity' not in str(error):
-            raise
+def expand_xhtml_entities(data):
+    """Expand known HTML entities without altering comments, CDATA or markup."""
     def replace(match):
         if match.group(1) is None:
             return match.group(0)
@@ -295,10 +299,20 @@ def parse_xhtml(data):
             return match.group(0)
         return ''.join(f'&#x{ord(char):X};' for char in value).encode('ascii')
     pattern = rb'<!\[CDATA\[.*?\]\]>|<!--.*?-->|<\?.*?\?>|<!DOCTYPE(?:[^\[\]>]|\[.*?\])*>|&([A-Za-z][A-Za-z0-9]+);'
-    return ET.fromstring(re.sub(pattern, replace, data, flags=re.DOTALL))
+    return re.sub(pattern, replace, data, flags=re.DOTALL)
 
 
-def epub_inventory(path, include_word_roles=False):
+def parse_xhtml(data):
+    """Read XML without fetching DTDs; expand standard HTML entities on demand."""
+    try:
+        return ET.fromstring(data)
+    except ET.ParseError as error:
+        if 'undefined entity' not in str(error):
+            raise
+    return ET.fromstring(expand_xhtml_entities(data))
+
+
+def epub_inventory(path, include_word_roles=False, skip_malformed_xhtml=False, skip_unsafe_references=False, recover_malformed_xhtml=False):
     with zipfile.ZipFile(path) as archive:
         def read(name):
             info = archive.getinfo(name)
@@ -324,7 +338,12 @@ def epub_inventory(path, include_word_roles=False):
         text = []; text_by_role = {'spine': [], 'navigation': [], 'other_non_spine': []}
         image_hashes = Counter(); targets = set(); target_contents = {}; duplicate_targets = set(); references = []
         for item in spine + extra:
-            name = archive_name(package_name, item.get('href', ''))
+            try:
+                name = archive_name(package_name, item.get('href', ''))
+            except ValueError:
+                if not skip_unsafe_references: raise
+                result.setdefault('skipped_unsafe_references', []).append({'document': package_name, 'kind': 'manifest', 'href': item.get('href', '')})
+                continue
             media = item.get('media-type', '').lower()
             if media not in ('application/xhtml+xml', 'text/html'):
                 result['non_xhtml_spine_items'] += 1
@@ -335,10 +354,31 @@ def epub_inventory(path, include_word_roles=False):
                     except KeyError:
                         result['missing_image_resources'] = result.get('missing_image_resources', 0) + 1
                 continue
-            root = parse_xhtml(read(name))
+            raw_xhtml = read(name)
+            try:
+                root = parse_xhtml(raw_xhtml)
+            except ET.ParseError as error:
+                if recover_malformed_xhtml:
+                    from lxml import etree
+                    parser = etree.XMLParser(recover=True, resolve_entities=False, no_network=True, load_dtd=False)
+                    recovered = etree.fromstring(expand_xhtml_entities(raw_xhtml), parser)
+                    if recovered is None:
+                        raise ValueError('Malformed XHTML could not be recovered: ' + name) from error
+                    root = parse_xhtml(etree.tostring(recovered, encoding='utf-8'))
+                    oversized_headings = sum(len(''.join(node.itertext())) > 4096 for node in root.iter()
+                                             if local(node.tag) in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'))
+                    result.setdefault('recovered_malformed_documents', []).append(
+                        {'path': name, 'role': 'spine' if item in spine else 'non_spine', 'error': str(error),
+                         'recovery_diagnostics': len(parser.error_log), 'oversized_headings': oversized_headings})
+                elif not skip_malformed_xhtml:
+                    raise
+                else:
+                    result.setdefault('skipped_malformed_documents', []).append(
+                        {'path': name, 'role': 'spine' if item in spine else 'non_spine', 'error': str(error)})
+                    continue
             bodies = elements(root, 'body')
             body = bodies[0] if bodies else root
-            body_text = visible(body)
+            body_text = word_visible(body)
             text.append(body_text)
             role = 'navigation' if 'nav' in item.get('properties', '').split() else 'spine' if item in spine else 'other_non_spine'
             text_by_role[role].append(body_text)
@@ -370,7 +410,12 @@ def epub_inventory(path, include_word_roles=False):
                         result['note_references'] += 1
                     href = urlsplit(node.get('href'))
                     if not href.scheme and href.fragment:
-                        key = (archive_name(name, node.get('href')) if href.path else name, unquote(href.fragment))
+                        try:
+                            key = (archive_name(name, node.get('href')) if href.path else name, unquote(href.fragment))
+                        except ValueError:
+                            if not skip_unsafe_references: raise
+                            result.setdefault('skipped_unsafe_references', []).append({'document': name, 'kind': 'link', 'href': node.get('href')})
+                            continue
                         references.append((key, block_signature(node),
                                            'noteref' in node.get('{http://www.idpf.org/2007/ops}type', '').split() or node.get('role') == 'doc-noteref'))
                 image = node.get('src') if local(node.tag) == 'img' else node.get('{http://www.w3.org/1999/xlink}href') if local(node.tag) == 'image' else None
@@ -380,6 +425,9 @@ def epub_inventory(path, include_word_roles=False):
                         image_hashes[digest(read(archive_name(name, image)))] += 1
                     except KeyError:
                         result['missing_image_resources'] = result.get('missing_image_resources', 0) + 1
+                    except ValueError:
+                        if not skip_unsafe_references: raise
+                        result.setdefault('skipped_unsafe_references', []).append({'document': name, 'kind': 'image', 'href': image})
         result['unresolved_fragment_links'] = sum(key not in targets for key, _, _ in references)
         result['internal_link_targets'] = [{'label_sha256': label, 'target_text_sha256': target_contents.get(key) if key not in duplicate_targets else None,
                                             'target_exists': key in targets, 'note': note}
@@ -457,14 +505,15 @@ def fb2_inventory(path, include_characters=False):
     result['internal_link_targets'] = [{'label_sha256': label, 'target_text_sha256': target_contents.get(key),
                                         'target_exists': key in targets, 'note': note}
                                        for key, label, note in references]
-    combined = ' '.join(visible(body) for body in bodies)
+    combined = ' '.join(word_visible(body) for body in bodies)
     result['significant_characters'] = dict(significant_characters(combined))
     inventory = (result, words(combined), image_hashes)
     return (*inventory, nonspace_characters(combined)) if include_characters else inventory
 
 
-def compare(epub, fb2):
-    source, source_words, source_images, source_roles, source_characters = epub_inventory(epub, include_word_roles=True)
+def compare(epub, fb2, skip_malformed_xhtml=False, skip_unsafe_references=False, recover_malformed_xhtml=False):
+    source, source_words, source_images, source_roles, source_characters = epub_inventory(
+        epub, include_word_roles=True, skip_malformed_xhtml=skip_malformed_xhtml, skip_unsafe_references=skip_unsafe_references, recover_malformed_xhtml=recover_malformed_xhtml)
     target, target_words, target_images, target_characters = fb2_inventory(fb2, include_characters=True)
     missing = source_words - target_words
     added = target_words - source_words
@@ -493,10 +542,10 @@ def compare(epub, fb2):
                                     'matching_hash_occurrences': sum((Counter(source['metadata_hashes'][key]) & Counter(target['metadata_hashes'][key])).values())}
                               for key in source['metadata_hashes']},
     }
-    return {'schema': 1, 'status': 'REVIEW', 'source_sha256': digest(Path(epub).read_bytes()),
+    return {'schema': 1, 'status': 'PARTIAL' if source.get('skipped_malformed_documents') or source.get('skipped_unsafe_references') or source.get('recovered_malformed_documents') else 'REVIEW', 'source_sha256': digest(Path(epub).read_bytes()),
             'result_sha256': digest(Path(fb2).read_bytes()), 'epub': source, 'fb2': target,
             'differences': differences,
-            'limitations': ['Counts and token coverage cannot prove order, structure, link destinations or visual fidelity.',
+            'limitations': (['Malformed XHTML documents were skipped; source coverage and all comparison metrics are incomplete.'] if source.get('skipped_malformed_documents') else []) + (['Malformed XHTML was recovered heuristically; content and structure may differ from the source.'] if source.get('recovered_malformed_documents') else []) + (['Unsafe archive references were skipped; source coverage and reference metrics may be incomplete.'] if source.get('skipped_unsafe_references') else []) + ['Counts and token coverage cannot prove order, structure, link destinations or visual fidelity.',
                             'Navigation, backlinks, non-spine notes and converted images may cause legitimate differences.',
                             'Compare this report with importer warnings and inspect the actual pair before classifying a defect.']}
 
@@ -506,12 +555,15 @@ def main():
     parser.add_argument('--epub', required=True, type=Path)
     parser.add_argument('--fb2', required=True, type=Path)
     parser.add_argument('--report', required=True, type=Path)
+    parser.add_argument('--skip-malformed-xhtml', action='store_true', help='Skip malformed XHTML and mark the comparison PARTIAL')
+    parser.add_argument('--skip-unsafe-references', action='store_true', help='Skip archive-escaping references and mark the comparison PARTIAL')
+    parser.add_argument('--recover-malformed-xhtml', action='store_true', help='Heuristically recover malformed XHTML using lxml and mark the comparison PARTIAL')
     args = parser.parse_args()
     if args.report.resolve() in (args.epub.resolve(), args.fb2.resolve()):
         parser.error('Report must not overwrite either input file')
-    report = compare(args.epub, args.fb2)
+    report = compare(args.epub, args.fb2, skip_malformed_xhtml=args.skip_malformed_xhtml, skip_unsafe_references=args.skip_unsafe_references, recover_malformed_xhtml=args.recover_malformed_xhtml)
     args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    print('REVIEW: EPUB/FB2 inventory written; this tool never declares an import defect fixed.')
+    print(report['status'] + ': EPUB/FB2 inventory written; this tool never declares an import defect fixed.')
 
 
 if __name__ == '__main__':
