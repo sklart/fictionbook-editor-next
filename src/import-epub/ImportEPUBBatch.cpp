@@ -776,7 +776,48 @@ namespace
         return CombinePathLocal(targetDir, SanitizeFileName(baseName) + L".fb2");
     }
 
-    int CountOccurrences(const CStringW& text, const CStringW& token)
+    class Fb2TextView
+    {
+        const wchar_t* text_;
+        int length_;
+    public:
+        explicit Fb2TextView(BSTR text) : text_(text ? text : L""), length_(text ? static_cast<int>(::SysStringLen(text)) : 0) {}
+        int GetLength() const { return length_; }
+        const wchar_t* GetString() const { return text_; }
+        wchar_t operator[](int index) const { return text_[index]; }
+        int Find(const CStringW& token, int start = 0) const
+        {
+            if (start < 0 || start > length_) return -1;
+            const wchar_t* found = ::wcsstr(text_ + start, token.GetString());
+            return found ? static_cast<int>(found - text_) : -1;
+        }
+        CStringW Mid(int start, int count) const { return CStringW(text_ + start, count); }
+    };
+
+    bool WriteUtf8ConsoleFileView(const CStringW& path, const Fb2TextView& text)
+    {
+        HANDLE file = ::CreateFileW(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (file == INVALID_HANDLE_VALUE) return false;
+        const unsigned char bom[] = {0xef, 0xbb, 0xbf}; DWORD written = 0;
+        bool ok = ::WriteFile(file, bom, sizeof(bom), &written, nullptr) && written == sizeof(bom);
+        std::vector<char> buffer(64 * 1024);
+        for (int offset = 0; ok && offset < text.GetLength(); )
+        {
+            int count = min(16 * 1024, text.GetLength() - offset);
+            const wchar_t last = text[offset + count - 1];
+            if (offset + count < text.GetLength() && last >= 0xd800 && last <= 0xdbff) --count;
+            const int bytes = ::WideCharToMultiByte(CP_UTF8, 0, text.GetString() + offset, count,
+                buffer.data(), static_cast<int>(buffer.size()), nullptr, nullptr);
+            written = 0;
+            ok = bytes > 0 && ::WriteFile(file, buffer.data(), static_cast<DWORD>(bytes), &written, nullptr) &&
+                written == static_cast<DWORD>(bytes);
+            offset += count;
+        }
+        ::CloseHandle(file);
+        return ok;
+    }
+
+    int CountOccurrences(const Fb2TextView& text, const CStringW& token)
     {
         if (token.IsEmpty())
             return 0;
@@ -979,7 +1020,7 @@ namespace
             WriteUtf8ConsoleFile(htmlPath, htmlBody + BuildHtmlReportFinish(okCount - warningCount, warningCount, failCount, skipCount));
     }
 
-    void CollectAttributeValuesInXml(const CStringW& xml, const CStringW& token, std::set<std::wstring>& values)
+    void CollectAttributeValuesInXml(const Fb2TextView& xml, const CStringW& token, std::set<std::wstring>& values)
     {
         int pos = 0;
         while ((pos = xml.Find(token, pos)) >= 0)
@@ -995,7 +1036,7 @@ namespace
         }
     }
 
-    int FindPreviousCharLocal(const CStringW& text, wchar_t ch, int beforePos)
+    int FindPreviousCharLocal(const Fb2TextView& text, wchar_t ch, int beforePos)
     {
         int pos = min(beforePos, text.GetLength() - 1);
         for (int i = pos; i >= 0; --i)
@@ -1006,7 +1047,7 @@ namespace
         return -1;
     }
 
-    bool TagContainsToken(const CStringW& xml, int tagStart, int tagEnd, const CStringW& token)
+    bool TagContainsToken(const Fb2TextView& xml, int tagStart, int tagEnd, const CStringW& token)
     {
         if (tagStart < 0 || tagEnd <= tagStart)
             return false;
@@ -1014,7 +1055,7 @@ namespace
         return tag.Find(token) >= 0;
     }
 
-    Fb2QualityStats AnalyzeFb2Quality(const CStringW& fb2)
+    Fb2QualityStats AnalyzeFb2Quality(const Fb2TextView& fb2)
     {
         Fb2QualityStats q;
         q.sections = CountOccurrences(fb2, L"<section");
@@ -1064,13 +1105,13 @@ namespace
             imagePos += 7;
         }
 
-        CStringW lowerFb2(fb2);
-        lowerFb2.MakeLower();
         int externalPos = 0;
-        while ((externalPos = lowerFb2.Find(L"l:href=\"http", externalPos)) >= 0)
+        while ((externalPos = fb2.Find(L"l:href=\"", externalPos)) >= 0)
         {
-            ++q.externalLinks;
-            externalPos += 12;
+            const int valueStart = externalPos + 8;
+            if (valueStart <= fb2.GetLength() - 4 && ::_wcsnicmp(fb2.GetString() + valueStart, L"http", 4) == 0)
+                ++q.externalLinks;
+            externalPos = valueStart;
         }
 
         int internalHrefCount = 0;
@@ -1394,7 +1435,6 @@ namespace
 
     bool ConvertOneFile(const CStringW& inputPath, const CStringW& outputPath, const ConsoleImportOptions& options, bool dryRun, bool collectStats, CStringW& error, CStringW& statsSummary, Fb2QualityStats& quality)
     {
-        CStringW fb2;
         error.Empty();
         statsSummary.Empty();
         quality = Fb2QualityStats();
@@ -1447,10 +1487,11 @@ namespace
                 error.Format(L"ImportEPUB.dll failed: 0x%08lX", static_cast<unsigned long>(hr));
             return false;
         }
-        fb2 = apiFb2;
+        CComBSTR ownedFb2;
+        ownedFb2.Attach(apiFb2);
         const CStringW importWarnings(apiError ? apiError : L"");
-        SysFreeString(apiFb2);
         SysFreeString(apiError);
+        const Fb2TextView fb2(ownedFb2);
         quality = AnalyzeFb2Quality(fb2);
         quality.importWarnings = importWarnings;
         quality.svgImages = runtimeStats.svgImages;
@@ -1462,7 +1503,7 @@ namespace
             statsSummary = BuildStatsSummary(quality);
         if (dryRun)
             return true;
-        if (!WriteUtf8ConsoleFile(outputPath, fb2))
+        if (!WriteUtf8ConsoleFileView(outputPath, fb2))
         {
             error = L"Unable to write output file: " + outputPath;
             return false;

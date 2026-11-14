@@ -14,6 +14,7 @@
 #include <cwctype>
 #include <new>
 #include <thread>
+#include <zlib.h>
 #include <shlwapi.h>
 #include <gdiplus.h>
 
@@ -24,6 +25,7 @@ namespace
     EpubImportRuntimeStats g_runtimeStats;
     thread_local CStringW g_bookRoot;
     thread_local LPCWSTR g_importStage = L"initialization";
+    thread_local wchar_t g_imageStageDetail[256] = {};
     struct BookRootScope {
         CStringW previous;
         explicit BookRootScope(const CStringW& root) : previous(g_bookRoot) { g_bookRoot=root; }
@@ -96,7 +98,7 @@ namespace
         CStringW coverImageId;
         unsigned nextImageNumber = 1;
         std::map<std::wstring, ManifestItem> extraImages;
-        std::set<std::wstring> reservedIds, emittedIds, noteTargets, requestedNotes;
+        std::set<std::wstring> reservedIds, emittedIds, noteTargets, requestedNotes, navigationTargets;
         std::set<std::wstring> mainDocuments, noteContentAnchors, noteRootDocuments, residualDocuments;
         std::map<std::wstring, ManifestItem> linkedNonSpineDocuments;
         std::set<std::wstring> excludedServiceDocuments;
@@ -251,13 +253,8 @@ namespace
             if (ch == 0x200B || ch == 0xFEFF)
                 continue;
 
-            // Normalize the most common typographic separators to stable Unicode.
-            // Keep Russian quotation marks and the ellipsis as they are useful in FB2.
-            if (ch == 0x2010 || ch == 0x2011 || ch == 0x2012)
-                ch = L'-';
-            else if (ch == 0x2014 || ch == 0x2015)
-                ch = 0x2014; // em dash
-
+            // Visible hyphens and dashes carry distinct typography and line-breaking
+            // semantics; unlike a discretionary soft hyphen, preserve them verbatim.
             out += ch;
         }
 
@@ -480,9 +477,29 @@ namespace
             { L"&zwnj;", L"&#8204;" }, { L"&zwj;", L"&#8205;" }, { L"&lrm;", L"&#8206;" }, { L"&rlm;", L"&#8207;" }
         };
 
-        for (size_t i = 0; i < _countof(entities); ++i)
-            s.Replace(entities[i].name, entities[i].value);
-        return s;
+        static const EntityReplacement html4Entities[] = {
+#include "Html4Entities.inl"
+        };
+        CStringW result;
+        int start = 0;
+        while (start < s.GetLength())
+        {
+            const int cdata = s.Find(L"<![CDATA[", start);
+            const int comment = s.Find(L"<!--", start);
+            const int protectedStart = cdata < 0 ? comment : comment < 0 ? cdata : min(cdata, comment);
+            const int segmentEnd = protectedStart < 0 ? s.GetLength() : protectedStart;
+            CStringW segment = s.Mid(start, segmentEnd - start);
+            for (const auto& entity : entities) segment.Replace(entity.name, entity.value);
+            for (const auto& entity : html4Entities) segment.Replace(entity.name, entity.value);
+            result += segment;
+            if (protectedStart < 0) break;
+            const bool isCdata = protectedStart == cdata;
+            const int end = s.Find(isCdata ? L"]]>" : L"-->", protectedStart + (isCdata ? 9 : 4));
+            if (end < 0) { result += s.Mid(protectedStart); break; }
+            result += s.Mid(protectedStart, end + 3 - protectedStart);
+            start = end + 3;
+        }
+        return result;
     }
 
     CStringW EscapeUnsupportedAmpersands(CStringW s)
@@ -491,6 +508,16 @@ namespace
         out.Preallocate(s.GetLength());
         for (int i = 0; i < s.GetLength(); ++i)
         {
+            const bool cdata = s[i] == L'<' && s.Mid(i, 9) == L"<![CDATA[";
+            const bool comment = s[i] == L'<' && s.Mid(i, 4) == L"<!--";
+            if (cdata || comment)
+            {
+                const int end = s.Find(cdata ? L"]]>" : L"-->", i + (cdata ? 9 : 4));
+                if (end < 0) { out += s.Mid(i); break; }
+                out += s.Mid(i, end + 3 - i);
+                i = end + 2;
+                continue;
+            }
             if (s[i] != L'&')
             {
                 out += s[i];
@@ -1157,24 +1184,32 @@ namespace
     }
 
     struct ExpectedZipFile { CStringW path; LONG size=0; };
-    bool CollectZipFiles(Folder* folder, const CStringW& prefix, std::vector<ExpectedZipFile>& files, unsigned int depth=0)
+    bool CollectZipFiles(Folder* folder, const CStringW& prefix, std::vector<ExpectedZipFile>& files, CStringW& detail, unsigned int depth=0)
     {
-        if(!folder || depth>64 || files.size()>100000) return false;
+        if(!folder || depth>64 || files.size()>100000) { detail.Format(L"ZIP folder unavailable or limits exceeded at depth %u.",depth); return false; }
         CComPtr<FolderItems> items; long count=0;
-        if(FAILED(folder->Items(&items)) || !items || FAILED(items->get_Count(&count))) return false;
+        HRESULT folderResult=folder->Items(&items);
+        if(FAILED(folderResult) || !items) { detail.Format(L"ZIP folder items unavailable at depth %u (HRESULT 0x%08lX).",depth,folderResult); return false; }
+        folderResult=items->get_Count(&count);
+        if(FAILED(folderResult)) { detail.Format(L"ZIP folder count unavailable at depth %u (HRESULT 0x%08lX).",depth,folderResult); return false; }
         for(long i=0;i<count;++i) {
             CComPtr<FolderItem> item; CComBSTR name; VARIANT_BOOL directory=VARIANT_FALSE;
-            if(FAILED(items->Item(_variant_t(i), &item)) || !item || FAILED(item->get_Path(&name)) || FAILED(item->get_IsFolder(&directory))) return false;
+            HRESULT itemResult=items->Item(_variant_t(i), &item);
+            if(FAILED(itemResult) || !item) { detail.Format(L"ZIP entry lookup failed at depth %u, index %ld (HRESULT 0x%08lX).", depth, i, itemResult); return false; }
+            itemResult=item->get_Path(&name);
+            if(FAILED(itemResult)) { detail.Format(L"ZIP entry path lookup failed at depth %u, index %ld (HRESULT 0x%08lX).", depth, i, itemResult); return false; }
+            itemResult=item->get_IsFolder(&directory);
+            if(FAILED(itemResult)) { detail.Format(L"ZIP entry type lookup failed at depth %u, index %ld (HRESULT 0x%08lX).", depth, i, itemResult); return false; }
             const CStringW itemPath(name);
             const CStringW leaf=itemPath.Mid(itemPath.ReverseFind(L'\\')+1);
-            if(leaf.IsEmpty() || leaf==L"." || leaf==L".." || leaf.FindOneOf(L"\\/:")>=0) return false;
+            if(leaf.IsEmpty() || leaf==L"." || leaf==L".." || leaf.FindOneOf(L"\\/:")>=0) { detail.Format(L"Invalid ZIP entry name at depth %u, index %ld (path length %d, leaf length %d).",depth,i,itemPath.GetLength(),leaf.GetLength()); return false; }
             const CStringW relative=prefix+leaf;
             if(directory) {
-                CComPtr<IDispatch> dispatch; if(FAILED(item->get_GetFolder(&dispatch))) return false;
-                CComQIPtr<Folder> child(dispatch); if(!CollectZipFiles(child,relative+L"\\",files,depth+1)) return false;
+                CComPtr<IDispatch> dispatch; itemResult=item->get_GetFolder(&dispatch); if(FAILED(itemResult)) { detail.Format(L"ZIP folder lookup failed at depth %u, index %ld (HRESULT 0x%08lX).",depth,i,itemResult); return false; }
+                CComQIPtr<Folder> child(dispatch); if(!CollectZipFiles(child,relative+L"\\",files,detail,depth+1)) return false;
             } else {
                 ExpectedZipFile file; file.path=relative;
-                if(FAILED(item->get_Size(&file.size)) || file.size<0) return false;
+                itemResult=item->get_Size(&file.size); if(FAILED(itemResult) || file.size<0) { detail.Format(L"ZIP entry size lookup failed at depth %u, index %ld (HRESULT 0x%08lX).",depth,i,itemResult); return false; }
                 files.push_back(file);
             }
         }
@@ -1275,7 +1310,8 @@ namespace
         }
 
         std::vector<ExpectedZipFile> expected;
-        if(!CollectZipFiles(zipFolder,L"",expected)) { errorText=L"Cannot enumerate all EPUB archive resources safely."; return false; }
+        CStringW zipDetail;
+        if(!CollectZipFiles(zipFolder,L"",expected,zipDetail)) { errorText=L"Cannot enumerate all EPUB archive resources safely."; if (!zipDetail.IsEmpty()) errorText += L" " + zipDetail; return false; }
         CComPtr<FolderItems> items;
         hr = zipFolder->Items(&items);
         if (FAILED(hr) || !items)
@@ -1586,6 +1622,24 @@ namespace
     }
 
     bool CssComputedHidden(const MSXML2::IXMLDOMNodePtr& node);
+    bool IsTokenInList(CStringW value, LPCWSTR token);
+
+    bool IsInteractiveTermDefinition(const MSXML2::IXMLDOMNodePtr& node)
+    {
+        if (!node || !IsTokenInList(Attr(node, L"class"), L"keytermdef")) return false;
+        MSXML2::IXMLDOMNode* rawParent = nullptr;
+        node->get_parentNode(&rawParent);
+        MSXML2::IXMLDOMNodePtr parent(rawParent, false);
+        if (!parent || !IsTokenInList(Attr(parent, L"class"), L"keytermentry")) return false;
+        const auto children = MsxmlGetChildNodes(parent);
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        for (long i = 0; i < count; ++i)
+        {
+            const auto child = MsxmlGetNodeListItem(children, i);
+            if (child && child != node && IsTokenInList(Attr(child, L"class"), L"keyterm")) return true;
+        }
+        return false;
+    }
 
     bool IsHiddenElement(const MSXML2::IXMLDOMNodePtr& node)
     {
@@ -1599,7 +1653,7 @@ namespace
 
         // aria-hidden affects the accessibility tree, not visual rendering.
         // Treating it as CSS visibility discards visible text and images.
-        return CssComputedHidden(node);
+        return CssComputedHidden(node) && !IsInteractiveTermDefinition(node);
     }
 
     CStringW AttrByLocalName(const MSXML2::IXMLDOMNodePtr& node, LPCWSTR localName)
@@ -2222,6 +2276,24 @@ namespace
         if (h.Right(5) == L".webp") return L"image/webp";
         if (h.Right(4) == L".bmp") return L"image/bmp";
         return L"application/octet-stream";
+    }
+
+    CStringW SniffRasterImageMediaType(const CStringW& path)
+    {
+        HANDLE file = ::CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (file == INVALID_HANDLE_VALUE) return CStringW();
+        unsigned char bytes[12] = {}; DWORD read = 0;
+        const BOOL ok = ::ReadFile(file, bytes, sizeof(bytes), &read, nullptr);
+        ::CloseHandle(file);
+        if (!ok) return CStringW();
+        const unsigned char png[] = {0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a};
+        if (read >= 8 && memcmp(bytes, png, sizeof(png)) == 0) return L"image/png";
+        if (read >= 3 && bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff) return L"image/jpeg";
+        if (read >= 6 && (memcmp(bytes, "GIF87a", 6) == 0 || memcmp(bytes, "GIF89a", 6) == 0)) return L"image/gif";
+        if (read >= 12 && memcmp(bytes, "RIFF", 4) == 0 && memcmp(bytes + 8, "WEBP", 4) == 0) return L"image/webp";
+        if (read >= 2 && bytes[0] == 'B' && bytes[1] == 'M') return L"image/bmp";
+        return CStringW();
     }
 
     CStringW NormalizeBinaryId(const CStringW& id, const CStringW& href);
@@ -2884,11 +2956,17 @@ namespace
             if (entry.second.absPath.CompareNoCase(abs) == 0) return &entry.second;
         // EPUBs in the wild can omit an otherwise valid, referenced image from
         // the manifest. Only admit that particular file through the same path guard.
-        if (!abs.IsEmpty() && IsImageHrefByExtension(noFragment) && FileExists(abs))
+        if (!abs.IsEmpty() && FileExists(abs))
         {
+            const bool knownExtension = IsImageHrefByExtension(noFragment);
+            const CStringW detected = knownExtension ? CStringW() : SniffRasterImageMediaType(abs);
+            if (!knownExtension && detected.IsEmpty()) return nullptr;
             ManifestItem item;
             item.id = UniqueContentId(NormalizeBinaryId(CStringW(), noFragment));
-            item.href = noFragment;item.absPath = abs;item.mediaType = GuessImageMediaTypeFromHref(noFragment);
+            item.href = noFragment;item.absPath = abs;
+            item.mediaType = knownExtension ? GuessImageMediaTypeFromHref(noFragment) : detected;
+            if (!knownExtension)
+                g_content.warnings += L"Image type inferred from raster signature: " + noFragment + L"\r\n";
             if (!g_options.unifyImageNames) g_content.binaryIds.emplace(item.id.GetString(), item.id);
             return &g_content.extraImages.emplace(std::wstring(item.id), item).first->second;
         }
@@ -3101,9 +3179,14 @@ namespace
     };
     struct CssFontRule
     {
-        CStringW declarations, visibilityDeclarations;
+        int pseudo = 0; // 1: before, 2: after
+        bool contentSet = false, contentImportant = false;
+        CStringW content;
+        CStringW declarations, visibilityDeclarations, positioningDeclarations;
         CStringW backgroundHref, backgroundDir;
         bool backgroundSet = false, backgroundImportant = false;
+        CStringW listImageHref, listImageDir;
+        bool listImageSet = false, listImageImportant = false, listImageInherit = false, listImageUnsupported = false;
         bool hasVertical = false;
         std::vector<CssSelectorPart> parts;
         int classSpecificity = 0, elementSpecificity = 0;
@@ -3165,6 +3248,59 @@ namespace
             if (href.GetLength() >= 2 && ((href[0] == L'\'' && href[href.GetLength() - 1] == L'\'') ||
                 (href[0] == L'"' && href[href.GetLength() - 1] == L'"')))
                 href = href.Mid(1, href.GetLength() - 2);
+        }
+    }
+
+    struct CssListImage
+    {
+        CStringW href, directory;
+        bool set = false, important = false, inherit = false, unsupported = false;
+    };
+
+    void ParseCssListImage(CStringW declarations, CssListImage& result)
+    {
+        int position = 0;
+        while (position != -1)
+        {
+            CStringW declaration = declarations.Tokenize(L";", position);
+            const int colon = declaration.Find(L':');
+            if (colon < 0) continue;
+            CStringW key = declaration.Left(colon), value = declaration.Mid(colon + 1);
+            key.Trim(); key.MakeLower(); value.Trim();
+            if (key != L"list-style-image" && key != L"list-style") continue;
+            CStringW lowered(value); lowered.MakeLower();
+            const bool important = ExtractCssImportant(lowered);
+            if (result.set && result.important && !important) continue;
+            if (important) { value = value.Left(value.ReverseFind(L'!')); value.Trim(); }
+            lowered = value; lowered.MakeLower();
+            result.set = true; result.important = important; result.inherit = false;
+            result.unsupported = false; result.href.Empty();
+            if (lowered == L"inherit" || lowered == L"unset") { result.inherit = true; continue; }
+            if (lowered == L"none" || lowered == L"initial") continue;
+            if (key == L"list-style")
+            {
+                const int urlStart = lowered.Find(L"url(");
+                if (urlStart < 0)
+                {
+                    // The shorthand resets list-style-image even when it specifies only a type or position.
+                    if (lowered.Find(L"var(") >= 0 || lowered.Find(L"image(") >= 0)
+                        result.unsupported = true;
+                    continue;
+                }
+                const int urlEnd = lowered.Find(L')', urlStart + 4);
+                if (urlEnd < 0 || lowered.Find(L"url(", urlStart + 4) >= 0)
+                { result.unsupported = true; continue; }
+                value = value.Mid(urlStart, urlEnd - urlStart + 1);
+                lowered = value; lowered.MakeLower();
+            }
+            if (lowered.Left(4) != L"url(" || lowered.Right(1) != L")" || lowered.Find(L"url(", 4) >= 0)
+            { result.unsupported = true; continue; }
+            CStringW href = value.Mid(4, value.GetLength() - 5); href.Trim();
+            if (href.GetLength() >= 2 && ((href[0] == L'\'' && href[href.GetLength() - 1] == L'\'') ||
+                (href[0] == L'"' && href[href.GetLength() - 1] == L'"')))
+                href = href.Mid(1, href.GetLength() - 2);
+            if (href.IsEmpty()) result.unsupported = true;
+            else result.href = href;
         }
     }
 
@@ -3247,9 +3383,9 @@ namespace
         return true;
     }
 
-    bool MatchesCssRule(const MSXML2::IXMLDOMNodePtr& node, const CssFontRule& rule)
+    bool MatchesCssRule(const MSXML2::IXMLDOMNodePtr& node, const CssFontRule& rule, int pseudo = 0)
     {
-        if (rule.parts.empty() || !MatchesCssPart(node, rule.parts.back())) return false;
+        if (rule.pseudo != pseudo || rule.parts.empty() || !MatchesCssPart(node, rule.parts.back())) return false;
         MSXML2::IXMLDOMNodePtr ancestor(node);
         for (size_t index = rule.parts.size() - 1; index > 0; --index)
         {
@@ -3323,12 +3459,44 @@ namespace
             if (hasValue) *hasValue = false;
             return 0;
         }
+        CStringW position, top;
+        const auto applyPosition = [&](CStringW declarations, bool important) {
+            declarations.MakeLower();
+            int cursor = 0;
+            while (cursor != -1)
+            {
+                CStringW declaration = declarations.Tokenize(L";", cursor);
+                const int colon = declaration.Find(L':');
+                if (colon < 0) continue;
+                CStringW key = declaration.Left(colon), value = declaration.Mid(colon + 1);
+                key.Trim(); value.Trim();
+                if ((key != L"position" && key != L"top") || ExtractCssImportant(value) != important) continue;
+                if (key == L"position") position = value; else top = value;
+            }
+        };
         for (int priority = 0; priority != 2; ++priority)
         {
             if (g_cssFontRules) for (const auto& rule : *g_cssFontRules)
-                if (rule.hasVertical && MatchesCssRule(node, rule))
-                    ApplyCssVertical(rule.declarations, vertical, priority != 0, specified);
+                if ((rule.hasVertical || !rule.positioningDeclarations.IsEmpty()) && MatchesCssRule(node, rule))
+                {
+                    if (rule.hasVertical) ApplyCssVertical(rule.declarations, vertical, priority != 0, specified);
+                    applyPosition(rule.positioningDeclarations, priority != 0);
+                }
             ApplyCssVertical(inlineStyle, vertical, priority != 0, specified);
+            applyPosition(inlineStyle, priority != 0);
+        }
+        const CStringW nodeName = LocalName(node);
+        if (specified && vertical == 0 && (nodeName == L"sub" || nodeName == L"sup") &&
+            position == L"relative" && !top.IsEmpty() && top != L"auto")
+        {
+            wchar_t* end = nullptr;
+            const double offset = wcstod(top.GetString(), &end);
+            CStringW unit(end ? end : L""); unit.Trim();
+            if (end != top.GetString() && (unit == L"em" || unit == L"ex" || unit == L"px" || unit == L"%") && offset != 0)
+            {
+                vertical = offset > 0 ? -1 : 1;
+                specified = true;
+            }
         }
         if (hasValue) *hasValue = specified;
         return vertical;
@@ -3378,6 +3546,89 @@ namespace
             supported += key + L":" + value + (important ? L"!important;" : L";");
         }
         return supported;
+    }
+
+    bool DecodeCssContentString(const CStringW& value, CStringW& text, CStringW& warning)
+    {
+        if (value.GetLength() < 2 || (value[0] != L'\'' && value[0] != L'"')) return false;
+        const wchar_t quote = value[0];
+        for (int i = 1; i < value.GetLength(); ++i)
+        {
+            wchar_t ch = value[i];
+            if (ch == quote) return i == value.GetLength() - 1;
+            if (ch == L'\r' || ch == L'\n' || ch == L'\f') return false;
+            if (ch != L'\\') { text.AppendChar(ch); continue; }
+            if (++i >= value.GetLength()) return false;
+            ch = value[i];
+            if (ch == L'\r' || ch == L'\n' || ch == L'\f')
+            {
+                if (ch == L'\r' && i + 1 < value.GetLength() && value[i + 1] == L'\n') ++i;
+                continue;
+            }
+            unsigned long code = 0; int digits = 0;
+            while (i < value.GetLength() && digits < 6)
+            {
+                ch = value[i];
+                const int digit = ch >= L'0' && ch <= L'9' ? ch - L'0' :
+                    ch >= L'a' && ch <= L'f' ? ch - L'a' + 10 :
+                    ch >= L'A' && ch <= L'F' ? ch - L'A' + 10 : -1;
+                if (digit < 0) break;
+                code = code * 16 + static_cast<unsigned long>(digit); ++digits; ++i;
+            }
+            if (!digits) { text.AppendChar(ch); continue; }
+            if (i < value.GetLength() && (value[i] == L' ' || value[i] == L'\t' || value[i] == L'\n' || value[i] == L'\r' || value[i] == L'\f'))
+            {
+                if (value[i] == L'\r' && i + 1 < value.GetLength() && value[i + 1] == L'\n') ++i;
+            }
+            else --i;
+            if (!code || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff) ||
+                (code < 0x20 && code != 0x09 && code != 0x0a && code != 0x0d) ||
+                code == 0xfffe || code == 0xffff)
+            {
+                code = 0xfffd;
+                warning += L"Invalid CSS generated character was replaced.\r\n";
+            }
+            if (code <= 0xffff) text.AppendChar(static_cast<wchar_t>(code));
+            else { code -= 0x10000; text.AppendChar(static_cast<wchar_t>(0xd800 + (code >> 10))); text.AppendChar(static_cast<wchar_t>(0xdc00 + (code & 0x3ff))); }
+        }
+        return false;
+    }
+
+    void ParseCssGeneratedContent(const CStringW& declarations, bool& set, bool& important, CStringW& content, CStringW& warning)
+    {
+        int start = 0;
+        while (start < declarations.GetLength())
+        {
+            int end = start; wchar_t quote = 0;
+            for (; end < declarations.GetLength(); ++end)
+            {
+                const wchar_t c = declarations[end];
+                if (quote && c == L'\\' && end + 1 < declarations.GetLength()) { ++end; continue; }
+                if (quote && c == quote) quote = 0;
+                else if (!quote && (c == L'\'' || c == L'"')) quote = c;
+                else if (!quote && c == L';') break;
+            }
+            CStringW item = declarations.Mid(start, end - start); start = end + 1;
+            const int colon = item.Find(L':'); if (colon < 0) continue;
+            CStringW key = item.Left(colon); key.Trim(); key.MakeLower();
+            if (key != L"content") continue;
+            CStringW value = item.Mid(colon + 1); value.Trim();
+            CStringW lowered(value); lowered.MakeLower();
+            const bool priority = ExtractCssImportant(lowered);
+            if (priority) { value = value.Left(value.ReverseFind(L'!')); value.Trim(); }
+            if (set && important && !priority) continue;
+            CStringW text;
+            if (lowered != L"none" && lowered != L"normal")
+            {
+                if (!DecodeCssContentString(value, text, warning))
+                {
+                    warning += L"Unsupported CSS generated content; it was not imported.\r\n";
+                    set = true; important = priority; content.Empty();
+                    continue;
+                }
+            }
+            set = true; important = priority; content = text;
+        }
     }
 
     void ParseCssFontRules(CStringW css, const CStringW& baseDir, std::vector<CssFontRule>& rules, CStringW& warning, int nesting = 0)
@@ -3474,8 +3725,15 @@ namespace
             bool backgroundSet = false, backgroundImportant = false;
             CStringW backgroundHref;
             ParseCssBackground(declarations, backgroundSet, backgroundImportant, backgroundHref);
+            CssListImage listImage;
+            ParseCssListImage(declarations, listImage);
             const bool affectsVisibility = HasCssVisibilityDeclaration(declarations);
-            if (affectsFont || backgroundSet || affectsVisibility)
+            bool contentSet = false, contentImportant = false;
+            CStringW generatedContent;
+            ParseCssGeneratedContent(declarations, contentSet, contentImportant, generatedContent, warning);
+            CStringW positionProbe(declarations); positionProbe.MakeLower();
+            const bool affectsPosition = positionProbe.Find(L"position") >= 0 || positionProbe.Find(L"top") >= 0;
+            if (affectsFont || backgroundSet || affectsVisibility || listImage.set || affectsPosition || contentSet)
             {
                 int selectorPosition = 0;
                 while (selectorPosition != -1)
@@ -3483,6 +3741,11 @@ namespace
                     CStringW selector = selectors.Tokenize(L",", selectorPosition); selector.Trim();
                     if (selector.IsEmpty()) continue;
                     CssFontRule rule;
+                    const CStringW originalSelector(selector);
+                    CStringW lowerSelector(selector); lowerSelector.MakeLower();
+                    if (lowerSelector.Right(8) == L"::before") { rule.pseudo = 1; selector = selector.Left(selector.GetLength() - 8); }
+                    else if (lowerSelector.Right(7) == L"::after") { rule.pseudo = 2; selector = selector.Left(selector.GetLength() - 7); }
+                    selector.TrimRight();
                     bool valid = true;
                     int partPosition = 0;
                     while (partPosition != -1)
@@ -3508,15 +3771,29 @@ namespace
                         rule.parts.push_back(part);
                     }
                     valid = valid && !rule.parts.empty();
-                    if (!valid) { warning += L"Unsupported CSS font selector or declaration: " + selector + L"\r\n"; continue; }
+                    if (!valid) { warning += L"Unsupported CSS font selector or declaration: " + originalSelector + L"\r\n"; continue; }
                     rule.declarations = supported;
+                    if (rule.pseudo)
+                    {
+                        rule.contentSet = contentSet; rule.contentImportant = contentImportant; rule.content = generatedContent;
+                        if (affectsVisibility) rule.visibilityDeclarations = declarations;
+                        if (contentSet || !supported.IsEmpty() || affectsVisibility) rules.push_back(rule);
+                        continue;
+                    }
+                    if (affectsPosition) rule.positioningDeclarations = declarations;
                     rule.hasVertical = supported.Find(L"vertical-align:") >= 0;
                     if (affectsVisibility) rule.visibilityDeclarations = declarations;
                     rule.backgroundSet = backgroundSet;
                     rule.backgroundImportant = backgroundImportant;
                     rule.backgroundHref = backgroundHref;
                     rule.backgroundDir = baseDir;
-                    if (!supported.IsEmpty() || backgroundSet || affectsVisibility) rules.push_back(rule);
+                    rule.listImageSet = listImage.set;
+                    rule.listImageImportant = listImage.important;
+                    rule.listImageInherit = listImage.inherit;
+                    rule.listImageUnsupported = listImage.unsupported;
+                    rule.listImageHref = listImage.href;
+                    rule.listImageDir = baseDir;
+                    if (!supported.IsEmpty() || backgroundSet || affectsVisibility || listImage.set || affectsPosition) rules.push_back(rule);
                 }
             }
             position = close + 1;
@@ -3617,6 +3894,61 @@ namespace
         }
     }
 
+    CssListImage ResolveCssListImage(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
+    {
+        std::vector<MSXML2::IXMLDOMNodePtr> ancestors;
+        for (auto current = node; current; )
+        {
+            ancestors.push_back(current);
+            MSXML2::IXMLDOMNode* rawParent = nullptr;
+            if (FAILED(current->get_parentNode(&rawParent))) break;
+            current = MSXML2::IXMLDOMNodePtr(rawParent, false);
+        }
+        CssListImage inherited;
+        for (auto it = ancestors.rbegin(); it != ancestors.rend(); ++it)
+        {
+            CssListImage inlineImage;
+            ParseCssListImage(Attr(*it, L"style"), inlineImage);
+            inlineImage.directory = ctx.currentXhtmlDir;
+            CssListImage local;
+            for (int priority = 0; priority != 2; ++priority)
+            {
+                if (g_cssFontRules) for (const auto& rule : *g_cssFontRules)
+                {
+                    if (!rule.listImageSet || rule.listImageImportant != (priority != 0) || !MatchesCssRule(*it, rule)) continue;
+                    local.set = true; local.href = rule.listImageHref; local.directory = rule.listImageDir;
+                    local.inherit = rule.listImageInherit; local.unsupported = rule.listImageUnsupported;
+                }
+                if (inlineImage.set && inlineImage.important == (priority != 0)) local = inlineImage;
+            }
+            if (local.set && !local.inherit) inherited = local;
+        }
+        return inherited;
+    }
+
+    CStringW CssListMarkerToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
+    {
+        if (!g_options.importLists) return CStringW();
+        const CssListImage listImage = ResolveCssListImage(node, ctx);
+        if (listImage.unsupported && g_content.warnedInlineCss.emplace(L"unsupported-css-list-image").second)
+            g_content.warnings += L"Unsupported CSS list-style-image value; a text marker was used.\r\n";
+        if (!g_options.importImages || listImage.href.IsEmpty()) return CStringW();
+        const CStringW key = listImage.directory + L"/" + listImage.href;
+        if (IsExternalHref(listImage.href))
+        {
+            if (g_content.warnedInlineCss.emplace(std::wstring(L"external-list-image:") + key.GetString()).second)
+                g_content.warnings += L"External CSS list marker image was not imported: " + listImage.href + L"\r\n";
+            return CStringW();
+        }
+        const std::wstring failureKey = std::wstring(L"failed-list-image:") + key.GetString();
+        if (g_content.warnedInlineCss.count(failureKey)) return CStringW();
+        ConvertContext imageContext = ctx;
+        imageContext.currentXhtmlDir = listImage.directory;
+        const CStringW marker = Fb2ImageElementForHref(imageContext, listImage.href);
+        if (marker.IsEmpty()) g_content.warnedInlineCss.emplace(failureKey);
+        return marker;
+    }
+
     CStringW EmptyBackgroundImage(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, bool inlineElement)
     {
         if (!g_options.importImages || !node) return CStringW();
@@ -3696,9 +4028,22 @@ namespace
         if (!children)
             return out;
 
+        const CStringW parentName = LocalName(node);
+        const bool heading = parentName.GetLength() == 2 && parentName[0] == L'h' &&
+            parentName[1] >= L'1' && parentName[1] <= L'6';
+        bool afterBlock = false;
         long count = MsxmlGetNodeListLength(children);
         for (long i = 0; i < count; ++i)
-            out += InlineToFb2(MsxmlGetNodeListItem(children, i), ctx, font);
+        {
+            const auto child = MsxmlGetNodeListItem(children, i);
+            const CStringW part = InlineToFb2(child, ctx, font);
+            const bool block = heading && LocalName(child) == L"div" && !part.IsEmpty();
+            if (part.IsEmpty()) continue;
+            if ((block || afterBlock) && !out.IsEmpty() && !iswspace(out[out.GetLength() - 1]) &&
+                !iswspace(part[0])) out += L" ";
+            out += part;
+            afterBlock = block;
+        }
         return out;
     }
 
@@ -3709,7 +4054,42 @@ namespace
 
     CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, InlineFontState font)
     {
-        return InlineToFb2Impl(node, ctx, font, true);
+        CStringW result = InlineToFb2Impl(node, ctx, font, true);
+        if (!node || MsxmlGetNodeType(node) != MSXML2::NODE_ELEMENT || !g_cssFontRules)
+            return result;
+        if (result.IsEmpty() && (LocalName(node) != L"span" || IsHiddenElement(node) ||
+            (ctx.inlinePageBreaks && LooksLikePageBreak(node) && !PageBreakHasContent(node)) ||
+            (g_options.importNotes && !ctx.collectingNotes &&
+             g_content.noteTargets.count(std::wstring(PathAnchorMapKey(ctx.currentXhtmlPath, Attr(node, L"id")))))))
+            return result;
+        ApplyInlineFont(node, font);
+        const auto generated = [&](int pseudo) {
+            CStringW value;
+            InlineFontState generatedFont = font;
+            bool displayHidden = false, visibilityHidden = false;
+            for (int priority = 0; priority != 2; ++priority)
+                for (const auto& rule : *g_cssFontRules)
+                    if (MatchesCssRule(node, rule, pseudo))
+                    {
+                        if (rule.contentSet && rule.contentImportant == (priority != 0)) value = rule.content;
+                        ApplyFontDeclarations(rule.declarations, generatedFont, font, priority != 0);
+                        ApplyCssVisibility(rule.visibilityDeclarations, priority != 0, displayHidden, visibilityHidden);
+                    }
+            if (displayHidden || visibilityHidden) return CStringW();
+            value = XmlEscape(NormalizeImportedText(value));
+            if (generatedFont.italic) value = WrapInlinePreservingBoundarySpace(value, L"emphasis");
+            if (generatedFont.bold) value = WrapInlinePreservingBoundarySpace(value, L"strong");
+            return value;
+        };
+        const CStringW before = generated(1), after = generated(2);
+        if (LocalName(node) == L"a" && result.Left(3) == L"<a " && result.Right(4) == L"</a>" &&
+            result.Find(L"</a>") == result.GetLength() - 4)
+        {
+            const int start = result.Find(L'>');
+            if (start >= 0)
+                return result.Left(start + 1) + before + result.Mid(start + 1, result.GetLength() - start - 5) + after + L"</a>";
+        }
+        return before + result + after;
     }
 
     CStringW InlineToFb2Impl(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, InlineFontState font, bool applyVertical)
@@ -3748,6 +4128,16 @@ namespace
             return CStringW();
 
         CStringW name = LocalName(node);
+        if (g_options.skipHiddenElements && IsInteractiveTermDefinition(node) && CssComputedHidden(node))
+        {
+            ApplyInlineFont(node, font);
+            CStringW content = ChildrenInlineToFb2(node, ctx, font);
+            content.Trim();
+            if (content.IsEmpty()) return CStringW();
+            if (g_content.warnedInlineCss.emplace(L"interactive-term-definitions").second)
+                g_content.warnings += L"Interactive term definitions were retained inline because FB2 cannot display the original popup.\r\n";
+            return L" (" + content + L")";
+        }
         if (applyVertical && name.CompareNoCase(L"sup") != 0 && name.CompareNoCase(L"sub") != 0)
         {
             const int vertical = CssVerticalForNode(node);
@@ -3772,13 +4162,132 @@ namespace
                 g_content.warnings += L"CSS background image on non-empty inline content was not imported.\r\n";
         }
         ApplyInlineFont(node, font);
+        if (name == L"msub" || name == L"msup" || name == L"msubsup" || name == L"mfrac" || name == L"msqrt" ||
+            name == L"munder" || name == L"mover" || name == L"munderover" || name == L"mtable" ||
+            name == L"mroot" || name == L"semantics")
+        {
+            CComBSTR uri;
+            if (SUCCEEDED(node->get_namespaceURI(&uri)) && uri &&
+                CStringW(uri) == L"http://www.w3.org/1998/Math/MathML")
+            {
+                std::vector<MSXML2::IXMLDOMNodePtr> operands;
+                const auto children = MsxmlGetChildNodes(node);
+                for (long i = 0, count = children ? MsxmlGetNodeListLength(children) : 0; i < count; ++i)
+                {
+                    const auto child = MsxmlGetNodeListItem(children, i);
+                    if (MsxmlGetNodeType(child) == MSXML2::NODE_ELEMENT) operands.push_back(child);
+                }
+                if (name == L"semantics")
+                {
+                    for (const auto& operand : operands)
+                    {
+                        const CStringW operandName = LocalName(operand);
+                        if (operandName != L"annotation" && operandName != L"annotation-xml")
+                            return InlineToFb2(operand, ctx, font);
+                    }
+                }
+                if (name == L"mroot" && operands.size() == 2)
+                {
+                    if (g_content.warnedInlineCss.emplace(L"mathml-root-approximation").second)
+                        g_content.warnings += L"MathML indexed root was approximated as text.\r\n";
+                    return CStringW(L"root(") + InlineToFb2(operands[1], ctx, font) + L", " +
+                        InlineToFb2(operands[0], ctx, font) + L")";
+                }
+                if (name == L"mtable")
+                {
+                    CStringW table;
+                    for (const auto& row : operands)
+                    {
+                        if (LocalName(row) != L"mtr" && LocalName(row) != L"mlabeledtr") continue;
+                        CStringW cells;
+                        bool hasCell = false;
+                        const auto rowChildren = MsxmlGetChildNodes(row);
+                        for (long i = 0, count = rowChildren ? MsxmlGetNodeListLength(rowChildren) : 0; i < count; ++i)
+                        {
+                            const auto cell = MsxmlGetNodeListItem(rowChildren, i);
+                            if (LocalName(cell) != L"mtd") continue;
+                            CStringW text = ChildrenInlineToFb2(cell, ctx, font); text.Trim();
+                            if (hasCell) cells += L" | ";
+                            cells += text;
+                            hasCell = true;
+                        }
+                        if (!hasCell) continue;
+                        if (!table.IsEmpty()) table += L"; ";
+                        table += cells;
+                    }
+                    if (!table.IsEmpty())
+                    {
+                        if (g_content.warnedInlineCss.emplace(L"mathml-table-approximation").second)
+                            g_content.warnings += L"MathML table layout was approximated as text.\r\n";
+                        return table;
+                    }
+                }
+                if ((name == L"munder" || name == L"mover" || name == L"munderover") &&
+                    operands.size() == (name == L"munderover" ? 3u : 2u))
+                {
+                    const CStringW base = InlineToFb2(operands[0], ctx, font);
+                    const CStringW under = InlineToFb2(operands[1], ctx, font);
+                    CStringW baseText = TrimString(NodeText(operands[0]));
+                    const bool largeOperator = baseText == L"∑" || baseText == L"∏" ||
+                        baseText == L"∫" || baseText == L"∮";
+                    if (largeOperator)
+                    {
+                        CStringW result = base + WrapInlinePreservingBoundarySpace(under, name == L"mover" ? L"sup" : L"sub");
+                        if (name == L"munderover")
+                            result += WrapInlinePreservingBoundarySpace(InlineToFb2(operands[2], ctx, font), L"sup");
+                        return result;
+                    }
+                    if (g_content.warnedInlineCss.emplace(L"mathml-over-under-approximation").second)
+                        g_content.warnings += L"MathML over/under notation was approximated as text.\r\n";
+                    if (name == L"mover" && (TrimString(NodeText(operands[1])) == L"¯" ||
+                        TrimString(NodeText(operands[1])) == L"‾")) return CStringW(L"overline(") + base + L")";
+                    if (name == L"munderover")
+                        return CStringW(L"underover(") + base + L", " + under + L", " +
+                            InlineToFb2(operands[2], ctx, font) + L")";
+                    return CStringW(name == L"mover" ? L"overset(" : L"underset(") + under + L", " + base + L")";
+                }
+                if (name == L"msqrt")
+                {
+                    CStringW content = ChildrenInlineToFb2(node, ctx, font);
+                    content.Trim();
+                    if (!content.IsEmpty()) return CStringW(L"\x221A(") + content + L")";
+                }
+                const size_t expected = name == L"msubsup" ? 3 : 2;
+                if (operands.size() == expected)
+                {
+                    if (name == L"mfrac")
+                    {
+                        CStringW thickness = Attr(node, L"linethickness"); thickness.Trim();
+                        wchar_t* end = nullptr;
+                        const double lineWidth = wcstod(thickness.GetString(), &end);
+                        if (!thickness.IsEmpty() && end != thickness.GetString() && lineWidth == 0.0)
+                        {
+                            if (g_content.warnedInlineCss.emplace(L"mathml-barless-stack").second)
+                                g_content.warnings += L"MathML stack without a fraction bar was approximated as text.\r\n";
+                            return CStringW(L"stack(") + InlineToFb2(operands[0], ctx, font) + L", " +
+                                InlineToFb2(operands[1], ctx, font) + L")";
+                        }
+                        return CStringW(L"(") + InlineToFb2(operands[0], ctx, font) + L")/(" +
+                            InlineToFb2(operands[1], ctx, font) + L")";
+                    }
+                    CStringW result = InlineToFb2(operands[0], ctx, font);
+                    result += WrapInlinePreservingBoundarySpace(InlineToFb2(operands[1], ctx, font),
+                        name == L"msup" ? L"sup" : L"sub");
+                    if (name == L"msubsup")
+                        result += WrapInlinePreservingBoundarySpace(InlineToFb2(operands[2], ctx, font), L"sup");
+                    return result;
+                }
+            }
+        }
         if (name.CompareNoCase(L"li") == 0)
         {
             // Nested list entries rendered inline are separate blocks in the
             // source. Without a boundary adjacent link labels merge (83 + 105
             // becomes 83105), changing the book's text and index references.
             CStringW text = ChildrenInlineToFb2(node, ctx, font);
-            return text.IsEmpty() ? CStringW() : L" " + text;
+            if (text.IsEmpty()) return CStringW();
+            const CStringW marker = CssListMarkerToFb2(node, ctx);
+            return marker.IsEmpty() ? L" " + text : L" " + marker + L" " + text;
         }
         if (name.CompareNoCase(L"em") == 0 || name.CompareNoCase(L"i") == 0 || name.CompareNoCase(L"strong") == 0 || name.CompareNoCase(L"b") == 0)
             return ChildrenInlineToFb2(node, ctx, font);
@@ -3864,7 +4373,7 @@ namespace
                 bool outerLinkEmitted = false;
                 auto flush = [&]() {
                     if (pending.IsEmpty()) return;
-                    if (!href.IsEmpty() && g_options.preserveLinks && !excluded && !TrimString(pending).IsEmpty())
+                    if (!normalizedHref.IsEmpty() && g_options.preserveLinks && !excluded && !TrimString(pending).IsEmpty())
                     {
                         result += L"<a l:href=\"" + XmlEscape(normalizedHref) + L"\">" + pending + L"</a>";
                         outerLinkEmitted = true;
@@ -3888,7 +4397,7 @@ namespace
                     }
                 }
                 flush();
-                if (!outerLinkEmitted && !href.IsEmpty() && g_options.preserveLinks && !excluded)
+                if (!outerLinkEmitted && !normalizedHref.IsEmpty() && g_options.preserveLinks && !excluded)
                     g_content.warnings += L"Outer hyperlink had no separate text and was omitted while retaining nested links.\r\n";
                 return result;
             }
@@ -3920,7 +4429,8 @@ namespace
             for (int i = 0; symbol && i < marker.GetLength(); ++i)
                 symbol = marker[i] == L'*' || marker[i] == 0x2020 || marker[i] == 0x2021 || marker[i] == 0x00A7;
             const bool letter = marker.GetLength() == 1 && iswalpha(marker[0]) != 0;
-            if (g_options.importNotes && (IsNoteReferenceElement(node) ||
+            const bool targetsNavigation = g_content.navigationTargets.count(std::wstring(noteKey)) != 0;
+            if (g_options.importNotes && !targetsNavigation && (IsNoteReferenceElement(node) ||
                 ((note != g_content.noteLinks.end() || g_content.requestedNotes.count(std::wstring(noteKey))) && (number || symbol || letter))))
             {
                 ++g_content.noteReferences;
@@ -3941,8 +4451,8 @@ namespace
                 // note whose FB2 section uses a different root identifier.
                 if (g_options.importNotes && note != g_content.noteLinks.end())
                     return L"<a l:href=\"#" + XmlEscape(note->second) + L"\">" + text + L"</a>";
-                // Only explicitly filtered service documents lose their links;
-                // unresolved ordinary targets remain visible to strict validation.
+                // Missing source fragments cannot become valid FB2 targets;
+                // preserve their visible content and report the source defect.
                 if (!IsExternalHref(href) && !href.Left(href.Find(L'#') >= 0 ? href.Find(L'#') : href.GetLength()).IsEmpty() &&
                     g_content.excludedServiceDocuments.count(LowerMapKey(targetPath).GetString()))
                 {
@@ -3950,6 +4460,7 @@ namespace
                     return text;
                 }
                 CStringW normalizedHref = ResolveFb2Href(ctx, href);
+                if (normalizedHref.IsEmpty()) return text;
                 return L"<a l:href=\"" + XmlEscape(normalizedHref) + L"\">" + text + L"</a>";
             }
             return text;
@@ -4218,7 +4729,7 @@ namespace
 
         ++g_content.missingSourceAnchors;
         g_content.warnings += L"Unresolved internal fragment: " + ctx.currentXhtmlPath + L"#" + rawFragment + L"\r\n";
-        return rawFragment;
+        return CStringW();
     }
 
     CStringW ResolveFb2Href(const ConvertContext& ctx, const CStringW& rawHref)
@@ -4251,7 +4762,11 @@ namespace
                         return href;
                     }
                 }
-                if (pathPart.IsEmpty()) return L"#" + ResolveFb2HrefFragment(ctx, fragment);
+                if (pathPart.IsEmpty())
+                {
+                    const CStringW target = ResolveFb2HrefFragment(ctx, fragment);
+                    return target.IsEmpty() ? CStringW() : CStringW(L"#") + target;
+                }
                 const CStringW unresolvedPath = CombineAndCanonicalizePath(ctx.currentXhtmlDir, pathPart);
                 if (FileExists(unresolvedPath)) ++g_content.missingSourceAnchors;
                 else ++g_content.missingSourceResources;
@@ -4347,12 +4862,14 @@ namespace
         return markers;
     }
 
+    bool IsQuoteTextDiv(const MSXML2::IXMLDOMNodePtr& node);
+
     CStringW OptionalIdAttributeAndExtraMarkersIncludingDescendant(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, CStringW& extraMarkers)
     {
         extraMarkers.Empty();
         std::vector<CStringW> ids;
         const CStringW name = LocalName(node);
-        if (name == L"p" || IsHeadingName(name) || name == L"li") ids = CollectRawAnchorIds(node);
+        if (name == L"p" || IsHeadingName(name) || name == L"li" || (name == L"div" && IsQuoteTextDiv(node))) ids = CollectRawAnchorIds(node);
         else if (!RawAnchorId(node).IsEmpty()) ids.push_back(RawAnchorId(node));
         if (ids.empty())
             return CStringW();
@@ -4648,6 +5165,8 @@ namespace
 
     void AppendPreNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx);
 
+    bool LinkContainsBlockContent(const MSXML2::IXMLDOMNodePtr& node);
+
     bool IsQuoteTextDiv(const MSXML2::IXMLDOMNodePtr& node)
     {
         if (LocalName(node) != L"div" || TrimString(NodeText(node)).IsEmpty()) return false;
@@ -4662,11 +5181,49 @@ namespace
                 name == L"aside" || name == L"ul" || name == L"ol" || name == L"li" ||
                 name == L"table" || name == L"pre" || name == L"figure" || name == L"blockquote" ||
                 IsHeadingName(name)) return false;
+            if (LinkContainsBlockContent(child)) return false;
         }
         return true;
     }
 
-    void CollectQuoteBlocks(const MSXML2::IXMLDOMNodePtr& node, std::vector<MSXML2::IXMLDOMNodePtr>& blocks)
+    void AppendListNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx);
+
+    bool IsSimpleMarkedQuoteList(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
+    {
+        if (!g_options.importLists || !g_options.importImages) return false;
+        bool marked = false, complex = false;
+        const auto items = MsxmlGetChildNodes(node);
+        const long itemCount = items ? MsxmlGetNodeListLength(items) : 0;
+        for (long i = 0; i < itemCount; ++i)
+        {
+            const auto item = MsxmlGetNodeListItem(items, i);
+            if (MsxmlGetNodeType(item) != MSXML2::NODE_ELEMENT || LocalName(item) != L"li") continue;
+            if (!ResolveCssListImage(item, ctx).href.IsEmpty()) marked = true;
+            const auto children = MsxmlGetChildNodes(item);
+            const long count = children ? MsxmlGetNodeListLength(children) : 0;
+            for (long j = 0; j < count; ++j)
+            {
+                const auto child = MsxmlGetNodeListItem(children, j);
+                if (MsxmlGetNodeType(child) != MSXML2::NODE_ELEMENT) continue;
+                const CStringW name = LocalName(child);
+                if (name == L"p" || name == L"div" || name == L"section" || name == L"article" ||
+                    name == L"aside" || name == L"ul" || name == L"ol" || name == L"li" ||
+                    name == L"table" || name == L"pre" || name == L"figure" || name == L"blockquote" ||
+                    IsHeadingName(name)) complex = true;
+            }
+        }
+        return marked && !complex;
+    }
+
+    bool IsQuoteInlineNode(const CStringW& name)
+    {
+        return name == L"a" || name == L"span" || name == L"code" || name == L"em" || name == L"i" ||
+            name == L"strong" || name == L"b" || name == L"sup" || name == L"sub" || name == L"s" ||
+            name == L"strike" || name == L"del" || name == L"u" || name == L"small" || name == L"big";
+    }
+
+    void CollectQuoteBlocks(const MSXML2::IXMLDOMNodePtr& node, std::vector<MSXML2::IXMLDOMNodePtr>& blocks,
+        std::vector<CStringW>& prefixes, const ConvertContext& ctx, bool preserveInline = false)
     {
         if (!node)
             return;
@@ -4674,25 +5231,60 @@ namespace
         if (type == MSXML2::NODE_TEXT || type == MSXML2::NODE_CDATA_SECTION)
         {
             blocks.push_back(node);
+            prefixes.emplace_back();
             return;
         }
         if (IsHiddenElement(node)) return;
         const CStringW name = LocalName(node);
-        if (name == L"p" || name == L"pre" || IsHeadingName(name) || IsQuoteTextDiv(node) || name == L"img" || name == L"image" || name == L"picture" || name == L"object")
+        if (name == L"p" || name == L"pre" || name == L"br" || IsHeadingName(name) || IsQuoteTextDiv(node) || name == L"img" || name == L"image" || name == L"picture" || name == L"object" ||
+            (preserveInline && IsQuoteInlineNode(name)) ||
+            ((name == L"ul" || name == L"ol") && IsSimpleMarkedQuoteList(node, ctx)))
         {
             blocks.push_back(node);
+            prefixes.emplace_back();
             return;
         }
+        CStringW itemMarker;
+        if (name == L"li" && g_options.importLists && g_options.importImages)
+            itemMarker = CssListMarkerToFb2(node, ctx);
+        const size_t firstBlock = blocks.size();
         const auto children = MsxmlGetChildNodes(node);
         const long count = children ? MsxmlGetNodeListLength(children) : 0;
         for (long i = 0; i < count; ++i)
-            CollectQuoteBlocks(MsxmlGetNodeListItem(children, i), blocks);
+            CollectQuoteBlocks(MsxmlGetNodeListItem(children, i), blocks, prefixes, ctx, preserveInline || !itemMarker.IsEmpty());
+        if (name == L"li" && g_options.importLists && g_options.importImages)
+        {
+            MSXML2::IXMLDOMNode* rawParent = nullptr;
+            if (SUCCEEDED(node->get_parentNode(&rawParent)) && rawParent)
+            {
+                const MSXML2::IXMLDOMNodePtr parent(rawParent, false);
+                const CStringW parentName = LocalName(parent);
+                if (parentName == L"ul" || parentName == L"ol")
+                {
+                    if (!itemMarker.IsEmpty())
+                    {
+                        size_t index = firstBlock;
+                        while (index < blocks.size())
+                        {
+                            const auto blockType = MsxmlGetNodeType(blocks[index]);
+                            if (blockType != MSXML2::NODE_TEXT && blockType != MSXML2::NODE_CDATA_SECTION) break;
+                            if (!TrimString(NodeText(blocks[index])).IsEmpty()) break;
+                            ++index;
+                        }
+                        if (index < blocks.size()) prefixes[index] = itemMarker + L" " + prefixes[index];
+                        else if (g_content.warnedInlineCss.emplace(L"empty-sidebar-list-image").second)
+                            g_content.warnings += L"CSS list image marker on an empty sidebar item was not preserved.\r\n";
+                    }
+                }
+            }
+        }
     }
 
     void AppendEpigraphOrCiteNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx, bool epigraph)
     {
         std::vector<MSXML2::IXMLDOMNodePtr> paragraphs;
-        CollectQuoteBlocks(node, paragraphs);
+        std::vector<CStringW> prefixes;
+        CollectQuoteBlocks(node, paragraphs, prefixes, ctx);
 
         CStringW xml;
         std::vector<CStringW> blocks;
@@ -4701,7 +5293,8 @@ namespace
         bool hasParagraph = false;
         for (const auto& block : paragraphs)
             if (MsxmlGetNodeType(block) == MSXML2::NODE_TEXT || MsxmlGetNodeType(block) == MSXML2::NODE_CDATA_SECTION ||
-                LocalName(block) == L"p" || LocalName(block) == L"pre" || IsHeadingName(LocalName(block)) || IsQuoteTextDiv(block)) { hasParagraph = true; break; }
+                LocalName(block) == L"p" || LocalName(block) == L"pre" || LocalName(block) == L"ul" || LocalName(block) == L"ol" || IsQuoteInlineNode(LocalName(block)) ||
+                IsHeadingName(LocalName(block)) || IsQuoteTextDiv(block)) { hasParagraph = true; break; }
         if (!hasParagraph)
         {
             CStringW text = ChildrenInlineToFb2(node, ctx);
@@ -4728,18 +5321,43 @@ namespace
             for (size_t i = 0; i < paragraphs.size(); ++i)
             {
                 const auto type = MsxmlGetNodeType(paragraphs[i]);
-                const bool directText = type == MSXML2::NODE_TEXT || type == MSXML2::NODE_CDATA_SECTION;
+                if (type == MSXML2::NODE_ELEMENT && LocalName(paragraphs[i]) == L"br")
+                {
+                    const bool hasPending = !TrimString(pendingInline).IsEmpty();
+                    flushInline();
+                    if (!hasPending)
+                    {
+                        if (afterAuthor) { blocks.push_back(xml); xml.Empty(); afterAuthor = false; }
+                        xml += L"        <empty-line/>\r\n";
+                        ++count;
+                    }
+                    continue;
+                }
+                const bool directText = type == MSXML2::NODE_TEXT || type == MSXML2::NODE_CDATA_SECTION || IsQuoteInlineNode(LocalName(paragraphs[i]));
                 if (directText)
                 {
+                    if (!prefixes[i].IsEmpty()) flushInline();
+                    pendingInline += prefixes[i];
                     pendingInline += InlineToFb2(paragraphs[i], ctx);
                     continue;
                 }
                 flushInline();
+                const CStringW prefix = prefixes[i];
                 if (LocalName(paragraphs[i]) == L"pre")
                 {
                     if (afterAuthor) { blocks.push_back(xml); xml.Empty(); afterAuthor = false; }
+                    if (!prefix.IsEmpty()) { xml += L"        <p>" + prefix + L"</p>\r\n"; ++count; }
                     const int previousLength = xml.GetLength();
                     AppendPreNode(paragraphs[i], xml, ctx);
+                    if (xml.GetLength() != previousLength) ++count;
+                    continue;
+                }
+                if (LocalName(paragraphs[i]) == L"ul" || LocalName(paragraphs[i]) == L"ol")
+                {
+                    if (afterAuthor) { blocks.push_back(xml); xml.Empty(); afterAuthor = false; }
+                    if (!prefix.IsEmpty()) { xml += L"        <p>" + prefix + L"</p>\r\n"; ++count; }
+                    const int previousLength = xml.GetLength();
+                    AppendListNode(paragraphs[i], xml, ctx);
                     if (xml.GetLength() != previousLength) ++count;
                     continue;
                 }
@@ -4754,13 +5372,14 @@ namespace
                             xml.Empty();
                             afterAuthor = false;
                         }
-                        xml += L"        <p>" + image + L"</p>\r\n";
+                        xml += L"        <p>" + prefix + image + L"</p>\r\n";
                         ++count;
                     }
                     continue;
                 }
                 CStringW text = ChildrenInlineToFb2(paragraphs[i], ctx);
                 text.Trim();
+                text = prefix + text;
                 if (!text.IsEmpty())
                 {
                     const bool author = LooksLikeTextAuthor(paragraphs[i]);
@@ -4835,6 +5454,7 @@ namespace
     CStringW TableCellContentToFb2(const MSXML2::IXMLDOMNodePtr& cell, const ConvertContext& ctx)
     {
         CStringW out;
+        bool blockBoundary = false;
         MSXML2::IXMLDOMNodeListPtr children = MsxmlGetChildNodes(cell);
         long count = children ? MsxmlGetNodeListLength(children) : 0;
         for (long i = 0; i < count; ++i)
@@ -4844,15 +5464,23 @@ namespace
                 continue;
 
             CStringW part;
+            bool block = false;
             if (MsxmlGetNodeType(child) == MSXML2::NODE_ELEMENT)
             {
                 CStringW name = LocalName(child);
                 if (name.CompareNoCase(L"p") == 0 || name.CompareNoCase(L"div") == 0 || name.CompareNoCase(L"section") == 0)
+                {
+                    block = true;
                     part = ChildrenInlineToFb2(child, ctx);
+                }
                 else if (name.CompareNoCase(L"br") == 0)
-                    part = L"; ";
+                {
+                    blockBoundary = true;
+                    continue;
+                }
                 else if (name.CompareNoCase(L"ul") == 0 || name.CompareNoCase(L"ol") == 0)
                 {
+                    block = true;
                     std::vector<MSXML2::IXMLDOMNodePtr> items;
                     CollectElementsByLocalName(child, L"li", items);
                     for (size_t li = 0; li < items.size(); ++li)
@@ -4877,13 +5505,21 @@ namespace
                 part = InlineToFb2(child, ctx);
             }
 
-            part.Trim();
-            if (part.IsEmpty())
+            if (block) part.Trim();
+            if (TrimString(part).IsEmpty())
+            {
+                if (!blockBoundary && !block) out += part;
                 continue;
-
-            if (!out.IsEmpty() && out.Right(2) != L"; ")
+            }
+            if (blockBoundary || block)
+            {
+                out.TrimRight();
+                part.TrimLeft();
+            }
+            if (!out.IsEmpty() && (blockBoundary || block))
                 out += L"; ";
             out += part;
+            blockBoundary = block;
         }
 
         if (out.IsEmpty())
@@ -5019,6 +5655,73 @@ namespace
             if (ordered)
                 itemNumber = ParsePositiveInt(Attr(child, L"value"), number);
 
+            // A list item may contain multiple real paragraphs. Flattening
+            // them as inline children merges adjacent words and loses their
+            // boundaries, especially in technical callouts.
+            const auto itemChildren = MsxmlGetChildNodes(child);
+            const long itemCount = itemChildren ? MsxmlGetNodeListLength(itemChildren) : 0;
+            bool hasBlockChildren = false;
+            for (long j = 0; j < itemCount; ++j)
+            {
+                const CStringW childName = LocalName(MsxmlGetNodeListItem(itemChildren, j));
+                if (childName == L"p" || childName == L"pre" || childName == L"div" ||
+                    childName == L"ul" || childName == L"ol" || childName == L"table") { hasBlockChildren = true; break; }
+            }
+            if (hasBlockChildren)
+            {
+                CStringW prefix;
+                const CStringW marker = CssListMarkerToFb2(child, ctx);
+                if (!marker.IsEmpty()) prefix = marker + L" ";
+                if (ordered)
+                {
+                    if (prefix.IsEmpty()) prefix = OrderedListPrefix(itemNumber, listType, listStyle);
+                    number = itemNumber + 1;
+                }
+                else if (prefix.IsEmpty()) prefix = L"• ";
+
+                CStringW itemContent, pending, inlineMarkers;
+                const InlineFontState font = InheritedInlineFont(child);
+                const auto flush = [&]() {
+                    pending.Trim();
+                    if (!pending.IsEmpty()) itemContent += L"      <p>" + pending + L"</p>\r\n";
+                    pending.Empty();
+                };
+                for (long j = 0; j < itemCount; ++j)
+                {
+                    const auto part = MsxmlGetNodeListItem(itemChildren, j);
+                    const CStringW partName = LocalName(part);
+                    if (MsxmlGetNodeType(part) == MSXML2::NODE_ELEMENT &&
+                        (partName == L"p" || partName == L"pre" || partName == L"div" || partName == L"ul" || partName == L"ol" || partName == L"table"))
+                    {
+                        flush();
+                        AppendBlockNode(part, itemContent, ctx);
+                    }
+                    else
+                    {
+                        inlineMarkers += AnchorMarkerParagraphsFromRawIds(CollectRawAnchorIds(part), 0, ctx);
+                        pending += InlineToFb2(part, ctx, font);
+                    }
+                }
+                flush();
+                const CStringW itemId = OptionalIdAttribute(child, ctx);
+                if (!itemId.IsEmpty()) out += L"      <p" + itemId + L"></p>\r\n";
+                out += inlineMarkers;
+                int scan = 0;
+                while ((scan = itemContent.Find(L"<p", scan)) >= 0)
+                {
+                    const int openEnd = itemContent.Find(L'>', scan);
+                    if (openEnd < 0) break;
+                    if (itemContent.Mid(openEnd + 1, 4) != L"</p>")
+                    {
+                        itemContent.Insert(openEnd + 1, prefix);
+                        break;
+                    }
+                    scan = openEnd + 1;
+                }
+                out += itemContent;
+                continue;
+            }
+
             CStringW text = ChildrenInlineToFb2(child, ctx);
             text.Trim();
             CStringW markers;
@@ -5031,12 +5734,14 @@ namespace
             }
 
             CStringW prefix;
+            const CStringW marker = CssListMarkerToFb2(child, ctx);
+            if (!marker.IsEmpty()) prefix = marker + L" ";
             if (ordered)
             {
-                prefix = OrderedListPrefix(itemNumber, listType, listStyle);
+                if (prefix.IsEmpty()) prefix = OrderedListPrefix(itemNumber, listType, listStyle);
                 number = itemNumber + 1;
             }
-            else
+            else if (prefix.IsEmpty())
             {
                 prefix = L"• ";
             }
@@ -5144,9 +5849,16 @@ namespace
         int offset = 0;
     };
 
+    struct PreLinkOffset
+    {
+        MSXML2::IXMLDOMNodePtr node;
+        int start = 0, end = 0;
+        CStringW opening;
+    };
+
     void CollectPreContent(const MSXML2::IXMLDOMNodePtr& node, bool root, CStringW& raw,
                            std::vector<PreAnchorOffset>& anchors, std::vector<PreImageOffset>& images,
-                           bool hiddenAncestor = false)
+                           std::vector<PreLinkOffset>& links, bool hiddenAncestor = false, bool insideLink = false)
     {
         if (!node) return;
         const auto type = MsxmlGetNodeType(node);
@@ -5160,6 +5872,8 @@ namespace
         const CStringW id = RawAnchorId(node);
         if (!root && !id.IsEmpty()) anchors.push_back({ id, raw.GetLength() });
         const CStringW name = LocalName(node);
+        const bool link = name == L"a" && !Attr(node, L"href").IsEmpty();
+        const int linkStart = raw.GetLength();
         if (name == L"img" || name == L"image" || name == L"picture" || name == L"object")
         {
             if (!hidden) images.push_back({ node, raw.GetLength() });
@@ -5173,7 +5887,9 @@ namespace
         const auto children = MsxmlGetChildNodes(node);
         const long count = children ? MsxmlGetNodeListLength(children) : 0;
         for (long i = 0; i < count; ++i)
-            CollectPreContent(MsxmlGetNodeListItem(children, i), false, raw, anchors, images, hidden);
+            CollectPreContent(MsxmlGetNodeListItem(children, i), false, raw, anchors, images, links, hidden, insideLink || link);
+        if (link && !insideLink && !hidden && raw.GetLength() > linkStart)
+            links.push_back({ node, linkStart, raw.GetLength(), CStringW() });
     }
 
     void AppendPreNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx)
@@ -5184,7 +5900,8 @@ namespace
         CStringW raw;
         std::vector<PreAnchorOffset> anchors;
         std::vector<PreImageOffset> images;
-        CollectPreContent(node, true, raw, anchors, images);
+        std::vector<PreLinkOffset> links;
+        CollectPreContent(node, true, raw, anchors, images, links);
         CStringW text = PreTextNormalize(raw);
         if (text.IsEmpty() && images.empty())
         {
@@ -5239,6 +5956,14 @@ namespace
         std::vector<int> mapped(static_cast<size_t>(raw.GetLength()) + 1, 0);
         for (int i = 0; i <= raw.GetLength(); ++i)
             mapped[static_cast<size_t>(i)] = repairedToNormalized[static_cast<size_t>(rawToRepaired[static_cast<size_t>(i)])];
+        for (auto& link : links)
+        {
+            const CStringW rendered = InlineToFb2(link.node, ctx);
+            const int openingEnd = rendered.Find(L'>');
+            if (rendered.Left(3) == L"<a " && openingEnd >= 0 &&
+                rendered.Find(L"</a>") == rendered.GetLength() - 4)
+                link.opening = rendered.Left(openingEnd + 1);
+        }
         int start = 0;
         int lineCount = 0;
         CStringW firstLineId = OptionalIdAttribute(node, ctx);
@@ -5257,7 +5982,8 @@ namespace
                 if (!markerId.IsEmpty()) out += L"      <p" + markerId + L"></p>\r\n";
             }
             CStringW escapedLine = EscapePreLinePreservingIndent(line);
-            std::vector<std::pair<int, CStringW>> lineImages;
+            struct PreInsertion { int offset, kind; CStringW text; };
+            std::vector<PreInsertion> insertions;
             while (nextImage < images.size())
             {
                 const int rawOffset = max(0, min(images[nextImage].offset, raw.GetLength()));
@@ -5266,12 +5992,29 @@ namespace
                 const int localOffset = max(0, min(imageOffset - start, line.GetLength()));
                 const int escapedOffset = EscapePreLinePreservingIndent(line.Left(localOffset)).GetLength();
                 const CStringW image = InlineToFb2(images[nextImage].node, ctx);
-                if (!image.IsEmpty()) lineImages.push_back({ escapedOffset, image });
+                if (!image.IsEmpty()) insertions.push_back({ escapedOffset, 1, image });
                 ++nextImage;
             }
-            for (auto image = lineImages.rbegin(); image != lineImages.rend(); ++image)
-                escapedLine.Insert(image->first, image->second);
-            if (!line.IsEmpty() || !lineImages.empty())
+            for (const auto& link : links)
+            {
+                if (link.opening.IsEmpty()) continue;
+                const int linkStart = mapped[static_cast<size_t>(link.start)];
+                const int linkEnd = mapped[static_cast<size_t>(link.end)];
+                const int partStart = max(start, linkStart), partEnd = min(end, linkEnd);
+                if (partStart >= partEnd) continue;
+                const int left = EscapePreLinePreservingIndent(line.Left(partStart - start)).GetLength();
+                const int right = EscapePreLinePreservingIndent(line.Left(partEnd - start)).GetLength();
+                insertions.push_back({ left, 0, link.opening });
+                insertions.push_back({ right, 2, L"</a>" });
+            }
+            // Inserting repeatedly at one offset reverses insertion order.
+            // Reverse equal-kind events first to retain the source image order.
+            std::reverse(insertions.begin(), insertions.end());
+            std::stable_sort(insertions.begin(), insertions.end(), [](const PreInsertion& a, const PreInsertion& b) {
+                return a.offset != b.offset ? a.offset > b.offset : a.kind < b.kind;
+            });
+            for (const auto& insertion : insertions) escapedLine.Insert(insertion.offset, insertion.text);
+            if (!line.IsEmpty() || !insertions.empty())
             {
                 CStringW idAttr = lineCount == 0 ? firstLineId : CStringW();
                 out += L"      <p" + idAttr + L"><code>" + escapedLine + L"</code></p>\r\n";
@@ -5346,6 +6089,28 @@ namespace
             const auto child = MsxmlGetNodeListItem(children, i);
             if (LocalName(child) == L"figcaption")
             {
+                const auto captionChildren = MsxmlGetChildNodes(child);
+                const long captionCount = captionChildren ? MsxmlGetNodeListLength(captionChildren) : 0;
+                bool hasParagraphs = false;
+                for (long j = 0; j < captionCount; ++j)
+                    if (LocalName(MsxmlGetNodeListItem(captionChildren, j)) == L"p") { hasParagraphs = true; break; }
+                if (hasParagraphs)
+                {
+                    const CStringW captionId = OptionalIdAttribute(child, ctx);
+                    if (!captionId.IsEmpty()) out += L"      <p" + captionId + L"></p>\r\n";
+                    for (long j = 0; j < captionCount; ++j)
+                    {
+                        const auto part = MsxmlGetNodeListItem(captionChildren, j);
+                        const auto partChildren = MsxmlGetChildNodes(part);
+                        if (LocalName(part) == L"p" && (!partChildren || MsxmlGetNodeListLength(partChildren) == 0))
+                        {
+                            out += AnchorMarkerParagraphsFromRawIds(CollectRawAnchorIds(part), 0, ctx);
+                            out += L"      <empty-line/>\r\n";
+                        }
+                        else AppendBlockNode(part, out, ctx);
+                    }
+                    continue;
+                }
                 const CStringW caption = ChildrenInlineToFb2(child, ctx);
                 const auto ids = CollectRawAnchorIds(child);
                 const CStringW captionId = ids.empty() ? CStringW() : OptionalIdAttributeFromRaw(ids.front(), ctx);
@@ -5756,7 +6521,36 @@ namespace
             return;
         }
 
-        if (name.CompareNoCase(L"p") == 0)
+        if (name.CompareNoCase(L"div") == 0 && HasCssClass(node, L"FixedLine"))
+        {
+            CStringW line = NodeText(node);
+            bool blank = true;
+            for (int i = 0; i < line.GetLength(); ++i)
+                if (line[i] != L' ' && line[i] != L'\t' && line[i] != L'\r' && line[i] != L'\n' && line[i] != 0x00a0)
+                { blank = false; break; }
+            const auto lineChildren = MsxmlGetChildNodes(node);
+            const long lineChildCount = lineChildren ? MsxmlGetNodeListLength(lineChildren) : 0;
+            for (long i = 0; blank && i < lineChildCount; ++i)
+            {
+                const auto child = MsxmlGetNodeListItem(lineChildren, i);
+                if (MsxmlGetNodeType(child) != MSXML2::NODE_ELEMENT) continue;
+                if (LocalName(child) != L"span" || !Attr(child, L"class").IsEmpty() || !Attr(child, L"style").IsEmpty())
+                { blank = false; break; }
+                const auto nested = MsxmlGetChildNodes(child);
+                const long nestedCount = nested ? MsxmlGetNodeListLength(nested) : 0;
+                for (long j = 0; blank && j < nestedCount; ++j)
+                    if (MsxmlGetNodeType(MsxmlGetNodeListItem(nested, j)) == MSXML2::NODE_ELEMENT) blank = false;
+            }
+            if (blank)
+            {
+                out += AnchorMarkerParagraphsFromRawIds(CollectRawAnchorIds(node), 0, ctx);
+                out += L"      <empty-line/>\r\n";
+                return;
+            }
+        }
+
+        if (name.CompareNoCase(L"p") == 0 ||
+            (name.CompareNoCase(L"div") == 0 && IsQuoteTextDiv(node)))
         {
             CStringW paragraph = ChildrenInlineToFb2(node, ctx);
             paragraph.Trim();
@@ -5897,18 +6691,60 @@ namespace
         return result;
     }
 
+    bool IsWithinContents(const MSXML2::IXMLDOMNodePtr& node);
+
+    // Some publishers encode one note as consecutive paragraphs instead of
+    // wrapping it in a container. Only extend the specific foot/foot-para
+    // convention, and stop before a new anchored note or any other block.
+    std::vector<MSXML2::IXMLDOMNodePtr> FootNoteContinuations(const MSXML2::IXMLDOMNodePtr& root)
+    {
+        std::vector<MSXML2::IXMLDOMNodePtr> result;
+        if (LocalName(root) != L"p" || !HasSemanticCssClass(root, L"foot") || CollectRawAnchorIds(root).empty())
+            return result;
+        auto current = root;
+        for (;;)
+        {
+            IXMLDOMNode* rawNext = nullptr;
+            current->get_nextSibling(&rawNext);
+            MSXML2::IXMLDOMNodePtr next(rawNext, false);
+            if (!next) break;
+            current = next;
+            if (MsxmlGetNodeType(next) != MSXML2::NODE_ELEMENT) continue;
+            if (LocalName(next) != L"p" ||
+                (!HasSemanticCssClass(next, L"foot") && !HasSemanticCssClass(next, L"foot-para")) ||
+                !CollectRawAnchorIds(next).empty()) break;
+            result.push_back(next);
+        }
+        return result;
+    }
+
     void CollectEndnoteElements(const MSXML2::IXMLDOMNodePtr& node, std::vector<MSXML2::IXMLDOMNodePtr>& out, const CStringW& path, bool insideNotesContainer = false)
     {
         if (!node)
+            return;
+
+        // Navigation may contain entries named "footnote" or "note".
+        // They are table-of-contents labels, not the note bodies themselves.
+        if (IsEpubType(node, L"toc") || IsRoleToken(node, L"doc-toc") ||
+            HasSemanticCssClass(node, L"toc") || HasSemanticCssClass(node, L"contents"))
             return;
 
         const CStringW name = LocalName(node);
         const bool nowInsideNotesContainer = insideNotesContainer || IsEndnotesContainerElement(node);
         const bool isListNoteInNotesContainer = nowInsideNotesContainer &&
             name.CompareNoCase(L"li") == 0 && !Attr(node, L"id").IsEmpty();
+        const bool requested = g_content.requestedNotes.count(std::wstring(PathAnchorMapKey(path, RawAnchorId(node)))) != 0;
+        // A standalone CSS class "note" is also widely used for visible
+        // callouts. Move it only when the source marks or references it as a
+        // footnote, or places it in a notes container.
+        const bool unreferencedCallout = HasSemanticCssClass(node, L"note") &&
+            !HasSemanticCssClass(node, L"footnote") && !HasSemanticCssClass(node, L"endnote") &&
+            !IsEpubType(node, L"footnote") && !IsEpubType(node, L"endnote") &&
+            !IsRoleToken(node, L"doc-footnote") && !IsRoleToken(node, L"doc-endnote") &&
+            !nowInsideNotesContainer && !requested;
 
-        if (IsEndnoteElement(node) || isListNoteInNotesContainer ||
-            g_content.requestedNotes.count(std::wstring(PathAnchorMapKey(path, RawAnchorId(node)))))
+        if ((IsEndnoteElement(node) && !unreferencedCallout) ||
+            ((isListNoteInNotesContainer || requested) && !IsWithinContents(node)))
         {
             CStringW id = RawAnchorId(node);
             if (!id.IsEmpty())
@@ -5918,7 +6754,11 @@ namespace
                 CStringW documentKey = path;documentKey.MakeLower();
                 g_content.noteRootDocuments.emplace(std::wstring(documentKey));
                 const CStringW rootId = RawAnchorId(root).IsEmpty() ? id : RawAnchorId(root);
-                if (g_content.noteRoots.emplace(std::wstring(rootKey), rootId).second && LocalName(root) == L"p" && !IsEndnoteElement(root))
+                const bool inserted = g_content.noteRoots.emplace(std::wstring(rootKey), rootId).second;
+                const auto continuations = FootNoteContinuations(root);
+                for (const auto& continuation : continuations)
+                    g_content.noteRoots.emplace(std::wstring(NoteRootKey(continuation, path)), rootId);
+                if (inserted && continuations.empty() && LocalName(root) == L"p" && !IsEndnoteElement(root))
                 {
                     const auto parent = ParentNode(root);
                     IXMLDOMNode* rawNext = nullptr;root->get_nextSibling(&rawNext);
@@ -6025,6 +6865,16 @@ namespace
             if (IsEpubType(current, L"toc") || IsRoleToken(current, L"doc-toc") ||
                 HasSemanticCssClass(current, L"toc") || HasSemanticCssClass(current, L"contents"))
                 return true;
+            if (LocalName(current) == L"body") break;
+        }
+        return false;
+    }
+
+    bool IsAnswerListEntry(const MSXML2::IXMLDOMNodePtr& node)
+    {
+        for (auto current = node; current; current = ParentNode(current))
+        {
+            if (LocalName(current) == L"li" && HasSemanticCssClass(current, L"answer")) return true;
             if (LocalName(current) == L"body") break;
         }
         return false;
@@ -6209,8 +7059,73 @@ namespace
                 const CStringW sourceId = RawAnchorId(link);
                 bool noteShape = false;
                 if (!IsNoteReferenceElement(link) && IsWithinContents(link)) continue;
+                if (!IsNoteReferenceElement(link) && spinePaths.count(LowerMapKey(item.absPath).GetString()) &&
+                    IsAnswerListEntry(link)) continue;
                 if (target != nodes.end())
                 {
+                    // A numeric index entry may point into a note to a page
+                    // marker, rather than reference that note itself. Some
+                    // EPUBs use plain empty anchors such as pg_255 for this.
+                    CStringW pageId(fragment); pageId.MakeLower();
+                    CStringW pageNumber;
+                    if (pageId.Left(3) == L"pg_") pageNumber = pageId.Mid(3);
+                    else if (pageId.Left(5) == L"page_") pageNumber = pageId.Mid(5);
+                    else if (pageId.Left(4) == L"page") pageNumber = pageId.Mid(4);
+                    bool conventionalPage = !pageNumber.IsEmpty() && pageNumber == marker &&
+                        TrimString(NodeText(target->second)).IsEmpty() &&
+                        (LocalName(target->second) == L"a" || LocalName(target->second) == L"span");
+                    for (int i = 0; conventionalPage && i < pageNumber.GetLength(); ++i)
+                        conventionalPage = iswdigit(pageNumber[i]) != 0;
+                    if (!IsNoteReferenceElement(link) &&
+                        (LooksLikePageBreak(target->second) || IsRoleToken(target->second, L"doc-pagebreak") || conventionalPage))
+                    {
+                        g_content.navigationTargets.emplace(PathAnchorMapKey(path, fragment).GetString());
+                        continue;
+                    }
+                    if (!IsNoteReferenceElement(link) && spinePaths.count(LowerMapKey(path).GetString()) &&
+                        IsAnswerListEntry(target->second)) continue;
+                    // Quiz and answer sections often repeat a numbered
+                    // question and cross-link their list entries in both
+                    // directions. They are ordinary spine content, not notes.
+                    const auto sourceParagraph = ParentNode(link);
+                    const auto targetParagraph = ParentNode(target->second);
+                    const auto sourceItem = ParentNode(sourceParagraph);
+                    const auto targetItem = ParentNode(targetParagraph);
+                    const auto hasAnswerParagraph = [](const MSXML2::IXMLDOMNodePtr& listItem) {
+                        const auto children = MsxmlGetChildNodes(listItem);
+                        for (long i = 0, n = children ? MsxmlGetNodeListLength(children) : 0; i < n; ++i)
+                        {
+                            const auto part = MsxmlGetNodeListItem(children, i);
+                            if (LocalName(part) != L"p") continue;
+                            CStringW text = TrimString(NodeText(part)); text.MakeLower();
+                            if (text.Left(7) == L"answer:" || text.Left(7) == L"answer ") return true;
+                        }
+                        return false;
+                    };
+                    const auto hasPre = [](const MSXML2::IXMLDOMNodePtr& listItem) {
+                        const auto children = MsxmlGetChildNodes(listItem);
+                        for (long i = 0, n = children ? MsxmlGetNodeListLength(children) : 0; i < n; ++i)
+                            if (LocalName(MsxmlGetNodeListItem(children, i)) == L"pre") return true;
+                        return false;
+                    };
+                    const CStringW reverseHref = Attr(target->second, L"href");
+                    const int reverseHash = reverseHref.Find(L'#');
+                    const CStringW reversePath = reverseHash == 0 ? path : reverseHash > 0 ?
+                        CombineAndCanonicalizePath(DirectoryOf(path), reverseHref.Left(reverseHash)) : CStringW();
+                    const bool reciprocal = !sourceId.IsEmpty() && !IsExternalHref(reverseHref) &&
+                        HrefFragment(reverseHref) == sourceId && reversePath.CompareNoCase(item.absPath) == 0;
+                    if (!IsNoteReferenceElement(link) && externalDocument &&
+                        spinePaths.count(LowerMapKey(item.absPath).GetString()) &&
+                        spinePaths.count(LowerMapKey(path).GetString()) &&
+                        LocalName(target->second) == L"a" &&
+                        LocalName(sourceParagraph) == L"p" && LocalName(targetParagraph) == L"p" &&
+                        LocalName(sourceItem) == L"li" && LocalName(targetItem) == L"li" &&
+                        !IsEndnoteElement(sourceItem) && !IsEndnoteElement(targetItem) && reciprocal &&
+                        !TrimString(NodeText(sourceParagraph)).IsEmpty() &&
+                        (TrimString(NodeText(sourceParagraph)) == TrimString(NodeText(targetParagraph)) ||
+                         hasAnswerParagraph(sourceItem) || hasAnswerParagraph(targetItem) ||
+                         (hasPre(sourceItem) && hasPre(targetItem))))
+                        continue;
                     // Numbered citations in a spine bibliography are links
                     // to entries, not a request to relocate them into notes.
                     if (!IsNoteReferenceElement(link) &&
@@ -6251,7 +7166,11 @@ namespace
                         ancestor->get_parentNode(&rawAncestor);
                         ancestor = MSXML2::IXMLDOMNodePtr(rawAncestor, false);
                     }
-                    if (targetIsContents && !IsNoteReferenceElement(link)) continue;
+                    if (targetIsContents)
+                    {
+                        g_content.navigationTargets.emplace(PathAnchorMapKey(path, fragment).GetString());
+                        continue;
+                    }
                     const CStringW targetName = LocalName(target->second);
                     noteShape = targetName == L"p" || targetName == L"li" || targetName == L"div" ||
                         targetName == L"aside" || targetName == L"section" || targetName == L"article" ||
@@ -6287,6 +7206,22 @@ namespace
                         }
                     }
                 }
+                // Word-generated notes commonly use paired _ednN / _ednrefN
+                // (or _ftnN / _ftnrefN) identifiers. The latter is a return
+                // link even when the source uses a cross-document href or a
+                // duplicate reference ID; it must not become another note.
+                CStringW lowerFragment(fragment); lowerFragment.MakeLower();
+                bool conventionalBacklink = false;
+                for (const auto& sourceAnchor : sourceIds)
+                {
+                    CStringW lowerSource(sourceAnchor); lowerSource.MakeLower();
+                    if ((lowerFragment.Left(7) == L"_ednref" && lowerFragment.GetLength() > 7 &&
+                         lowerSource == CStringW(L"_edn") + lowerFragment.Mid(7)) ||
+                        (lowerFragment.Left(7) == L"_ftnref" && lowerFragment.GetLength() > 7 &&
+                         lowerSource == CStringW(L"_ftn") + lowerFragment.Mid(7)))
+                    { conventionalBacklink = true; break; }
+                }
+                if (conventionalBacklink && !IsNoteReferenceElement(link)) continue;
                 if (target != nodes.end() && !sourceIds.empty())
                 {
                     std::vector<MSXML2::IXMLDOMNodePtr> backLinks;
@@ -6497,6 +7432,8 @@ namespace
                 }
             }
             note.content = BuildNoteContent(contentNode, ctx);
+            for (const auto& continuation : FootNoteContinuations(contentNode))
+                note.content += BuildNoteContent(continuation, ctx);
             note.content.Trim();
             if (note.content.IsEmpty())
             {
@@ -6957,7 +7894,137 @@ namespace
         return true;
     }
 
-    CStringW BuildBinariesXml(const EpubPackage& package, const std::set<std::wstring>& usedImageIds, CStringW& warning)
+    unsigned long PngBigEndian(const unsigned char* p)
+    {
+        return (static_cast<unsigned long>(p[0]) << 24) | (static_cast<unsigned long>(p[1]) << 16) |
+            (static_cast<unsigned long>(p[2]) << 8) | static_cast<unsigned long>(p[3]);
+    }
+
+    struct PngInflateGuard
+    {
+        z_stream& stream;
+        explicit PngInflateGuard(z_stream& value) : stream(value) {}
+        ~PngInflateGuard() { ::inflateEnd(&stream); }
+    };
+
+    bool OptimizePngLosslessly(const std::vector<unsigned char>& input, std::vector<unsigned char>& output)
+    {
+        const unsigned char signature[] = {0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a};
+        if (input.size() < 20 || input.size() > 64U * 1024 * 1024 || memcmp(input.data(), signature, 8) != 0) return false;
+        std::vector<unsigned char> compressed;
+        bool seenHeader = false, seenData = false, afterData = false, seenEnd = false;
+        size_t pos = 8;
+        while (pos < input.size())
+        {
+            if (input.size() - pos < 12) return false;
+            const unsigned long length = PngBigEndian(input.data() + pos);
+            if (length > input.size() - pos - 12) return false;
+            const unsigned char* type = input.data() + pos + 4;
+            const unsigned char* payload = type + 4;
+            const size_t end = pos + 12 + length;
+            uLong crc = ::crc32(0L, Z_NULL, 0);
+            crc = ::crc32(crc, type, static_cast<uInt>(length + 4));
+            if (crc != PngBigEndian(input.data() + pos + 8 + length)) return false;
+            const bool header = memcmp(type, "IHDR", 4) == 0;
+            const bool idat = memcmp(type, "IDAT", 4) == 0;
+            const bool endChunk = memcmp(type, "IEND", 4) == 0;
+            if (memcmp(type, "acTL", 4) == 0 || memcmp(type, "fcTL", 4) == 0 || memcmp(type, "fdAT", 4) == 0 ||
+                memcmp(type, "dSIG", 4) == 0) return false;
+            if (!seenHeader && (!header || length != 13)) return false;
+            if (header) { if (seenHeader) return false; seenHeader = true; }
+            const bool critical = (type[0] & 0x20) == 0;
+            if (critical && !header && !idat && !endChunk && memcmp(type, "PLTE", 4) != 0) return false;
+            if (!critical && (type[3] & 0x20) == 0 && memcmp(type, "iCCP", 4) != 0 &&
+                memcmp(type, "cHRM", 4) != 0 && memcmp(type, "gAMA", 4) != 0 &&
+                memcmp(type, "sRGB", 4) != 0 && memcmp(type, "sBIT", 4) != 0 &&
+                memcmp(type, "tRNS", 4) != 0 && memcmp(type, "bKGD", 4) != 0 &&
+                memcmp(type, "hIST", 4) != 0 && memcmp(type, "sPLT", 4) != 0 &&
+                memcmp(type, "eXIf", 4) != 0) return false;
+            if (idat)
+            {
+                if (afterData) return false;
+                seenData = true;
+                compressed.insert(compressed.end(), payload, payload + length);
+            }
+            else if (seenData) afterData = true;
+            pos = end;
+            if (endChunk) { if (length || pos != input.size()) return false; seenEnd = true; break; }
+        }
+        if (!seenData || !seenEnd || compressed.empty()) return false;
+        z_stream stream = {};
+        if (::inflateInit(&stream) != Z_OK) return false;
+        PngInflateGuard streamGuard(stream);
+        stream.next_in = compressed.data(); stream.avail_in = static_cast<uInt>(compressed.size());
+        const size_t limit = 128U * 1024 * 1024;
+        std::vector<unsigned char> raw;
+        int status = Z_OK;
+        while (status == Z_OK)
+        {
+            const size_t old = raw.size();
+            if (old >= limit) return false;
+            const size_t capacity = min(static_cast<size_t>(64 * 1024), limit - old);
+            raw.resize(old + capacity);
+            stream.next_out = raw.data() + old; stream.avail_out = static_cast<uInt>(capacity);
+            status = ::inflate(&stream, Z_NO_FLUSH);
+            const size_t produced = capacity - stream.avail_out;
+            raw.resize(old + produced);
+            if (status == Z_OK && produced == 0 && stream.avail_in == 0) return false;
+        }
+        const bool complete = status == Z_STREAM_END && stream.avail_in == 0;
+        if (!complete || raw.empty()) return false;
+        uLongf newSize = ::compressBound(static_cast<uLong>(raw.size()));
+        std::vector<unsigned char> recompressed(newSize);
+        if (::compress2(recompressed.data(), &newSize, raw.data(), static_cast<uLong>(raw.size()), 6) != Z_OK ||
+            newSize + 12 >= compressed.size()) return false;
+        recompressed.resize(newSize);
+        // Independently inflate the proposed replacement before committing it.
+        z_stream verify = {};
+        if (::inflateInit(&verify) != Z_OK) return false;
+        PngInflateGuard verifyGuard(verify);
+        verify.next_in = recompressed.data(); verify.avail_in = static_cast<uInt>(recompressed.size());
+        unsigned char buffer[64 * 1024] = {}; size_t compared = 0; status = Z_OK;
+        while (status == Z_OK)
+        {
+            verify.next_out = buffer; verify.avail_out = sizeof(buffer);
+            status = ::inflate(&verify, Z_NO_FLUSH);
+            const size_t produced = sizeof(buffer) - verify.avail_out;
+            if (produced > raw.size() - compared || memcmp(buffer, raw.data() + compared, produced) != 0)
+                return false;
+            compared += produced;
+            if (status == Z_OK && produced == 0 && verify.avail_in == 0) return false;
+        }
+        const bool identical = status == Z_STREAM_END && verify.avail_in == 0 && compared == raw.size();
+        if (!identical) return false;
+        output.clear(); output.reserve(input.size()); output.insert(output.end(), signature, signature + 8);
+        bool inserted = false; pos = 8;
+        while (pos < input.size())
+        {
+            const unsigned long length = PngBigEndian(input.data() + pos);
+            const unsigned char* type = input.data() + pos + 4;
+            const size_t end = pos + 12 + length;
+            if (memcmp(type, "IDAT", 4) == 0)
+            {
+                if (!inserted)
+                {
+                    const unsigned long n = static_cast<unsigned long>(recompressed.size());
+                    output.push_back(static_cast<unsigned char>(n >> 24)); output.push_back(static_cast<unsigned char>(n >> 16));
+                    output.push_back(static_cast<unsigned char>(n >> 8)); output.push_back(static_cast<unsigned char>(n));
+                    output.insert(output.end(), type, type + 4); output.insert(output.end(), recompressed.begin(), recompressed.end());
+                    uLong crc = ::crc32(0L, Z_NULL, 0); crc = ::crc32(crc, type, 4);
+                    crc = ::crc32(crc, recompressed.data(), static_cast<uInt>(recompressed.size()));
+                    output.push_back(static_cast<unsigned char>(crc >> 24)); output.push_back(static_cast<unsigned char>(crc >> 16));
+                    output.push_back(static_cast<unsigned char>(crc >> 8)); output.push_back(static_cast<unsigned char>(crc));
+                    inserted = true;
+                }
+            }
+            else output.insert(output.end(), input.begin() + pos, input.begin() + end);
+            pos = end;
+        }
+        return inserted && output.size() < input.size();
+    }
+
+    CStringW BuildBinariesXml(const EpubPackage& package, const std::set<std::wstring>& usedImageIds, CStringW& warning,
+        unsigned long long prefixReserve)
     {
         CStringW xml;
         std::set<std::wstring> ids = usedImageIds;
@@ -6968,8 +8035,47 @@ namespace
                 ids.emplace(coverImage->id.GetString());
         }
 
+        // ATL's geometric string growth can briefly request far more memory
+        // than the final base64 data. Reserve the known raster payload once;
+        // SVG output size is not predictable and remains dynamically grown.
+        unsigned long long rasterCharacters = 0;
+        bool rasterEstimateTooLarge = false;
+        for (const auto& imageId : ids)
+        {
+            const auto manifest = package.manifest.find(imageId);
+            const auto extra = g_content.extraImages.find(imageId);
+            const ManifestItem* item = manifest != package.manifest.end() ? &manifest->second :
+                (extra != g_content.extraImages.end() ? &extra->second : nullptr);
+            if (!item || IsSvgImage(*item) || (!IsImageMediaType(item->mediaType) && !IsImageHrefByExtension(item->href))) continue;
+            WIN32_FILE_ATTRIBUTE_DATA info = {};
+            if (!::GetFileAttributesExW(item->absPath, GetFileExInfoStandard, &info) || (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) continue;
+            const unsigned long long bytes = (static_cast<unsigned long long>(info.nFileSizeHigh) << 32) | info.nFileSizeLow;
+            const unsigned long long maxCharacters = 1000000000ULL;
+            if (bytes > maxCharacters / 4 * 3) { rasterEstimateTooLarge = true; break; }
+            const unsigned long long entryCharacters = 4 * ((bytes + 2) / 3) + 4096;
+            if (entryCharacters > maxCharacters || rasterCharacters > maxCharacters - entryCharacters)
+            { rasterEstimateTooLarge = true; break; }
+            rasterCharacters += entryCharacters;
+        }
+        wchar_t testMode[4] = {}, testOptimize[4] = {};
+        const bool forceTestOptimization = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 &&
+            testMode[0] == L'1' && ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_EPUB_PNG_OPTIMIZE", testOptimize, _countof(testOptimize)) == 1 &&
+            testOptimize[0] == L'1';
+        const bool optimizeLargePng = rasterEstimateTooLarge || rasterCharacters >= 256ULL * 1024 * 1024 * 4 / 3 || forceTestOptimization;
+        if (!rasterEstimateTooLarge && rasterCharacters >= 4ULL * 1024 * 1024 && prefixReserve <= 1000000000ULL - rasterCharacters)
+        {
+            try { xml.Preallocate(static_cast<int>(rasterCharacters + prefixReserve)); }
+            catch (const ATL::CAtlException& error) { if (error.m_hr != E_OUTOFMEMORY) throw; }
+        }
+
+        unsigned optimizedPng = 0;
+        unsigned long long optimizedBytesSaved = 0;
         for (std::set<std::wstring>::const_iterator itId = ids.begin(); itId != ids.end(); ++itId)
         {
+            ::swprintf_s(g_imageStageDetail, _countof(g_imageStageDetail),
+                L"image conversion, processed %u of %u, XML characters %d",
+                g_content.importedImages, static_cast<unsigned>(ids.size()), xml.GetLength());
+            g_importStage = g_imageStageDetail;
             std::map<std::wstring, ManifestItem>::const_iterator it = package.manifest.find(*itId);
             const ManifestItem* resource = it == package.manifest.end() ? nullptr : &it->second;
             if (!resource)
@@ -6991,10 +8097,33 @@ namespace
                 warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_IMAGE_PREPARE_FAILED, L"Could not prepare image: ") + item.href + L"\r\n";
                 continue;
             }
+            if (optimizeLargePng && contentType.CompareNoCase(L"image/png") == 0)
+            {
+                try
+                {
+                    std::vector<unsigned char> optimized;
+                    if (OptimizePngLosslessly(data, optimized))
+                    {
+                        optimizedBytesSaved += data.size() - optimized.size();
+                        data.swap(optimized);
+                        ++optimizedPng;
+                    }
+                }
+                catch (const std::bad_alloc&) { /* Preserve the original if optional optimization cannot run. */ }
+            }
             xml += L"  <binary id=\"" + XmlEscape(id) + L"\" content-type=\"" + XmlEscape(contentType) + L"\">\r\n";
             xml += Base64Encode(data);
             xml += L"\r\n  </binary>\r\n";
             ++g_content.importedImages;
+        }
+        if (optimizedPng)
+        {
+            CStringW detail;
+            detail.Format(L"Losslessly recompressed %u PNG images, saving %llu bytes; filtered pixels and non-IDAT chunks were retained, binary hashes changed.\r\n",
+                optimizedPng, optimizedBytesSaved);
+            warning += detail;
+            try { xml.FreeExtra(); }
+            catch (const ATL::CAtlException& error) { if (error.m_hr != E_OUTOFMEMORY) throw; }
         }
         return xml;
     }
@@ -8283,6 +9412,83 @@ namespace
         for (const auto& section : ordered) AppendDomChild(notesBody, section);
     }
 
+    struct CompactBinaryValidation
+    {
+        CStringW xml;
+        int originalFirst = -1;
+        int originalEnd = -1;
+        int count = 0;
+    };
+
+    bool CompactGeneratedBinaries(const CStringW& xml, CompactBinaryValidation& compact)
+    {
+        int cursor = 0;
+        int open = xml.Find(L"<binary ", cursor);
+        if (open < 0) return false;
+        compact.originalFirst = open;
+        const wchar_t* text = xml.GetString();
+        while (open >= 0)
+        {
+            const int headerEnd = xml.Find(L'>', open);
+            const int close = headerEnd < 0 ? -1 : xml.Find(L"</binary>", headerEnd + 1);
+            if (headerEnd < 0 || close < 0) return false;
+            unsigned long long characters = 0;
+            int padding = 0, lastValue = -1;
+            for (int i = headerEnd + 1; i < close; ++i)
+            {
+                const wchar_t ch = text[i];
+                if (ch == L' ' || ch == L'\t' || ch == L'\r' || ch == L'\n') continue;
+                ++characters;
+                if (ch == L'=') { if (++padding > 2) return false; continue; }
+                if (padding) return false;
+                if (ch >= L'A' && ch <= L'Z') lastValue = ch - L'A';
+                else if (ch >= L'a' && ch <= L'z') lastValue = ch - L'a' + 26;
+                else if (ch >= L'0' && ch <= L'9') lastValue = ch - L'0' + 52;
+                else if (ch == L'+') lastValue = 62;
+                else if (ch == L'/') lastValue = 63;
+                else return false;
+            }
+            if (characters % 4 != 0 || (padding == 1 && (lastValue < 0 || (lastValue & 3) != 0)) ||
+                (padding == 2 && (lastValue < 0 || (lastValue & 15) != 0))) return false;
+            compact.xml.Append(text + cursor, headerEnd + 1 - cursor);
+            compact.xml += L"AA==";
+            cursor = close;
+            compact.originalEnd = close + 9;
+            ++compact.count;
+            open = xml.Find(L"<binary ", compact.originalEnd);
+            if (open >= 0)
+                for (int i = compact.originalEnd; i < open; ++i)
+                    if (text[i] != L' ' && text[i] != L'\t' && text[i] != L'\r' && text[i] != L'\n') return false;
+        }
+        compact.xml.Append(text + cursor, xml.GetLength() - cursor);
+        return compact.count > 0;
+    }
+
+    bool RestoreGeneratedBinaries(CStringW& xml, const CompactBinaryValidation& compact)
+    {
+        const int first = compact.xml.Find(L"<binary ");
+        int next = first, count = 0, end = -1;
+        while (next >= 0)
+        {
+            const int close = compact.xml.Find(L"</binary>", next);
+            if (close < 0) return false;
+            end = close + 9; ++count;
+            next = compact.xml.Find(L"<binary ", end);
+        }
+        if (first < 0 || end < 0 || count != compact.count || compact.originalFirst < 0 ||
+            compact.originalEnd < compact.originalFirst) return false;
+        const int binaryLength = compact.originalEnd - compact.originalFirst;
+        const int suffixLength = compact.xml.GetLength() - end;
+        if (first > INT_MAX - binaryLength || first + binaryLength > INT_MAX - suffixLength) return false;
+        const int newLength = first + binaryLength + suffixLength;
+        wchar_t* buffer = xml.GetBuffer(max(xml.GetLength(), newLength));
+        ::memmove(buffer + first, buffer + compact.originalFirst, static_cast<size_t>(binaryLength) * sizeof(wchar_t));
+        ::memcpy(buffer, compact.xml.GetString(), static_cast<size_t>(first) * sizeof(wchar_t));
+        ::memcpy(buffer + first + binaryLength, compact.xml.GetString() + end, static_cast<size_t>(suffixLength) * sizeof(wchar_t));
+        xml.ReleaseBufferSetLength(newLength);
+        return true;
+    }
+
     bool ValidateGeneratedFb2Xml(CStringW& xml, CStringW& warning, const EpubPackage& package,
         const std::map<std::wstring, std::wstring>& anchors)
     {
@@ -8294,8 +9500,16 @@ namespace
             return false;
         }
 
+        CompactBinaryValidation compact;
+        const bool useCompact = xml.GetLength() >= 4 * 1024 * 1024 && xml.Find(L"<binary ") >= 0;
+        if (useCompact && !CompactGeneratedBinaries(xml, compact))
+        {
+            warning += L"Could not validate generated binary payloads safely.\r\n";
+            return false;
+        }
+        CStringW& validationXml = useCompact ? compact.xml : xml;
         VARIANT_BOOL loaded = VARIANT_FALSE;
-        CComBSTR xmlText(static_cast<LPCWSTR>(xml));
+        CComBSTR xmlText(static_cast<LPCWSTR>(validationXml));
         HRESULT loadHr = dom->loadXML(xmlText, &loaded);
         xmlText.Empty();
         if (FAILED(loadHr) || loaded != VARIANT_TRUE)
@@ -8320,7 +9534,7 @@ namespace
         // Keep the original only when the user requested an intermediate FB2
         // on error. Otherwise release it before serializing the DOM, which can
         // require another very large allocation for image-heavy books.
-        if (!g_options.saveIntermediateFb2OnError) xml.Empty();
+        if (!g_options.saveIntermediateFb2OnError) validationXml.Empty();
         BSTR normalized = nullptr;
         const HRESULT serializeHr = dom->get_xml(&normalized);
         if (FAILED(serializeHr) || !normalized)
@@ -8333,11 +9547,15 @@ namespace
         // The DOM and its serialized result now own the content. Release the
         // pre-normalized copy before allocating the replacement, otherwise
         // image-heavy FB2 files can exhaust the Win32 address space.
-        xml.Empty();
-        xml = MsxmlBstrToString(normalized);
-        CStringW referenceWarnings;ValidateInternalReferences(xml, referenceWarnings);warning += referenceWarnings;
+        validationXml.Empty();
+        validationXml = MsxmlBstrToString(normalized);
+        CStringW referenceWarnings;ValidateInternalReferences(validationXml, referenceWarnings);warning += referenceWarnings;
         if (!referenceWarnings.IsEmpty()) return false;
-        if (!g_options.validateResult) return true;
+        if (!g_options.validateResult)
+        {
+            if (useCompact && !RestoreGeneratedBinaries(xml, compact)) { warning += L"Could not restore validated binary payloads.\r\n"; return false; }
+            return true;
+        }
         HMODULE module = nullptr;
         ::GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
             reinterpret_cast<LPCWSTR>(&ValidateGeneratedFb2Xml), &module);
@@ -8357,6 +9575,7 @@ namespace
             BSTR reason = nullptr;if (schemaError) schemaError->get_reason(&reason);
             warning += L"FB2 schema validation failed: " + MsxmlBstrToString(reason) + L"\r\n";return false;
         }
+        if (useCompact && !RestoreGeneratedBinaries(xml, compact)) { warning += L"Could not restore validated binary payloads.\r\n"; return false; }
         return true;
     }
 }
@@ -8727,7 +9946,8 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     }
 
     g_importStage = L"image conversion";
-    CStringW binariesXml = BuildBinariesXml(package, usedImageIds, warning);
+    CStringW binariesXml = BuildBinariesXml(package, usedImageIds, warning,
+        static_cast<unsigned long long>(body.GetLength()) + 1024ULL * 1024);
     g_importStage = L"FB2 assembly";
     const CStringW descriptionXml = BuildDescriptionXml(package);
     warning += g_content.warnings;
@@ -8761,7 +9981,19 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     outFb2Xml += L"  </body>\r\n";
     if (options.importNotes)
         outFb2Xml += BuildNotesBodyXml(notes);
-    outFb2Xml += binariesXml;
+    if (!binariesXml.IsEmpty())
+    {
+        // Reuse the image buffer instead of allocating another full-size copy
+        // while joining the small document prefix to the encoded payload.
+        const int prefixLength = outFb2Xml.GetLength();
+        const int binaryLength = binariesXml.GetLength();
+        if (prefixLength > INT_MAX - binaryLength) AtlThrow(E_OUTOFMEMORY);
+        wchar_t* combined = binariesXml.GetBufferSetLength(prefixLength + binaryLength);
+        ::memmove(combined + prefixLength, combined, static_cast<size_t>(binaryLength) * sizeof(wchar_t));
+        ::memcpy(combined, outFb2Xml.GetString(), static_cast<size_t>(prefixLength) * sizeof(wchar_t));
+        binariesXml.ReleaseBufferSetLength(prefixLength + binaryLength);
+        outFb2Xml = binariesXml;
+    }
     binariesXml.Empty();
     body.Empty();
     titleBlock.Empty();
@@ -8823,6 +10055,49 @@ namespace
     BSTR AllocateImportEpubApiText(const CStringW& source)
     {
         return SysAllocStringLen(source.GetString(), static_cast<UINT>(source.GetLength()));
+    }
+
+    BSTR AllocateLargeImportTextViaTemporaryFile(CStringW& source, DWORD& failure)
+    {
+        failure = ERROR_SUCCESS;
+        TempDirectory temp;
+        if (temp.Path().IsEmpty()) { failure = ERROR_CANNOT_MAKE; return nullptr; }
+        const CStringW path = temp.Path() + L"\\fb2-utf16.tmp";
+        HANDLE file = ::CreateFileW(path, GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_NEW,
+            FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+        if (file == INVALID_HANDLE_VALUE) { failure = ::GetLastError(); return nullptr; }
+        const UINT length = static_cast<UINT>(source.GetLength());
+        const unsigned long long total = static_cast<unsigned long long>(length) * sizeof(wchar_t);
+        const unsigned char* input = reinterpret_cast<const unsigned char*>(source.GetString());
+        unsigned long long position = 0;
+        while (position < total)
+        {
+            const DWORD chunk = static_cast<DWORD>(min(8ULL * 1024 * 1024, total - position));
+            DWORD written = 0;
+            if (!::WriteFile(file, input + static_cast<size_t>(position), chunk, &written, nullptr) || written != chunk)
+            { failure = ::GetLastError(); if (!failure) failure = ERROR_WRITE_FAULT; ::CloseHandle(file); return nullptr; }
+            position += written;
+        }
+        LARGE_INTEGER zero = {};
+        if (!::SetFilePointerEx(file, zero, nullptr, FILE_BEGIN))
+        { failure = ::GetLastError(); ::CloseHandle(file); return nullptr; }
+        // Release the large ATL buffer before requesting the BSTR. The file is
+        // private to this invocation and is deleted when its handle closes.
+        source.Empty();
+        BSTR output = ::SysAllocStringLen(nullptr, length);
+        if (!output) { failure = ERROR_NOT_ENOUGH_MEMORY; ::CloseHandle(file); return nullptr; }
+        unsigned char* destination = reinterpret_cast<unsigned char*>(output);
+        position = 0;
+        while (position < total)
+        {
+            const DWORD chunk = static_cast<DWORD>(min(8ULL * 1024 * 1024, total - position));
+            DWORD read = 0;
+            if (!::ReadFile(file, destination + static_cast<size_t>(position), chunk, &read, nullptr) || read != chunk)
+            { failure = ::GetLastError(); if (!failure) failure = ERROR_READ_FAULT; ::SysFreeString(output); ::CloseHandle(file); return nullptr; }
+            position += read;
+        }
+        ::CloseHandle(file);
+        return output;
     }
 
     EpubImportOptions ImportEpubOptionsFromApi(const ImportEpubOptionsV1& source)
@@ -8900,6 +10175,12 @@ extern "C" HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
     CStringW fb2Xml;
     CStringW errorText;
     bool converted = false;
+    const auto reportOutOfMemory = [apiErrorText](LPCWSTR stage) {
+        wchar_t message[256] = {};
+        ::swprintf_s(message, _countof(message), L"ImportEPUB ran out of memory during conversion (stage: %s).", stage);
+        *apiErrorText = ::SysAllocString(message);
+        return E_OUTOFMEMORY;
+    };
     try
     {
         const EpubImportOptions options = apiOptions ? ImportEpubOptionsFromApi(*apiOptions) : EpubImportOptions();
@@ -8910,8 +10191,7 @@ extern "C" HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
         const HRESULT hr = error.Error();
         if (hr == E_OUTOFMEMORY)
         {
-            *apiErrorText = ::SysAllocString(L"ImportEPUB ran out of memory during conversion.");
-            return E_OUTOFMEMORY;
+            return reportOutOfMemory(g_importStage);
         }
         wchar_t message[256] = {};
         ::swprintf_s(message, _countof(message), L"ImportEPUB failed at %s with COM error 0x%08lX.", g_importStage, static_cast<unsigned long>(hr));
@@ -8923,8 +10203,7 @@ extern "C" HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
         const HRESULT hr = error.m_hr;
         if (hr == E_OUTOFMEMORY)
         {
-            *apiErrorText = ::SysAllocString(L"ImportEPUB ran out of memory during conversion.");
-            return E_OUTOFMEMORY;
+            return reportOutOfMemory(g_importStage);
         }
         wchar_t message[256] = {};
         ::swprintf_s(message, _countof(message), L"ImportEPUB failed at %s with ATL error 0x%08lX.", g_importStage, static_cast<unsigned long>(hr));
@@ -8933,8 +10212,7 @@ extern "C" HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
     }
     catch (const std::bad_alloc&)
     {
-        *apiErrorText = ::SysAllocString(L"ImportEPUB ran out of memory during conversion.");
-        return E_OUTOFMEMORY;
+        return reportOutOfMemory(g_importStage);
     }
     catch (...)
     {
@@ -8952,7 +10230,19 @@ extern "C" HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
 
     *apiFb2Xml = AllocateImportEpubApiText(fb2Xml);
     if (!*apiFb2Xml)
-        return E_OUTOFMEMORY;
+    {
+        DWORD failure = ERROR_SUCCESS;
+        try { *apiFb2Xml = AllocateLargeImportTextViaTemporaryFile(fb2Xml, failure); }
+        catch (...) { return reportOutOfMemory(L"API output temporary storage"); }
+        if (!*apiFb2Xml)
+        {
+            if (failure == ERROR_NOT_ENOUGH_MEMORY) return reportOutOfMemory(L"API output allocation");
+            wchar_t message[256] = {};
+            ::swprintf_s(message, _countof(message), L"ImportEPUB could not use temporary output storage (Win32 error %lu).", failure);
+            *apiErrorText = ::SysAllocString(message);
+            return E_FAIL;
+        }
+    }
     if (!errorText.IsEmpty())
     {
         *apiErrorText = AllocateImportEpubApiText(errorText);
