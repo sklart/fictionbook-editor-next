@@ -3124,6 +3124,23 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assertIn('Bibliography entry.', self.text(main))
                 self.assert_once(root, 'Chapter citation', 'Bibliography entry.')
 
+    def test_numbered_references_under_later_heading_remain_in_main_body(self):
+        root = self.convert('<h2>Article</h2><p>Citation [<a id="ref9" href="#entry9">9</a>].</p>'
+                            '<h3>References</h3><p class="other_left1"><a id="entry9"/>'
+                            '<a href="#ref9">9.</a> Bibliography entry.</p>', navigation=False)
+        main = next(body for body in root.findall('f:body', NS) if body.get('name') != 'notes')
+        self.assertTrue(any(e.get('id') == 'entry9' for e in main.iter()))
+        self.assertIn('Bibliography entry.', self.text(main))
+        self.assertFalse(any(e.get('type') == 'note' for e in root.findall('.//f:a', NS)))
+        self.assertEqual(self.notes(root), [])
+
+    def test_explicit_note_under_references_heading_remains_note(self):
+        root = self.convert('<p>Text <a epub:type="noteref" href="#n">1</a>.</p>'
+                            '<h3>References</h3><aside epub:type="footnote" id="n"><p>Real note.</p></aside>',
+                            navigation=False)
+        self.assertTrue(any(e.get('type') == 'note' for e in root.findall('.//f:a', NS)))
+        self.assertTrue(any('Real note.' in self.text(n) for n in self.notes(root)))
+
     def test_numbered_chapter_link_to_adjacent_own_anchor_is_not_note(self):
         root = self.convert('<p><a id="ch01"/><a href="chapter.xhtml#ch01"><span id="aid-8G">1</span></a></p>'
                             '<p>Chapter text remains in the main body.</p>', navigation=False)

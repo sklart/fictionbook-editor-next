@@ -6935,12 +6935,30 @@ namespace
     {
         bool referenceEntry = false;
         MSXML2::IXMLDOMNodePtr body;
+        MSXML2::IXMLDOMNodePtr paragraph;
         for (auto current = node; current; current = ParentNode(current))
         {
+            if (IsEndnoteElement(current)) return false;
+            if (!paragraph && LocalName(current) == L"p") paragraph = current;
             if (HasSemanticCssClass(current, L"ref") || HasSemanticCssClass(current, L"ref1") ||
                 HasSemanticCssClass(current, L"bibliography"))
                 referenceEntry = true;
             if (LocalName(current) == L"body") { body = current; break; }
+        }
+        // Some books put an unmarked bibliography after a later heading in
+        // the chapter, using ordinary paragraphs and reciprocal numeric links.
+        // Inspect nearby siblings only; the nearest heading determines the
+        // paragraph's context and an explicitly marked endnote stays a note.
+        auto previous = paragraph;
+        for (int count = 0; previous && count < 128; ++count)
+        {
+            IXMLDOMNode* raw = nullptr;
+            previous->get_previousSibling(&raw);
+            previous = MSXML2::IXMLDOMNodePtr(raw, false);
+            if (!previous || !IsHeadingName(LocalName(previous))) continue;
+            const CStringW heading = LowerMapKey(TrimString(NodeText(previous)));
+            return heading == L"references" || heading == L"bibliography" ||
+                heading == L"библиография" || heading == L"список литературы";
         }
         if (!referenceEntry || !body) return false;
         CStringW heading = LowerMapKey(TrimString(NodeText(FindFirstHeadingChild(body))));
