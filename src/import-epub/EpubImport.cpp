@@ -7189,6 +7189,16 @@ namespace
                     for (auto current = link; current; current = ParentNode(current))
                         if (current == target->second) { selfTarget = true; break; }
                     if (selfTarget) continue;
+                    // Chapter headings can put an empty target anchor next to
+                    // a numbered link back to that same anchor. The link is
+                    // navigation within its own paragraph, not a footnote.
+                    if (!IsNoteReferenceElement(link) && !externalDocument &&
+                        LocalName(target->second) == L"a" &&
+                        Attr(target->second, L"href").IsEmpty() &&
+                        TrimString(NodeText(target->second)).IsEmpty() &&
+                        ParentNode(link) == ParentNode(target->second) &&
+                        LocalName(ParentNode(link)) == L"p")
+                        continue;
                     if (!IsNoteReferenceElement(link) &&
                         (IsEpubType(target->second, L"chapter") || IsRoleToken(target->second, L"doc-chapter") ||
                          HasSemanticCssClass(target->second, L"chapter")))

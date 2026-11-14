@@ -3124,6 +3124,15 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 self.assertIn('Bibliography entry.', self.text(main))
                 self.assert_once(root, 'Chapter citation', 'Bibliography entry.')
 
+    def test_numbered_chapter_link_to_adjacent_own_anchor_is_not_note(self):
+        root = self.convert('<p><a id="ch01"/><a href="chapter.xhtml#ch01"><span id="aid-8G">1</span></a></p>'
+                            '<p>Chapter text remains in the main body.</p>', navigation=False)
+        main = next(body for body in root.findall('f:body', NS) if body.get('name') != 'notes')
+        self.assertIn('Chapter text remains in the main body.', self.text(main))
+        self.assertTrue(any(e.get('id') == 'ch01' for e in main.iter()))
+        self.assertFalse(any(e.get('type') == 'note' for e in root.findall('.//f:a', NS)))
+        self.assertEqual(self.notes(root), [])
+
     def test_self_linked_inline_marker_does_not_capture_main_paragraph(self):
         root = self.convert('<p>Main paragraph <span class="Footnote-reference">'
                             '<span id="footnote-001-backlink"><a href="#footnote-001-backlink">1</a>'
