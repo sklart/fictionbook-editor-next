@@ -432,6 +432,66 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                                     ('empty-line', ''), ('p', 'Last line')])
         self.assertEqual(len(cite.findall('.//f:emphasis', NS)), 3)
 
+    def test_continuation_does_not_repeat_generic_book_title(self):
+        root = self.convert('<h1>Main chapter</h1><p>Opening text</p>',
+                            {'Text/chapter_split_001.xhtml': ('continued', 'application/xhtml+xml', '<p>Continuation text</p>')},
+                            spine=['chapter', 'continued'], navigation=False, body_ids=True)
+        section = root.find('.//f:section[@id="body-continued"]', NS)
+        self.assertIsNotNone(section)
+        self.assertIn('Continuation text', self.text(section))
+        self.assertIsNone(section.find('f:title', NS))
+
+    def test_navigation_target_does_not_repeat_generic_book_title(self):
+        root = self.convert('<p>Front matter text</p>',
+                            {'Text/other.xhtml': ('other', 'application/xhtml+xml', '<p>Other text</p>')},
+                            spine=['chapter', 'other'], body_ids=True,
+                            navigation=[('Front matter', 'Text/chapter.xhtml#body-chapter', [])])
+        section = root.find('.//f:section[@id="body-chapter"]', NS)
+        self.assertIsNotNone(section)
+        self.assertIn('Front matter text', self.text(section))
+        self.assertIsNone(section.find('f:title', NS))
+
+    def test_direct_line_breaks_preserve_visible_lines_and_inline_markup(self):
+        root = self.convert('<p id="bookmark">First <strong>bold</strong><br/>Second <em>italic</em></p>'
+                            '<p class="newspaper_subtitle">Headline<br/>Next line</p>'
+                            '<p><a href="#bookmark">Jump</a></p>')
+        body = root.find('f:body', NS)
+        paragraphs = body.findall('.//f:p', NS)
+        self.assertTrue(any('First' in self.text(p) and p.find('f:strong', NS) is not None for p in paragraphs))
+        self.assertTrue(any('Second' in self.text(p) and p.find('f:emphasis', NS) is not None for p in paragraphs))
+        self.assertFalse(any('First' in self.text(p) and 'Second' in self.text(p) for p in paragraphs))
+        subtitles = [self.text(e) for e in body.findall('.//f:subtitle', NS)]
+        self.assertIn('Headline', subtitles)
+        self.assertIn('Next line', subtitles)
+        self.assertTrue(any(p.get('id') == 'bookmark' for p in paragraphs))
+        self.assertTrue(any(a.get(HREF) == '#bookmark' for a in body.findall('.//f:a', NS)))
+
+    def test_direct_consecutive_breaks_keep_blank_line_and_anchor(self):
+        root = self.convert('<p id="target">First<br/><br/><strong>Second</strong></p>'
+                            '<p><a href="#target">Jump</a></p>')
+        body = root.find('f:body', NS)
+        self.assertEqual(len(body.findall('.//f:empty-line', NS)), 1)
+        self.assertTrue(any(p.get('id') == 'target' and self.text(p) == 'First' for p in body.findall('.//f:p', NS)))
+        self.assertTrue(any(self.text(p) == 'Second' and p.find('f:strong', NS) is not None for p in body.findall('.//f:p', NS)))
+        self.assertTrue(any(a.get(HREF) == '#target' for a in body.findall('.//f:a', NS)))
+
+    def test_direct_breaks_preserve_descendant_targets_and_image(self):
+        root = self.convert('<p id="outer">Before <span id="inner">linked</span><br id="break-id"/>'
+                            'After <img src="../images/a.png"/></p>'
+                            '<p><a href="#outer">Outer</a><a href="#inner">Inner</a>'
+                            '<a href="#break-id">Break</a></p>',
+                            extra={'images/a.png': ('image', 'image/png', PNG)}, navigation=False)
+        body = root.find('f:body', NS)
+        ids = {node.get('id') for node in body.iter() if node.get('id')}
+        self.assertTrue({'outer', 'inner', 'break-id'} <= ids)
+        links = {node.get(HREF) for node in body.findall('.//f:a', NS)}
+        self.assertTrue({'#outer', '#inner', '#break-id'} <= links)
+        image = body.find('.//f:image', NS)
+        self.assertIsNotNone(image)
+        binary = root.find('f:binary[@id="' + image.get(HREF)[1:] + '"]', NS)
+        self.assertIsNotNone(binary)
+        self.assertEqual(base64.b64decode(binary.text or ''), PNG)
+
     def test_large_image_preserves_missing_link_text_and_warning(self):
         data = JPEG + (b'\x00' * (3 * 1024 * 1024 + 4096))
         root = self.convert('<p><a href="#missing-anchor">Broken</a></p><p><img src="../images/large.jpg"/></p>',
