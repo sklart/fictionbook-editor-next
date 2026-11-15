@@ -2007,6 +2007,25 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         links = [a.get(HREF) for a in root.findall('.//f:a', NS)]
         self.assertIn('missing.xhtml#gone', links)
 
+    def test_mandatory_spine_failure_is_saved_in_log(self):
+        self.convert('<p>Unused</p>', spine=['missing'], fail=True, navigation=False,
+                     manifest_extra=['<item id="missing" href="Text/absent.xhtml" media-type="application/xhtml+xml"/>'])
+        logs = list(self.last_folder.glob('*.ImportEPUB.log'))
+        self.assertEqual(len(logs), 1, self.diagnostics)
+        text = logs[0].read_text(encoding='utf-8-sig')
+        self.assertIn('Missing mandatory EPUB spine resource: missing', text)
+        self.assertIn('Text/absent.xhtml', text)
+        self.assertIn('Source:', text)
+
+    def test_unsupported_mandatory_spine_failure_is_saved_in_log(self):
+        self.convert('<p>Unused</p>', extra={'Text/unsupported.pdf': ('bad', 'application/pdf', b'%PDF-1.4\n')},
+                     spine=['bad'], fail=True, navigation=False)
+        logs = list(self.last_folder.glob('*.ImportEPUB.log'))
+        self.assertEqual(len(logs), 1, self.diagnostics)
+        text = logs[0].read_text(encoding='utf-8-sig')
+        self.assertIn('Unsupported mandatory EPUB spine resource: Text/unsupported.pdf', text)
+        self.assertIn('Source:', text)
+
     def test_diagnostic_section_is_bounded_and_excludes_paths(self):
         links = ''.join(f'<a href="missing{i}.xhtml#target">Link{i}</a>' for i in range(20))
         root = self.convert('<h1>Chapter</h1><p>' + links + '</p>', options=['--diagnostic-section'])
