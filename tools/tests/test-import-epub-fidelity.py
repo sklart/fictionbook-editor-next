@@ -2140,6 +2140,11 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                      spine=['chapter', 'second'], navigation=False)
         self.assertIn('Rewritten internal links: 4', self.diagnostics)
 
+    def test_diagnostic_counts_video_in_block_and_inline(self):
+        root = self.convert('<video><p>Block fallback</p></video><p>Before <video>Inline fallback</video> after</p>')
+        self.assert_once(root, 'Block fallback', 'Inline fallback')
+        self.assertIn('Elements with detected fidelity limitations: 2', self.diagnostics)
+
     def test_diagnostic_counts_stylesheet_losses_per_element(self):
         self.convert('<p><span class="broken">First</span><span class="broken">Second</span></p>',
                      head='<style>.broken { vertical-align: 42px; }</style>')

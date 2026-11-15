@@ -6488,8 +6488,10 @@ namespace
             if (!link.IsEmpty() || !id.IsEmpty()) out += L"      <p" + id + L">" + link + L"</p>\r\n";
             return;
         }
-        if (name == L"a" && g_options.preserveLinks && !Attr(node, L"href").IsEmpty())
+        if (name == L"a" && g_options.preserveLinks && !Attr(node, L"href").IsEmpty()) {
+            RecordDiagnosticElement(g_content.fidelityLossElements, node, ctx);
             g_content.warnings += L"Block hyperlink could not be preserved as one FB2 link; its contents were retained.\r\n";
+        }
 
         if (name.CompareNoCase(L"figure") == 0)
         {
@@ -6499,6 +6501,7 @@ namespace
 
         if (name == L"video")
         {
+            RecordDiagnosticElement(g_content.fidelityLossElements, node, ctx);
             g_content.warnings += L"EPUB video is not supported; its poster and fallback content were retained when available.\r\n";
             const CStringW image = Fb2ImageElementForNode(ctx, node);
             if (!image.IsEmpty()) out += L"      <p>" + image + L"</p>\r\n";
