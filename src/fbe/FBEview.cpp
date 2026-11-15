@@ -336,10 +336,22 @@ public:
 			const CString previous(static_cast<LPCWSTR>(field->value));
 			const CString& expected = m_restoreBefore ? m_after : m_before;
 			if (previous != expected) return E_UNEXPECTED;
-			field->value = static_cast<LPCWSTR>(m_restoreBefore ? m_before : m_after);
-			HRESULT result = FbeUndo::Inject(L"description-id-undo-add");
+			PasteUndoRecordingScope recording(manager), compensation(manager, false);
+			if (!recording.Blocked()) return E_UNEXPECTED;
+			try { field->value = static_cast<LPCWSTR>(m_restoreBefore ? m_before : m_after); }
+			catch (const _com_error& error) {
+				try { field->value = static_cast<LPCWSTR>(previous); } catch (...) { return E_ABORT; }
+				return error.Error();
+			}
+			HRESULT result = recording.Close();
+			if (SUCCEEDED(result)) result = FbeUndo::Inject(L"description-id-undo-add");
 			if (SUCCEEDED(result)) result = manager->Add(this);
-			if (FAILED(result)) { field->value = static_cast<LPCWSTR>(previous); return result; }
+			if (FAILED(result)) {
+				if (!recording.Blocked() && FAILED(compensation.Open())) return E_ABORT;
+				field->value = static_cast<LPCWSTR>(previous);
+				if (FAILED(compensation.Close()) || FAILED(recording.Close())) return E_ABORT;
+				return result;
+			}
 			m_restoreBefore = !m_restoreBefore;
 			owner->m_body.MarkDescriptionFormChanged();
 			return S_OK;
@@ -375,10 +387,22 @@ HRESULT CFBEView::SetGeneratedDocumentId(BSTR value) {
 		if (FAILED(result)) return result;
 		CComPtr<IOleUndoUnit> unit(raw);
 		raw->Initialize(m_ownerDocument->ClipboardIdentity(), before, after);
-		field->value = static_cast<LPCWSTR>(after);
-		result = FbeUndo::Inject(L"description-id-add");
+		PasteUndoRecordingScope recording(manager), compensation(manager, false);
+		if (!recording.Blocked()) return E_UNEXPECTED;
+		try { field->value = static_cast<LPCWSTR>(after); }
+		catch (const _com_error& error) {
+			try { field->value = static_cast<LPCWSTR>(before); } catch (...) { return E_ABORT; }
+			return error.Error();
+		}
+		result = recording.Close();
+		if (SUCCEEDED(result)) result = FbeUndo::Inject(L"description-id-add");
 		if (SUCCEEDED(result)) result = manager->Add(unit);
-		if (FAILED(result)) { field->value = static_cast<LPCWSTR>(before); return result; }
+		if (FAILED(result)) {
+			if (!recording.Blocked() && FAILED(compensation.Open())) return E_ABORT;
+			field->value = static_cast<LPCWSTR>(before);
+			if (FAILED(compensation.Close()) || FAILED(recording.Close())) return E_ABORT;
+			return result;
+		}
 		MarkDescriptionFormChanged();
 		return S_OK;
 	} catch (const _com_error& error) { return error.Error(); }

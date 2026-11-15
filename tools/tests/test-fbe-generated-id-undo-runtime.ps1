@@ -8,7 +8,7 @@ $oldMode, $oldScenario, $oldExpected = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TE
 try {
     $null = New-IsolatedFbeSettingsSeed $iso
     $fixture = Join-Path $iso.Root 'id.fb2'
-    [IO.File]::WriteAllText($fixture, '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><nickname>Tester</nickname></author><book-title>Title</book-title><lang>en</lang></title-info><document-info><id>original-id</id><version>1.0</version></document-info></description><body><section><p>Body</p></section></body></FictionBook>', [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText($fixture, '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><nickname>Tester</nickname></author><book-title>Title</book-title><lang>en</lang></title-info><document-info><author><nickname>Tester</nickname></author><date value="2026-01-01">2026-01-01</date><id>original-id</id><version>1.0</version></document-info></description><body><section><p>Body</p></section></body></FictionBook>', [Text.UTF8Encoding]::new($false))
     $report = Join-Path $iso.Root 'id-undo-report.txt'
     $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'generated-id-runtime'
     $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Root -ArgumentList @('--portable','-b',$report,$fixture) -WindowStyle Hidden -PassThru
@@ -18,7 +18,7 @@ try {
     $evidence = Join-Path $PSScriptRoot '../../build/evidence-takir-id-undo/generated'
     New-Item -ItemType Directory -Force -Path $evidence | Out-Null
     [IO.File]::WriteAllText((Join-Path $evidence 'report.txt'), $text, [Text.UTF8Encoding]::new($false))
-    foreach ($key in @('initially-clean','add-failure-rolled-back','canceled-clean','generated','dirty','undo-after','undo-restored','undo-source-current','redo-enabled','redo-restored','second-generated','undo-failure-value-preserved','undo-failure-history-preserved','second-undone','second-redone','first-retained','source-current','saved','clean-after-save','persisted')) {
+    foreach ($key in @('initially-clean','add-failure-rolled-back','canceled-clean','generated','dirty','undo-after','undo-restored','undo-source-current','redo-enabled','redo-restored','second-generated','undo-failure-value-preserved','undo-failure-history-preserved','add-failure-existing-history-preserved','second-undone','second-redone','first-retained','source-current','saved','clean-after-save','persisted')) {
         if ($text -notmatch "(?m)^$key=1\r?$") { throw "Generated ID undo failed ($key):`n$text" }
     }
     if ($code -ne 0) { throw "Generated ID undo runtime failed: $code" }

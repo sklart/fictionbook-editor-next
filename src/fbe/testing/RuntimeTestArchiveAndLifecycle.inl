@@ -930,8 +930,11 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", L"description-id-add");
 		const HRESULT failedAdd = m_doc->m_body.SetGeneratedDocumentId(CComBSTR(L"injected-id"));
 		::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", NULL);
-		const bool failureRolledBack = FAILED(failedAdd) && id && CString(static_cast<LPCWSTR>(id->value)) == before &&
-			!DocChanged() && undoUnits() == undoUnitsBefore && canUndo() == undoBefore;
+		const bool failureValueRestored = id && CString(static_cast<LPCWSTR>(id->value)) == before;
+		const bool failureClean = !DocChanged();
+		const int failureUndoUnits = undoUnits();
+		const bool failureCanUndo = canUndo();
+		const bool failureRolledBack = FAILED(failedAdd) && failureValueRestored && failureClean && failureUndoUnits == undoUnitsBefore && failureCanUndo == undoBefore;
 		const HRESULT cancelAction = window ? static_cast<HRESULT>(window->execScript(_bstr_t(L"window.AskYesNo=function(){return false;}; NewDocumentID('');"), _bstr_t(L"JScript"))) : E_NOINTERFACE;
 		const bool canceledClean = SUCCEEDED(cancelAction) && id && CString(static_cast<LPCWSTR>(id->value)) == before && !DocChanged();
 		const HRESULT action = window ? static_cast<HRESULT>(window->execScript(_bstr_t(L"window.AskYesNo=function(){return true;}; NewDocumentID('');"), _bstr_t(L"JScript"))) : E_NOINTERFACE;
@@ -940,6 +943,8 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		const bool undoAfter = canUndo();
 		const int undoUnitsAfter = undoUnits();
 		const bool dirty = DocChanged();
+		m_doc->m_body.SetFocus();
+		if (id) MSHTML::IHTMLElement2Ptr(id)->focus();
 		SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
 		const bool undoRestored = id && CString(static_cast<LPCWSTR>(id->value)) == before;
 		ShowView(SOURCE);
@@ -951,6 +956,7 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		ShowView(DESC);
 		document = m_doc->m_body.Document(); document3 = document;
 		id = document3 ? document3->getElementById(L"diID") : NULL;
+		m_doc->m_body.SetFocus();
 		if (id) MSHTML::IHTMLElement2Ptr(id)->focus();
 		OLECMD redoStatus = { IDM_REDO, 0 }; m_doc->m_body.QueryStatus(&redoStatus, 1);
 		SendMessage(WM_COMMAND, ID_EDIT_REDO, 0);
@@ -958,13 +964,31 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		const HRESULT secondAction = window ? static_cast<HRESULT>(window->execScript(_bstr_t(L"NewDocumentID('');"), _bstr_t(L"JScript"))) : E_NOINTERFACE;
 		const CString second = id ? CString(static_cast<LPCWSTR>(id->value)) : CString();
 		const bool secondGenerated = SUCCEEDED(secondAction) && !second.IsEmpty() && second != after;
+		IServiceProviderPtr historyProvider(document);
+		CComPtr<IOleUndoManager> historyManager;
+		const bool historyAvailable = historyProvider && SUCCEEDED(historyProvider->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&historyManager))) && historyManager;
+		auto history = [&](bool redo, std::vector<CComPtr<IOleUndoUnit>>& result) {
+			CComPtr<IEnumOleUndoUnits> list;
+			if (!historyAvailable || FAILED(redo ? historyManager->EnumRedoable(&list) : historyManager->EnumUndoable(&list)) || !list) return false;
+			for (;;) { CComPtr<IOleUndoUnit> unit; const HRESULT hr = list->Next(1, &unit, NULL); if (hr == S_FALSE) return true; if (FAILED(hr)) return false; result.push_back(unit); }
+		};
+		std::vector<CComPtr<IOleUndoUnit>> beforeUndoFailure, beforeRedoFailure, afterUndoFailure, afterRedoFailure;
+		const bool undoFailureSeeded = history(false, beforeUndoFailure) && history(true, beforeRedoFailure) && !beforeUndoFailure.empty();
 		::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", L"description-id-undo-add");
 		SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
 		::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", NULL);
 		const bool undoFailureValuePreserved = id && CString(static_cast<LPCWSTR>(id->value)) == second;
-		const bool undoFailureHistoryPreserved = canUndo();
+		const bool undoFailureHistoryPreserved = undoFailureSeeded && history(false, afterUndoFailure) && history(true, afterRedoFailure) &&
+			beforeUndoFailure == afterUndoFailure && beforeRedoFailure == afterRedoFailure && canUndo();
 		SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
 		const bool secondUndone = id && CString(static_cast<LPCWSTR>(id->value)) == after;
+		std::vector<CComPtr<IOleUndoUnit>> oldUndo, oldRedo, newUndo, newRedo;
+		const bool historySeeded = history(false, oldUndo) && history(true, oldRedo) && !oldUndo.empty() && !oldRedo.empty();
+		::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", L"description-id-add");
+		const HRESULT failedWithHistory = m_doc->m_body.SetGeneratedDocumentId(CComBSTR(L"injected-with-history"));
+		::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", NULL);
+		const bool failureHistoryPreserved = historySeeded && FAILED(failedWithHistory) && id && CString(static_cast<LPCWSTR>(id->value)) == after &&
+			history(false, newUndo) && history(true, newRedo) && oldUndo == newUndo && oldRedo == newRedo;
 		SendMessage(WM_COMMAND, ID_EDIT_REDO, 0);
 		const bool secondRedone = id && CString(static_cast<LPCWSTR>(id->value)) == second;
 		SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
@@ -986,10 +1010,11 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		CStringA report; report.Format("initially-clean=%d\ncanceled-clean=%d\ngenerated=%d\ndirty=%d\nsource-current=%d\nsaved=%d\nclean-after-save=%d\npersisted=%d\n", initiallyClean, canceledClean, generated, dirty, sourceCurrent, saved, cleanAfterSave, persisted);
 		report.AppendFormat("undo-before=%d\nundo-after=%d\nundo-units-before=%d\nundo-units-after=%d\nundo-restored=%d\nundo-source-current=%d\nredo-enabled=%d\nredo-restored=%d\n", undoBefore, undoAfter, undoUnitsBefore, undoUnitsAfter, undoRestored, undoSourceCurrent, (redoStatus.cmdf & OLECMDF_ENABLED) != 0, redoRestored);
 		report.AppendFormat("second-generated=%d\nsecond-undone=%d\nsecond-redone=%d\nfirst-retained=%d\n", secondGenerated, secondUndone, secondRedone, firstRetained);
-		report.AppendFormat("add-failure-rolled-back=%d\n", failureRolledBack);
+		report.AppendFormat("add-failure-rolled-back=%d\nadd-failure-hr=0x%08lX\nadd-failure-value-restored=%d\nadd-failure-clean=%d\nadd-failure-undo-units=%d\nadd-failure-can-undo=%d\n", failureRolledBack, static_cast<unsigned long>(failedAdd), failureValueRestored, failureClean, failureUndoUnits, failureCanUndo);
 		report.AppendFormat("undo-failure-value-preserved=%d\nundo-failure-history-preserved=%d\n", undoFailureValuePreserved, undoFailureHistoryPreserved);
+		report.AppendFormat("add-failure-existing-history-preserved=%d\n", failureHistoryPreserved);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(initiallyClean && failureRolledBack && canceledClean && generated && dirty && undoAfter && undoRestored && undoSourceCurrent && (redoStatus.cmdf & OLECMDF_ENABLED) && redoRestored && secondGenerated && undoFailureValuePreserved && undoFailureHistoryPreserved && secondUndone && secondRedone && firstRetained && sourceCurrent && saved && cleanAfterSave && persisted ? 0 : 1);
+		::PostQuitMessage(initiallyClean && failureRolledBack && canceledClean && generated && dirty && undoAfter && undoRestored && undoSourceCurrent && (redoStatus.cmdf & OLECMDF_ENABLED) && redoRestored && secondGenerated && undoFailureValuePreserved && undoFailureHistoryPreserved && secondUndone && failureHistoryPreserved && secondRedone && firstRetained && sourceCurrent && saved && cleanAfterSave && persisted ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"body-source-transition-runtime"))
