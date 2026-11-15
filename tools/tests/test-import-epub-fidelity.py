@@ -59,7 +59,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for folder in cls.folders:
                 folder.cleanup()
 
-    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, identifier='fixture', date='', head='', language='ru', chapter_title='Fixture', creators=('Tester',), cover_id='', metadata_extra='', temp_padding=0, test_env=None):
+    def convert(self, body, extra=None, version='3.0', spine=None, fail=False, svg='keep', raw=None, options=(), manifest_extra=(), outside=None, navigation=None, extra_nav='', guide='', body_ids=False, identifier='fixture', date='', head='', language='ru', chapter_title='Fixture', creators=('Tester',), cover_id='', metadata_extra='', temp_padding=0, test_env=None, chapter_bytes=None):
         extra = extra or {}
         temp = tempfile.TemporaryDirectory(prefix='epub-fidelity-')
         self.folders.append(temp)
@@ -102,7 +102,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             for path, (ident, mime, content) in files.items():
                 properties = ' properties="nav"' if ident == 'fixture-nav' else ''
                 manifest.append(f'<item id="{ident}" href="{quote(path, safe="/")}" media-type="{mime}"{properties}/>')
-                z.writestr('OEBPS/' + path, xhtml(content, ident) if mime == 'application/xhtml+xml' else content)
+                z.writestr('OEBPS/' + path, chapter_bytes if ident == 'chapter' and chapter_bytes is not None else (xhtml(content, ident) if mime == 'application/xhtml+xml' else content))
             modified = '<meta property="dcterms:modified">2026-10-21T00:00:00Z</meta>' if version.startswith('3') else ''
             if cover_id: modified += f'<meta name="cover" content="{cover_id}"/>'
             toc = '' if version.startswith('3') or navigation is False else ' toc="fixture-ncx"'
@@ -137,6 +137,39 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertNotIn('[Chapter text was not extracted]', output.read_text(encoding='utf-8-sig'))
         self.assertNotIn('[Текст главы не извлечён]', output.read_text(encoding='utf-8-sig'))
         return root
+
+    def test_declared_windows1251_with_unclosed_void_element(self):
+        declarations = (
+            ('<?xml version="1.0" encoding="windows-1251"?>', ''),
+            ('', '<meta charset="windows-1251"/>'),
+            ('', '<meta http-equiv="Content-Type" content="text/html; charset=windows-1251"/>'),
+        )
+        for declaration, meta in declarations:
+            with self.subTest(declaration=declaration, meta=meta):
+                source = (declaration + '<html xmlns="http://www.w3.org/1999/xhtml"><head>' + meta +
+                          '<title>Глава</title></head><body><p>Русский текст<br>Продолжение</p></body></html>').encode('cp1251')
+                root = self.convert('', version='2.0', chapter_bytes=source)
+                self.assertIn('Русский текст', self.text(root))
+                self.assertIn('Продолжение', self.text(root))
+                self.assertNotIn('Ðóññêèé', self.text(root))
+                self.assertIn('Recovered malformed XHTML', self.diagnostics)
+                self.assertIn('Decoded HTML using code page 1251', self.diagnostics)
+
+    def test_declared_windows1252_with_unclosed_void_element(self):
+        source = ('<?xml version="1.0" encoding="windows-1252"?>'
+                  '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Prix</title></head>'
+                  '<body><p>Prix : 5 €<br>Suite</p></body></html>').encode('cp1252')
+        root = self.convert('', version='2.0', chapter_bytes=source)
+        self.assertIn('Prix : 5 €', self.text(root))
+        self.assertIn('Suite', self.text(root))
+
+    def test_xml_utf8_declaration_overrides_conflicting_meta(self):
+        source = ('<?xml version="1.0" encoding="utf-8"?>'
+                  '<html xmlns="http://www.w3.org/1999/xhtml"><head><meta charset="windows-1251"/>'
+                  '<title>Глава</title></head><body><p>Русский текст<br>Продолжение</p></body></html>').encode('utf-8')
+        root = self.convert('', version='2.0', chapter_bytes=source)
+        self.assertIn('Русский текст', self.text(root))
+        self.assertIn('Продолжение', self.text(root))
 
     def notes(self, root):
         return root.findall('f:body[@name="notes"]/f:section', NS)

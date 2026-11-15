@@ -378,9 +378,59 @@ namespace
         return true;
     }
 
-    bool DecodeTextFileBytes(const std::vector<unsigned char>& bytes, CStringW& text)
+    UINT DeclaredMarkupCodePage(const std::vector<unsigned char>& bytes)
+    {
+        // Only inspect XML declarations and HTML meta tags, not arbitrary text.
+        const size_t count = (std::min)(bytes.size(), static_cast<size_t>(8192));
+        std::string head; head.reserve(count);
+        for (size_t i = 0; i < count; ++i) {
+            const unsigned char ch = bytes[i];
+            head.push_back(ch >= 'A' && ch <= 'Z' ? static_cast<char>(ch + ('a' - 'A')) : static_cast<char>(ch));
+        }
+        const size_t body = head.find("<body");
+        if (body != std::string::npos) head.resize(body);
+        auto attribute = [](const std::string& tag, const char* name) -> UINT {
+            size_t pos = tag.find(name);
+            while (pos != std::string::npos && pos > 0 &&
+                   ((tag[pos - 1] >= 'a' && tag[pos - 1] <= 'z') || (tag[pos - 1] >= '0' && tag[pos - 1] <= '9') || tag[pos - 1] == '-' || tag[pos - 1] == '_'))
+                pos = tag.find(name, pos + 1);
+            if (pos == std::string::npos) return 0;
+            pos += strlen(name);
+            while (pos < tag.size() && (tag[pos] == ' ' || tag[pos] == '\t' || tag[pos] == '\r' || tag[pos] == '\n')) ++pos;
+            if (pos == tag.size() || tag[pos++] != '=') return 0;
+            while (pos < tag.size() && (tag[pos] == ' ' || tag[pos] == '\t' || tag[pos] == '\r' || tag[pos] == '\n' || tag[pos] == '\'' || tag[pos] == '"')) ++pos;
+            const size_t start = pos;
+            while (pos < tag.size() && ((tag[pos] >= 'a' && tag[pos] <= 'z') || (tag[pos] >= '0' && tag[pos] <= '9') || tag[pos] == '-' || tag[pos] == '_')) ++pos;
+            const std::string encoding = tag.substr(start, pos - start);
+            if (encoding == "utf-8" || encoding == "utf8") return CP_UTF8;
+            if (encoding == "windows-1251" || encoding == "cp1251") return 1251;
+            if (encoding == "windows-1252" || encoding == "cp1252") return 1252;
+            if (encoding == "iso-8859-1" || encoding == "iso_8859-1") return 28591;
+            return 0;
+        };
+        size_t pos = head.find("<?xml");
+        if (pos != std::string::npos) {
+            const size_t end = head.find("?>", pos);
+            if (end != std::string::npos) {
+                const UINT cp = attribute(head.substr(pos, end - pos), "encoding");
+                if (cp) return cp;
+            }
+        }
+        pos = 0;
+        while ((pos = head.find("<meta", pos)) != std::string::npos) {
+            const size_t end = head.find('>', pos);
+            if (end == std::string::npos) break;
+            const UINT cp = attribute(head.substr(pos, end - pos), "charset");
+            if (cp) return cp;
+            pos = end + 1;
+        }
+        return 0;
+    }
+
+    bool DecodeTextFileBytes(const std::vector<unsigned char>& bytes, CStringW& text, UINT* decodedCodePage = nullptr)
     {
         text.Empty();
+        if (decodedCodePage) *decodedCodePage = 0;
         if (bytes.empty())
             return true;
 
@@ -410,9 +460,10 @@ namespace
 
         const char* data = reinterpret_cast<const char*>(bytes.data() + offset);
         const int dataSize = static_cast<int>(bytes.size() - offset);
-        int wideCount = ::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, data, dataSize, nullptr, 0);
-        UINT codePage = CP_UTF8;
-        DWORD flags = MB_ERR_INVALID_CHARS;
+        UINT codePage = offset ? CP_UTF8 : DeclaredMarkupCodePage(bytes);
+        if (!codePage) codePage = CP_UTF8;
+        DWORD flags = codePage == CP_UTF8 ? MB_ERR_INVALID_CHARS : 0;
+        int wideCount = ::MultiByteToWideChar(codePage, flags, data, dataSize, nullptr, 0);
         if (wideCount <= 0)
         {
             codePage = 1252;
@@ -425,6 +476,7 @@ namespace
         LPWSTR buffer = text.GetBuffer(wideCount);
         ::MultiByteToWideChar(codePage, flags, data, dataSize, buffer, wideCount);
         text.ReleaseBuffer(wideCount);
+        if (decodedCodePage) *decodedCodePage = codePage;
         return true;
     }
 
@@ -782,7 +834,8 @@ namespace
     {
         std::vector<unsigned char> bytes;
         CStringW xml;
-        if (!ReadTextFileBytes(path, bytes) || !DecodeTextFileBytes(bytes, xml))
+        UINT decodedCodePage = 0;
+        if (!ReadTextFileBytes(path, bytes) || !DecodeTextFileBytes(bytes, xml, &decodedCodePage))
             return false;
 
         xml = SanitizeMarkupForXml(xml, htmlMode);
@@ -821,8 +874,14 @@ namespace
         }
         if (htmlMode) {
             g_content.unrecoveredXhtmlDocuments.erase(path.GetString());
-            if (g_content.repairedXhtmlDocuments.emplace(path.GetString()).second)
+            if (g_content.repairedXhtmlDocuments.emplace(path.GetString()).second) {
                 g_content.warnings += L"Recovered malformed XHTML by conservative normalization: " + path + L"\r\n";
+                if (decodedCodePage && decodedCodePage != CP_UTF8) {
+                    CStringW detail;
+                    detail.Format(L"Decoded HTML using code page %u (declared or fallback): %s\r\n", decodedCodePage, path.GetString());
+                    g_content.warnings += detail;
+                }
+            }
         }
         return true;
     }
