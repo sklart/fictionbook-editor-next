@@ -864,13 +864,20 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertIsNotNone(links[0].find('f:strong', NS))
         self.assertEqual(links[0].get(HREF), links[2].get(HREF))
         self.assertEqual([n.get('id') for n in notes], [links[0].get(HREF)[1:], links[1].get(HREF)[1:]])
-        self.assertTrue(self.text(notes[0].find('f:title', NS)).startswith('[1] '))
-        self.assertTrue(self.text(notes[1].find('f:title', NS)).startswith('[2] '))
+        self.assertEqual(self.text(notes[0].find('f:title', NS)), '1')
+        self.assertEqual(self.text(notes[1].find('f:title', NS)), '2')
         self.assertIn('Second in file', self.text(notes[0]))
         self.assertIn('First in file', self.text(notes[1]))
         self.assertIsNotNone(notes[0].find('.//f:emphasis', NS))
         self.assertEqual(next(a for a in root.findall('.//f:a', NS) if self.text(a) == 'Ordinary link').get(HREF), links[0].get(HREF))
         self.assertNotEqual(links[0].get(HREF), '#n_1')
+
+    def test_unified_notes_keep_meaningful_source_title(self):
+        root = self.convert('<p>Text<a epub:type="noteref" href="#n">9</a></p>'
+                            '<aside epub:type="footnote" id="n"><h2>Translator explanation</h2><p>Note text</p></aside>',
+                            options=['--unify-note-numbers'])
+        note, = self.notes(root)
+        self.assertIn('Translator explanation', self.text(note.find('f:title', NS)))
 
     def test_unified_note_numbers_preserve_meaningful_link_text(self):
         root = self.convert('<p>See <a epub:type="noteref" href="#n"><em>translator note</em></a>.</p>'
@@ -1037,13 +1044,37 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertTrue(any(n.get('id') == 'caption' for n in root.iter()))
         self.assertTrue(any(n.get(HREF) == '#caption' for n in root.iter()))
 
-    def test_images_at_paragraph_edges_remain_inline_with_text(self):
-        root = self.convert('<h1>Mixed</h1><p><img src="../a.png"/>Leading text</p><p>Trailing text<img src="../a.png"/></p>',
+    def test_images_at_paragraph_edges_become_blocks(self):
+        root = self.convert('<h1>Mixed</h1><p id="leading"><img src="../a.png"/>Leading text</p><p>Trailing text<img src="../a.png"/></p>'
+                            '<p>Middle<img src="../a.png"/>text</p><p><a href="#leading">Link</a></p>',
                             {'a.png': ('a', 'image/png', PNG)})
         for phrase in ('Leading text', 'Trailing text'):
             paragraph = next(p for p in root.findall('.//f:p', NS) if phrase in self.text(p))
-            self.assertIsNotNone(paragraph.find('f:image', NS))
+            self.assertIsNone(paragraph.find('f:image', NS))
+        self.assertEqual(len(root.findall('.//f:section/f:image', NS)), 2)
+        middle = next(p for p in root.findall('.//f:p', NS) if 'Middle' in self.text(p))
+        self.assertIsNotNone(middle.find('f:image', NS))
+        link = next(a for a in root.findall('.//f:a', NS) if self.text(a) == 'Link')
+        self.assertTrue(any('#' + n.get('id', '') == link.get(HREF) for n in root.iter()))
         self.assertEqual(base64.b64decode(root.find('f:binary', NS).text), PNG)
+
+    def test_edge_image_after_header_image_keeps_valid_order(self):
+        root = self.convert('<h1>Images</h1><img src="../a.png"/>'
+                            '<p><img src="../a.png"/>Text</p><p>After</p>',
+                            {'a.png': ('a', 'image/png', PNG)}, navigation=False)
+        self.assert_once(root, 'Text', 'After')
+        section = root.find('f:body/f:section', NS)
+        children = list(section)
+        paragraph = next(p for p in section.findall('f:p', NS) if self.text(p) == 'Text')
+        self.assertEqual(len(section.findall('.//f:image', NS)), 2)
+        self.assertTrue(children[children.index(paragraph) - 1].tag.endswith('}image'))
+
+    def test_edge_image_with_nested_formatting_keeps_text_formatting(self):
+        root = self.convert('<p><em><img src="../a.png"/>Italic</em></p>',
+                            {'a.png': ('a', 'image/png', PNG)}, navigation=False)
+        paragraph = next(p for p in root.findall('.//f:p', NS) if 'Italic' in self.text(p))
+        self.assertEqual(len(root.findall('.//f:body//f:image', NS)), 1)
+        self.assertIsNotNone(paragraph.find('f:emphasis', NS))
 
     def test_optional_spacing_around_block_images_not_inline_images(self):
         body = ('<h1>Pictures</h1><p>Opening</p><img src="../a.png"/>'
@@ -1150,6 +1181,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         added = self.convert('<p>Opening text</p>', navigation=False, chapter_title='Chapter', options=('--title-block',))
         body = added.find('f:body', NS)
         self.assert_once(body, 'Fixture', 'Tester', 'Opening text')
+        self.assertEqual([self.text(p) for p in body.findall('f:title/f:p', NS)], ['Tester', 'Fixture'])
         existing = self.convert('<p>Fixture</p><p>Tester</p><p>Opening text</p>',
                                 navigation=False, chapter_title='Chapter', options=('--title-block',))
         self.assert_once(existing.find('f:body', NS), 'Fixture', 'Tester', 'Opening text')
@@ -1575,7 +1607,10 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         def lang(root): return root.find('.//f:title-info/f:lang', NS).text
         self.assertEqual(lang(self.convert('<p>' + russian + '</p>', language='', navigation=False)), 'ru')
         self.assertEqual(lang(self.convert('<p>' + english + '</p>', language='', navigation=False)), 'en')
-        self.assertEqual(lang(self.convert('<p>' + english + '</p>', language='ru', navigation=False)), 'ru')
+        changed = self.convert('<p>' + english + '</p>', language='ru', navigation=False)
+        self.assertEqual(lang(changed), 'en')
+        self.assertEqual(next(n.text for n in changed.findall('.//f:custom-info', NS)
+                              if n.get('info-type') == 'EPUB original language'), 'ru')
         catalog = json.loads((ROOT / 'localization/plugin-ui/catalog.json').read_text(encoding='utf-8-sig'))
         self.assertTrue(any(message in self.diagnostics for message in
                             catalog['strings']['import_epub.runtime.language_conflict']['translations'].values()),
@@ -1601,7 +1636,9 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         root = self.convert('<p>' + russian + '</p>', language='en',
                             navigation=[(english, 'Text/chapter.xhtml', []) for _ in range(40)],
                             spine=['fixture-nav', 'chapter'], options=['--keep-service-pages'])
-        self.assertEqual(root.find('.//f:title-info/f:lang', NS).text, 'en')
+        self.assertEqual(root.find('.//f:title-info/f:lang', NS).text, 'ru')
+        self.assertEqual(next(n.text for n in root.findall('.//f:custom-info', NS)
+                              if n.get('info-type') == 'EPUB original language'), 'en')
         catalog = json.loads((ROOT / 'localization/plugin-ui/catalog.json').read_text(encoding='utf-8-sig'))
         self.assertTrue(any(message in self.diagnostics for message in
                             catalog['strings']['import_epub.runtime.language_conflict']['translations'].values()))
@@ -1611,9 +1648,20 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         stamp = '2020-01-02T23:45:00-05:00'
         root = self.convert('<p>Content</p>', identifier=uuid, date=stamp)
         date = root.find('.//f:title-info/f:date', NS)
-        self.assertEqual(date.text, stamp)
+        self.assertEqual(date.text, '2020-01-02')
         self.assertEqual(date.get('value'), '2020-01-02')
-        self.assertEqual(root.find('.//f:document-info/f:id', NS).text, uuid)
+        self.assertEqual(root.find('.//f:document-info/f:id', NS).text, uuid[9:])
+        custom = {n.get('info-type'): n.text for n in root.findall('.//f:custom-info', NS)}
+        self.assertEqual(custom['EPUB original date'], stamp)
+        self.assertEqual(custom['EPUB identifier'], uuid)
+
+    def test_non_uuid_identifier_is_not_rewritten(self):
+        for identifier in ('urn:uuid:not-a-uuid', 'isbn:1234567890',
+                           'urn:uuid:12345678-1234-4234-9234-123456789abg'):
+            with self.subTest(identifier=identifier):
+                root = self.convert('<p>Content</p>', identifier=identifier)
+                self.assertEqual(root.find('.//f:document-info/f:id', NS).text, identifier)
+                self.assertFalse(any(n.get('info-type') == 'EPUB identifier' for n in root.findall('.//f:custom-info', NS)))
 
     def test_epub2_publication_and_creation_dates_keep_their_meaning(self):
         root = self.convert('<p>Content</p>', version='2.0', navigation=False,
@@ -1651,7 +1699,8 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                                     ('2020-13', None), ('2021-02-29', None), ('0000', None)):
                 with self.subTest(version=version, stamp=stamp):
                     root = self.convert('<p>Content</p>', date=stamp, version=version)
-                    self.assertEqual(root.find('.//f:title-info/f:date', NS).text, stamp)
+                    displayed = stamp[:10] if stamp == '2020-02-29T23:59:59-05:00' else stamp
+                    self.assertEqual(root.find('.//f:title-info/f:date', NS).text, displayed)
                     year = root.find('.//f:publish-info/f:year', NS)
                     self.assertEqual(year.text if year is not None else None, expected)
 

@@ -60,6 +60,7 @@ namespace
         CStringW title;
         CStringW titleSort;
         CStringW language;
+        CStringW originalLanguage;
         CStringW description;
         CStringW identifier;
         CStringW isbn;
@@ -8619,17 +8620,17 @@ namespace
 
     CStringW BuildMetadataTitleBlock(const EpubPackage& package)
     {
-        CStringW content;
+        CStringW authors;
         for (const auto& author : package.creators)
         {
             CStringW name = TrimString(author);
-            if (!name.IsEmpty()) content += L"      <p>" + XmlEscape(name) + L"</p>\r\n";
+            if (name.IsEmpty()) continue;
+            if (!authors.IsEmpty()) authors += L", ";
+            authors += name;
         }
-        CStringW block;
-        if (content.IsEmpty())
-            AppendFb2Section(block, CStringW(), L"      <p>" + XmlEscape(package.title) + L"</p>\r\n");
-        else
-            AppendFb2Section(block, XmlEscape(package.title), content);
+        CStringW block = L"    <title>\r\n";
+        if (!authors.IsEmpty()) block += L"      <p>" + XmlEscape(authors) + L"</p>\r\n";
+        block += L"      <p>" + XmlEscape(package.title) + L"</p>\r\n    </title>\r\n";
         return block;
     }
 
@@ -8760,6 +8761,24 @@ namespace
         return true;
     }
 
+    CStringW Fb2DocumentIdentifier(const CStringW& source)
+    {
+        if (source.GetLength() != 45 || source.Left(9).CompareNoCase(L"urn:uuid:") != 0)
+            return source;
+        const CStringW uuid = source.Mid(9);
+        for (int i = 0; i < uuid.GetLength(); ++i)
+        {
+            const wchar_t c = uuid[i];
+            if (i == 8 || i == 13 || i == 18 || i == 23)
+            {
+                if (c != L'-') return source;
+            }
+            else if (!((c >= L'0' && c <= L'9') || (c >= L'a' && c <= L'f') || (c >= L'A' && c <= L'F')))
+                return source;
+        }
+        return uuid;
+    }
+
     CStringW BuildDescriptionXml(const EpubPackage& package)
     {
         CStringW xml;
@@ -8799,7 +8818,8 @@ namespace
         if (!package.date.IsEmpty()) {
             const CStringW normalizedDate = IsoCalendarDate(package.date);
             const CStringW valueAttr = normalizedDate.IsEmpty() ? CStringW() : L" value=\"" + normalizedDate + L"\"";
-            xml += L"      <date" + valueAttr + L">" + XmlEscape(package.date) + L"</date>\r\n";
+            const CStringW displayedDate = normalizedDate.IsEmpty() ? package.date : normalizedDate;
+            xml += L"      <date" + valueAttr + L">" + XmlEscape(displayedDate) + L"</date>\r\n";
         }
         if (g_options.importCover && !package.coverId.IsEmpty())
         {
@@ -8830,7 +8850,7 @@ namespace
         xml += L"      <program-used>FBE Next ImportEPUB plugin, FictionBook Editor Next " FBE_VERSION_WSTRING L"</program-used>\r\n";
         xml += L"      <date>" + CurrentDateIso() + L"</date>\r\n";
         if (!package.identifier.IsEmpty())
-            xml += L"      <id>" + XmlEscape(package.identifier) + L"</id>\r\n";
+            xml += L"      <id>" + XmlEscape(Fb2DocumentIdentifier(package.identifier)) + L"</id>\r\n";
         else
             xml += L"      <id>" + GuidString() + L"</id>\r\n";
         xml += L"      <version>1.0</version>\r\n";
@@ -8855,6 +8875,12 @@ namespace
         }
         if (!package.source.IsEmpty())
             xml += L"    <custom-info info-type=\"EPUB source\">" + XmlEscape(package.source) + L"</custom-info>\r\n";
+        if (!package.originalLanguage.IsEmpty())
+            xml += L"    <custom-info info-type=\"EPUB original language\">" + XmlEscape(package.originalLanguage) + L"</custom-info>\r\n";
+        if (!package.identifier.IsEmpty() && Fb2DocumentIdentifier(package.identifier) != package.identifier)
+            xml += L"    <custom-info info-type=\"EPUB identifier\">" + XmlEscape(package.identifier) + L"</custom-info>\r\n";
+        if (!package.date.IsEmpty() && !IsoCalendarDate(package.date).IsEmpty() && IsoCalendarDate(package.date) != package.date)
+            xml += L"    <custom-info info-type=\"EPUB original date\">" + XmlEscape(package.date) + L"</custom-info>\r\n";
         if (!package.rights.IsEmpty())
             xml += L"    <custom-info info-type=\"EPUB rights\">" + XmlEscape(package.rights) + L"</custom-info>\r\n";
         if (!package.modifiedDate.IsEmpty())
@@ -9193,6 +9219,59 @@ namespace
         if (LocalName(node) != L"section") return;
         if (!sections)
         {
+            // Move a direct edge image out of a mixed paragraph without
+            // splitting its text or moving its ID. Leave styled paragraphs
+            // untouched, since their styling can also apply to the image.
+            bool edgeHasBody = false, hasHeaderImage = false;
+            std::vector<MSXML2::IXMLDOMNodePtr> expanded;
+            for (const auto& child : children)
+            {
+                const CStringW name = LocalName(child);
+                if (name == L"p" && !TrimString(NodeText(child)).IsEmpty() &&
+                    Attr(child, L"style").IsEmpty() && Attr(child, L"xml:lang").IsEmpty())
+                {
+                    const auto nodes = MsxmlGetChildNodes(child);
+                    const long length = nodes ? MsxmlGetNodeListLength(nodes) : 0;
+                    MSXML2::IXMLDOMNodePtr first, last;
+                    for (long j = 0; j < length; ++j)
+                    {
+                        const auto part = MsxmlGetNodeListItem(nodes, j);
+                        const auto type = MsxmlGetNodeType(part);
+                        if (type == MSXML2::NODE_COMMENT ||
+                            (type == MSXML2::NODE_TEXT && TrimString(NodeText(part)).IsEmpty())) continue;
+                        if (!first) first = part;
+                        last = part;
+                    }
+                    if (first && LocalName(first) == L"image" && (edgeHasBody || !hasHeaderImage))
+                    {
+                        IXMLDOMNode* inserted = nullptr;
+                        CheckError(node->insertBefore(first, CComVariant(static_cast<IDispatch*>(child.GetInterfacePtr())), &inserted));
+                        if (inserted) inserted->Release();
+                        expanded.push_back(first);
+                        if (!edgeHasBody) hasHeaderImage = true;
+                    }
+                    expanded.push_back(child);
+                    edgeHasBody = true;
+                    if (last && last != first && LocalName(last) == L"image")
+                    {
+                        IXMLDOMNode* rawNext = nullptr;
+                        CheckError(child->get_nextSibling(&rawNext));
+                        MSXML2::IXMLDOMNodePtr next(rawNext, false);
+                        IXMLDOMNode* inserted = nullptr;
+                        if (next)
+                            CheckError(node->insertBefore(last, CComVariant(static_cast<IDispatch*>(next.GetInterfacePtr())), &inserted));
+                        else
+                            CheckError(node->appendChild(last, &inserted));
+                        if (inserted) inserted->Release();
+                        expanded.push_back(last);
+                    }
+                    continue;
+                }
+                expanded.push_back(child);
+                if (name == L"image" && !edgeHasBody) hasHeaderImage = true;
+                else if (name != L"title" && name != L"epigraph" && name != L"annotation") edgeHasBody = true;
+            }
+            children.swap(expanded);
             // An epigraph is section metadata only before the image,
             // annotation and body. Later quotations must stay in reading
             // order, so retain them as body citations instead.
@@ -9548,6 +9627,16 @@ namespace
             const auto paragraph = FindFirstElementByLocalName(title, L"p");
             if (paragraph)
             {
+                const CStringW oldTitle = TrimString(NodeText(paragraph));
+                bool numericTitle = !oldTitle.IsEmpty();
+                for (int i = 0; numericTitle && i < oldTitle.GetLength(); ++i)
+                    numericTitle = oldTitle[i] >= L'0' && oldTitle[i] <= L'9';
+                if (numericTitle || oldTitle == CStringW(entry.first.c_str()))
+                {
+                    const CStringW number = entry.second.marker.Mid(1, entry.second.marker.GetLength() - 2);
+                    CheckError(paragraph->put_text(CComBSTR(number)));
+                    continue;
+                }
                 IXMLDOMText* rawText = nullptr;
                 CheckError(dom->createTextNode(CComBSTR(entry.second.marker + L" "), &rawText));
                 MSXML2::IXMLDOMNodePtr marker(rawText, false);
@@ -10119,7 +10208,12 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         if (detectedLanguage.IsEmpty()) warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_LANGUAGE_UNDETERMINED, L"Book language could not be determined from a sufficient body sample.") + L"\r\n";
     }
     else if (!detectedLanguage.IsEmpty() && (declaredLanguage == L"ru" || declaredLanguage == L"en") && declaredLanguage != detectedLanguage)
-        warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_LANGUAGE_CONFLICT, L"Language metadata conflicts with the main text sample; metadata was retained.") + L"\r\n";
+    {
+        package.originalLanguage = package.language;
+        package.language = detectedLanguage;
+        warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_LANGUAGE_CONFLICT, L"Language metadata conflicts with the main text sample; metadata was retained.") +
+            L" (" + declaredLanguage + L" → " + detectedLanguage + L")\r\n";
+    }
 
     CStringW titleBlock;
     if (options.createTitleBlock)
@@ -10160,6 +10254,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     outFb2Xml += L"xmlns:l=\"http://www.w3.org/1999/xlink\">\r\n";
     outFb2Xml += descriptionXml;
     outFb2Xml += L"  <body>\r\n";
+    outFb2Xml += titleBlock;
     if (options.addDiagnosticSection && !warning.IsEmpty())
     {
         outFb2Xml += L"    <section>\r\n";
@@ -10172,7 +10267,6 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         outFb2Xml += L"      <p>" + XmlEscape(summary) + L"</p>\r\n";
         outFb2Xml += L"    </section>\r\n";
     }
-    outFb2Xml += titleBlock;
     outFb2Xml += body;
     outFb2Xml += L"  </body>\r\n";
     if (options.importNotes)
