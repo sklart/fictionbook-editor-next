@@ -2049,6 +2049,22 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertIn('missing19', self.diagnostics)
         self.assertTrue(list(self.last_folder.glob('*.log')))
 
+    def test_warning_counts_reach_existing_csv_and_html_reports(self):
+        self.convert('<p>Text <a href="#missing">Broken</a></p>')
+        folder = self.last_folder
+        output = folder / 'batch-output'; output.mkdir()
+        report = folder / 'report.csv'
+        result = subprocess.run([str(BATCH), '--batch', str(folder), str(output), '--stats', '--report', str(report)],
+                                capture_output=True, encoding='utf-8', errors='replace', timeout=90,
+                                env={**os.environ, 'TEMP': str(folder / 'temp'), 'TMP': str(folder / 'temp')})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        csv = report.read_text(encoding='utf-8-sig')
+        html = report.with_suffix('.html').read_text(encoding='utf-8-sig')
+        self.assertTrue(csv.startswith('Source;Output;Status;ElapsedMs;Sections;Paragraphs;'))
+        for text in (csv, html):
+            self.assertIn('OK_WITH_WARNINGS', text)
+            self.assertTrue('missing source anchors: 1' in text or 'отсутствующих исходных якорей: 1' in text, text)
+
     def test_unresolved_local_fragment_retains_text_and_warning(self):
         for options in ([], ['--no-validate']):
             with self.subTest(options=options):
