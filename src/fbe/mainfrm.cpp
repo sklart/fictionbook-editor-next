@@ -6208,7 +6208,7 @@ LRESULT CMainFrame::OnViewShowTextCaret(WORD, WORD, HWND, BOOL&)
 
 LRESULT CMainFrame::OnViewTree(WORD, WORD, HWND, BOOL&)
 {
-	if(m_editor_view_state.Current() != BODY)
+	if(m_editor_view_state.Current() != BODY && !(m_editor_view_state.Current() == DESC && _Settings.ShowTreeInDescription()))
 		return 0;
 
 	BOOL bVisible = !_Settings.ViewDocumentTree();
@@ -7458,7 +7458,7 @@ void CMainFrame::ShowView(EditorView vt)
 		m_editor_view_state.SetLastCtrlTabView(previous);
 	EditorViewPresentationContext presentationContext = {
 		m_view, m_splitter, m_source, m_doc, m_editor_selection_state,
-		_Settings.ViewDocumentTree() };
+		_Settings.ViewDocumentTree(), _Settings.ShowTreeInDescription() };
 	EditorViewPresentationHost presentation(presentationContext);
 	const auto recordMode = [&]() {
 		const EditorView current = m_editor_view_state.Current();
@@ -7487,8 +7487,9 @@ void CMainFrame::ApplyEditorViewCommandUi(EditorView prev, EditorView vt)
 		m_doc->m_body.CloseFindDialog(m_doc->m_body.m_replace_dlg);
 		m_doc->m_body.CloseFindDialog(m_sci_replace_dlg);
 	}
-	UIEnable(ID_VIEW_TREE, vt == BODY);
-	UISetCheck(ID_VIEW_TREE, vt == BODY && _Settings.ViewDocumentTree());
+	const bool treeAvailable = vt == BODY || (vt == DESC && _Settings.ShowTreeInDescription());
+	UIEnable(ID_VIEW_TREE, treeAvailable);
+	UISetCheck(ID_VIEW_TREE, treeAvailable && _Settings.ViewDocumentTree());
 	UISetCheck(ID_VIEW_BODY, vt == BODY); UISetCheck(ID_VIEW_DESC, vt == DESC); UISetCheck(ID_VIEW_SOURCE, vt == SOURCE);
 	UIEnable(ID_VIEW_SHOW_TEXT_CARET, vt != SOURCE);
 	if (vt == BODY && prev == SOURCE && m_editor_selection_state.BodySource().sourceToBodyTransferred && _Settings.ViewDocumentTree())
@@ -8250,6 +8251,12 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles, bool saveSettings)
 {
 	ApplyScriptIconSize();
 	const EditorView activeView = m_editor_view_state.Current();
+	if (m_document_session.HasDocument() && activeView == DESC) {
+		const bool showTree = _Settings.ShowTreeInDescription() && _Settings.ViewDocumentTree();
+		m_splitter.SetSinglePaneMode(showTree ? SPLIT_PANE_NONE : SPLIT_PANE_RIGHT);
+		UIEnable(ID_VIEW_TREE, _Settings.ShowTreeInDescription());
+		UISetCheck(ID_VIEW_TREE, showTree);
+	}
 	CWaitCursor hourglass;
 	LONG visible = false;
 

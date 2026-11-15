@@ -26,6 +26,7 @@ struct EditorViewPresentationContext
 	FB::Doc*& document;
 	EditorSelectionState& selection;
 	bool showDocumentTree;
+	bool showTreeInDescription;
 };
 
 // Presentation-only implementation: no document identity, persistence,

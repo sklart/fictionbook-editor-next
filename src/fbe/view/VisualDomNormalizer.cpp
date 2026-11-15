@@ -73,6 +73,14 @@ static bool IsEmptyNode(MSHTML::IHTMLDOMNode *node) {
   if (U::scmp(name, L"A") == 0 || (bool)node->firstChild->nextSibling ||
       node->firstChild->nodeType != 3)
     return false;
+  // Whitespace inside an inline element is text, not an empty node: it can
+  // separate words across formatting boundaries and must survive saving.
+  for (MSHTML::IHTMLDOMNodePtr parent(node->parentNode); parent; parent = parent->parentNode) {
+    const _bstr_t parentName(parent->nodeName);
+    if (U::scmp(parentName, L"P") == 0 || U::scmp(parentName, L"TD") == 0 || U::scmp(parentName, L"TH") == 0)
+      return false;
+    if (U::scmp(parentName, L"DIV") == 0) break;
+  }
   return U::is_whitespace(node->firstChild->nodeValue.bstrVal);
 }
 void RemoveEmptyNodes(MSHTML::IHTMLDOMNode *node) {

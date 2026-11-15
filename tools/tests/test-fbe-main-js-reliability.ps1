@@ -64,7 +64,7 @@ var event={srcElement:{offsetHeight:20},clientX:400,clientY:300};
 var xslScenario="missing";
 function ActiveXObject(name) {
   if(name=="Msxml2.DOMDocument.6.0") return { async:false, preserveWhiteSpace:false, parseError:{errorCode:0}, firstChild:null, load:function(){ if(xslScenario=="valid") this.firstChild={attributes:{getNamedItem:function(name){return name=="encoding" ? {text:"utf-8"} : null;}}}; return true;}, setProperty:function(){}, selectSingleNode:function(){return null;} };
-  if(name=="Msxml2.XSLTemplate.6.0") { xslTemplateCreates++; return { stylesheet:null, createProcessor:function(){return { input:null, output:"", addParameter:function(){}, setStartMode:function(mode){this.mode=mode;}, transform:function(){this.output=this.mode=="description" ? "RECOVERED DESCRIPTION" : "RECOVERED BODY";} };} }; }
+  if(name=="Msxml2.XSLTemplate.6.0") { xslTemplateCreates++; return { stylesheet:null, createProcessor:function(){return { input:null, output:"", addParameter:function(){}, setStartMode:function(mode){this.mode=mode;}, transform:function(){this.output=this.mode=="description" ? "RECOVERED DESCRIPTION" : "RECOVERED_BODY";} };} }; }
   if(name=="Msxml2.FreeThreadedDOMDocument.6.0") {
 	  xslDomCreates++;
     var xsl={ async:false, parseError:{errorCode:0,reason:"",line:0,linepos:0}, documentElement:null, setProperty:function(){}, load:function(){
@@ -86,6 +86,14 @@ function ActiveXObject(name) {
 
 // TextIntoHTML must escape every occurrence, not only the first special char.
 assert(TextIntoHTML("&&<><>")=="&amp;&amp;&lt;&gt;&lt;&gt;", "TextIntoHTML escapes repeated ampersands and angle brackets");
+
+// The body processor must see the unmodified document. HTML protection must
+// avoid attributes and comments, including a quoted greater-than character.
+var originalInput={value:"one  two"}, bodyProbe=element("probe");
+var whitespaceProc={input:originalInput,output:'<p title="a > b">one  two&#32;x<!-- keep  comment --><em> </em></p>',setStartMode:function(){},transform:function(){assert(this.input.value=="one  two", "XSL sees original whitespace");}};
+TransformBodyPreservingSpaces(whitespaceProc, originalInput, bodyProbe);
+assert(bodyProbe.innerHTML.indexOf('title="a > b"')>=0 && bodyProbe.innerHTML.indexOf('<!-- keep  comment -->')>=0, "HTML attributes and comments are unchanged");
+assert(bodyProbe.innerHTML.indexOf('one  two')<0 && bodyProbe.innerHTML.indexOf('&#32;')<0, "HTML text spaces are protected");
 
 // Switching editor modes must select the matching stylesheet and be reversible.
 apiSetFastMode(true); assert(elements.css.href=="main_fast.css", "Fast Mode selects its stylesheet");
@@ -187,7 +195,7 @@ messages.length=0; xslScenario="valid";
 assert(apiLoadFB2("valid.fb2", "english")=="utf-8", "a valid document returns its encoding after an XSL failure");
 assert(messages.length==0, "a valid document after XSL recovery reports no error");
 assert(elements.css.href=="main.css", "a valid document after XSL recovery keeps CSS restored");
-assert(elements.fbw_body.innerHTML=="RECOVERED BODY" && elements.fbw_desc.innerHTML=="RECOVERED DESCRIPTION", "a valid document after XSL recovery replaces the editor DOM");
+assert(elements.fbw_body.innerHTML=="RECOVERED_BODY" && elements.fbw_desc.innerHTML=="RECOVERED DESCRIPTION", "a valid document after XSL recovery replaces the editor DOM");
 elements.fbw_desc.all.diID.value="kept-id";
 assert(apiLoadFB2("C:\\books\\blank.fb2", "english")=="utf-8" && elements.fbw_desc.all.diID.value=="kept-id", "ordinary book named blank.fb2 keeps its ID");
 assert(apiLoadFB2("C:\\missing-xsl\\blank.fb2", "english")=="utf-8" && elements.fbw_desc.all.diID.value=="test-id", "actual New template receives a new ID");

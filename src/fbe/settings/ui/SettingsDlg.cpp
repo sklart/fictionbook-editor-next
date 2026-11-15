@@ -309,6 +309,7 @@ LRESULT CSettingsDlg::OnTimer(UINT, WPARAM timerId, LPARAM, BOOL&)
 	bool behaviorPassed = !RuntimeTests::IsScenario(L"settings-dialog-runtime") || ProbeFollowup();
 	if(RuntimeTests::IsScenario(L"settings-dialog-runtime"))
 	{
+		m_generalPage->CheckDlgButton(IDC_SHOW_TREE_IN_DESCRIPTION, BST_CHECKED);
 		const auto originalWords = m_wordsPage->m_words;
 		const bool dirty = m_wordsPage->m_wordsDirty;
 		m_wordsPage->m_words = { WordsItem(L"before-word", 37) };
@@ -564,15 +565,21 @@ bool CSettingsDlg::UpdateAppearancePreviewLayout()
 {
 	if(!m_generalPage || !::IsWindow(m_generalPage->m_hWnd)) return false;
 	PageLayout& layout = m_pageLayouts[PageIndex(SettingsPageId::Appearance)];
-	PageControlLayout *preview = NULL, *toolbar = NULL;
+	PageControlLayout *preview = NULL, *toolbar = NULL, *description = NULL, *treeOption = NULL;
 	for(PageControlLayout& control : layout.controls) {
 		if(control.id == IDC_APPEARANCE_ICON_PREVIEW) preview = &control;
 		else if(control.id == IDC_APPEARANCE_TOOLBARS_GROUP) toolbar = &control;
+		else if(control.id == IDC_APPEARANCE_DESCRIPTION_GROUP) description = &control;
+		else if(control.id == IDC_SHOW_TREE_IN_DESCRIPTION) treeOption = &control;
 	}
-	if(!preview || !toolbar) return false;
+	if(!preview || !toolbar || !description || !treeOption) return false;
 	const int desired = m_generalPage->DesiredIconPreviewHeight(m_layoutDpi);
-	return AppearancePreviewLayout::ResizePageWithoutDescription(preview->rect, toolbar->rect,
-		layout.contentSize.cy, layout.naturalContentHeight, desired);
+	const int delta = desired - (preview->rect.bottom - preview->rect.top);
+	if(!AppearancePreviewLayout::ResizePageWithoutDescription(preview->rect, toolbar->rect,
+		layout.contentSize.cy, layout.naturalContentHeight, desired)) return false;
+	::OffsetRect(&description->rect, 0, delta);
+	::OffsetRect(&treeOption->rect, 0, delta);
+	return true;
 }
 
 LRESULT CSettingsDlg::OnAppearancePreviewLayout(UINT, WPARAM sender, LPARAM, BOOL&)
@@ -2183,7 +2190,8 @@ bool CSettingsDlg::ProbeLayout()
 		};
 		passed = colourGroup.bottom <= toolbarGroup.top &&
 			!::IsWindowVisible(m_generalPage->GetDlgItem(IDC_DESCRIPTION_LAYOUT)) &&
-			!::IsWindowVisible(m_generalPage->GetDlgItem(IDC_APPEARANCE_DESCRIPTION_GROUP)) &&
+			insideGroup(controlRect(m_generalPage->GetDlgItem(IDC_SHOW_TREE_IN_DESCRIPTION)),
+				controlRect(m_generalPage->GetDlgItem(IDC_APPEARANCE_DESCRIPTION_GROUP))) &&
 			(::GetWindowLongPtrW(m_generalPage->GetDlgItem(IDC_INTERFACE_PALETTE_COPY), GWL_STYLE) & WS_VISIBLE) == 0 &&
 			insideGroup(manage, colourGroup) &&
 			insideGroup(iconSample, toolbarGroup) &&

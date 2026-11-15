@@ -25,7 +25,7 @@ try {
         if($exitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { throw "Editor view lifecycle scenario failed: exit $exitCode." }
     } finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario; $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB=$oldBreadcrumb }
     $rows = @{}; foreach($line in Get-Content -LiteralPath $report) { $parts = $line -split '='; if($parts.Count -eq 2) { $rows[$parts[0]] = $parts[1] } }
-    foreach($key in @('hidden_container','body_desc','desc_body','body_source','source_body','desc_source','source_desc','source_body_desc','source_desc_body','cycles','document','tree_initial','tree_desc_hidden','tree_body_restored','tree_hidden_preference')) { if($rows[$key] -ne '1') { throw "Editor view lifecycle check failed: $key (value '$($rows[$key])')." } }
+    foreach($key in @('hidden_container','body_desc','desc_body','body_source','source_body','desc_source','source_desc','source_body_desc','source_desc_body','cycles','document','tree_initial','tree_desc_hidden','tree_body_restored','tree_hidden_preference','tree_description_option')) { if($rows[$key] -ne '1') { throw "Editor view lifecycle check failed: $key (value '$($rows[$key])')." } }
     $passed = $true
     Write-Host "FBE editor view lifecycle runtime passed. Evidence: $evidence"
 } finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed }

@@ -1926,6 +1926,8 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_genreCatalog = GetDlgItem(IDC_GENRE_CATALOG);
 	m_descriptionLayout = GetDlgItem(IDC_DESCRIPTION_LAYOUT);
 	SetText(m_hWnd, IDC_DESCRIPTION_LAYOUT_LABEL, L"fbe.description.layout", L"Description layout:");
+	SetText(m_hWnd, IDC_SHOW_TREE_IN_DESCRIPTION, L"fbe.settings.tree_in_description", L"Show document tree in Description");
+	CheckDlgButton(IDC_SHOW_TREE_IN_DESCRIPTION, _Settings.ShowTreeInDescription() ? BST_CHECKED : BST_UNCHECKED);
 	m_descriptionLayout.AddString(FbeLoadRuntimeStringByKey(L"fbe.description.modern", L"Modern"));
 	m_descriptionLayout.AddString(FbeLoadRuntimeStringByKey(L"fbe.description.classic", L"Classic"));
 	m_descriptionLayout.SetCurSel(_Settings.GetDescriptionLayout() == L"classic" ? 1 : 0);
@@ -2270,7 +2272,7 @@ void CSettingsGeneralPage::MakeAppearanceOnly()
         ::ShowWindow(GetDlgItem(id), SW_HIDE);
     SetText(m_hWnd, IDC_OPTIONS_INTERFACE_GROUP, L"fbe.settings.appearance.colour_group", L"Colour scheme");
     SetText(m_hWnd, IDC_APPEARANCE_TOOLBARS_GROUP, L"fbe.settings.appearance.toolbars_group", L"Toolbars");
-    SetText(m_hWnd, IDC_APPEARANCE_DESCRIPTION_GROUP, L"fbe.settings.appearance.description_group", L"Description layout");
+    SetText(m_hWnd, IDC_APPEARANCE_DESCRIPTION_GROUP, L"fbe.settings.description_group", L"Description");
     const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
     const int margin = UiMetrics::ScaleForDpi(8, dpi), gap = UiMetrics::ScaleForDpi(6, dpi);
     const int titleHeight = UiMetrics::ScaleForDpi(22, dpi);
@@ -2341,8 +2343,13 @@ void CSettingsGeneralPage::MakeAppearanceOnly()
     place(IDC_APPEARANCE_ICON_PREVIEW, left, y, right - left, iconPreviewHeight);
     y += iconPreviewHeight + margin;
     place(IDC_APPEARANCE_TOOLBARS_GROUP, group.left, toolbarTop, group.right - group.left, y - toolbarTop);
+    const int descriptionTop = y + gap;
+    y = descriptionTop + titleHeight;
+    place(IDC_SHOW_TREE_IN_DESCRIPTION, left, y, right - left, line * 2);
+    y += line * 2 + margin;
+    place(IDC_APPEARANCE_DESCRIPTION_GROUP, group.left, descriptionTop, group.right - group.left, y - descriptionTop);
     // The experimental Description layouts are not exposed in 3.0.11.
-    for(int id : {IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT, IDC_APPEARANCE_DESCRIPTION_GROUP})
+    for(int id : {IDC_DESCRIPTION_LAYOUT_LABEL, IDC_DESCRIPTION_LAYOUT})
         ::ShowWindow(GetDlgItem(id), SW_HIDE);
     // Group boxes are siblings of their fields. Keep them behind the fields
     // and clip their custom background painting around higher siblings.
@@ -3162,6 +3169,7 @@ void CSettingsGeneralPage::FinishCommit()
 bool CSettingsGeneralPage::Validate() { return true; }
 void CSettingsGeneralPage::Commit()
 {
+	_Settings.SetShowTreeInDescription(IsDlgButtonChecked(IDC_SHOW_TREE_IN_DESCRIPTION) == BST_CHECKED);
 	if(m_paletteChanged) {
 		if(m_acceptedPaletteIndex < INTERFACE_PALETTE_COUNT) _Settings.SetInterfacePalette(PaletteId(PaletteForRow(m_acceptedPaletteIndex)));
 		else {

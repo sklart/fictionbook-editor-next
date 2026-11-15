@@ -1767,6 +1767,64 @@ function ShowCoverImage(prntEl,fullImg)
   ShowPrevImage("fbw-internal:"+list[0].value);
 }
 
+// Protect spaces only after XSL has finished, so custom stylesheets see the
+// original XML and can use XPath whitespace comparisons and functions.
+function TransformBodyPreservingSpaces(proc, dom, body)
+{
+	proc.setStartMode("body");
+	TraceScript("J581", "operation=body transform");
+	proc.transform();
+	TraceScript("J582", "operation=body output");
+	var html = String(proc.output), used = {}, chars = html.match(/[\uE000-\uF8FF]/g);
+	var i, code, marker = "";
+	if(chars) for(i = 0; i < chars.length; i++) used[chars[i].charCodeAt(0)] = true;
+	for(code = 0xE000; code <= 0xF8FF; code++) if(!used[code]) { marker = String.fromCharCode(code); break; }
+	if(!marker) { marker = "\uE000\uE000"; while(html.indexOf(marker) >= 0) marker += "\uE000"; }
+
+	// Process HTML text, never tag names or attributes. Quoted '>' and comments
+	// are handled explicitly; whitespace between structural blocks remains as
+	// before, while whitespace inside text containers survives HTML parsing.
+	var parts = [], pos = 0, textDepth = 0;
+	while(pos < html.length) {
+		var start = html.indexOf("<", pos);
+		if(start < 0) start = html.length;
+		var text = html.substring(pos, start);
+		if(textDepth > 0 || /[^ \t\r\n]/.test(text))
+			text = text.replace(/ |&#(?:32|x20);/gi, marker);
+		parts.push(text);
+		if(start == html.length) break;
+		var end, quote = "";
+		if(html.substr(start, 4) == "<!--") {
+			end = html.indexOf("-->", start + 4);
+			end = end < 0 ? html.length : end + 3;
+		} else {
+			end = start + 1;
+			for(; end < html.length; end++) {
+				var ch = html.charAt(end);
+				if(quote) { if(ch == quote) quote = ""; }
+				else if(ch == '"' || ch == "'") quote = ch;
+				else if(ch == ">") { end++; break; }
+			}
+		}
+		var tag = html.substring(start, end);
+		var match = /^<\s*(\/?)\s*(p|td|th)\b/i.exec(tag);
+		if(match) {
+			if(match[1]) textDepth = Math.max(0, textDepth - 1);
+			else if(!/\/\s*>$/.test(tag)) textDepth++;
+		}
+		parts.push(tag); pos = end;
+	}
+	TraceScript("J590", "operation=body.innerHTML");
+	body.innerHTML = parts.join("");
+	var pending = [body];
+	while(pending.length) {
+		var current = pending.pop();
+		if(current.nodeType == 3 && current.nodeValue.indexOf(marker) >= 0)
+			current.nodeValue = current.nodeValue.split(marker).join(" ");
+		else for(var child = current.lastChild; child; child = child.previousSibling) pending.push(child);
+	}
+}
+
 function TransformXML(xslt, dom)
 {
 	TraceScript("J500", "operation=TransformXML");
@@ -1797,13 +1855,8 @@ function TransformXML(xslt, dom)
 	TraceScript("J570", "operation=onclick");
 	desc.onclick=ClickOnDesc;
 	TraceScript("J580", "operation=body mode");
-	proc.setStartMode("body");
-	TraceScript("J581", "operation=body transform");
-	proc.transform();
-	TraceScript("J582", "operation=body output");
-	TraceScript("J590", "operation=body.innerHTML");
 	HideNotePreview();
-	body.innerHTML=proc.output;
+	TransformBodyPreservingSpaces(proc, dom, body);
 	TraceScript("J595", "operation=InflateParagraphs");
 	window.external.InflateParagraphs(body);
 	// One delegated handler set is enough for all current and future note links.

@@ -44,6 +44,7 @@ void CSettings::SetDefaults()
 	m_view_status_bar		= true;
 	m_status_bar_panes		= 0x3f;
 	m_view_doc_tree			= true;
+	m_tree_in_description = false;
 	m_document_tree_scripts	= false;
 	m_splitter_pos			= 200;
 	m_find_results_pane_height = 180;

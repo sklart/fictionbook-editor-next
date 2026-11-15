@@ -297,6 +297,9 @@ int wmain()
 	{
 	SearchDocumentAdapter adapter;
 	const AU::Search::SearchTextSnapshot snapshot = adapter.BuildSnapshot(document, 42);
+	// TextRange::text reports an HTML NBSP as a regular space. Search must
+	// recover the aligned DOM character without confusing it with spaces.
+	if (!result && snapshot.Text.find(L"link\u00a0\x043A\x043E\x0442") == std::wstring::npos) result = 109;
 	if (snapshot.DocumentGeneration != 42 || snapshot.Segments.size() != 7) result = 3;
 	if (!result && (snapshot.Text.find(L"strong") == std::wstring::npos || snapshot.Text.find(L"emphasis") == std::wstring::npos ||
 		snapshot.Text.find(L"link") == std::wstring::npos || snapshot.Text.find(L"\x043A\x043E\x0442") == std::wstring::npos ||

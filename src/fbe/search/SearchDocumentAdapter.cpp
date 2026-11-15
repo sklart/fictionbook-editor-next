@@ -4,6 +4,39 @@
 
 namespace {
 
+// MSHTML TextRange exposes U+00A0 as U+0020. Recover it only when the
+// paragraph's DOM text aligns exactly with the range, so collapsed whitespace,
+// images and other non-text positions cannot shift search offsets.
+void RestoreAlignedNbsp(MSHTML::IHTMLElementPtr element, CString& rangeText)
+{
+	MSHTML::IHTMLDOMNodePtr root(element);
+	if (!root || rangeText.IsEmpty()) return;
+	std::vector<MSHTML::IHTMLDOMNodePtr> pending;
+	for (MSHTML::IHTMLDOMNodePtr child(root->lastChild); child; child = child->previousSibling)
+		pending.push_back(child);
+	CString raw;
+	while (!pending.empty())
+	{
+		MSHTML::IHTMLDOMNodePtr node(pending.back()); pending.pop_back();
+		if (node->nodeType == 3)
+		{
+			const _variant_t value(node->nodeValue);
+			if (value.vt == VT_BSTR && value.bstrVal) raw += value.bstrVal;
+			if (raw.GetLength() > rangeText.GetLength()) return;
+		}
+		else if (node->nodeType == 1)
+		{
+			for (MSHTML::IHTMLDOMNodePtr child(node->lastChild); child; child = child->previousSibling)
+				pending.push_back(child);
+		}
+	}
+	if (raw.GetLength() != rangeText.GetLength()) return;
+	for (int i = 0; i < raw.GetLength(); ++i)
+		if (raw[i] != rangeText[i] && !(raw[i] == L'\u00a0' && rangeText[i] == L' ')) return;
+	for (int i = 0; i < raw.GetLength(); ++i)
+		if (raw[i] == L'\u00a0') rangeText.SetAt(i, L'\u00a0');
+}
+
 bool IsSearchParagraph(MSHTML::IHTMLElementPtr element)
 {
 	if (!element)
@@ -177,6 +210,7 @@ AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildSnapshot(
 		range->moveToElementText(element);
 		_bstr_t rangeText(range->text);
 		CString paragraphText(static_cast<LPCWSTR>(rangeText));
+		RestoreAlignedNbsp(element, paragraphText);
 		if (hasPreviousParagraph)
 			builder.AppendUnmapped(L"\n");
 		hasPreviousParagraph = true;

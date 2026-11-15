@@ -193,6 +193,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	bool		m_view_status_bar;
 	DWORD		m_status_bar_panes;
 	bool		m_view_doc_tree;
+	bool		m_tree_in_description;
 	bool		m_document_tree_scripts;
 
 	// added by SeNS
@@ -328,6 +329,8 @@ public:
 	bool ViewStatusBar()const;
 	DWORD StatusBarPanes()const;
 	bool ViewDocumentTree()const;
+	bool ShowTreeInDescription() const { return m_tree_in_description; }
+	void SetShowTreeInDescription(bool value) { m_tree_in_description = value; }
 	bool DocumentTreeScripts()const;
 	bool RestoreFilePosition()const;
 

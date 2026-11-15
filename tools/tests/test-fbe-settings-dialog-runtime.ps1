@@ -32,11 +32,13 @@ try {
         } finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario }
     }
     $first=Invoke-Scenario 'settings-dialog-runtime' $report
+    if($first -notmatch 'tree_description_persisted=1') { throw "Description tree setting was not applied: $first" }
     if($LayoutOnly) {
         foreach($line in 'followup=1','settings_dialog=1','layout=1','persisted=1','yo_usage=1','applied=1','caret_persisted=1','caret_applied=1','caret_initial_system=1','source_unchanged=1') {
             if($first -notmatch [regex]::Escape($line)) { throw "Settings layout smoke is missing ${line}: $first" }
         }
 		$verification = Invoke-Scenario 'settings-dialog-runtime-verify' $verifyReport
+		if($verification -notmatch 'tree_description_persisted=1') { throw "Description tree setting was not restored after restart: $verification" }
 		foreach($line in 'settings_dialog=0','yo_usage=1','caret_persisted=1','caret_applied=1','source_unchanged=1') {
 			if($verification -notmatch [regex]::Escape($line)) { throw "Settings caret restart smoke is missing ${line}: $verification" }
 		}

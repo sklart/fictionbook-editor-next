@@ -1,3 +1,4 @@
+#include "RuntimeTestReplaceOneMatrix.inl"
 if (IsFbeTestScenario(L"replace-all-runtime"))
 {
 	CStringA report;

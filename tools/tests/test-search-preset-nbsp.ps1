@@ -9,7 +9,7 @@ $normalizer = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBEview.cp
 $settingsPage = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\settings\ui\SettingsEditorPage.cpp')
 
 if($catalog -notmatch 'PRESET\(design_nbsp_to_space[^\r\n]*L"\\u00A0"') { throw 'The NBSP preset must retain literal U+00A0, not a configured display glyph.' }
-if($normalizer -notmatch 'NormalizeSearchPatternNbsp[\s\S]{0,220}pattern\.Replace\(L"\\u00A0", _Settings\.GetNBSPChar\(\)\)') { throw 'Search must normalize literal U+00A0 to the configured NBSP character.' }
+if($normalizer -notmatch 'NormalizeSearchPatternNbsp[\s\S]{0,220}marker\(_Settings\.GetNBSPChar\(\)\)[\s\S]{0,220}pattern\.Replace\(L"\\u00A0", marker\)') { throw 'Search must normalize literal U+00A0 to the configured NBSP character.' }
 $nbspArrays = [regex]::Matches($settingsPage, 'const wchar_t (?:nbspCharacters|characters)\[\]\s*=\s*\{(?<values>[^}]+)\}')
 if($nbspArrays.Count -ne 2) { throw 'The NBSP display and selection character lists must both exist.' }
 $characterLists = foreach($array in $nbspArrays) {

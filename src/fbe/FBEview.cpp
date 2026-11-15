@@ -679,10 +679,67 @@ static void InitSearchRegExp(AU::RegExp re, int flags, const CString& pattern)
 	re->Pattern = (const wchar_t*)pattern;
 }
 
-static void NormalizeSearchPatternNbsp(CString& pattern)
+static void NormalizeSearchPatternNbsp(CString& pattern, bool regexp, bool unicodeProperties)
 {
-	if (_Settings.GetNBSPChar().Compare(L"\u00A0") != 0)
-		pattern.Replace(L"\u00A0", _Settings.GetNBSPChar());
+	const CString marker(_Settings.GetNBSPChar());
+	if (marker == L"\u00A0" || marker.IsEmpty()) return;
+	pattern.Replace(L"\u00A0", marker);
+	if (!regexp || marker.GetLength() != 1) return;
+	// Preserve escaped backslashes and PCRE quoted literals. Only a complete
+	// hex escape whose value is exactly NBSP denotes the display marker.
+	CString result;
+	bool quoted = false, inClass = false, classFirst = false;
+	for (int i = 0; i < pattern.GetLength(); ++i)
+	{
+		if (pattern[i] != L'\\' || i + 1 >= pattern.GetLength()) {
+			const wchar_t c = pattern[i];
+			if (!quoted && inClass && c == L'[' && i + 1 < pattern.GetLength() &&
+				(pattern[i + 1] == L':' || pattern[i + 1] == L'.' || pattern[i + 1] == L'=')) {
+				CString terminator; terminator += pattern[i + 1]; terminator += L']';
+				const int end = pattern.Find(terminator, i + 2);
+				if (end >= 0) { result += pattern.Mid(i, end - i + 2); i = end + 1; classFirst = false; continue; }
+			}
+			if (!quoted && c == L'[' && !inClass) { inClass = true; classFirst = true; }
+			else if (!quoted && inClass && c == L']' && !classFirst) inClass = false;
+			else if (inClass && !(classFirst && c == L'^')) classFirst = false;
+			result += c; continue;
+		}
+		const wchar_t next = pattern[i + 1];
+		if (next == L'Q' && !quoted) { quoted = true; result += L"\\Q"; ++i; continue; }
+		if (next == L'E' && quoted) { quoted = false; result += L"\\E"; ++i; continue; }
+		if (!quoted && unicodeProperties && next == L's')
+		{
+			CString escape; escape.Format(L"\\x{%04X}", static_cast<unsigned>(marker[0]));
+			result += inClass ? L"\\p{Xps}" + escape : L"[\\p{Xps}" + escape + L"]";
+			classFirst = false; ++i; continue;
+		}
+		if (!quoted && !inClass && unicodeProperties && next == L'S')
+		{
+			CString escape; escape.Format(L"\\x{%04X}", static_cast<unsigned>(marker[0]));
+			result += L"[^\\p{Xps}" + escape + L"]";
+			++i; continue;
+		}
+		if (!quoted && next == L'x')
+		{
+			int end = i + 2, digits = 0; unsigned value = 0;
+			const bool braced = end < pattern.GetLength() && pattern[end] == L'{';
+			if (braced) ++end;
+			while (end < pattern.GetLength() && digits < (braced ? 6 : 2))
+			{
+				const wchar_t c = pattern[end];
+				const int digit = c >= L'0' && c <= L'9' ? c - L'0' : c >= L'a' && c <= L'f' ? c - L'a' + 10 : c >= L'A' && c <= L'F' ? c - L'A' + 10 : -1;
+				if (digit < 0) break;
+				value = value * 16 + static_cast<unsigned>(digit); ++digits; ++end;
+			}
+			if (digits && (!braced || (end < pattern.GetLength() && pattern[end] == L'}')) && value == 0xa0)
+			{
+				CString escape; escape.Format(L"\\x{%04X}", static_cast<unsigned>(marker[0])); result += escape;
+				i = braced ? end : end - 1; continue;
+			}
+		}
+		result += L'\\'; result += next; if (inClass) classFirst = false; ++i;
+	}
+	pattern = result;
 }
 
 static void NormalizeReplacementNbsp(CString& replacement)
@@ -1217,9 +1274,10 @@ static bool	MergeEqualHTMLElements(MSHTML::IHTMLDOMNode *node, MSHTML::IHTMLDocu
 		if (U::scmp(name,L"EM")==0 || U::scmp(name,L"STRONG")==0) 
 		{
 			MSHTML::IHTMLElementPtr	curelem(cur);
-			// Empty or whitespace-only emphasis can bridge equal formatting nodes.
+			// Whitespace is document content, even when it is the only text in
+			// an emphasis element; innerText can also collapse repeated spaces.
 			bstr_t curText = curelem->innerText;
-			if(curText.length() == 0 || U::is_whitespace(curelem->innerText))
+			if(curText.length() == 0 && !(bool)cur->firstChild)
 			{
 				// Preserve the whitespace while removing the empty formatting node.
 				MSHTML::IHTMLDOMNodePtr prev = cur->previousSibling;
@@ -3143,7 +3201,7 @@ bool CFBEView::DoSearch(bool fMore)
 		return true;
 	}
 
-	NormalizeSearchPatternNbsp(m_fo.pattern);
+	NormalizeSearchPatternNbsp(m_fo.pattern, m_fo.fRegexp, m_fo.unicodeProperties);
 
 	return m_fo.fRegexp ? DoSearchRegexp(fMore) : DoSearchStd(fMore);
 }
@@ -3153,7 +3211,7 @@ bool CFBEView::DoSearchFromScopeStart()
 	m_last_search_error.Empty();
 	if (m_fo.pattern.IsEmpty())
 		return true;
-	NormalizeSearchPatternNbsp(m_fo.pattern);
+	NormalizeSearchPatternNbsp(m_fo.pattern, m_fo.fRegexp, m_fo.unicodeProperties);
 	return DoSearchNative(true, m_fo.fRegexp ? AU::Search::SearchMode::Regex : AU::Search::SearchMode::Literal, true);
 }
 
@@ -3975,7 +4033,7 @@ int CFBEView::ToolWordsGlobalReplace(	MSHTML::IHTMLElementPtr fbw_body,
 	try
 	{
 		ScopedSearchRegExp re;
-		NormalizeSearchPatternNbsp(m_fo.pattern);
+		NormalizeSearchPatternNbsp(m_fo.pattern, false, false);
 		InitSearchRegExp(re.get(), m_fo.flags, m_fo.pattern);
 		re->Global = m_fo.flags & FRF_WHOLE ? VARIANT_TRUE : VARIANT_FALSE;
 		re->Multiline = VARIANT_TRUE;
@@ -5462,7 +5520,7 @@ bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrent
   // Source search must not rewrite the user-visible Find field while
   // adapting U+00A0 to the configured document-space character.
   CString searchPattern(m_fo.pattern);
-  NormalizeSearchPatternNbsp(searchPattern);
+  NormalizeSearchPatternNbsp(searchPattern, false, false);
 
   DWORD   len=::WideCharToMultiByte(CP_UTF8,0, searchPattern,searchPattern.GetLength(), NULL,0,NULL,NULL);
   std::vector<char> tmp(len+1);
