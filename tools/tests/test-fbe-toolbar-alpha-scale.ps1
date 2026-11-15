@@ -55,7 +55,7 @@ try {
             $namedSheets = @(Get-ChildItem -LiteralPath $ArtifactDirectory -Filter 'toolbar-32-named-*-96.bmp')
             $darkPalettes = @('graphite', 'navy', 'catppuccin-mocha', 'solarized-dark',
                 'everforest-dark-medium', 'rose-pine-moon', 'dracula', 'catppuccin-frappe',
-                'catppuccin-macchiato', 'high-contrast-dark')
+                'catppuccin-macchiato', 'high-contrast-dark', 'forest', 'plum')
             $expectedSheets = @($darkPalettes | ForEach-Object { "toolbar-32-named-$_-96.bmp" })
             $missing = @($expectedSheets | Where-Object { $_ -notin $namedSheets.Name })
             $unexpected = @($namedSheets.Name | Where-Object { $_ -notin $expectedSheets })
