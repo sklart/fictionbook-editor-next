@@ -2004,6 +2004,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         root = self.convert('<h1>Chapter</h1><p><a href="missing.xhtml#gone">Broken reference</a></p>')
         self.assertIn('Unresolved internal link', self.diagnostics)
         self.assertIn('Links to missing EPUB resources: 1', self.diagnostics)
+        self.assertRegex(self.public_diagnostics, r'(?m)^.*: 1; [^;]+: 1; [^;]+: 0;')
         links = [a.get(HREF) for a in root.findall('.//f:a', NS)]
         self.assertIn('missing.xhtml#gone', links)
 
@@ -2042,6 +2043,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         root = self.convert('<h1>Chapter</h1><p>' + links + '</p>')
         self.assertIn('Link19', self.text(root))
         self.assertIn('Links to missing EPUB anchors: 20', self.diagnostics)
+        self.assertRegex(self.public_diagnostics, r'(?m)^.*: 1; [^;]+: 0; [^;]+: 20;')
         self.assertLess(len(self.public_diagnostics), 1000)
         self.assertNotIn('missing19', self.public_diagnostics)
         self.assertIn('missing19', self.diagnostics)

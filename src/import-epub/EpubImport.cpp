@@ -10141,7 +10141,15 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     }
 
     if (!warning.IsEmpty())
-        errorText = inventory + L"Import completed with warnings. Detailed diagnostics are available in the import log when enabled.\r\n";
+    {
+        CStringW diagnosticCounts;
+        diagnosticCounts.Format(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_DIAGNOSTIC_COUNTS,
+            L"Sections: %d; missing source resources: %d; missing source anchors: %d; service links retained as text: %d; missing FB2 targets: %d.")),
+            importedSections, g_content.missingSourceResources, g_content.missingSourceAnchors,
+            g_content.skippedServiceLinks, g_content.missingGeneratedTargets);
+        errorText = inventory + diagnosticCounts + L"\r\nImport completed with warnings. Detailed diagnostics are available in the import log when enabled.\r\n";
+        log.Add(L"[WARNING] " + diagnosticCounts);
+    }
     log.Add(warning.IsEmpty() ? L"Import completed." : L"Import completed with warnings.");
     log.SaveIfRequested(epubPath, options.writeLogOnWarnings && !warning.IsEmpty());
     return true;

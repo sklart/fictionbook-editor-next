@@ -180,6 +180,7 @@
 #define IDS_IMPORT_OPTIONS_OPT_BLANK_AFTER 477
 #define IDS_IMPORT_OPTIONS_TT_BLANK_AFTER 478
 #define IDS_IMPORT_RUNTIME_IMAGE_SPACING_SKIPPED 479
+#define IDS_IMPORT_RUNTIME_DIAGNOSTIC_COUNTS 480
 
 // Resource identifier required by Windows shell to display VersionInfo.
 // Without this define, VS_VERSION_INFO in .rc can become a named resource

@@ -4682,6 +4682,25 @@
         "bg-BG": "Езикът в метаданните противоречи на извадката от текста; метаданните са запазени."
       }
     },
+    "import_epub.runtime.diagnostic_counts": {
+      "component": "import-epub.runtime",
+      "resourceId": "IDS_IMPORT_RUNTIME_DIAGNOSTIC_COUNTS",
+      "source": "Разделов: %d; отсутствующих исходных ресурсов: %d; отсутствующих исходных якорей: %d; служебных ссылок сохранено текстом: %d; отсутствующих целей FB2: %d.",
+      "translations": {
+        "en-US": "Sections: %d; missing source resources: %d; missing source anchors: %d; service links retained as text: %d; missing FB2 targets: %d.",
+        "ru-RU": "Разделов: %d; отсутствующих исходных ресурсов: %d; отсутствующих исходных якорей: %d; служебных ссылок сохранено текстом: %d; отсутствующих целей FB2: %d.",
+        "uk-UA": "Розділів: %d; відсутніх вихідних ресурсів: %d; відсутніх вихідних якорів: %d; службових посилань збережено текстом: %d; відсутніх цілей FB2: %d.",
+        "de-DE": "Abschnitte: %d; fehlende Quelldateien: %d; fehlende Quellanker: %d; als Text erhaltene Dienstlinks: %d; fehlende FB2-Ziele: %d.",
+        "fr-FR": "Sections : %d ; ressources sources absentes : %d ; ancres sources absentes : %d ; liens de service conservés en texte : %d ; cibles FB2 absentes : %d.",
+        "es-ES": "Secciones: %d; recursos de origen ausentes: %d; anclas de origen ausentes: %d; enlaces de servicio conservados como texto: %d; destinos FB2 ausentes: %d.",
+        "it-IT": "Sezioni: %d; risorse sorgente mancanti: %d; ancore sorgente mancanti: %d; collegamenti di servizio mantenuti come testo: %d; destinazioni FB2 mancanti: %d.",
+        "pl-PL": "Sekcje: %d; brakujące zasoby źródłowe: %d; brakujące kotwice źródłowe: %d; łącza techniczne zachowane jako tekst: %d; brakujące cele FB2: %d.",
+        "pt-PT": "Secções: %d; recursos de origem em falta: %d; âncoras de origem em falta: %d; ligações de serviço mantidas como texto: %d; destinos FB2 em falta: %d.",
+        "nl-NL": "Secties: %d; ontbrekende bronbestanden: %d; ontbrekende bronankers: %d; servicelinks als tekst behouden: %d; ontbrekende FB2-doelen: %d.",
+        "cs-CZ": "Oddíly: %d; chybějící zdrojové soubory: %d; chybějící zdrojové kotvy: %d; servisní odkazy zachované jako text: %d; chybějící cíle FB2: %d.",
+        "bg-BG": "Раздели: %d; липсващи изходни ресурси: %d; липсващи изходни котви: %d; служебни връзки, запазени като текст: %d; липсващи цели във FB2: %d."
+      }
+    },
     "import_epub.runtime.import_warnings_title": {
       "component": "import-epub.runtime",
       "resourceId": "IDS_IMPORT_RUNTIME_IMPORT_WARNINGS_TITLE",
