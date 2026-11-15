@@ -145,6 +145,7 @@ static const RuntimeStringBinding g_runtimeStringBindings[] = {
     { IDS_IMPORT_RUNTIME_INTERNAL_LINK_MISSING_ID, L"import_epub.runtime.internal_link_missing_id" },
     { IDS_IMPORT_RUNTIME_LANGUAGE_CONFLICT, L"import_epub.runtime.language_conflict" },
     { IDS_IMPORT_RUNTIME_DIAGNOSTIC_COUNTS, L"import_epub.runtime.diagnostic_counts" },
+    { IDS_IMPORT_RUNTIME_MARKUP_COUNTS, L"import_epub.runtime.markup_counts" },
     { IDS_IMPORT_RUNTIME_LANGUAGE_UNDETERMINED, L"import_epub.runtime.language_undetermined" },
     { IDS_IMPORT_RUNTIME_TITLE_BLOCK_NOT_INSPECTED, L"import_epub.runtime.title_block_not_inspected" },
     { IDS_IMPORT_RUNTIME_IMAGE_SPACING_SKIPPED, L"import_epub.runtime.image_spacing_skipped" },

@@ -105,6 +105,7 @@ namespace
         std::set<std::wstring> warnedInlineCss;
         std::set<std::wstring> warnedCssAtRules;
         std::set<std::wstring> warnedOrphanClosingTags;
+        std::set<std::wstring> repairedXhtmlDocuments, unrecoveredXhtmlDocuments;
         std::map<std::wstring, bool> imageOnlyCoverPages;
         std::set<std::wstring> fb2GenreIds;
         bool fb2GenresLoaded = false;
@@ -808,6 +809,7 @@ namespace
         }
         if (FAILED(loadHr) || loaded != VARIANT_TRUE)
         {
+            if (htmlMode && !g_content.repairedXhtmlDocuments.count(path.GetString())) g_content.unrecoveredXhtmlDocuments.emplace(path.GetString());
             CStringW reason = MsxmlGetParseErrorReason(dom);
             if (reason.IsEmpty())
                 reason = htmlMode ? LoadImportRuntimeString(IDS_IMPORT_RUNTIME_XML_UNKNOWN_AFTER_HTML, L"unknown XML error after HTML fallback") : LoadImportRuntimeString(IDS_IMPORT_RUNTIME_XML_UNKNOWN_AFTER_XML, L"unknown XML error after XML fallback");
@@ -816,6 +818,11 @@ namespace
                 : static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_XML_FALLBACK_FAILED, L"MSXML could not read the XML file even after safe normalization:\r\n%s\r\n%s")),
                 path.GetString(), reason.GetString());
             return false;
+        }
+        if (htmlMode) {
+            g_content.unrecoveredXhtmlDocuments.erase(path.GetString());
+            if (g_content.repairedXhtmlDocuments.emplace(path.GetString()).second)
+                g_content.warnings += L"Recovered malformed XHTML by conservative normalization: " + path + L"\r\n";
         }
         return true;
     }
@@ -9711,6 +9718,8 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         return false;
     }
     auto failWithImportLog = [&]() -> bool {
+        log.AddFormatInt(L"Recovered XHTML documents: %d", static_cast<int>(g_content.repairedXhtmlDocuments.size()));
+        log.AddFormatInt(L"Unrecovered XHTML documents: %d", static_cast<int>(g_content.unrecoveredXhtmlDocuments.size()));
         log.Add(L"ERROR: " + errorText);
         if (options.keepTempOnError) temp.Keep();
         log.SaveIfRequested(epubPath, options.writeLogOnWarnings);
@@ -10005,6 +10014,8 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     log.AddFormatInt(L"Links to missing EPUB anchors: %d", g_content.missingSourceAnchors);
     log.AddFormatInt(L"Imported sections: %d", importedSections);
     log.AddFormatInt(L"Images used: %d", static_cast<int>(usedImageIds.size()));
+    log.AddFormatInt(L"Recovered XHTML documents: %d", static_cast<int>(g_content.repairedXhtmlDocuments.size()));
+    log.AddFormatInt(L"Unrecovered XHTML documents: %d", static_cast<int>(g_content.unrecoveredXhtmlDocuments.size()));
 
     if (importedSections == 0)
     {
@@ -10147,7 +10158,11 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
             L"Sections: %d; missing source resources: %d; missing source anchors: %d; service links retained as text: %d; missing FB2 targets: %d.")),
             importedSections, g_content.missingSourceResources, g_content.missingSourceAnchors,
             g_content.skippedServiceLinks, g_content.missingGeneratedTargets);
-        errorText = inventory + diagnosticCounts + L"\r\nImport completed with warnings. Detailed diagnostics are available in the import log when enabled.\r\n";
+        CStringW markupCounts;
+        markupCounts.Format(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_MARKUP_COUNTS,
+            L"XHTML documents recovered: %d; not recovered: %d.")),
+            static_cast<int>(g_content.repairedXhtmlDocuments.size()), static_cast<int>(g_content.unrecoveredXhtmlDocuments.size()));
+        errorText = inventory + diagnosticCounts + L"\r\n" + markupCounts + L"\r\nImport completed with warnings. Detailed diagnostics are available in the import log when enabled.\r\n";
         log.Add(L"[WARNING] " + diagnosticCounts);
     }
     log.Add(warning.IsEmpty() ? L"Import completed." : L"Import completed with warnings.");

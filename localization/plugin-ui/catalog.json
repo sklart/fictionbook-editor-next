@@ -4701,6 +4701,25 @@
         "bg-BG": "Раздели: %d; липсващи изходни ресурси: %d; липсващи изходни котви: %d; служебни връзки, запазени като текст: %d; липсващи цели във FB2: %d."
       }
     },
+    "import_epub.runtime.markup_counts": {
+      "component": "import-epub.runtime",
+      "resourceId": "IDS_IMPORT_RUNTIME_MARKUP_COUNTS",
+      "source": "Документов XHTML восстановлено: %d; не удалось восстановить: %d.",
+      "translations": {
+        "en-US": "XHTML documents recovered: %d; not recovered: %d.",
+        "ru-RU": "Документов XHTML восстановлено: %d; не удалось восстановить: %d.",
+        "uk-UA": "Документів XHTML відновлено: %d; не вдалося відновити: %d.",
+        "de-DE": "XHTML-Dokumente wiederhergestellt: %d; nicht wiederhergestellt: %d.",
+        "fr-FR": "Documents XHTML récupérés : %d ; non récupérés : %d.",
+        "es-ES": "Documentos XHTML recuperados: %d; no recuperados: %d.",
+        "it-IT": "Documenti XHTML recuperati: %d; non recuperati: %d.",
+        "pl-PL": "Odzyskane dokumenty XHTML: %d; nieodzyskane: %d.",
+        "pt-PT": "Documentos XHTML recuperados: %d; não recuperados: %d.",
+        "nl-NL": "Herstelde XHTML-documenten: %d; niet hersteld: %d.",
+        "cs-CZ": "Obnovené dokumenty XHTML: %d; neobnovené: %d.",
+        "bg-BG": "Възстановени XHTML документи: %d; невъзстановени: %d."
+      }
+    },
     "import_epub.runtime.import_warnings_title": {
       "component": "import-epub.runtime",
       "resourceId": "IDS_IMPORT_RUNTIME_IMPORT_WARNINGS_TITLE",

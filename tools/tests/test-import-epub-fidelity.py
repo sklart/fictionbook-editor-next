@@ -2695,11 +2695,20 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertIn('BeforeLink after', self.text(root))
         self.assertEqual([node.get(HREF) for node in root.findall('.//f:a', NS)], ['#target'])
         self.assertIn('ignored unmatched closing html tag', self.diagnostics.lower())
+        self.assertIn('Recovered XHTML documents: 1', self.diagnostics)
+        self.assertIn('Unrecovered XHTML documents: 0', self.diagnostics)
+
+    def test_well_formed_xhtml_is_not_reported_as_recovered(self):
+        root = self.convert('<p>Обычный текст без повреждённой разметки.</p>', navigation=False)
+        self.assertIn('Обычный текст', self.text(root))
+        self.assertIn('Recovered XHTML documents: 0', self.diagnostics)
+        self.assertNotIn('Recovered malformed XHTML', self.diagnostics)
 
     def test_misnested_closing_tags_are_not_repaired(self):
         self.convert('<p><a href="#target"><b>Text</a></b></p><p id="target">Target</p>',
                      navigation=False, fail=True)
         self.assertNotIn('ignored unmatched closing html tag', self.diagnostics.lower())
+        self.assertIn('Unrecovered XHTML documents: 1', self.diagnostics)
 
     def test_stylesheet_background_with_text_is_reported_only_when_effective(self):
         css = '.cap { background-image: url(../images/cap.png); }'
