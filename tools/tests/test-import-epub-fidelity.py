@@ -2145,6 +2145,22 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assert_once(root, 'Block fallback', 'Inline fallback')
         self.assertIn('Elements with detected fidelity limitations: 2', self.diagnostics)
 
+    def test_diagnostic_counts_reset_between_batch_books(self):
+        self.convert('<p><a href="chapter.xhtml#target">one</a><a href="chapter.xhtml#target">two</a> '
+                     '<span style="vertical-align: 42px">text</span></p><p id="target">Target</p>')
+        folder = self.last_folder
+        shutil.copyfile(folder / 'case.epub', folder / 'second.epub')
+        output = folder / 'batch-output'; output.mkdir()
+        report = folder / 'batch.csv'
+        result = subprocess.run([str(BATCH), '--batch', str(folder), str(output), '--log', '--report', str(report)],
+                                capture_output=True, encoding='utf-8', errors='replace', timeout=90,
+                                env={**os.environ, 'TEMP': str(folder / 'temp'), 'TMP': str(folder / 'temp')})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        for source in ('case', 'second'):
+            log = (folder / (source + '.ImportEPUB.log')).read_text(encoding='utf-8-sig')
+            self.assertIn('Rewritten internal links: 2', log)
+            self.assertIn('Elements with detected fidelity limitations: 1', log)
+
     def test_diagnostic_counts_stylesheet_losses_per_element(self):
         self.convert('<p><span class="broken">First</span><span class="broken">Second</span></p>',
                      head='<style>.broken { vertical-align: 42px; }</style>')
