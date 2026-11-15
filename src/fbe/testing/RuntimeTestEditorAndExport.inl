@@ -14,6 +14,51 @@
 #include "RuntimeTestScriptingEnvironment.inl"
 #include "RuntimeTestDocumentTree.inl"
 #include "RuntimeTestPluginOptions.inl"
+	if (IsFbeTestScenario(L"delete-table-tree-selection"))
+	{
+		bool passed = true;
+		CStringA report;
+		try {
+			_Settings.SetViewDocumentTree(true);
+			m_document_tree.ShowWindow(SW_SHOW);
+			UpdateLayout();
+			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+			m_document_tree.GetDocumentStructure(document);
+			auto& tree = m_document_tree.m_tree.m_tree;
+			auto settle = [&]() {
+				MSG message = {};
+				for (int i = 0; i < 1000 && ::PeekMessage(&message, NULL, 0, 0, PM_REMOVE); ++i) { ::TranslateMessage(&message); ::DispatchMessage(&message); }
+				OnIdle();
+			};
+			auto check = [&](const char* phase) {
+				settle();
+				MSHTML::IHTMLTxtRangePtr range(document->selection->createRange());
+				MSHTML::IHTMLElementPtr position(range ? range->parentElement() : MSHTML::IHTMLElementPtr());
+				MSHTML::IHTMLElementPtr section(position);
+				while (section && !(CString(static_cast<LPCWSTR>(section->className)).CompareNoCase(L"section") == 0)) section = section->parentElement;
+				const HTREEITEM current = tree.CurrentStructureItem();
+				MSHTML::IHTMLElementPtr marked(current ? reinterpret_cast<MSHTML::IHTMLElement*>(tree.GetItemData(current)) : NULL);
+				const bool matching = section && marked && CComPtr<MSHTML::IHTMLElement>(section).IsEqualObject(marked) && tree.StructureHighlight(current) != 0;
+				report.AppendFormat("%s=%d;caret=%S;tree=%S\n", phase, matching,
+					section ? static_cast<LPCWSTR>(section->id) : L"<none>", marked ? static_cast<LPCWSTR>(marked->id) : L"<none>");
+				passed = passed && matching;
+			};
+			MSHTML::IHTMLElementPtr cell(MSHTML::IHTMLDocument3Ptr(document)->getElementById(L"target-cell"));
+			if (!cell) passed = false;
+			else {
+				m_doc->m_body.SetFocus();
+				MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+				range->moveToElementText(cell); range->collapse(VARIANT_TRUE); range->select();
+				m_doc->m_body.OnSelChange(NULL); OnIdle(); check("before");
+				::SendMessage(m_hWnd, WM_COMMAND, MAKEWPARAM(ID_TABLE_DELETE_TABLE, 0), 0); check("deleted");
+				BOOL handled = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); check("undo");
+				m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled); check("redo");
+			}
+		} catch (_com_error& error) { report.AppendFormat("hresult=%08lx\n", error.Error()); passed = false; }
+		report.AppendFormat("result=%s\n", passed ? "pass" : "fail");
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"delete-table-toolbar-write") || IsFbeTestScenario(L"delete-table-toolbar-read") ||
 		IsFbeTestScenario(L"delete-table-toolbar-remove") || IsFbeTestScenario(L"delete-table-toolbar-removed"))
 	{
