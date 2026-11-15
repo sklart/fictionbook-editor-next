@@ -87,8 +87,9 @@ foreach ($case in @(
     }
     if ($case.Project -eq 'src\contracts\FBEContracts.vcxproj') {
         $expectedOutDir = Join-Path $repoRoot "out\$($case.Configuration)"
-        if ($properties.OutDir.TrimEnd('\') -ne $expectedOutDir -or
-            $properties.TargetDir.TrimEnd('\') -ne $expectedOutDir) {
+        $actualOutDir = [IO.Path]::GetFullPath($properties.OutDir).TrimEnd('\')
+        $actualTargetDir = [IO.Path]::GetFullPath($properties.TargetDir).TrimEnd('\')
+        if ($actualOutDir -ne $expectedOutDir -or $actualTargetDir -ne $expectedOutDir) {
             throw "FBEContracts output must use $expectedOutDir instead of a repository-root configuration directory: OutDir=$($properties.OutDir), TargetDir=$($properties.TargetDir)"
         }
     }
