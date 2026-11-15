@@ -171,6 +171,39 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertIn('Русский текст', self.text(root))
         self.assertIn('Продолжение', self.text(root))
 
+    def test_z3998_poem_preserves_title_and_stanzas(self):
+        body = ('<p>Before poem</p><blockquote epub:type="z3998:poem">'
+                '<header epub:type="title"><p>The Defence of the Bride</p></header>'
+                '<p><span>He was coming from the altar</span><br/><span>With his fair young wife beside him</span></p>'
+                '<p><span>Turning from the bride</span><br/><span>From their midst he summoned</span></p>'
+                '</blockquote><p>After poem</p>')
+        root = self.convert(body)
+        poem, = root.findall('.//f:poem', NS)
+        self.assertEqual(''.join(poem.find('f:title', NS).itertext()).strip(), 'The Defence of the Bride')
+        stanzas = poem.findall('f:stanza', NS)
+        self.assertEqual([[self.text(v).strip() for v in stanza.findall('f:v', NS)] for stanza in stanzas],
+                         [['He was coming from the altar', 'With his fair young wife beside him'],
+                          ['Turning from the bride', 'From their midst he summoned']])
+        self.assert_once(root, 'Before poem', 'The Defence of the Bride', 'After poem')
+        disabled = self.convert(body, options=['--no-poems'])
+        self.assertEqual(disabled.findall('.//f:poem', NS), [])
+        self.assert_once(disabled, 'He was coming from the altar', 'From their midst he summoned')
+
+    def test_z3998_complex_poem_keeps_anchor_without_guessing(self):
+        root = self.convert('<blockquote epub:type="z3998:poem"><p id="line">First line</p>'
+                            '<p>Second line</p></blockquote><p><a href="#line">Go</a></p>')
+        self.assertEqual(root.findall('.//f:poem', NS), [])
+        self.assert_once(root, 'First line', 'Second line')
+        self.assertIn('Poem structure could not be mapped unambiguously', self.diagnostics)
+        self.assertTrue(any(a.get(HREF, '').startswith('#') for a in root.findall('.//f:a', NS)))
+
+    def test_z3998_epigraph_keeps_epigraph_semantics(self):
+        root = self.convert('<blockquote epub:type="epigraph z3998:poem"><p>Quoted line</p></blockquote>'
+                            '<p>Following text</p>')
+        self.assertEqual(root.findall('.//f:poem', NS), [])
+        self.assertTrue(root.findall('.//f:epigraph', NS) or root.findall('.//f:cite', NS))
+        self.assert_once(root, 'Quoted line', 'Following text')
+
     def notes(self, root):
         return root.findall('f:body[@name="notes"]/f:section', NS)
 

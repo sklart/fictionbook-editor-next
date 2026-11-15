@@ -105,6 +105,7 @@ namespace
         std::set<std::wstring> warnedInlineCss;
         std::set<std::wstring> warnedCssAtRules;
         std::set<std::wstring> warnedOrphanClosingTags;
+        std::set<std::wstring> warnedUnmappedPoems;
         std::set<std::wstring> repairedXhtmlDocuments, unrecoveredXhtmlDocuments;
         std::map<std::wstring, bool> imageOnlyCoverPages;
         std::set<std::wstring> fb2GenreIds;
@@ -4980,6 +4981,74 @@ namespace
         return false;
     }
 
+    bool IsSimplePoemInline(const MSXML2::IXMLDOMNodePtr& node, unsigned depth = 0)
+    {
+        if (depth > 64) return false;
+        const auto children = MsxmlGetChildNodes(node);
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        for (long i = 0; i < count; ++i) {
+            const auto child = MsxmlGetNodeListItem(children, i);
+            if (MsxmlGetNodeType(child) != MSXML2::NODE_ELEMENT) continue;
+            const CStringW name = LocalName(child);
+            if (name != L"span" && name != L"br" && name != L"em" && name != L"i" && name != L"strong" && name != L"b") return false;
+            if (!IsSimplePoemInline(child, depth + 1)) return false;
+        }
+        return true;
+    }
+
+    // Handle the unambiguous Standard Ebooks pattern: a title header followed
+    // by one paragraph per stanza and BR-separated verse lines. Leave complex
+    // poems to the existing conversion instead of guessing about their order.
+    bool AppendSimpleZ3998Poem(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx)
+    {
+        if (!IsEpubType(node, L"z3998:poem") || IsEpubType(node, L"epigraph")) return false;
+        const CStringW rootRaw = RawAnchorId(node);
+        const auto ids = CollectRawAnchorIds(node);
+        if (ids.size() > (rootRaw.IsEmpty() ? 0U : 1U)) return false;
+        MSXML2::IXMLDOMNodePtr title;
+        std::vector<MSXML2::IXMLDOMNodePtr> stanzas;
+        const auto children = MsxmlGetChildNodes(node);
+        const long count = children ? MsxmlGetNodeListLength(children) : 0;
+        for (long i = 0; i < count; ++i) {
+            const auto child = MsxmlGetNodeListItem(children, i);
+            if (MsxmlGetNodeType(child) != MSXML2::NODE_ELEMENT) {
+                if (!TrimString(NodeText(child)).IsEmpty()) return false;
+                continue;
+            }
+            const CStringW name = LocalName(child);
+            if (name == L"header" && !title && stanzas.empty() && IsEpubType(child, L"title")) {
+                const auto headerChildren = MsxmlGetChildNodes(child);
+                const long headerCount = headerChildren ? MsxmlGetNodeListLength(headerChildren) : 0;
+                for (long j = 0; j < headerCount; ++j) {
+                    const auto part = MsxmlGetNodeListItem(headerChildren, j);
+                    if (MsxmlGetNodeType(part) != MSXML2::NODE_ELEMENT) {
+                        if (!TrimString(NodeText(part)).IsEmpty()) return false;
+                    } else if (LocalName(part) == L"p" && !title && IsSimplePoemInline(part)) title = part;
+                    else return false;
+                }
+                if (!title) return false;
+            } else if (name == L"p" && IsSimplePoemInline(child) && !TrimString(NodeText(child)).IsEmpty()) stanzas.push_back(child);
+            else return false;
+        }
+        if (stanzas.empty()) return false;
+        CStringW poem = L"      <poem" + OptionalIdAttributeFromRaw(rootRaw, ctx) + L">\r\n";
+        if (title) {
+            CStringW text = ChildrenInlineToFb2(title, ctx); text.Trim();
+            if (text.IsEmpty()) return false;
+            poem += L"        <title><p>" + text + L"</p></title>\r\n";
+        }
+        for (const auto& stanza : stanzas) {
+            std::vector<CStringW> lines;
+            CollectInlineLinesPreservingBreaks(stanza, ctx, lines);
+            CStringW verses;
+            for (auto line : lines) { line.Trim(); if (!line.IsEmpty()) verses += L"          <v>" + line + L"</v>\r\n"; }
+            if (verses.IsEmpty()) return false;
+            poem += L"        <stanza>\r\n" + verses + L"        </stanza>\r\n";
+        }
+        out += poem + L"      </poem>\r\n";
+        return true;
+    }
+
     void AppendPoemNode(const MSXML2::IXMLDOMNodePtr& node, CStringW& out, const ConvertContext& ctx)
     {
         if (!g_options.importPoemsEpigraphs)
@@ -6385,6 +6454,12 @@ namespace
         {
             AppendEpigraphOrCiteNode(node, out, ctx, false);
             return;
+        }
+
+        if (g_options.importPoemsEpigraphs && IsEpubType(node, L"z3998:poem")) {
+            if (AppendSimpleZ3998Poem(node, out, ctx)) return;
+            if (g_content.warnedUnmappedPoems.emplace(ctx.currentXhtmlPath.GetString()).second)
+                g_content.warnings += L"Poem structure could not be mapped unambiguously; review the existing conversion: " + ctx.currentXhtmlPath + L"\r\n";
         }
 
         if (g_options.importPoemsEpigraphs && LooksLikePoem(node))
