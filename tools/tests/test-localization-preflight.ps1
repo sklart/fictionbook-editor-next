@@ -23,9 +23,15 @@ $baselineAllowedCatalogs = @('localization\app-ui\fbe-small-dialogs.json')
 
 function Test-StrictJson([string]$Path) {
     $pythonLauncher = Get-Command py.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1
-    if (-not $pythonLauncher) { throw 'Для strict JSON preflight требуется Python launcher (py.exe).' }
+    $pythonArguments = @('-3')
+    if (-not $pythonLauncher -and $env:FBE_TEST_PYTHON) {
+        if (-not (Test-Path -LiteralPath $env:FBE_TEST_PYTHON -PathType Leaf)) { throw 'FBE_TEST_PYTHON must name a Python 3 executable.' }
+        $pythonLauncher = $env:FBE_TEST_PYTHON
+        $pythonArguments = @()
+    }
+    if (-not $pythonLauncher) { throw 'Для strict JSON preflight требуется py.exe или FBE_TEST_PYTHON с путём к Python 3.' }
     $program = 'import json,sys; json.load(open(sys.argv[1],encoding=''utf-8-sig''), object_pairs_hook=lambda p: (lambda d: d if len(d)==len(p) else (_ for _ in ()).throw(ValueError(''duplicate key'')))(dict(p)))'
-    & $pythonLauncher -3 -c $program $Path 2>&1 | Out-String | ForEach-Object { if ($_ -match '\S') { Write-Host $_.TrimEnd() } }
+    & $pythonLauncher @pythonArguments -c $program $Path 2>&1 | Out-String | ForEach-Object { if ($_ -match '\S') { Write-Host $_.TrimEnd() } }
     return $LASTEXITCODE -eq 0
 }
 function Get-Entries($Catalog) {
