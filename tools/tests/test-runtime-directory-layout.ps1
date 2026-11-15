@@ -9,8 +9,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$expectedRuntimeDirectories = @('Backgrounds', 'Dict', 'Help', 'HTML', 'Lang', 'Plugins', 'Resources', 'Scripts', 'Themes', 'TreeCmd', 'Utilities')
-$sourceRuntimeDirectories = @('Backgrounds', 'Dict', 'Help', 'HTML', 'Plugins', 'Resources', 'Scripts', 'Themes', 'TreeCmd', 'Utilities')
+$expectedRuntimeDirectories = @('Backgrounds', 'Dict', 'Help', 'HTML', 'Lang', 'Plugins', 'Resources', 'ScriptCards', 'Scripts', 'Themes', 'TreeCmd', 'Utilities')
+$sourceRuntimeDirectories = @('Backgrounds', 'Dict', 'Help', 'HTML', 'Plugins', 'Resources', 'ScriptCards', 'Scripts', 'Themes', 'TreeCmd', 'Utilities')
 $legacyDirectories = @('dict', 'EditorBackgrounds', 'ArchiveMruRuntimeData')
 function Test-ExactDirectory([string]$Parent, [string]$Name) { return @((Get-ChildItem -LiteralPath $Parent -Directory -Force | Select-Object -ExpandProperty Name) -ccontains $Name) }
 
@@ -53,7 +53,7 @@ foreach($directory in $legacyDirectories) {
 }
 
 $installer = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'packaging\nsis\Installer\MakeInstaller.nsi') -Encoding UTF8
-foreach($directory in @('Backgrounds', 'Dict', 'HTML')) {
+foreach($directory in @('Backgrounds', 'Dict', 'HTML', 'ScriptCards')) {
     if($installer -notmatch [regex]::Escape("`$INSTDIR\$directory")) { throw "NSIS installer does not target canonical directory: $directory" }
 }
 if($installer -cmatch [regex]::Escape('${INPUTDIR}\dict\') -or $installer -cmatch [regex]::Escape('${INPUTDIR}\EditorBackgrounds\')) {
