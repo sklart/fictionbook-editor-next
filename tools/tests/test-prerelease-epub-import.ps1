@@ -125,5 +125,5 @@ try {
     $cases=@('../external.xhtml','%2e%2e%2fexternal.xhtml','..\external.xhtml','/external.xhtml',$outside,('file:///'+$outside.Replace('\','/')),'\\server\share\external.xhtml')
     for($i=0;$i -lt $cases.Count;++$i){Invoke-Import (New-Epub ('unsafe-'+$i) -chapter $cases[$i]) ('unsafe-'+$i) $false}
     Invoke-Import (New-Epub 'opf-outside' -opf ('../external.xhtml')) 'opf-outside' $false
-    Write-Host "PASS: complete/delayed Shell extraction, mandatory/optional spine, explicit image filters, OPF/manifest path confinement and reparse cleanup. Evidence: $work"
+    Write-Host "PASS: complete/delayed extraction, mandatory/optional spine, explicit image filters, OPF/manifest path confinement and reparse cleanup. Evidence: $work"
 } finally {$env:FBE_NEXT_TEST_MODE=$oldMode;$env:FBE_NEXT_TEST_EPUB_DELAY_ENTRY=$oldDelay;$env:FBE_NEXT_TEST_EPUB_ROOT_REPORT=$oldRootReport}

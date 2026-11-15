@@ -1,9 +1,10 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 #include "MsxmlImport.h"
 #include "EpubImport.h"
 #include "ImportEPUBApi.h"
 #include "resource.h"
 #include "RuntimeLocalization.h"
+#include "SecureEpubZip.h"
 
 #include <vector>
 #include <map>
@@ -13,7 +14,6 @@
 #include <algorithm>
 #include <cwctype>
 #include <new>
-#include <thread>
 #include <zlib.h>
 #include <shlwapi.h>
 #include <gdiplus.h>
@@ -1080,9 +1080,7 @@ namespace
             const DWORD tempLength = ::GetTempPathW(_countof(temp), temp);
             if (tempLength == 0 || tempLength >= _countof(temp))
                 return;
-            // Shell's ZIP provider is sensitive to the complete path length,
-            // including the archive's internal entry name. Keep the temporary
-            // directory short while retaining the full GUID entropy.
+            // Keep the extraction path short while retaining full GUID entropy.
             for (int attempt = 0; attempt < 4; ++attempt)
             {
                 const CStringW id = CompactGuidString();
@@ -1189,65 +1187,9 @@ namespace
         return true;
     }
 
-    struct ExpectedZipFile { CStringW path; LONG size=0; };
-    bool CollectZipFiles(Folder* folder, const CStringW& prefix, std::vector<ExpectedZipFile>& files, CStringW& detail, unsigned int depth=0)
-    {
-        if(!folder || depth>64 || files.size()>100000) { detail.Format(L"ZIP folder unavailable or limits exceeded at depth %u.",depth); return false; }
-        CComPtr<FolderItems> items; long count=0;
-        HRESULT folderResult=folder->Items(&items);
-        if(FAILED(folderResult) || !items) { detail.Format(L"ZIP folder items unavailable at depth %u (HRESULT 0x%08lX).",depth,folderResult); return false; }
-        folderResult=items->get_Count(&count);
-        if(FAILED(folderResult)) { detail.Format(L"ZIP folder count unavailable at depth %u (HRESULT 0x%08lX).",depth,folderResult); return false; }
-        for(long i=0;i<count;++i) {
-            CComPtr<FolderItem> item; CComBSTR name; VARIANT_BOOL directory=VARIANT_FALSE;
-            HRESULT itemResult=items->Item(_variant_t(i), &item);
-            if(FAILED(itemResult) || !item) { detail.Format(L"ZIP entry lookup failed at depth %u, index %ld (HRESULT 0x%08lX).", depth, i, itemResult); return false; }
-            itemResult=item->get_Path(&name);
-            if(FAILED(itemResult)) { detail.Format(L"ZIP entry path lookup failed at depth %u, index %ld (HRESULT 0x%08lX).", depth, i, itemResult); return false; }
-            itemResult=item->get_IsFolder(&directory);
-            if(FAILED(itemResult)) { detail.Format(L"ZIP entry type lookup failed at depth %u, index %ld (HRESULT 0x%08lX).", depth, i, itemResult); return false; }
-            const CStringW itemPath(name);
-            const CStringW leaf=itemPath.Mid(itemPath.ReverseFind(L'\\')+1);
-            if(leaf.IsEmpty() || leaf==L"." || leaf==L".." || leaf.FindOneOf(L"\\/:")>=0) { detail.Format(L"Invalid ZIP entry name at depth %u, index %ld (path length %d, leaf length %d).",depth,i,itemPath.GetLength(),leaf.GetLength()); return false; }
-            const CStringW relative=prefix+leaf;
-            if(directory) {
-                CComPtr<IDispatch> dispatch; itemResult=item->get_GetFolder(&dispatch); if(FAILED(itemResult)) { detail.Format(L"ZIP folder lookup failed at depth %u, index %ld (HRESULT 0x%08lX).",depth,i,itemResult); return false; }
-                CComQIPtr<Folder> child(dispatch); if(!CollectZipFiles(child,relative+L"\\",files,detail,depth+1)) return false;
-            } else {
-                ExpectedZipFile file; file.path=relative;
-                itemResult=item->get_Size(&file.size); if(FAILED(itemResult) || file.size<0) { detail.Format(L"ZIP entry size lookup failed at depth %u, index %ld (HRESULT 0x%08lX).",depth,i,itemResult); return false; }
-                files.push_back(file);
-            }
-        }
-        return true;
-    }
-    bool WaitForZipFolderExtraction(const CStringW& extractDir, const std::vector<ExpectedZipFile>& files, CStringW& errorText)
-    {
-        for (int i = 0; i < 600; ++i)
-        {
-            bool ready=!files.empty();
-            for(const auto& expected:files) {
-                const CStringW path=CombineAndCanonicalizePath(extractDir,expected.path);
-                HANDLE file=::CreateFileW(path,GENERIC_READ,0,nullptr,OPEN_EXISTING,FILE_FLAG_OPEN_REPARSE_POINT,nullptr);
-                if(file==INVALID_HANDLE_VALUE) { ready=false; break; }
-                BY_HANDLE_FILE_INFORMATION info={}; LARGE_INTEGER size={};
-                const bool complete=::GetFileInformationByHandle(file,&info) && !(info.dwFileAttributes&(FILE_ATTRIBUTE_REPARSE_POINT|FILE_ATTRIBUTE_DIRECTORY)) && ::GetFileSizeEx(file,&size) && size.QuadPart==expected.size;
-                ::CloseHandle(file); if(!complete) { ready=false; break; }
-            }
-            if (ready) return true;
-            Sleep(100);
-        }
-
-        errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_TIMEOUT_CONTAINER, L"Windows ZIP folder provider did not finish extracting EPUB in time or did not create META-INF/container.xml.");
-        return false;
-    }
-
     bool ExpandEpubToDirectory(const CStringW& epubPath, const CStringW& tempRoot, CStringW& extractDir, CStringW& errorText)
     {
-        // A 7z archive can be misnamed .epub. Passing it to the Windows ZIP
-        // shell provider can block indefinitely instead of returning an error.
-        // Reject this distinct signature before calling the shell; a valid EPUB
-        // is a ZIP container and cannot begin with the 7z signature.
+        // Keep the explicit diagnostic for 7z files misnamed as EPUB.
         HANDLE input = ::CreateFileW(epubPath, GENERIC_READ, FILE_SHARE_READ, nullptr,
                                      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (input != INVALID_HANDLE_VALUE)
@@ -1265,133 +1207,8 @@ namespace
                 return false;
             }
         }
-        // No PowerShell Expand-Archive and no tar.exe. EPUB is copied to a
-        // temporary .zip name and extracted through the built-in Windows ZIP
-        // folder provider. The rest of the importer still works with a temp
-        // directory, which keeps the parser code simple and compatible with FBE.
-        CStringW zipPath = tempRoot + L"\\source.zip";
         extractDir = tempRoot + L"\\epub";
-
-        if (!::CopyFileW(epubPath, zipPath, FALSE))
-        {
-            errorText.Format(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_COPY_FAILED, L"Failed to copy EPUB to a temporary ZIP file. Win32 code: %lu")), ::GetLastError());
-            return false;
-        }
-
-        CreateDirectoryRecursive(extractDir);
-        BookRootScope extractionRoot(extractDir);
-
-        CComPtr<IShellDispatch> shell;
-        HRESULT hr = shell.CoCreateInstance(CLSID_Shell);
-        if (FAILED(hr) || !shell)
-        {
-            errorText.Format(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_SHELL_CREATE_FAILED, L"Failed to create Shell.Application for EPUB extraction. HRESULT=0x%08lX")), hr);
-            return false;
-        }
-
-        VARIANT vZip;
-        VariantInit(&vZip);
-        vZip.vt = VT_BSTR;
-        vZip.bstrVal = SysAllocString(zipPath);
-        CComPtr<Folder> zipFolder;
-        hr = shell->NameSpace(vZip, &zipFolder);
-        VariantClear(&vZip);
-        if (FAILED(hr) || !zipFolder)
-        {
-            errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_OPEN_FAILED, L"Windows could not open EPUB as a ZIP container. The file may be damaged or blocked.");
-            return false;
-        }
-
-        VARIANT vDest;
-        VariantInit(&vDest);
-        vDest.vt = VT_BSTR;
-        vDest.bstrVal = SysAllocString(extractDir);
-        CComPtr<Folder> destFolder;
-        hr = shell->NameSpace(vDest, &destFolder);
-        VariantClear(&vDest);
-        if (FAILED(hr) || !destFolder)
-        {
-            errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_DEST_FAILED, L"Windows could not open the temporary destination folder for EPUB extraction.");
-            return false;
-        }
-
-        std::vector<ExpectedZipFile> expected;
-        CStringW zipDetail;
-        if(!CollectZipFiles(zipFolder,L"",expected,zipDetail)) { errorText=L"Cannot enumerate all EPUB archive resources safely."; if (!zipDetail.IsEmpty()) errorText += L" " + zipDetail; return false; }
-        CComPtr<FolderItems> items;
-        hr = zipFolder->Items(&items);
-        if (FAILED(hr) || !items)
-        {
-            errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_ITEMS_FAILED, L"Windows ZIP provider did not return the EPUB file list.");
-            return false;
-        }
-
-        CComPtr<IDispatch> itemsDispatch;
-        hr = items->QueryInterface(IID_IDispatch, reinterpret_cast<void**>(&itemsDispatch.p));
-        if (FAILED(hr) || !itemsDispatch)
-        {
-            errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_ITEMS_DISPATCH_FAILED, L"Failed to get IDispatch for the EPUB file list.");
-            return false;
-        }
-
-        _variant_t vItems(static_cast<IDispatch*>(itemsDispatch), true);
-        _variant_t vOptions(static_cast<long>(FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_NOCONFIRMMKDIR));
-        // This worker exists only for the delayed-entry fault fixture. Joining
-        // retains std::async's former scope-exit wait, without MSVC PPL's x86
-        // alignment issue when compiled by clang-cl.
-        struct JoinedTestCopy {
-            std::thread worker;
-            ~JoinedTestCopy() { if (worker.joinable()) worker.join(); }
-        } delayedCopy;
-        wchar_t testMode[4]={}, delayedLeaf[MAX_PATH]={};
-        const bool delay=::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE",testMode,_countof(testMode))==1 && testMode[0]==L'1' &&
-            ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_EPUB_DELAY_ENTRY",delayedLeaf,_countof(delayedLeaf))>0;
-        if(delay) {
-            wchar_t rootReport[MAX_PATH]={};
-            if(::GetEnvironmentVariableW(L"FBE_NEXT_TEST_EPUB_ROOT_REPORT",rootReport,_countof(rootReport))>0)
-                if(!WriteUtf8TextFile(rootReport,extractDir)) return false;
-            long count=0; hr=items->get_Count(&count); bool found=false;
-            for(long i=0;SUCCEEDED(hr) && i<count;++i) {
-                CComPtr<FolderItem> item; CComBSTR name;
-                hr=items->Item(_variant_t(i),&item); if(FAILED(hr) || !item) break;
-                hr=item->get_Path(&name); if(FAILED(hr)) break;
-                const CStringW itemPath(name);
-                if(itemPath.Mid(itemPath.ReverseFind(L'\\')+1)==delayedLeaf) { found=true; continue; }
-                hr=destFolder->CopyHere(_variant_t(static_cast<IDispatch*>(item.p)),vOptions);
-            }
-            if(!found) return false;
-            const CStringW leaf(delayedLeaf);
-            delayedCopy.worker=std::thread([zipPath,extractDir,leaf]() {
-                try {
-                const HRESULT initialized=::CoInitializeEx(nullptr,COINIT_APARTMENTTHREADED);
-                if(FAILED(initialized)) return;
-                {
-                    ::Sleep(1200);
-                    CComPtr<IShellDispatch> workerShell; CComPtr<Folder> sourceFolder,targetFolder; CComPtr<FolderItem> item;
-                    if(SUCCEEDED(workerShell.CoCreateInstance(CLSID_Shell)) && SUCCEEDED(workerShell->NameSpace(_variant_t(zipPath),&sourceFolder)) && sourceFolder &&
-                        SUCCEEDED(workerShell->NameSpace(_variant_t(extractDir),&targetFolder)) && targetFolder && SUCCEEDED(sourceFolder->ParseName(CComBSTR(leaf),&item)) && item)
-                        targetFolder->CopyHere(_variant_t(static_cast<IDispatch*>(item.p)),_variant_t(static_cast<long>(FOF_SILENT|FOF_NOCONFIRMATION|FOF_NOERRORUI|FOF_NOCONFIRMMKDIR)));
-                }
-                ::CoUninitialize();
-                } catch (...) {
-                    // The former future was never get()'d: fixture exceptions
-                    // were retained until destruction, rather than propagated.
-                }
-            });
-        } else hr = destFolder->CopyHere(vItems, vOptions);
-        if (FAILED(hr))
-        {
-            errorText.Format(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_EXTRACT_FAILED, L"Windows ZIP provider could not extract EPUB. HRESULT=0x%08lX")), hr);
-            return false;
-        }
-
-        if (!WaitForZipFolderExtraction(extractDir, expected, errorText))
-            return false;
-
-        if (!ValidateExtractedDirectoryTree(extractDir, errorText))
-            return false;
-
-        return true;
+        return ExtractSecureEpubZip(epubPath, extractDir, errorText) && ValidateExtractedDirectoryTree(extractDir, errorText);
     }
 
     HRESULT CreateMsxmlDom(MSXML2::IXMLDOMDocument2Ptr& dom)

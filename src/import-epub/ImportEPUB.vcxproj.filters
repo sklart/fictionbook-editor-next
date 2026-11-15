@@ -17,6 +17,7 @@
   <ItemGroup>
     <ClCompile Include="dllmain.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="EpubImport.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="SecureEpubZip.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="ImportEPUBBatch.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="ImportEPUBPlugin.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="ImportOptionsDialog.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -25,6 +26,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EpubImport.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="SecureEpubZip.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="FBEPluginInterfaces.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="ImportEPUBModule.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="ImportEPUBPlugin.h"><Filter>Header Files</Filter></ClInclude>
