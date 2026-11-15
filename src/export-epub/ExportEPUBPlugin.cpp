@@ -249,6 +249,7 @@ struct LinkTarget {
 
 using LinkMap = std::map<std::wstring, LinkTarget>; // Original FB2 id -> EPUB target.
 using NoteBacklinkMap = std::map<std::wstring, std::vector<LinkTarget>>; // Note id -> back references.
+struct UnresolvedSourceLink { std::wstring href, chapterFile, chapterTitle; bool image = false; };
 
 struct XhtmlContext {
     const ImageMap& images;
@@ -258,6 +259,8 @@ struct XhtmlContext {
     std::wstring currentFileName;
     bool isEpub3 = false;
     bool notesChapter = false;
+    std::vector<UnresolvedSourceLink>* unresolvedLinks = nullptr;
+    std::wstring chapterTitle;
 };
 
 std::wstring ChapterFileNameForIndex(size_t index)
@@ -1021,6 +1024,8 @@ std::wstring NodeToXhtml(IXMLDOMNodePtr node, const XhtmlContext& ctx)
         const std::wstring rawHref = GetHrefAttr(element);
         const std::wstring href = RewriteHref(rawHref, ctx);
         if (href.empty()) {
+            if (ctx.unresolvedLinks && rawHref.size() > 1 && rawHref[0] == L'#')
+                ctx.unresolvedLinks->push_back({rawHref, ctx.currentFileName, ctx.chapterTitle, false});
             if (ContainsBlockXhtml(body)) {
                 return L"<div" + commonAttrs + L" class=\"broken-link\">\n" +
                        BlockContentForXhtml(body) + L"</div>\n";
@@ -1053,9 +1058,13 @@ std::wstring NodeToXhtml(IXMLDOMNodePtr node, const XhtmlContext& ctx)
                fbe::epub::XmlEscape(href) + L"\">" + body + L"</a>";
     }
     if (name == L"image") {
-        std::wstring id = StripFragmentPrefix(GetHrefAttr(element));
+        const std::wstring rawHref = GetHrefAttr(element);
+        std::wstring id = StripFragmentPrefix(rawHref);
         auto it = ctx.images.find(id);
-        if (it == ctx.images.end()) return {};
+        if (it == ctx.images.end()) {
+            if (ctx.unresolvedLinks) ctx.unresolvedLinks->push_back({rawHref, ctx.currentFileName, ctx.chapterTitle, true});
+            return {};
+        }
 
         const std::wstring src = fbe::epub::XmlEscape(it->second.fileName);
 
@@ -2121,7 +2130,8 @@ std::vector<ChapterPlan> BuildChapterPlans(IXMLDOMDocument2Ptr doc, const std::w
     return plans;
 }
 
-void BuildBookFromFbeDocument(IDispatch* dispatch, fbe::epub::EpubBook& book, bool isEpub3, bool includeAnnotationPage)
+void BuildBookFromFbeDocument(IDispatch* dispatch, fbe::epub::EpubBook& book, bool isEpub3, bool includeAnnotationPage,
+                              std::vector<UnresolvedSourceLink>& unresolvedLinks)
 {
     if (dispatch == nullptr) {
         _com_issue_error(E_POINTER);
@@ -2182,7 +2192,8 @@ void BuildBookFromFbeDocument(IDispatch* dispatch, fbe::epub::EpubBook& book, bo
     std::map<std::wstring, size_t> emittedNoteRefCounters;
     for (const ChapterPlan& plan : plans) {
         const bool isNotes = (plan.id.rfind(L"notes", 0) == 0 || plan.id.rfind(L"comments", 0) == 0);
-        XhtmlContext ctx{ images, links, &noteBacklinks, &emittedNoteRefCounters, plan.fileName, isEpub3, isNotes };
+        XhtmlContext ctx{ images, links, &noteBacklinks, &emittedNoteRefCounters, plan.fileName, isEpub3, isNotes,
+                          &unresolvedLinks, plan.title.empty() ? book.title : plan.title };
 
         fbe::epub::EpubChapter chapter;
         chapter.id = plan.id;
@@ -3283,9 +3294,14 @@ struct PreflightResult {
     std::vector<std::wstring> warnings;
 };
 
-PreflightResult RunPreflight(const fbe::epub::EpubBook& book, const ExportPluginSettings& settings)
+PreflightResult RunPreflight(const fbe::epub::EpubBook& book, const ExportPluginSettings& settings,
+                             const std::vector<UnresolvedSourceLink>& unresolvedLinks)
 {
     PreflightResult result;
+    for (const auto& link : unresolvedLinks) {
+        result.warnings.emplace_back(FormatString1(link.image ? IDS_PREFLIGHT_WARNING_MISSING_IMAGE : IDS_PREFLIGHT_WARNING_MISSING_FRAGMENT,
+            link.image ? L"Image is missing from manifest/resources: %s" : L"Link points to a missing fragment: %s", link.href) + L" [text/" + link.chapterFile + L"; " + link.chapterTitle + L"]");
+    }
     std::unordered_map<std::wstring, std::wstring> fragmentOwner;
 
     for (std::size_t i = 0; i < book.chapters.size(); ++i) {
@@ -3328,7 +3344,7 @@ PreflightResult RunPreflight(const fbe::epub::EpubBook& book, const ExportPlugin
                     result.warnings.emplace_back(FormatString1(
                         IDS_PREFLIGHT_WARNING_MISSING_FRAGMENT,
                         L"Link points to a missing fragment: %s",
-                        href));
+                        href) + L" [" + chapter.title + L"]");
                 }
             }
         }
@@ -3371,7 +3387,7 @@ PreflightResult RunPreflight(const fbe::epub::EpubBook& book, const ExportPlugin
                 result.warnings.emplace_back(FormatString1(
                     IDS_PREFLIGHT_WARNING_MISSING_IMAGE,
                     L"Image is missing from manifest/resources: %s",
-                    src));
+                    src) + L" [" + chapter.title + L"]");
             }
         }
     }
@@ -3581,7 +3597,8 @@ void ApplyPostBuildSettings(fbe::epub::EpubBook& book, const ExportPluginSetting
 
 void WriteExportLog(const CString& outPath,
                     const fbe::epub::EpubBook& book,
-                    const fbe::epub::EpubExportOptions& opt)
+                    const fbe::epub::EpubExportOptions& opt,
+                    const PreflightResult& preflight)
 {
     try {
         std::filesystem::path logPath(static_cast<LPCWSTR>(outPath));
@@ -3614,6 +3631,8 @@ void WriteExportLog(const CString& outPath,
             if (!r.properties.empty()) w << L" properties=" << r.properties;
             w << L"\n";
         }
+        w << L"Warnings: " << preflight.warnings.size() << L"\n";
+        for (const auto& warning : preflight.warnings) w << L"[WARNING] " << warning << L"\n";
 
         std::ofstream out(logPath, std::ios::binary | std::ios::trunc);
         const unsigned char bom[] = {0xEF, 0xBB, 0xBF};
@@ -3686,7 +3705,8 @@ HRESULT CExportEPUBPlugin::ExportCore(long hWnd, BSTR filename, IDispatch* doc)
         }
 
         fbe::epub::EpubBook book;
-        BuildBookFromFbeDocument(doc, book, version == fbe::epub::EpubVersion::Epub3, settings.includeAnnotationPage);
+        std::vector<UnresolvedSourceLink> unresolvedLinks;
+        BuildBookFromFbeDocument(doc, book, version == fbe::epub::EpubVersion::Epub3, settings.includeAnnotationPage, unresolvedLinks);
         ApplyPostBuildSettings(book, settings);
         if (book.chapters.empty()) {
             CString msg(LoadExportEpubString(IDS_ERROR_NO_CHAPTERS, L"No chapters to export."));
@@ -3694,7 +3714,7 @@ HRESULT CExportEPUBPlugin::ExportCore(long hWnd, BSTR filename, IDispatch* doc)
             return E_FAIL;
         }
 
-        const PreflightResult preflight = RunPreflight(book, settings);
+        const PreflightResult preflight = RunPreflight(book, settings, unresolvedLinks);
         if (settings.showPreflightWarnings && !preflight.warnings.empty()) {
             ShowPreflightWarnings(owner, preflight);
         }
@@ -3715,7 +3735,7 @@ HRESULT CExportEPUBPlugin::ExportCore(long hWnd, BSTR filename, IDispatch* doc)
         }
 
         if (settings.writeDiagnosticLog) {
-            WriteExportLog(outPath, book, opt);
+            WriteExportLog(outPath, book, opt, preflight);
         }
         if (settings.showSummaryAfterExport) {
             ShowExportSummary(owner, outPath, book, opt, preflight);
@@ -3900,7 +3920,8 @@ extern "C" __declspec(dllexport) int __stdcall ExportEpubFileW(
 
         phase = L"building EPUB model";
         fbe::epub::EpubBook book;
-        BuildBookFromFbeDocument(source.GetInterfacePtr(), book, isEpub3, settings.includeAnnotationPage);
+        std::vector<UnresolvedSourceLink> unresolvedLinks;
+        BuildBookFromFbeDocument(source.GetInterfacePtr(), book, isEpub3, settings.includeAnnotationPage, unresolvedLinks);
         phase = L"applying export settings";
         ApplyPostBuildSettings(book, settings);
         if (book.chapters.empty()) {
@@ -3911,7 +3932,7 @@ extern "C" __declspec(dllexport) int __stdcall ExportEpubFileW(
         // Run lightweight diagnostics for consistency with the GUI exporter.
         // Warnings are not fatal for command-line batch conversion.
         phase = L"running preflight";
-        (void)RunPreflight(book, settings);
+        const PreflightResult preflight = RunPreflight(book, settings, unresolvedLinks);
 
         fbe::epub::EpubExportOptions opt;
         opt.version = isEpub3 ? fbe::epub::EpubVersion::Epub3 : fbe::epub::EpubVersion::Epub2;
@@ -3931,7 +3952,7 @@ extern "C" __declspec(dllexport) int __stdcall ExportEpubFileW(
 
         if (settings.writeDiagnosticLog) {
             phase = L"writing diagnostic log";
-            WriteExportLog(CString(outputEpubPath), book, opt);
+            WriteExportLog(CString(outputEpubPath), book, opt, preflight);
         }
 
         return 0;
