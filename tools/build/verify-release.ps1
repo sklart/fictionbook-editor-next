@@ -393,6 +393,7 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-plugin-v2-negotiation-policy.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-v2-runtime.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-export-epub-v2-runtime.ps1") -Configuration $Configuration -BatchExecutable (Join-Path $batchOutputDir "ExportEPUBBatch.exe")
+& (Join-Path $repoRoot "tools\tests\test-export-epub-zip-core.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-export-docx-v2-runtime.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-import-epub-v2-runtime.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot 'tools\tests\test-import-epub-fidelity.ps1') -BatchPath (Join-Path $batchOutputDir 'ImportEPUBBatch.exe')

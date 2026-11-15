@@ -9,6 +9,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <unordered_set>
+#include <zlib.h>
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -414,7 +415,7 @@ private:
     std::array<std::uint32_t, 256> table_{};
 };
 
-class ZipStoredWriter {
+class ZipWriter {
 public:
     bool Open(const std::filesystem::path& path, std::wstring* error) {
 #ifdef _WIN32
@@ -431,7 +432,7 @@ public:
         return true;
     }
 
-    bool AddFile(const std::string& pathUtf8, const std::vector<std::uint8_t>& data, std::wstring* error) {
+    bool AddFile(const std::string& pathUtf8, const std::vector<std::uint8_t>& data, std::wstring* error, bool store = false) {
         if (!out_) {
             SetError(error, L"ZIP writer is not open");
             return false;
@@ -455,25 +456,58 @@ public:
         e.path = pathUtf8;
         e.crc = crc_.Compute(data);
         e.size = static_cast<std::uint32_t>(data.size());
+        e.method = store ? 0 : 8;
         e.offset = Tell32(error);
         if (error && !error->empty()) return false;
 
         // Local file header.
         Write32(0x04034b50u);
-        Write16(10);          // version needed: 1.0 because method is Store.
+        Write16(e.method ? 20 : 10);
         Write16(0x0800);      // UTF-8 file names.
-        Write16(0);           // compression method: Store.
+        Write16(e.method);
         Write16(0);           // file time.
         Write16(0);           // file date.
         Write32(e.crc);
-        Write32(e.size);
+        Write32(e.method ? 0 : e.size); // patched after streaming raw Deflate
         Write32(e.size);
         Write16(static_cast<std::uint16_t>(e.path.size()));
         Write16(0);           // extra field length. Important for EPUB mimetype.
         out_.write(e.path.data(), static_cast<std::streamsize>(e.path.size()));
-        if (!data.empty()) {
+        if (e.method) {
+            z_stream stream{};
+            if (deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -MAX_WBITS, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
+                SetError(error, L"Cannot initialize EPUB compression"); return false;
+            }
+            std::array<std::uint8_t, 65536> buffer{};
+            std::size_t offset = 0;
+            std::uint64_t compressedSize = 0;
+            int result = Z_OK;
+            while (result != Z_STREAM_END) {
+                if (stream.avail_in == 0 && offset < data.size()) {
+                    const std::size_t count = (std::min)(data.size() - offset, static_cast<std::size_t>(65536));
+                    stream.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(data.data() + offset));
+                    stream.avail_in = static_cast<uInt>(count); offset += count;
+                }
+                stream.next_out = buffer.data(); stream.avail_out = static_cast<uInt>(buffer.size());
+                result = deflate(&stream, offset == data.size() ? Z_FINISH : Z_NO_FLUSH);
+                const std::size_t produced = buffer.size() - stream.avail_out;
+                compressedSize += produced;
+                if (compressedSize > 0xFFFFFFFFull || (result != Z_OK && result != Z_STREAM_END)) break;
+                if (produced) out_.write(reinterpret_cast<const char*>(buffer.data()), static_cast<std::streamsize>(produced));
+                if (!out_) break;
+            }
+            const int closed = deflateEnd(&stream);
+            if (result != Z_STREAM_END || closed != Z_OK || compressedSize > 0xFFFFFFFFull || !out_) {
+                SetError(error, L"Failed while compressing EPUB entry"); return false;
+            }
+            e.compressedSize = static_cast<std::uint32_t>(compressedSize);
+            const auto end = out_.tellp();
+            if (end < 0 || static_cast<std::uint64_t>(end) > 0xFFFFFFFFull) { SetError(error, L"Built-in ZIP writer does not support ZIP64 output"); return false; }
+            out_.seekp(static_cast<std::streamoff>(e.offset) + 18); Write32(e.compressedSize); out_.seekp(end);
+        } else if (!data.empty()) {
             out_.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
         }
+        if (!e.method) e.compressedSize = e.size;
         if (!out_) {
             SetError(error, L"Failed while writing ZIP local entry");
             return false;
@@ -492,13 +526,13 @@ public:
         for (const Entry& e : entries_) {
             Write32(0x02014b50u);
             Write16(0x0314);       // version made by: Unix-ish + 2.0.
-            Write16(10);           // version needed.
+            Write16(e.method ? 20 : 10);
             Write16(0x0800);       // UTF-8 file names.
-            Write16(0);            // Store.
+            Write16(e.method);
             Write16(0);
             Write16(0);
             Write32(e.crc);
-            Write32(e.size);
+            Write32(e.compressedSize);
             Write32(e.size);
             Write16(static_cast<std::uint16_t>(e.path.size()));
             Write16(0);            // extra length.
@@ -548,6 +582,8 @@ private:
         std::string path;
         std::uint32_t crc = 0;
         std::uint32_t size = 0;
+        std::uint32_t compressedSize = 0;
+        std::uint16_t method = 0;
         std::uint32_t offset = 0;
     };
 
@@ -1215,11 +1251,11 @@ bool EpubExporter::Export(const EpubBook& book,
         return false;
     }
 
-    ZipStoredWriter zip;
+    ZipWriter zip;
     if (!zip.Open(outputFile, errorMessage)) return false;
 
     // EPUB OCF requirement: mimetype must be first, uncompressed, and without extra field.
-    if (!zip.AddFile("mimetype", Bytes("application/epub+zip"), errorMessage)) return false;
+    if (!zip.AddFile("mimetype", Bytes("application/epub+zip"), errorMessage, true)) return false;
 
     if (!zip.AddFile("META-INF/container.xml", Bytes(Utf8FromWide(BuildContainerXml(options))), errorMessage)) return false;
 
@@ -1252,7 +1288,8 @@ bool EpubExporter::Export(const EpubBook& book,
     }
 
     for (const auto& r : book.resources) {
-        if (!zip.AddFile(insideRoot(r.href), r.data, errorMessage)) return false;
+        const bool compressedImage = r.mediaType == "image/jpeg" || r.mediaType == "image/png" || r.mediaType == "image/webp" || r.mediaType == "image/gif";
+        if (!zip.AddFile(insideRoot(r.href), r.data, errorMessage, compressedImage)) return false;
     }
 
     return zip.Close(errorMessage);

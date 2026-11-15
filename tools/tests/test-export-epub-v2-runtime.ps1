@@ -12,6 +12,13 @@ function Test-V2EpubContent([string]$Path, [int]$Version) {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zip = [System.IO.Compression.ZipFile]::OpenRead($Path)
     try {
+        $first = $zip.Entries[0]
+        if($first.FullName -ne 'mimetype' -or $first.Length -ne 20 -or $first.CompressedLength -ne 20) { throw 'The first EPUB entry must be the stored mimetype.' }
+        $header = [IO.File]::ReadAllBytes($Path)
+        if([BitConverter]::ToUInt32($header,0) -ne 0x04034b50 -or [BitConverter]::ToUInt16($header,8) -ne 0 -or [BitConverter]::ToUInt16($header,28) -ne 0) { throw 'The mimetype local ZIP header must use Store and no extra fields.' }
+        $css = $zip.GetEntry('OEBPS/styles/style.css')
+        if(-not $css -or $css.CompressedLength -ge $css.Length) { throw 'The stylesheet did not benefit from Deflate compression.' }
+        foreach($entry in $zip.Entries) { $inputStream = $entry.Open(); try { $inputStream.CopyTo([IO.Stream]::Null) } finally { $inputStream.Dispose() } }
         $texts = @{}; foreach ($entry in $zip.Entries) { if ($entry.FullName -match '\.(opf|xhtml|ncx)$') { $reader = [IO.StreamReader]::new($entry.Open(), [Text.Encoding]::UTF8, $true); try { $texts[$entry.FullName] = $reader.ReadToEnd() } finally { $reader.Dispose() } } }
     } finally { $zip.Dispose() }
     foreach ($required in @('OEBPS/content.opf','OEBPS/text/chapter_001.xhtml')) { if (-not $texts.ContainsKey($required) -or [string]::IsNullOrWhiteSpace($texts[$required])) { throw "v2 EPUB $Version lacks required content: $required" } }
