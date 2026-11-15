@@ -107,6 +107,11 @@ namespace
         std::set<std::wstring> warnedOrphanClosingTags;
         std::set<std::wstring> warnedUnmappedPoems;
         std::set<std::wstring> repairedXhtmlDocuments, unrecoveredXhtmlDocuments;
+        std::set<std::wstring> mappedLinkElements, removedBacklinkElements, retainedBacklinkElements, textOnlyBacklinkElements, fidelityLossElements;
+        CComPtr<IUnknown> diagnosticDocument;
+        std::unordered_map<IUnknown*, unsigned> diagnosticSiblingPositions;
+        std::set<IUnknown*> diagnosticIndexedParents;
+        std::vector<CComPtr<IUnknown>> diagnosticNodeReferences;
         std::map<std::wstring, bool> imageOnlyCoverPages;
         std::set<std::wstring> fb2GenreIds;
         bool fb2GenresLoaded = false;
@@ -128,7 +133,11 @@ namespace
 
     struct XhtmlCacheScope
     {
-        ~XhtmlCacheScope() { g_content.xhtmlCache.clear(); g_content.xhtmlCacheBytes = 0; }
+        ~XhtmlCacheScope() {
+            g_content.xhtmlCache.clear(); g_content.xhtmlCacheBytes = 0;
+            g_content.diagnosticSiblingPositions.clear(); g_content.diagnosticIndexedParents.clear();
+            g_content.diagnosticNodeReferences.clear(); g_content.diagnosticDocument.Release();
+        }
     };
 
     CStringW UniqueContentId(const CStringW& base)
@@ -1606,15 +1615,18 @@ namespace
         return !lowerRole.IsEmpty() && lowerRole.Find(lowerToken) >= 0;
     }
 
-    bool IsBacklinkElement(const MSXML2::IXMLDOMNodePtr& node)
+    bool IsMarkedBacklinkElement(const MSXML2::IXMLDOMNodePtr& node)
     {
         if (!node || MsxmlGetNodeType(node) != MSXML2::NODE_ELEMENT)
-            return false;
-        if (!g_options.removeFootnoteBacklinks)
             return false;
         return IsEpubType(node, L"backlink") || IsRoleToken(node, L"doc-backlink") ||
             HasSemanticCssClass(node, L"backlink") || HasSemanticCssClass(node, L"backlinks") ||
             HasSemanticCssClass(node, L"fn-backref");
+    }
+
+    bool IsBacklinkElement(const MSXML2::IXMLDOMNodePtr& node)
+    {
+        return g_options.removeFootnoteBacklinks && IsMarkedBacklinkElement(node);
     }
 
     bool IsNoteReferenceElement(const MSXML2::IXMLDOMNodePtr& node)
@@ -2804,6 +2816,83 @@ namespace
         bool inlineLineBreaks = false;
     };
 
+    // Stable source position even if an XHTML document is loaded again. Cache
+    // sibling ordinals only for the current DOM and retain their COM identities
+    // until that DOM changes; no document-wide quadratic sibling scans.
+    std::wstring DiagnosticElementKey(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
+    {
+        if (!node || ctx.currentXhtmlPath.IsEmpty()) return std::wstring();
+        std::vector<MSXML2::IXMLDOMNodePtr> chain;
+        MSXML2::IXMLDOMNodePtr current(node);
+        for (unsigned depth = 0; current && depth < 1024; ++depth) {
+            IXMLDOMNode* rawParent = nullptr;
+            if (FAILED(current->get_parentNode(&rawParent)) || !rawParent) break;
+            chain.push_back(current); current.Attach(rawParent);
+        }
+        if (!current || chain.empty() || MsxmlGetNodeType(current) != MSXML2::NODE_DOCUMENT) return std::wstring();
+        CComPtr<IUnknown> document;
+        if (FAILED(current->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&document.p)))) return std::wstring();
+        if (g_content.diagnosticDocument != document) {
+            g_content.diagnosticSiblingPositions.clear();
+            g_content.diagnosticIndexedParents.clear();
+            g_content.diagnosticNodeReferences.clear();
+            g_content.diagnosticDocument = document;
+        }
+        CStringW key(ctx.currentXhtmlPath); key.MakeLower();
+        for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
+            CComPtr<IUnknown> identity;
+            if (FAILED((*it)->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&identity.p)))) return std::wstring();
+            auto position = g_content.diagnosticSiblingPositions.find(identity);
+            if (position == g_content.diagnosticSiblingPositions.end()) {
+                IXMLDOMNode* rawParent = nullptr;
+                if (FAILED((*it)->get_parentNode(&rawParent)) || !rawParent) return std::wstring();
+                MSXML2::IXMLDOMNodePtr parent(rawParent, false);
+                CComPtr<IUnknown> parentIdentity;
+                if (FAILED(parent->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&parentIdentity.p)))) return std::wstring();
+                if (g_content.diagnosticIndexedParents.emplace(parentIdentity).second) {
+                    g_content.diagnosticNodeReferences.push_back(parentIdentity);
+                    IXMLDOMNode* rawChild = nullptr;
+                    if (FAILED(parent->get_firstChild(&rawChild))) return std::wstring();
+                    MSXML2::IXMLDOMNodePtr child(rawChild, false);
+                    unsigned ordinal = 0;
+                    while (child) {
+                        CComPtr<IUnknown> childIdentity;
+                        if (FAILED(child->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&childIdentity.p)))) return std::wstring();
+                        g_content.diagnosticSiblingPositions.emplace(childIdentity, ordinal++);
+                        g_content.diagnosticNodeReferences.push_back(childIdentity);
+                        IXMLDOMNode* rawNext = nullptr;
+                        if (FAILED(child->get_nextSibling(&rawNext))) return std::wstring();
+                        child.Attach(rawNext);
+                    }
+                }
+                position = g_content.diagnosticSiblingPositions.find(identity);
+                if (position == g_content.diagnosticSiblingPositions.end()) return std::wstring();
+            }
+            CStringW part; part.Format(L"/%u", position->second); key += part;
+        }
+        return std::wstring(key.GetString());
+    }
+
+    void RecordDiagnosticElement(std::set<std::wstring>& destination, const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
+    {
+        const std::wstring key = DiagnosticElementKey(node, ctx);
+        if (!key.empty()) destination.emplace(key);
+    }
+
+    void RecordBacklink(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
+    {
+        if (!IsMarkedBacklinkElement(node)) return;
+        auto& target = g_options.removeFootnoteBacklinks ? g_content.removedBacklinkElements :
+            (g_options.preserveLinks ? g_content.retainedBacklinkElements : g_content.textOnlyBacklinkElements);
+        RecordDiagnosticElement(target, node, ctx);
+    }
+
+    void RecordMappedLink(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, const CStringW& source, const CStringW& target)
+    {
+        if (!IsExternalHref(source) && !target.IsEmpty() && target[0] == L'#' && source != target)
+            RecordDiagnosticElement(g_content.mappedLinkElements, node, ctx);
+    }
+
     const ManifestItem* FindManifestItemById(const EpubPackage& package, const CStringW& id)
     {
         std::map<std::wstring, ManifestItem>::const_iterator it = package.manifest.find(std::wstring(id.GetString()));
@@ -3070,12 +3159,13 @@ namespace
         bool backgroundSet = false, backgroundImportant = false;
         CStringW listImageHref, listImageDir;
         bool listImageSet = false, listImageImportant = false, listImageInherit = false, listImageUnsupported = false;
-        bool hasVertical = false;
+        bool hasVertical = false, unsupportedFont = false;
         std::vector<CssSelectorPart> parts;
         int classSpecificity = 0, elementSpecificity = 0;
     };
     thread_local const std::vector<CssFontRule>* g_cssFontRules = nullptr;
     thread_local bool g_cssHasVerticalRules = false;
+    thread_local bool g_cssHasUnsupportedRules = false;
     CStringW SupportedCssFontDeclarations(CStringW declarations, CStringW& warning, bool* hasFont = nullptr);
 
     bool ParseCssNumericWeight(const CStringW& value, int& weight)
@@ -3604,7 +3694,9 @@ namespace
             CStringW selectors = css.Mid(position, open - position);
             CStringW declarations = css.Mid(open + 1, close - open - 1);
             bool affectsFont = false;
-            const CStringW supported = SupportedCssFontDeclarations(declarations, warning, &affectsFont);
+            CStringW declarationWarning;
+            const CStringW supported = SupportedCssFontDeclarations(declarations, declarationWarning, &affectsFont);
+            warning += declarationWarning;
             bool backgroundSet = false, backgroundImportant = false;
             CStringW backgroundHref;
             ParseCssBackground(declarations, backgroundSet, backgroundImportant, backgroundHref);
@@ -3624,6 +3716,7 @@ namespace
                     CStringW selector = selectors.Tokenize(L",", selectorPosition); selector.Trim();
                     if (selector.IsEmpty()) continue;
                     CssFontRule rule;
+                    rule.unsupportedFont = !declarationWarning.IsEmpty();
                     const CStringW originalSelector(selector);
                     CStringW lowerSelector(selector); lowerSelector.MakeLower();
                     if (lowerSelector.Right(8) == L"::before") { rule.pseudo = 1; selector = selector.Left(selector.GetLength() - 8); }
@@ -3660,7 +3753,7 @@ namespace
                     {
                         rule.contentSet = contentSet; rule.contentImportant = contentImportant; rule.content = generatedContent;
                         if (affectsVisibility) rule.visibilityDeclarations = declarations;
-                        if (contentSet || !supported.IsEmpty() || affectsVisibility) rules.push_back(rule);
+                        if (contentSet || !supported.IsEmpty() || affectsVisibility || rule.unsupportedFont) rules.push_back(rule);
                         continue;
                     }
                     if (affectsPosition) rule.positioningDeclarations = declarations;
@@ -3676,7 +3769,7 @@ namespace
                     rule.listImageUnsupported = listImage.unsupported;
                     rule.listImageHref = listImage.href;
                     rule.listImageDir = baseDir;
-                    if (!supported.IsEmpty() || backgroundSet || affectsVisibility || listImage.set || affectsPosition) rules.push_back(rule);
+                    if (!supported.IsEmpty() || backgroundSet || affectsVisibility || listImage.set || affectsPosition || rule.unsupportedFont) rules.push_back(rule);
                 }
             }
             position = close + 1;
@@ -3687,10 +3780,11 @@ namespace
     {
         const std::vector<CssFontRule>* previous_;
         bool previousHasVertical_;
+        bool previousHasUnsupported_;
         std::vector<CssFontRule> rules_;
     public:
         ScopedCssFontRules(const MSXML2::IXMLDOMDocument2Ptr& doc, const CStringW& path,
-            const ConvertContext& ctx, CStringW& warning) : previous_(g_cssFontRules), previousHasVertical_(g_cssHasVerticalRules)
+            const ConvertContext& ctx, CStringW& warning) : previous_(g_cssFontRules), previousHasVertical_(g_cssHasVerticalRules), previousHasUnsupported_(g_cssHasUnsupportedRules)
         {
             const auto head = FindFirstElementByLocalName(MsxmlGetDocumentElement(doc), L"head");
             const auto children = MsxmlGetChildNodes(head);
@@ -3733,8 +3827,9 @@ namespace
             });
             g_cssFontRules = &rules_;
             g_cssHasVerticalRules = std::any_of(rules_.begin(), rules_.end(), [](const CssFontRule& rule) { return rule.hasVertical; });
+            g_cssHasUnsupportedRules = std::any_of(rules_.begin(), rules_.end(), [](const CssFontRule& rule) { return rule.unsupportedFont; });
         }
-        ~ScopedCssFontRules() { g_cssFontRules = previous_; g_cssHasVerticalRules = previousHasVertical_; }
+        ~ScopedCssFontRules() { g_cssFontRules = previous_; g_cssHasVerticalRules = previousHasVertical_; g_cssHasUnsupportedRules = previousHasUnsupported_; }
     };
 
     bool CssComputedHidden(const MSXML2::IXMLDOMNodePtr& node)
@@ -3897,6 +3992,16 @@ namespace
 
     CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, InlineFontState font);
     CStringW InlineToFb2Impl(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, InlineFontState font, bool applyVertical);
+    void RecordUnsupportedInlineStyle(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
+    {
+        const CStringW style = Attr(node, L"style");
+        CStringW warning;
+        if (!style.IsEmpty()) SupportedCssFontDeclarations(style, warning);
+        if (warning.IsEmpty() && g_cssHasUnsupportedRules && g_cssFontRules)
+            for (const auto& rule : *g_cssFontRules)
+                if (rule.unsupportedFont && MatchesCssRule(node, rule, rule.pseudo)) { warning = L"unsupported"; break; }
+        if (!warning.IsEmpty()) RecordDiagnosticElement(g_content.fidelityLossElements, node, ctx);
+    }
     CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx)
     {
         MSXML2::IXMLDOMNode* parent = nullptr;
@@ -3938,6 +4043,8 @@ namespace
     CStringW InlineToFb2(const MSXML2::IXMLDOMNodePtr& node, const ConvertContext& ctx, InlineFontState font)
     {
         CStringW result = InlineToFb2Impl(node, ctx, font, true);
+        if (!result.IsEmpty() && node && MsxmlGetNodeType(node) == MSXML2::NODE_ELEMENT)
+            RecordUnsupportedInlineStyle(node, ctx);
         if (!node || MsxmlGetNodeType(node) != MSXML2::NODE_ELEMENT || !g_cssFontRules)
             return result;
         if (result.IsEmpty() && (LocalName(node) != L"span" || IsHiddenElement(node) ||
@@ -4071,6 +4178,7 @@ namespace
                 }
                 if (name == L"mroot" && operands.size() == 2)
                 {
+                    RecordDiagnosticElement(g_content.fidelityLossElements, node, ctx);
                     if (g_content.warnedInlineCss.emplace(L"mathml-root-approximation").second)
                         g_content.warnings += L"MathML indexed root was approximated as text.\r\n";
                     return CStringW(L"root(") + InlineToFb2(operands[1], ctx, font) + L", " +
@@ -4100,6 +4208,7 @@ namespace
                     }
                     if (!table.IsEmpty())
                     {
+                        RecordDiagnosticElement(g_content.fidelityLossElements, node, ctx);
                         if (g_content.warnedInlineCss.emplace(L"mathml-table-approximation").second)
                             g_content.warnings += L"MathML table layout was approximated as text.\r\n";
                         return table;
@@ -4120,6 +4229,7 @@ namespace
                             result += WrapInlinePreservingBoundarySpace(InlineToFb2(operands[2], ctx, font), L"sup");
                         return result;
                     }
+                    RecordDiagnosticElement(g_content.fidelityLossElements, node, ctx);
                     if (g_content.warnedInlineCss.emplace(L"mathml-over-under-approximation").second)
                         g_content.warnings += L"MathML over/under notation was approximated as text.\r\n";
                     if (name == L"mover" && (TrimString(NodeText(operands[1])) == L"¯" ||
@@ -4145,6 +4255,7 @@ namespace
                         const double lineWidth = wcstod(thickness.GetString(), &end);
                         if (!thickness.IsEmpty() && end != thickness.GetString() && lineWidth == 0.0)
                         {
+                            RecordDiagnosticElement(g_content.fidelityLossElements, node, ctx);
                             if (g_content.warnedInlineCss.emplace(L"mathml-barless-stack").second)
                                 g_content.warnings += L"MathML stack without a fraction bar was approximated as text.\r\n";
                             return CStringW(L"stack(") + InlineToFb2(operands[0], ctx, font) + L", " +
@@ -4215,11 +4326,13 @@ namespace
             return ctx.inlineLineBreaks ? L"<!--fbe-dedication-line-break-->" : L" ";
         if (name.CompareNoCase(L"a") == 0)
         {
+            RecordBacklink(node, ctx);
             if (IsBacklinkElement(node))
                 return CStringW();
 
             if (g_inlineLinkDepth != 0)
             {
+                RecordDiagnosticElement(g_content.fidelityLossElements, node, ctx);
                 g_content.warnings += L"Nested hyperlink was flattened because FB2 cannot nest links.\r\n";
                 return ChildrenInlineToFb2(node, ctx, font);
             }
@@ -4252,6 +4365,7 @@ namespace
                 const CStringW normalizedHref = href.IsEmpty() ? CStringW() :
                     (g_options.importNotes && note != g_content.noteLinks.end()
                         ? CStringW(L"#") + note->second : ResolveFb2Href(ctx, href));
+                if (g_options.preserveLinks && !excluded) RecordMappedLink(node, ctx, href, normalizedHref);
                 CStringW result, pending;
                 bool outerLinkEmitted = false;
                 auto flush = [&]() {
@@ -4321,6 +4435,7 @@ namespace
                 if (note != g_content.noteLinks.end())
                 {
                     ++g_content.importedNoteReferences;
+                    RecordMappedLink(node, ctx, href, CStringW(L"#") + note->second);
                     return L"<a l:href=\"#" + XmlEscape(note->second) + L"\" type=\"note\">" + text + L"</a>";
                 }
                 ++g_content.lostNoteReferences;
@@ -4333,7 +4448,10 @@ namespace
                 // An ordinary link can point to an anchor collected inside a
                 // note whose FB2 section uses a different root identifier.
                 if (g_options.importNotes && note != g_content.noteLinks.end())
+                {
+                    RecordMappedLink(node, ctx, href, CStringW(L"#") + note->second);
                     return L"<a l:href=\"#" + XmlEscape(note->second) + L"\">" + text + L"</a>";
+                }
                 // Missing source fragments cannot become valid FB2 targets;
                 // preserve their visible content and report the source defect.
                 if (!IsExternalHref(href) && !href.Left(href.Find(L'#') >= 0 ? href.Find(L'#') : href.GetLength()).IsEmpty() &&
@@ -4344,12 +4462,14 @@ namespace
                 }
                 CStringW normalizedHref = ResolveFb2Href(ctx, href);
                 if (normalizedHref.IsEmpty()) return text;
+                RecordMappedLink(node, ctx, href, normalizedHref);
                 return L"<a l:href=\"" + XmlEscape(normalizedHref) + L"\">" + text + L"</a>";
             }
             return text;
         }
         if (name == L"video")
         {
+            RecordDiagnosticElement(g_content.fidelityLossElements, node, ctx);
             g_content.warnings += L"EPUB video is not supported; its poster and fallback content were retained when available.\r\n";
             return Fb2ImageElementForNode(ctx, node) + ChildrenInlineToFb2(node, ctx, font);
         }
@@ -6329,6 +6449,7 @@ namespace
 
         if (IsBacklinkElement(node))
         {
+            RecordBacklink(node, ctx);
             // Keep anchors that can still be targets of other links.
             out += AnchorMarkerParagraphsFromRawIds(CollectRawAnchorIds(node), 0, ctx);
             return;
@@ -6337,6 +6458,7 @@ namespace
         CStringW name = LocalName(node);
         if (name.CompareNoCase(L"script") == 0 || name.CompareNoCase(L"style") == 0 || name.CompareNoCase(L"head") == 0)
             return;
+        RecordUnsupportedInlineStyle(node, ctx);
 
         const CStringW backgroundImage = EmptyBackgroundImage(node, ctx, false);
         if (!backgroundImage.IsEmpty())
@@ -6458,6 +6580,7 @@ namespace
 
         if (g_options.importPoemsEpigraphs && IsEpubType(node, L"z3998:poem")) {
             if (AppendSimpleZ3998Poem(node, out, ctx)) return;
+            RecordDiagnosticElement(g_content.fidelityLossElements, node, ctx);
             if (g_content.warnedUnmappedPoems.emplace(ctx.currentXhtmlPath.GetString()).second)
                 g_content.warnings += L"Poem structure could not be mapped unambiguously; review the existing conversion: " + ctx.currentXhtmlPath + L"\r\n";
         }
@@ -9671,6 +9794,11 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     auto failWithImportLog = [&]() -> bool {
         log.AddFormatInt(L"Recovered XHTML documents: %d", static_cast<int>(g_content.repairedXhtmlDocuments.size()));
         log.AddFormatInt(L"Unrecovered XHTML documents: %d", static_cast<int>(g_content.unrecoveredXhtmlDocuments.size()));
+        log.AddFormatInt(L"Rewritten internal links: %d", static_cast<int>(g_content.mappedLinkElements.size()));
+        log.AddFormatInt(L"Marked backlinks removed: %d", static_cast<int>(g_content.removedBacklinkElements.size()));
+        log.AddFormatInt(L"Marked backlinks retained: %d", static_cast<int>(g_content.retainedBacklinkElements.size()));
+        log.AddFormatInt(L"Marked backlinks retained as text: %d", static_cast<int>(g_content.textOnlyBacklinkElements.size()));
+        log.AddFormatInt(L"Elements with detected fidelity limitations: %d", static_cast<int>(g_content.fidelityLossElements.size()));
         log.Add(L"ERROR: " + errorText);
         if (options.keepTempOnError) temp.Keep();
         log.SaveIfRequested(epubPath, options.writeLogOnWarnings);
@@ -10015,6 +10143,12 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         g_content.noteReferences, g_content.importedNoteReferences, g_content.lostNoteReferences,
         g_content.imageReferences, static_cast<unsigned>(usedImageIds.size()), g_content.importedImages, g_content.skippedImages);
     log.Add(inventory);
+    log.AddFormatInt(L"Rewritten internal links: %d", static_cast<int>(g_content.mappedLinkElements.size()));
+    log.AddFormatInt(L"Marked backlinks removed: %d", static_cast<int>(g_content.removedBacklinkElements.size()));
+    log.AddFormatInt(L"Marked backlinks retained: %d", static_cast<int>(g_content.retainedBacklinkElements.size()));
+    log.AddFormatInt(L"Marked backlinks retained as text: %d", static_cast<int>(g_content.textOnlyBacklinkElements.size()));
+    log.AddFormatInt(L"Elements with detected fidelity limitations: %d", static_cast<int>(g_content.fidelityLossElements.size()));
+
     if (!warning.IsEmpty())
         log.Add(warning);
 
@@ -10113,7 +10247,13 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         markupCounts.Format(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_MARKUP_COUNTS,
             L"XHTML documents recovered: %d; not recovered: %d.")),
             static_cast<int>(g_content.repairedXhtmlDocuments.size()), static_cast<int>(g_content.unrecoveredXhtmlDocuments.size()));
-        errorText = inventory + diagnosticCounts + L"\r\n" + markupCounts + L"\r\nImport completed with warnings. Detailed diagnostics are available in the import log when enabled.\r\n";
+        CStringW fidelityCounts;
+        fidelityCounts.Format(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_FIDELITY_COUNTS,
+            L"Rewritten internal links: %d; marked backlinks removed: %d, retained: %d, retained as text: %d; elements with detected fidelity limitations: %d.")),
+            static_cast<int>(g_content.mappedLinkElements.size()), static_cast<int>(g_content.removedBacklinkElements.size()),
+            static_cast<int>(g_content.retainedBacklinkElements.size()), static_cast<int>(g_content.textOnlyBacklinkElements.size()),
+            static_cast<int>(g_content.fidelityLossElements.size()));
+        errorText = inventory + diagnosticCounts + L"\r\n" + markupCounts + L"\r\n" + fidelityCounts + L"\r\nImport completed with warnings. Detailed diagnostics are available in the import log when enabled.\r\n";
         log.Add(L"[WARNING] " + diagnosticCounts);
     }
     log.Add(warning.IsEmpty() ? L"Import completed." : L"Import completed with warnings.");

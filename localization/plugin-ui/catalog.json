@@ -4701,6 +4701,25 @@
         "bg-BG": "Раздели: %d; липсващи изходни ресурси: %d; липсващи изходни котви: %d; служебни връзки, запазени като текст: %d; липсващи цели във FB2: %d."
       }
     },
+    "import_epub.runtime.fidelity_counts": {
+      "component": "import-epub.runtime",
+      "resourceId": "IDS_IMPORT_RUNTIME_FIDELITY_COUNTS",
+      "source": "Перенаправлено внутренних ссылок: %d; обратных ссылок удалено: %d, сохранено: %d, оставлено текстом: %d; элементов с обнаруженной потерей оформления или семантики: %d.",
+      "translations": {
+        "en-US": "Rewritten internal links: %d; marked backlinks removed: %d, retained: %d, retained as text: %d; elements with detected fidelity limitations: %d.",
+        "ru-RU": "Перенаправлено внутренних ссылок: %d; обратных ссылок удалено: %d, сохранено: %d, оставлено текстом: %d; элементов с обнаруженной потерей оформления или семантики: %d.",
+        "uk-UA": "Перенаправлено внутрішніх посилань: %d; зворотних посилань видалено: %d, збережено: %d, залишено текстом: %d; елементів із виявленою втратою оформлення або семантики: %d.",
+        "de-DE": "Interne Links umgeschrieben: %d; Rückverweise entfernt: %d, erhalten: %d, als Text erhalten: %d; Elemente mit erkannten Einschränkungen: %d.",
+        "fr-FR": "Liens internes réécrits : %d ; liens retour supprimés : %d, conservés : %d, conservés en texte : %d ; éléments avec perte détectée : %d.",
+        "es-ES": "Enlaces internos reescritos: %d; enlaces de retorno eliminados: %d, conservados: %d, conservados como texto: %d; elementos con pérdidas detectadas: %d.",
+        "it-IT": "Collegamenti interni riscritti: %d; collegamenti di ritorno rimossi: %d, mantenuti: %d, mantenuti come testo: %d; elementi con perdite rilevate: %d.",
+        "pl-PL": "Przepisane łącza wewnętrzne: %d; odnośniki powrotne usunięte: %d, zachowane: %d, zachowane jako tekst: %d; elementy z wykrytą utratą: %d.",
+        "pt-PT": "Ligações internas reescritas: %d; ligações de retorno removidas: %d, mantidas: %d, mantidas como texto: %d; elementos com perdas detetadas: %d.",
+        "nl-NL": "Interne links herschreven: %d; teruglinks verwijderd: %d, behouden: %d, als tekst behouden: %d; elementen met vastgesteld verlies: %d.",
+        "cs-CZ": "Přepsané vnitřní odkazy: %d; zpětné odkazy odstraněny: %d, zachovány: %d, zachovány jako text: %d; prvky se zjištěnou ztrátou: %d.",
+        "bg-BG": "Пренасочени вътрешни връзки: %d; обратни връзки премахнати: %d, запазени: %d, запазени като текст: %d; елементи с установена загуба: %d."
+      }
+    },
     "import_epub.runtime.markup_counts": {
       "component": "import-epub.runtime",
       "resourceId": "IDS_IMPORT_RUNTIME_MARKUP_COUNTS",

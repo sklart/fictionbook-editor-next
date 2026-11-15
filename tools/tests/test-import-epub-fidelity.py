@@ -2115,6 +2115,37 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertIn('missing19', self.diagnostics)
         self.assertTrue(list(self.last_folder.glob('*.log')))
 
+    def test_diagnostic_counts_distinct_links_and_loss_elements(self):
+        body = ('<h1>Chapter</h1><p><a href="chapter.xhtml#target">one</a> '
+                '<a href="chapter.xhtml#target">two</a> <span style="vertical-align: 42px">first</span> '
+                '<span style="vertical-align: 42px">second</span> '
+                '<a id="ref" epub:type="noteref" href="#n">1</a></p>'
+                '<p id="target">Target</p><aside epub:type="footnote" id="n"><p>Note '
+                '<a epub:type="backlink" href="#ref">back</a>'
+                '<a epub:type="backlink" href="#ref">back</a></p></aside>')
+        for options, removed, retained, text_only in (([], 2, 0, 0), (['--keep-footnote-backlinks'], 0, 2, 0),
+                                                      (['--keep-footnote-backlinks', '--no-links'], 0, 0, 2)):
+            with self.subTest(options=options):
+                self.convert(body, options=options)
+                self.assertIn(f'Marked backlinks removed: {removed}', self.diagnostics)
+                self.assertIn(f'Marked backlinks retained: {retained}', self.diagnostics)
+                self.assertIn(f'Marked backlinks retained as text: {text_only}', self.diagnostics)
+                self.assertIn('Elements with detected fidelity limitations: 2', self.diagnostics)
+                self.assertIn(f'Rewritten internal links: {0 if "--no-links" in options else 2}', self.diagnostics)
+
+    def test_diagnostic_counts_separate_source_documents(self):
+        chapter = '<p><a href="chapter.xhtml#target">one</a><a href="chapter.xhtml#target">two</a></p><p id="target">Target</p>'
+        second = '<p><a href="second.xhtml#target">one</a><a href="second.xhtml#target">two</a></p><p id="target">Target</p>'
+        self.convert(chapter, extra={'Text/second.xhtml': ('second', 'application/xhtml+xml', second)},
+                     spine=['chapter', 'second'], navigation=False)
+        self.assertIn('Rewritten internal links: 4', self.diagnostics)
+
+    def test_diagnostic_counts_stylesheet_losses_per_element(self):
+        self.convert('<p><span class="broken">First</span><span class="broken">Second</span></p>',
+                     head='<style>.broken { vertical-align: 42px; }</style>')
+        self.assertIn('Elements with detected fidelity limitations: 2', self.diagnostics)
+        self.assertIn('Unsupported CSS vertical-align', self.diagnostics)
+
     def test_warning_counts_reach_existing_csv_and_html_reports(self):
         self.convert('<p>Text <a href="#missing">Broken</a></p>')
         folder = self.last_folder
@@ -2130,6 +2161,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         for text in (csv, html):
             self.assertIn('OK_WITH_WARNINGS', text)
             self.assertTrue('missing source anchors: 1' in text or 'отсутствующих исходных якорей: 1' in text, text)
+            self.assertTrue('elements with detected fidelity limitations:' in text or 'элементов с обнаруженной потерей оформления или семантики:' in text, text)
 
     def test_unresolved_local_fragment_retains_text_and_warning(self):
         for options in ([], ['--no-validate']):
