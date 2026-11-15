@@ -14,6 +14,62 @@
 #include "RuntimeTestScriptingEnvironment.inl"
 #include "RuntimeTestDocumentTree.inl"
 #include "RuntimeTestPluginOptions.inl"
+	if (IsFbeTestScenario(L"delete-table-context-target"))
+	{
+		bool passed = true; CStringA report;
+		try {
+			MSHTML::IHTMLDocument2Ptr doc(m_doc->m_body.Document());
+			MSHTML::IHTMLWindow2Ptr window(doc->parentWindow);
+			auto script = [&](LPCWSTR text) { return SUCCEEDED(window->execScript(_bstr_t(text), _bstr_t(L"JScript"))); };
+			auto element = [&](LPCWSTR id) { return MSHTML::IHTMLElementPtr(MSHTML::IHTMLDocument3Ptr(doc)->getElementById(id)); };
+			const CString originalA(static_cast<LPCWSTR>(element(L"table-a")->outerHTML));
+			const CString originalB(static_cast<LPCWSTR>(element(L"table-b")->outerHTML));
+			passed = script(L"var e=document.createEventObject();e.button=1;document.getElementById('a0').fireEvent('onmousedown',e);document.getElementById('a1').fireEvent('onmousemove',e);document.getElementById('a1').fireEvent('onmouseup',e);") && passed;
+			const size_t selectedCells = m_doc->m_body.TableSelectionCountForTest();
+			passed = selectedCells == 2 && passed; report.AppendFormat("selected-cells=%u\n", static_cast<unsigned>(selectedCells));
+			struct MenuDriver { static void CALLBACK Cancel(HWND frame, UINT, UINT_PTR id, DWORD) { ::KillTimer(frame, id); ::EndMenu(); }
+			static void CALLBACK Select(HWND frame, UINT, UINT_PTR id, DWORD) {
+				::KillTimer(frame, id); ::SendMessage(frame, WM_COMMAND, MAKEWPARAM(ID_TABLE_DELETE_TABLE, 0), 0); ::EndMenu();
+			} };
+			const UINT_PTR cancelTimer = ::SetTimer(m_hWnd, 0, 100, &MenuDriver::Cancel);
+			if (cancelTimer) passed = script(L"document.getElementById('b0').fireEvent('oncontextmenu');") && passed;
+			if (cancelTimer) ::KillTimer(m_hWnd, cancelTimer);
+			::SendMessage(m_hWnd, WM_COMMAND, MAKEWPARAM(ID_TABLE_DELETE_TABLE, 0), 0);
+			const bool cancelSafe = cancelTimer && !element(L"table-a") && element(L"table-b");
+			BOOL handled = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+			passed = script(L"var e=document.createEventObject();e.button=1;document.getElementById('a0').fireEvent('onmousedown',e);document.getElementById('a1').fireEvent('onmousemove',e);document.getElementById('a1').fireEvent('onmouseup',e);") && passed;
+			passed = m_doc->m_body.TableSelectionCountForTest() == 2 && passed;
+			const UINT_PTR timer = ::SetTimer(m_hWnd, 0, 100, &MenuDriver::Select);
+			passed = timer != 0 && passed;
+			if (timer) passed = script(L"document.getElementById('b0').fireEvent('oncontextmenu');") && passed;
+			if (timer) ::KillTimer(m_hWnd, timer);
+			const bool deletedB = element(L"table-a") && !element(L"table-b") && originalA == CString(static_cast<LPCWSTR>(element(L"table-a")->outerHTML));
+			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+			const bool undo = element(L"table-a") && element(L"table-b") && originalA == CString(static_cast<LPCWSTR>(element(L"table-a")->outerHTML)) && originalB == CString(static_cast<LPCWSTR>(element(L"table-b")->outerHTML));
+			m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
+			const bool redo = element(L"table-a") && !element(L"table-b");
+			passed = script(L"var e=document.createEventObject();e.button=1;document.getElementById('outside').fireEvent('onmousedown',e);var r=document.body.createTextRange();r.moveToElementText(document.getElementById('outside'));r.collapse(true);r.select();") && passed;
+			::SendMessage(m_hWnd, WM_COMMAND, MAKEWPARAM(ID_TABLE_DELETE_TABLE, 0), 0);
+			const bool outsideSafe = element(L"table-a") && !element(L"table-b");
+			passed = script(L"var e=document.createEventObject();e.button=1;document.getElementById('a0').fireEvent('onmousedown',e);document.getElementById('a1').fireEvent('onmousemove',e);document.getElementById('a1').fireEvent('onmouseup',e);") && passed;
+			const bool sameSelection = m_doc->m_body.TableSelectionCountForTest() == 2;
+			const UINT_PTR sameTimer = ::SetTimer(m_hWnd, 0, 100, &MenuDriver::Select);
+			if (sameTimer) passed = script(L"document.getElementById('a1').fireEvent('oncontextmenu');") && passed;
+			if (sameTimer) ::KillTimer(m_hWnd, sameTimer);
+			const bool sameTable = sameTimer && sameSelection && !element(L"table-a") && !element(L"table-b");
+			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+			auto selectA = [&]() { return script(L"var e=document.createEventObject();e.button=1;document.getElementById('a0').fireEvent('onmousedown',e);var r=document.body.createTextRange();r.moveToElementText(document.getElementById('a0'));r.collapse(true);r.select();"); };
+			passed = selectA() && passed; ::SendMessage(m_hWnd, WM_COMMAND, MAKEWPARAM(ID_TABLE_DELETE_TABLE, 0), 0);
+			const bool mainMenu = !element(L"table-a") && !element(L"table-b");
+			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+			passed = selectA() && passed; ::SendMessage(m_hWnd, WM_COMMAND, MAKEWPARAM(ID_TABLE_DELETE_TABLE, 0), reinterpret_cast<LPARAM>(m_CmdToolbar.m_hWnd));
+			const bool toolbar = !element(L"table-a") && !element(L"table-b");
+			passed = passed && cancelSafe && deletedB && undo && redo && outsideSafe && sameTable && mainMenu && toolbar;
+			report.AppendFormat("cancel-safe=%d\ndeleted-b=%d\nundo=%d\nredo=%d\noutside-safe=%d\nsame-table=%d\nmain-menu=%d\ntoolbar-route=%d\n", cancelSafe, deletedB, undo, redo, outsideSafe, sameTable, mainMenu, toolbar);
+		} catch (_com_error& error) { report.AppendFormat("hresult=%08lx\n", error.Error()); passed = false; }
+		report.AppendFormat("result=%s\n", passed ? "pass" : "fail"); DWORD written = 0;
+		output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"delete-table-tree-selection"))
 	{
 		bool passed = true;

@@ -4637,6 +4637,13 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 	tp.uFlags = TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON;
 	tp.x = oe->screenX;
 	tp.y = oe->screenY;
+	// Keep the clicked table target only for the duration of this popup.  The
+	// active rectangular selection may belong to an entirely different table.
+	struct ContextTableScope {
+		MSHTML::IHTMLElementPtr& slot;
+		~ContextTableScope() { slot.Release(); }
+	} contextTableScope{m_context_table_cell};
+	m_context_table_cell = contextCell;
 	::SendMessage(m_frame, AU::WM_TRACKPOPUPMENU, 0, (LPARAM)&tp);
 
 	return VARIANT_TRUE;
@@ -5766,9 +5773,17 @@ LRESULT CFBEView::OnTableDeleteTable(WORD, WORD, HWND, BOOL&)
 {
 	try
 	{
-		MSHTML::IHTMLElementPtr cell(SelectionStructTableCon());
+		MSHTML::IHTMLElementPtr cell(m_context_table_cell ? m_context_table_cell : SelectionStructTableCon());
 		MSHTML::IHTMLElementPtr table(FbeTable::FindTableElement(cell));
 		if (!table || !table->parentElement) return 0;
+		if ((m_table_selection_anchor && FbeTable::FindTableElement(m_table_selection_anchor) == table) ||
+			(!m_table_selection_cells.empty() && FbeTable::FindTableElement(m_table_selection_cells.front()) == table))
+		{
+			UpdateTableCellHighlights(m_table_selection_cells, std::vector<MSHTML::IHTMLElementPtr>());
+			m_table_selection_anchor.Release();
+			m_table_selection_dragging = false;
+		}
+		if (m_cur_sel && FbeTable::FindTableElement(m_cur_sel) == table) m_cur_sel.Release();
 		FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"delete table");
 		MSHTML::IHTMLDOMNodePtr tableNode(table);
 		MSHTML::IHTMLDOMNodePtr parent(table->parentElement);

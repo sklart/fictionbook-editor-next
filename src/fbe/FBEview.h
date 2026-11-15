@@ -432,6 +432,7 @@ protected:
   bool			    m_initialized:1;
 
   MSHTML::IHTMLElementPtr   m_cur_sel;
+  MSHTML::IHTMLElementPtr   m_context_table_cell;
   MSHTML::IHTMLElementPtr   m_table_selection_anchor;
   std::vector<MSHTML::IHTMLElementPtr> m_table_selection_cells;
   bool                      m_table_selection_dragging;
@@ -948,6 +949,7 @@ public:
 	// MSHTML's transient selection unavailable.  UI snapshots may reuse it
 	// without issuing another SelectionContainer query.
 	MSHTML::IHTMLElementPtr   TableSelectionAnchor() const { return m_table_selection_anchor; }
+	size_t TableSelectionCountForTest() const { return m_table_selection_cells.size(); }
 	CStringA TableStructuralSnapshot();
 	static void ResetTableGridBuildCountForTest();
 	static long TableGridBuildCountForTest();
