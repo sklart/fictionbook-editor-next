@@ -52,10 +52,14 @@ try {
         @{ Id='toggle-preserve'; Table=$preserveTable },
         @{ Id='toggle-preserve-header'; Table=$preserveHeaderTable }
     )
+    if($Operation -eq 'delete-table') { $fixtures += @{ Id='single'; Table='<tr><td id="single-cell"><strong>single</strong></td></tr>' }; $fixtures += @{ Id='single-only'; Table='<tr><td>single</td></tr>' }; $fixtures += @{ Id='titled-only'; Table='<tr><td>single</td></tr>' }; $fixtures += @{ Id='image'; Table='<tr><td id="image-cell"><strong>text</strong><image l:href="#illustration"/></td></tr>' } }
     if($FixtureId) { $fixtures=@($fixtures | Where-Object Id -eq $FixtureId); if($fixtures.Count -ne 1) { throw "Не найден structural fixture: $FixtureId" } }
     foreach($case in $fixtures) {
         $fixture=Join-Path $directory ($case.Id + '.fb2'); $report=Join-Path $directory ($case.Id + '.tsv'); $reopen=Join-Path $directory ($case.Id + '-reopen.tsv')
-        ('<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>structural table</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>structural-' + $case.Id + '</id><version>1.0</version></document-info></description><body><section><table id="structural">' + $case.Table + '</table></section></body></FictionBook>') | Set-Content -LiteralPath $fixture -Encoding utf8
+        $surroundBefore = if($case.Id -eq 'titled-only') { '<title><p>title</p></title>' } elseif($Operation -eq 'delete-table' -and $case.Id -ne 'single-only') { '<p id="before">before</p>' } else { '' }
+        $surroundAfter = if($Operation -eq 'delete-table' -and $case.Id -notin @('single-only','titled-only')) { '<table id="neighbor"><tr><td>neighbor</td></tr></table><p id="after">after</p>' } else { '' }
+        $binary = if($case.Id -eq 'image') { '<binary id="illustration" content-type="image/png">iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aN8AAAAASUVORK5CYII=</binary>' } else { '' }
+        ('<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>structural table</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>structural-' + $case.Id + '</id><version>1.0</version></document-info></description><body><section>' + $surroundBefore + '<table id="structural">' + $case.Table + '</table>' + $surroundAfter + '</section></body>' + $binary + '</FictionBook>') | Set-Content -LiteralPath $fixture -Encoding utf8
         $oldMode=$env:FBE_NEXT_TEST_MODE; $oldScenario=$env:FBE_NEXT_TEST_SCENARIO; $oldTarget=$env:FBE_NEXT_TEST_TABLE_TARGET; $oldOperation=$env:FBE_NEXT_TEST_TABLE_OPERATION; $oldSecondOperation=$env:FBE_NEXT_TEST_TABLE_SECOND_OPERATION; $oldRuntimeStyle=$env:FBE_NEXT_TEST_TABLE_RUNTIME_STYLE; $oldRoute=$env:FBE_NEXT_TEST_TABLE_ROUTE; $oldFault=$env:FBE_NEXT_FAULT_INJECT
         try { $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='table-structural'; if($Target){$env:FBE_NEXT_TEST_TABLE_TARGET=$Target}; if($Operation){$env:FBE_NEXT_TEST_TABLE_OPERATION=$Operation}; if($SecondOperation){$env:FBE_NEXT_TEST_TABLE_SECOND_OPERATION=$SecondOperation}; if($RuntimeStyle){$env:FBE_NEXT_TEST_TABLE_RUNTIME_STYLE=$RuntimeStyle}; if($Fault){$env:FBE_NEXT_FAULT_INJECT=$Fault}; if($RouteThroughFrame){$env:FBE_NEXT_TEST_TABLE_ROUTE='1'}; Invoke-Fbe @('-b',$report,$fixture) "table structural handlers ($($case.Id))" }
         finally { foreach($state in @(@('FBE_NEXT_TEST_MODE',$oldMode),@('FBE_NEXT_TEST_SCENARIO',$oldScenario),@('FBE_NEXT_TEST_TABLE_TARGET',$oldTarget),@('FBE_NEXT_TEST_TABLE_OPERATION',$oldOperation),@('FBE_NEXT_TEST_TABLE_SECOND_OPERATION',$oldSecondOperation),@('FBE_NEXT_TEST_TABLE_RUNTIME_STYLE',$oldRuntimeStyle),@('FBE_NEXT_TEST_TABLE_ROUTE',$oldRoute),@('FBE_NEXT_FAULT_INJECT',$oldFault))){if($null -eq $state[1]){Remove-Item ("Env:"+$state[0]) -ErrorAction SilentlyContinue}else{Set-Item ("Env:"+$state[0]) $state[1]}} }
@@ -63,6 +67,7 @@ try {
         foreach($operation in $(if($Operation){@($Operation)}else{@('toggle-header','insert-row-above','insert-row-below','delete-row','insert-column-left','insert-column-right','delete-column','make-header','make-normal')})) {
             $before=$rows|Where-Object phase -eq "$operation-before"; $after=$rows|Where-Object phase -eq "$operation-after"; $undo=$rows|Where-Object phase -eq "$operation-undo"; $redo=$rows|Where-Object phase -eq "$operation-redo"
             if(@($before,$after,$undo,$redo).Count -ne 4) { throw "Нет live DOM snapshots для $operation ($($case.Id))." }
+            if($operation -eq 'delete-table' -and ($after.dirty -ne '1' -or $after.caret_attached -ne '1')) { throw "Delete table did not retain a valid caret and dirty state ($($case.Id)): $($after | Out-String)" }
             $secondBefore=@($rows|Where-Object phase -eq "$SecondOperation-second-before"); $secondAfter=@($rows|Where-Object phase -eq "$SecondOperation-second-after")
             if($SecondOperation -and ($secondBefore.Count -ne 1 -or $secondAfter.Count -ne 1)) { throw "Нет second-operation snapshots для $operation → $SecondOperation ($($case.Id))." }
             if($SecondOperation -and $secondAfter[0].grid_signature -eq $secondBefore[0].grid_signature) { throw "Вторая операция $SecondOperation не изменила semantic grid ($($case.Id))." }
@@ -141,6 +146,11 @@ try {
         }
         if(-not ($rows|Where-Object phase -eq 'save-complete')) { throw "Production structural scenario не сохранил документ ($($case.Id))." }
         Assert-Schema $fixture
+        if($Operation -eq 'delete-table' -and $case.Id -notin @('single-only','titled-only')) {
+            [xml]$savedDocument = Get-Content -LiteralPath $fixture -Raw -Encoding utf8
+            $namespace = [Xml.XmlNamespaceManager]::new($savedDocument.NameTable); $namespace.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
+            if($savedDocument.SelectNodes('//fb:table', $namespace).Count -ne 1 -or -not $savedDocument.SelectSingleNode('//fb:table[@id="neighbor"]', $namespace) -or -not $savedDocument.SelectSingleNode('//fb:p[@id="before"]', $namespace) -or -not $savedDocument.SelectSingleNode('//fb:p[@id="after"]', $namespace)) { throw 'Delete table changed its neighbouring elements.' }
+        }
         $oldMode=$env:FBE_NEXT_TEST_MODE; $oldScenario=$env:FBE_NEXT_TEST_SCENARIO
         try { $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='table-roundtrip'; Invoke-Fbe @('-b',$reopen,$fixture) "reopen and second Save structural table ($($case.Id))" }
         finally { if($null -eq $oldMode){Remove-Item Env:FBE_NEXT_TEST_MODE -ErrorAction SilentlyContinue}else{$env:FBE_NEXT_TEST_MODE=$oldMode}; if($null -eq $oldScenario){Remove-Item Env:FBE_NEXT_TEST_SCENARIO -ErrorAction SilentlyContinue}else{$env:FBE_NEXT_TEST_SCENARIO=$oldScenario} }

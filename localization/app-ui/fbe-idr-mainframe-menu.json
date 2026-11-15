@@ -1019,6 +1019,10 @@
       "kind": "MENUITEM", "targetId": "ID_TABLE_INSERT_ROW_BELOW",
       "translations": { "en-US": "Insert row &below", "ru-RU": "Добавить строку с&низу", "uk-UA": "Додати рядок з&низу", "de-DE": "Zeile &unten einfügen", "fr-FR": "Insérer une ligne au-&dessous", "es-ES": "Insertar fila de&bajo", "it-IT": "Inserisci riga &sotto", "pl-PL": "Wstaw wiersz p&oniżej", "pt-PT": "Inserir linha a&baixo", "nl-NL": "Rij &hieronder invoegen", "cs-CZ": "Vložit řádek &pod", "bg-BG": "Вмъкни ред &отдолу" }
     },
+    "fbe.menu.idr_mainframe.table.delete_table": {
+      "kind": "MENUITEM", "targetId": "ID_TABLE_DELETE_TABLE",
+      "translations": { "en-US": "Delete table", "ru-RU": "Удалить таблицу", "uk-UA": "Видалити таблицю", "de-DE": "Tabelle löschen", "fr-FR": "Supprimer le tableau", "es-ES": "Eliminar tabla", "it-IT": "Elimina tabella", "pl-PL": "Usuń tabelę", "pt-PT": "Eliminar tabela", "nl-NL": "Tabel verwijderen", "cs-CZ": "Odstranit tabulku", "bg-BG": "Изтрий таблицата" }
+    },
     "fbe.menu.idr_mainframe.table.delete_row": {
       "kind": "MENUITEM", "targetId": "ID_TABLE_DELETE_ROW",
       "translations": { "en-US": "&Delete row", "ru-RU": "&Удалить строку", "uk-UA": "В&идалити рядок", "de-DE": "Zeile &löschen", "fr-FR": "&Supprimer la ligne", "es-ES": "&Eliminar fila", "it-IT": "&Elimina riga", "pl-PL": "&Usuń wiersz", "pt-PT": "&Eliminar linha", "nl-NL": "Rij &verwijderen", "cs-CZ": "&Odstranit řádek", "bg-BG": "&Изтрий ред" }

@@ -609,6 +609,7 @@ static CString GetLocalizedMainMenuText(UINT commandId, const wchar_t* fallback)
 	{
 	case ID_TABLE_INSERT_ROW_ABOVE: runtimeKey = L"fbe.menu.idr_mainframe.table.insert_row_above"; break;
 	case ID_TABLE_INSERT_ROW_BELOW: runtimeKey = L"fbe.menu.idr_mainframe.table.insert_row_below"; break;
+	case ID_TABLE_DELETE_TABLE: runtimeKey = L"fbe.menu.idr_mainframe.table.delete_table"; break;
 	case ID_TABLE_DELETE_ROW: runtimeKey = L"fbe.menu.idr_mainframe.table.delete_row"; break;
 	case ID_TABLE_INSERT_COLUMN_LEFT: runtimeKey = L"fbe.menu.idr_mainframe.table.insert_column_left"; break;
 	case ID_TABLE_INSERT_COLUMN_RIGHT: runtimeKey = L"fbe.menu.idr_mainframe.table.insert_column_right"; break;
@@ -1044,6 +1045,7 @@ bool CFBEView::CheckCommand(WORD wID) {
 	  return InsertTable(true);
   case ID_TABLE_INSERT_ROW_ABOVE:
   case ID_TABLE_INSERT_ROW_BELOW:
+  case ID_TABLE_DELETE_TABLE:
   case ID_TABLE_DELETE_ROW:
   case ID_TABLE_INSERT_COLUMN_LEFT:
   case ID_TABLE_INSERT_COLUMN_RIGHT:
@@ -4591,6 +4593,7 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_ROW_ABOVE, GetLocalizedMainMenuText(ID_TABLE_INSERT_ROW_ABOVE, L"Insert row above"));
 		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_ROW_BELOW, GetLocalizedMainMenuText(ID_TABLE_INSERT_ROW_BELOW, L"Insert row below"));
+		menu.AppendMenu(MF_STRING, ID_TABLE_DELETE_TABLE, GetLocalizedMainMenuText(ID_TABLE_DELETE_TABLE, L"Delete table"));
 		menu.AppendMenu(MF_STRING, ID_TABLE_DELETE_ROW, GetLocalizedMainMenuText(ID_TABLE_DELETE_ROW, L"Delete row"));
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_COLUMN_LEFT, GetLocalizedMainMenuText(ID_TABLE_INSERT_COLUMN_LEFT, L"Insert column left"));
@@ -5754,6 +5757,39 @@ LRESULT CFBEView::OnTableInsertRowBelow(WORD, WORD, HWND, BOOL&)
 		const bool changed = FbeTable::InsertRow(Document(), grid, rowIndex, true, cell->tagName);
 		undo.Close();
 		if (changed) NotifyTableStructureChanged(m_frame, m_hWnd);
+	}
+	catch (_com_error& error) { U::ReportError(error); }
+	return 0;
+}
+
+LRESULT CFBEView::OnTableDeleteTable(WORD, WORD, HWND, BOOL&)
+{
+	try
+	{
+		MSHTML::IHTMLElementPtr cell(SelectionStructTableCon());
+		MSHTML::IHTMLElementPtr table(FbeTable::FindTableElement(cell));
+		if (!table || !table->parentElement) return 0;
+		FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"delete table");
+		MSHTML::IHTMLDOMNodePtr tableNode(table);
+		MSHTML::IHTMLDOMNodePtr parent(table->parentElement);
+		bool hasOtherElement = false;
+		for (MSHTML::IHTMLDOMNodePtr node(parent->firstChild); node; node = node->nextSibling)
+		{
+			if (node == tableNode || node->nodeType != 1) continue;
+			MSHTML::IHTMLElementPtr element(node);
+			const CString kind(static_cast<LPCWSTR>(element->className));
+			if (kind.CompareNoCase(L"title") == 0 || kind.CompareNoCase(L"epigraph") == 0 ||
+				kind.CompareNoCase(L"annotation") == 0 || kind.CompareNoCase(L"image") == 0) continue;
+			hasOtherElement = true; break;
+		}
+		if (!hasOtherElement)
+		{
+			MSHTML::IHTMLElementPtr paragraph(Document()->createElement(L"P"));
+			MSHTML::IHTMLElement2Ptr(table)->insertAdjacentElement(L"beforeBegin", paragraph);
+		}
+		tableNode->removeNode(VARIANT_TRUE);
+		undo.Close();
+		NotifyTableStructureChanged(m_frame, m_hWnd);
 	}
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;

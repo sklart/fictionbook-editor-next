@@ -742,6 +742,8 @@ IDB_TABLE_INSERT_ROW_ABOVE BITMAP                  "res\\insert_row_above.bmp"
 IDB_TABLE_INSERT_ROW_BELOW BITMAP                  "res\\insert_row_below.bmp"
 IDB_TABLE_INSERT_COLUMN_LEFT BITMAP                "res\\insert_column_left.bmp"
 IDB_TABLE_INSERT_COLUMN_RIGHT BITMAP               "res\\insert_column_right.bmp"
+IDB_TABLE_DELETE_TABLE BITMAP                      "res\\delete_table.bmp"
+IDB_TABLE_TOOLBAR_DELETE_TABLE BITMAP              "res\\table_toolbar_delete_table.bmp"
 IDB_TABLE_DELETE_ROW BITMAP                        "res\\delete_row.bmp"
 IDB_TABLE_DELETE_COLUMN BITMAP                     "res\\delete_column.bmp"
 IDB_TABLE_MAKE_HEADER_CELLS BITMAP                 "res\\make_header_cells.bmp"
@@ -1054,6 +1056,7 @@ BEGIN
         BEGIN
             MENUITEM "Insert row &above",       ID_TABLE_INSERT_ROW_ABOVE
             MENUITEM "Insert row &below",       ID_TABLE_INSERT_ROW_BELOW
+            MENUITEM "Delete table",            ID_TABLE_DELETE_TABLE
             MENUITEM "&Delete row",             ID_TABLE_DELETE_ROW
             MENUITEM SEPARATOR
             MENUITEM "Insert column &left",     ID_TABLE_INSERT_COLUMN_LEFT

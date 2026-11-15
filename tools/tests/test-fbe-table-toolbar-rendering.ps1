@@ -28,7 +28,7 @@ try {
     $rows = @(Import-Csv -LiteralPath $report -Delimiter "`t")
     $standard = @($rows | Where-Object { $_.phase -notlike 'scaled-*' })
     $commands = @($standard.command_id | Select-Object -Unique)
-    if ($commands.Count -ne 8) { throw "Expected 8 table commands, got $($commands.Count)." }
+    if ($commands.Count -ne 9) { throw "Expected 9 table commands, got $($commands.Count)." }
     $phases = @('outside', 'td', 'th', 'td-td', 'th-th', 'td-th', 'one-by-one', 'one-by-n', 'n-by-one', 'n-by-m')
     foreach ($command in $commands) {
         $commandRows = @($standard | Where-Object command_id -eq $command)
@@ -43,6 +43,7 @@ try {
         $rowsForPhase = & $byPhase $phase
         foreach($command in @($commands[0], $commands[1], $commands[3], $commands[4])) { if(@($rowsForPhase | Where-Object { $_.command_id -eq $command -and $_.enabled -ne 1 }).Count) { throw "$phase disabled a structural insert command." } }
     }
+    foreach($phase in @('td','th','td-td','th-th','td-th','one-by-one','one-by-n','n-by-one','n-by-m')) { if(@(& $byPhase $phase | Where-Object { $_.command_id -eq $commands[8] -and $_.enabled -ne 1 }).Count) { throw "$phase disabled delete table." } }
     $deleteRow, $deleteColumn, $makeHeader, $makeNormal = $commands[2], $commands[5], $commands[6], $commands[7]
     foreach($phase in @('one-by-one','one-by-n')) { if(@(& $byPhase $phase | Where-Object { $_.command_id -eq $deleteRow -and $_.enabled -ne 0 }).Count) { throw "$phase allowed deletion of its only row." } }
     foreach($phase in @('one-by-one','n-by-one')) { if(@(& $byPhase $phase | Where-Object { $_.command_id -eq $deleteColumn -and $_.enabled -ne 0 }).Count) { throw "$phase allowed deletion of its only column." } }
@@ -56,7 +57,7 @@ try {
     $dpiSizes = @{ 'scaled-96' = 24; 'scaled-120' = 30; 'scaled-144' = 36; 'scaled-168' = 42; 'scaled-192' = 48 }
     foreach($phase in $dpiSizes.Keys) {
         $scaled = @($rows | Where-Object phase -eq $phase)
-        if($scaled.Count -ne 8) { throw "Expected eight scaled bitmaps for $phase." }
+        if($scaled.Count -ne 9) { throw "Expected nine scaled bitmaps for $phase." }
         if(@($scaled | Where-Object { $_.image_index -ne $dpiSizes[$phase] -or $_.image_list_has_mask -ne 1 -or $_.chroma_pixels -le 0 -or $_.image_black_pixels -ne 0 -or $_.color_pixels -le 0 -or $_.checked -ne 0 -or $_.hidden -ne 1 }).Count) { throw "$phase produced an ARGB transparent-background, magenta, or black-fringe artifact." }
     }    $passed = $true
     Write-Host 'FBE table toolbar state and rendering transitions passed.'

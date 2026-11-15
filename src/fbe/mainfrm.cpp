@@ -730,6 +730,7 @@ static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 	{ ID_INSERT_TABLE, L"fbe.menu.idr_mainframe.insert.table" },
 	{ ID_TABLE_INSERT_ROW_ABOVE, L"fbe.menu.idr_mainframe.table.insert_row_above" },
 	{ ID_TABLE_INSERT_ROW_BELOW, L"fbe.menu.idr_mainframe.table.insert_row_below" },
+	{ ID_TABLE_DELETE_TABLE, L"fbe.menu.idr_mainframe.table.delete_table" },
 	{ ID_TABLE_DELETE_ROW, L"fbe.menu.idr_mainframe.table.delete_row" },
 	{ ID_TABLE_INSERT_COLUMN_LEFT, L"fbe.menu.idr_mainframe.table.insert_column_left" },
 	{ ID_TABLE_INSERT_COLUMN_RIGHT, L"fbe.menu.idr_mainframe.table.insert_column_right" },
@@ -4042,6 +4043,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
     IDB_TABLE_INSERT_COLUMN_RIGHT, ID_TABLE_INSERT_COLUMN_RIGHT);
   AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
+    IDB_TABLE_DELETE_TABLE, ID_TABLE_DELETE_TABLE);
+  AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
     IDB_TABLE_DELETE_ROW, ID_TABLE_DELETE_ROW);
   AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
     IDB_TABLE_DELETE_COLUMN, ID_TABLE_DELETE_COLUMN);
@@ -4052,6 +4055,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	const struct { UINT bitmap; UINT command; } nativeTableMenuBitmaps[] = {
 		{ IDB_TABLE_INSERT_ROW_ABOVE, ID_TABLE_INSERT_ROW_ABOVE },
 		{ IDB_TABLE_INSERT_ROW_BELOW, ID_TABLE_INSERT_ROW_BELOW },
+		{ IDB_TABLE_DELETE_TABLE, ID_TABLE_DELETE_TABLE },
 		{ IDB_TABLE_DELETE_ROW, ID_TABLE_DELETE_ROW },
 		{ IDB_TABLE_INSERT_COLUMN_LEFT, ID_TABLE_INSERT_COLUMN_LEFT },
 		{ IDB_TABLE_INSERT_COLUMN_RIGHT, ID_TABLE_INSERT_COLUMN_RIGHT },
@@ -4780,6 +4784,7 @@ void CMainFrame::UpdateTableCommandState()
 		}
 	}
 	UIEnable(ID_TABLE_INSERT_ROW_ABOVE, validCell); UIEnable(ID_TABLE_INSERT_ROW_BELOW, validCell);
+	UIEnable(ID_TABLE_DELETE_TABLE, validCell);
 	UIEnable(ID_TABLE_DELETE_ROW, canDeleteRow);
 	UIEnable(ID_TABLE_INSERT_COLUMN_LEFT, validCell); UIEnable(ID_TABLE_INSERT_COLUMN_RIGHT, validCell);
 	UIEnable(ID_TABLE_DELETE_COLUMN, canDeleteColumn);
@@ -4803,7 +4808,7 @@ bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
     const int qualityImage=qualityIcon ? ::ImageList_AddIcon(replacement,qualityIcon) : -1;
     if(qualityIcon) ::DestroyIcon(qualityIcon);
     if(qualityImage<0) return false;
-    int imageIndices[8]={};
+    std::vector<int> imageIndices(kTableToolbarCommandCount);
     for(size_t i=0;i<kTableToolbarCommandCount;++i) {
         imageIndices[i]=ToolbarFactory::AddBitmapFromModule(replacement,module,kTableToolbarCommands[i].bitmapResourceId,imageSize);
         if(imageIndices[i]<0) return false;

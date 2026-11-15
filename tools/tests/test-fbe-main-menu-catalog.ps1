@@ -147,6 +147,7 @@ foreach($required in @('static bool MenuContainsScriptCommand(HMENU menu)', 'com
     if($frameSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "Runtime main-menu localization is missing: $required" }
 }
 $tableRuntimeBindings = @(
+    @{ Command = 'ID_TABLE_DELETE_TABLE'; Key = 'fbe.menu.idr_mainframe.table.delete_table' },
     @{ Command = 'ID_TABLE_INSERT_ROW_ABOVE'; Key = 'fbe.menu.idr_mainframe.table.insert_row_above' },
     @{ Command = 'ID_TABLE_INSERT_ROW_BELOW'; Key = 'fbe.menu.idr_mainframe.table.insert_row_below' },
     @{ Command = 'ID_TABLE_DELETE_ROW'; Key = 'fbe.menu.idr_mainframe.table.delete_row' },

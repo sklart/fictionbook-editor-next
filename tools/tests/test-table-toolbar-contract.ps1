@@ -107,7 +107,7 @@ foreach ($forbidden in @('TBCDRF_BLENDICON', 'TBCDRF_NOETCHEDEFFECT', 'DrawState
 $tableCommands = @(
     'ID_TABLE_INSERT_ROW_ABOVE', 'ID_TABLE_INSERT_ROW_BELOW', 'ID_TABLE_DELETE_ROW',
     'ID_TABLE_INSERT_COLUMN_LEFT', 'ID_TABLE_INSERT_COLUMN_RIGHT', 'ID_TABLE_DELETE_COLUMN',
-    'ID_TABLE_MAKE_HEADER_CELLS', 'ID_TABLE_MAKE_NORMAL_CELLS'
+    'ID_TABLE_MAKE_HEADER_CELLS', 'ID_TABLE_MAKE_NORMAL_CELLS', 'ID_TABLE_DELETE_TABLE'
 )
 foreach ($command in $tableCommands) {
     if ($header -notmatch "UPDATE_ELEMENT\($command,\s*UPDUI_MENUPOPUP\|UPDUI_TOOLBAR\)") {
@@ -122,16 +122,17 @@ foreach ($required in @('TBIF_IMAGE', 'm_table_toolbar_image_indices[index]', 'D
 
 $resourceDirectory = Join-Path $repoRoot 'src\fbe\res'
 $toolbarBitmapPaths = Get-ChildItem -LiteralPath $resourceDirectory -Filter 'table_toolbar_*.bmp'
-$menuBitmapPaths = @('insert_row_above.bmp', 'insert_row_below.bmp', 'delete_row.bmp', 'insert_column_left.bmp',
+$menuBitmapPaths = @('delete_table.bmp', 'insert_row_above.bmp', 'insert_row_below.bmp', 'delete_row.bmp', 'insert_column_left.bmp',
 	'insert_column_right.bmp', 'delete_column.bmp', 'make_header_cells.bmp', 'make_normal_cells.bmp') |
 	ForEach-Object { Get-Item -LiteralPath (Join-Path $resourceDirectory $_) }
-if ($toolbarBitmapPaths.Count -ne 8) { throw "Expected 8 table toolbar bitmaps, found $($toolbarBitmapPaths.Count)." }
-if ($menuBitmapPaths.Count -ne 8) { throw "Expected 8 table menu bitmaps, found $($menuBitmapPaths.Count)." }
+if ($toolbarBitmapPaths.Count -ne 9) { throw "Expected 9 table toolbar bitmaps, found $($toolbarBitmapPaths.Count)." }
+if ($menuBitmapPaths.Count -ne 9) { throw "Expected 9 table menu bitmaps, found $($menuBitmapPaths.Count)." }
 $disabledBitmapPaths = Get-ChildItem -LiteralPath $resourceDirectory -Filter 'table_toolbar_*_disabled.bmp'
 if ($disabledBitmapPaths.Count -ne 0) { throw 'Disabled table toolbar bitmaps must not be present; disabled rendering is generated programmatically.' }
 $operationColors = @{
 	'insert_row_above.bmp' = @(45, 170, 100)
 	'insert_row_below.bmp' = @(45, 170, 100)
+	'delete_table.bmp' = @(205, 70, 70)
 	'delete_row.bmp' = @(205, 70, 70)
 	'insert_column_left.bmp' = @(45, 170, 100)
 	'insert_column_right.bmp' = @(45, 170, 100)
@@ -177,7 +178,7 @@ foreach ($path in $paths) {
         }
     }
 	if ($keyPixels -lt ($expectedSize * 3) -or $opaquePixels -lt ($expectedSize * 3)) { throw "$setName $($path.Name) must use magenta only as a surrounding transparency key, not as its glyph." }
-	if ($neutralPixels -lt 18) { throw "$setName $($path.Name) must retain opaque neutral table cells after alpha conversion." }
+	if ($operationName -ne 'delete_table.bmp' -and $neutralPixels -lt 18) { throw "$setName $($path.Name) must retain opaque neutral table cells after alpha conversion." }
 	if ($gridXs.Count -lt 4 -or $gridYs.Count -lt 4) { throw "$($path.Name) is not a full table grid; a colored strip is insufficient." }
 	if ($operationPixels -lt 8) { throw "$($path.Name) must visibly distinguish its table operation with the assigned colour." }
 }

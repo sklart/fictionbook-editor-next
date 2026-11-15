@@ -254,6 +254,8 @@
 #define IDB_DOCUMENT_TREE_36               1224
 #define IDB_DOCUMENT_TREE_42               1225
 #define IDB_PASTE_TEXT                     1226
+#define IDB_TABLE_DELETE_TABLE             1227
+#define IDB_TABLE_TOOLBAR_DELETE_TABLE     1228
 #define IDS_HOTKEY_SYMBOL_LEFT_POINTING_DOUBLE_QUOTATION_MARK 256
 #define IDS_CTXMENU_COPY                256
 #define IDS_HOTKEY_SYMBOL_RIGHT_POINTING_DOUBLE_QUOTATION_MARK 257
@@ -772,6 +774,7 @@
 #define ID_STATUS_PANE_INSERT_MODE        32931
 #define ID_VIEW_SHOW_TEXT_CARET           32932
 #define ID_EDIT_PASTE_TEXT                32933
+#define ID_TABLE_DELETE_TABLE              32934
 #define ID_EDIT_PASTE2                  0xE525
 #define IDS_ENCODINGS                   61403
 #define IDS_DOCUMENT_TREE_CAPTION       61404

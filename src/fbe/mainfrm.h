@@ -24,6 +24,7 @@
 #include "diagnostics\\DiagnosticCommandService.h"
 #include "toolbars\\ScriptToolbarRuntime.h"
 #include "toolbars\\ScriptToolbarManager.h"
+#include "toolbars\\TableToolbarCommands.h"
 
 #include "atlctrlsext.h"
 
@@ -170,7 +171,7 @@ public:
 	CCommandBarCtrl	m_MenuBar;			// menu bar
 	CToolBarCtrl	m_CmdToolbar;		// commands toolbar
 	CImageList		m_commandToolbarImages;	// application-owned command toolbar image list
-	int			m_table_toolbar_image_indices[8];
+	std::vector<int> m_table_toolbar_image_indices;
 	CToolBarCtrl	m_ScriptsToolbar;	// commands toolbar
 	HIMAGELIST		m_scriptsToolbarImages;
 	ScriptToolbarRuntimeCollection m_scriptToolbars;
@@ -297,10 +298,7 @@ public:
 	{
 		strINS[0] = L'\0';
 		strOVR[0] = L'\0';
-		for(int index = 0; index < 8; ++index)
-		{
-			m_table_toolbar_image_indices[index] = -1;
-		}
+		m_table_toolbar_image_indices.resize(kTableToolbarCommandCount, -1);
 		if (_Settings.GetUseSpellChecker())
 		{
 			m_Speller = new CSpeller(U::GetProgDir()+L"Dict\\");
@@ -480,6 +478,7 @@ public:
 		UPDATE_ELEMENT(ID_INSERT_TABLE, UPDUI_MENUPOPUP|UPDUI_TOOLBAR)
 		UPDATE_ELEMENT(ID_TABLE_INSERT_ROW_ABOVE, UPDUI_MENUPOPUP|UPDUI_TOOLBAR)
 		UPDATE_ELEMENT(ID_TABLE_INSERT_ROW_BELOW, UPDUI_MENUPOPUP|UPDUI_TOOLBAR)
+		UPDATE_ELEMENT(ID_TABLE_DELETE_TABLE, UPDUI_MENUPOPUP|UPDUI_TOOLBAR)
 		UPDATE_ELEMENT(ID_TABLE_DELETE_ROW, UPDUI_MENUPOPUP|UPDUI_TOOLBAR)
 		UPDATE_ELEMENT(ID_TABLE_INSERT_COLUMN_LEFT, UPDUI_MENUPOPUP|UPDUI_TOOLBAR)
 		UPDATE_ELEMENT(ID_TABLE_INSERT_COLUMN_RIGHT, UPDUI_MENUPOPUP|UPDUI_TOOLBAR)

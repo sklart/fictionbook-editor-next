@@ -14,6 +14,33 @@
 #include "RuntimeTestScriptingEnvironment.inl"
 #include "RuntimeTestDocumentTree.inl"
 #include "RuntimeTestPluginOptions.inl"
+	if (IsFbeTestScenario(L"delete-table-toolbar-write") || IsFbeTestScenario(L"delete-table-toolbar-read") ||
+		IsFbeTestScenario(L"delete-table-toolbar-remove") || IsFbeTestScenario(L"delete-table-toolbar-removed"))
+	{
+		const bool write = IsFbeTestScenario(L"delete-table-toolbar-write");
+		const bool remove = IsFbeTestScenario(L"delete-table-toolbar-remove");
+		const bool removed = IsFbeTestScenario(L"delete-table-toolbar-removed");
+		TBBUTTON button = {};
+		const int catalogIndex = m_aButtons.FindKey(m_CmdToolbar);
+		bool found = false;
+		if (catalogIndex >= 0)
+		{
+			TBBUTTONS catalog = m_aButtons.GetValueAt(catalogIndex);
+			for (int i = 0; i < catalog.GetSize(); ++i)
+				if (catalog[i].idCommand == ID_TABLE_DELETE_TABLE) { button = catalog[i]; found = true; break; }
+		}
+		const int before = m_CmdToolbar.CommandToIndex(ID_TABLE_DELETE_TABLE);
+		bool passed = found;
+		if (write) passed = passed && before < 0 && m_CmdToolbar.InsertButton(1, &button) != FALSE;
+		else if (remove) passed = passed && before == 1 && m_CmdToolbar.DeleteButton(before) != FALSE;
+		else passed = passed && (removed ? before < 0 : before == 1);
+		const int after = m_CmdToolbar.CommandToIndex(ID_TABLE_DELETE_TABLE);
+		passed = passed && ((write || (!remove && !removed)) ? after == 1 : after < 0);
+		CStringA report; report.Format("catalog=%d\nbefore=%d\nafter=%d\nresult=%s\n", found, before, after, passed ? "pass" : "fail");
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+		if (!passed) { ::PostQuitMessage(1); return 0; }
+		PostMessage(WM_CLOSE); return 0;
+	}
 	if (IsFbeTestScenario(L"epub-save-reopen-runtime"))
 	{
 		wchar_t path[32768] = {};
@@ -901,9 +928,15 @@
 			MSHTML::IHTMLElementCollectionPtr rows(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TR")) : MSHTML::IHTMLElementCollectionPtr());
 			MSHTML::IHTMLElementCollectionPtr td(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TD")) : MSHTML::IHTMLElementCollectionPtr());
 			MSHTML::IHTMLElementCollectionPtr th(body ? MSHTML::IHTMLElementCollectionPtr(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TH")) : MSHTML::IHTMLElementCollectionPtr());
+			bool caretAttached = false;
+			try { if (strncmp(phase, "delete-table-", 13) == 0) {
+				MSHTML::IHTMLTxtRangePtr range(m_doc->m_body.Document()->selection->createRange());
+				for (MSHTML::IHTMLElementPtr current(range ? range->parentElement() : MSHTML::IHTMLElementPtr()); current; current = current->parentElement)
+					if (current == body) { caretAttached = true; break; }
+			} } catch (_com_error&) {}
 			CStringA row;
-			row.Format("%s\t%I64u\t%ld\t%ld\t%ld\t%ld\t%ld\t%s\r\n", phase, ::GetTickCount64() - start,
-				tables ? tables->length : 0, rows ? rows->length : 0, td ? td->length : 0, th ? th->length : 0, gridBuildCalls, (LPCSTR)m_doc->m_body.TableStructuralSnapshot());
+			row.Format("%s\t%I64u\t%ld\t%ld\t%ld\t%ld\t%ld\t%s\t%d\t%d\r\n", phase, ::GetTickCount64() - start,
+				tables ? tables->length : 0, rows ? rows->length : 0, td ? td->length : 0, th ? th->length : 0, gridBuildCalls, (LPCSTR)m_doc->m_body.TableStructuralSnapshot(), strncmp(phase, "delete-table-", 13) == 0 && m_doc->DocChanged(), caretAttached);
 			DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
 		};
 		auto selectFirstCell = [&]() -> bool
@@ -953,6 +986,7 @@
 		typedef LRESULT (CFBEView::*TableHandler)(WORD, WORD, HWND, BOOL&);
 		struct Operation { const char* name; UINT command; TableHandler handler; bool bulk, selectHeaders; };
 		const Operation operations[] = {
+			{ "delete-table", ID_TABLE_DELETE_TABLE, &CFBEView::OnTableDeleteTable, false, false },
 			{ "toggle-header", ID_TABLE_TOGGLE_HEADER_CELL, &CFBEView::OnTableToggleHeaderCell, false, false }, { "insert-row-above", ID_TABLE_INSERT_ROW_ABOVE, &CFBEView::OnTableInsertRowAbove, false, false },
 			{ "insert-row-below", ID_TABLE_INSERT_ROW_BELOW, &CFBEView::OnTableInsertRowBelow, false, false }, { "delete-row", ID_TABLE_DELETE_ROW, &CFBEView::OnTableDeleteRow, false, false },
 			{ "insert-column-left", ID_TABLE_INSERT_COLUMN_LEFT, &CFBEView::OnTableInsertColumnLeft, false, false }, { "insert-column-right", ID_TABLE_INSERT_COLUMN_RIGHT, &CFBEView::OnTableInsertColumnRight, false, false },
@@ -979,12 +1013,13 @@
 			(m_doc->m_body.*operation.handler)(0, 0, m_doc->m_body, handled);
 			return true;
 		};
-		CStringA header("phase\telapsed_ms\ttable_count\ttr_count\ttd_count\tth_count\tgrid_build_calls\tgrid_signature\r\n");
+		CStringA header("phase\telapsed_ms\ttable_count\ttr_count\ttd_count\tth_count\tgrid_build_calls\tgrid_signature\tdirty\tcaret_attached\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written); output.Flush();
 		for (size_t index = 0; index < _countof(operations); ++index)
 		{
 			wchar_t requestedOperation[64] = {};
 			const DWORD requestedOperationLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_TABLE_OPERATION", requestedOperation, _countof(requestedOperation));
+			if (!requestedOperationLength && strcmp(operations[index].name, "delete-table") == 0) continue;
 			if (requestedOperationLength && (requestedOperationLength >= _countof(requestedOperation) || _stricmp((LPCSTR)CStringA(requestedOperation), operations[index].name) != 0)) continue;
 			if (!selectConfiguredCells(operations[index].bulk, operations[index].selectHeaders) || !applyConfiguredRuntimeCellStyle()) { output.Close(); ::PostQuitMessage(1); return 0; }
 			CStringA phase; phase.Format("%s-before", operations[index].name); appendStructuralPhase(phase);
