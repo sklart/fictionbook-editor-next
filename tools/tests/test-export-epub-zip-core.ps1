@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param([string]$Configuration = 'Release')
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -20,7 +20,7 @@ try {
         $image = $zip.GetEntry('OEBPS/изображения/обложка.png'); $text = $zip.GetEntry('OEBPS/данные/текст.txt')
         if(-not $image -or -not $text -or $image.CompressedLength -ne $image.Length -or $text.CompressedLength -ge $text.Length) { throw 'Cyrillic resource path or compression method is incorrect.' }
         $bytes = [IO.MemoryStream]::new(); $stream = $image.Open(); try { $stream.CopyTo($bytes) } finally { $stream.Dispose() }
-        if([Convert]::ToHexString($bytes.ToArray()) -ne '89504E4700FF42') { throw 'Binary resource changed.' }
+        if(([BitConverter]::ToString($bytes.ToArray())).Replace('-', '') -ne '89504E4700FF42') { throw 'Binary resource changed.' }
         $bytes.Dispose(); $bytes = [IO.MemoryStream]::new(); $stream = $text.Open(); try { $stream.CopyTo($bytes) } finally { $stream.Dispose() }
         if($bytes.Length -ne 150000 -or @($bytes.ToArray() | Where-Object { $_ -ne 65 }).Count -ne 0) { throw 'Large compressed resource changed.' }
         $bytes.Dispose()
