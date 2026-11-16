@@ -12,6 +12,8 @@ $ErrorActionPreference = 'Stop'
 $cases = [ordered]@{
     'valid-control' = '<p>Valid text with <strong>inline formatting</strong>.</p><p>Second paragraph.</p>'
     'subtitle-strong-p' = '<subtitle><strong><p>Nested</p></strong></subtitle>'
+    'subtitle-paragraph' = '<subtitle><p>Nested</p></subtitle>'
+    'subtitle-strong-multiple' = '<subtitle><strong><p>First</p><empty-line/><p>Second</p><empty-line/><p>Third</p></strong></subtitle>'
     'section-strong-p' = '<strong><p>Nested</p></strong>'
     'subtitle-emphasis-p' = '<subtitle><emphasis><p>Nested</p></emphasis></subtitle>'
     'paragraph-strong-p' = '<p><strong><p>Nested</p></strong></p>'
@@ -86,6 +88,24 @@ foreach ($case in $cases.GetEnumerator()) {
                         $elements[0].InnerText -cne 'Nested' -or $elements[1].LocalName -cne 'p' -or
                         $elements[1].InnerText -cne 'Neighbour') {
                         throw 'Issue72 section-strong-p: paragraph structure or strong formatting changed.'
+                    }
+                }
+                if ($case.Key -eq 'subtitle-paragraph') {
+                    $settings = [Xml.XmlReaderSettings]::new()
+                    $settings.DtdProcessing = [Xml.DtdProcessing]::Prohibit
+                    $settings.XmlResolver = $null
+                    $reader = [Xml.XmlReader]::Create($sourceDump, $settings)
+                    try { $document = [Xml.XmlDocument]::new(); $document.XmlResolver = $null; $document.Load($reader) }
+                    finally { $reader.Close() }
+                    $ns = [Xml.XmlNamespaceManager]::new($document.NameTable)
+                    $ns.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
+                    $sections = $document.SelectNodes('/fb:FictionBook/fb:body/fb:section', $ns)
+                    if ($sections.Count -ne 1) { throw 'Issue72 subtitle-paragraph: expected one section.' }
+                    $elements = $sections[0].SelectNodes('*')
+                    if ($elements.Count -ne 2 -or $elements[0].LocalName -cne 'subtitle' -or
+                        $elements[0].InnerText -cne 'Nested' -or $elements[1].LocalName -cne 'p' -or
+                        $elements[1].InnerText -cne 'Neighbour') {
+                        throw 'Issue72 subtitle-paragraph: subtitle or paragraph structure changed.'
                     }
                 }
             }
