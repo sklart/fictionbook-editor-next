@@ -240,10 +240,10 @@
 | `ff91662c` | Document stabilization verification and remaining blockers | Историческое свидетельство и решение; сохранить в исходной ветке, актуальные статусы — в матрице и блокерах. |
 | `398f9a1b` | Stabilize themed dialog keyboard test and preserve evidence | Тест клавиатуры адаптирован: `a08b89f8`; свидетельства Split сохранены в ветке. |
 | `f7c7fcda` | Fix sanitizer dump and COM alignment diagnostics | Современные реализации sanitizer и выравнивания COM сопоставлены в основном аудите; старый коммит не применять целиком. |
-| `e86f0488` | Fix localization coverage and documentation links | Часть связана с неактивной экспериментальной Description; старый тест не применять целиком. |
+| `e86f0488` | Fix localization coverage and documentation links | Ссылки исторических отчётов уже нормализованы в текущем дереве; часть теста связана с неактивной экспериментальной Description, старый тест целиком не применять. |
 | `5f77d048` | Document community defect acceptance and remaining blockers | Историческое свидетельство и решение; сохранить в исходной ветке, актуальные статусы — в матрице и блокерах. |
 | `9749eb0a` | Trace isolated large document performance scenarios | Диагностика производительности меняет способ замера; сохранить до необходимости сопоставимого исследования. |
 | `619bd0f0` | Preserve EPUB line breaks and avoid repeated book titles | Адаптирован: `2e2432ea` (EPUB). |
 | `adac64f5` | Document split undo blocker and preserve timeline evidence | Историческое свидетельство и решение; сохранить в исходной ветке, актуальные статусы — в матрице и блокерах. |
 | `38a22d5f` | Preserve empty paragraph anchors on save | Современный аналог: `56da89bd`; тест `5a30eeec`. |
-| `01eac620` | test: synchronize plugin settings keyboard probes | Синхронизация keyboard probe адаптирована: `c2773519`; накопительные журналы не переносились. |
+| `01eac620` | test: synchronize plugin settings keyboard probes | Синхронизация keyboard probe адаптирована: `c2773519`; исходный коммит сохранён меткой `archive/plugin-settings-runtime-sync-01eac620`, после чего ветка удалена. |
