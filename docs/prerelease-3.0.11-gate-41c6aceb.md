@@ -9,3 +9,9 @@
 Split/Undo пропущен по согласованному статусу **KNOWN FAILURE / DEFERRED**. Проверка взаимодействия с системным буфером пропущена, реальная регистрация COM в пользовательском профиле не разрешалась. Эти пропуски делают gate **INCOMPLETE** даже при успехе прочих проверок. Непринятые Recovery, #72 и ложный dirty остаются блокерами; релиз и RC не публиковались.
 
 Подробный журнал запуска сохранён локально в каталоге визуализации как `verify-release-41c6aceb-python.log`, исходный отказ отсутствующего Python — `verify-release-41c6aceb.log`, журнал сборки — `build-release-41c6aceb.log`; файлы журналов в Git не включены. После остановки FBE-процессов gate не осталось, в `%TEMP%` осталось прежних 13 `fr-*`.
+
+## Адресное продолжение после остановки
+
+На срезе `7c8f1c1e0c63c05fe1947ff65fd25963d09a5c51` отдельно прошли шесть следующих проверок: `test-fbe-main-js-binary-behavior.ps1`, `test-css-regression.ps1`, `test-note-preview-regression.ps1`, `test-link-navigation.ps1`, `test-fbe-link-navigation-boundary.ps1`, `test-fbe-reference-navigation-boundary.ps1`. Runtime `test-fbe-link-navigation-runtime.ps1` и `test-fbe-reference-navigation-runtime.ps1` также прошли в одном изолированном профиле, который удалён после успеха; прежние 13 `fr-*` сохранены.
+
+FBE.exe использован из сборки `41c6aceb` (SHA-256 `0afa5f7767c9f5250265d298afaeeb208b3b22752b06f202b830a29e7cf977b8`); исправленный `main.js` отдельно скопирован из актуального исходника и сверялся по SHA-256 `b598e2f8ba01389311de2db9eb97b2fa95d2031106f285f974b596748f8e7fe2`. Это смешанный адресный runtime, не повторный релизный gate и не проверка пользовательского буфера. Все прочие проверки после исходной точки остановки в составе gate остаются **NOT RUN**.
