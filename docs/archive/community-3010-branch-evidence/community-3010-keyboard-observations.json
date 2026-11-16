@@ -1,0 +1,32 @@
+[
+  {
+    "run": 1,
+    "result": "1",
+    "keyboard": "1",
+    "diagnostic": "outer=818,603,1486,791;work=0,0,2560,1380;client=0,0,650,141;button=427,91,522,126;hook=1;initial=6;arrow_posted=1;arrow_seen=1;arrow_focus=6;arrow_active=1;after=7;space_down=1;space_up=1;closed=1"
+  },
+  {
+    "run": 2,
+    "result": "1",
+    "keyboard": "1",
+    "diagnostic": "outer=722,507,1390,695;work=0,0,2560,1380;client=0,0,650,141;button=427,91,522,126;hook=1;initial=6;arrow_posted=1;arrow_seen=1;arrow_focus=6;arrow_active=1;after=7;space_down=1;space_up=1;closed=1"
+  },
+  {
+    "run": 3,
+    "result": "1",
+    "keyboard": "1",
+    "diagnostic": "outer=658,443,1326,631;work=0,0,2560,1380;client=0,0,650,141;button=427,91,522,126;hook=1;initial=6;arrow_posted=1;arrow_seen=1;arrow_focus=6;arrow_active=1;after=7;space_down=1;space_up=1;closed=1"
+  },
+  {
+    "run": 4,
+    "result": "1",
+    "keyboard": "1",
+    "diagnostic": "outer=914,699,1582,887;work=0,0,2560,1380;client=0,0,650,141;button=427,91,522,126;hook=1;initial=6;arrow_posted=1;arrow_seen=1;arrow_focus=6;arrow_active=1;after=7;space_down=1;space_up=1;closed=1"
+  },
+  {
+    "run": 5,
+    "result": "1",
+    "keyboard": "1",
+    "diagnostic": "outer=882,667,1550,855;work=0,0,2560,1380;client=0,0,650,141;button=427,91,522,126;hook=1;initial=6;arrow_posted=1;arrow_seen=1;arrow_focus=6;arrow_active=1;after=7;space_down=1;space_up=1;closed=1"
+  }
+]

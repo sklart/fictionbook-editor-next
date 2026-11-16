@@ -16,6 +16,8 @@
 
 На момент первоначальной описи локальные origin/master и origin/release/3.0.11 указывали соответственно на e582948b и 0822b3df. Позднее fetch выполнен; его результаты, оценка [PR #62](https://github.com/sklart/fictionbook-editor-next/pull/62) и состояние worktree приведены ниже.
 
+**Сохранение свидетельств community-ветки:** 19 отслеживаемых файлов результатов и трасс из `398f9a1b` скопированы в [архив](archive/community-3010-branch-evidence/README.md); каждый сверён с Git blob исходного коммита, JSON разобран, TSV проверен как таблица. Они документируют исторические прогоны, не текущий релиз. Исследование Split/Undo остаётся `KNOWN FAILURE / DEFERRED`. Копирование свидетельств не означает, что остальные уникальные изменения ветки проверены или ветку можно удалить.
+
 ## Дополнение: проверка Git for Windows
 
 Git for Windows 2.56 выполнен отдельно от devkitPro. До обновления создан и проверен bundle с 68 refs, полной историей и HEAD рабочих деревьев: `C:/Users/Sklyarov/.codex/visualizations/2026/11/15/01a1dfda-3993-7630-8fc1-f323cab05be7/fbe-refs-before-fetch.bundle`; список: `C:/Users/Sklyarov/.codex/visualizations/2026/11/15/01a1dfda-3993-7630-8fc1-f323cab05be7/refs-before-fetch.txt`. Это не копия незакоммиченных файлов. `fetch --all --prune` выполнен успешно; origin/master и origin/release остались на приведённых SHA. Отдельные remotes evpobr и next также обновлены. `master` является предком release (merge-base --is-ancestor: 0); перенос пока запрещён условиями приёмки.

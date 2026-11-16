@@ -1,0 +1,25 @@
+{
+  "delay_ms": 250,
+  "before": {
+    "case": "arrow-space",
+    "result": "1",
+    "window": "1",
+    "geometry": "1",
+    "content": "1",
+    "keyboard": "0",
+    "dpi_geometry": "1",
+    "dpi_font": "1",
+    "bounds": "outer=786,571,1454,759;work=0,0,2560,1380;client=0,0,650,141;button=427,91,522,126;hook=1;initial=6;arrow_posted=1;arrow_seen=0;arrow_focus=0;arrow_active=0;after=6;space_down=0;space_up=0;closed=0"
+  },
+  "after": {
+    "case": "arrow-space",
+    "result": "1",
+    "window": "1",
+    "geometry": "1",
+    "content": "1",
+    "keyboard": "1",
+    "dpi_geometry": "1",
+    "dpi_font": "1",
+    "bounds": "outer=850,635,1518,823;work=0,0,2560,1380;client=0,0,650,141;button=427,91,522,126;hook=1;initial=6;arrow_posted=1;arrow_seen=1;arrow_focus=6;arrow_active=1;after=7;space_down=1;space_up=1;closed=1"
+  }
+}
