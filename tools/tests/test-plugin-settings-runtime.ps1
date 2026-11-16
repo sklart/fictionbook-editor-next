@@ -29,6 +29,9 @@ function Probe([string]$directory, [string]$mode, [string]$action) {
     $arguments = @("--$mode", $action)
     if($action -in @('dialogs','conversions') -or $action.StartsWith('ui-')) { $arguments += ('"' + (Join-Path $directory 'Plugins') + '"') }
     $process = Start-Process $exe -ArgumentList $arguments -WorkingDirectory $directory -WindowStyle Hidden -PassThru -RedirectStandardOutput $log -RedirectStandardError ($log + '.stderr')
+    # Retain the process handle while the child runs, so its exit status is
+    # still available after Windows has removed the process from enumeration.
+    $null = $process.Handle
     if(!$process.WaitForExit(30000)) { Stop-Process -Id $process.Id -Force; throw "Settings probe timeout: $log" }
     $process.WaitForExit(); $process.Refresh()
     if($process.ExitCode -ne 0) { throw "Settings probe failed ($($process.ExitCode)): $log`n$(Get-Content ($log + '.stderr') -Raw)" }
@@ -103,6 +106,11 @@ try {
     Probe $iso.Root portable dialogs
     $again = Profiles $profileA
     foreach($name in $names) { if($first[$name] -cne $again[$name]) { throw "Settings changed after restart: $name" } }
+    # This scenario requires a second independent portable copy. Reserve its
+    # actual size in addition to the normal TEMP safety margin before copying.
+    [long]$relocationBytes = 0
+    foreach ($entry in @(Get-ChildItem -LiteralPath $iso.Root -File -Recurse -Force -ErrorAction Stop)) { $relocationBytes += $entry.Length }
+    Assert-IsolatedFbeFreeSpace -RequiredBytes ($relocationBytes + 256MB)
     $moved = Join-Path $iso.Root 'Moved'; New-Item -ItemType Directory $moved | Out-Null
     Get-ChildItem $iso.Root -Force | Where-Object Name -ne 'Moved' | Copy-Item -Destination $moved -Recurse -Force
     Probe $moved portable dialogs
@@ -202,7 +210,9 @@ try {
     $passed = $true
 } finally {
     $env:FBE_NEXT_TEST_REGISTRY_ROOT = $oldFixture
-    $view = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::CurrentUser,[Microsoft.Win32.RegistryView]::Registry32)
-    try { $view.DeleteSubKeyTree($registryFixture, $false) } finally { $view.Dispose() }
-    Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed
+    try {
+        $view = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::CurrentUser,[Microsoft.Win32.RegistryView]::Registry32)
+        try { $view.DeleteSubKeyTree($registryFixture, $false) } finally { $view.Dispose() }
+    } catch { $passed = $false; throw }
+    finally { Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed }
 }
