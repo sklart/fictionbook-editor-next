@@ -55,7 +55,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                 raise AssertionError(result.stdout + result.stderr)
             print('Independent FB2 XSD validation: PASS')
             if cls.performance:
-                report = ROOT / 'out/tests/epub-notes-perf-after.json'
+                report = Path(os.environ.get('FBE_EPUB_PERFORMANCE_REPORT', ROOT / 'out/tests/epub-notes-perf-after.json'))
                 report.parent.mkdir(parents=True, exist_ok=True)
                 report.write_text(json.dumps(cls.performance, indent=2), encoding='utf-8')
         finally:
