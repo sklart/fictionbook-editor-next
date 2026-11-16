@@ -1,4 +1,4 @@
-import argparse,importlib.util,unittest,os,subprocess,tempfile,zipfile,time
+import argparse,importlib.util,unittest,os,subprocess,tempfile,zipfile,time,ctypes
 from pathlib import Path
 spec=importlib.util.spec_from_file_location('fidelity',str(Path(__file__).resolve().parent/'test-import-epub-fidelity.py'))
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
@@ -80,24 +80,39 @@ class LongArchive(m.Fidelity):
    self.assertEqual(sentinel.read_bytes(),b'unchanged')
    self.assertEqual([],list(scratch.iterdir()),'Failed extraction was not cleaned up')
  def test_temporary_root_over_max_path(self):
+  self.check_temporary_root(False,True)
+ def test_volume_guid_temporary_root(self):
+  self.check_temporary_root(True,False)
+ def test_long_volume_guid_temporary_root(self):
+  self.check_temporary_root(True,True)
+ def check_temporary_root(self,volume,long_path):
   temp=tempfile.TemporaryDirectory(prefix='epub-long-temp-');self.folders.append(temp)
-  root=Path(temp.name);scratch=root/('a'*90)/('b'*90)/('c'*90)
-  self.assertGreater(len(str(scratch)),260)
+  root=Path(temp.name);scratch=root/('a'*90)/('b'*90)/('c'*90) if long_path else root/'scratch'
+  if long_path: self.assertGreater(len(str(scratch)),260)
   long_scratch='\\\\?\\'+str(scratch)
   os.makedirs(long_scratch)
+  requested=str(scratch);expected=long_scratch
+  if volume:
+   get_volume=ctypes.WinDLL('kernel32',use_last_error=True).GetVolumeNameForVolumeMountPointW
+   get_volume.argtypes=[ctypes.c_wchar_p,ctypes.c_wchar_p,ctypes.c_uint];get_volume.restype=ctypes.c_int
+   name=ctypes.create_unicode_buffer(1024);drive=scratch.drive
+   if not drive or not get_volume(drive+'\\',name,len(name)): self.skipTest('Volume GUID unavailable for temporary drive')
+   requested=name.value+str(scratch)[len(drive)+1:];expected=requested
+   if not os.path.isdir(requested): self.skipTest('Volume GUID path unavailable in this environment')
   epub=root/'input.epub';output=root/'output.fb2'
   with zipfile.ZipFile(epub,'w') as z:
    z.writestr('mimetype','application/epub+zip')
    z.writestr('META-INF/container.xml','<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0"><rootfiles><rootfile full-path="OEBPS/book.opf" media-type="application/oebps-package+xml"/></rootfiles></container>')
    z.writestr('OEBPS/book.opf','<package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Fixture</dc:title><dc:language>en</dc:language><dc:identifier id="uid">test</dc:identifier></metadata><manifest><item id="c" href="chapter.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="c"/></spine></package>')
    z.writestr('OEBPS/chapter.xhtml','<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter</title></head><body><p>Long temporary root.</p></body></html>')
-  env=os.environ.copy();env['TEMP']=env['TMP']=str(scratch)
+  env=os.environ.copy();env['TEMP']=env['TMP']=requested
   env['FBE_NEXT_TEST_MODE']='1';env['FBE_NEXT_TEST_EPUB_DELAY_ENTRY']='chapter.xhtml'
   env['FBE_NEXT_TEST_EPUB_ROOT_REPORT']=str(root/'actual-extraction-root.txt')
   result=subprocess.run([str(m.BATCH),str(epub),str(output)],capture_output=True,timeout=30,env=env)
   self.assertEqual(result.returncode,0,result.stdout+result.stderr)
   actual=(root/'actual-extraction-root.txt').read_text(encoding='utf-8')
-  self.assertTrue(actual.casefold().startswith((long_scratch+'\\').casefold()),'Extraction did not use the requested TEMP directory')
+  self.assertTrue(actual.casefold().startswith((expected+'\\').casefold()),f'Extraction did not use the requested TEMP directory: {actual!r}')
+  self.assertNotIn(b'Recovered malformed XHTML',result.stdout+result.stderr)
   self.assertIn('Long temporary root.',''.join(m.ET.parse(output).getroot().itertext()))
   self.outputs.append(output)
   self.assertEqual([],os.listdir(long_scratch),'Temporary extraction was not cleaned up')
@@ -133,4 +148,4 @@ class LongArchive(m.Fidelity):
    self.assertEqual(sentinel.read_bytes(),b'unchanged')
    self.assertEqual([],list(scratch.iterdir()))
 if __name__=='__main__':
- unittest.main(argv=[__file__,*rest],defaultTest=['LongArchive.test_long_archive_and_cleanup', 'LongArchive.test_long_unicode_archive_and_cleanup', 'LongArchive.test_encoded_escape_with_long_temporary_path', 'LongArchive.test_long_resource_relative_parent_and_image_bytes', 'LongArchive.test_valid_xml_without_recovery_warning', 'LongArchive.test_long_xml_stream_preserves_malformed_html_fallback', 'LongArchive.test_long_xml_stream_does_not_load_external_entity', 'LongArchive.test_traversal_and_failure_cleanup_with_long_temporary_path', 'LongArchive.test_temporary_root_over_max_path', 'LongArchive.test_reparse_race_in_long_extraction_path'])
+ unittest.main(argv=[__file__,*rest],defaultTest=['LongArchive.test_long_archive_and_cleanup', 'LongArchive.test_long_unicode_archive_and_cleanup', 'LongArchive.test_encoded_escape_with_long_temporary_path', 'LongArchive.test_long_resource_relative_parent_and_image_bytes', 'LongArchive.test_valid_xml_without_recovery_warning', 'LongArchive.test_long_xml_stream_preserves_malformed_html_fallback', 'LongArchive.test_long_xml_stream_does_not_load_external_entity', 'LongArchive.test_traversal_and_failure_cleanup_with_long_temporary_path', 'LongArchive.test_temporary_root_over_max_path', 'LongArchive.test_volume_guid_temporary_root', 'LongArchive.test_long_volume_guid_temporary_root', 'LongArchive.test_reparse_race_in_long_extraction_path'])

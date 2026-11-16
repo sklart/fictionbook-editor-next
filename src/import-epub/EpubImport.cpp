@@ -1009,14 +1009,16 @@ namespace
         CStringW plain(input);
         const bool unc = plain.Left(8).CompareNoCase(L"\\\\?\\UNC\\") == 0;
         const bool extended = unc || plain.Left(4) == L"\\\\?\\";
+        const bool volumeGuid = plain.Left(11).CompareNoCase(L"\\\\?\\Volume{") == 0;
         if (unc) plain = CStringW(L"\\\\") + plain.Mid(8);
-        else if (extended) plain = plain.Mid(4);
+        else if (extended && !volumeGuid) plain = plain.Mid(4);
         const DWORD required = ::GetFullPathNameW(plain, 0, nullptr, nullptr);
         if (!required || required > 32768) return CStringW();
         std::vector<wchar_t> buffer(required, L'\0');
         const DWORD length = ::GetFullPathNameW(plain, static_cast<DWORD>(buffer.size()), buffer.data(), nullptr);
         if (!length || length >= buffer.size()) return CStringW();
         CStringW result(buffer.data());
+        if (volumeGuid) return result;
         if (extended && result.Left(2) == L"\\\\") return CStringW(L"\\\\?\\UNC\\") + result.Mid(2);
         if (extended) return CStringW(L"\\\\?\\") + result;
         return result;
@@ -1408,10 +1410,11 @@ namespace
 
         VARIANT_BOOL loaded = VARIANT_FALSE;
         CStringW msxmlPath(path);
+        const bool volumeGuid = msxmlPath.Left(11).CompareNoCase(L"\\\\?\\Volume{") == 0;
         if (msxmlPath.Left(8).CompareNoCase(L"\\\\?\\UNC\\") == 0) msxmlPath = CStringW(L"\\\\") + msxmlPath.Mid(8);
-        else if (msxmlPath.Left(4) == L"\\\\?\\") msxmlPath = msxmlPath.Mid(4);
+        else if (!volumeGuid && msxmlPath.Left(4) == L"\\\\?\\") msxmlPath = msxmlPath.Mid(4);
         HRESULT loadHr = E_FAIL;
-        if (msxmlPath.GetLength() < MAX_PATH) {
+        if (!volumeGuid && msxmlPath.GetLength() < MAX_PATH) {
             _variant_t fileName(static_cast<LPCWSTR>(msxmlPath));
             loadHr = dom->load(fileName, &loaded);
         } else {
