@@ -18,7 +18,11 @@ $summary=[Collections.Generic.List[object]]::new()
 [ordered]@{cpu=(Get-CimInstance Win32_Processor).Name;logicalCpus=[Environment]::ProcessorCount;os=[Environment]::OSVersion.VersionString;affinityMask=$AffinityMask;affinityScope='UI thread';priority='Normal';priorityBoost=$false;warmups=1;measuredRepeats=5} | ConvertTo-Json | Set-Content (Join-Path $evidence environment.json)
 try {
  foreach($size in $SizesMiB) {
+  if($size -le 0) { throw "Invalid fixture size: $size MiB" }
   $fixture=Join-Path $evidence "fixture-$size.fb2"
+  [long]$requiredBytes=256MB
+  if(!(Test-Path -LiteralPath $fixture)) { $requiredBytes += ([long]$size * 1MB) + 1MB }
+  Assert-IsolatedFbeFreeSpace -Path $evidence -RequiredBytes $requiredBytes
   if(!(Test-Path -LiteralPath $fixture)) {
    $header='<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><nickname>Fixture</nickname></author><book-title>Followup performance</book-title><lang>ru</lang></title-info><document-info><author><nickname>Fixture</nickname></author><date value="2026-10-28">2026-10-28</date><id>followup-perf</id><version>1.0</version></document-info></description><body>'
    $tail='<section><p id="perf-last">Last Unicode '+[char]0x0416+' '+[char]0x00a0+' '+[char]0x03a9+' repeated text <strong>bold</strong> tail</p></section></body><body name="notes"><section id="note"><p>Note text</p></section></body></FictionBook>'

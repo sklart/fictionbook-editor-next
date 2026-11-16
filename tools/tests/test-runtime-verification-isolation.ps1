@@ -218,6 +218,10 @@ try {
     $rejected = $false
     try { Assert-IsolatedFbeFreeSpace -RequiredBytes ([long]::MaxValue) } catch { $rejected = $_.Exception.Message -like 'Insufficient temporary disk space:*' }
     if (!$rejected) { throw 'The free-space guard did not reject an impossible allocation.' }
+    Assert-IsolatedFbeFreeSpace -Path $testArtifacts -RequiredBytes 0
+    $rejected = $false
+    try { Assert-IsolatedFbeFreeSpace -Path $testArtifacts -RequiredBytes ([long]::MaxValue) } catch { $rejected = $_.Exception.Message.Contains([IO.Path]::GetFullPath($testArtifacts)) }
+    if (!$rejected) { throw 'The free-space guard did not reject an impossible allocation on the evidence volume.' }
     Assert-IsolatedFbeEvidenceBudget -ExistingBytes 0
     $rejected = $false
     try { Assert-IsolatedFbeEvidenceBudget -ExistingBytes 2GB } catch { $rejected = $_.Exception.Message -eq 'Evidence budget is full.' }

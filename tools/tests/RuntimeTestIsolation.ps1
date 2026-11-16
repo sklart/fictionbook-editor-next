@@ -1,8 +1,8 @@
 Set-StrictMode -Version Latest
 
 function Assert-IsolatedFbeFreeSpace {
-    param([ValidateRange(0, [long]::MaxValue)][long]$RequiredBytes = 256MB)
-    $tempPath = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+    param([ValidateRange(0, [long]::MaxValue)][long]$RequiredBytes = 256MB, [string]$Path = [IO.Path]::GetTempPath())
+    $tempPath = [IO.Path]::GetFullPath($Path)
     $volume = [IO.Path]::GetPathRoot($tempPath)
     if ([string]::IsNullOrEmpty($volume)) { throw "Cannot determine temporary volume: $tempPath" }
     $available = ([IO.DriveInfo]::new($volume)).AvailableFreeSpace
