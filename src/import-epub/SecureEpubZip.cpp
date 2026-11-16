@@ -131,7 +131,7 @@ bool IsReservedName(const CStringW& name) {
 bool SplitSafePath(const wchar_t* raw, std::vector<CStringW>& components, CStringW& normalized) {
     if (!raw || !*raw) return false;
     CStringW path(raw); path.Replace(L'/', L'\\');
-    if (path.GetLength() >= MAX_PATH || path[0] == L'\\') return false;
+    if (path.GetLength() >= 32767 || path[0] == L'\\') return false;
     path.TrimRight(L"\\");
     if (path.IsEmpty()) return false;
     int start = 0;
@@ -225,13 +225,13 @@ bool ExtractSecureEpubZip(const CStringW& source, const CStringW& destination, C
         Handles parents; CStringW path(destination);
         for (size_t i = 0; i < components.size() - (directory ? 0 : 1); ++i) {
             path += L"\\" + components[i];
-            if (path.GetLength() >= MAX_PATH || (!::CreateDirectoryW(path, nullptr) && ::GetLastError() != ERROR_ALREADY_EXISTS) || !OpenDirectoryNoReparse(path, parents)) {
+            if (path.GetLength() >= 32767 || (!::CreateDirectoryW(path, nullptr) && ::GetLastError() != ERROR_ALREADY_EXISTS) || !OpenDirectoryNoReparse(path, parents)) {
                 error = L"Cannot safely create EPUB ZIP directory: " + relative; return false;
             }
         }
         if (directory) { if (archive_read_data_skip(reader.value) != ARCHIVE_OK) { error = L"Invalid ZIP directory: " + relative; return false; } continue; }
         path += L"\\" + components.back();
-        if (path.GetLength() >= MAX_PATH) { error = L"EPUB ZIP path is too long: " + relative; return false; }
+        if (path.GetLength() >= 32767) { error = L"EPUB ZIP path is too long: " + relative; return false; }
         HANDLE file = ::CreateFileW(path, GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
         if (file == INVALID_HANDLE_VALUE) { error = L"Cannot safely create EPUB ZIP resource: " + relative; return false; }
         unsigned long long writtenTotal = 0; bool ok = true; unsigned char buffer[65536];

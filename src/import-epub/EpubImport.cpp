@@ -1003,6 +1003,25 @@ namespace
         return out;
     }
 
+    // Resolve dot segments before applying the extended-length Windows prefix.
+    CStringW CanonicalExtendedPath(const CStringW& input)
+    {
+        CStringW plain(input);
+        const bool unc = plain.Left(8).CompareNoCase(L"\\\\?\\UNC\\") == 0;
+        const bool extended = unc || plain.Left(4) == L"\\\\?\\";
+        if (unc) plain = CStringW(L"\\\\") + plain.Mid(8);
+        else if (extended) plain = plain.Mid(4);
+        const DWORD required = ::GetFullPathNameW(plain, 0, nullptr, nullptr);
+        if (!required || required > 32768) return CStringW();
+        std::vector<wchar_t> buffer(required, L'\0');
+        const DWORD length = ::GetFullPathNameW(plain, static_cast<DWORD>(buffer.size()), buffer.data(), nullptr);
+        if (!length || length >= buffer.size()) return CStringW();
+        CStringW result(buffer.data());
+        if (extended && result.Left(2) == L"\\\\") return CStringW(L"\\\\?\\UNC\\") + result.Mid(2);
+        if (extended) return CStringW(L"\\\\?\\") + result;
+        return result;
+    }
+
     CStringW CombineAndCanonicalizePath(const CStringW& baseDir, const CStringW& relative)
     {
         CStringW rel = UrlDecodeUtf8(relative);
@@ -1016,13 +1035,9 @@ namespace
             if(!segment.IsEmpty() && segment!=L"." && segment!=L".." && (segment.Right(1)==L" " || segment.Right(1)==L".")) return CStringW();
             segmentStart=end+1;
         }
-        wchar_t canonical[MAX_PATH] = {}, root[MAX_PATH] = {};
-        const CStringW joined=baseDir+L"\\"+rel;
-        const DWORD length=::GetFullPathNameW(joined, _countof(canonical), canonical, nullptr);
-        const DWORD rootLength=::GetFullPathNameW(g_bookRoot, _countof(root), root, nullptr);
-        if(!length || length>=_countof(canonical) || !rootLength || rootLength>=_countof(root)) return CStringW();
-        CStringW prefix(root); prefix.TrimRight(L"\\");
-        const CStringW path(canonical);
+        const CStringW path=CanonicalExtendedPath(baseDir+L"\\"+rel);
+        CStringW prefix=CanonicalExtendedPath(g_bookRoot); prefix.TrimRight(L"\\");
+        if(path.IsEmpty() || prefix.IsEmpty()) return CStringW();
         if(path.GetLength()<=prefix.GetLength() || path.Left(prefix.GetLength()).CompareNoCase(prefix)!=0 || path[prefix.GetLength()]!=L'\\') return CStringW();
         // Reject redirections at the extraction root and at every descendant,
         // including the final resource. Never fall back to an unchecked path.
@@ -1148,10 +1163,35 @@ namespace
         TempDirectory()
             : m_keep(false)
         {
-            wchar_t temp[MAX_PATH] = L"";
-            const DWORD tempLength = ::GetTempPathW(_countof(temp), temp);
-            if (tempLength == 0 || tempLength >= _countof(temp))
-                return;
+            std::vector<wchar_t> temp(32768, L'\0');
+            const DWORD tempLength = ::GetTempPathW(static_cast<DWORD>(temp.size()), temp.data());
+            if (tempLength == 0 || tempLength >= temp.size()) return;
+            CStringW selectedTemp(temp.data());
+            // GetTempPathW may silently fall back when TMP/TEMP exceeds MAX_PATH.
+            // Honor an existing long directory, retaining TMP's precedence.
+            for (const wchar_t* name : { L"TMP", L"TEMP" }) {
+                std::vector<wchar_t> value(32768, L'\0');
+                const DWORD n = ::GetEnvironmentVariableW(name, value.data(), static_cast<DWORD>(value.size()));
+                if (!n) continue;
+                if (n >= value.size()) break;
+                if (n >= MAX_PATH) {
+                    CStringW candidate = CanonicalExtendedPath(CStringW(value.data()));
+                    if (!candidate.IsEmpty() && candidate.Left(4) != L"\\\\?\\") {
+                        if (candidate.Left(2) == L"\\\\") candidate = CStringW(L"\\\\?\\UNC\\") + candidate.Mid(2);
+                        else candidate = CStringW(L"\\\\?\\") + candidate;
+                    }
+                    const DWORD attrs = ::GetFileAttributesW(candidate);
+                    if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY)) selectedTemp = candidate;
+                }
+                break;
+            }
+            CStringW extendedTemp = CanonicalExtendedPath(selectedTemp);
+            if (extendedTemp.IsEmpty()) return;
+            if (extendedTemp.Right(1) != L"\\") extendedTemp += L"\\";
+            if (extendedTemp.Left(4) != L"\\\\?\\") {
+                if (extendedTemp.Left(2) == L"\\\\") extendedTemp = CStringW(L"\\\\?\\UNC\\") + extendedTemp.Mid(2);
+                else extendedTemp = CStringW(L"\\\\?\\") + extendedTemp;
+            }
             // Keep the extraction path short while retaining full GUID entropy.
             for (int attempt = 0; attempt < 4; ++attempt)
             {
@@ -1159,7 +1199,7 @@ namespace
                 if (id.IsEmpty())
                     break;
                 CStringW candidate;
-                candidate.Format(L"%sE_%s", temp, id.GetString());
+                candidate.Format(L"%sE_%s", extendedTemp.GetString(), id.GetString());
                 if (::CreateDirectoryW(candidate, nullptr))
                 {
                     m_path = candidate;
@@ -1197,12 +1237,8 @@ namespace
 
     bool ValidateExtractedDirectoryTree(const CStringW& root, CStringW& errorText)
     {
-        CStringW canonicalRoot;
-        wchar_t rootBuffer[4096] = L"";
-        if (!PathCanonicalizeW(rootBuffer, root))
-            canonicalRoot = root;
-        else
-            canonicalRoot = rootBuffer;
+        CStringW canonicalRoot = CanonicalExtendedPath(root);
+        if (canonicalRoot.IsEmpty()) { errorText = L"Cannot canonicalize EPUB extraction root."; return false; }
 
         std::vector<CStringW> stack;
         stack.push_back(canonicalRoot);
@@ -1232,8 +1268,8 @@ namespace
                     child += L"\\";
                 child += fd.cFileName;
 
-                wchar_t canonicalChild[4096] = L"";
-                CStringW checkedPath = PathCanonicalizeW(canonicalChild, child) ? CStringW(canonicalChild) : child;
+                CStringW checkedPath = CanonicalExtendedPath(child);
+                if (checkedPath.IsEmpty()) { FindClose(h); errorText = L"Cannot canonicalize EPUB resource."; return false; }
                 if (!HasPathPrefixNoCase(checkedPath, canonicalRoot))
                 {
                     FindClose(h);
@@ -1371,8 +1407,24 @@ namespace
         }
 
         VARIANT_BOOL loaded = VARIANT_FALSE;
-        _variant_t fileName(static_cast<LPCWSTR>(path));
-        HRESULT loadHr = dom->load(fileName, &loaded);
+        CStringW msxmlPath(path);
+        if (msxmlPath.Left(8).CompareNoCase(L"\\\\?\\UNC\\") == 0) msxmlPath = CStringW(L"\\\\") + msxmlPath.Mid(8);
+        else if (msxmlPath.Left(4) == L"\\\\?\\") msxmlPath = msxmlPath.Mid(4);
+        HRESULT loadHr = E_FAIL;
+        if (msxmlPath.GetLength() < MAX_PATH) {
+            _variant_t fileName(static_cast<LPCWSTR>(msxmlPath));
+            loadHr = dom->load(fileName, &loaded);
+        } else {
+            CComPtr<IStream> stream;
+            loadHr = ::SHCreateStreamOnFileEx(path, STGM_READ | STGM_SHARE_DENY_WRITE, FILE_ATTRIBUTE_NORMAL, FALSE, nullptr, &stream);
+            CComQIPtr<IPersistStream> persist(dom);
+            if (SUCCEEDED(loadHr) && stream && persist) {
+                loadHr = persist->Load(stream);
+                loaded = loadHr == S_OK ? VARIANT_TRUE : VARIANT_FALSE;
+            } else {
+                if (SUCCEEDED(loadHr)) loadHr = E_NOINTERFACE;
+            }
+        }
         if (FAILED(loadHr) || loaded != VARIANT_TRUE)
         {
             CStringW reason = MsxmlGetParseErrorReason(dom);
