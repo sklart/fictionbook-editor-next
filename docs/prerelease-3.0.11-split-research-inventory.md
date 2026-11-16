@@ -165,3 +165,43 @@
 | `f7286b15` | Research S2 keyboard input route | тестовый код FBE, тестовые инструменты |
 | `071b4f68` | Exercise S2 input in additional undo states | тестовый код FBE, тестовые инструменты |
 | `28125135` | Research S2 caret navigation and mixed undo history | тестовый код FBE, тестовые инструменты |
+
+## Независимая часть исследования архитектуры Undo
+
+Срез: `master` `10e60e871c18c22269bc9dc0f723ee434a0127cf`, `codex/fbe-undo-architecture-feasibility` `bcc9435b07f8916e1a23d53d7fb5e47b4a769ede`. При сравнении исключена общая история, достижимая из перечисленных ниже четырёх веток и `master`:
+
+- `codex/fbe-next-integration-3010` — `a9c33414a77f957d73a890d69e3767877bc05d08`;
+- `codex/community-3010-closure` — `ff91662c641c8aa55b1b0a2a8705c568a03e0abe`;
+- `codex/fix-ci-validation-gates` — `9d0c2cd82ffe5e861452cf1ed41d201fca491237`;
+- `codex/plugin-settings-runtime-sync` — `01eac62094dcae2801f167ef983709bd9ce58189`;
+
+Остаются 26 перечисленных ниже непоглощённых немержевых коммитов. Изменённые пути находятся только в `docs/`, `src/fbe/testing/` и `tools/tests/`. Тесты посвящены наблюдению истории MSHTML, мутациям DOM, Split и границам выделения; они являются исследованием, а не готовым исправлением. В частности, `2484ad41` создаёт изолированный стенд минимальных мутаций, `7a313a1d` — анализ снимков и сравнительный запуск наблюдателя, `ac996392` и `fd027619` — наблюдение границ истории и dirty. Историю и свидетельства сохраняем в ветке; её объединение целиком не выполняется. Перечень не утверждает построчную приёмку каждого исследования.
+
+| Коммит | Назначение по исходному сообщению | Пути |
+|---|---|---|
+| `bcc9435b` | docs: record redo selection boundary investigation | документация/свидетельства |
+| `a6de4a25` | test: investigate S2 redo selection boundaries | тестовый код FBE, тестовые инструменты |
+| `dcf054a2` | docs: document S2 caret undo investigation | документация/свидетельства |
+| `f83ba319` | test: investigate S2 undo caret restoration | тестовый код FBE, тестовые инструменты |
+| `ae6e514d` | docs: record incremental split caret limitation | документация/свидетельства |
+| `8c02a5a8` | test: investigate incremental split and caret recovery | тестовый код FBE, тестовые инструменты |
+| `9d9ed9bb` | docs: record minimal mutation order observations | документация/свидетельства |
+| `aebce9db` | test: compare minimal DOM mutation order | тестовый код FBE, тестовые инструменты |
+| `6e1f7913` | Document observed MSHTML Undo behavior | документация/свидетельства |
+| `d8a2fd6b` | Record seven MSHTML mutation experiments | документация/свидетельства |
+| `2484ad41` | Add isolated MSHTML mutation test harness | тестовый код FBE, тестовые инструменты |
+| `b68dbf29` | Document minimal Split mutation research limits | документация/свидетельства |
+| `180fb1ff` | Record Split observer control and snapshots | документация/свидетельства |
+| `7a313a1d` | Add offline Split DOM oracle and trace A B runner | тестовые инструменты |
+| `2eddafc3` | Document Split gate and root cause investigation | документация/свидетельства |
+| `de815f9c` | Record comparative Split Undo traces | документация/свидетельства |
+| `7dfdd3a2` | Document blocked historical MSXML 6 investigation | документация/свидетельства |
+| `abeba094` | Record FBE 2.6.8 MSXML 6 diagnostics | документация/свидетельства |
+| `5481aa83` | Record Split mixed history and reopen observations | документация/свидетельства |
+| `a419bc30` | Document historical Split Undo and startup diagnostics | документация/свидетельства |
+| `8fd621bc` | Document historical and observation feasibility limits | документация/свидетельства |
+| `076129ce` | Record Split repeatability and dirty range evidence | документация/свидетельства |
+| `fd027619` | Probe dirty ranges and compare historical Split snapshots | тестовый код FBE, тестовые инструменты |
+| `edb32ba6` | Assess unified undo history feasibility | документация/свидетельства |
+| `4f8dadc1` | Record history observer boundary evidence | документация/свидетельства |
+| `ac996392` | Probe MSHTML history observer boundary | тестовый код FBE, тестовые инструменты |
