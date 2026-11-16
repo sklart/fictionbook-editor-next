@@ -1,16 +1,45 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
-    [string]$PlatformToolset
+    [string]$PlatformToolset,
+    [ValidateRange(1, 600)][int]$TimeoutSeconds = 120
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 & (Join-Path $repoRoot 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset
 
-$testDir = Join-Path $repoRoot 'out\tests\image-import'
-New-Item -ItemType Directory -Force -Path $testDir | Out-Null
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$scratch = New-IsolatedFbeScratchDirectory -Name 'image-import-native' -RuntimePayload
+$passed = $false
+try {
+Assert-IsolatedFbeFreeSpace -RequiredBytes 384MB
+$testDir = $scratch.Root
+Set-IsolatedRuntimeStage -Isolation $scratch -Stage 'prepare-fixtures'
+
+function Invoke-ImageImportNativeProcess {
+    param([Parameter(Mandatory)][string]$Executable, [Parameter(Mandatory)][string[]]$Arguments, [Parameter(Mandatory)][string]$Stage)
+    Set-IsolatedRuntimeStage -Isolation $scratch -Stage $Stage
+    $stdout = Join-Path $scratch.Root ($Stage + '.stdout')
+    $stderr = Join-Path $scratch.Root ($Stage + '.stderr')
+    # Windows file paths cannot contain quotes. Double trailing backslashes so
+    # CommandLineToArgvW does not consume the closing quote (notably /Fo paths).
+    $quoted = @($Arguments | ForEach-Object {
+        if ($_ -match '"') { throw 'Native test argument unexpectedly contains a quote.' }
+        '"' + ($_ -replace '(\\+)$', '$1$1') + '"'
+    }) -join ' '
+    $process = Start-Process -FilePath $Executable -ArgumentList $quoted -WorkingDirectory $repoRoot -WindowStyle Hidden `
+        -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+    try {
+        $code = Wait-IsolatedFbeProcess -Process $process -Isolation $scratch -Scenario $Stage -Report $stdout -TimeoutSeconds $TimeoutSeconds
+    } finally {
+        if (Test-Path -LiteralPath $stdout) { Get-Content -LiteralPath $stdout | ForEach-Object { Write-Host $_ } }
+        if (Test-Path -LiteralPath $stderr) { Get-Content -LiteralPath $stderr | ForEach-Object { Write-Host $_ } }
+    }
+    if ($code -ne 0) { throw "Native ImageImport $Stage failed: exit=$code." }
+}
+
 $emptyFixture = Join-Path $testDir 'empty-image.bin'
 [IO.File]::WriteAllBytes($emptyFixture, [byte[]]@())
 $oversizedFixture = Join-Path $testDir 'oversized-image.bin'
@@ -104,41 +133,34 @@ $exe = Join-Path $testDir 'image-import-smoke.exe'
 $webp = Join-Path $repoRoot "build\libwebp\install\$Configuration"
 $openjpeg = Join-Path $repoRoot "build\openjpeg\install\$Configuration"
 
-& cl.exe /nologo /EHsc /std:c++17 /MT /DUNICODE /D_UNICODE /DFBE_IMAGE_IMPORT_TESTING "/Fo$testDir\\" `
-    "/I$repoRoot\src\fbe" "/I$repoRoot\third_party\wtl" "/I$webp\include" "/I$openjpeg\include" "/I$repoRoot\build\libheif\install\$Configuration\include" `
-    (Join-Path $PSScriptRoot 'image-import-smoke.cpp') (Join-Path $repoRoot 'src\fbe\ImageImport.cpp') `
-    "/Fe$exe" "/link" "/SUBSYSTEM:CONSOLE" "/LIBPATH:$webp\lib" "/LIBPATH:$openjpeg\lib" "/LIBPATH:$repoRoot\build\libheif\install\$Configuration\lib" "/LIBPATH:$repoRoot\build\libde265\install\$Configuration\lib" "/LIBPATH:$repoRoot\build\aom\install\$Configuration\lib" libwebpmux.lib libwebp.lib libsharpyuv.lib openjp2.lib heif.lib libde265.lib aom.lib gdiplus.lib mscms.lib ole32.lib
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-& $exe `
-    (Join-Path $repoRoot 'src\fbe\res\imgph.png') `
-    $emptyFixture `
-    $avifFixture `
-    (Join-Path $repoRoot 'third_party\libheif\fuzzing\data\corpus\colors-no-alpha.heic') `
-    (Join-Path $repoRoot 'third_party\libheif\fuzzing\data\corpus\colors-with-alpha.heic') `
-    (Join-Path $repoRoot 'src\fbe\res\xml.bmp') `
-    $avifWithPngExtension `
-    $truncatedAvif `
-    (Join-Path $repoRoot 'third_party\libwebp\examples\test.webp') `
-    $jpegFixture `
-    $gifFixture `
-    $tiffFixture `
-    $transparentPngFixture `
-    (Join-Path $repoRoot 'third_party\libheif\examples\example.heic') `
-    $transparentPngWithWebpExtension `
-    $animatedGifFixture `
-    $jpegPassThroughFixture `
-    $oversizedFixture `
-    $singleTiffFixture `
-    (Join-Path $repoRoot 'third_party\libheif\tests\data\rainbow-451x461.heic') `
-    (Join-Path $repoRoot 'tools\tests\fixtures\sdr_fox_10bit.avif') `
-    (Join-Path $repoRoot 'tools\tests\fixtures\abc_color_irot_alpha_irot.avif') `
-    $displayP3Fixture `
-    $displayP3AlphaFixture `
-    (Join-Path $repoRoot 'third_party\libheif\tests\data\rainbow-451x461.heic') `
-    $hdrPqFixture `
-    $hdrHlgFixture `
-    $hdrUnspecifiedPrimariesFixture `
+$compiler = (Get-Command cl.exe -ErrorAction Stop).Source
+$compileArguments = @(
+    '/nologo', '/EHsc', '/std:c++17', '/MT', '/DUNICODE', '/D_UNICODE', '/DFBE_IMAGE_IMPORT_TESTING', "/Fo$testDir\\",
+    "/I$repoRoot\src\fbe", "/I$repoRoot\third_party\wtl", "/I$webp\include", "/I$openjpeg\include", "/I$repoRoot\build\libheif\install\$Configuration\include",
+    (Join-Path $PSScriptRoot 'image-import-smoke.cpp'), (Join-Path $repoRoot 'src\fbe\ImageImport.cpp'),
+    "/Fe$exe", '/link', '/SUBSYSTEM:CONSOLE', "/LIBPATH:$webp\lib", "/LIBPATH:$openjpeg\lib", "/LIBPATH:$repoRoot\build\libheif\install\$Configuration\lib", "/LIBPATH:$repoRoot\build\libde265\install\$Configuration\lib", "/LIBPATH:$repoRoot\build\aom\install\$Configuration\lib",
+    'libwebpmux.lib', 'libwebp.lib', 'libsharpyuv.lib', 'openjp2.lib', 'heif.lib', 'libde265.lib', 'aom.lib', 'gdiplus.lib', 'mscms.lib', 'ole32.lib'
+)
+Invoke-ImageImportNativeProcess -Executable $compiler -Arguments $compileArguments -Stage 'compile'
+$smokeArguments = @(
+    (Join-Path $repoRoot 'src\fbe\res\imgph.png'), $emptyFixture, $avifFixture,
+    (Join-Path $repoRoot 'third_party\libheif\fuzzing\data\corpus\colors-no-alpha.heic'),
+    (Join-Path $repoRoot 'third_party\libheif\fuzzing\data\corpus\colors-with-alpha.heic'),
+    (Join-Path $repoRoot 'src\fbe\res\xml.bmp'), $avifWithPngExtension, $truncatedAvif,
+    (Join-Path $repoRoot 'third_party\libwebp\examples\test.webp'), $jpegFixture, $gifFixture, $tiffFixture, $transparentPngFixture,
+    (Join-Path $repoRoot 'third_party\libheif\examples\example.heic'), $transparentPngWithWebpExtension, $animatedGifFixture, $jpegPassThroughFixture, $oversizedFixture, $singleTiffFixture,
+    (Join-Path $repoRoot 'third_party\libheif\tests\data\rainbow-451x461.heic'),
+    (Join-Path $repoRoot 'tools\tests\fixtures\sdr_fox_10bit.avif'),
+    (Join-Path $repoRoot 'tools\tests\fixtures\abc_color_irot_alpha_irot.avif'), $displayP3Fixture, $displayP3AlphaFixture,
+    (Join-Path $repoRoot 'third_party\libheif\tests\data\rainbow-451x461.heic'), $hdrPqFixture, $hdrHlgFixture, $hdrUnspecifiedPrimariesFixture,
     (Join-Path $repoRoot 'tools\tests\fixtures\sdr_fox_10bit.avif')
-if ($LASTEXITCODE -ne 0) { throw "Native ImageImport smoke-test завершился с кодом $LASTEXITCODE." }
+)
+Invoke-ImageImportNativeProcess -Executable $exe -Arguments $smokeArguments -Stage 'run-smoke'
+$passed = $true
 Write-Host 'Native ImageImport smoke-test passed.'
+} catch {
+    [IO.File]::WriteAllText((Join-Path $scratch.Root 'error.txt'), $_.Exception.ToString(), [Text.UTF8Encoding]::new($false))
+    throw
+} finally {
+    Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $passed
+}
