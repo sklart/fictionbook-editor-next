@@ -5,7 +5,8 @@ param(
     [Parameter(Mandatory)][string]$FbeExe,
     [string]$OriginalBook,
     [int]$TimeoutSeconds = 45,
-    [switch]$KeepArtifacts
+    [switch]$KeepArtifacts,
+    [string]$CaseName
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
@@ -15,11 +16,17 @@ $cases = [ordered]@{
     'subtitle-paragraph' = '<subtitle><p>Nested</p></subtitle>'
     'subtitle-strong-multiple' = '<subtitle><strong><p>First</p><empty-line/><p>Second</p><empty-line/><p>Third</p></strong></subtitle>'
     'section-strong-p' = '<strong><p>Nested</p></strong>'
+    'section-emphasis-p' = '<emphasis><p>Nested</p></emphasis>'
     'subtitle-emphasis-p' = '<subtitle><emphasis><p>Nested</p></emphasis></subtitle>'
+    'subtitle-sub-p' = '<subtitle><sub><p>Nested</p></sub></subtitle>'
+    'subtitle-empty-p-tail' = '<subtitle><p/>Tail text</subtitle>'
+    'annotation-strong-p' = '<p>Body control.</p>'
     'paragraph-strong-p' = '<p><strong><p>Nested</p></strong></p>'
 }
 if ($OriginalBook) { $cases['user-book'] = $null }
+if ($CaseName -and !$cases.Contains($CaseName)) { throw "Unknown Issue72 case: $CaseName" }
 foreach ($case in $cases.GetEnumerator()) {
+    if ($CaseName -and $case.Key -ne $CaseName) { continue }
     foreach ($operation in 'source', 'validate') {
         $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'issue72'
         $passed = $false
@@ -31,6 +38,7 @@ foreach ($case in $cases.GetEnumerator()) {
                 Copy-Item -LiteralPath $OriginalBook -Destination $fixture
             } else {
                 $xml = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Issue72</book-title><lang>en</lang></title-info><document-info><id>issue72-test</id><version>1.0</version></document-info></description><body><section>' + $case.Value + '<p>Neighbour</p></section></body></FictionBook>'
+                if ($case.Key -eq 'annotation-strong-p') { $xml = $xml.Replace('<lang>en</lang>', '<annotation><strong><p>Nested annotation.</p></strong></annotation><lang>en</lang>') }
                 [IO.File]::WriteAllText($fixture, $xml, [Text.UTF8Encoding]::new($false))
             }
             $before = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
@@ -54,23 +62,33 @@ foreach ($case in $cases.GetEnumerator()) {
                 throw "Issue72 $($case.Key)/$operation changed the visual document during refusal: $text"
             }
             if ($text -match '(?m)^source-active=1\r?$') {
-                function Get-BodyText([string]$path) {
+                function Get-VisibleText([string]$path) {
                     $settings = [Xml.XmlReaderSettings]::new()
                     $settings.DtdProcessing = [Xml.DtdProcessing]::Prohibit
                     $settings.XmlResolver = $null
                     $reader = [Xml.XmlReader]::Create($path, $settings)
                     try { $document = [Xml.XmlDocument]::new(); $document.XmlResolver = $null; $document.Load($reader) }
                     finally { $reader.Close() }
-                    $bodyNodes = $document.SelectNodes("/*[local-name()='FictionBook' and namespace-uri()='http://www.gribuser.ru/xml/fictionbook/2.0']/*[local-name()='body' and namespace-uri()='http://www.gribuser.ru/xml/fictionbook/2.0']")
+                    $book = "/*[local-name()='FictionBook' and namespace-uri()='http://www.gribuser.ru/xml/fictionbook/2.0']"
+                    $bodyNodes = $document.SelectNodes("$book/*[local-name()='body' and namespace-uri()='http://www.gribuser.ru/xml/fictionbook/2.0']")
                     if ($bodyNodes.Count -eq 0) { throw "No FB2 body in $path" }
                     $builder = [Text.StringBuilder]::new()
-                    foreach ($node in $bodyNodes) { [void]$builder.Append($node.InnerText) }
+                    $groups = @(
+                        "$book/*[local-name()='description']/*[local-name()='title-info']/*[local-name()='annotation']",
+                        "$book/*[local-name()='description']/*[local-name()='src-title-info']/*[local-name()='annotation']",
+                        "$book/*[local-name()='description']/*[local-name()='document-info']/*[local-name()='history']",
+                        "$book/*[local-name()='body']"
+                    )
+                    foreach ($group in $groups) {
+                        [void]$builder.Append([char]1)
+                        foreach ($node in $document.SelectNodes($group)) { [void]$builder.Append($node.InnerText) }
+                    }
                     return [regex]::Replace($builder.ToString().Replace('ISSUE72_UNSAVED_MARKER', ''), '\s+', '')
                 }
                 if (!(Test-Path -LiteralPath $sourceDump -PathType Leaf)) { throw 'Source snapshot was not written.' }
-                $expectedBody = Get-BodyText $fixture
-                $actualBody = Get-BodyText $sourceDump
-                if ($expectedBody -cne $actualBody) { throw "Issue72 $($case.Key)/$operation changed body text: expected $($expectedBody.Length) characters, actual $($actualBody.Length)." }
+                $expectedText = Get-VisibleText $fixture
+                $actualText = Get-VisibleText $sourceDump
+                if ($expectedText -cne $actualText) { throw "Issue72 $($case.Key)/$operation changed visible text: expected $($expectedText.Length) characters, actual $($actualText.Length)." }
                 if ($case.Key -eq 'section-strong-p') {
                     $settings = [Xml.XmlReaderSettings]::new()
                     $settings.DtdProcessing = [Xml.DtdProcessing]::Prohibit
