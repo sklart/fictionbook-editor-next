@@ -131,7 +131,7 @@ namespace
         ConsolePrintf(L"ImportEPUBBatch.exe --version\n");
         ConsolePrintf(L"\n");
         ConsolePrintf(L"Common options:\n");
-        ConsolePrintf(L"  --log                Write .ImportEPUB.log near source EPUB\n");
+        ConsolePrintf(L"  --log                Write a new [base][.N].ImportEPUB.log near source EPUB\n");
         ConsolePrintf(L"  --no-images          Do not import images\n");
         ConsolePrintf(L"  --no-cover           Do not import cover\n");
         ConsolePrintf(L"  --no-notes           Do not import notes\n");

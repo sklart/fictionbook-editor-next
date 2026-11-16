@@ -333,8 +333,10 @@ namespace
         return out;
     }
 
-    bool WriteUtf8TextFile(const CStringW& path, const CStringW& text)
+    bool WriteUtf8TextFile(const CStringW& path, const CStringW& text,
+                           DWORD creation = CREATE_ALWAYS, DWORD* creationError = nullptr)
     {
+        if (creationError) *creationError = ERROR_SUCCESS;
         int bytesRequired = WideCharToMultiByte(CP_UTF8, 0, text.GetString(), text.GetLength(), nullptr, 0, nullptr, nullptr);
         if (bytesRequired < 0)
             return false;
@@ -346,9 +348,12 @@ namespace
         if (bytesRequired > 0)
             WideCharToMultiByte(CP_UTF8, 0, text.GetString(), text.GetLength(), bytes.data() + 3, bytesRequired, nullptr, nullptr);
 
-        HANDLE h = CreateFileW(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        HANDLE h = CreateFileW(path, GENERIC_WRITE, 0, nullptr, creation, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (h == INVALID_HANDLE_VALUE)
+        {
+            if (creationError) *creationError = GetLastError();
             return false;
+        }
         DWORD written = 0;
         BOOL ok = WriteFile(h, bytes.data(), static_cast<DWORD>(bytes.size()), &written, nullptr);
         CloseHandle(h);
@@ -927,8 +932,16 @@ namespace
         {
             if (!g_options.writeImportLog && !force)
                 return;
-            CStringW logPath = ChangeExtension(epubPath, L".ImportEPUB.log");
-            WriteUtf8TextFile(logPath, text);
+            const CStringW logBase = ChangeExtension(epubPath, L"");
+            for (unsigned int number = 0; number < 10000; ++number)
+            {
+                CStringW suffix;
+                if (number) suffix.Format(L".%u", number);
+                const CStringW logPath = logBase + suffix + L".ImportEPUB.log";
+                DWORD error = ERROR_SUCCESS;
+                if (WriteUtf8TextFile(logPath, text, CREATE_NEW, &error)) return;
+                if (error != ERROR_FILE_EXISTS && error != ERROR_ALREADY_EXISTS) return;
+            }
         }
     };
 

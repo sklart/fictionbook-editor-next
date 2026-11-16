@@ -2,6 +2,11 @@
 
 `ImportEPUB.dll` imports EPUB into the FBE FB2 DOM. `ImportEPUBBatch.exe` provides single-file and corpus EPUB-to-FB2 conversion. Build with `tools/build/build.ps1`: plug-in DLLs are under `out/Release/Plugins`; batch executables use the configured batch-output directory.
 
+Import logs are written next to the source EPUB. The first uses
+`book.ImportEPUB.log`; if that name exists, a new numbered name such as
+`book.1.ImportEPUB.log` is used without replacing an earlier log. This also
+applies to automatically written error or warning logs.
+
 ## Import capabilities
 
 The importer reads EPUB 2/3 containers, OPF metadata/manifest/spine, `nav.xhtml` and NCX, then imports XHTML in spine order. It transfers document metadata, authors/translators, series, identifiers, cover and images, sections, links/anchors, notes, tables, lists, figures, code and common semantic markup. It also normalizes language and common encoding/typography defects, skips hidden or service pages when selected, and validates the resulting FB2.
