@@ -3998,4 +3998,17 @@ if __name__ == '__main__':
     log_spec.loader.exec_module(log_tests)
     log_tests.BATCH = BATCH
     ImportLogPreservation = log_tests.ImportLogPreservation
+    long_spec = importlib.util.spec_from_file_location('epub_long_path', Path(__file__).with_name('test-import-epub-long-path.py'))
+    long_tests = importlib.util.module_from_spec(long_spec)
+    long_spec.loader.exec_module(long_tests)
+    long_tests.m.BATCH = BATCH
+
+    def load_tests(loader, tests, pattern):
+        # LongArchive inherits the large Fidelity suite for its helpers. Add
+        # only its own regressions so those inherited tests run just once.
+        for name in loader.getTestCaseNames(long_tests.LongArchive):
+            if name in long_tests.LongArchive.__dict__:
+                tests.addTest(long_tests.LongArchive(name))
+        return tests
+
     unittest.main(argv=[__file__, *rest])

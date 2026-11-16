@@ -2,10 +2,6 @@ import argparse,importlib.util,unittest,os,subprocess,tempfile,zipfile,time,ctyp
 from pathlib import Path
 spec=importlib.util.spec_from_file_location('fidelity',str(Path(__file__).resolve().parent/'test-import-epub-fidelity.py'))
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
-parser=argparse.ArgumentParser()
-parser.add_argument('--batch',type=Path,required=True)
-args,rest=parser.parse_known_args()
-m.BATCH=args.batch.resolve()
 class LongArchive(m.Fidelity):
  def test_long_archive_and_cleanup(self):
   name='D'*90+'/'+'E'*90+'/'+'F'*90+'/chapter.xhtml'
@@ -148,4 +144,8 @@ class LongArchive(m.Fidelity):
    self.assertEqual(sentinel.read_bytes(),b'unchanged')
    self.assertEqual([],list(scratch.iterdir()))
 if __name__=='__main__':
+ parser=argparse.ArgumentParser()
+ parser.add_argument('--batch',type=Path,required=True)
+ args,rest=parser.parse_known_args()
+ m.BATCH=args.batch.resolve()
  unittest.main(argv=[__file__,*rest],defaultTest=['LongArchive.test_long_archive_and_cleanup', 'LongArchive.test_long_unicode_archive_and_cleanup', 'LongArchive.test_encoded_escape_with_long_temporary_path', 'LongArchive.test_long_resource_relative_parent_and_image_bytes', 'LongArchive.test_valid_xml_without_recovery_warning', 'LongArchive.test_long_xml_stream_preserves_malformed_html_fallback', 'LongArchive.test_long_xml_stream_does_not_load_external_entity', 'LongArchive.test_traversal_and_failure_cleanup_with_long_temporary_path', 'LongArchive.test_temporary_root_over_max_path', 'LongArchive.test_volume_guid_temporary_root', 'LongArchive.test_long_volume_guid_temporary_root', 'LongArchive.test_reparse_race_in_long_extraction_path'])
