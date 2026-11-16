@@ -6,7 +6,9 @@ param(
     [string]$OriginalBook,
     [int]$TimeoutSeconds = 45,
     [switch]$KeepArtifacts,
-    [string]$CaseName
+    [string]$CaseName,
+    [Alias('Operation')][ValidateSet('both', 'source', 'validate')][string]$OperationFilter = 'both',
+    [switch]$RequireSource
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
@@ -19,6 +21,7 @@ $cases = [ordered]@{
     'section-emphasis-p' = '<emphasis><p>Nested</p></emphasis>'
     'subtitle-emphasis-p' = '<subtitle><emphasis><p>Nested</p></emphasis></subtitle>'
     'subtitle-sub-p' = '<subtitle><sub><p>Nested</p></sub></subtitle>'
+    'subtitle-strong-sub-p' = '<subtitle><strong>Heading </strong><sub><p><emphasis>Nested</emphasis></p></sub></subtitle>'
     'subtitle-empty-p-tail' = '<subtitle><p/>Tail text</subtitle>'
     'annotation-strong-p' = '<p>Body control.</p>'
     'paragraph-strong-p' = '<p><strong><p>Nested</p></strong></p>'
@@ -28,6 +31,7 @@ if ($CaseName -and !$cases.Contains($CaseName)) { throw "Unknown Issue72 case: $
 foreach ($case in $cases.GetEnumerator()) {
     if ($CaseName -and $case.Key -ne $CaseName) { continue }
     foreach ($operation in 'source', 'validate') {
+        if ($OperationFilter -ne 'both' -and $operation -ne $OperationFilter) { continue }
         $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'issue72'
         $passed = $false
         try {
@@ -61,6 +65,9 @@ foreach ($case in $cases.GetEnumerator()) {
             if ($text -match '(?m)^source-active=0\r?$' -and $text -notmatch '(?m)^body-unchanged=1\r?$') {
                 throw "Issue72 $($case.Key)/$operation changed the visual document during refusal: $text"
             }
+            if (($RequireSource -or $case.Key -eq 'valid-control') -and $operation -eq 'source' -and $text -notmatch '(?m)^source-active=1\r?$') {
+                throw "Issue72 $($case.Key)/$operation did not open Source: $text"
+            }
             if ($text -match '(?m)^source-active=1\r?$') {
                 function Get-VisibleText([string]$path) {
                     $settings = [Xml.XmlReaderSettings]::new()
@@ -89,6 +96,36 @@ foreach ($case in $cases.GetEnumerator()) {
                 $expectedText = Get-VisibleText $fixture
                 $actualText = Get-VisibleText $sourceDump
                 if ($expectedText -cne $actualText) { throw "Issue72 $($case.Key)/$operation changed visible text: expected $($expectedText.Length) characters, actual $($actualText.Length)." }
+                function Get-LinkTargets([string]$path) {
+                    $settings = [Xml.XmlReaderSettings]::new(); $settings.DtdProcessing = [Xml.DtdProcessing]::Prohibit; $settings.XmlResolver = $null
+                    $reader = [Xml.XmlReader]::Create($path, $settings)
+                    try { $document = [Xml.XmlDocument]::new(); $document.XmlResolver = $null; $document.Load($reader) }
+                    finally { $reader.Close() }
+                    $targets = [Collections.Generic.List[string]]::new()
+                    foreach ($node in $document.SelectNodes("//*[local-name()='a' or local-name()='image']")) {
+                        foreach ($attribute in $node.Attributes) {
+                            if ($attribute.LocalName -ceq 'href') { $targets.Add($node.LocalName + ':' + $attribute.Value) }
+                        }
+                    }
+                    return [string]::Join([string][char]1, $targets)
+                }
+                if ((Get-LinkTargets $fixture) -cne (Get-LinkTargets $sourceDump)) { throw "Issue72 $($case.Key)/$operation changed or lost link targets." }
+                function Get-BinaryFingerprints([string]$path) {
+                    $settings = [Xml.XmlReaderSettings]::new(); $settings.DtdProcessing = [Xml.DtdProcessing]::Prohibit; $settings.XmlResolver = $null
+                    $reader = [Xml.XmlReader]::Create($path, $settings)
+                    try { $document = [Xml.XmlDocument]::new(); $document.XmlResolver = $null; $document.Load($reader) }
+                    finally { $reader.Close() }
+                    $hash = [Security.Cryptography.SHA256]::Create()
+                    try {
+                        $items = foreach ($node in $document.SelectNodes("/*[local-name()='FictionBook']/*[local-name()='binary']")) {
+                            $bytes = [Convert]::FromBase64String($node.InnerText)
+                            $digest = [BitConverter]::ToString($hash.ComputeHash($bytes)).Replace('-', '')
+                            $node.GetAttribute('id') + ':' + $node.GetAttribute('content-type') + ':' + $digest
+                        }
+                        return [string]::Join([string][char]1, @($items))
+                    } finally { $hash.Dispose() }
+                }
+                if ((Get-BinaryFingerprints $fixture) -cne (Get-BinaryFingerprints $sourceDump)) { throw "Issue72 $($case.Key)/$operation changed binary IDs, media types or bytes." }
                 if ($case.Key -eq 'section-strong-p') {
                     $settings = [Xml.XmlReaderSettings]::new()
                     $settings.DtdProcessing = [Xml.DtdProcessing]::Prohibit
@@ -124,6 +161,24 @@ foreach ($case in $cases.GetEnumerator()) {
                         $elements[0].InnerText -cne 'Nested' -or $elements[1].LocalName -cne 'p' -or
                         $elements[1].InnerText -cne 'Neighbour') {
                         throw 'Issue72 subtitle-paragraph: subtitle or paragraph structure changed.'
+                    }
+                }
+                if ($case.Key -in @('section-emphasis-p', 'subtitle-sub-p', 'subtitle-strong-sub-p', 'subtitle-empty-p-tail', 'annotation-strong-p')) {
+                    $settings = [Xml.XmlReaderSettings]::new(); $settings.DtdProcessing = [Xml.DtdProcessing]::Prohibit; $settings.XmlResolver = $null
+                    $reader = [Xml.XmlReader]::Create($sourceDump, $settings)
+                    try { $document = [Xml.XmlDocument]::new(); $document.XmlResolver = $null; $document.Load($reader) }
+                    finally { $reader.Close() }
+                    $ns = [Xml.XmlNamespaceManager]::new($document.NameTable); $ns.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
+                    $sections = $document.SelectNodes('/fb:FictionBook/fb:body/fb:section', $ns)
+                    if ($sections.Count -ne 1) { throw "Issue72 $($case.Key): expected one section." }
+                    $elements = $sections[0].SelectNodes('*')
+                    if ($case.Key -eq 'section-emphasis-p' -and ($elements.Count -ne 2 -or $elements[0].LocalName -cne 'p' -or $elements[0].SelectNodes('fb:emphasis', $ns).Count -ne 1 -or $elements[0].InnerText -cne 'Nested' -or $elements[1].InnerText -cne 'Neighbour')) { throw 'Issue72 section-emphasis-p: paragraph or formatting changed.' }
+                    if ($case.Key -eq 'subtitle-sub-p' -and ($elements.Count -ne 2 -or $elements[0].LocalName -cne 'subtitle' -or $elements[0].SelectNodes('fb:sub', $ns).Count -ne 1 -or $elements[0].InnerText -cne 'Nested' -or $elements[1].InnerText -cne 'Neighbour')) { throw 'Issue72 subtitle-sub-p: subtitle or subscript changed.' }
+                    if ($case.Key -eq 'subtitle-strong-sub-p' -and ($elements.Count -ne 2 -or $elements[0].LocalName -cne 'subtitle' -or $elements[0].SelectNodes('fb:strong', $ns).Count -ne 1 -or $elements[0].SelectNodes('fb:sub/fb:emphasis', $ns).Count -ne 1 -or $elements[0].InnerText -cne 'Heading Nested' -or $elements[1].InnerText -cne 'Neighbour')) { throw 'Issue72 subtitle-strong-sub-p: subtitle, subscript or inline formatting changed.' }
+                    if ($case.Key -eq 'subtitle-empty-p-tail' -and ($elements.Count -ne 3 -or $elements[0].LocalName -cne 'empty-line' -or $elements[1].LocalName -cne 'subtitle' -or $elements[1].InnerText -cne 'Tail text' -or $elements[2].InnerText -cne 'Neighbour')) { throw 'Issue72 subtitle-empty-p-tail: empty paragraph or subtitle changed.' }
+                    if ($case.Key -eq 'annotation-strong-p') {
+                        $annotation = $document.SelectNodes('/fb:FictionBook/fb:description/fb:title-info/fb:annotation/fb:p[fb:strong]', $ns)
+                        if ($annotation.Count -ne 1 -or $annotation[0].InnerText.Replace('ISSUE72_UNSAVED_MARKER', '').Trim() -cne 'Nested annotation.') { throw 'Issue72 annotation-strong-p: annotation structure or formatting changed.' }
                     }
                 }
             }
