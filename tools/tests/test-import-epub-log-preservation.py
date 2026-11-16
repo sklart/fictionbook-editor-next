@@ -6,10 +6,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--batch', type=Path, required=True)
-args, rest = parser.parse_known_args()
-BATCH = args.batch.resolve()
+BATCH = None
 
 
 class ImportLogPreservation(unittest.TestCase):
@@ -67,4 +64,8 @@ class ImportLogPreservation(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--batch', type=Path, required=True)
+    args, rest = parser.parse_known_args()
+    BATCH = args.batch.resolve()
     unittest.main(argv=[__file__, *rest])

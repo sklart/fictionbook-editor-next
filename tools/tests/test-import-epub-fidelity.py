@@ -1,6 +1,7 @@
 """Short EPUB 2/3 content regressions through the production batch/DLL boundary."""
 import argparse
 import base64
+import importlib.util
 import json
 import os
 import re
@@ -3992,4 +3993,9 @@ if __name__ == '__main__':
     parser.add_argument('--batch', type=Path, default=ROOT / 'out/Release/ImportEPUBBatch.exe')
     args, rest = parser.parse_known_args()
     BATCH = args.batch.resolve()
+    log_spec = importlib.util.spec_from_file_location('epub_log_preservation', Path(__file__).with_name('test-import-epub-log-preservation.py'))
+    log_tests = importlib.util.module_from_spec(log_spec)
+    log_spec.loader.exec_module(log_tests)
+    log_tests.BATCH = BATCH
+    ImportLogPreservation = log_tests.ImportLogPreservation
     unittest.main(argv=[__file__, *rest])
