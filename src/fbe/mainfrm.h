@@ -718,6 +718,10 @@ public:
   LRESULT RunSettingsDialogRuntime(CAtlFile& output);
   LRESULT RunScriptingStage2Runtime(CAtlFile& output);
   LRESULT RunLegacyRuntimeScenarios(UINT, WPARAM, LPARAM, BOOL&);
+  LRESULT RunRuntimeArchiveScenarios(CAtlFile&, bool&);
+  LRESULT RunRuntimeUndoScenarios(CAtlFile&, bool&);
+  LRESULT RunRuntimeNavigationScenarios(CAtlFile&, bool&);
+  LRESULT RunRuntimeEditorScenarios(CAtlFile&);
   LRESULT RunBinaryStoreRuntime(CAtlFile& output);
 #ifdef FBE_BINARY_STORE_DIAGNOSTICS
   LRESULT RunBinaryStoreC4(CAtlFile& output);
