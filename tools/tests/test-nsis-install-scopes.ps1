@@ -6,11 +6,13 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $installerDirectory = Join-Path $root 'packaging\nsis\Installer'
 $testsDirectory = [IO.Path]::GetFullPath((Join-Path $root 'out\tests')) + [IO.Path]::DirectorySeparatorChar
-$testRoot = if ($TestDirectory) { [IO.Path]::GetFullPath($TestDirectory) } else { Join-Path $testsDirectory 'nsis-install-scopes' }
-if (-not $testRoot.StartsWith($testsDirectory, [StringComparison]::OrdinalIgnoreCase)) { throw 'NSIS scope artifacts must stay inside out/tests.' }
-if ($TestDirectory -and (Test-Path -LiteralPath $testRoot)) { throw 'Use a fresh isolated TestDirectory to preserve previous scope evidence.' }
-$inputDirectory = Join-Path $testRoot 'input'
-
+if ($TestDirectory) {
+    $testRoot = [IO.Path]::GetFullPath($TestDirectory)
+    if (-not $testRoot.StartsWith($testsDirectory, [StringComparison]::OrdinalIgnoreCase)) { throw 'NSIS scope artifacts must stay inside out/tests.' }
+    if (Test-Path -LiteralPath $testRoot) { throw 'Use a fresh isolated TestDirectory to preserve previous scope evidence.' }
+}
+$testProductName = 'FBE-Scope-Probe-' + [guid]::NewGuid().ToString('N')
+$testUninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + $testProductName
 $makensis = & (Join-Path $root 'tools\build\resolve-nsis.ps1')
 if ($LASTEXITCODE -ne 0 -or -not $makensis) { throw 'Unable to resolve makensis for NSIS scope smoke.' }
 
@@ -50,6 +52,7 @@ function Invoke-ScopeProbe([string]$Name, [string[]]$Defines, [string[]]$RunArgu
         ('/DFBE_SHELL_X64_SHA256=' + ('0' * 64)),
         ('/DFBE_SCHEMA_SHA256=' + ('0' * 64)),
         '/DFBE_DEPLOYMENT_TEST_SCOPE_PROBE=1',
+        ('/DPRODUCT_NAME=' + $testProductName),
         ('/DFBE_DEPLOYMENT_TEST_ROOT=' + $directory),
         ('/DFBE_INSTALLER_PAYLOAD_LOG_DIRECTORY=' + $directory)
     ) + $Defines + @('MakeInstaller.nsi')
@@ -89,8 +92,8 @@ function Invoke-ScopeProbe([string]$Name, [string[]]$Defines, [string[]]$RunArgu
         $outTask = $process.StandardOutput.BaseStream.CopyToAsync($stdout)
         $errTask = $process.StandardError.BaseStream.CopyToAsync($stderr)
         $process.WaitForExit()
-        $outTask.GetAwaiter().GetResult()
-        $errTask.GetAwaiter().GetResult()
+        $null = $outTask.GetAwaiter().GetResult()
+        $null = $errTask.GetAwaiter().GetResult()
         $meta.exitCode = $process.ExitCode
     }
     finally {
@@ -123,15 +126,18 @@ $registryKeys = @(
     'HKCU\Software\Classes\FictionBook.2', 'HKLM\Software\Classes\FictionBook.2'
 )
 $before = @{}; foreach ($key in $registryKeys) { $before[$key] = Get-RegistrySnapshot $key }
-
-Remove-Item -LiteralPath $testRoot -Recurse -Force -ErrorAction SilentlyContinue
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$scratch = $null; $passed = $false; $ownsTestRegistry = $false
+if (-not $TestDirectory) { $scratch = New-IsolatedFbeScratchDirectory -Name 'nsis-scopes' -RuntimePayload; $testRoot = $scratch.Root }
+$inputDirectory = Join-Path $testRoot 'input'
+try {
 New-Item -ItemType Directory -Path $inputDirectory -Force | Out-Null
 foreach ($license in @('LICENSE', 'gpl-3.0.ru.txt', 'gpl-3.0.ua.txt')) {
     Set-Content -LiteralPath (Join-Path $inputDirectory $license) -Value 'NSIS deployment scope test fixture.' -Encoding ASCII
 }
 $current = Invoke-ScopeProbe 'current' @() @('/S', '/CURRENTUSER', '/RECOVERSHELL')
 if ($current.State.DeploymentMode -ne 'installed' -or $current.State.InstallScope -ne 'current' -or
-    $current.State.UninstallRegistryRoot -ne 'HKCU' -or $current.State.ProductionPath -notmatch '\\Programs\\FictionBook Editor Next$') {
+    $current.State.UninstallRegistryRoot -ne 'HKCU' -or $current.State.ProductionPath -notmatch ('\\Programs\\' + [regex]::Escape($testProductName) + '$')) {
     throw "Current User scope probe returned an unexpected state: $($current.State | Out-String)"
 }
 if ($current.State.ProductionPath -match 'Program Files') { throw 'Current User scope selected Program Files semantics.' }
@@ -145,6 +151,19 @@ if ($allUsers.State.DeploymentMode -ne 'installed' -or $allUsers.State.InstallSc
     $allUsers.State.UninstallRegistryRoot -ne 'HKLM' -or $allUsers.State.ProductionPath -notmatch 'Program Files') {
     throw "All Users scope probe returned an unexpected state: $($allUsers.State | Out-String)"
 }
+
+# A synthetic current-user registration must still make the all-users probe
+# reject the conflicting scope. Never write or remove the real product key.
+$existingTestRegistry = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($testUninstallKey)
+if ($existingTestRegistry) { $existingTestRegistry.Dispose(); throw 'Synthetic registry key already exists; refusing to overwrite.' }
+$testRegistry = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($testUninstallKey)
+$ownsTestRegistry = $true
+try { $testRegistry.SetValue('InstallLocation', 'C:\FBE-synthetic-conflict') } finally { $testRegistry.Dispose() }
+try {
+    $conflict = Start-Process -FilePath (Join-Path $allUsers.Directory 'scope-probe.exe') -ArgumentList @('/S', '/ALLUSERS') -Wait -PassThru -WindowStyle Hidden
+    if ($conflict.ExitCode -ne 183) { throw "NSIS all-users conflict should return 183, got $($conflict.ExitCode)." }
+    Write-Host 'NSIS synthetic scope conflict rejected with exit 183.'
+} finally { [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($testUninstallKey, $false); $ownsTestRegistry = $false }
 
 $portable = Invoke-ScopeProbe 'portable' @() @('/S', '/PORTABLE')
 if ($portable.State.DeploymentMode -ne 'portable' -or $portable.State.InstallScope -ne 'current') {
@@ -165,6 +184,14 @@ foreach ($key in $registryKeys) {
     if ((Get-RegistrySnapshot $key) -cne $before[$key]) { throw "NSIS scope probe changed registry state: $key" }
 }
 Write-Host 'NSIS current-user, all-users and portable scope behavior passed.'
+$passed = $true
+} catch {
+    if ($scratch) { [IO.File]::WriteAllText((Join-Path $testRoot 'error.txt'), ($_ | Out-String), [Text.UTF8Encoding]::new($false)) }
+    throw
+} finally {
+    if ($ownsTestRegistry) { [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($testUninstallKey, $false) }
+    if ($scratch) { Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $passed }
+}
 # reg.exe returns 1 for an absent key, which is an expected observation above.
 # Do not leak that native status after every contract assertion has succeeded.
 exit 0
