@@ -18,7 +18,12 @@ public static class EpubImportFixturePaths {
         var result = new StringBuilder(32768);
         uint size = GetLongPathNameW(path, result, (uint)result.Capacity);
         if (size == 0 || size >= result.Capacity) throw new Win32Exception(Marshal.GetLastWin32Error());
-        return result.ToString().TrimEnd('\\');
+        string canonical = result.ToString().TrimEnd('\\');
+        if (canonical.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
+            return @"\\" + canonical.Substring(8);
+        if (canonical.StartsWith(@"\\?\", StringComparison.OrdinalIgnoreCase))
+            return canonical.Substring(4);
+        return canonical;
     }
     public static string Short(string path) {
         var result = new StringBuilder(32768);
@@ -27,8 +32,11 @@ public static class EpubImportFixturePaths {
     }
 }
 '@
-$work=Join-Path $repo ('build/tests/epub-boundary-'+[guid]::NewGuid().ToString('N'))
-$null=[IO.Directory]::CreateDirectory($work)
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$scratch=New-IsolatedFbeScratchDirectory -Name 'epub-boundary' -RuntimePayload
+$work=$scratch.Root
+$passed=$false
+$importTemp=Join-Path $work 'import-temp'
 function Add-ZipText($zip,[string]$name,[string]$text) {
     $entry=$zip.CreateEntry($name);$writer=[IO.StreamWriter]::new($entry.Open(),[Text.UTF8Encoding]::new($false))
     try{$writer.Write($text)}finally{$writer.Dispose()}
@@ -67,9 +75,11 @@ function Invoke-Import([string]$path,[string]$name,[bool]$success,[switch]$Repar
     $process.StartInfo.Arguments='"{0}" "{1}" --no-images --no-cover --no-notes --no-validate' -f $path,$output
     $process.StartInfo.UseShellExecute=$false;$process.StartInfo.CreateNoWindow=$true
     $process.StartInfo.RedirectStandardOutput=$true;$process.StartInfo.RedirectStandardError=$true
+    $process.StartInfo.EnvironmentVariables['TMP'] = $importTemp
+    $process.StartInfo.EnvironmentVariables['TEMP'] = $importTemp
     if ($Reparse) {
         # Exercise the alias used by Win32 GetTempPath on some CI profiles.
-        $shortTemp = [EpubImportFixturePaths]::Short([IO.Path]::GetTempPath())
+        $shortTemp = [EpubImportFixturePaths]::Short($importTemp)
         $process.StartInfo.EnvironmentVariables['TMP'] = $shortTemp
         $process.StartInfo.EnvironmentVariables['TEMP'] = $shortTemp
     }
@@ -81,7 +91,7 @@ function Invoke-Import([string]$path,[string]$name,[bool]$success,[switch]$Repar
         $extracted=[IO.File]::ReadAllText($env:FBE_NEXT_TEST_EPUB_ROOT_REPORT).Trim()
         $parent=[IO.Path]::GetDirectoryName($extracted)
         $actualTemp = [EpubImportFixturePaths]::Long([IO.Path]::GetDirectoryName($parent))
-        $expectedTemp = [EpubImportFixturePaths]::Long([IO.Path]::GetTempPath())
+        $expectedTemp = [EpubImportFixturePaths]::Long($importTemp)
         if([IO.Path]::GetFileName($extracted) -ne 'epub' -or [IO.Path]::GetFileName($parent) -cnotmatch '^E_[0-9A-Za-z_-]{22}$' -or $actualTemp -ine $expectedTemp){throw 'Unexpected test-owned extraction path'}
         $null=New-Item -ItemType Junction -Path (Join-Path $extracted 'redirect') -Target $work
     }
@@ -100,6 +110,7 @@ function Invoke-Import([string]$path,[string]$name,[bool]$success,[switch]$Repar
 }
 $oldMode,$oldDelay,$oldRootReport=$env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_EPUB_DELAY_ENTRY,$env:FBE_NEXT_TEST_EPUB_ROOT_REPORT
 try {
+    $null=New-Item -ItemType Directory -Path $importTemp -ErrorAction Stop
     $valid=New-Epub 'valid';Invoke-Import $valid 'valid' $true
     Invoke-Import (New-ExtraSpineEpub 'mandatory-unsupported') 'mandatory-unsupported' $false
     Invoke-Import (New-ExtraSpineEpub 'optional-unsupported' -Optional) 'optional-unsupported' $true
@@ -125,5 +136,12 @@ try {
     $cases=@('../external.xhtml','%2e%2e%2fexternal.xhtml','..\external.xhtml','/external.xhtml',$outside,('file:///'+$outside.Replace('\','/')),'\\server\share\external.xhtml')
     for($i=0;$i -lt $cases.Count;++$i){Invoke-Import (New-Epub ('unsafe-'+$i) -chapter $cases[$i]) ('unsafe-'+$i) $false}
     Invoke-Import (New-Epub 'opf-outside' -opf ('../external.xhtml')) 'opf-outside' $false
-    Write-Host "PASS: complete/delayed extraction, mandatory/optional spine, explicit image filters, OPF/manifest path confinement and reparse cleanup. Evidence: $work"
-} finally {$env:FBE_NEXT_TEST_MODE=$oldMode;$env:FBE_NEXT_TEST_EPUB_DELAY_ENTRY=$oldDelay;$env:FBE_NEXT_TEST_EPUB_ROOT_REPORT=$oldRootReport}
+    $passed=$true
+    Write-Host 'PASS: complete/delayed extraction, mandatory/optional spine, explicit image filters, OPF/manifest path confinement and reparse cleanup.'
+} catch {
+    [IO.File]::WriteAllText((Join-Path $work 'error.txt'), ($_ | Out-String), [Text.UTF8Encoding]::new($false))
+    throw
+} finally {
+    $env:FBE_NEXT_TEST_MODE=$oldMode;$env:FBE_NEXT_TEST_EPUB_DELAY_ENTRY=$oldDelay;$env:FBE_NEXT_TEST_EPUB_ROOT_REPORT=$oldRootReport
+    Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $passed
+}
