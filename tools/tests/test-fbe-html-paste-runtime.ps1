@@ -26,8 +26,8 @@ try {
         $report = Join-Path $directory "$case.tsv"
         $env:FBE_NEXT_TEST_HTML_PASTE_CASE = $case
         $process = Start-Process -FilePath $scratch.Exe -WorkingDirectory $scratch.Root -ArgumentList @('--portable', '-b', $report, $fixture) -WindowStyle Hidden -PassThru
-        if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "HTML paste runtime timed out: $case" }
-        if($process.ExitCode -ne 0) { throw "HTML paste runtime exited $($process.ExitCode): $case; report: $(Get-Content $report -Raw)" }
+        $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $scratch -Scenario "html-paste-$case" -Report $report -TimeoutSeconds $TimeoutSeconds
+        if($exitCode -ne 0) { throw "HTML paste runtime exited $exitCode : $case; report: $(Get-Content $report -Raw)" }
         $row = @(Import-Csv -LiteralPath $report -Delimiter "`t")
         if($row.Count -ne 1 -or $row[0].result -ne 'pass') { throw "HTML paste runtime failed: $case; report: $(Get-Content $report -Raw)" }
         [xml]$saved = Get-Content -LiteralPath $fixture -Raw
