@@ -231,14 +231,14 @@ function Complete-IsolatedFbeRuntime {
         # Keep useful evidence bounded: test runtimes can contain an entire
         # release tree, generated books or crash dumps hundreds of MB in size.
         $maxFileBytes = 5MB; $maxTotalBytes = 20MB; $totalBytes = 0; $copied = 0; $skipped = 0
-        $allowedExtensions = @('.txt', '.tsv', '.csv', '.log', '.json', '.xml', '.fb2', '.fbd', '.html', '.htm', '.css', '.js', '.xsl', '.epub', '.docx', '.zip', '.png', '.jpg', '.bmp', '.bin', '.dmp', '.sha256', '.md', '.ini')
+        $allowedExtensions = @('.txt', '.tsv', '.csv', '.log', '.stdout', '.stderr', '.json', '.xml', '.fb2', '.fbd', '.html', '.htm', '.css', '.js', '.xsl', '.epub', '.docx', '.zip', '.png', '.jpg', '.bmp', '.bin', '.dmp', '.sha256', '.md', '.ini')
         $candidates = @(Get-ChildItem -LiteralPath $root -File -Recurse -Force -ErrorAction Stop)
         $recovery = Join-Path $Isolation.DataPath 'Recovery'
         $diagnostics = Join-Path $Isolation.DataPath 'Diagnostics'
         $sourceRuntime = if ($null -ne $owner.PSObject.Properties['sourceRuntime']) { [string]$owner.sourceRuntime } else { '' }
         # Crash dumps and book fixtures take priority. If one cannot be
         # preserved within the budget, retain the marked profile for recovery.
-        foreach ($file in @($candidates | Sort-Object @{ Expression = { if ($_.Extension -in @('.dmp', '.fb2', '.fbd', '.epub', '.zip')) { 0 } elseif ($_.Extension -in @('.txt', '.log', '.tsv', '.csv', '.json', '.sha256')) { 1 } else { 2 } } })) {
+        foreach ($file in @($candidates | Sort-Object @{ Expression = { if ($_.Extension -in @('.dmp', '.fb2', '.fbd', '.epub', '.zip')) { 0 } elseif ($_.Extension -in @('.txt', '.log', '.stdout', '.stderr', '.tsv', '.csv', '.json', '.sha256')) { 1 } else { 2 } } })) {
             if ($file.Name -eq '.fbe-runtime-owner.json') { continue }
             $required = $file.Extension -in @('.dmp', '.fb2', '.fbd', '.epub', '.zip')
             if (($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $file.Extension.ToLowerInvariant() -notin $allowedExtensions) { $skipped++; continue }

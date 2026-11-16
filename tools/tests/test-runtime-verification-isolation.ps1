@@ -105,12 +105,16 @@ try {
     $bounded = New-IsolatedFbeScratchDirectory -Name 'bounded'
     New-Item -ItemType Directory -Path (Join-Path $bounded.Root 'nested') | Out-Null
     Set-Content -LiteralPath (Join-Path $bounded.Root 'nested\evidence.txt') -Value 'diagnostic'
+    [IO.File]::WriteAllText((Join-Path $bounded.Root 'nested\probe.stderr'), 'stderr evidence')
+    [IO.File]::WriteAllText((Join-Path $bounded.Root 'nested\probe.stdout'), 'stdout evidence')
     Set-Content -LiteralPath (Join-Path $bounded.Root 'nested\runtime.dll') -Value 'binary'
     $large = [IO.File]::OpenWrite((Join-Path $bounded.Root 'nested\huge.xml'))
     try { $large.SetLength(6MB) } finally { $large.Dispose() }
     for ($i = 0; $i -lt 5; $i++) { $part = [IO.File]::OpenWrite((Join-Path $bounded.Root "nested\part-$i.xml")); try { $part.SetLength(5MB) } finally { $part.Dispose() } }
     Complete-IsolatedFbeRuntime -Isolation $bounded -Passed $false -PreserveContents
     $boundedArtifacts = Join-Path $testArtifacts (Split-Path -Leaf $bounded.Root)
+    if ([IO.File]::ReadAllText((Join-Path $boundedArtifacts 'nested\probe.stderr')) -cne 'stderr evidence' -or
+        [IO.File]::ReadAllText((Join-Path $boundedArtifacts 'nested\probe.stdout')) -cne 'stdout evidence') { throw 'Standard output and error evidence must be preserved on failure.' }
     if ((Test-Path $bounded.Root) -or !(Test-Path (Join-Path $boundedArtifacts 'nested\evidence.txt')) -or (Test-Path (Join-Path $boundedArtifacts 'nested\runtime.dll')) -or (Test-Path (Join-Path $boundedArtifacts 'nested\huge.xml'))) { throw 'Failure evidence must retain small diagnostics without binaries or oversized files.' }
     $summary = Get-Content -LiteralPath (Join-Path $boundedArtifacts 'artifact-summary.txt') -Raw
     if ($summary -notmatch '(?m)^skipped=([2-9]|[1-9][0-9]+)\r?$' -or $summary -notmatch '(?m)^bytes=(\d+)\r?$' -or [long]$Matches[1] -gt 20MB) { throw 'The artifact summary must report omitted files and enforce the total size limit.' }
