@@ -4723,7 +4723,7 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 	// active rectangular selection may belong to an entirely different table.
 	struct ContextTableScope {
 		MSHTML::IHTMLElementPtr& slot;
-		~ContextTableScope() { slot.Release(); }
+		~ContextTableScope() { slot = nullptr; }
 	} contextTableScope{m_context_table_cell};
 	m_context_table_cell = contextCell;
 	::SendMessage(m_frame, AU::WM_TRACKPOPUPMENU, 0, (LPARAM)&tp);

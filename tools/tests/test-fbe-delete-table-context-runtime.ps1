@@ -14,7 +14,7 @@ try {
     $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Root -ArgumentList @('--portable', '-b', $report, $fixture) -PassThru
     $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds $TimeoutSeconds
     $content = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw -Encoding utf8 } else { '<no report>' }
-    if($exitCode -ne 0 -or $content -notmatch '(?m)^result=pass\r?$' -or $content -notmatch '(?m)^selected-cells=2\r?$') { throw "Context delete failed (exit $exitCode):`n$content" }
+    if($exitCode -ne 0 -or $content -notmatch '(?m)^result=pass\r?$' -or $content -notmatch '(?m)^selected-cells=2\r?$' -or $content -notmatch '(?m)^outside-context=1\r?$') { throw "Context delete failed (exit $exitCode):`n$content" }
     $passed = $true; Write-Host "Context menu target and Undo/Redo passed.`n$content"
 } finally {
     $env:FBE_NEXT_TEST_MODE = $oldMode; $env:FBE_NEXT_TEST_SCENARIO = $oldScenario

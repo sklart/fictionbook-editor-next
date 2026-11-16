@@ -49,6 +49,9 @@
 			m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
 			const bool redo = element(L"table-a") && !element(L"table-b");
 			passed = script(L"var e=document.createEventObject();e.button=1;document.getElementById('outside').fireEvent('onmousedown',e);var r=document.body.createTextRange();r.moveToElementText(document.getElementById('outside'));r.collapse(true);r.select();") && passed;
+			const UINT_PTR outsideTimer = ::SetTimer(m_hWnd, 0, 100, &MenuDriver::Cancel);
+			const bool outsideContext = outsideTimer && script(L"document.getElementById('outside').fireEvent('oncontextmenu');");
+			if (outsideTimer) ::KillTimer(m_hWnd, outsideTimer);
 			::SendMessage(m_hWnd, WM_COMMAND, MAKEWPARAM(ID_TABLE_DELETE_TABLE, 0), 0);
 			const bool outsideSafe = element(L"table-a") && !element(L"table-b");
 			passed = script(L"var e=document.createEventObject();e.button=1;document.getElementById('a0').fireEvent('onmousedown',e);document.getElementById('a1').fireEvent('onmousemove',e);document.getElementById('a1').fireEvent('onmouseup',e);") && passed;
@@ -64,7 +67,8 @@
 			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
 			passed = selectA() && passed; ::SendMessage(m_hWnd, WM_COMMAND, MAKEWPARAM(ID_TABLE_DELETE_TABLE, 0), reinterpret_cast<LPARAM>(m_CmdToolbar.m_hWnd));
 			const bool toolbar = !element(L"table-a") && !element(L"table-b");
-			passed = passed && cancelSafe && deletedB && undo && redo && outsideSafe && sameTable && mainMenu && toolbar;
+			passed = passed && cancelSafe && deletedB && undo && redo && outsideContext && outsideSafe && sameTable && mainMenu && toolbar;
+			report.AppendFormat("outside-context=%d\n", outsideContext);
 			report.AppendFormat("cancel-safe=%d\ndeleted-b=%d\nundo=%d\nredo=%d\noutside-safe=%d\nsame-table=%d\nmain-menu=%d\ntoolbar-route=%d\n", cancelSafe, deletedB, undo, redo, outsideSafe, sameTable, mainMenu, toolbar);
 		} catch (_com_error& error) { report.AppendFormat("hresult=%08lx\n", error.Error()); passed = false; }
 		report.AppendFormat("result=%s\n", passed ? "pass" : "fail"); DWORD written = 0;
