@@ -69,6 +69,25 @@ foreach ($case in $cases.GetEnumerator()) {
                 $expectedBody = Get-BodyText $fixture
                 $actualBody = Get-BodyText $sourceDump
                 if ($expectedBody -cne $actualBody) { throw "Issue72 $($case.Key)/$operation changed body text: expected $($expectedBody.Length) characters, actual $($actualBody.Length)." }
+                if ($case.Key -eq 'section-strong-p') {
+                    $settings = [Xml.XmlReaderSettings]::new()
+                    $settings.DtdProcessing = [Xml.DtdProcessing]::Prohibit
+                    $settings.XmlResolver = $null
+                    $reader = [Xml.XmlReader]::Create($sourceDump, $settings)
+                    try { $document = [Xml.XmlDocument]::new(); $document.XmlResolver = $null; $document.Load($reader) }
+                    finally { $reader.Close() }
+                    $ns = [Xml.XmlNamespaceManager]::new($document.NameTable)
+                    $ns.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
+                    $sections = $document.SelectNodes('/fb:FictionBook/fb:body/fb:section', $ns)
+                    if ($sections.Count -ne 1) { throw 'Issue72 section-strong-p: expected one section.' }
+                    $elements = $sections[0].SelectNodes('*')
+                    if ($elements.Count -ne 2 -or $elements[0].LocalName -cne 'p' -or
+                        $elements[0].SelectNodes('fb:strong', $ns).Count -ne 1 -or
+                        $elements[0].InnerText -cne 'Nested' -or $elements[1].LocalName -cne 'p' -or
+                        $elements[1].InnerText -cne 'Neighbour') {
+                        throw 'Issue72 section-strong-p: paragraph structure or strong formatting changed.'
+                    }
+                }
             }
             if ((Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $before) { throw 'Original fixture changed on disk.' }
             $passed = $true
