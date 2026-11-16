@@ -12,6 +12,7 @@ $ErrorActionPreference = 'Stop'
 $cases = [ordered]@{
     'valid-control' = '<p>Valid text with <strong>inline formatting</strong>.</p><p>Second paragraph.</p>'
     'subtitle-strong-p' = '<subtitle><strong><p>Nested</p></strong></subtitle>'
+    'section-strong-p' = '<strong><p>Nested</p></strong>'
     'subtitle-emphasis-p' = '<subtitle><emphasis><p>Nested</p></emphasis></subtitle>'
     'paragraph-strong-p' = '<p><strong><p>Nested</p></strong></p>'
 }
