@@ -8616,11 +8616,11 @@ bool CMainFrame::LoadToScintilla(CString filename)
 {
 	bool result = false;
 	bool isUTF8 = true;
-	CString enc;
+	CString enc(L"utf-8");
 	const bool wasClosed = !m_document_session.HasDocument();
 	if (!wasClosed) ShowView(SOURCE);
 
-	CString src(L"");
+	std::string src;
 	std::ifstream load;
 	load.open(filename);
 	if (load.is_open())
@@ -8632,28 +8632,33 @@ bool CMainFrame::LoadToScintilla(CString filename)
 			AttachDocument(m_doc);
 			ShowView(SOURCE);
 		}
-		std::vector<char> buffer(65535);
+		std::string line;
+		bool firstLine = true;
 		do
 		{
-			load.getline(buffer.data(), 65535, '\n');
-			if (!strstr(buffer.data(), "<?xml version="))
+			std::getline(load, line);
+			if (load.bad() || (load.fail() && !load.eof())) return false;
+			if (load.fail() && load.eof()) break;
+			const size_t declarationStart = line.compare(0, 3, "\xEF\xBB\xBF") == 0 ? 3 : 0;
+			if (firstLine && line.compare(declarationStart, 5, "<?xml") == 0 &&
+				line.size() > declarationStart + 5 && isspace(static_cast<unsigned char>(line[declarationStart + 5])))
 			{
-				src += CA2W(buffer.data(), 1251);
-				src += L"\r\n";
-			}
-			// try to detect encoding
-			else
-			{
-				enc = buffer.data();
-				enc.MakeLower();
-				int pos = enc.Find(L"encoding");
-				if (pos >=0)
+				const size_t declarationEnd = line.find("?>", declarationStart + 5);
+				if (declarationEnd != std::string::npos)
 				{
-					enc = enc.Mid(pos+10, enc.GetLength()-pos-13);
-					if (enc != L"utf-8") isUTF8 = false;
+					const std::string declaration = line.substr(declarationStart, declarationEnd + 2 - declarationStart);
+					const CString wideDeclaration(CA2W(declaration.c_str(), 1251));
+					const CString declared = SourceDocumentTransfer::ExtractXmlDeclarationEncoding(wideDeclaration);
+					if (!declared.IsEmpty()) enc = declared;
+					enc.MakeLower();
+					isUTF8 = enc == L"utf-8" || enc == L"utf8";
+					line.erase(0, declarationEnd + 2);
+					if (line.empty()) { firstLine = false; continue; }
 				}
-				else enc.SetString(L"utf-8");
 			}
+			firstLine = false;
+			src += line;
+			src += "\r\n";
 		}
 		while (!load.eof());
 		load.close();
@@ -8662,12 +8667,12 @@ bool CMainFrame::LoadToScintilla(CString filename)
 		m_source.SendMessage(SCI_CLEARALL);
 		if (isUTF8)
 		{
-			CT2A s (src, 1251);
-			m_source.SendMessage(SCI_APPENDTEXT, strlen(s),(LPARAM)(LPSTR)s);
+			m_source.SendMessage(SCI_APPENDTEXT, static_cast<WPARAM>(src.size()), reinterpret_cast<LPARAM>(src.data()));
 		}
 		else
 		{
-			CT2A s (src, CP_UTF8);
+			CA2W wide(src.c_str(), 1251);
+			CW2A s (wide, CP_UTF8);
 			m_source.SendMessage(SCI_APPENDTEXT, strlen(s),(LPARAM)(LPSTR)s);
 		}
 		m_source.SendMessage(SCI_EMPTYUNDOBUFFER);

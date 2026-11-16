@@ -1,3 +1,4 @@
+#include "RuntimeTestMalformedFallback.inl"
 	if (IsFbeTestScenario(L"issue72-source") || IsFbeTestScenario(L"issue72-validate"))
 	{
 		// The input is a disposable copy. Flush stages before calling production

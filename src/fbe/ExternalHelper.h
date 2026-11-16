@@ -235,7 +235,7 @@ public:
 
 	STDMETHOD(MsgBox)(BSTR message)
 	{
-		if (IsFbeRuntimeTestScenario(L"failed-open-runtime") || IsFbeRuntimeTestScenario(L"malformed-source-fallback-runtime") ||
+		if (IsFbeRuntimeTestScenario(L"failed-open-runtime") || IsFbeRuntimeTestScenario(L"malformed-source-fallback-runtime") || IsFbeRuntimeTestScenario(L"malformed-longline-runtime") ||
 			IsFbeRuntimeTestScenario(L"malformed-source-correction-runtime"))
 		{
 			return S_OK;
