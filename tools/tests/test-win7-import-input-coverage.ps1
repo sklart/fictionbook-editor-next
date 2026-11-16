@@ -3,8 +3,12 @@ param()
 $ErrorActionPreference = 'Stop'
 $root=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 & (Join-Path $root 'tools/build/Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64
-$fixture=Join-Path $root ('out/tests/win7-input-'+[guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path (Join-Path $fixture 'Plugins') -Force | Out-Null
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$scratch=New-IsolatedFbeScratchDirectory -Name 'win7-import-input' -RuntimePayload
+$fixture=$scratch.Root
+$passed=$false
+try {
+New-Item -ItemType Directory -Path (Join-Path $fixture 'Plugins') -ErrorAction Stop | Out-Null
 $safeSource=Join-Path $fixture 'safe.cpp'
 $modernSource=Join-Path $fixture 'modern.cpp'
 [IO.File]::WriteAllText($safeSource,'#include <windows.h>' + "`r`n" + 'extern "C" __declspec(dllexport) DWORD Probe() { return GetCurrentProcessId(); }')
@@ -29,4 +33,11 @@ foreach($case in @(
     if(($exitCode -ne 0) -ne $case.Fail -or ($case.Pattern -and $output -notmatch $case.Pattern)) {throw "PE selection regression: exit=$exitCode; $output"}
     Write-Host "PE input case $($case.Names -join ','): exit=$exitCode; expected rejection=$($case.Fail)"
 }
-Write-Host "Windows 7 PE input coverage: PASS; fixtures=$fixture (not executed)."
+Write-Host 'Windows 7 PE input coverage: PASS; fixtures were not executed.'
+$passed=$true
+} catch {
+    [IO.File]::WriteAllText((Join-Path $fixture 'error.txt'), ($_ | Out-String), [Text.UTF8Encoding]::new($false))
+    throw
+} finally {
+    Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $passed
+}
