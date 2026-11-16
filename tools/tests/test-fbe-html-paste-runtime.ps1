@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = 'Stop'
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "FBE.exe not found: $FbeExe" }
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
-$scratch = New-IsolatedFbeScratchDirectory -Name 'html-paste'
+$scratch = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'html-paste'
 $directory = $scratch.Root
 $completed = $false
 $fixture = Join-Path $directory 'html-paste.fb2'
@@ -25,7 +25,7 @@ try {
         [IO.File]::WriteAllText($fixture, $xml, [Text.UTF8Encoding]::new($false))
         $report = Join-Path $directory "$case.tsv"
         $env:FBE_NEXT_TEST_HTML_PASTE_CASE = $case
-        $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -WindowStyle Hidden -PassThru
+        $process = Start-Process -FilePath $scratch.Exe -WorkingDirectory $scratch.Root -ArgumentList @('--portable', '-b', $report, $fixture) -WindowStyle Hidden -PassThru
         if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "HTML paste runtime timed out: $case" }
         if($process.ExitCode -ne 0) { throw "HTML paste runtime exited $($process.ExitCode): $case; report: $(Get-Content $report -Raw)" }
         $row = @(Import-Csv -LiteralPath $report -Delimiter "`t")
