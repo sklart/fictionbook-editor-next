@@ -3,7 +3,7 @@
 Exercises FBE's production image-import path and verifies its generated binary id.
 #>
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180, [ValidateSet('0','1')][string]$Inline = '1')
+param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180, [ValidateSet('0','1')][string]$Inline = '1', [switch]$UndoRedo, [switch]$ExistingIdCollision)
 
 $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
@@ -66,6 +66,7 @@ $savedEnvironment = @{
     FBE_NEXT_TEST_SCENARIO = $env:FBE_NEXT_TEST_SCENARIO
     FBE_NEXT_TEST_IMAGE_PATH = $env:FBE_NEXT_TEST_IMAGE_PATH
     FBE_NEXT_TEST_IMAGE_INLINE = $env:FBE_NEXT_TEST_IMAGE_INLINE
+    FBE_NEXT_TEST_IMAGE_UNDO_REDO = $env:FBE_NEXT_TEST_IMAGE_UNDO_REDO
 }
 try {
     [void](New-Item -ItemType Directory -Path $sourceDirectory -ErrorAction Stop)
@@ -99,18 +100,37 @@ try {
     $sourceHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($sourceBytes))
     $cwdHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($cwdImage)))
     if($cwdHash -eq $sourceHash) { throw 'CWD collision images must differ.' }
+    $existingBinary = if ($ExistingIdCollision) { '<binary id="{0}" content-type="image/jpeg">{1}</binary>' -f $imageName, [Convert]::ToBase64String([IO.File]::ReadAllBytes($cwdImage)) } else { '' }
+    $expectedId = if ($ExistingIdCollision) { "${imageName}_0" } else { $imageName }
     @"
 <?xml version="1.0" encoding="utf-8"?>
-<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Image import</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>image-import-test</id><version>1.0</version></document-info></description><body><section><p>Image import fixture.</p></section></body></FictionBook>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Image import</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>image-import-test</id><version>1.0</version></document-info></description><body><section><p>Image import fixture.</p></section></body>$existingBinary</FictionBook>
 "@ | Set-Content -LiteralPath $fixture -Encoding utf8
 
     $env:FBE_NEXT_TEST_IMAGE_PATH = $sourceImage
     $env:FBE_NEXT_TEST_IMAGE_INLINE = $Inline
+    $env:FBE_NEXT_TEST_IMAGE_UNDO_REDO = if ($UndoRedo) { '1' } else { $null }
     Invoke-FbeScenario 'binary-import-image' $importReport $fixture $cwdDirectory
-    Assert-ImportedImage $fixture $sourceBytes $sourceHash $Inline $imageName
+    if ($UndoRedo) {
+        $phases = Get-Content -LiteralPath $importReport -Raw
+        foreach ($phase in @('undo-dom-complete','redo-dom-complete','reopen-complete')) {
+            if ($phases -notmatch ('(?m)^' + [regex]::Escape($phase) + '\t')) { throw "Missing Undo/Redo phase: $phase" }
+        }
+    }
+    Assert-ImportedImage $fixture $sourceBytes $sourceHash $Inline $expectedId
+    if ($ExistingIdCollision) {
+        [xml]$saved = Get-Content -LiteralPath $fixture -Raw
+        $old = $saved.SelectSingleNode('//*[local-name()="binary" and @id="' + $imageName + '"]')
+        if ($null -eq $old -or [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Convert]::FromBase64String($old.InnerText))) -ne $cwdHash) { throw 'Existing colliding binary was changed.' }
+    }
 
     Invoke-FbeScenario 'binary-roundtrip' $reopenReport $fixture $cwdDirectory
-    Assert-ImportedImage $fixture $sourceBytes $sourceHash $Inline $imageName
+    Assert-ImportedImage $fixture $sourceBytes $sourceHash $Inline $expectedId
+    if ($ExistingIdCollision) {
+        [xml]$saved = Get-Content -LiteralPath $fixture -Raw
+        $old = $saved.SelectSingleNode('//*[local-name()="binary" and @id="' + $imageName + '"]')
+        if ($null -eq $old -or [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Convert]::FromBase64String($old.InnerText))) -ne $cwdHash) { throw 'Existing colliding binary changed after reopen.' }
+    }
     }
     $passed = $true
     Write-Host 'Production image import generated-id -> Save -> Reopen -> Save passed.'
