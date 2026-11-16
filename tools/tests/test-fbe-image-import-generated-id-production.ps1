@@ -24,22 +24,13 @@ function Assert-Fb2Schema([string]$Path) {
 function Invoke-FbeScenario([string]$Scenario, [string]$Report, [string]$Fixture, [string]$WorkingDirectory) {
     $env:FBE_NEXT_TEST_MODE = '1'
     $env:FBE_NEXT_TEST_SCENARIO = $Scenario
-    for ($attempt = 1; $attempt -le 2; ++$attempt) {
-        $process = Start-Process -FilePath $FbeExe -WorkingDirectory $WorkingDirectory -ArgumentList @('--portable', '-b', $Report, $Fixture) -WindowStyle Hidden -PassThru
-        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
-            Stop-Process -Id $process.Id -Force
-            $process.WaitForExit()
-            if ($attempt -lt 2) { Write-Host "Сценарий $Scenario превысил таймаут; повторный запуск."; continue }
-            throw "FBE не завершил сценарий $Scenario."
-        }
-        $process.WaitForExit(); $process.Refresh()
-        if ($process.ExitCode -ne 0) {
-            $details = if (Test-Path -LiteralPath $Report) { Get-Content -LiteralPath $Report -Raw } else { 'report unavailable' }
-            throw "FBE вернул код $($process.ExitCode) для сценария $Scenario. Report: $details"
-        }
-        if (-not (Test-Path -LiteralPath $Report -PathType Leaf)) { throw "FBE не записал отчёт сценария $Scenario." }
-        return
+    $process = Start-Process -FilePath $FbeExe -WorkingDirectory $WorkingDirectory -ArgumentList @('--portable', '-b', $Report, $Fixture) -WindowStyle Hidden -PassThru
+    $code = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario $Scenario -Report $Report -TimeoutSeconds $TimeoutSeconds
+    if ($code -ne 0) {
+        $details = if (Test-Path -LiteralPath $Report) { Get-Content -LiteralPath $Report -Raw } else { 'report unavailable' }
+        throw "FBE вернул код $code для сценария $Scenario. Report: $details"
     }
+    if (-not (Test-Path -LiteralPath $Report -PathType Leaf)) { throw "FBE не записал отчёт сценария $Scenario." }
 }
 
 function Assert-ImportedImage([string]$Path, [byte[]]$ExpectedBytes, [string]$ExpectedHash, [string]$Inline, [string]$ExpectedId) {
@@ -70,8 +61,6 @@ $FbeExe = $isolation.Exe
 $directory = $isolation.Root; $passed = $false
 $sourceDirectory = Join-Path $directory 'source'
 $cwdDirectory = Join-Path $directory 'cwd'
-[void](New-Item -ItemType Directory -Path $sourceDirectory)
-[void](New-Item -ItemType Directory -Path $cwdDirectory)
 $savedEnvironment = @{
     FBE_NEXT_TEST_MODE = $env:FBE_NEXT_TEST_MODE
     FBE_NEXT_TEST_SCENARIO = $env:FBE_NEXT_TEST_SCENARIO
@@ -79,6 +68,8 @@ $savedEnvironment = @{
     FBE_NEXT_TEST_IMAGE_INLINE = $env:FBE_NEXT_TEST_IMAGE_INLINE
 }
 try {
+    [void](New-Item -ItemType Directory -Path $sourceDirectory -ErrorAction Stop)
+    [void](New-Item -ItemType Directory -Path $cwdDirectory -ErrorAction Stop)
     Add-Type -AssemblyName System.Drawing
     $imageCases = @('cover-part-01.jpg', 'Обложка-01.jpg')
     foreach ($imageName in $imageCases) {
@@ -129,5 +120,5 @@ finally {
         if ($null -eq $savedEnvironment[$name]) { Remove-Item -Path "Env:$name" -ErrorAction SilentlyContinue }
         else { Set-Item -Path "Env:$name" -Value $savedEnvironment[$name] }
     }
-    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -PreserveContents
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed
 }
