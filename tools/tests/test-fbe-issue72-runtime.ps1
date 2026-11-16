@@ -24,6 +24,8 @@ $cases = [ordered]@{
     'subtitle-strong-sub-p' = '<subtitle><strong>Heading </strong><sub><p><emphasis>Nested</emphasis></p></sub></subtitle>'
     'subtitle-empty-p-tail' = '<subtitle><p/>Tail text</subtitle>'
     'annotation-strong-p' = '<p>Body control.</p>'
+    'legacy-links-binary' = '<p><a l:href="#target">Link</a></p><image l:href="#cover"/>'
+    'conflicting-xlink-attributes' = '<p><a std:href="#target" l:href="#different">Link</a></p>'
     'paragraph-strong-p' = '<p><strong><p>Nested</p></strong></p>'
 }
 if ($OriginalBook) { $cases['user-book'] = $null }
@@ -43,6 +45,16 @@ foreach ($case in $cases.GetEnumerator()) {
             } else {
                 $xml = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Issue72</book-title><lang>en</lang></title-info><document-info><id>issue72-test</id><version>1.0</version></document-info></description><body><section>' + $case.Value + '<p>Neighbour</p></section></body></FictionBook>'
                 if ($case.Key -eq 'annotation-strong-p') { $xml = $xml.Replace('<lang>en</lang>', '<annotation><strong><p>Nested annotation.</p></strong></annotation><lang>en</lang>') }
+                if ($case.Key -eq 'legacy-links-binary') {
+                    $xml = $xml.Replace('<FictionBook xmlns=', '<FictionBook xmlns:l="http://www.w3.org/1999/l" xmlns=')
+                    $xml = $xml.Replace('<lang>en</lang>', '<coverpage><image l:href="#cover"/></coverpage><lang>en</lang>')
+                    $xml = $xml.Replace('<body><section>', '<body><section id="target">')
+                    $xml = $xml.Replace('</FictionBook>', '<binary id="cover" content-type="image/png">iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=</binary></FictionBook>')
+                }
+                if ($case.Key -eq 'conflicting-xlink-attributes') {
+                    $xml = $xml.Replace('<FictionBook xmlns=', '<FictionBook xmlns:l="http://www.w3.org/1999/l" xmlns:std="http://www.w3.org/1999/xlink" xmlns=')
+                    $xml = $xml.Replace('<body><section>', '<body><section id="target">')
+                }
                 [IO.File]::WriteAllText($fixture, $xml, [Text.UTF8Encoding]::new($false))
             }
             $before = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
