@@ -70,6 +70,8 @@ try {
         @{ id = 'poem-caret-nbsp'; operation = 'poem'; selection = 'caret'; expectedPoemText = '0020'; paragraphs = @([string][char]160, 'Anchor') },
         @{ id = 'poem-selected-empty'; operation = 'poem'; expectRejected = $true; body = '<section><p></p><empty-line/></section>' },
         @{ id = 'poem-selected-spaces'; operation = 'poem'; expectRejected = $true; body = '<section><p>   </p><empty-line/></section>' },
+        @{ id = 'poem-selected-image-only'; operation = 'poem'; expectRejected = $true; binary = $true; body = '<section><p>  <image l:href="#test-image"/>  </p><p>  </p></section>' },
+        @{ id = 'poem-mixed-image-save'; operation = 'poem'; binary = $true; poemImage = $true; saveApplied = $true; body = '<section><p>Alpha <image l:href="#test-image"/> Omega</p><p>Second line</p></section>' },
         # MSHTML collapses a selection containing only NBSP to a caret. Keep a
         # real sibling paragraph so the document remains valid when saved.
         @{ id = 'poem-selected-nbsp'; operation = 'poem'; selection = 'caret'; expectedPoemText = '0020'; paragraphs = @([string][char]160, 'Anchor') },
@@ -98,10 +100,11 @@ try {
         $paragraphs = if($case.ContainsKey('paragraphs')) { ($case.paragraphs | ForEach-Object { "<p>$([Security.SecurityElement]::Escape($_))</p>" }) -join '' } else { '' }
         $body = if($case.ContainsKey('body')) { $case.body } else { "<section>$paragraphs</section>" }
 		$documentInfoExtra = if($case.ContainsKey('documentInfoExtra')) { $case.documentInfoExtra } else { '' }
+        $binary = if($case.ContainsKey('binary')) { '<binary id="test-image" content-type="image/png">iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=</binary>' } else { '' }
         $fixture = Join-Path $directory ($case.id + '.fb2')
         $report = Join-Path $directory ($case.id + '.tsv')
         $trace = Join-Path $directory ($case.id + '.trace.tsv')
-        @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`" xmlns:l=`"http://www.w3.org/1999/xlink`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><author><first-name>T</first-name><last-name>T</last-name></author><program-used>test</program-used><date>2026-09-20</date><id>$($case.id)</id><version>1.0</version>$documentInfoExtra</document-info></description><body>$body</body></FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
+        @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`" xmlns:l=`"http://www.w3.org/1999/xlink`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><author><first-name>T</first-name><last-name>T</last-name></author><program-used>test</program-used><date>2026-09-20</date><id>$($case.id)</id><version>1.0</version>$documentInfoExtra</document-info></description><body>$body</body>$binary</FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
         $beforeFixture = Get-Content -LiteralPath $fixture -Raw
         $oldAppliedSave = $env:FBE_NEXT_TEST_STRUCTURE_SAVE_APPLIED
         $oldMode, $oldScenario, $oldOperation, $oldTarget, $oldSelection, $oldRepeat, $oldTrace, $oldTraceCase, $oldRoute, $oldFault = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION, $env:FBE_NEXT_TEST_STRUCTURE_TARGET, $env:FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE, $env:FBE_NEXT_TEST_STRUCTURE_REPEAT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_STRUCTURE_ROUTE, $env:FBE_NEXT_TEST_CITE_POEM_FAULT
@@ -137,6 +140,16 @@ try {
                 [xml]$savedBook = Get-Content -LiteralPath $Path -Raw
                 $ns = [Xml.XmlNamespaceManager]::new($savedBook.NameTable)
                 $ns.AddNamespace('fb','http://www.gribuser.ru/xml/fictionbook/2.0')
+                if($case.ContainsKey('poemImage')) {
+                    $image = $savedBook.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:poem/fb:stanza/fb:v/fb:image', $ns)
+                    $imageBinary = $savedBook.SelectSingleNode('/fb:FictionBook/fb:binary[@id="test-image"]', $ns)
+                    $originalBytes = [Convert]::FromBase64String('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=')
+                    $verse = $savedBook.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:poem/fb:stanza/fb:v[fb:image]', $ns)
+                    if(-not $image -or $image.GetAttribute('href', 'http://www.w3.org/1999/xlink') -ne '#test-image' -or -not $imageBinary -or
+                       [Convert]::ToBase64String([Convert]::FromBase64String($imageBinary.InnerText)) -ne [Convert]::ToBase64String($originalBytes) -or
+                       -not $verse -or $verse.InnerText -notmatch 'Alpha.*Omega') { throw 'Applied poem lost the image, binary bytes or surrounding text.' }
+                    return
+                }
                 $poem = $savedBook.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:cite/fb:poem[@id="poem-id"]', $ns)
                 $beforePath = if($case.id -eq 'cite-paragraph-poem-save') { '/fb:FictionBook/fb:body/fb:section/fb:cite/fb:p[1]' } else { '/fb:FictionBook/fb:body/fb:section/fb:p[1]' }
                 $beforeText = if($case.id -eq 'cite-paragraph-poem-save') { 'Quote text' } else { 'Before' }
@@ -163,6 +176,10 @@ try {
         if(@($row).Count -ne 1) { throw "Missing live MSHTML report for $($case.id)." }
         $expectedCollapsed = if($expectedSelection -eq 'caret') { '1' } else { '0' }
         if($row.selection_collapsed -ne $expectedCollapsed) { throw "MSHTML collapsed-state mismatch for $($case.id): $($row.selection_collapsed)." }
+        if($case.id -eq 'poem-selected-image-only') {
+            $selectionHtml = -join @($row.selection_html_utf16 -split ',' | ForEach-Object { [char][Convert]::ToInt32($_,16) })
+            if($selectionHtml -notmatch '(?i)<img\b') { throw 'Image-only rejection fixture did not actually select the image.' }
+        }
 		if($case.ContainsKey('fault')) {
 			if($process.ExitCode -ne 0 -or $row.result -ne 'pass' -or $row.check_status -ne 'applied' -or $row.apply_status -ne 'failed' -or $row.hresult -ne '0x80004005' -or $row.document_changed -ne $(if($case.documentChanged){'1'}else{'0'}) -or $row.fault_recovery -ne '1') { throw "Cite/Poem fault result contract or recovery Undo/Redo failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
 			$completed++; $passed++; continue

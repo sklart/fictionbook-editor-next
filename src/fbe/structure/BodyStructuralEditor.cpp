@@ -159,13 +159,16 @@ StructuralOperationResult BodyStructuralEditor::InsertPoem(bool checkOnly, CiteP
 		MSHTML::IHTMLDOMNodePtr scan(beginElement), finish(endElement);
 		while (scan && scan != finish) scan = scan->nextSibling;
 		if (!scan) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
+		Before(L"expanded-content-scan"); bool expandedHasContent = false;
+		for (MSHTML::IHTMLDOMNodePtr paragraph = beginElement; paragraph; paragraph = paragraph->nextSibling) { CString text(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(paragraph)->innerText)); for (int index = 0; index < text.GetLength(); ++index) { const wchar_t ch = text[index]; if (ch != L' ' && ch != L'\t' && ch != L'\r' && ch != L'\n' && ch != 0x00A0) { expandedHasContent = true; break; } } if (expandedHasContent || paragraph == endElement) break; }
+		After(L"expanded-content-scan");
+		// Only a caret may create an empty poem. Refuse selected whitespace (and
+		// non-text-only content) before checkOnly or any document mutation.
+		if (!wasCollapsed && !expandedHasContent) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
 		if (checkOnly) { After(L"poem-check-success"); return { StructuralOperationStatus::Applied, S_OK, false }; }
 		Before(L"capture-html"); CString html; MSHTML::IHTMLDOMNodePtr sibling = beginElement;
 		do { html += MSHTML::IHTMLElementPtr(sibling)->outerHTML.GetBSTR(); if (sibling == endElement) break; sibling = sibling->nextSibling; } while (sibling);
 		After(L"capture-html");
-		Before(L"expanded-content-scan"); bool expandedHasContent = false;
-		for (MSHTML::IHTMLDOMNodePtr paragraph = beginElement; paragraph; paragraph = paragraph->nextSibling) { CString text(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(paragraph)->innerText)); for (int index = 0; index < text.GetLength(); ++index) { const wchar_t ch = text[index]; if (ch != L' ' && ch != L'\t' && ch != L'\r' && ch != L'\n' && ch != 0x00A0) { expandedHasContent = true; break; } } if (expandedHasContent || paragraph == endElement) break; }
-		After(L"expanded-content-scan");
 		Before(L"poem-create"); MSHTML::IHTMLElementPtr poem(m_document->createElement(L"<DIV class=poem>")); After(L"poem-create");
 		if (wasCollapsed && !expandedHasContent) { Before(L"empty-poem-fallback"); poem->innerHTML = L"<DIV class=stanza><P>&nbsp;</P></DIV>"; After(L"empty-poem-fallback"); }
 		else {
