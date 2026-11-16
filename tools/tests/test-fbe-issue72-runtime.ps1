@@ -10,6 +10,7 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $cases = [ordered]@{
+    'valid-control' = '<p>Valid text with <strong>inline formatting</strong>.</p><p>Second paragraph.</p>'
     'subtitle-strong-p' = '<subtitle><strong><p>Nested</p></strong></subtitle>'
     'subtitle-emphasis-p' = '<subtitle><emphasis><p>Nested</p></emphasis></subtitle>'
     'paragraph-strong-p' = '<p><strong><p>Nested</p></strong></p>'
@@ -30,12 +31,14 @@ foreach ($case in $cases.GetEnumerator()) {
                 [IO.File]::WriteAllText($fixture, $xml, [Text.UTF8Encoding]::new($false))
             }
             $before = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
-            $oldMode, $oldScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
+            $sourceDump = Join-Path $iso.Root 'source-snapshot.fb2'
+            $oldMode, $oldScenario, $oldDump = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_ISSUE72_DUMP
             try {
                 $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = "issue72-$operation"
+                $env:FBE_NEXT_TEST_ISSUE72_DUMP = $sourceDump
                 $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -ArgumentList @('--portable', '-b', $report, $fixture) -PassThru -WindowStyle Hidden
                 $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario "issue72-$operation" -Report $report -TimeoutSeconds $TimeoutSeconds
-            } finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $oldMode, $oldScenario }
+            } finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_ISSUE72_DUMP = $oldMode, $oldScenario, $oldDump }
             $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<missing>' }
             if ($exitCode -ne 0 -or $text -notmatch '(?m)^stage=command-returned\r?$' -or
                 $text -notmatch '(?m)^same-document=1\r?$' -or $text -notmatch '(?m)^dirty-before=1\r?$' -or
@@ -46,6 +49,25 @@ foreach ($case in $cases.GetEnumerator()) {
             }
             if ($text -match '(?m)^source-active=0\r?$' -and $text -notmatch '(?m)^body-unchanged=1\r?$') {
                 throw "Issue72 $($case.Key)/$operation changed the visual document during refusal: $text"
+            }
+            if ($text -match '(?m)^source-active=1\r?$') {
+                function Get-BodyText([string]$path) {
+                    $settings = [Xml.XmlReaderSettings]::new()
+                    $settings.DtdProcessing = [Xml.DtdProcessing]::Prohibit
+                    $settings.XmlResolver = $null
+                    $reader = [Xml.XmlReader]::Create($path, $settings)
+                    try { $document = [Xml.XmlDocument]::new(); $document.XmlResolver = $null; $document.Load($reader) }
+                    finally { $reader.Close() }
+                    $bodyNodes = $document.SelectNodes("/*[local-name()='FictionBook' and namespace-uri()='http://www.gribuser.ru/xml/fictionbook/2.0']/*[local-name()='body' and namespace-uri()='http://www.gribuser.ru/xml/fictionbook/2.0']")
+                    if ($bodyNodes.Count -eq 0) { throw "No FB2 body in $path" }
+                    $builder = [Text.StringBuilder]::new()
+                    foreach ($node in $bodyNodes) { [void]$builder.Append($node.InnerText) }
+                    return [regex]::Replace($builder.ToString().Replace('ISSUE72_UNSAVED_MARKER', ''), '\s+', '')
+                }
+                if (!(Test-Path -LiteralPath $sourceDump -PathType Leaf)) { throw 'Source snapshot was not written.' }
+                $expectedBody = Get-BodyText $fixture
+                $actualBody = Get-BodyText $sourceDump
+                if ($expectedBody -cne $actualBody) { throw "Issue72 $($case.Key)/$operation changed body text: expected $($expectedBody.Length) characters, actual $($actualBody.Length)." }
             }
             if ((Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $before) { throw 'Original fixture changed on disk.' }
             $passed = $true

@@ -33,6 +33,16 @@
 			std::vector<char> text(static_cast<size_t>(length) + 1);
 			m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(text.data()));
 			marker = CStringA(text.data()).Find("ISSUE72_UNSAVED_MARKER") >= 0;
+			wchar_t dumpPath[MAX_PATH] = {};
+			const DWORD dumpLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_ISSUE72_DUMP", dumpPath, _countof(dumpPath));
+			if (dumpLength > 0 && dumpLength < _countof(dumpPath)) {
+				HANDLE dump = ::CreateFileW(dumpPath, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+				if (dump != INVALID_HANDLE_VALUE) {
+					DWORD bytesWritten = 0;
+					::WriteFile(dump, text.data(), static_cast<DWORD>(length), &bytesWritten, NULL);
+					::CloseHandle(dump);
+				}
+			}
 		} else if (m_doc == original && body) {
 			marker = CString(static_cast<LPCWSTR>(body->innerText)).Find(L"ISSUE72_UNSAVED_MARKER") >= 0;
 		}
