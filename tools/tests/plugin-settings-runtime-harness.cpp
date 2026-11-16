@@ -12,7 +12,9 @@ static BOOL WINAPI ControlledReplaceFile(LPCWSTR target, LPCWSTR replacement, LP
 #include "../../src/common/PluginSettingsStore.h"
 #undef ReplaceFileW
 #include <atlbase.h>
+#define FBE_PLUGIN_OPTIONS_SYNCHRONIZED_KEYBOARD 1
 #include "../../src/fbe/testing/PluginOptionsDialogProbe.h"
+#undef FBE_PLUGIN_OPTIONS_SYNCHRONIZED_KEYBOARD
 
 static int peerIndex = -1;
 static std::wstring peerDirectory;
