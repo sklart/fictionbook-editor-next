@@ -138,3 +138,30 @@
 | `bc725a94` | Record S2 Windows keyboard input evidence | документация/свидетельства |
 | `8e5e74ef` | Record S2 input across undo states | документация/свидетельства |
 | `0b0e075c` | Record resumed Split undo experiments | документация/свидетельства, тестовые инструменты |
+
+## Независимая часть второй S2-ветки
+
+Срез: `master` `c40979c39c9b5cac99f485e69560d07c9c8e05d6`, `codex/split-undo-s2-resumption-20261104` `d69266aff446cf0115d103385b05e3f9c56b65c2`. Исключены коммиты, достижимые из `master`, `codex/fbe-undo-architecture-feasibility` (`bcc9435b07f8916e1a23d53d7fb5e47b4a769ede`) и `codex/split-undo-resumption-20261104` (`11317d0636c22b2a375aa675533baef3ce618488`). Остаются следующие 18 непоглощённых немержевых коммитов; исключение общей истории не означает её полной семантической приёмки.
+
+Четыре изменения производственных файлов (`a7beaa6e`, `d6387ecd`, `be9c70e0`, `18181237`) добавляют инструментирование запуска, дерева и состояния документа для S2, а не готовое исправление. Их следует сохранить в исследовательской ветке. Снимок `RuntimeTestIsolation.ps1` в `f7286b15` побайтово совпадает с историческим blob из уже включённого `e2e53fdc`; нынешний файл дополнительно учитывает ограничения диска и уборку, поэтому подмена старым снимком недопустима. Остальные изменения относятся к инструментам и сценариям исследования. Перенос целиком не выполнялся.
+
+| Коммит | Назначение по исходному сообщению | Пути |
+|---|---|---|
+| `d69266af` | Probe S2 ID transfer and formatted fragment history | тестовый код FBE, тестовые инструменты |
+| `91830aa0` | Trace history after controlled Split failure | тестовый код FBE |
+| `44fdf8b0` | Probe S2 history with edits in another section | тестовый код FBE, тестовые инструменты |
+| `d4599c68` | Compare plain text savepoint without S2 | тестовый код FBE, тестовые инструменты |
+| `3ca21788` | Probe S2 edits after saved state | тестовый код FBE, тестовые инструменты |
+| `50625862` | Test S2 savepoint without startup tree script | тестовые инструменты |
+| `18181237` | Trace S2 tree descriptor initialization | инструментирование редактора |
+| `be9c70e0` | Compare S2 startup HTML at version transition | инструментирование редактора |
+| `d6387ecd` | Trace S2 startup version checkpoints | тестовый код FBE, инструментирование редактора |
+| `c9d7f52a` | Compare S2 startup with spelling disabled | тестовые инструменты |
+| `a7beaa6e` | Trace S2 document attach version transitions | инструментирование редактора |
+| `6e5721dc` | Exercise S2 recovery in isolated profile | тестовый код FBE, тестовые инструменты |
+| `4266cc96` | Trace initial S2 savepoint version | тестовый код FBE |
+| `3453234f` | Observe S2 savepoint and reopen state | тестовый код FBE, тестовые инструменты |
+| `5d608fca` | Exercise mixed S2 history through Windows input | тестовый код FBE, тестовые инструменты |
+| `f7286b15` | Research S2 keyboard input route | тестовый код FBE, тестовые инструменты |
+| `071b4f68` | Exercise S2 input in additional undo states | тестовый код FBE, тестовые инструменты |
+| `28125135` | Research S2 caret navigation and mixed undo history | тестовый код FBE, тестовые инструменты |
