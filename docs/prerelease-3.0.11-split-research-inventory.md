@@ -205,3 +205,45 @@
 | `edb32ba6` | Assess unified undo history feasibility | документация/свидетельства |
 | `4f8dadc1` | Record history observer boundary evidence | документация/свидетельства |
 | `ac996392` | Probe MSHTML history observer boundary | тестовый код FBE, тестовые инструменты |
+
+## Общая основа интеграционных веток
+
+Срез: `master` `01fff9bc3fdfe2d0fcbc2a9a9faf8835b5f0ccf6`. Следующие 28 непоглощённых немержевых коммитов составляют объединение истории четырёх веток ниже за вычетом `master`; дубликаты между ними учтены один раз.
+
+- `codex/fbe-next-integration-3010` — `a9c33414a77f957d73a890d69e3767877bc05d08`;
+- `codex/community-3010-closure` — `ff91662c641c8aa55b1b0a2a8705c568a03e0abe`;
+- `codex/fix-ci-validation-gates` — `9d0c2cd82ffe5e861452cf1ed41d201fca491237`;
+- `codex/plugin-settings-runtime-sync` — `01eac62094dcae2801f167ef983709bd9ce58189`;
+
+Вместе с 128, 18 и 26 коммитами из предыдущих разделов таблица покрывает все 200 уникальных непоглощённых немержевых коммитов семи рассматриваемых локальных веток на указанном срезе. Множество идентификаторов сверено с `git rev-list`; это инвентаризация и решение по выделенным группам, а не утверждение о построчной приёмке каждого исследовательского теста.
+
+| Коммит | Исходное сообщение | Решение |
+|---|---|---|
+| `a9c33414` | Document blocked undo limits and adapter requirements | Историческое свидетельство и решение; сохранить в исходной ветке, актуальные статусы — в матрице и блокерах. |
+| `24503894` | Record blocked parent undo traces | Историческое свидетельство и решение; сохранить в исходной ветке, актуальные статусы — в матрице и блокерах. |
+| `155eedc4` | Probe blocked OLE parent during custom undo | Диагностический probe OLE Undo; сохранить в ветке. |
+| `81e6e1a1` | Document text mutation undo diagnostics | Историческое свидетельство и решение; сохранить в исходной ветке, актуальные статусы — в матрице и блокерах. |
+| `84c37107` | Probe text-node mutation and mixed undo history | Диагностика мутаций текста/Undo; сохранить в ветке. |
+| `93e69299` | Record Undo history and native unit evidence | Историческое свидетельство и решение; сохранить в исходной ветке, актуальные статусы — в матрице и блокерах. |
+| `f8027597` | Extend isolated Undo history diagnostics | Исследовательский Save/Undo; сохранить, не считать приёмкой текущего Save/Undo. |
+| `2f92b98c` | Record Split and native undo evidence | Историческое свидетельство и решение; сохранить в исходной ветке, актуальные статусы — в матрице и блокерах. |
+| `1cd29a90` | Add Split and native undo diagnostics | Диагностика Split/native Undo; сохранить в ветке. |
+| `624d6b40` | Document remaining Split and File Close blockers | Историческое свидетельство и решение; сохранить в исходной ветке, актуальные статусы — в матрице и блокерах. |
+| `6e0463c9` | Extend Split and File Close diagnostics | Диагностика Split/File Close; исторический timeout несовместим с нынешним общим пределом ожидания. |
+| `c5e3b7f6` | Document integration acceptance and remaining blockers | Историческое свидетельство и решение; сохранить в исходной ветке, актуальные статусы — в матрице и блокерах. |
+| `4d919ebe` | Avoid oversized runtime test dispatcher stack frame | Адаптирован: `d5fa767b` (тестовый диспетчер). |
+| `295ae0d2` | Resolve sanitizer process paths before comparison | Адаптирован: `2836b8e4` (пути sanitizer). |
+| `5298bb44` | Add native Split undo command probe | Диагностический probe Split; сохранить в ветке. |
+| `8d58ded4` | Fix imported image binary parent lookup | Современный аналог: `c0ad4718`; адресные тесты дополнены `6dcd89ca`. |
+| `9d0c2cd8` | Document CI validation recovery and blockers | Историческое свидетельство и решение; сохранить в исходной ветке, актуальные статусы — в матрице и блокерах. |
+| `2f855a40` | Verify localized attachment headers at runtime | Проверка неактивной экспериментальной формы Description; сохранить в ветке. |
+| `ff91662c` | Document stabilization verification and remaining blockers | Историческое свидетельство и решение; сохранить в исходной ветке, актуальные статусы — в матрице и блокерах. |
+| `398f9a1b` | Stabilize themed dialog keyboard test and preserve evidence | Тест клавиатуры адаптирован: `a08b89f8`; свидетельства Split сохранены в ветке. |
+| `f7c7fcda` | Fix sanitizer dump and COM alignment diagnostics | Современные реализации sanitizer и выравнивания COM сопоставлены в основном аудите; старый коммит не применять целиком. |
+| `e86f0488` | Fix localization coverage and documentation links | Часть связана с неактивной экспериментальной Description; старый тест не применять целиком. |
+| `5f77d048` | Document community defect acceptance and remaining blockers | Историческое свидетельство и решение; сохранить в исходной ветке, актуальные статусы — в матрице и блокерах. |
+| `9749eb0a` | Trace isolated large document performance scenarios | Диагностика производительности меняет способ замера; сохранить до необходимости сопоставимого исследования. |
+| `619bd0f0` | Preserve EPUB line breaks and avoid repeated book titles | Адаптирован: `2e2432ea` (EPUB). |
+| `adac64f5` | Document split undo blocker and preserve timeline evidence | Историческое свидетельство и решение; сохранить в исходной ветке, актуальные статусы — в матрице и блокерах. |
+| `38a22d5f` | Preserve empty paragraph anchors on save | Современный аналог: `56da89bd`; тест `5a30eeec`. |
+| `01eac620` | test: synchronize plugin settings keyboard probes | Синхронизация keyboard probe адаптирована: `c2773519`; накопительные журналы не переносились. |
