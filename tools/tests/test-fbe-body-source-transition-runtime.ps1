@@ -17,7 +17,7 @@ $isolationPassed = $false
 try {
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-body-source-transition-' + [guid]::NewGuid().ToString('N'))
+$directory = Join-Path $isolation.Root 'transition-fixture'
 [void](New-Item -ItemType Directory -Path $directory)
 $clipboardCaptured = $false
 try {
@@ -71,12 +71,10 @@ try {
     if ($Clipboard) { foreach ($key in @('source_clipboard_exercised','source_copy_paste','source_copy_paste_undo','source_copy_paste_redo')) { if ($rows[$key] -ne '1') { throw "BODY/SOURCE clipboard check failed: $key (value '$($rows[$key])')." } } }
     Write-Host "FBE BODY/SOURCE transition runtime passed: paragraphs=$ParagraphCount, fixture_bytes=$((Get-Item -LiteralPath $fixture).Length), elapsed_ms=$($timer.ElapsedMilliseconds)."
 } finally {
-    try {
-        if ($clipboardCaptured) {
-            if ($originalClipboard) { [Windows.Forms.Clipboard]::SetDataObject($clipboardSnapshot, $true, 10, 100) }
-            else { [Windows.Forms.Clipboard]::Clear() }
-        }
-    } finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+    if ($clipboardCaptured) {
+        if ($originalClipboard) { [Windows.Forms.Clipboard]::SetDataObject($clipboardSnapshot, $true, 10, 100) }
+        else { [Windows.Forms.Clipboard]::Clear() }
+    }
 }
 
 $isolationPassed = $true
