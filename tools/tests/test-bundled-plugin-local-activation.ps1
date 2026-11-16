@@ -17,14 +17,17 @@ $RuntimeDirectory = (Resolve-Path -LiteralPath $RuntimeDirectory).Path
 
 & (Join-Path $root 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64
 $apiDirectory = & (Join-Path $PSScriptRoot 'ensure-fbe-api.ps1') -Configuration $Configuration
-$testDirectory = Join-Path $root "out\tests\bundled-plugin-local-activation\Win32\$Configuration"
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$scratch = New-IsolatedFbeScratchDirectory -Name 'plugin-local-activation' -RuntimePayload
+$testDirectory = $scratch.Root
 $testExecutable = Join-Path $testDirectory 'bundled-plugin-local-activation.exe'
-New-Item -ItemType Directory -Force -Path $testDirectory | Out-Null
+$passed = $false
+try {
 
 & cl.exe /nologo /EHsc /std:c++14 /utf-8 /DUNICODE /D_UNICODE /MD /W3 `
     "/I$apiDirectory" "/Fo$testDirectory\\" (Join-Path $PSScriptRoot 'bundled-plugin-local-activation.cpp') `
     (Join-Path $apiDirectory 'FBE_i.c') '/link' '/SUBSYSTEM:CONSOLE' 'ole32.lib' 'oleaut32.lib' "/OUT:$testExecutable"
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if ($LASTEXITCODE -ne 0) { throw "Не удалось собрать тест локальной активации: код $LASTEXITCODE." }
 
 $manifestPath = Join-Path $root 'runtime\Plugins\plugins.json'
 $plugins = @((Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json).plugins)
@@ -40,3 +43,10 @@ foreach ($plugin in $plugins) {
     if ($LASTEXITCODE -ne 0) { throw "Локальная активация $($plugin.module) завершилась с кодом $LASTEXITCODE." }
 }
 Write-Host 'Bundled plug-ins активируются локально, без обращения к реестру.'
+$passed = $true
+} catch {
+    [IO.File]::WriteAllText((Join-Path $scratch.Root 'error.txt'), ($_ | Out-String), [Text.UTF8Encoding]::new($false))
+    throw
+} finally {
+    Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $passed
+}
