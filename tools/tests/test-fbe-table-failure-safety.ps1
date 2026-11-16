@@ -16,14 +16,7 @@ $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if ([string]::IsNullOrWhiteSpace($FbeExe)) { $FbeExe = Join-Path $repositoryRoot 'out\Release\FBE.exe' }
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
-$temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) 'FBE-Next-table-failure-safety'
-$diagnosticsRoot = Join-Path ([IO.Path]::GetTempPath()) 'FBE-Next-diagnostics'
-$directory = Join-Path $temporaryRoot ([guid]::NewGuid().ToString('N'))
-$runtime = Join-Path $directory 'runtime'
-$fixture = Join-Path $directory 'table.fb2'
-$report = Join-Path $directory 'report.tsv'
-$portableIni = Join-Path $runtime 'portable.ini'
-$traceDirectories = @(Join-Path $runtime 'Data\Diagnostics')
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $passed = $false
 
 Add-Type @"
@@ -60,15 +53,19 @@ function Get-TraceForProcess([int]$ProcessId, [datetime]$NotBefore) {
     }
 }
 
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'table-failure-safety'
+$runtime = $isolation.Runtime
+$fixture = Join-Path $isolation.Root 'table.fb2'
+$report = Join-Path $isolation.Root 'report.tsv'
+$portableIni = Join-Path $runtime 'portable.ini'
+$traceDirectories = @(Join-Path $isolation.DataPath 'Diagnostics')
+$previousTrace = $env:FBE_NEXT_TRACE
+$previousMode = $env:FBE_NEXT_TEST_MODE
+$previousFault = $env:FBE_NEXT_FAULT_INJECT
 try {
-    # Never use installed mode here: --installed would involve the developer's
-    # per-user settings and registry.  A complete copy gives FBE a private
-    # executable/Data root and also exercises paths containing spaces.
-    New-Item -ItemType Directory -Path $directory -Force | Out-Null
-    Copy-Item -LiteralPath (Split-Path $FbeExe -Parent) -Destination $runtime -Recurse -Force
     [IO.File]::WriteAllText(
         $portableIni,
-        "[Portable]`r`nDataPath=Data`r`n`r`n[Diagnostics]`r`nTraceNextLaunch=1`r`n",
+        "[Portable]`r`nDataPath=$([IO.Path]::GetFileName($isolation.DataPath))`r`n`r`n[Diagnostics]`r`nTraceNextLaunch=1`r`n",
         [Text.UTF8Encoding]::new($false))
 @'
 <?xml version="1.0" encoding="utf-8"?>
@@ -76,7 +73,6 @@ try {
 '@ | Set-Content -LiteralPath $fixture -Encoding utf8
     $originalHash = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
     $started = Get-Date
-    $previousTrace = $env:FBE_NEXT_TRACE
     $env:FBE_NEXT_TRACE = '1'; $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_FAULT_INJECT = $Fault
     $process = Start-Process -FilePath (Join-Path $runtime 'FBE.exe') -WorkingDirectory $runtime `
         -ArgumentList @('-s', '-b', ('"{0}"' -f $report), ('"{0}"' -f $fixture)) -PassThru
@@ -100,37 +96,8 @@ try {
     Write-Host 'Table serialization failure safety passed.'
 }
 finally {
-    Remove-Item Env:FBE_NEXT_TEST_MODE,Env:FBE_NEXT_FAULT_INJECT -ErrorAction SilentlyContinue
-    if ($null -eq $previousTrace) { Remove-Item Env:FBE_NEXT_TRACE -ErrorAction SilentlyContinue } else { $env:FBE_NEXT_TRACE = $previousTrace }
-    if (Test-Path -LiteralPath $directory) {
-        if ($passed) {
-            $safeRoot = [IO.Path]::GetFullPath($temporaryRoot).TrimEnd('\') + '\'
-            $safeDirectory = [IO.Path]::GetFullPath($directory)
-            if(-not $safeDirectory.StartsWith($safeRoot, [StringComparison]::OrdinalIgnoreCase)) { throw "Unsafe cleanup path: $safeDirectory" }
-            # The temporary runtime DLL can remain locked briefly after exit.
-            # Keep cleanup bounded; a persistent failure must still fail the test.
-            for($attempt=0; $attempt -lt 10; ++$attempt) {
-                try { Remove-Item -LiteralPath $safeDirectory -Recurse -Force -ErrorAction Stop; break }
-                catch [IO.IOException], [UnauthorizedAccessException] {
-                    if($attempt -eq 9) { throw }
-                    Start-Sleep -Milliseconds 100
-                }
-            }
-        }
-        else {
-            New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
-            $failureDirectory = Join-Path $diagnosticsRoot ('table-failure-' + [IO.Path]::GetFileName($directory))
-            $safeSourceRoot = [IO.Path]::GetFullPath($temporaryRoot).TrimEnd('\') + '\'
-            $safeDiagnosticsRoot = [IO.Path]::GetFullPath($diagnosticsRoot).TrimEnd('\') + '\'
-            if(-not [IO.Path]::GetFullPath($directory).StartsWith($safeSourceRoot, [StringComparison]::OrdinalIgnoreCase) -or
-                -not [IO.Path]::GetFullPath($failureDirectory).StartsWith($safeDiagnosticsRoot, [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe diagnostics move path.' }
-            try {
-                Move-Item -LiteralPath $directory -Destination $failureDirectory -Force
-                Write-Warning "Диагностика неуспешного table safety test сохранена: $failureDirectory"
-            }
-            catch {
-                Write-Warning "Не удалось перенести диагностику из ${directory}: $_"
-            }
-        }
-    }
+    $env:FBE_NEXT_TRACE = $previousTrace
+    $env:FBE_NEXT_TEST_MODE = $previousMode
+    $env:FBE_NEXT_FAULT_INJECT = $previousFault
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed
 }
