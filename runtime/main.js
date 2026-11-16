@@ -1776,9 +1776,9 @@ function TransformBodyPreservingSpaces(proc, dom, body)
 	proc.transform();
 	TraceScript("J582", "operation=body output");
 	var html = String(proc.output), used = {}, chars = html.match(/[\uE000-\uF8FF]/g);
-	var i, code, marker = "";
+	var i, marker = "";
 	if(chars) for(i = 0; i < chars.length; i++) used[chars[i].charCodeAt(0)] = true;
-	for(code = 0xE000; code <= 0xF8FF; code++) if(!used[code]) { marker = String.fromCharCode(code); break; }
+	for(var code = 0xE000; code <= 0xF8FF; code++) if(!used[code]) { marker = String.fromCharCode(code); break; }
 	if(!marker) { marker = "\uE000\uE000"; while(html.indexOf(marker) >= 0) marker += "\uE000"; }
 
 	// Process HTML text, never tag names or attributes. Quoted '>' and comments
