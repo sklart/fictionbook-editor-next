@@ -27,9 +27,8 @@ function Invoke-Fbe([string[]]$Arguments, [string]$Name) {
     if(-not $process.WaitForExit($TimeoutSeconds*1000)) { Stop-Process -Id $process.Id -Force; throw "FBE не завершил $Name." }
     if($process.ExitCode -ne 0) { throw "FBE вернул код $($process.ExitCode): $Name." }
 }
-$directory=Join-Path ([IO.Path]::GetTempPath()) ('fbe-table-structural-'+[guid]::NewGuid().ToString('N'))
+$directory=Join-Path $isolation.Root ('table-fixtures-'+[guid]::NewGuid().ToString('N'))
 [void](New-Item -ItemType Directory -Path $directory)
-try {
     $bulkTable = New-Object Text.StringBuilder
     for($row=0;$row -lt 10;$row++) { [void]$bulkTable.Append('<tr>'); for($column=0;$column -lt 10;$column++) { [void]$bulkTable.Append("<td id=`"bulk-$row-$column`">$row-$column</td>") }; [void]$bulkTable.Append('</tr>') }
     $bulkHeaderTable = $bulkTable.ToString().Replace('<td ', '<th ').Replace('</td>', '</th>')
@@ -157,8 +156,5 @@ try {
         Assert-Schema $fixture
     }
     Write-Host 'Production structural table handlers with Undo/Redo passed.'
-}
-finally { if($KeepArtifacts) { Write-Host "Артефакты structural test: $directory" } else { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue } }
-
 $isolationPassed = $true
-} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $isolationPassed }
+} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $isolationPassed -KeepArtifacts:$KeepArtifacts }

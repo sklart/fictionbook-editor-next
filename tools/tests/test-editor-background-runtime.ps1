@@ -35,15 +35,7 @@ function Assert-Image($row, [string]$phase) {
     if([int]$row.modified -ne 0) { throw "$phase изменил modified-state документа." }
 }
 function Save-RuntimeFailureArtifacts([string]$Extension, [string]$Report, [string]$Breadcrumb, [int]$ProcessId, [string]$ExitCode, [string]$LastPhase, [string]$ReportText, [string]$BreadcrumbText) {
-    $target = Join-Path $failureArtifactRoot ((Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N'))
-    [void](New-Item -ItemType Directory -Path $target -Force)
-    foreach($path in @($Report, $Breadcrumb, $fixture, $png, $missing, (Join-Path $portableRuntime 'portable.ini'))) {
-        if($path -and (Test-Path -LiteralPath $path -PathType Leaf)) { Copy-Item -LiteralPath $path -Destination $target -Force }
-    }
-	Get-ChildItem -LiteralPath $directory -File -Include '*.png','*.jpg','*.jpeg' -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $target -Force }
-    foreach($path in @((Join-Path $portableRuntime 'TestData'), (Join-Path $portableRuntime 'TestData\Diagnostics'))) {
-        if(Test-Path -LiteralPath $path -PathType Container) { Copy-Item -LiteralPath $path -Destination $target -Recurse -Force }
-    }
+    $target = Join-Path $directory ('failure-' + [guid]::NewGuid().ToString('N') + '.txt')
     $summary = @"
 extension=$Extension
 pid=$ProcessId
@@ -52,8 +44,8 @@ last-phase=$LastPhase
 report=$ReportText
 breadcrumb=$BreadcrumbText
 "@
-    [System.IO.File]::WriteAllText((Join-Path $target 'summary.txt'), $summary, [System.Text.UTF8Encoding]::new($false))
-    return $target
+    [System.IO.File]::WriteAllText($target, $summary, [System.Text.UTF8Encoding]::new($false))
+    return 'see Runtime failure artifacts output'
 }
 function Invoke-RuntimeFbe([string]$Extension, [string]$Report) {
     $breadcrumb = Join-Path $directory ("breadcrumb$Extension.log")
@@ -74,16 +66,13 @@ function Invoke-RuntimeFbe([string]$Extension, [string]$Report) {
     } finally { if($null -eq $oldBreadcrumb){Remove-Item Env:FBE_NEXT_TEST_STARTUP_BREADCRUMB -ErrorAction SilentlyContinue}else{$env:FBE_NEXT_TEST_STARTUP_BREADCRUMB=$oldBreadcrumb} }
 }
 
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-editor-background-runtime-' + [guid]::NewGuid().ToString('N'))
-[void](New-Item -ItemType Directory -Path $directory)
-$failureArtifactRoot = Join-Path (Split-Path $PSScriptRoot -Parent | Split-Path -Parent) 'out\tests\editor-background-runtime-failure'
 $installedProfile = Join-Path $env:LOCALAPPDATA 'FBE Next'
 $installedBefore = Get-FileTreeSnapshot $installedProfile
-$sourceRuntime = Split-Path $FbeExe -Parent
-$portableRuntime = Join-Path $directory 'portable-runtime'
-Copy-Item -LiteralPath $sourceRuntime -Destination $portableRuntime -Recurse -Force
-$FbeExe = Join-Path $portableRuntime 'FBE.exe'
-[System.IO.File]::WriteAllText((Join-Path $portableRuntime 'portable.ini'), "[Portable]`r`nDataPath=TestData`r`n", [System.Text.UTF8Encoding]::new($false))
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'editor-background-runtime'
+$directory = $isolation.Root
+$portableRuntime = $isolation.Runtime
+$FbeExe = $isolation.Exe
 $fixture = Join-Path $directory 'background.fb2'
 $png = Join-Path $directory 'Фоны FBE # % (тест).png'
 $missing = Join-Path $directory 'нет # % (фон).png'
@@ -148,6 +137,7 @@ try {
     $completed = $true
     Write-Host 'FBE.exe editor background runtime regression passed (MSHTML DOM, layouts, fallback, custom paths, High Contrast and Save isolation).'
 } finally {
-    if((Get-FileTreeSnapshot $installedProfile) -cne $installedBefore) { throw '%LOCALAPPDATA%\FBE Next changed during isolated editor background runtime test.' }
-    if($completed -and -not $KeepArtifacts) { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue } else { Write-Host "Артефакты runtime-проверки: $directory" }
+    try {
+        if((Get-FileTreeSnapshot $installedProfile) -cne $installedBefore) { $completed = $false; throw '%LOCALAPPDATA%\FBE Next changed during isolated editor background runtime test.' }
+    } finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $completed -KeepArtifacts:$KeepArtifacts }
 }

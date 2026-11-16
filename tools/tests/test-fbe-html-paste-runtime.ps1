@@ -9,12 +9,14 @@ param(
 
 $ErrorActionPreference = 'Stop'
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "FBE.exe not found: $FbeExe" }
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-html-paste-' + [guid]::NewGuid().ToString('N'))
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$scratch = New-IsolatedFbeScratchDirectory -Name 'html-paste'
+$directory = $scratch.Root
+$completed = $false
 $fixture = Join-Path $directory 'html-paste.fb2'
 $oldRoute = $env:FBE_NEXT_TEST_HTML_REAL_PASTE
 $oldMode, $oldScenario, $oldCase = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_HTML_PASTE_CASE
 try {
-    New-Item -ItemType Directory -Path $directory | Out-Null
     $xml = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>Paste</first-name><last-name>Test</last-name></author><book-title>HTML paste</book-title><lang>en</lang></title-info><document-info><author><first-name>Paste</first-name><last-name>Test</last-name></author><date value="2026-10-15">2026-10-15</date><id>html-paste-test</id><version>1.0</version></document-info></description><body><section id="paste-target"><title><p>Heading</p></title><p>Before</p></section><section id="paste-neighbor"><p>Neighbor</p></section></body></FictionBook>'
     $env:FBE_NEXT_TEST_MODE = '1'
     $env:FBE_NEXT_TEST_SCENARIO = 'html-paste-runtime'
@@ -52,10 +54,10 @@ try {
         elseif($savedXml -notmatch 'Bold italic' -or $savedXml -notmatch 'Second') { throw "Formatted text missing after save: $case" }
     }
     Write-Host "HTML paste runtime passed: $($Cases -join ', '); FB2 parse."
+    $completed = $true
 }
 finally {
     $env:FBE_NEXT_TEST_HTML_REAL_PASTE = $oldRoute
     $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_HTML_PASTE_CASE = $oldMode, $oldScenario, $oldCase
-    if($KeepArtifacts) { Write-Host "Artifacts: $directory" }
-    else { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+    Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $completed -KeepArtifacts:$KeepArtifacts -PreserveContents
 }

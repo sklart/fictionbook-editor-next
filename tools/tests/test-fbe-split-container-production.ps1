@@ -19,7 +19,7 @@ $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPat
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "FBE.exe was not found: $FbeExe" }
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $schemaPath = Join-Path $root 'runtime\FictionBook.xsd'
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-split-container-' + [guid]::NewGuid().ToString('N'))
+$directory = Join-Path $isolation.Root ('split-fixtures-' + [guid]::NewGuid().ToString('N'))
 
 function Assert-Fb2Schema([string]$Path) {
     $cache = New-Object -ComObject Msxml2.XMLSchemaCache.6.0
@@ -31,7 +31,6 @@ function Assert-Fb2Schema([string]$Path) {
     if($document.validate().errorCode -ne 0) { throw "Saved FB2 is invalid: $($document.validate().reason)" }
 }
 
-try {
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
     $cases = @(
         @{ id = 'split-section-middle'; body = '<section id="target-section-middle"><p>First <a l:href="#target-section-middle">Backlink</a></p><p>Middle</p><p>Last</p></section>'; position = 'middle'; containerId = 'target-section-middle'; backlink = $true },
@@ -152,10 +151,5 @@ try {
     Write-Host "Split scenario counters: selected=$selected started=$started completed=$completed passed=$passed failed=$failed"
     if($selected -le 0 -or $started -ne $selected -or $completed -ne $selected -or $failed -ne 0) { throw 'Split scenario execution accounting failed.' }
     Write-Host 'Production SplitContainer MSHTML Undo/Redo passed.'
-} finally {
-    if($KeepArtifacts) { Write-Host "Artifacts: $directory" }
-    else { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
-}
-
 $isolationPassed = $true
-} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $isolationPassed }
+} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $isolationPassed -KeepArtifacts:$KeepArtifacts }

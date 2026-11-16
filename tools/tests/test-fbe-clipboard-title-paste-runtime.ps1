@@ -10,7 +10,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "FBE.exe not found: $FbeExe" }
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-clipboard-title-paste-' + [guid]::NewGuid().ToString('N'))
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$scratch = New-IsolatedFbeScratchDirectory -Name 'clipboard-title-paste'
+$directory = $scratch.Root
+$completed = $false
 $fixture = Join-Path $directory 'clipboard-title-paste.fb2'
 $cases = @('text-only', 'text-paragraph-end', 'full-paragraph', 'multiple-title-paragraphs', 'full-title-empty-target', 'full-title-nonempty', 'ctrl-v-command')
 try {
@@ -56,10 +59,10 @@ try {
         $env:FBE_NEXT_TEST_PASTE_TRACE, $env:FBE_NEXT_TEST_TITLE_PASTE_CASE = $oldTrace, $oldCase
     }
     if($rows.Count -ne $cases.Count) { throw "Expected $($cases.Count) title paste results, got $($rows.Count)." }
+    $completed = $true
     Write-Host "Clipboard title paste matrix passed: $($cases -join ', ')"
 }
 finally {
-    if($KeepArtifacts) { Write-Host "Artifacts: $directory" }
-    else { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+    Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $completed -KeepArtifacts:$KeepArtifacts -PreserveContents
 }
 Write-Host 'Clipboard title paste production runtime passed.'

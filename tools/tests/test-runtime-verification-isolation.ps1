@@ -9,7 +9,6 @@ function Require([string]$Path, [string]$Pattern, [string]$Message) {
 }
 
 Require 'tools\tests\RuntimeTestIsolation.ps1' 'fr-.*NewGuid' 'Isolated runtime must use a short unique disposable root.'
-Require 'tools\tests\RuntimeTestIsolation.ps1' 'Copy-Item.*-Recurse' 'Isolated runtime must copy the complete Release runtime.'
 Require 'tools\tests\RuntimeTestIsolation.ps1' 'DataPath=\$dataName' 'Each isolated runtime must use a unique DataPath.'
 Require 'tools\tests\RuntimeTestIsolation.ps1' 'WaitForExit\(\)' 'Child-process bookkeeping must complete before reading ExitCode.'
 Require 'tools\tests\RuntimeTestIsolation.ps1' 'Runtime failure artifacts' 'Failures must retain and report disposable-runtime artifacts.'
@@ -31,8 +30,8 @@ Require 'tools\tests\test-fbe-editor-view-lifecycle-runtime.ps1' 'FBE_NEXT_TEST_
 
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 # Exercise the real process bookkeeping without opening a GUI or modifying FBE.
-$waitRoot = Join-Path ([IO.Path]::GetTempPath()) ('fr-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $waitRoot | Out-Null
+$waitScratch = New-IsolatedFbeScratchDirectory -Name 'controlled-wait'
+$waitRoot = $waitScratch.Root
 $pwsh = (Get-Process -Id $PID).Path
 $waitIsolation = [pscustomobject]@{Root=$waitRoot;Runtime=$waitRoot;Exe=$pwsh;DataPath=$waitRoot;StagePath=(Join-Path $waitRoot 'stage.txt')}
 $waitReport = Join-Path $waitRoot 'report.txt'
@@ -64,6 +63,9 @@ try {
     $fixtureSource = Join-Path $testArtifacts 'source'
     New-Item -ItemType Directory -Path $fixtureSource -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $fixtureSource 'FBE.exe') -Value 'fixture'
+    New-Item -ItemType Directory -Path (Join-Path $fixtureSource 'Resources') | Out-Null
+    Set-Content -LiteralPath (Join-Path $fixtureSource 'Resources\payload.xml') -Value 'bundled'
+    Set-Content -LiteralPath (Join-Path $fixtureSource 'Resources\debug.pdb') -Value 'not needed for runtime'
     $before = @(Get-ChildItem -LiteralPath ([IO.Path]::GetTempPath()) -Directory -Filter 'fr-*' | Select-Object -ExpandProperty FullName)
     $creationFailed = $false
     try { New-IsolatedFbeRuntime -FbeExe (Join-Path $fixtureSource 'FBE.exe') -Name 'invalid|name' | Out-Null } catch { $creationFailed = $true }
@@ -112,13 +114,26 @@ try {
     if ((Test-Path $bounded.Root) -or !(Test-Path (Join-Path $boundedArtifacts 'nested\evidence.txt')) -or (Test-Path (Join-Path $boundedArtifacts 'nested\runtime.dll')) -or (Test-Path (Join-Path $boundedArtifacts 'nested\huge.xml'))) { throw 'Failure evidence must retain small diagnostics without binaries or oversized files.' }
     $summary = Get-Content -LiteralPath (Join-Path $boundedArtifacts 'artifact-summary.txt') -Raw
     if ($summary -notmatch '(?m)^skipped=([2-9]|[1-9][0-9]+)\r?$' -or $summary -notmatch '(?m)^bytes=(\d+)\r?$' -or [long]$Matches[1] -gt 20MB) { throw 'The artifact summary must report omitted files and enforce the total size limit.' }
+    $dumpProbe = New-IsolatedFbeScratchDirectory -Name 'oversized-dump'
+    $dumpPath = Join-Path $dumpProbe.Root 'critical.dmp'
+    $dump = [IO.File]::OpenWrite($dumpPath)
+    try { $dump.SetLength(21MB) } finally { $dump.Dispose() }
+    $rejected = $false
+    try { Complete-IsolatedFbeRuntime -Isolation $dumpProbe -Passed $false -PreserveContents } catch { $rejected = $_.Exception.Message -like 'Required fixture or crash dump exceeds the evidence budget*' }
+    if (!$rejected -or !(Test-Path -LiteralPath $dumpPath)) { throw 'An oversized crash dump must retain the marked profile for explicit recovery.' }
+    Remove-Item -LiteralPath $dumpPath -Force
+    Complete-IsolatedFbeRuntime -Isolation $dumpProbe -Passed $true
+    Set-Content -LiteralPath (Join-Path $fixtureSource 'main.js') -Value 'unchanged runtime asset'
     $kept = New-IsolatedFbeRuntime -FbeExe (Join-Path $fixtureSource 'FBE.exe') -Name 'kept'
-    try {
-        Complete-IsolatedFbeRuntime -Isolation $kept -Passed $true -KeepArtifacts
-        if (Test-Path -LiteralPath (Join-Path $kept.Root '.fbe-runtime-owner.json')) { throw 'Explicitly retained artifacts must not be marked for cleanup.' }
-        Remove-AbandonedIsolatedFbeRuntimes
-        if (!(Test-Path -LiteralPath $kept.Root)) { throw 'Explicitly retained artifacts were removed.' }
-    } finally { if (Test-Path -LiteralPath $kept.Root) { Remove-Item -LiteralPath $kept.Root -Recurse -Force } }
+    if (!(Test-Path -LiteralPath (Join-Path $kept.Root 'Resources\payload.xml')) -or
+        (Test-Path -LiteralPath (Join-Path $kept.Root 'Resources\debug.pdb'))) { throw 'Runtime copy must include required nested resources and exclude debug symbols.' }
+    Set-Content -LiteralPath (Join-Path $kept.Root 'report.txt') -Value 'unique evidence'
+    Complete-IsolatedFbeRuntime -Isolation $kept -Passed $true -KeepArtifacts
+    $keptArtifacts = Join-Path $testArtifacts (Split-Path -Leaf $kept.Root)
+    if ((Test-Path -LiteralPath $kept.Root) -or !(Test-Path -LiteralPath (Join-Path $keptArtifacts 'report.txt')) -or
+        (Test-Path -LiteralPath (Join-Path $keptArtifacts 'FBE.exe')) -or (Test-Path -LiteralPath (Join-Path $keptArtifacts 'main.js'))) {
+        throw 'KeepArtifacts must save bounded unique evidence and remove the runtime copy.'
+    }
     $ready = Join-Path $testArtifacts 'child-ready.txt'
     $helper = (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1').Replace("'", "''")
     $exe = (Join-Path $fixtureSource 'FBE.exe').Replace("'", "''")
@@ -156,7 +171,7 @@ try {
         if (!$child.HasExited) { Stop-Process -Id $child.Id -Force -ErrorAction SilentlyContinue; $child.WaitForExit() }
     }
     Remove-Item -LiteralPath $ready -Force
-    $command = ". '$helper'; `$iso = New-IsolatedFbeScratchDirectory -Name interrupted-runtime -RuntimePayload; New-Item -ItemType Directory -Path (Join-Path `$iso.Root 'Resources') | Out-Null; Set-Content -LiteralPath (Join-Path `$iso.Root 'Resources\payload.xml') -Value 'bundled'; Set-Content -LiteralPath (Join-Path `$iso.Root 'report.txt') -Value 'diagnostic'; [IO.File]::WriteAllText('$readyQuoted', `$iso.Root); Start-Sleep -Seconds 60"
+    $command = ". '$helper'; `$iso = New-IsolatedFbeRuntime -FbeExe '$exe' -Name interrupted-runtime; Set-Content -LiteralPath (Join-Path `$iso.Root 'report.txt') -Value 'diagnostic'; [IO.File]::WriteAllText('$readyQuoted', `$iso.Root); Start-Sleep -Seconds 60"
     $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
     $child = Start-Process $pwsh -ArgumentList "-NoProfile -EncodedCommand $encoded" -WindowStyle Hidden -PassThru
     try {
@@ -170,7 +185,9 @@ try {
     } finally {
         if (!$child.HasExited) { Stop-Process -Id $child.Id -Force -ErrorAction SilentlyContinue; $child.WaitForExit() }
     }
-    New-Item -ItemType Directory -Path $waitRoot | Out-Null
+    $waitIsolation = New-IsolatedFbeScratchDirectory -Name 'failure-evidence'
+    $waitRoot = $waitIsolation.Root
+    $waitIsolation.DataPath = $waitRoot
     Set-Content -LiteralPath (Join-Path $waitRoot 'test-stage.txt') -Value 'failed stage'
     New-Item -ItemType Directory -Path (Join-Path $waitRoot 'Recovery') | Out-Null
     Set-Content -LiteralPath (Join-Path $waitRoot 'Recovery\fixture.fb2') -Value 'recovery'
@@ -179,14 +196,52 @@ try {
     Complete-IsolatedFbeRuntime -Isolation $waitIsolation -Passed $false
     $saved = Join-Path $testArtifacts (Split-Path -Leaf $waitRoot)
     if ((Test-Path $waitRoot) -or !(Test-Path (Join-Path $saved 'test-stage.txt')) -or !(Test-Path (Join-Path $saved 'Recovery\fixture.fb2')) -or !(Test-Path (Join-Path $saved 'Diagnostics\startup.log'))) { throw 'Failure must save diagnostics and remove the disposable runtime.' }
-    New-Item -ItemType Directory -Path $waitRoot | Out-Null
-    Complete-IsolatedFbeRuntime -Isolation $waitIsolation -Passed $false -KeepArtifacts
-    if (!(Test-Path $waitRoot)) { throw 'Explicit KeepArtifacts must retain the runtime.' }
+    $waitIsolation = New-IsolatedFbeScratchDirectory -Name 'invalid-destination'
+    $waitRoot = $waitIsolation.Root
     $env:FBE_RUNTIME_FAILURE_ARTIFACTS = Join-Path $waitRoot 'nested'
     $rejected = $false
     try { Complete-IsolatedFbeRuntime -Isolation $waitIsolation -Passed $false } catch { $rejected = $true }
     if (!$rejected -or !(Test-Path $waitRoot)) { throw 'Invalid diagnostics location must leave the runtime intact.' }
     Complete-IsolatedFbeRuntime -Isolation $waitIsolation -Passed $true
+    $unownedRoot = Join-Path ([IO.Path]::GetTempPath()) ('fr-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $unownedRoot | Out-Null
+    try {
+        $unowned = [pscustomobject]@{ Root=$unownedRoot; DataPath=$unownedRoot; Exe=$pwsh }
+        $rejected = $false
+        try { Complete-IsolatedFbeRuntime -Isolation $unowned -Passed $true } catch { $rejected = $_.Exception.Message -like '*unowned runtime*' }
+        if (!$rejected -or !(Test-Path -LiteralPath $unownedRoot)) { throw 'An unowned fr directory must never be removed.' }
+    } finally { Remove-Item -LiteralPath $unownedRoot -Recurse -Force }
+    $rejected = $false
+    try { Assert-IsolatedFbeFreeSpace -RequiredBytes ([long]::MaxValue) } catch { $rejected = $_.Exception.Message -like 'Insufficient temporary disk space:*' }
+    if (!$rejected) { throw 'The free-space guard did not reject an impossible allocation.' }
+    Assert-IsolatedFbeEvidenceBudget -ExistingBytes 0
+    $rejected = $false
+    try { Assert-IsolatedFbeEvidenceBudget -ExistingBytes 2GB } catch { $rejected = $_.Exception.Message -eq 'Evidence budget is full.' }
+    if (!$rejected) { throw 'The evidence budget did not reject an overfull artifact directory.' }
+    $linked = New-IsolatedFbeScratchDirectory -Name 'linked-runtime'
+    $linkTarget = Join-Path $testArtifacts 'junction-target'
+    New-Item -ItemType Directory -Path $linkTarget | Out-Null
+    Set-Content -LiteralPath (Join-Path $linkTarget 'user.txt') -Value 'must remain'
+    $junction = Join-Path $linked.Root 'junction'
+    New-Item -ItemType Junction -Path $junction -Target $linkTarget -ErrorAction Stop | Out-Null
+    try {
+        $rejected = $false
+        try { Complete-IsolatedFbeRuntime -Isolation $linked -Passed $true } catch { $rejected = $_.Exception.Message -like '*reparse point*' }
+        if (!$rejected -or !(Test-Path -LiteralPath (Join-Path $linkTarget 'user.txt'))) { throw 'A linked runtime must remain untouched.' }
+    } finally {
+        [IO.Directory]::Delete($junction)
+        Complete-IsolatedFbeRuntime -Isolation $linked -Passed $true
+    }
+    $unknownProcesses = New-IsolatedFbeScratchDirectory -Name 'unavailable-process-list'
+    function Get-CimInstance { throw 'controlled process enumeration failure' }
+    try {
+        $rejected = $false
+        try { Complete-IsolatedFbeRuntime -Isolation $unknownProcesses -Passed $true } catch { $rejected = $_.Exception.Message -like '*controlled process enumeration failure*' }
+        if (!$rejected -or !(Test-Path -LiteralPath $unknownProcesses.Root)) { throw 'An unavailable process list must retain the runtime.' }
+    } finally {
+        Remove-Item Function:Get-CimInstance -Force
+        Complete-IsolatedFbeRuntime -Isolation $unknownProcesses -Passed $true
+    }
 } finally {
     $env:FBE_RUNTIME_FAILURE_ARTIFACTS = $savedArtifacts
     if (Test-Path $waitRoot) { Remove-Item -LiteralPath $waitRoot -Recurse -Force }

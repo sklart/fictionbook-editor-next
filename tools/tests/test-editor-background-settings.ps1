@@ -40,12 +40,14 @@ function Assert-Row($Rows,[string]$Phase,[hashtable]$Expected,[string]$Name) {
     $row=@($Rows|Where-Object phase -eq $Phase); if($row.Count-ne 1){throw "$Name has no $Phase row."}
     foreach($key in $Expected.Keys) { $property=@{customPath='custom_path';colorBg='color_bg'}[$key]; if(-not $property){$property=$key}; if([string]$row[0].$property -cne [string]$Expected[$key]) { throw "${Name}: $key expected '$($Expected[$key])', got '$($row[0].$property)'." } }
 }
-$root=Join-Path ([IO.Path]::GetTempPath()) ('fbe-editor-background-settings-'+[guid]::NewGuid().ToString('N')); $installed=Join-Path $env:LOCALAPPDATA 'FBE Next'; $before=Get-Snapshot $installed; $completed=$false
+$installed=Join-Path $env:LOCALAPPDATA 'FBE Next'; $before=Get-Snapshot $installed; $completed=$false
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'editor-background-settings'
+$root=$isolation.Root
 try {
-    Copy-Item -LiteralPath (Split-Path $FbeExe -Parent) -Destination $root -Recurse -Force; $portable=$root; $portableExe=Join-Path $portable 'FBE.exe'
-    [System.IO.File]::WriteAllText((Join-Path $portable 'portable.ini'), "[Portable]`r`nDataPath=TestData`r`n", [System.Text.UTF8Encoding]::new($false))
+    $portable=$isolation.Runtime; $portableExe=$isolation.Exe
     $fixture=Join-Path $root 'settings.fb2'; '<?xml version="1.0"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>T</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>settings-test</id><version>1</version></document-info></description><body><section><p>T</p></section></body></FictionBook>'|Set-Content -LiteralPath $fixture -Encoding utf8
-    $settingsDir=Join-Path $portable 'TestData\Settings'; $settingsFile=Join-Path $settingsDir 'Settings.xml'; $sentinel='1193046'
+    $settingsDir=Join-Path $isolation.DataPath 'Settings'; $settingsFile=Join-Path $settingsDir 'Settings.xml'; $sentinel='1193046'
     # Bootstrap is structurally valid, then the application itself serializes the canonical seed.
     Set-Seed "<?xml version=`"1.0`" encoding=`"utf-8`"?><FBE><Settings ID=`"0`"><ColorBG>$sentinel</ColorBG></Settings></FBE>"
     $seedRows=Invoke-Fbe 'seed-writer' @{FBE_NEXT_TEST_SETTINGS_SEED='1'}; Assert-Row $seedRows 'seeded' @{kind='none';layout='tile';colorBg=$sentinel} 'seed-writer'
@@ -63,4 +65,7 @@ try {
         Assert-Row (Invoke-Fbe "$kind-$layout-reader" @{}) 'loaded' @{kind=$kind;id='01_clean_white';customPath=$path;layout=$layout;colorBg=$sentinel} "$kind-$layout-reader"
     }}
     $completed=$true; Write-Host 'Editor background CSettings portable Save/Load round-trip verified.'
-} finally { if((Get-Snapshot $installed)-cne$before){throw '%LOCALAPPDATA%\FBE Next changed during isolated settings round-trip.'}; if($completed -and -not $KeepArtifacts){Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue}else{Write-Host "Settings test artifacts: $root"; Get-ChildItem -LiteralPath (Join-Path $portable 'TestData\Settings') -Force -ErrorAction SilentlyContinue | Select-Object Name,Length} }
+} finally {
+    try { if((Get-Snapshot $installed)-cne$before){$completed=$false;throw '%LOCALAPPDATA%\FBE Next changed during isolated settings round-trip.'} }
+    finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $completed -KeepArtifacts:$KeepArtifacts }
+}

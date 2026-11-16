@@ -7,13 +7,15 @@ param(
 $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "FBE.exe was not found: $FbeExe" }
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-split-undo-probe-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $directory -Force | Out-Null
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$scratch = New-IsolatedFbeScratchDirectory -Name 'split-undo-probe'
+$directory = $scratch.Root
+$completed = $false
+try {
 $fixture = Join-Path $directory 'probe.fb2'
 @('<?xml version="1.0" encoding="utf-8"?>', '<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>probe</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>probe</id><version>1.0</version></document-info></description><body><section><p>seed</p></section></body></FictionBook>') | Set-Content -LiteralPath $fixture -Encoding utf8
 $variants = 'insert-adjacent','insert-before','append-child','pastehtml-content','pastehtml-root','markup-after-end','markup-before-begin','markup-parse-copy','detached-subtree','whole-innerhtml'
 $rows = @()
-try {
     foreach($variant in $variants) {
         $report = Join-Path $directory ($variant + '.tsv')
         $oldMode, $oldScenario, $oldVariant = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_UNDO_PROBE_VARIANT
@@ -34,6 +36,7 @@ try {
     if(@($rows | Where-Object result -ne 'pass').Count) {
         Write-Warning 'Direct MSHTML mutation alternatives did not prove one-Undo/one-Redo Split composition. These diagnostic FAIL results are retained; they do not exercise the production Split wrapper. undos_required=3 means not restored after two Undo calls, not a measured third Undo. See docs/architecture/undo.md and docs/archive/undo/split-undo-mshtml-probe.md.'
     }
+    $completed = @($rows | Where-Object result -ne 'pass').Count -eq 0
 } finally {
-    if($KeepArtifacts) { Write-Host "Artifacts: $directory" } else { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+    Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $completed -KeepArtifacts:$KeepArtifacts -PreserveContents
 }

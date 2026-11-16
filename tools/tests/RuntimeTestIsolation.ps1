@@ -1,9 +1,26 @@
 Set-StrictMode -Version Latest
 
+function Assert-IsolatedFbeFreeSpace {
+    param([ValidateRange(0, [long]::MaxValue)][long]$RequiredBytes = 256MB)
+    $tempPath = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+    $volume = [IO.Path]::GetPathRoot($tempPath)
+    if ([string]::IsNullOrEmpty($volume)) { throw "Cannot determine temporary volume: $tempPath" }
+    $available = ([IO.DriveInfo]::new($volume)).AvailableFreeSpace
+    if ($available -lt $RequiredBytes) {
+        throw "Insufficient temporary disk space: required=$RequiredBytes bytes; available=$available bytes; path=$tempPath"
+    }
+}
+
+function Assert-IsolatedFbeEvidenceBudget {
+    param([long]$ExistingBytes)
+    if ($ExistingBytes -lt 0 -or $ExistingBytes -gt (2GB - 20MB)) { throw 'Evidence budget is full.' }
+}
+
 function New-IsolatedFbeScratchDirectory {
     param([Parameter(Mandatory)][string]$Name, [switch]$RuntimePayload)
     if ([string]::IsNullOrWhiteSpace($Name) -or $Name -match '[\\/:*?"<>|]') { throw 'Invalid isolated test name.' }
     Remove-AbandonedIsolatedFbeRuntimes
+    Assert-IsolatedFbeFreeSpace
     $root = Join-Path ([IO.Path]::GetTempPath()) ('fr-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $root -ErrorAction Stop | Out-Null
     try {
@@ -24,6 +41,23 @@ function New-IsolatedFbeRuntime {
 
     Remove-AbandonedIsolatedFbeRuntimes
     $sourceExe = (Resolve-Path -LiteralPath $FbeExe).Path
+    $sourceRoot = [IO.Path]::GetFullPath((Split-Path -Parent $sourceExe)).TrimEnd('\')
+    $payload = @(Get-ChildItem -LiteralPath $sourceRoot -Force -ErrorAction Stop | Where-Object { $_.Name -notin @('.fbe-runtime-owner.json', 'Data', 'test-obj') })
+    $payloadEntries = [Collections.Generic.List[object]]::new()
+    $debugExtensions = @('.pdb', '.lib', '.exp', '.obj', '.ilk', '.ipdb', '.iobj')
+    [long]$payloadBytes = 0
+    foreach ($item in $payload) {
+        if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Runtime payload contains a reparse point: $($item.FullName)" }
+        $entries = @($item)
+        if ($item.PSIsContainer) { $entries += @(Get-ChildItem -LiteralPath $item.FullName -Recurse -Force -ErrorAction Stop) }
+        foreach ($entry in $entries) {
+            if ($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Runtime payload contains a reparse point: $($entry.FullName)" }
+            if (-not $entry.PSIsContainer -and $entry.Extension.ToLowerInvariant() -in $debugExtensions) { continue }
+            if (-not $entry.PSIsContainer) { $payloadBytes += $entry.Length }
+            $payloadEntries.Add($entry)
+        }
+    }
+    Assert-IsolatedFbeFreeSpace -RequiredBytes ($payloadBytes + 256MB)
     # Keep this deliberately shallow: bundled user-script names are long and
     # the legacy script host still observes MAX_PATH.
     $root = Join-Path ([IO.Path]::GetTempPath()) ('fr-' + [guid]::NewGuid().ToString('N'))
@@ -32,12 +66,20 @@ function New-IsolatedFbeRuntime {
     try {
         $dataName = "$Name-" + [guid]::NewGuid().ToString('N')
         $dataPath = Join-Path $runtime $dataName
-        $owner = @{ version = 1; pid = $PID; startTicks = (Get-Process -Id $PID).StartTime.ToUniversalTime().Ticks; dataName = $dataName }
+        $owner = @{ version = 1; pid = $PID; startTicks = (Get-Process -Id $PID).StartTime.ToUniversalTime().Ticks; dataName = $dataName; sourceRuntime = $sourceRoot }
         [IO.File]::WriteAllText((Join-Path $root '.fbe-runtime-owner.json'), ($owner | ConvertTo-Json -Compress), [Text.UTF8Encoding]::new($false))
-        Get-ChildItem -LiteralPath (Split-Path -Parent $sourceExe) -Force -ErrorAction Stop | Where-Object { $_.Name -notin @('.fbe-runtime-owner.json', 'Data', 'test-obj') -and $_.Extension -notin @('.pdb', '.lib', '.exp') } | Copy-Item -Destination $runtime -Recurse -Force -ErrorAction Stop
+        foreach ($entry in $payloadEntries) {
+            $relative = $entry.FullName.Substring($sourceRoot.Length).TrimStart('\')
+            $target = Join-Path $runtime $relative
+            if ($entry.PSIsContainer) { New-Item -ItemType Directory -Path $target -Force -ErrorAction Stop | Out-Null }
+            else {
+                New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force -ErrorAction Stop | Out-Null
+                Copy-Item -LiteralPath $entry.FullName -Destination $target -Force -ErrorAction Stop
+            }
+        }
         New-Item -ItemType Directory -Path $dataPath -ErrorAction Stop | Out-Null
         [IO.File]::WriteAllText((Join-Path $runtime 'portable.ini'), "[Portable]`r`nDataPath=$dataName`r`n", [Text.UTF8Encoding]::new($false))
-        return [pscustomobject]@{ Root = $root; Runtime = $runtime; Exe = Join-Path $runtime 'FBE.exe'; DataPath = $dataPath; StagePath = Join-Path $root 'test-stage.txt' }
+        return [pscustomobject]@{ Root = $root; Runtime = $runtime; Exe = Join-Path $runtime 'FBE.exe'; DataPath = $dataPath; StagePath = Join-Path $root 'test-stage.txt'; SourceRuntime = $sourceRoot }
     } catch {
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction Stop
         throw
@@ -62,7 +104,8 @@ function Remove-AbandonedIsolatedFbeRuntimes {
                     try { if ($process.StartTime.ToUniversalTime().Ticks -eq [long]$owner.startTicks) { continue } }
                     catch { continue }
                 }
-                $isolation = [pscustomobject]@{ Root = $entry.FullName; Exe = Join-Path $entry.FullName 'FBE.exe'; DataPath = Join-Path $entry.FullName $owner.dataName }
+                $sourceRuntime = if ($null -ne $owner.PSObject.Properties['sourceRuntime']) { [string]$owner.sourceRuntime } else { '' }
+                $isolation = [pscustomobject]@{ Root = $entry.FullName; Exe = Join-Path $entry.FullName 'FBE.exe'; DataPath = Join-Path $entry.FullName $owner.dataName; SourceRuntime = $sourceRuntime }
                 $preserveContents = $null -ne $owner.PSObject.Properties['preserveContents'] -and $owner.preserveContents -eq $true
                 Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $false -PreserveContents:$preserveContents
             } catch { Write-Warning "Could not clean abandoned runtime $($entry.FullName): $_" }
@@ -100,7 +143,8 @@ function Set-IsolatedRuntimeStage {
 function Get-IsolatedRuntimeProcesses {
     param([Parameter(Mandatory)]$Isolation)
     $ownedRoot = [IO.Path]::GetFullPath($Isolation.Root).TrimEnd('\') + '\'
-    return @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+    # Failure to enumerate processes must never be interpreted as an empty list.
+    return @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
         ($_.ExecutablePath -and $_.ExecutablePath.StartsWith($ownedRoot, [StringComparison]::OrdinalIgnoreCase)) -or
         ($_.Name -in @('FBE.exe', 'ImportEPUBBatch.exe', 'ExportEPUBBatch.exe', 'ExportDOCXBatch.exe', 'cl.exe', 'link.exe') -and $_.CommandLine -and $_.CommandLine.IndexOf($ownedRoot, [StringComparison]::OrdinalIgnoreCase) -ge 0)
     })
@@ -138,6 +182,22 @@ function Complete-IsolatedFbeRuntime {
     if ((Get-Item -LiteralPath $root -Force -ErrorAction Stop).Attributes -band [IO.FileAttributes]::ReparsePoint) {
         throw "Refusing to clean a linked runtime root: $root"
     }
+    $linked = @(Get-ChildItem -LiteralPath $root -Recurse -Force -ErrorAction Stop | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint } | Select-Object -First 1)
+    if ($linked.Count) { throw "Refusing to clean a runtime containing a reparse point: $($linked[0].FullName)" }
+    $marker = Join-Path $root '.fbe-runtime-owner.json'
+    if (-not (Test-Path -LiteralPath $marker -PathType Leaf)) { throw "Refusing to clean an unowned runtime: $root" }
+    $owner = Get-Content -LiteralPath $marker -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+    if ($owner.version -ne 1 -or $owner.pid -le 0 -or $owner.startTicks -le 0 -or $owner.dataName -notmatch '^[^\\/:*?"<>|]+-[0-9a-f]{32}$') {
+        throw "Refusing to clean a runtime with an invalid owner marker: $root"
+    }
+    if ($owner.pid -ne $PID) {
+        $ownerProcess = Get-Process -Id $owner.pid -ErrorAction SilentlyContinue
+        if ($ownerProcess) {
+            try { $sameOwner = $ownerProcess.StartTime.ToUniversalTime().Ticks -eq [long]$owner.startTicks }
+            catch { throw "Cannot verify runtime owner; retained: $root" }
+            if ($sameOwner) { throw "Runtime owner is still running; retained: $root" }
+        }
+    }
     $leftovers = @(Get-IsolatedRuntimeProcesses $Isolation)
     if ($leftovers.Count -gt 0) {
         foreach ($leftover in $leftovers) {
@@ -151,39 +211,69 @@ function Complete-IsolatedFbeRuntime {
     # Delete only this runtime's subtree, including after an interrupted owner.
     $testRegistryPath = 'Software\FBE-Next-Test-Runtimes\' + (Split-Path -Leaf $root)
     [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($testRegistryPath, $false)
-    if ($KeepArtifacts) {
-        $marker = Join-Path $root '.fbe-runtime-owner.json'
-        if (Test-Path -LiteralPath $marker) { Remove-Item -LiteralPath $marker -Force -ErrorAction Stop }
-        Write-Host "Runtime failure artifacts: $root"
-        if ($leftovers.Count -gt 0) { throw "Disposable runtime leaked process(es): $($leftovers.ProcessId -join ', ')." }
-        return
-    }
-    if (-not $Passed) {
+    # KeepArtifacts requests bounded evidence, never the full temporary runtime.
+    if (-not $Passed -or $KeepArtifacts) {
         $artifactRoot = if ($env:FBE_RUNTIME_FAILURE_ARTIFACTS) { $env:FBE_RUNTIME_FAILURE_ARTIFACTS } else { Join-Path $PSScriptRoot '..\..\out\tests\runtime-failure' }
         $destination = Join-Path $artifactRoot ([IO.Path]::GetFileName($root))
         if ([IO.Path]::GetFullPath($destination).StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)) { throw "Runtime diagnostics destination is inside the runtime: $destination" }
+        $budgetLock = [Threading.Mutex]::new($false, 'Local\FbeRuntimeEvidenceBudget')
+        $budgetAcquired = $false
+        try {
+        try { $budgetAcquired = $budgetLock.WaitOne([TimeSpan]::FromSeconds(30)) }
+        catch [Threading.AbandonedMutexException] { $budgetAcquired = $true }
+        if (-not $budgetAcquired) { throw "Evidence budget is busy; runtime retained: $root" }
+        New-Item -ItemType Directory -Path $artifactRoot -Force -ErrorAction Stop | Out-Null
+        [long]$existingEvidence = 0
+        foreach ($item in @(Get-ChildItem -LiteralPath $artifactRoot -File -Recurse -Force -ErrorAction Stop)) { $existingEvidence += $item.Length }
+        try { Assert-IsolatedFbeEvidenceBudget -ExistingBytes $existingEvidence }
+        catch { throw "Evidence budget is full; runtime retained: $root" }
         New-Item -ItemType Directory -Path $destination -Force -ErrorAction Stop | Out-Null
         # Keep useful evidence bounded: test runtimes can contain an entire
         # release tree, generated books or crash dumps hundreds of MB in size.
         $maxFileBytes = 5MB; $maxTotalBytes = 20MB; $totalBytes = 0; $copied = 0; $skipped = 0
-        $allowedExtensions = @('.txt', '.tsv', '.log', '.json', '.xml', '.fb2', '.fbd', '.html', '.htm', '.css', '.js', '.epub', '.docx', '.zip', '.png', '.jpg', '.bmp')
-        $candidates = @(if ($PreserveContents) { Get-ChildItem -LiteralPath $root -File -Recurse -Force -ErrorAction Stop } else { Get-ChildItem -LiteralPath $root -File -Force -ErrorAction Stop })
+        $allowedExtensions = @('.txt', '.tsv', '.csv', '.log', '.json', '.xml', '.fb2', '.fbd', '.html', '.htm', '.css', '.js', '.xsl', '.epub', '.docx', '.zip', '.png', '.jpg', '.bmp', '.bin', '.dmp', '.sha256', '.md', '.ini')
+        $candidates = @(Get-ChildItem -LiteralPath $root -File -Recurse -Force -ErrorAction Stop)
         $recovery = Join-Path $Isolation.DataPath 'Recovery'
         $diagnostics = Join-Path $Isolation.DataPath 'Diagnostics'
-        if (-not $PreserveContents) { foreach ($folder in @($recovery, $diagnostics)) { if (Test-Path -LiteralPath $folder) { $candidates += @(Get-ChildItem -LiteralPath $folder -File -Recurse -Force -ErrorAction Stop) } } }
-        foreach ($file in $candidates) {
+        $sourceRuntime = if ($null -ne $owner.PSObject.Properties['sourceRuntime']) { [string]$owner.sourceRuntime } else { '' }
+        # Crash dumps and book fixtures take priority. If one cannot be
+        # preserved within the budget, retain the marked profile for recovery.
+        foreach ($file in @($candidates | Sort-Object @{ Expression = { if ($_.Extension -in @('.dmp', '.fb2', '.fbd', '.epub', '.zip')) { 0 } elseif ($_.Extension -in @('.txt', '.log', '.tsv', '.csv', '.json', '.sha256')) { 1 } else { 2 } } })) {
             if ($file.Name -eq '.fbe-runtime-owner.json') { continue }
-            if (($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $file.Extension.ToLowerInvariant() -notin $allowedExtensions -or $file.Length -gt $maxFileBytes -or $totalBytes + $file.Length -gt $maxTotalBytes -or $copied -ge 500) { $skipped++; continue }
+            $required = $file.Extension -in @('.dmp', '.fb2', '.fbd', '.epub', '.zip')
+            if (($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $file.Extension.ToLowerInvariant() -notin $allowedExtensions) { $skipped++; continue }
             $relative = $file.FullName.Substring($root.Length).TrimStart('\')
+            if ($sourceRuntime -and -not $PreserveContents) {
+                $originals = @((Join-Path $sourceRuntime $relative))
+                $cardsPrefix = $owner.dataName + '\Settings\ScriptCards\'
+                if ($relative.StartsWith($cardsPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+                    $originals += Join-Path (Join-Path $sourceRuntime 'ScriptCards') $relative.Substring($cardsPrefix.Length)
+                }
+                $identical = $false
+                foreach ($original in $originals) {
+                    if ((Test-Path -LiteralPath $original -PathType Leaf) -and (Get-Item -LiteralPath $original).Length -eq $file.Length -and
+                        (Get-FileHash -LiteralPath $original -Algorithm SHA256).Hash -eq (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash) { $identical = $true; break }
+                }
+                if ($identical) { $skipped++; continue }
+            }
+            if ($required -and ($file.Length -gt $maxTotalBytes -or $totalBytes + $file.Length -gt $maxTotalBytes -or $copied -ge 500)) { throw "Required fixture or crash dump exceeds the evidence budget; runtime retained: $($file.FullName)" }
+            if ((-not $required -and $file.Length -gt $maxFileBytes) -or $totalBytes + $file.Length -gt $maxTotalBytes -or $copied -ge 500) { $skipped++; continue }
             if (-not $PreserveContents -and $file.FullName.StartsWith($recovery + '\', [StringComparison]::OrdinalIgnoreCase)) { $relative = 'Recovery\' + $file.FullName.Substring($recovery.Length).TrimStart('\') }
             if (-not $PreserveContents -and $file.FullName.StartsWith($diagnostics + '\', [StringComparison]::OrdinalIgnoreCase)) { $relative = 'Diagnostics\' + $file.FullName.Substring($diagnostics.Length).TrimStart('\') }
             $target = Join-Path $destination $relative
             New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force -ErrorAction Stop | Out-Null
+            if ((Test-Path -LiteralPath $target -PathType Leaf) -and (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash) { throw "Conflicting evidence destination; runtime retained: $target" }
             Copy-Item -LiteralPath $file.FullName -Destination $target -Force -ErrorAction Stop
+            if ((Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash) { throw "Evidence copy verification failed; runtime retained: $($file.FullName)" }
             $totalBytes += $file.Length; $copied++
         }
         [IO.File]::WriteAllText((Join-Path $destination 'artifact-summary.txt'), "copied=$copied`r`nskipped=$skipped`r`nbytes=$totalBytes`r`nmax_file_bytes=$maxFileBytes`r`nmax_total_bytes=$maxTotalBytes`r`n", [Text.UTF8Encoding]::new($false))
-        Write-Host "Runtime failure artifacts: $destination"
+        if ($Passed) { Write-Host "Runtime artifacts: $destination" }
+        else { Write-Host "Runtime failure artifacts: $destination" }
+        } finally {
+            if ($budgetAcquired) { $budgetLock.ReleaseMutex() }
+            $budgetLock.Dispose()
+        }
     }
     Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction Stop
     if ($leftovers.Count -gt 0) { throw "Disposable runtime leaked process(es): $($leftovers.ProcessId -join ', ')." }
