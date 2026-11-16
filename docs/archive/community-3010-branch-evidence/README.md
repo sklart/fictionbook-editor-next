@@ -25,3 +25,14 @@
 | `split-undo-3010/split-wrapper-success.trace.tsv` | `fea50d765f7240331a0c7779a641715e4678b2d232a82644e6dd610375f581fa` | `14191d07e5dd2886d892fb3d8e8611b786ea43fd` |
 | `split-undo-3010/split-wrapper-success.tsv` | `275f1dd80972f43d25c9b51bcfc2d0a79ffbc06a2cec56c9768813eafb467e75` | `df03ce1828c606a8b09704037ce403aa85798124` |
 | `split-undo-3010/split.tsv` | `9a45942f689284809b04efe65cc7c81d58d7bd685bd3a6ed9280b2a11fa4dcbe` | `936c050c4f563da8cbda79312e51e4e5235415c4` |
+
+## Исторические отчёты и спецификация
+
+Четыре файла ниже побайтово извлечены из `ff91662c641c8aa55b1b0a2a8705c568a03e0abe`; каждый сверен с Git blob источника. Ссылки внутри этих документов сохраняют исходные относительные пути ветки и после переноса могут не работать: часть свидетельств перечислена в таблице выше, полный контекст остаётся в исходной ветке и проверенном Git bundle. Эти отчёты описывают исторические сборки и не отменяют текущие блокеры или статус Split/Undo `KNOWN FAILURE / DEFERRED`.
+
+| Файл | SHA-256 | Git blob |
+|---|---|---|
+| `reports/community-defects-3.0.10-closure.md` | `6c98f8ae0e19335b70644001254620bb96893edc78c899a1c548755e65c10f45` | `bac14790e0aa267c25f48725d8e38b79c1f1aba3` |
+| `reports/community-defects-3.0.10-stabilization.md` | `a895f7213dd1b3372be3510a9e1809bd7fc9fa88b3a0d12fe03507135d56f952` | `efd5deb16ca17ebfa7793e2d99d380d1438ee15e` |
+| `reports/split-undo-closure-decision.md` | `1070a508d89d8302d9b1667782c33c50b086a44d805d602ec98b7922276b583f` | `cd8aa04a4e3964e16beadf8b0e612485d156407a` |
+| `reports/split-undo-safe-fix-spec.md` | `a65fedf6d3b1616b6a5765002e53ca3f61dba4c6f740171718b37b2ccb9dbcc7` | `ba898e7157c9d8f0754f34d1594fcec4b53a3cc3` |
