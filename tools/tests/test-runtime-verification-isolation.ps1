@@ -72,6 +72,22 @@ try {
     $newRoots = @(Get-ChildItem -LiteralPath ([IO.Path]::GetTempPath()) -Directory -Filter 'fr-*' | Where-Object { $_.FullName -notin $before })
     if (!$creationFailed -or $newRoots.Count) { throw 'A failed runtime creation must remove its partial copy.' }
     $env:FBE_RUNTIME_FAILURE_ARTIFACTS = $testArtifacts
+    Set-Content -LiteralPath (Join-Path $fixtureSource 'Resources\changed.xml') -Value 'original'
+    $dedup = New-IsolatedFbeRuntime -FbeExe (Join-Path $fixtureSource 'FBE.exe') -Name 'dedup-preserve'
+    try {
+        Set-Content -LiteralPath (Join-Path $dedup.Root 'Resources\changed.xml') -Value 'modified evidence'
+        Set-Content -LiteralPath (Join-Path $dedup.Root 'fixture.fb2') -Value 'unique fixture'
+        Complete-IsolatedFbeRuntime -Isolation $dedup -Passed $false -PreserveContents
+        $dedupArtifacts = Join-Path $testArtifacts (Split-Path -Leaf $dedup.Root)
+        if ((Test-Path -LiteralPath (Join-Path $dedupArtifacts 'Resources\payload.xml')) -or
+            !(Test-Path -LiteralPath (Join-Path $dedupArtifacts 'Resources\changed.xml')) -or
+            !(Test-Path -LiteralPath (Join-Path $dedupArtifacts 'fixture.fb2')) -or
+            ([IO.File]::ReadAllText((Join-Path $dedupArtifacts 'Resources\changed.xml')) -notmatch 'modified evidence')) {
+            throw 'PreserveContents must omit unchanged runtime resources and retain modified evidence and fixtures.'
+        }
+    } finally {
+        if (Test-Path -LiteralPath $dedup.Root) { Complete-IsolatedFbeRuntime -Isolation $dedup -Passed $true }
+    }
     $savedProcessPath = [Environment]::GetEnvironmentVariable('Path', 'Process')
     try {
         foreach ($restrictedPath in @($false, $true)) {

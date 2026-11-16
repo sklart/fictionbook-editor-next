@@ -243,7 +243,9 @@ function Complete-IsolatedFbeRuntime {
             $required = $file.Extension -in @('.dmp', '.fb2', '.fbd', '.epub', '.zip')
             if (($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $file.Extension.ToLowerInvariant() -notin $allowedExtensions) { $skipped++; continue }
             $relative = $file.FullName.Substring($root.Length).TrimStart('\')
-            if ($sourceRuntime -and -not $PreserveContents) {
+            # PreserveContents keeps the relative evidence layout; it must not
+            # disable deduplication against the immutable source runtime.
+            if ($sourceRuntime) {
                 $originals = @((Join-Path $sourceRuntime $relative))
                 $cardsPrefix = $owner.dataName + '\Settings\ScriptCards\'
                 if ($relative.StartsWith($cardsPrefix, [StringComparison]::OrdinalIgnoreCase)) {
