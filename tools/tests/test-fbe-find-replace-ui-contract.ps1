@@ -202,7 +202,18 @@ Require $find 'IDD_FIND DIALOGEX 0, 0, 326, 116' 'Find compact dimensions provid
 Require $replace 'IDD_REPLACE DIALOGEX 0, 0, 326, 134' 'Replace height equals Find plus one row offset'
 if ($presetCatalog -match 'L"\\x\{00A0\}"') { throw 'NBSP preset must use literal U+00A0 for production normalization.' }
 Require $presetCatalog 'L"\\u00A0"' 'NBSP preset uses literal U+00A0'
-Require $view 'NormalizeSearchPatternNbsp[\s\S]*?pattern\.Replace\(L"\\u00A0", _Settings\.GetNBSPChar\(\)\)' 'production NBSP normalization replaces the literal preset character'
+# The normalizer snapshots the configured marker once, then uses that same
+# value for the literal replacement and the remaining regex normalization.
+$nbspNormalizationPattern = 'NormalizeSearchPatternNbsp[\s\S]{0,220}const\s+CString\s+marker\(_Settings\.GetNBSPChar\(\)\)[\s\S]{0,220}pattern\.Replace\(L"\\u00A0", marker\)'
+Require $view $nbspNormalizationPattern 'production NBSP normalization replaces the literal preset character with the configured marker'
+foreach ($mutation in @(
+    @{ Old = 'marker(_Settings.GetNBSPChar())'; New = 'marker(L"wrong")' },
+    @{ Old = 'pattern.Replace(L"\u00A0", marker)'; New = 'pattern.Replace(L"\u00A0", L"wrong")' }
+)) {
+    $mutatedView = $view.Replace($mutation.Old, $mutation.New)
+    if ($mutatedView -ceq $view) { throw "NBSP normalization negative-control fixture not applied: $($mutation.Old)" }
+    if ($mutatedView -match $nbspNormalizationPattern) { throw "NBSP normalization contract accepted a broken implementation: $($mutation.Old)" }
+}
 $customNbsp = [string][char]0x25AB
 $normalizedNbspPreset = ([string][char]0x00A0).Replace([char]0x00A0, [char]0x25AB)
 if ($normalizedNbspPreset -ne $customNbsp -or 'x' + $normalizedNbspPreset + 'y' -notmatch ('x' + [regex]::Escape($customNbsp) + 'y')) { throw 'Built-in NBSP preset must find the configured U+25AB character.' }
