@@ -1,3 +1,65 @@
+	if (IsFbeTestScenario(L"issue72-source") || IsFbeTestScenario(L"issue72-validate"))
+	{
+		// The input is a disposable copy. Flush stages before calling production
+		// commands so an external timeout identifies the operation that stalled.
+		DWORD written = 0;
+		auto stage = [&](const char* text) {
+			output.Write(text, static_cast<DWORD>(strlen(text)), &written);
+			output.Flush();
+		};
+		FB::Doc* const original = m_doc;
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLElementPtr body(document ? document->all->item(L"fbw_body") : nullptr);
+		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : nullptr);
+		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(0L) : nullptr);
+		if (!paragraph) { stage("fixture=no-paragraph\n"); output.Close(); ::PostQuitMessage(1); return 0; }
+		paragraph->insertAdjacentText(L"beforeEnd", L" ISSUE72_UNSAVED_MARKER ");
+		const CString bodyBefore(static_cast<LPCWSTR>(body->innerHTML));
+		const bool dirtyBefore = m_doc->DocChanged();
+		PROCESS_MEMORY_COUNTERS_EX memoryBefore = {}; memoryBefore.cb = sizeof(memoryBefore);
+		const bool memoryBeforeAvailable = ::GetProcessMemoryInfo(::GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memoryBefore), sizeof(memoryBefore)) != FALSE;
+		const ULONGLONG commandStart = ::GetTickCount64();
+		stage(IsFbeTestScenario(L"issue72-source") ? "stage=source-start\n" : "stage=validate-start\n");
+		BOOL handled = FALSE;
+		if (IsFbeTestScenario(L"issue72-source")) OnViewSource(0, ID_VIEW_SOURCE, nullptr, handled);
+		else OnFileValidate(0, ID_FILE_VALIDATE, nullptr, handled);
+		stage("stage=command-returned\n");
+		const ULONGLONG commandMs = ::GetTickCount64() - commandStart;
+		PROCESS_MEMORY_COUNTERS_EX memoryAfter = {}; memoryAfter.cb = sizeof(memoryAfter);
+		const bool memoryAfterAvailable = ::GetProcessMemoryInfo(::GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memoryAfter), sizeof(memoryAfter)) != FALSE;
+		bool marker = false;
+		if (IsSourceActive()) {
+			const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
+			std::vector<char> text(static_cast<size_t>(length) + 1);
+			m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(text.data()));
+			marker = CStringA(text.data()).Find("ISSUE72_UNSAVED_MARKER") >= 0;
+		} else if (m_doc == original && body) {
+			marker = CString(static_cast<LPCWSTR>(body->innerText)).Find(L"ISSUE72_UNSAVED_MARKER") >= 0;
+		}
+		const bool sameDocument = m_doc == original;
+		const bool dirtyAfter = sameDocument && DocChanged();
+		const bool bodyUnchanged = !IsSourceActive() && sameDocument && body &&
+			bodyBefore == CString(static_cast<LPCWSTR>(body->innerHTML));
+		const bool windowEnabled = ::IsWindowEnabled(m_hWnd) != FALSE;
+		bool subsequentEdit = false;
+		if (sameDocument && !IsSourceActive() && paragraph) {
+			paragraph->insertAdjacentText(L"beforeEnd", L" ISSUE72_AFTER_COMMAND ");
+			subsequentEdit = CString(static_cast<LPCWSTR>(paragraph->innerText)).Find(L"ISSUE72_AFTER_COMMAND") >= 0 && DocChanged();
+		} else if (sameDocument && IsSourceActive()) {
+			const char suffix[] = " ISSUE72_AFTER_COMMAND ";
+			m_source.SendMessage(SCI_APPENDTEXT, sizeof(suffix) - 1, reinterpret_cast<LPARAM>(suffix));
+			const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
+			std::vector<char> text(static_cast<size_t>(length) + 1);
+			m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(text.data()));
+			subsequentEdit = CStringA(text.data()).Find(suffix) >= 0 && DocChanged();
+		}
+		CStringA report;
+		report.Format("same-document=%d\ndirty-before=%d\ndirty-after=%d\nmarker=%d\nsource-active=%d\nbody-unchanged=%d\nwindow-enabled=%d\nsubsequent-edit=%d\ncommand-ms=%llu\nmemory-available=%d\nworking-before=%llu\nworking-after=%llu\npeak-working=%llu\npeak-pagefile=%llu\n", sameDocument, dirtyBefore, dirtyAfter, marker, IsSourceActive(), bodyUnchanged, windowEnabled, subsequentEdit, commandMs, memoryBeforeAvailable && memoryAfterAvailable, static_cast<unsigned long long>(memoryBefore.WorkingSetSize), static_cast<unsigned long long>(memoryAfter.WorkingSetSize), static_cast<unsigned long long>(memoryAfter.PeakWorkingSetSize), static_cast<unsigned long long>(memoryAfter.PeakPagefileUsage));
+		stage(report);
+		output.Close();
+		::PostQuitMessage(sameDocument && dirtyBefore && dirtyAfter && marker && (IsSourceActive() || bodyUnchanged) && windowEnabled && subsequentEdit && memoryBeforeAvailable && memoryAfterAvailable ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"drop-native-manual"))
 	{
 		// This fixture intentionally contains a BR. Recovery serialization after
