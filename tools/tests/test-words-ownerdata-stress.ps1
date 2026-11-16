@@ -27,8 +27,10 @@ if ($dialogSource -notmatch 'SetItemState\(-1, m_sel_all \? 0 : LVIS_SELECTED, L
 if ($wordsStoreSource -notmatch 'words\.reserve\(objects\.size\(\)\)') { throw 'Words.xml loading must reserve the persistent model for large files.' }
 if ($wordsStoreSource -notmatch 'word\.Destroy\(loadedWord\)') { throw 'Words.xml loading must release deserializer-owned temporary objects.' }
 
-$temporary = Join-Path ([IO.Path]::GetTempPath()) ('fbe-words-stress.' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $temporary -Force | Out-Null
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeScratchDirectory -Name 'words-ownerdata-stress' -RuntimePayload
+$temporary = $isolation.Root
+$passed = $false
 try {
     function New-WordsFixture([string]$path, [int]$count) {
         $settings = [Xml.XmlWriterSettings]::new()
@@ -62,8 +64,9 @@ try {
     New-Item -ItemType Directory -Path $scripts | Out-Null
     1..550 | ForEach-Object { [IO.File]::WriteAllText((Join-Path $scripts ('stress-{0:D4}.js' -f $_)), 'function Run() {}') }
     if (@(Get-ChildItem -LiteralPath $scripts -Filter '*.js' -File).Count -ne 550) { throw 'The 550-script fixture is incomplete.' }
+    $passed = $true
 } finally {
-    Remove-Item -LiteralPath $temporary -Recurse -Force -ErrorAction SilentlyContinue
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed
 }
 
 Write-Host 'Words owner-data stress contract passed: 65k, 250k and 550 scripts.'
