@@ -48,6 +48,21 @@ try {
     }
     $child.Refresh()
     if (!$timeoutObserved -or !$child.HasExited) { throw 'Timeout must fail and reap the child before runtime cleanup.' }
+
+    $stdout = Join-Path $waitRoot 'redirect.stdout'
+    $stderr = Join-Path $waitRoot 'redirect.stderr'
+    $child = Start-Process $pwsh -ArgumentList '-NoProfile -Command "Start-Sleep -Seconds 30"' -WindowStyle Hidden -PassThru `
+        -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+    $redirectedTimeoutObserved = $false
+    try {
+        $null = Wait-IsolatedFbeProcess -Process $child -Isolation $waitIsolation -Scenario 'redirected-timeout' -Report $stdout -TimeoutSeconds 1
+    } catch {
+        if ($_.Exception.Message -notlike "FBE runtime scenario 'redirected-timeout' timed out after 1 seconds.*") { throw }
+        if ($_.Exception.Message -notlike '*command_line=*') { throw 'Redirected timeout omitted command-line diagnostics.' }
+        $redirectedTimeoutObserved = $true
+    }
+    $child.Refresh()
+    if (!$redirectedTimeoutObserved -or !$child.HasExited) { throw 'Redirected timeout must fail and reap the child before cleanup.' }
     Complete-IsolatedFbeRuntime -Isolation $waitIsolation -Passed $true
     if (Test-Path $waitRoot) { throw 'Reaped child prevented disposable cleanup.' }
 

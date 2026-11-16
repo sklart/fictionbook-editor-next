@@ -162,9 +162,15 @@ function Get-IsolatedRuntimeDiagnostics {
 function Wait-IsolatedFbeProcess {
     param([Parameter(Mandatory)][Diagnostics.Process]$Process, [Parameter(Mandatory)]$Isolation, [Parameter(Mandatory)][string]$Scenario, [Parameter(Mandatory)][string]$Report, [ValidateRange(1, 600)][int]$TimeoutSeconds)
     if (-not $Process.WaitForExit($TimeoutSeconds * 1000)) {
-        Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+        $processId = $Process.Id
+        $commandLine = '<unavailable>'
+        try {
+            $observed = Get-CimInstance Win32_Process -Filter "ProcessId=$processId" -ErrorAction Stop
+            if ($observed -and $observed.CommandLine) { $commandLine = [string]$observed.CommandLine }
+        } catch { }
+        Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
         $Process.WaitForExit()
-        throw "FBE runtime scenario '$Scenario' timed out after $TimeoutSeconds seconds. PID=$($Process.Id); command_line=$($Process.StartInfo.FileName) $($Process.StartInfo.Arguments); $(Get-IsolatedRuntimeDiagnostics $Isolation $Report)"
+        throw "FBE runtime scenario '$Scenario' timed out after $TimeoutSeconds seconds. PID=$processId; command_line=$commandLine; $(Get-IsolatedRuntimeDiagnostics $Isolation $Report)"
     }
     $Process.WaitForExit()
     $Process.Refresh()
