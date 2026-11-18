@@ -1,0 +1,362 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+ <meta http-equiv="MSThemeCompatible" content="yes">
+ <title>Работа с секциями v0.5.26β</title>
+  <!-- Последняя приемлимая версия - v0.5.23 -->
+ <style>
+  body {
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    font-size: 12px;
+    margin: 10px;
+    background-color: #f4f4f4;
+    padding: 0;
+    user-select: none;
+  }
+  table {
+    width: 97%;
+    border-collapse: collapse;
+    /*background-color: #FFFFFF;
+    border: 1px solid #999999;*/
+    font-size: 16px;
+    margin: 0 10px;
+  }
+  td {
+    /*padding: 8px;*/
+    /*border-bottom: 1px solid #E0E0E0;*/
+    padding: 4px 0;
+    vertical-align: middle;
+  }
+  tr:last-child td {
+    border-bottom: none;
+  }
+  .btn-col {
+    width: 130px;
+    text-align: right;
+  }
+  input[type="button"] {
+    font-family: "Segoe UI", sans-serif;
+    /*font-size: 10px;*/
+    height: 30px;
+  }
+  .btn-apply {
+    width: 130px;
+    font-size: 16px;
+  }
+  .btn-exit {
+    width: 130px;
+    font-size: 16px;
+  }
+  .footer {
+    text-align: right;
+    margin-top: 15px;
+   /* margin-right: -10px;*/
+    /*padding: 8px;*/
+  }
+ </style>
+ <script language="JavaScript" type="text/javascript">
+  var params = window.dialogArguments;
+  var myWin = params["window"];
+
+  function executeAction(actionNumber) {
+   try {
+    myWin.eval('function runSectionTask(actionId) {' +
+     ' function getCurrentSectionNode() {' +
+     '  var sel = document.selection;' +
+     '  if (!sel) return null;' +
+     '  var range = sel.createRange();' +
+     '  var parent = range.parentElement ? range.parentElement() : (range.item ? range.item(0) : null);' +
+     '  while (parent && parent.nodeName !== "BODY") {' +
+     '   if (parent.nodeName === "DIV" && parent.className === "section") return parent;' +
+     '   parent = parent.parentNode;' +
+     '  }' +
+     '  return null;' +
+     ' }' +
+
+     ' function insertSectionAfterCurrent() {' +
+     '  var currentSection = getCurrentSectionNode();' +
+     '  if (!currentSection) { alert("Курсор должен находиться внутри секции!"); return; }' +
+     '  window.external.BeginUndoUnit(document, "вставить секцию после текущей");' +
+     '  var newSection = document.createElement("DIV");' +
+     '  newSection.className = "section";' +
+     '  var titleDiv = document.createElement("DIV");' +
+     '  titleDiv.className = "title";' +
+     '  var titleP = document.createElement("P");' +
+     '  titleP.innerHTML = "----------";' +
+     '  titleDiv.appendChild(titleP);' +
+     '  var contentP = document.createElement("P");' +
+     '  contentP.innerHTML = "----------";' +
+     '  newSection.appendChild(titleDiv);' +
+     '  newSection.appendChild(contentP);' +
+     '  currentSection.parentNode.insertBefore(newSection, currentSection.nextSibling);' +
+     '  window.external.EndUndoUnit(document);' +
+     ' }' +
+
+     ' function splitSectionAtCursor() {' +
+     '  var currentSection = getCurrentSectionNode();' +
+     '  if (!currentSection) { alert("Курсор должен находиться внутри секции!"); return; }' +
+     '  var sel = document.selection;' +
+     '  if (!sel) return;' +
+     '  var range = sel.createRange();' +
+     '  var targetP = range.parentElement ? range.parentElement() : null;' +
+     '  while (targetP && targetP.parentNode !== currentSection && targetP.nodeName !== "BODY") {' +
+     '   targetP = targetP.parentNode;' +
+     '  }' +
+     '  if (!targetP || targetP.parentNode !== currentSection) {' +
+     '   alert("Не удалось определить позицию разрыва."); return;' +
+     '  }' +
+     '  window.external.BeginUndoUnit(document, "разрыв секции");' +
+     '  var newSection = document.createElement("DIV");' +
+     '  newSection.className = "section";' +
+     '  var titleDiv = document.createElement("DIV");' +
+     '  titleDiv.className = "title";' +
+     '  var titleP = document.createElement("P");' +
+     '  titleP.innerHTML = "----------";' +
+     '  titleDiv.appendChild(titleP);' +
+     '  newSection.appendChild(titleDiv);' +
+     '  var nodesToMove = [];' +
+     '  var curr = targetP;' +
+     '  while (curr) {' +
+     '   nodesToMove.push(curr);' +
+     '   curr = curr.nextSibling;' +
+     '  }' +
+     '  for (var i = 0; i < nodesToMove.length; i++) {' +
+     '   newSection.appendChild(nodesToMove[i]);' +
+     '  }' +
+     '  currentSection.parentNode.insertBefore(newSection, currentSection.nextSibling);' +
+     '  window.external.EndUndoUnit(document);' +
+     ' }' +
+
+     ' function createSectionFromSelection() {' +
+     '  var sel = document.selection;' +
+     '  if (!sel) return;' +
+     '  var range = sel.createRange();' +
+     '  var selectedHtml = range.htmlText || range.text;' +
+     '  if (!selectedHtml || selectedHtml.length === 0) { alert("Выделите текст для создания секции!"); return; }' +
+     '  var currentSection = getCurrentSectionNode();' +
+     '  if (!currentSection) {' +
+     '   window.external.BeginUndoUnit(document, "создать секцию из выделенного");' +
+     '   if (selectedHtml.indexOf("<P>") === -1 && selectedHtml.indexOf("<p>") === -1) {' +
+     '    selectedHtml = "<p>" + selectedHtml + "</p>";' +
+     '   }' +
+     '   var sectionHtml = "<div class=\\"section\\"><div class=\\"title\\"><p>----------</p></div>" + selectedHtml + "</div>";' +
+     '   range.pasteHTML(sectionHtml);' +
+     '   window.external.EndUndoUnit(document);' +
+     '  } else {' +
+     '   splitSectionAtCursor();' +
+     '  }' +
+     ' }' +
+
+     ' function addTitleToCurrentSection() {' +
+     '  var currentSection = getCurrentSectionNode();' +
+     '  if (!currentSection) { alert("Курсор должен находиться внутри секции!"); return; }' +
+     '  for (var i = 0; i < currentSection.childNodes.length; i++) {' +
+     '   var child = currentSection.childNodes[i];' +
+     '   if (child.nodeName === "DIV" && child.className === "title") {' +
+     '    alert("В этой секции уже есть заголовок!"); return;' +
+     '   }' +
+     '  }' +
+     '  window.external.BeginUndoUnit(document, "добавить заголовок в секцию");' +
+     '  var newTitle = document.createElement("DIV");' +
+     '  newTitle.className = "title";' +
+     '  var titleP = document.createElement("P");' +
+     '  titleP.innerHTML = "----------";' +
+     '  newTitle.appendChild(titleP);' +
+     '  if (currentSection.firstChild) currentSection.insertBefore(newTitle, currentSection.firstChild);' +
+     '  else currentSection.appendChild(newTitle);' +
+     '  window.external.EndUndoUnit(document);' +
+     ' }' +
+
+     ' function clearFormattingFromSelection() {' +
+     '  var sel = document.selection;' +
+     '  if (!sel || sel.type.toLowerCase() === "none") {' +
+     '   alert("Выделите текст для очистки форматирования!"); return;' +
+     '  }' +
+     '  var range = sel.createRange();' +
+     '  if (!range) return;' +
+
+     '  var blockClasses = { "cite": true, "epigraph": true, "title": true, "poem": true, "stanza": true };' +
+     '  var classesToRemove = { "subtitle": true, "text-author": true, "code": true, "v": true };' +
+     '  var inlineTags = {' +
+     '   "STRONG": true, "EMPHASIS": true, "EM": true, "STRIKE": true, "STRIRETHROUGH": true,' +
+     '   "SUB": true, "SUP": true, "CODE": true, "A": true, "B": true, "I": true, "U": true, "SPAN": true, "FONT": true' +
+     '  };' +
+
+     // Безопасный вызов BeginUndoUnit
+     '  try { window.external.BeginUndoUnit(document, "очистка форматирования"); } catch(e) {}' +
+
+     '  try {' +
+     // Безопасная распаковка блочного DIV в DOM
+     '   function unwrapBlock(divNode) {' +
+     '    var parent = divNode.parentNode;' +
+     '    if (!parent) return;' +
+     '    while (divNode.firstChild) {' +
+     '     var child = divNode.firstChild;' +
+     '     if (child.nodeType === 1) {' +
+     '      var cName = (child.className || "").toLowerCase();' +
+     '      var cTag = child.nodeName.toUpperCase();' +
+     '      if (cTag === "DIV" && blockClasses[cName]) {' +
+     '       unwrapBlock(child);' +
+     '       continue;' +
+     '      }' +
+     '      if (cName === "text-author" || cName === "subtitle") {' +
+     '       var cleanP = document.createElement("P");' +
+     '       while (child.firstChild) { cleanP.appendChild(child.firstChild); }' +
+     '       parent.insertBefore(cleanP, divNode);' +
+     '       child.parentNode.removeChild(child);' +
+     '       continue;' +
+     '      }' +
+     '     }' +
+     '     parent.insertBefore(child, divNode);' +
+     '    }' +
+     '    parent.removeChild(divNode);' +
+     '   }' +
+
+     // 1. ПРОВЕРКА И ОЧИСТКА БЛОКОВ
+     '   var allDivs = document.body.getElementsByTagName("DIV");' +
+     '   var blocksFound = [];' +
+     '   for (var i = 0; i < allDivs.length; i++) {' +
+     '    var d = allDivs[i];' +
+     '    var cls = (d.className || "").toLowerCase();' +
+     '    if (blockClasses[cls]) {' +
+     '     var rDiv = document.body.createTextRange();' +
+     '     rDiv.moveToElementText(d);' +
+     '     if (range.compareEndPoints("StartToEnd", rDiv) < 0 && range.compareEndPoints("EndToStart", rDiv) > 0) {' +
+     '      blocksFound.push(d);' +
+     '     }' +
+     '    }' +
+     '   }' +
+
+     '   if (blocksFound.length > 0) {' +
+     '    for (var k = blocksFound.length - 1; k >= 0; k--) {' +
+     '     if (blocksFound[k].parentNode) unwrapBlock(blocksFound[k]);' +
+     '    }' +
+     '    return;' +
+     '   }' +
+
+     // 2. РАСШИРЕНИЕ ДИАПАЗОНА ДЛЯ ИНЛАЙН-ТЕГОВ
+     '   var parentInline = range.parentElement ? range.parentElement() : null;' +
+     '   while (parentInline && parentInline.nodeName !== "P" && parentInline.nodeName !== "BODY" && parentInline.nodeName !== "DIV") {' +
+     '    var tagUpper = parentInline.nodeName.toUpperCase();' +
+     '    var clsLower = (parentInline.className || "").toLowerCase();' +
+     '    if (inlineTags[tagUpper] || classesToRemove[clsLower]) {' +
+     '     var rParent = document.body.createTextRange();' +
+     '     rParent.moveToElementText(parentInline);' +
+     '     if (range.inRange(rParent) || rParent.inRange(range) || range.htmlText === rParent.htmlText) {' +
+     '      range.moveToElementText(parentInline);' +
+     '     }' +
+     '    }' +
+     '    parentInline = parentInline.parentNode;' +
+     '   }' +
+
+     // 3. ОЧИСТКА И ВСТАВКА
+     '   var html = range.htmlText;' +
+     '   if (!html || html.length === 0) {' +
+     '    alert("Выделите текст для очистки форматирования!");' +
+     '    return;' +
+     '   }' +
+
+     '   var hasLeadingSpace = /^(\\s|&nbsp;|&#160;)/i.test(html);' +
+     '   var hasTrailingSpace = /(\\s|&nbsp;|&#160;)$/i.test(html);' +
+
+     '   var tempDiv = document.createElement("DIV");' +
+     '   tempDiv.innerHTML = html;' +
+
+     '   function cleanDOM(node) {' +
+     '    var children = [];' +
+     '    for (var c = 0; c < node.childNodes.length; c++) { children.push(node.childNodes[c]); }' +
+     '    for (var j = 0; j < children.length; j++) { cleanDOM(children[j]); }' +
+
+     '    if (node.nodeType === 1) {' +
+     '     var tag = node.nodeName.toUpperCase();' +
+     '     var cls = (node.className || "").toLowerCase();' +
+
+     '     if (tag === "P" && classesToRemove[cls]) {' +
+     '      node.className = "";' +
+     '      node.removeAttribute("className");' +
+     '     } else if (inlineTags[tag] || (tag === "SPAN" && classesToRemove[cls])) {' +
+     '      while (node.firstChild) { node.parentNode.insertBefore(node.firstChild, node); }' +
+     '      node.parentNode.removeChild(node);' +
+     '     }' +
+     '    }' +
+     '   }' +
+
+     '   cleanDOM(tempDiv);' +
+
+     '   var cleanHtml = tempDiv.innerHTML;' +
+
+     '   if (hasLeadingSpace && !/^(&nbsp;|&#160;|\\s)/i.test(cleanHtml)) {' +
+     '    cleanHtml = "&nbsp;" + cleanHtml;' +
+     '   }' +
+     '   if (hasTrailingSpace && !/(&nbsp;|&#160;|\\s)$/i.test(cleanHtml)) {' +
+     '    cleanHtml = cleanHtml + "&nbsp;";' +
+     '   }' +
+
+     '   range.pasteHTML(cleanHtml);' +
+
+     '  } finally {' +
+     // Финальное закрытие транзакции Undo с защитой от сбоев связки
+     '   try { window.external.EndUndoUnit(document); } catch(e) {}' +
+     '  }' +
+     ' }' +
+
+     ' switch(actionId) {' +
+     '  case 1: insertSectionAfterCurrent(); break;' +
+     '  case 2: createSectionFromSelection(); break;' +
+     '  case 3: splitSectionAtCursor(); break;' +
+     '  case 4: addTitleToCurrentSection(); break;' +
+     '  case 5: clearFormattingFromSelection(); break;' +
+     ' }' +
+    '}');
+   } catch(e) {
+    alert("Ошибка связи с главным окном.");
+    return;
+   }
+   myWin.runSectionTask(actionNumber);
+  }
+
+  function myBeforeUnload() {
+   if (myWin) {
+    try { myWin.runSectionTask = undefined; } catch (e) {}
+   }
+  }
+ </script>
+</head>
+<body onbeforeunload="myBeforeUnload();">
+
+<table>
+ <tr>
+  <td title="Вставляет новую section сразу после текущей (в которой находится курсор)">Вставить section после текущей</td>
+  <td class="btn-col"><input type="button" class="btn-apply" value="Применить" onclick="executeAction(1);"></td>
+ </tr>
+ <tr>
+  <td title="Создаёт section из выделенного текста.&#10Если выделенный текст находится внутри другой section, то она разрывается на две независимых section и между ними вставляется section с выделенным текстом">Создать section из выделенного</td>
+  <td class="btn-col"><input type="button" class="btn-apply" value="Применить" onclick="executeAction(2);"></td>
+ </tr>
+ <tr>
+  <td title="Разрывает текущую section в месте расположения курсора на две независимых section">Разорвать section по курсору</td>
+  <td class="btn-col"><input type="button" class="btn-apply" value="Применить" onclick="executeAction(3);"></td>
+ </tr>
+ <tr>
+  <td title="Добавляет заголовок в текущую section (в которой находится курсор)">Добавить заголовок в section</td>
+  <td class="btn-col"><input type="button" class="btn-apply" value="Применить" onclick="executeAction(4);"></td>
+ </tr>
+ <tr>
+  <td title="Очищает всё форматирование внутри выделенного текста">Очистить форматирование</td>
+  <td class="btn-col"><input type="button" class="btn-apply" value="Применить" onclick="executeAction(5);"></td>
+ </tr>
+</table>
+
+<div class="footer">
+  <table>
+ <tr>
+   <td><b>© MiFodiyHOMEStudio</b></td>
+  <td class="btn-col"><input type="button" class="btn-exit" value="Выйти" onclick="window.close();"></td>
+ </tr>
+</table>
+ <!-- <input type="button" class="btn-exit" value="Выйти" onclick="window.close();"> -->
+</div>
+
+</body>
+</html>
