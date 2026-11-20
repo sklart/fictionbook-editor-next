@@ -41,12 +41,27 @@ bool RecoveryService::SaveSourceSnapshot(const CString& filename, const char* so
 	}
 }
 
+static bool IsValidSourceRecovery(FB::Doc* document, const char* sourceText, size_t length)
+{
+    if (!document || !sourceText || length == 0 || length > INT_MAX) return false;
+    const int chars = ::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, sourceText, static_cast<int>(length), NULL, 0);
+    if (chars <= 0) return false;
+    CComBSTR text(chars);
+    if (!text.m_str || ::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, sourceText, static_cast<int>(length), text.m_str, chars) != chars) return false;
+    bool valid = false; int line = 0, column = 0; CString message;
+    const HRESULT result = document->ValidateForScripting(text, valid, line, column, message);
+    return SUCCEEDED(result) && valid;
+}
+
 bool RecoveryService::Save(FB::Doc* document, bool documentChanged, bool sourceActive, bool sourceXmlInvalid,
 	const char* sourceText, size_t sourceTextLength, const DocumentLocation& location)
 {
 	if (!document || !documentChanged) return false;
 	const CString snapshotPath(m_store.SnapshotPath());
 	if (!m_written && ::GetFileAttributes(snapshotPath) != INVALID_FILE_ATTRIBUTES) return false;
+    // Never replace a confirmed recovery copy with malformed source text.
+    const bool sourceSafe = !sourceActive || (!sourceXmlInvalid && IsValidSourceRecovery(document, sourceText, sourceTextLength));
+    if (!sourceSafe) { StartupTrace::Warning(L"recovery", L"R131", L"source recovery skipped: source validation failed"); return false; }
 	const bool saved = sourceActive ? SaveSourceSnapshot(snapshotPath, sourceText, sourceTextLength) : (!sourceXmlInvalid && document->SaveRecoveryCopy(snapshotPath));
 	if (!saved && sourceXmlInvalid) StartupTrace::Warning(L"recovery", L"R130", L"source recovery skipped because source XML is invalid");
 	if (saved && location.IsArchive()) m_store.WriteArchiveLocation(location);

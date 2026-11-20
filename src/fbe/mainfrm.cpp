@@ -4645,8 +4645,13 @@ bool CMainFrame::SaveRecoveryNow(bool forceBinary)
 	// Detect binary-only edits even in forced shutdown paths; never copy a
     // complete Scintilla buffer for a clean document with unchanged binary.
     if (!m_doc) return true;
+    const auto reportRecoveryFailure = [&]() {
+        const CString message(FbeLoadRuntimeStringByKey(L"fbe.recovery.save_failed",
+            L"Recovery could not be updated. The previous recovery copy, if any, was preserved."));
+        ::SendMessage(m_hWnd, AU::WM_SETSTATUSTEXT, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(message)));
+    };
     FB::Doc::RecoveryBinarySnapshot binaryBefore;
-    if (!m_doc->CaptureRecoveryBinaries(binaryBefore)) return false;
+    if (!m_doc->CaptureRecoveryBinaries(binaryBefore)) { reportRecoveryFailure(); return false; }
     const GUID identityBefore = m_doc->ClipboardIdentity();
     const ULONGLONG generationBefore = m_recovery_generation;
     const bool binaryChanged = !m_recoveryBinaryValid || m_recoveryBinaryIdentity != identityBefore ||
@@ -4679,7 +4684,7 @@ bool CMainFrame::SaveRecoveryNow(bool forceBinary)
             m_recoveryBinaryValid = true;
         }
 		++g_recoveryDiagnostics.written;
-	}
+	} else reportRecoveryFailure();
 	g_recoveryDiagnostics.Report();
 	return saved;
 }

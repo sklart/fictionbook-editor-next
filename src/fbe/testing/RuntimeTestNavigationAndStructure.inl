@@ -39,6 +39,8 @@
             } catch (const _com_error&) { historyReady = false; }
         }
 		const CString bodyBefore(static_cast<LPCWSTR>(body->innerHTML));
+        FB::Doc::RecoveryBinarySnapshot binariesBefore;
+        const bool binariesCaptured = m_doc->CaptureRecoveryBinaries(binariesBefore);
 		const bool dirtyBefore = m_doc->DocChanged();
 		PROCESS_MEMORY_COUNTERS_EX memoryBefore = {}; memoryBefore.cb = sizeof(memoryBefore);
 		const bool memoryBeforeAvailable = ::GetProcessMemoryInfo(::GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memoryBefore), sizeof(memoryBefore)) != FALSE;
@@ -75,6 +77,8 @@
 		const bool bodyUnchanged = !IsSourceActive() && sameDocument && body &&
 			bodyBefore == CString(static_cast<LPCWSTR>(body->innerHTML));
 		const bool windowEnabled = ::IsWindowEnabled(m_hWnd) != FALSE;
+        FB::Doc::RecoveryBinarySnapshot binariesAfter;
+        const bool binariesSame = sameDocument && binariesCaptured && m_doc->CaptureRecoveryBinaries(binariesAfter) && FB::Doc::SameRecoveryBinaries(binariesBefore, binariesAfter);
         bool historyPreserved = !testHistory;
         if (testHistory && historyReady && sameDocument && !IsSourceActive()) {
             m_doc->m_body.SetFocus();
@@ -98,10 +102,10 @@
 		}
 		CStringA report;
 		report.Format("same-document=%d\ndirty-before=%d\ndirty-after=%d\nmarker=%d\nsource-active=%d\nbody-unchanged=%d\nwindow-enabled=%d\nsubsequent-edit=%d\ncommand-ms=%llu\nmemory-available=%d\nworking-before=%llu\nworking-after=%llu\npeak-working=%llu\npeak-pagefile=%llu\n", sameDocument, dirtyBefore, dirtyAfter, marker, IsSourceActive(), bodyUnchanged, windowEnabled, subsequentEdit, commandMs, memoryBeforeAvailable && memoryAfterAvailable, static_cast<unsigned long long>(memoryBefore.WorkingSetSize), static_cast<unsigned long long>(memoryAfter.WorkingSetSize), static_cast<unsigned long long>(memoryAfter.PeakWorkingSetSize), static_cast<unsigned long long>(memoryAfter.PeakPagefileUsage));
-        report.AppendFormat("history-requested=%d\nhistory-ready=%d\nhistory-preserved=%d\n", testHistory, historyReady, historyPreserved);
+        report.AppendFormat("history-requested=%d\nhistory-ready=%d\nhistory-preserved=%d\nbinaries-same=%d\n", testHistory, historyReady, historyPreserved, binariesSame);
 		stage(report);
 		output.Close();
-		::PostQuitMessage(sameDocument && dirtyBefore && dirtyAfter && marker && (IsSourceActive() || bodyUnchanged) && windowEnabled && subsequentEdit && historyReady && historyPreserved && memoryBeforeAvailable && memoryAfterAvailable ? 0 : 1);
+		::PostQuitMessage(sameDocument && dirtyBefore && dirtyAfter && marker && (IsSourceActive() || bodyUnchanged) && windowEnabled && subsequentEdit && historyReady && historyPreserved && binariesSame && memoryBeforeAvailable && memoryAfterAvailable ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"drop-native-manual"))

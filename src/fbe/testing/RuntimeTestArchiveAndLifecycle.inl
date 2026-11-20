@@ -1,3 +1,29 @@
+if (IsFbeTestScenario(L"recovery-source-refusal")) {
+  DWORD written=0;
+  try {
+    ShowView(SOURCE); if (!IsSourceActive()) CheckError(E_FAIL);
+    const sptr_t length=m_source.SendMessage(SCI_GETLENGTH); std::vector<char> initial(static_cast<size_t>(length)+1);
+    m_source.SendMessage(SCI_GETTEXT,length+1,reinterpret_cast<LPARAM>(initial.data()));
+    char* found=strstr(initial.data(),"Recovery"); if(!found) CheckError(E_UNEXPECTED);
+    const sptr_t start=static_cast<sptr_t>(found-initial.data());
+    m_source.SendMessage(SCI_SETSEL,start,start+strlen("Recovery")); m_source.SendMessage(SCI_REPLACESEL,0,reinterpret_cast<LPARAM>("RecoveryEdited"));
+    const bool firstSaved=SaveRecoveryNow(); if(!firstSaved) CheckError(E_FAIL);
+    wchar_t root[32768]={}; if(!::GetEnvironmentVariableW(L"FBE_NEXT_SCRIPT_API_ROOT",root,_countof(root))) CheckError(E_INVALIDARG);
+    const CString firstPath=CString(root)+L"\\source-first.fb2";
+    if(!::CopyFileW(m_recovery.SnapshotPath(),firstPath,TRUE)) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
+    const char invalid[]="<invalid>"; m_source.SendMessage(SCI_APPENDTEXT,sizeof(invalid)-1,reinterpret_cast<LPARAM>(invalid));
+    m_source.SendMessage(SCI_BEGINUNDOACTION); const char extra[]="x";m_source.SendMessage(SCI_APPENDTEXT,1,reinterpret_cast<LPARAM>(extra));m_source.SendMessage(SCI_ENDUNDOACTION);m_source.SendMessage(SCI_UNDO);
+    auto sourceText=[&](){const sptr_t size=m_source.SendMessage(SCI_GETLENGTH);std::vector<char> text(static_cast<size_t>(size)+1);m_source.SendMessage(SCI_GETTEXT,size+1,reinterpret_cast<LPARAM>(text.data()));return CStringA(text.data());};
+    const CStringA before=sourceText(); const bool canUndo=m_source.SendMessage(SCI_CANUNDO)!=0,canRedo=m_source.SendMessage(SCI_CANREDO)!=0;
+    const bool secondSaved=SaveRecoveryNow(); const CStringA after=sourceText();
+    const bool historySame=canUndo && canRedo && m_source.SendMessage(SCI_CANUNDO)!=0 && m_source.SendMessage(SCI_CANREDO)!=0;
+    m_source.SendMessage(SCI_REDO);const CStringA redone=sourceText();m_source.SendMessage(SCI_UNDO);const CStringA undone=sourceText();
+    const bool historyExecuted=redone!=before && undone==before;
+    CStringA report;report.Format("first-saved=%d second-saved=%d source-same=%d history-same=%d history-executed=%d\n",firstSaved,secondSaved,before==after,historySame,historyExecuted);
+    output.Write(report,static_cast<DWORD>(report.GetLength()),&written);output.Close();::PostQuitMessage(firstSaved && !secondSaved && before==after && historySame && historyExecuted ? 0 : 1);
+  } catch(const _com_error& error) {CStringA report;report.Format("exception=0x%08lX\n",static_cast<unsigned long>(error.Error()));output.Write(report,report.GetLength(),&written);output.Close();::PostQuitMessage(1);}
+  return 0;
+}
 if (IsFbeTestScenario(L"binary-dirty-contract")) {
   DWORD written=0;
   try {
@@ -50,6 +76,17 @@ if (IsFbeTestScenario(L"recovery-redo-links-probe")) {
     MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(section)->getElementsByTagName(L"P"));
     MSHTML::IHTMLElementPtr target(paragraphs && paragraphs->length ? paragraphs->item(0L) : 0);
     if(!doc || !body || !target) CheckError(E_UNEXPECTED);
+    wchar_t titleMode[4] = {};
+    if (::GetEnvironmentVariableW(L"FBE_NEXT_RECOVERY_TITLE_PROBE",titleMode,_countof(titleMode))==1 && titleMode[0]==L'1') {
+      ShowView(DESC);
+      MSHTML::IHTMLInputElementPtr title(MSHTML::IHTMLDocument3Ptr(doc)->getElementById(L"tiTitle"));
+      if (!title) CheckError(E_UNEXPECTED);
+      title->value=L"RECOVERY_CHANGED_TITLE"; m_doc->ResetSavePoint();
+      const ULONGLONG before=g_recoveryDiagnostics.written; const bool saved=SaveRecoveryNow();
+      const bool wrote=g_recoveryDiagnostics.written==before+1;
+      CStringA row;row.Format("saved=%d wrote=%d live-title=%d\n",saved,wrote,CString(static_cast<LPCWSTR>(title->value))==L"RECOVERY_CHANGED_TITLE");
+      output.Write(row,static_cast<DWORD>(row.GetLength()),&written);output.Close();::PostQuitMessage(saved && wrote ? 0 : 1);return 0;
+    }
     wchar_t cleanMode[4] = {};
     if (::GetEnvironmentVariableW(L"FBE_NEXT_RECOVERY_BINARY_CLEAN",cleanMode,_countof(cleanMode))==1 && cleanMode[0]==L'1') {
       const bool cleanBefore=!DocChanged();
