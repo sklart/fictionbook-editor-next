@@ -1552,7 +1552,7 @@ bool	CMainFrame::DiscardChanges() {
     {
     case IDYES:
 		{
-			bool ret = (SaveFile(false)==OK);
+			bool ret = (SaveFile(false)==OK && !DocChanged());
 				if(!ret) _Settings.Load();
 			return ret;
 		}
@@ -4570,9 +4570,11 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
   // The save-decision close regression deliberately exercises that prompt.
 	wchar_t testMode[4] = {};
 	const bool unattendedTest = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1' &&
-		!RuntimeTests::IsScenario(L"save-decision-quit-close");
+		!RuntimeTests::IsScenario(L"save-decision-quit-close") &&
+        !RuntimeTests::IsScenario(L"save-decision-reentrant-close");
 	const bool unattendedBatch = !AU::_ARGS.source_memory_benchmark_path.IsEmpty() &&
-		!RuntimeTests::IsScenario(L"save-decision-quit-close");
+		!RuntimeTests::IsScenario(L"save-decision-quit-close") &&
+        !RuntimeTests::IsScenario(L"save-decision-reentrant-close");
 	if (unattendedTest || unattendedBatch || DiscardChanges())
   {
     m_ui_watchdog.Stop();

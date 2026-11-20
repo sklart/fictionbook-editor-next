@@ -24,6 +24,34 @@ if (IsFbeTestScenario(L"recovery-source-refusal")) {
   } catch(const _com_error& error) {CStringA report;report.Format("exception=0x%08lX\n",static_cast<unsigned long>(error.Error()));output.Write(report,report.GetLength(),&written);output.Close();::PostQuitMessage(1);}
   return 0;
 }
+if (IsFbeTestScenario(L"save-decision-reentrant-close") || IsFbeTestScenario(L"save-decision-reentrant-new") || IsFbeTestScenario(L"save-decision-reentrant-open")) {
+  ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+  DWORD written=0;
+  try {
+    MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document()->parentWindow);
+    if (!window) CheckError(E_NOINTERFACE);
+    auto execute=[&](const wchar_t* script) { CheckError(window->execScript(_bstr_t(script),_bstr_t(L"JScript"))); };
+    execute(L"var n=new ActiveXObject('Msxml2.DOMDocument.6.0');n.loadXML('<data/>');n.documentElement.dataType='bin.base64';n.documentElement.text='CQgHBg==';document.all.binobj.getElementsByTagName('DIV')[0].base64data=n.documentElement.nodeTypedValue;var savedGetBinaries=GetBinaries;GetBinaries=function(d){savedGetBinaries(d);var x=new ActiveXObject('Msxml2.DOMDocument.6.0');x.loadXML('<data/>');x.documentElement.dataType='bin.base64';x.documentElement.text='BQQDAg==';document.all.binobj.getElementsByTagName('DIV')[0].base64data=x.documentElement.nodeTypedValue;GetBinaries=savedGetBinaries;};");
+    output.Write("phase=prepared\n",15,&written); const bool dirtyBefore=DocChanged(); FB::Doc* const original=m_doc; const CString path=m_doc->m_filename;
+    bool dialogFound=false, answered=false;
+    std::thread driver([&]() { HWND dialog=NULL, button=NULL; for(int i=0;i<1000 && !button;++i) { dialog=::FindWindowW(L"FBEThemedMessageDialog",NULL); if(dialog) button=::GetDlgItem(dialog,IDYES); if(!button) ::Sleep(10); } dialogFound=dialog!=NULL && button!=NULL; if(button) answered=::PostMessageW(dialog,WM_COMMAND,MAKEWPARAM(IDYES,BN_CLICKED),reinterpret_cast<LPARAM>(button))!=FALSE; else ::PostThreadMessageW(::GetWindowThreadProcessId(m_hWnd,NULL),WM_QUIT,91,0); });
+    bool cancelled=false;
+    if (IsFbeTestScenario(L"save-decision-reentrant-new")) { BOOL handled=FALSE; OnFileNew(0,ID_FILE_NEW,NULL,handled); cancelled=m_doc==original; }
+    else if (IsFbeTestScenario(L"save-decision-reentrant-open")) { wchar_t target[MAX_PATH]={}; if (!::GetEnvironmentVariableW(L"FBE_NEXT_TEST_DECISION_OPEN_PATH",target,_countof(target))) CheckError(E_INVALIDARG); cancelled=LoadFile(target)==CANCELLED; }
+    else { BOOL handled=FALSE; OnClose(WM_CLOSE,0,0,handled); cancelled=::IsWindow(m_hWnd)!=FALSE; }
+    driver.join();
+    const bool retained=cancelled && m_doc==original && DocChanged();
+    FB::Doc::RecoveryBinarySnapshot live; const bool captured=retained && m_doc->CaptureRecoveryBinaries(live);
+    wchar_t first[MAX_PATH]={}; const bool copied=::GetEnvironmentVariableW(L"FBE_NEXT_TEST_FIRST_SAVE_PATH",first,_countof(first)) && ::CopyFileW(path,first,FALSE);
+    const bool saved=retained && SaveFile(false)==OK && !DocChanged();
+    output.Write("phase=saved\n",12,&written); const bool reopened=saved && LoadFile(path)==OK;
+    FB::Doc::RecoveryBinarySnapshot reopenedBinary; const bool same=reopened && captured && m_doc->CaptureRecoveryBinaries(reopenedBinary) && FB::Doc::SameRecoveryBinaries(live,reopenedBinary);
+    HWND mainWindow=m_hWnd; BOOL handled=FALSE; if(same) OnClose(WM_CLOSE,0,0,handled); const bool closed=same && !::IsWindow(mainWindow);
+    CStringA report; report.Format("dirty-before=%d dialog=%d answered=%d cancelled=%d retained=%d copied=%d saved=%d reopened=%d binary-same=%d closed=%d\n",dirtyBefore,dialogFound,answered,cancelled,retained,copied,saved,reopened,same,closed);
+    output.Write(report,static_cast<DWORD>(report.GetLength()),&written); output.Close(); ::PostQuitMessage(dirtyBefore && dialogFound && answered && cancelled && retained && copied && saved && reopened && same && closed ? 0 : 1);
+  } catch(const _com_error& error) { CStringA report; report.Format("exception=0x%08lX\n",static_cast<unsigned long>(error.Error())); output.Write(report,report.GetLength(),&written); output.Close(); ::PostQuitMessage(1); }
+  return 0;
+}
 if (IsFbeTestScenario(L"binary-dirty-contract")) {
   DWORD written=0;
   try {
