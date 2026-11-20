@@ -1,6 +1,6 @@
 <# Check the legacy userCmd src observed by a real running script. #>
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$FbeExe, [int]$TimeoutSeconds = 90)
+param([Parameter(Mandatory)][string]$FbeExe, [int]$TimeoutSeconds = 90, [ValidateSet('utf8','utf16be')][string]$Encoding = 'utf8')
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -20,7 +20,8 @@ function Run(){
  compatResult=String(actual)===expected ? "PASS" : "FAIL: userCmd src="+String(actual)+" expected="+expected;
 }
 '@
-    [IO.File]::WriteAllText((Join-Path $iso.Root 'путь.js'), $script, [Text.UTF8Encoding]::new($false))
+    $scriptEncoding = if ($Encoding -eq 'utf16be') { [Text.UnicodeEncoding]::new($true, $true) } else { [Text.UTF8Encoding]::new($false) }
+    [IO.File]::WriteAllText((Join-Path $iso.Root 'путь.js'), $script, $scriptEncoding)
     [IO.File]::WriteAllText((Join-Path $iso.Root 'suite.xml'), '<suite><step name="usercmd-src" script="путь.js"/></suite>', [Text.UTF8Encoding]::new($false))
     $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='binary-scripting-compatibility'; $env:FBE_NEXT_SCRIPT_API_ROOT=$iso.Root
     $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY=Join-Path $iso.DataPath 'Settings'
