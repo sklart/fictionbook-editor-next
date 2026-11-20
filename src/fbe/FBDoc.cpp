@@ -300,7 +300,7 @@ bool Doc::CaptureDescriptionState(CString& state) {
 	state.Empty();
 	// Compare the complete Description markup and live control values; binary
 	// payloads are guarded separately by their document-owned revision.
-
+	if (m_binaryLegacyDepth || m_binaryStore.Dirty()) return false;
 	try {
 		MSHTML::IHTMLDocument3Ptr document(m_editor.Document());
 		MSHTML::IHTMLElementPtr description(document ? document->getElementById(L"fbw_desc") : NULL);
@@ -349,18 +349,7 @@ bool Doc::DocChanged() {
 			} catch (const _com_error&) { } catch (const std::bad_alloc&) { }
 		}
 	}
-	if (m_body_ver != m_editor.GetVersionNumber() || formChanged || !SavedBinaryMatches()) return true;
-	if (m_preserveSavedBody) {
-		CString currentBody;
-		if (!CaptureBodyHtml(currentBody) || currentBody != m_savedBodyHtml) return true;
-	}
-	// Programmatic assignments to form fields do not fire MSHTML change events.
-	// Compare against the saved values as well, so a script cannot hide an edit.
-	if (m_hasDescriptionSavepoint) {
-		CString currentDescription;
-		if (!CaptureDescriptionState(currentDescription) || currentDescription != m_savedDescriptionState) return true;
-	}
-	return false;
+	return m_body_ver != m_editor.GetVersionNumber() || formChanged || !SavedBinaryMatches();
 }
 
 bool Doc::SavedBinaryMatches()
@@ -405,27 +394,11 @@ void Doc::ProtectSavedBinaries(RecoveryBinarySnapshot& snapshot) {
     m_preserveSavedBinarySnapshot = true;
 }
 
-void Doc::ProtectSavedDescription(const CString& state) {
-	 m_savedDescriptionState = state;
-	 m_hasDescriptionSavepoint = true;
-	 m_preserveSavedDescription = true;
-}
-
-void Doc::ProtectSavedBody(const CString& html) {
-	 m_savedBodyHtml = html;
-	 m_hasSavedBodyHtml = true;
-	 m_preserveSavedBody = true;
-}
-
 void Doc::MarkSavePoint() {
 	m_hasNewTemplateBaseline = false;
 	m_newTemplateEdited = false;
 	m_newTemplateXml.Empty();
-	CString currentBody;
-	if (!m_preserveSavedBody || (CaptureBodyHtml(currentBody) && currentBody == m_savedBodyHtml)) {
-		m_hasSavedBodyHtml = CaptureBodyHtml(m_savedBodyHtml);
-		m_preserveSavedBody = false;
-	}
+	m_hasSavedBodyHtml = CaptureBodyHtml(m_savedBodyHtml);
 	m_reconcilePasteHistoryClean = false;
 	m_editor.ResetFormChanged();
     // A save may have serialized earlier bytes than a reentrant callback left
@@ -435,11 +408,7 @@ void Doc::MarkSavePoint() {
         m_savedBinarySnapshotValid = CaptureRecoveryBinaries(m_savedBinarySnapshot);
         m_preserveSavedBinarySnapshot = false;
     }
-	CString currentDescription;
-	if (!m_preserveSavedDescription || (CaptureDescriptionState(currentDescription) && currentDescription == m_savedDescriptionState)) {
-		m_hasDescriptionSavepoint = CaptureDescriptionState(m_savedDescriptionState);
-		m_preserveSavedDescription = false;
-	}
+	m_hasDescriptionSavepoint = CaptureDescriptionState(m_savedDescriptionState);
 	m_savedBinaryRevision = m_binaryStore.payloads.Revision();
 	m_savedLegacyEpoch = m_binaryLegacyEpoch;
 	m_body_ver = m_editor.GetVersionNumber();
@@ -2824,11 +2793,9 @@ bool  Doc::Save() {
   if (!m_namevalid || !BeginUserSave()) return false;
   struct Guard { Doc& doc; ~Guard() { doc.EndUserSave(); } } guard{*this};
   RecoveryBinarySnapshot before; if (!CaptureRecoveryBinaries(before)) return false;
-  CString descriptionBefore; if (!CaptureDescriptionState(descriptionBefore)) return false;
-  CString bodyBefore; if (!CaptureBodyHtml(bodyBefore)) return false;
   AU::CPersistentWaitCursor wc;
   if (SaveToFile(m_filename, false, NULL, NULL, false)) {
-    MarkSavePoint(); ProtectSavedBinaries(before); ProtectSavedDescription(descriptionBefore); ProtectSavedBody(bodyBefore);
+    MarkSavePoint(); ProtectSavedBinaries(before);
     return true;
   }
   return false;
@@ -2838,11 +2805,9 @@ bool  Doc::Save(const CString& filename) {
   if (!BeginUserSave()) return false;
   struct Guard { Doc& doc; ~Guard() { doc.EndUserSave(); } } guard{*this};
   RecoveryBinarySnapshot before; if (!CaptureRecoveryBinaries(before)) return false;
-  CString descriptionBefore; if (!CaptureDescriptionState(descriptionBefore)) return false;
-  CString bodyBefore; if (!CaptureBodyHtml(bodyBefore)) return false;
   AU::CPersistentWaitCursor wc;
   if (SaveToFile(filename)) {
-    MarkSavePoint(); ProtectSavedBinaries(before); ProtectSavedDescription(descriptionBefore); ProtectSavedBody(bodyBefore);
+    MarkSavePoint(); ProtectSavedBinaries(before);
     m_filename=filename;
 	m_file_type=DetectFictionBookFileType(filename);
 	U::SetCurrentDirectoryToFile(filename);
