@@ -31,8 +31,17 @@ foreach ($sanitizer in @('asan','ubsan')) {
         if (-not $text.Contains($part)) { throw "$sanitizer is missing $part" }
     }
     if ($text -match "(?m)^\s*tags:\s*\[") { throw "$sanitizer would duplicate the tag-triggered reusable job" }
-    if ($workflow -notmatch "(?s)release-${sanitizer}:\s*\r?\n\s*if: github.ref_type == 'tag'\s*\r?\n\s*uses: ./\.github/workflows/$sanitizer.yml") { throw "Release must call $sanitizer on the tagged SHA" }
+    if ($workflow -notmatch "(?s)release-${sanitizer}:\s*\r?\n\s*if: github.ref_type == 'tag'.*\r?\n\s*uses: ./\.github/workflows/$sanitizer.yml") { throw "Release must call $sanitizer on the tagged SHA" }
 }
-if ($workflow -notmatch 'needs: \[validate, package, release-asan, release-ubsan\]') { throw 'Publication must wait for both sanitizers.' }
+if ($workflow -notmatch 'needs: \[validate, package, release-asan, release-ubsan, release-scripts, release-docs\]') { throw 'Publication must wait for both sanitizers.' }
+foreach ($check in @('scripts','docs')) {
+    $file = if ($check -eq 'scripts') { 'check-scripts' } else { 'docs' }
+    if ($workflow -notmatch "(?s)release-${check}:\s*\r?\n\s*if: github.ref_type == 'tag'\s*\r?\n\s*uses: ./\.github/workflows/$file.yml") { throw "Missing release $check gate." }
+    if (-not (Get-Content -Raw (Join-Path $root ".github/workflows/$file.yml")).Contains('workflow_call:')) { throw "Missing reusable $check workflow." }
+}
+if ($workflow -notmatch "(?s)manual-full-gate:.*?always\(\).*?needs: \[validate, package, release-asan, release-ubsan\].*?needs.release-asan.result != 'success'.*?needs.release-ubsan.result != 'success'") { throw 'Manual full gate must reject skipped or failed sanitizer jobs.' }
+foreach ($sanitizer in @('asan','ubsan')) {
+    if ($workflow -notmatch "(?s)release-${sanitizer}:.*?workflow_dispatch.*?inputs.full_validation.*?uses: ./\.github/workflows/$sanitizer.yml\s*\r?\n\s*with:\s*\r?\n\s*full_validation: true") { throw "Manual FULL must explicitly call $sanitizer." }
+}
 if (-not $runner.Contains("if (`$Focused) { `$arguments.Id = `$ids }")) { throw 'Focused coverage must use the existing -Id selector.' }
 Write-Host "CI cache and sanitizer gate contract passed; focused catalog IDs: $($ids.Count)."

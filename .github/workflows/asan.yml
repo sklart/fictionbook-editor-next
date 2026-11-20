@@ -7,6 +7,11 @@ on:
   schedule:
     - cron: '17 2 * * 1'
   workflow_call:
+    inputs:
+      full_validation:
+        type: boolean
+        default: false
+        required: false
   workflow_dispatch:
     inputs:
       full_validation:
@@ -46,11 +51,11 @@ jobs:
         shell: pwsh
         run: ./tools/tests/test-asan-regressions-native.ps1 -Sanitizer Address
       - name: Run focused sanitizer checks
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type != 'tag') || (github.event_name == 'workflow_dispatch' && !inputs.full_validation)
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type != 'tag') || ((github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && !inputs.full_validation)
         shell: pwsh
         run: ./tools/tests/invoke-sanitizer-ci.ps1 -Sanitizer Address -Focused
       - name: Run sanitizer FULL
-        if: github.ref_type == 'tag' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.full_validation)
+        if: github.ref_type == 'tag' || github.event_name == 'schedule' || ((github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && inputs.full_validation)
         shell: pwsh
         run: ./tools/tests/invoke-sanitizer-ci.ps1 -Sanitizer Address
       - name: Ensure build failures also have a summary

@@ -23,12 +23,13 @@ on:
       - "package-lock.json"
       - ".github/workflows/check-scripts.yml"
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: check-scripts-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:

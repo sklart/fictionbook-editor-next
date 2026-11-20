@@ -184,7 +184,7 @@ function Run() {
                 window.external.SaveBinary(testId, binData, 0);
             } catch(e) {}
 
-            var tempFile = fso.BuildPath(fso.GetSpecialFolder(2), fso.GetTempName());
+            tempFile = fso.BuildPath(fso.GetSpecialFolder(2), fso.GetTempName());
             var drivesToCheck = ["C:"];
             try {
                 var allDrives = fso.Drives;

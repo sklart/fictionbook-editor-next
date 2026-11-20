@@ -567,16 +567,38 @@ jobs:
         run: '"### Package`nStatus: $env:STAGE_STATUS" >> $env:GITHUB_STEP_SUMMARY'
 
   release-asan:
-    if: github.ref_type == 'tag'
+    if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.full_validation)
     uses: ./.github/workflows/asan.yml
+    with:
+      full_validation: true
 
   release-ubsan:
-    if: github.ref_type == 'tag'
+    if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.full_validation)
     uses: ./.github/workflows/ubsan.yml
+    with:
+      full_validation: true
+
+  release-scripts:
+    if: github.ref_type == 'tag'
+    uses: ./.github/workflows/check-scripts.yml
+
+  release-docs:
+    if: github.ref_type == 'tag'
+    uses: ./.github/workflows/docs.yml
+
+  manual-full-gate:
+    if: always() && github.event_name == 'workflow_dispatch' && inputs.full_validation
+    needs: [validate, package, release-asan, release-ubsan]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every full validation job
+        if: ${{ needs.validate.result != 'success' || needs.package.result != 'success' || needs.release-asan.result != 'success' || needs.release-ubsan.result != 'success' }}
+        run: exit 1
+      - run: echo "Full validation passed"
 
   publish:
-    if: github.ref_type == 'tag'
-    needs: [validate, package, release-asan, release-ubsan]
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: [validate, package, release-asan, release-ubsan, release-scripts, release-docs]
     runs-on: windows-2022
     permissions:
       contents: write

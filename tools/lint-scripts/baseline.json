@@ -17383,13 +17383,6 @@
   {
     "file": "runtime/Scripts/05_Иллюстрации/48_Создать реперную карту fb2 документа для переноса иллюстраций.js",
     "ruleId": "no-redeclare",
-    "message": "'tempFile' is already defined.",
-    "sourceContext": "var tempFile = \"C:\\\\__fbe_path_result.txt\";",
-    "occurrence": 1
-  },
-  {
-    "file": "runtime/Scripts/05_Иллюстрации/48_Создать реперную карту fb2 документа для переноса иллюстраций.js",
-    "ruleId": "no-redeclare",
     "message": "'textElement' is already defined.",
     "sourceContext": "var textElement = findFirstTextInSection(innerSection, direction);",
     "occurrence": 1

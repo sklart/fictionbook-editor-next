@@ -226,6 +226,18 @@ def normalize_target(origin: str, target: str) -> tuple[str,str,str]:
     return 'local',path,fragment
 
 
+# Exact original destinations in byte-preserved reports. See the archive README:
+# evidence was relocated, while two historical documents remain in the source branch.
+_ARCHIVE_REPORTS = 'docs/archive/community-3010-branch-evidence/reports/'
+_HISTORICAL_LINKS = {
+    'community-defects-3.0.10-closure.md': {'evidence/split-undo-3010', 'evidence/community-3010-epub-94.json'},
+    'community-defects-3.0.10-stabilization.md': {'evidence/community-3010-epub-94.json', 'evidence/community-3010-keyboard-delayed.json', 'evidence/community-3010-keyboard-observations.json', 'evidence/community-3010-word-runs.json'},
+    'fbe-next-integration-3010-acceptance.md': {'split-undo-followup-20261028.md'},
+    'split-undo-closure-decision.md': {'evidence/split-undo-3010/', 'evidence/split-undo-3010/split-section-middle.tsv', 'evidence/split-undo-3010/split-section-middle.trace.tsv', 'evidence/split-undo-3010/split-wrapper-success.tsv', 'evidence/split-undo-3010/split-wrapper-success.trace.tsv', 'evidence/split-undo-3010/split-section-multi-paragraph-selection.tsv', 'evidence/split-undo-3010/split-section-multi-paragraph-selection.trace.tsv', 'archive/undo/split-undo-mshtml-probe.md'},
+    'split-undo-safe-fix-spec.md': {'archive/undo/split-undo-mshtml-probe.md'},
+}
+
+
 def check_documents(documents: dict[str,str], exists: Callable[[str],bool],
                     load_text: Callable[[str],str|None]) -> dict:
     findings: list[Finding]=[]; checked=0; external=0
@@ -241,6 +253,8 @@ def check_documents(documents: dict[str,str], exists: Callable[[str],bool],
             if kind in ('absolute','outside'):
                 findings.append(Finding(name,line,kind,link.target,'Local target is not repository-relative'));continue
             if not exists(path):
+                if name.startswith(_ARCHIVE_REPORTS) and link.target in _HISTORICAL_LINKS.get(name[len(_ARCHIVE_REPORTS):], set()):
+                    continue
                 findings.append(Finding(name,line,'missing-file',link.target,path));continue
             if fragment and path.lower().endswith(('.md','.markdown','.html','.htm')):
                 if path not in cache:

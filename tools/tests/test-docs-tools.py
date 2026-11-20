@@ -37,6 +37,16 @@ class LinksTests(unittest.TestCase):
         self.assertEqual({x['code'] for x in result['errors']},
                          {'missing-file', 'missing-anchor', 'absolute', 'outside'})
 
+    def test_exact_historical_exception_and_new_broken_link(self):
+        archived = links._ARCHIVE_REPORTS + 'community-defects-3.0.10-closure.md'
+        docs = {archived: '[old](evidence/community-3010-epub-94.json)',
+                'docs/new.md': '[broken](missing.md)'}
+        result = links.check_documents(docs, lambda n: n in docs, docs.get)
+        self.assertEqual([(x['file'], x['target']) for x in result['errors']],
+                         [('docs/new.md', 'missing.md')])
+        docs[archived] += '\n[new](evidence/new-missing.json)'
+        self.assertEqual(len(links.check_documents(docs, lambda n: n in docs, docs.get)['errors']), 2)
+
     def test_encoded_fragment_relative_file_and_remote(self):
         docs = {'docs/a.md': '[x](b.md#%D1%8F) [web](https://example.invalid/path)', 'docs/b.md': '# Я'}
         result = links.check_documents(docs, lambda n: n in docs, docs.get)

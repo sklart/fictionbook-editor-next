@@ -7,6 +7,11 @@ on:
   schedule:
     - cron: '47 2 * * 1'
   workflow_call:
+    inputs:
+      full_validation:
+        type: boolean
+        default: false
+        required: false
   workflow_dispatch:
     inputs:
       full_validation:
@@ -50,11 +55,11 @@ jobs:
         shell: pwsh
         run: ./tools/tests/test-ubsan-build-policy.ps1
       - name: Run focused sanitizer checks
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type != 'tag') || (github.event_name == 'workflow_dispatch' && !inputs.full_validation)
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type != 'tag') || ((github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && !inputs.full_validation)
         shell: pwsh
         run: ./tools/tests/invoke-sanitizer-ci.ps1 -Sanitizer Undefined -Focused
       - name: Run UBSan FULL
-        if: github.ref_type == 'tag' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.full_validation)
+        if: github.ref_type == 'tag' || github.event_name == 'schedule' || ((github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && inputs.full_validation)
         shell: pwsh
         run: ./tools/tests/invoke-sanitizer-ci.ps1 -Sanitizer Undefined
       - name: Ensure failures have a summary
