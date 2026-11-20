@@ -2,6 +2,8 @@
 #define MEMPROTOCOL_H
 
 #include "resource.h"
+#include <shlwapi.h>
+#include <vector>
 
 EXTERN_C const GUID CLSID_MemProtocol;
 
@@ -44,7 +46,29 @@ public:
 		doc = FB::Doc::m_active_doc;
       if (doc) {
 	//col=wcschr(col+1,L':');
-	  if (doc->GetBinary(col+1,m_data)) {
+          bool found = doc->GetBinary(col+1,m_data);
+          const bool usable = found && (V_VT(&m_data)==VT_BSTR ||
+            (V_VT(&m_data)==(VT_UI1|VT_ARRAY) && V_ARRAY(&m_data) &&
+             ::SafeArrayGetDim(V_ARRAY(&m_data))==1));
+          if (!usable && wcschr(col+1, L'%')) {
+            // URLMon may percent-encode a Unicode binary ID as UTF-8. Keep
+            // literal IDs authoritative and decode only after an exact miss.
+            m_data.Clear();
+            const size_t length = wcslen(col+1);
+            if (length < MAXDWORD) {
+              std::vector<wchar_t> input(col+1, col+length+2);
+              std::vector<wchar_t> decoded(length+1);
+              DWORD capacity = static_cast<DWORD>(decoded.size());
+              if (SUCCEEDED(::UrlUnescapeW(input.data(), decoded.data(), &capacity, URL_ESCAPE_AS_UTF8)) &&
+                  wcslen(decoded.data()) == capacity && wcscmp(decoded.data(), col+1) != 0)
+                found = doc->GetBinary(decoded.data(), m_data);
+              else
+                found = false;
+            } else {
+              found = false;
+            }
+          }
+	  if (found) {
 	  if (V_VT(&m_data)==(VT_UI1|VT_ARRAY) && ::SafeArrayGetDim(V_ARRAY(&m_data))==1) 
 		{
 gotit:
