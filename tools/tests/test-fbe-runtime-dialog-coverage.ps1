@@ -13,6 +13,7 @@ $mainFrameSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\m
 # bindings are valid only when that dialog actually calls the generic helper;
 # the remaining dialogs retain their existing specialised consumer.
 $consumers = @{
+    IDR_MAINFRAME = @{ File = 'src\fbe\mainfrm.cpp'; AdditionalFiles = @('src\fbe\FBDoc.cpp'); Invocation = 'FbeLoadRuntimeStringByKey' }
     IDD_DIAGNOSTICS = @{ File = 'src\fbe\diagnostics\DiagnosticDialog.h'; Invocation = 'FbeLoadRuntimeStringByKey' }
     IDD_TABLE = @{ File = 'src\fbe\FBEview.h'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_TABLE\)' }
     IDD_INPUTBOX = @{ File = 'src\fbe\apputils.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_INPUTBOX\)' }
