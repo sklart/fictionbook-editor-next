@@ -8,7 +8,8 @@ param(
     [switch]$KeepArtifacts,
     [string]$CaseName,
     [Alias('Operation')][ValidateSet('both', 'source', 'validate')][string]$OperationFilter = 'both',
-    [switch]$RequireSource
+    [switch]$RequireSource,
+    [switch]$History
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
@@ -59,13 +60,14 @@ foreach ($case in $cases.GetEnumerator()) {
             }
             $before = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
             $sourceDump = Join-Path $iso.Root 'source-snapshot.fb2'
-            $oldMode, $oldScenario, $oldDump = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_ISSUE72_DUMP
+            $oldMode, $oldScenario, $oldDump, $oldHistory = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_ISSUE72_DUMP, $env:FBE_NEXT_ISSUE72_HISTORY
             try {
                 $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = "issue72-$operation"
                 $env:FBE_NEXT_TEST_ISSUE72_DUMP = $sourceDump
+                if ($History) { $env:FBE_NEXT_ISSUE72_HISTORY = '1' } else { $env:FBE_NEXT_ISSUE72_HISTORY = $null }
                 $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -ArgumentList @('--portable', '-b', $report, $fixture) -PassThru -WindowStyle Hidden
                 $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario "issue72-$operation" -Report $report -TimeoutSeconds $TimeoutSeconds
-            } finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_ISSUE72_DUMP = $oldMode, $oldScenario, $oldDump }
+            } finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_ISSUE72_DUMP, $env:FBE_NEXT_ISSUE72_HISTORY = $oldMode, $oldScenario, $oldDump, $oldHistory }
             $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<missing>' }
             if ($exitCode -ne 0 -or $text -notmatch '(?m)^stage=command-returned\r?$' -or
                 $text -notmatch '(?m)^same-document=1\r?$' -or $text -notmatch '(?m)^dirty-before=1\r?$' -or

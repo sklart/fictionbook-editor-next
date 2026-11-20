@@ -15,6 +15,29 @@
 		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(0L) : nullptr);
 		if (!paragraph) { stage("fixture=no-paragraph\n"); output.Close(); ::PostQuitMessage(1); return 0; }
 		paragraph->insertAdjacentText(L"beforeEnd", L" ISSUE72_UNSAVED_MARKER ");
+        wchar_t historyMode[4] = {};
+        const bool testHistory = ::GetEnvironmentVariableW(L"FBE_NEXT_ISSUE72_HISTORY", historyMode, _countof(historyMode)) == 1 && historyMode[0] == L'1';
+        bool historyReady = !testHistory;
+        CComPtr<IOleUndoManager> undoManager;
+        if (testHistory) {
+            try {
+                IServiceProviderPtr services(document);
+                CheckError(services->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&undoManager)));
+                MSHTML::IMarkupServices2Ptr markup(m_doc->m_body.MarkupServices());
+                if (!undoManager || !markup) CheckError(E_NOINTERFACE);
+                for (int i = 0; i < 3; ++i) {
+                    MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+                    CheckError(range->moveToElementText(paragraph)); CheckError(range->collapse(VARIANT_TRUE));
+                    m_doc->m_body.SetFocus(); CheckError(range->select()); HWND focus = ::GetFocus();
+                    if (!focus) CheckError(E_FAIL);
+                    CheckError(markup->raw_BeginUndoUnit(const_cast<wchar_t*>(L"issue72 history edit")));
+                    ::SendMessageW(focus, WM_CHAR, L'A' + i, 0); CheckError(markup->raw_EndUndoUnit());
+                }
+                BOOL handled = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+                OLECMD redo = { IDM_REDO, 0 }; m_doc->m_body.QueryStatus(&redo, 1);
+                historyReady = (redo.cmdf & OLECMDF_ENABLED) != 0;
+            } catch (const _com_error&) { historyReady = false; }
+        }
 		const CString bodyBefore(static_cast<LPCWSTR>(body->innerHTML));
 		const bool dirtyBefore = m_doc->DocChanged();
 		PROCESS_MEMORY_COUNTERS_EX memoryBefore = {}; memoryBefore.cb = sizeof(memoryBefore);
@@ -52,6 +75,15 @@
 		const bool bodyUnchanged = !IsSourceActive() && sameDocument && body &&
 			bodyBefore == CString(static_cast<LPCWSTR>(body->innerHTML));
 		const bool windowEnabled = ::IsWindowEnabled(m_hWnd) != FALSE;
+        bool historyPreserved = !testHistory;
+        if (testHistory && historyReady && sameDocument && !IsSourceActive()) {
+            m_doc->m_body.SetFocus();
+            const HRESULT redo = static_cast<HRESULT>(m_doc->m_body.ExecCommand(IDM_REDO));
+            const CString afterRedo(static_cast<LPCWSTR>(body->innerHTML));
+            const HRESULT undo = static_cast<HRESULT>(m_doc->m_body.ExecCommand(IDM_UNDO));
+            const CString afterUndo(static_cast<LPCWSTR>(body->innerHTML));
+            historyPreserved = SUCCEEDED(redo) && SUCCEEDED(undo) && afterRedo != bodyBefore && afterUndo == bodyBefore;
+        }
 		bool subsequentEdit = false;
 		if (sameDocument && !IsSourceActive() && paragraph) {
 			paragraph->insertAdjacentText(L"beforeEnd", L" ISSUE72_AFTER_COMMAND ");
@@ -66,9 +98,10 @@
 		}
 		CStringA report;
 		report.Format("same-document=%d\ndirty-before=%d\ndirty-after=%d\nmarker=%d\nsource-active=%d\nbody-unchanged=%d\nwindow-enabled=%d\nsubsequent-edit=%d\ncommand-ms=%llu\nmemory-available=%d\nworking-before=%llu\nworking-after=%llu\npeak-working=%llu\npeak-pagefile=%llu\n", sameDocument, dirtyBefore, dirtyAfter, marker, IsSourceActive(), bodyUnchanged, windowEnabled, subsequentEdit, commandMs, memoryBeforeAvailable && memoryAfterAvailable, static_cast<unsigned long long>(memoryBefore.WorkingSetSize), static_cast<unsigned long long>(memoryAfter.WorkingSetSize), static_cast<unsigned long long>(memoryAfter.PeakWorkingSetSize), static_cast<unsigned long long>(memoryAfter.PeakPagefileUsage));
+        report.AppendFormat("history-requested=%d\nhistory-ready=%d\nhistory-preserved=%d\n", testHistory, historyReady, historyPreserved);
 		stage(report);
 		output.Close();
-		::PostQuitMessage(sameDocument && dirtyBefore && dirtyAfter && marker && (IsSourceActive() || bodyUnchanged) && windowEnabled && subsequentEdit && memoryBeforeAvailable && memoryAfterAvailable ? 0 : 1);
+		::PostQuitMessage(sameDocument && dirtyBefore && dirtyAfter && marker && (IsSourceActive() || bodyUnchanged) && windowEnabled && subsequentEdit && historyReady && historyPreserved && memoryBeforeAvailable && memoryAfterAvailable ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"drop-native-manual"))

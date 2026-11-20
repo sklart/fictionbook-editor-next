@@ -7417,6 +7417,7 @@ bool CMainFrame::SourceToHTML()
 
 EditorSourceOperationResult CMainFrame::PrepareSourceDocument(EditorView previous)
 {
+	if (!m_doc->CheckVisualNestingForConversion()) return EditorSourceOperationResult::Failed;
 	CString sourceEncoding = _Settings.KeepEncoding() ? m_doc->m_encoding : _Settings.GetDefaultEncoding();
 	if (sourceEncoding.IsEmpty()) sourceEncoding = L"utf-8";
 	m_source_view_session.SetSourceEncoding(sourceEncoding);
@@ -7530,6 +7531,7 @@ static SourceEditorConfig BuildSourceEditorConfig()
 }
 
 LRESULT CMainFrame::OnFileValidate(WORD, WORD, HWND, BOOL&) {
+  if (!IsSourceActive() && !m_doc->CheckVisualNestingForConversion()) return 0;
   int col,line;
   bool fv;
   CString validationError;

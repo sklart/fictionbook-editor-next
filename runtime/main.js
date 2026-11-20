@@ -1890,11 +1890,20 @@ function ShowDescElements()
   TraceDiagnosticSummary("J899", "operation=ShowDescElements success; element-count=" + spans.length + "; element-shown=" + shown);
   return true;
 }
+// Keep a read-only warning from the original XML: the XSL/MSHTML load can
+// flatten invalid nesting before the visual tree can be inspected.
+var fbeUnsafeSourceStructure = false;
+function apiHasUnsafeSourceStructure() { return fbeUnsafeSourceStructure; }
 function LoadFromDOM(dom, lang)
 {
 	TraceScript("J300", "operation=LoadFromDOM");
 	TraceScript("J310", "operation=namespaces");
 	dom.setProperty("SelectionNamespaces", "xmlns:fb='"+fbNS+"' xmlns:xlink='"+xlNS+"'");
+	// FB2 inline elements and subtitle cannot contain a paragraph. Also
+	// reject unknown href namespaces: the visual transform cannot retain them.
+	fbeUnsafeSourceStructure = true;
+	var unsafeNodes = dom.selectSingleNode("//*[local-name()='p' and ancestor::*[local-name()='p' or local-name()='subtitle' or local-name()='strong' or local-name()='emphasis' or local-name()='sub' or local-name()='sup' or local-name()='a' or local-name()='style' or local-name()='strikethrough' or local-name()='code']] | //@*[local-name()='href' and namespace-uri()!='http://www.w3.org/1999/xlink']");
+	fbeUnsafeSourceStructure = !!unsafeNodes;
 	TraceScript("J320", "operation=GetStylePath");
 	var xpath=window.external.GetStylePath()+"\\fb2.xsl";
 	TraceScript("J321", "operation=GetStylePath result");

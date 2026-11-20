@@ -2224,6 +2224,41 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   return ndoc;
 }
 
+bool Doc::CheckVisualNestingForConversion()
+{
+    // Inspect the live tree without modifying it. A paragraph under another
+    // paragraph or inline element cannot be safely normalized for #72.
+    try {
+        CComVariant unsafeSource;
+        CheckError(InvokeFunc(L"apiHasUnsafeSourceStructure", NULL, 0, unsafeSource, true));
+        if (unsafeSource.vt != VT_BOOL || unsafeSource.boolVal != VARIANT_FALSE) _com_issue_error(E_INVALIDARG);
+        MSHTML::IHTMLDocument2Ptr document(m_editor.Document());
+        MSHTML::IHTMLElementPtr root(document ? MSHTML::IHTMLDocument3Ptr(document)->getElementById(L"fbw_body") : NULL);
+        if (!root) _com_issue_error(E_FAIL);
+        MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(root)->getElementsByTagName(L"P"));
+        if (!paragraphs) _com_issue_error(E_FAIL);
+        for (long i = 0; i < paragraphs->length; ++i) {
+            MSHTML::IHTMLElementPtr paragraph(paragraphs->item(_variant_t(i), _variant_t()));
+            if (!paragraph) _com_issue_error(E_FAIL);
+            for (MSHTML::IHTMLElementPtr parent(paragraph->parentElement); parent && parent != root; parent = parent->parentElement) {
+                const _bstr_t tag(parent->tagName);
+                if (U::scmp(tag, L"P") == 0 || U::scmp(tag, L"STRONG") == 0 ||
+                    U::scmp(tag, L"EM") == 0 || U::scmp(tag, L"SUB") == 0 ||
+                    U::scmp(tag, L"SUP") == 0 || U::scmp(tag, L"SPAN") == 0 ||
+                    U::scmp(tag, L"A") == 0 || U::scmp(tag, L"STRIKE") == 0)
+                    _com_issue_error(E_INVALIDARG);
+            }
+        }
+        return true;
+    } catch (const _com_error&) {
+        const CString message(FbeLoadRuntimeStringByKey(L"fbe.document.unsafe_nesting",
+            L"Cannot convert this document safely: it contains unsupported structure or link attributes. The document was not changed."));
+        ::SendMessage(m_frame, AU::WM_SETSTATUSTEXT, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(message)));
+        ::MessageBeep(MB_ICONERROR);
+        return false;
+    }
+}
+
 MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compactBinaries, bool normalizeLiveLinks)
 {
     FBE_BINARY_DIAG_SCOPE(Serialization);
