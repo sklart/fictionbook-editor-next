@@ -11,7 +11,7 @@ $firstIso = $iso
 $otherIso = $null
 $passed = $false
 $saved = @{}
-foreach($name in @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_CARD_SCRIPT','FBE_NEXT_TEST_CARD_RESOURCE_ROOT','FBE_NEXT_TEST_CARD_REPLACEMENT','FBE_NEXT_TEST_SETTINGS_DIRECTORY')) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
+foreach($name in @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_CARD_SCRIPT','FBE_NEXT_TEST_CARD_RESOURCE_ROOT','FBE_NEXT_TEST_CARD_REPLACEMENT','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_TEST_CARD_FAIL_BEFORE_PUBLISH')) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
 try {
     $emptyScripts = Join-Path $iso.Root 'fixture-empty'
     New-Item -ItemType Directory -Force $emptyScripts | Out-Null
@@ -48,8 +48,13 @@ try {
         return Get-Content -LiteralPath $report -Raw -Encoding utf8
     }
     function Require([string]$text, [string]$expression) { if($text -notmatch $expression) { throw "Expected $expression in: $text" } }
+    $env:FBE_NEXT_TEST_CARD_FAIL_BEFORE_PUBLISH = $userCard
+    $interrupted = Run-Probe; Require $interrupted '(?m)^state=0\r?$'; Require $interrupted '(?m)^preview=\r?$'
+    if(Test-Path -LiteralPath $userCard) { throw 'Interrupted seed exposed an incomplete card.' }
+    if(Get-ChildItem -LiteralPath (Split-Path $userCard) -Filter '.fbe-card-tmp-*' -ErrorAction SilentlyContinue) { throw 'Interrupted seed left a temporary file.' }
+    Remove-Item Env:FBE_NEXT_TEST_CARD_FAIL_BEFORE_PUBLISH
     $env:FBE_NEXT_TEST_CARD_REPLACEMENT = $replacementPath
-    $first = Run-Probe; Require $first '(?m)^state=3\r?$'; Require $first '(?m)^dependency-state=1\r?$'; Require $first '(?m)^preview=External initial\r?$'; Require $first '(?m)^tree-preview=External initial\r?$'; Require $first '(?m)^cache-refreshed=1\r?$'; Require $first '(?m)^cache-restored=1\r?$'
+    $first = Run-Probe; Require $first '(?m)^state=3\r?$'; Require $first '(?m)^dependency-state=1\r?$'; Require $first '(?m)^preview=External initial\r?$'; Require $first '(?m)^tree-preview=External initial\r?$'; Require $first '(?m)^preview-without-script-read=1\r?$'; Require $first '(?m)^cache-refreshed=1\r?$'; Require $first '(?m)^cache-restored=1\r?$'
     Remove-Item Env:FBE_NEXT_TEST_CARD_REPLACEMENT
     [IO.File]::WriteAllText($dependency, 'new', [Text.UTF8Encoding]::new($false))
     $dependencyChanged = Run-Probe; Require $dependencyChanged '(?m)^state=3\r?$'; Require $dependencyChanged '(?m)^dependency-state=2\r?$'
@@ -75,13 +80,50 @@ try {
     $longSummary = (Get-Content -LiteralPath $longCard -Raw -Encoding utf8 | ConvertFrom-Json).summary
     $env:FBE_NEXT_TEST_CARD_SCRIPT = $longScript.FullName
     $longResult = Run-Probe; Require $longResult '(?m)^state=3\r?$'; Require $longResult ('(?m)^tree-preview=' + [regex]::Escape($longSummary) + '\r?$')
+    $longUpdate = $card.Clone(); $longUpdate.summary = 'Long path updated'; Write-Card $longFixtureCard $longUpdate
+    $env:FBE_NEXT_TEST_CARD_SCRIPT = $longFixtureScript
+    $updatedLongResult = Run-Probe; Require $updatedLongResult '(?m)^preview=Long path updated\r?$'
+    $longUserCard = Join-Path $settingsCardsRoot ([IO.Path]::ChangeExtension([IO.Path]::GetRelativePath((Join-Path $iso.Root 'Scripts'), $longFixtureScript), '.json'))
+    if((Get-FileHash -LiteralPath $longUserCard).Hash -ne (Get-FileHash -LiteralPath $longFixtureCard).Hash) { throw 'Long-path default was not updated.' }
     $env:FBE_NEXT_TEST_CARD_SCRIPT = $script
     $uneditedHash = (Get-FileHash $userCard).Hash
     $card.summary = 'Unedited default update'; Write-Card $default $card
-    $update = Run-Probe; Require $update '(?m)^state=3\r?$'; Require $update '(?m)^preview=External initial\r?$'
-    if((Get-FileHash $userCard).Hash -ne $uneditedHash -or
-       -not (Get-ChildItem (Split-Path $userCard) -Filter '*.fbe-new-*') -or
-       (Get-Content -LiteralPath $manifest -Raw) -notmatch '(?m)^\[updates\]\r?$') { throw 'Unedited default update was not preserved for review.' }
+    $update = Run-Probe; Require $update '(?m)^state=3\r?$'; Require $update '(?m)^preview=Unedited default update\r?$'
+    if((Get-FileHash $userCard).Hash -eq $uneditedHash -or
+       (Get-FileHash $userCard).Hash -ne (Get-FileHash $default).Hash) { throw 'Unedited default was not updated.' }
+    $card.summary = 'Concurrent default update'; Write-Card $default $card
+    $canonical = ('\\?\' + [IO.Path]::GetFullPath($userCard)).ToLowerInvariant()
+    $mutexHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::Unicode.GetBytes($canonical))).ToLowerInvariant()
+    $mutexCreated = $false
+    $mutex = [Threading.Mutex]::new($true, 'Global\FBE-ScriptCard-' + $mutexHash, [ref]$mutexCreated)
+    if(-not $mutexCreated) { $mutex.Dispose(); throw 'Test card mutex already existed.' }
+    try {
+        $protected = Run-Probe; Require $protected '(?m)^preview=Unedited default update\r?$'
+        if((Get-FileHash $userCard).Hash -eq (Get-FileHash $default).Hash) { throw 'Card was updated while its cross-process mutex was held.' }
+    } finally { $mutex.ReleaseMutex(); $mutex.Dispose() }
+    $concurrentText = Run-Probe; Require $concurrentText '(?m)^preview=Concurrent default update\r?$'
+    if((Get-FileHash $userCard).Hash -ne (Get-FileHash $default).Hash) { throw 'Concurrent update did not publish the complete default.' }
+    $lockedHash = (Get-FileHash $userCard).Hash
+    $card.summary = 'Locked default update'; Write-Card $default $card
+    $lock = [IO.File]::Open($userCard, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::Read)
+    try {
+        $lockedResult = Run-Probe; Require $lockedResult '(?m)^preview=Concurrent default update\r?$'
+    } finally { $lock.Dispose() }
+    if((Get-FileHash $userCard).Hash -ne $lockedHash -or
+        -not (Get-ChildItem (Split-Path $userCard) -Filter '*.fbe-new-*')) { throw 'Locked card was overwritten or update not saved separately.' }
+    $unlocked = Run-Probe; Require $unlocked '(?m)^preview=Locked default update\r?$'
+    $unknownScript = Join-Path $iso.Root 'Scripts\07_Проверка\02_Неизвестный.js'
+    $unknownDefault = Join-Path $iso.Root 'ScriptCards\07_Проверка\02_Неизвестный.json'
+    $unknownUser = Join-Path $settingsCardsRoot '07_Проверка\02_Неизвестный.json'
+    [IO.File]::WriteAllBytes($unknownScript, $code); Write-Card $unknownDefault $card; Write-Card $unknownUser $card
+    $unknownHash = (Get-FileHash $unknownUser).Hash
+    $env:FBE_NEXT_TEST_CARD_SCRIPT = $unknownScript
+    $unknownSame = Run-Probe; Require $unknownSame '(?m)^preview=Locked default update\r?$'
+    $unknownUpdate = $card.Clone(); $unknownUpdate.summary = 'Unknown provenance update'; Write-Card $unknownDefault $unknownUpdate
+    $unknown = Run-Probe; Require $unknown '(?m)^preview=Locked default update\r?$'
+    if((Get-FileHash $unknownUser).Hash -ne $unknownHash -or
+       -not (Get-ChildItem (Split-Path $unknownUser) -Filter '02_Неизвестный.json.fbe-new-*')) { throw 'Unknown provenance card was overwritten or no update was kept.' }
+    $env:FBE_NEXT_TEST_CARD_SCRIPT = $script
     $user = Get-Content $userCard -Raw -Encoding utf8 | ConvertFrom-Json -AsHashtable
     $user.summary = 'User changed'; Write-Card $userCard $user; $userHash = (Get-FileHash $userCard).Hash
     $card.summary = 'New bundled revision'; Write-Card $default $card
@@ -109,6 +151,17 @@ try {
     [IO.File]::WriteAllText((Join-Path $iso.Root 'portable.ini'), "[Portable]`r`nDataPath=$([IO.Path]::GetFileName($iso.DataPath))`r`n", [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText($userCard, '{invalid', [Text.UTF8Encoding]::new($false))
     $invalid = Run-Probe; Require $invalid '(?m)^state=1\r?$'; Require $invalid '(?m)^preview=\r?$'
+    foreach($broken in @('schema', 'title', 'dependency', 'revision')) {
+        $invalidCard = $card.Clone(); $invalidCard.sourceRevision = $card.sourceRevision.Clone()
+        switch($broken) {
+            'schema' { $invalidCard.schema = 2 }
+            'title' { $invalidCard.title = $null }
+            'dependency' { $invalidCard.dependencies = @(@{path='../escape';sha256=$null;optional=$false}) }
+            'revision' { $invalidCard.sourceRevision.sha256 = 'bad' }
+        }
+        Write-Card $userCard $invalidCard
+        $bad = Run-Probe; Require $bad '(?m)^state=1\r?$'; Require $bad '(?m)^preview=\r?$'; Require $bad '(?m)^tree-preview=\r?$'
+    }
     $uncheckedCard = $user.Clone(); $uncheckedCard.sourceRevision = $user.sourceRevision.Clone(); $uncheckedCard.sourceRevision.sha256 = $null
     Write-Card $userCard $uncheckedCard
     $unchecked = Run-Probe; Require $unchecked '(?m)^state=2\r?$'
@@ -121,7 +174,17 @@ try {
     Copy-Item -LiteralPath (Join-Path $iso.DataPath 'Settings\Settings.xml') -Destination (Join-Path $installedSettings 'Settings.xml')
     $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = $installedSettings
     $installed = Run-Probe '--installed'; Require $installed '(?m)^state=3\r?$'
-    if(-not (Test-Path -LiteralPath (Join-Path $installedSettings 'ScriptCards\07_Проверка\01_Тест.json'))) { throw 'Installed-mode user settings were not used.' }
+    $installedCard = Join-Path $installedSettings 'ScriptCards\07_Проверка\01_Тест.json'
+    if(-not (Test-Path -LiteralPath $installedCard)) { throw 'Installed-mode user settings were not used.' }
+    $card.summary = 'Installed default update'; Write-Card $default $card
+    $installedUpdate = Run-Probe '--installed'; Require $installedUpdate '(?m)^preview=Installed default update\r?$'
+    if((Get-FileHash $installedCard).Hash -ne (Get-FileHash $default).Hash) { throw 'Installed default was not updated.' }
+    $installedUser = $card.Clone(); $installedUser.summary = 'Installed user edit'; Write-Card $installedCard $installedUser
+    $installedUserHash = (Get-FileHash $installedCard).Hash
+    $card.summary = 'Installed new revision'; Write-Card $default $card
+    $installedConflict = Run-Probe '--installed'; Require $installedConflict '(?m)^preview=Installed user edit\r?$'
+    if((Get-FileHash $installedCard).Hash -ne $installedUserHash -or
+       -not (Get-ChildItem (Split-Path $installedCard) -Filter '01_Тест.json.fbe-new-*')) { throw 'Installed user card was overwritten or the update was not kept.' }
     if((Get-FileHash $userCard).Hash -ne $userHash) { throw 'Portable settings changed during installed-mode run.' }
     Remove-Item Env:FBE_NEXT_TEST_SETTINGS_DIRECTORY
     Remove-Item -LiteralPath $default,$userCard -Force

@@ -451,6 +451,17 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		ScriptDescriptor previewScript = {}; previewScript.path = path.data(); previewScript.uid = L"external-card-probe";
 		const CString treePreview = m_document_tree.m_tree.m_tree.ScriptPreviewSummary(previewScript);
 		const CString external = ScriptCards::ExternalCardPath(path.data());
+		bool previewWithoutScriptRead = false;
+		if(!external.IsEmpty() && !treePreview.IsEmpty())
+		{
+			HANDLE blocked = ::CreateFileW(path.data(), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			if(blocked != INVALID_HANDLE_VALUE)
+			{
+				previewWithoutScriptRead = ScriptCards::ReadPreviewSummary(path.data()) == treePreview &&
+					m_document_tree.m_tree.m_tree.ScriptPreviewSummary(previewScript) == treePreview;
+				::CloseHandle(blocked);
+			}
+		}
 		std::vector<wchar_t> replacement(32768, L'\0');
 		const DWORD replacementLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_CARD_REPLACEMENT", replacement.data(), static_cast<DWORD>(replacement.size()));
 		bool cacheRefreshed = false, cacheRestored = true;
@@ -474,9 +485,9 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 			if(backedUp) ::DeleteFileW(backup);
 		}
 		CStringA report;
-		report.Format("state=%d\ndependency-state=%d\ncache-refreshed=%d\ncache-restored=%d\nsummary=%s\npreview=%s\ntree-preview=%s\nexternal=%s\n", static_cast<int>(card.state),
+		report.Format("state=%d\ndependency-state=%d\ncache-refreshed=%d\ncache-restored=%d\npreview-without-script-read=%d\nsummary=%s\npreview=%s\ntree-preview=%s\nexternal=%s\n", static_cast<int>(card.state),
 			static_cast<int>(card.dependencyState),
-			cacheRefreshed, cacheRestored,
+			cacheRefreshed, cacheRestored, previewWithoutScriptRead,
 			static_cast<LPCSTR>(CStringA(CW2A(card.summary, CP_UTF8))),
 			static_cast<LPCSTR>(CStringA(CW2A(preview, CP_UTF8))),
 			static_cast<LPCSTR>(CStringA(CW2A(treePreview, CP_UTF8))),

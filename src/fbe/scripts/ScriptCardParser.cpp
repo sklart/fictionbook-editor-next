@@ -393,7 +393,7 @@ bool Dependencies(const std::wstring& json, size_t object, std::vector<Dependenc
 }
 }
 
-static Card ParseJsonDocument(const std::wstring& json, const BYTE* bytes, size_t length, bool external)
+static Card ParseJsonDocument(const std::wstring& json, const BYTE* bytes, size_t length, bool external, bool hashSource = true)
 {
 	Card card;
 	card.state = State::Invalid;
@@ -449,7 +449,8 @@ static Card ParseJsonDocument(const std::wstring& json, const BYTE* bytes, size_
 		(Member(json, 0, L"tags", complete) && !StringArray(json, 0, L"tags", card.tags)))
 		{ card.error = L"Optional card fields are invalid"; return card; }
 	card.authorshipStatus = ObjectField(json, 0, L"authorshipStatus");
-	card.currentSha256 = external ? ScriptCardBlock::Sha256Raw(bytes, length) : ScriptCardBlock::Sha256WithoutCard(bytes, length);
+	if(hashSource)
+		card.currentSha256 = external ? ScriptCardBlock::Sha256Raw(bytes, length) : ScriptCardBlock::Sha256WithoutCard(bytes, length);
 	if(json.compare(digest, 4, L"null") == 0)
 	{
 		card.state = State::Unchecked;
@@ -460,6 +461,7 @@ static Card ParseJsonDocument(const std::wstring& json, const BYTE* bytes, size_
 		{ card.error = L"Expected SHA-256 is invalid"; return card; }
 	card.expectedSha256 = expected.c_str();
 	if(!ValidDigest(card.expectedSha256)) { card.error = L"Expected SHA-256 is invalid"; return card; }
+	if(!hashSource) { card.state = State::Unchecked; return card; }
 	card.state = card.currentSha256.IsEmpty() ? State::Unchecked :
 		card.currentSha256 == card.expectedSha256 ? State::Current : State::Changed;
 	return card;
@@ -550,6 +552,75 @@ CString RawDigest(const std::vector<BYTE>& data)
 {
 	return ScriptCardBlock::Sha256Raw(data.empty() ? reinterpret_cast<const BYTE*>("") : data.data(), data.size());
 }
+
+// Prepare a complete sibling first; the final rename never exposes a partial JSON.
+bool PlaceCardAtomically(const CString& destination, const std::vector<BYTE>& bytes, const CString* expectedHash)
+{
+	static volatile LONG sequence = 0;
+	const int separator = destination.ReverseFind(L'\\');
+	if(separator < 0) return false;
+	CString temporary;
+	HANDLE file = INVALID_HANDLE_VALUE;
+	for(int attempt = 0; attempt < 16 && file == INVALID_HANDLE_VALUE; ++attempt)
+	{
+		temporary.Format(L"%s.fbe-card-tmp-%lu-%ld", static_cast<LPCWSTR>(destination.Left(separator + 1)),
+			static_cast<unsigned long>(::GetCurrentProcessId()), ::InterlockedIncrement(&sequence));
+		file = ::CreateFileW(temporary, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+		if(file == INVALID_HANDLE_VALUE && ::GetLastError() != ERROR_FILE_EXISTS) return false;
+	}
+	if(file == INVALID_HANDLE_VALUE) return false;
+	bool ok = true;
+	for(size_t offset = 0; ok && offset < bytes.size();)
+	{
+		DWORD written = 0;
+		ok = ::WriteFile(file, bytes.data() + offset, static_cast<DWORD>((std::min)(bytes.size() - offset, size_t(65536))), &written, NULL) && written > 0;
+		offset += written;
+	}
+	if(ok) ok = ::FlushFileBuffers(file) != FALSE;
+	::CloseHandle(file);
+	// Failure injection is restricted to the existing isolated test mode.
+	wchar_t testMode[2] = {};
+	if(ok && ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1')
+	{
+		const DWORD needed = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_CARD_FAIL_BEFORE_PUBLISH", nullptr, 0);
+		if(needed > 1 && needed <= 32768)
+		{
+			std::vector<wchar_t> requested(needed);
+			if(::GetEnvironmentVariableW(L"FBE_NEXT_TEST_CARD_FAIL_BEFORE_PUBLISH", requested.data(), needed) == needed - 1 &&
+				LongPath(requested.data()).CompareNoCase(destination) == 0) ok = false;
+		}
+	}
+	HANDLE locked = INVALID_HANDLE_VALUE;
+	if(ok && expectedHash)
+	{
+		// Deny concurrent writes while re-reading the installed version and replacing it.
+		locked = ::CreateFileW(destination, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE,
+			NULL, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+		BY_HANDLE_FILE_INFORMATION info = {}; LARGE_INTEGER size = {};
+		ok = locked != INVALID_HANDLE_VALUE && ::GetFileInformationByHandle(locked, &info) &&
+			!(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) && ::GetFileSizeEx(locked, &size) &&
+			size.QuadPart >= 0 && size.QuadPart <= 64 * 1024;
+		std::vector<BYTE> old;
+		if(ok) old.resize(static_cast<size_t>(size.QuadPart));
+		for(size_t offset = 0; ok && offset < old.size();)
+		{
+			DWORD read = 0;
+			ok = ::ReadFile(locked, old.data() + offset, static_cast<DWORD>(old.size() - offset), &read, NULL) && read > 0;
+			offset += read;
+		}
+		if(ok) ok = RawDigest(old) == *expectedHash;
+	}
+	if(ok && expectedHash)
+	{
+		// ReplaceFile preserves atomicity while the old file is held against
+		// writers; MoveFileEx cannot replace it with that sharing mode.
+		ok = ::ReplaceFileW(destination, temporary, nullptr, 0, nullptr, nullptr) != FALSE;
+	}
+	else if(ok) ok = ::MoveFileExW(temporary, destination, MOVEFILE_WRITE_THROUGH) != FALSE;
+	if(locked != INVALID_HANDLE_VALUE) ::CloseHandle(locked);
+	if(!ok) ::DeleteFileW(temporary);
+	return ok;
+}
 }
 
 CString ExternalCardPath(const CString& scriptPath)
@@ -584,6 +655,21 @@ CString ExternalCardPath(const CString& scriptPath)
 	if(relative.Find(L'/') >= 0 || relative.Find(L':') >= 0 || !EnsureCardDirectories(root, relative)) return CString();
 	const CString destination = LongPath(root + relative);
 	if(!bundled) return destination;
+	// Portable copies may share one DataPath across processes or sessions.
+	// Serialize synchronization for each target, including its manifest update.
+	CString lockPath(destination); lockPath.MakeLower();
+	const CString lockHash = ScriptCardBlock::Sha256Raw(reinterpret_cast<const BYTE*>(lockPath.GetString()),
+		static_cast<size_t>(lockPath.GetLength()) * sizeof(wchar_t));
+	if(lockHash.IsEmpty()) return destination;
+	const CString mutexName = CString(L"Global\\FBE-ScriptCard-") + lockHash;
+	HANDLE namedMutex = ::CreateMutexW(nullptr, FALSE, mutexName);
+	if(!namedMutex) return destination;
+	const DWORD wait = ::WaitForSingleObject(namedMutex, 2500);
+	if(wait != WAIT_OBJECT_0 && wait != WAIT_ABANDONED) { ::CloseHandle(namedMutex); return destination; }
+	struct MutexRelease {
+		HANDLE handle;
+		~MutexRelease() { ::ReleaseMutex(handle); ::CloseHandle(handle); }
+	} releaseMutex = { namedMutex };
 	const CString source = U::GetProgDir() + L"ScriptCards\\" + relative;
 	std::vector<BYTE> incoming;
 	if(!ReadBytes(source, incoming, 64 * 1024)) return destination;
@@ -596,14 +682,14 @@ CString ExternalCardPath(const CString& scriptPath)
 	if(manifestAttributes != INVALID_FILE_ATTRIBUTES && (manifestAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) return destination;
 	if(::GetFileAttributesW(destination) == INVALID_FILE_ATTRIBUTES)
 	{
-		if(::CopyFileW(LongPath(source), destination, TRUE)) ::WritePrivateProfileStringW(L"cards", key, incomingHash, manifest);
+		if(PlaceCardAtomically(destination, incoming, nullptr)) ::WritePrivateProfileStringW(L"cards", key, incomingHash, manifest);
 		return destination;
 	}
 	std::vector<BYTE> current;
 	if(!ReadBytes(destination, current, 64 * 1024))
 	{
 		const CString pending = destination + L".fbe-new-" + incomingHash.Left(12);
-		::CopyFileW(LongPath(source), pending, TRUE);
+		PlaceCardAtomically(pending, incoming, nullptr);
 		::WritePrivateProfileStringW(L"conflicts", key, incomingHash, manifest);
 		return destination;
 	}
@@ -612,7 +698,7 @@ CString ExternalCardPath(const CString& scriptPath)
 	::GetPrivateProfileStringW(L"cards", key, L"", baseline, _countof(baseline), manifest);
 	if(currentHash == incomingHash)
 	{
-		if(CString(baseline) != incomingHash) ::WritePrivateProfileStringW(L"cards", key, incomingHash, manifest);
+		// An existing file without a recorded baseline has unknown provenance.
 		wchar_t conflict[80] = {};
 		if(::GetPrivateProfileStringW(L"conflicts", key, L"", conflict, _countof(conflict), manifest) != 0)
 			::WritePrivateProfileStringW(L"conflicts", key, NULL, manifest);
@@ -621,12 +707,16 @@ CString ExternalCardPath(const CString& scriptPath)
 	}
 	else if(CString(baseline) != incomingHash)
 	{
-		// Never overwrite an existing user file, including an unchanged older
-		// default. Deliver the new revision separately for review instead.
+		if(baseline[0] != 0 && currentHash == baseline && PlaceCardAtomically(destination, incoming, &currentHash))
+		{
+			::WritePrivateProfileStringW(L"cards", key, incomingHash, manifest);
+			::WritePrivateProfileStringW(L"updates", key, NULL, manifest);
+			::WritePrivateProfileStringW(L"conflicts", key, NULL, manifest);
+			return destination;
+		}
 		const CString pending = destination + L".fbe-new-" + incomingHash.Left(12);
-		::CopyFileW(LongPath(source), pending, TRUE);
-		const wchar_t* section = baseline[0] != 0 && currentHash == baseline ? L"updates" : L"conflicts";
-		::WritePrivateProfileStringW(section, key, incomingHash, manifest);
+		PlaceCardAtomically(pending, incoming, nullptr);
+		::WritePrivateProfileStringW(L"conflicts", key, incomingHash, manifest);
 	}
 	return destination;
 }
@@ -702,12 +792,8 @@ CString ReadPreviewSummary(const CString& path)
 		{
 			std::vector<BYTE> bytes; std::wstring json;
 			if(!ReadBytes(externalPath, bytes, 64 * 1024) || !Utf8Json(bytes, json)) return CString();
-			size_t cursor = 0;
-			if(!ValidateJson(json, cursor, 0)) return CString();
-			FbeRuntimeLocalization::JsonSkipWhitespace(json, cursor);
-			if(cursor != json.size()) return CString();
-			CString summary;
-			return StringMember(json, 0, L"summary", summary) ? summary : CString();
+			const Card preview = ParseJsonDocument(json, nullptr, 0, true, false);
+			return preview.state == State::Invalid ? CString() : preview.summary;
 		}
 	}
 	HANDLE file = ::CreateFileW(LongPath(path), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
@@ -726,11 +812,7 @@ CString ReadPreviewSummary(const CString& path)
 	std::wstring text;
 	std::wstring json;
 	if(!DecodeCard(bytes.data(), span, text) || !ExtractJson(text, json)) return CString();
-	size_t cursor = 0;
-	if(!ValidateJson(json, cursor, 0)) return CString();
-	FbeRuntimeLocalization::JsonSkipWhitespace(json, cursor);
-	if(cursor != json.size()) return CString();
-	CString summary;
-	return StringMember(json, 0, L"summary", summary) ? summary : CString();
+	const Card preview = ParseJsonDocument(json, nullptr, 0, false, false);
+	return preview.state == State::Invalid ? CString() : preview.summary;
 }
 }
