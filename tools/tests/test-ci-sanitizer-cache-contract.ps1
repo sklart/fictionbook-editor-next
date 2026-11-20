@@ -30,9 +30,13 @@ foreach ($sanitizer in @('asan','ubsan')) {
     foreach ($part in @('workflow_call:', 'schedule:', 'github.ref_type == ''tag''', 'github.event_name == ''schedule''', 'github.event_name == ''pull_request''', '-Focused', 'write-sanitizer-ci-summary.ps1')) {
         if (-not $text.Contains($part)) { throw "$sanitizer is missing $part" }
     }
+    $group = 'group: ' + $sanitizer + '-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}'
+    if (-not $text.Contains($group)) { throw "$sanitizer reusable and standalone runs must have distinct concurrency groups." }
     if ($text -match "(?m)^\s*tags:\s*\[") { throw "$sanitizer would duplicate the tag-triggered reusable job" }
     if ($workflow -notmatch "(?s)release-${sanitizer}:\s*\r?\n\s*if: github.ref_type == 'tag'.*\r?\n\s*uses: ./\.github/workflows/$sanitizer.yml") { throw "Release must call $sanitizer on the tagged SHA" }
 }
+$scriptsWorkflow = Get-Content -Raw -LiteralPath (Join-Path $root '.github/workflows/check-scripts.yml')
+if (-not $scriptsWorkflow.Contains('group: check-scripts-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}')) { throw 'Reusable and standalone script checks must have distinct concurrency groups.' }
 if ($workflow -notmatch 'needs: \[validate, package, release-asan, release-ubsan, release-scripts, release-docs\]') { throw 'Publication must wait for both sanitizers.' }
 foreach ($check in @('scripts','docs')) {
     $file = if ($check -eq 'scripts') { 'check-scripts' } else { 'docs' }

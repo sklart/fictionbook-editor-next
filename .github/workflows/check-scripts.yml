@@ -29,7 +29,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: check-scripts-${{ github.event.pull_request.number || github.ref }}
+  group: check-scripts-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
