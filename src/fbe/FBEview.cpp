@@ -4683,7 +4683,6 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_ROW_ABOVE, GetLocalizedMainMenuText(ID_TABLE_INSERT_ROW_ABOVE, L"Insert row above"));
 		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_ROW_BELOW, GetLocalizedMainMenuText(ID_TABLE_INSERT_ROW_BELOW, L"Insert row below"));
-		menu.AppendMenu(MF_STRING, ID_TABLE_DELETE_TABLE, GetLocalizedMainMenuText(ID_TABLE_DELETE_TABLE, L"Delete table"));
 		menu.AppendMenu(MF_STRING, ID_TABLE_DELETE_ROW, GetLocalizedMainMenuText(ID_TABLE_DELETE_ROW, L"Delete row"));
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_COLUMN_LEFT, GetLocalizedMainMenuText(ID_TABLE_INSERT_COLUMN_LEFT, L"Insert column left"));
@@ -4692,6 +4691,8 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_STRING, ID_TABLE_MAKE_HEADER_CELLS, GetLocalizedMainMenuText(ID_TABLE_MAKE_HEADER_CELLS, L"Make header cells"));
 		menu.AppendMenu(MF_STRING, ID_TABLE_MAKE_NORMAL_CELLS, GetLocalizedMainMenuText(ID_TABLE_MAKE_NORMAL_CELLS, L"Make normal cells"));
+		menu.AppendMenu(MF_SEPARATOR);
+		menu.AppendMenu(MF_STRING, ID_TABLE_DELETE_TABLE, GetLocalizedMainMenuText(ID_TABLE_DELETE_TABLE, L"Delete table"));
 	}
 
 	if(m_normalize)
