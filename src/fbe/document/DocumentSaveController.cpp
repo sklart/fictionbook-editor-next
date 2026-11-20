@@ -90,6 +90,8 @@ DocumentSaveResult DocumentSaveController::SaveCurrent(FB::Doc& document, Docume
     struct Guard { FB::Doc& doc; ~Guard() { doc.EndUserSave(); } } guard{document};
     FB::Doc::RecoveryBinarySnapshot before;
     if (!document.CaptureRecoveryBinaries(before)) return { DocumentSaveStatus::Failed, DocumentSaveFailureKind::Serialization, location, FbeArchive::Error() };
+    CString descriptionBefore; if (!document.CaptureDescriptionState(descriptionBefore)) return { DocumentSaveStatus::Failed, DocumentSaveFailureKind::Serialization, location, FbeArchive::Error() };
+    CString bodyBefore; if (!document.CaptureBodyHtml(bodyBefore)) return { DocumentSaveStatus::Failed, DocumentSaveFailureKind::Serialization, location, FbeArchive::Error() };
 	std::vector<unsigned char> serialized;
 	if (!document.SerializeToMemory(serialized, location.documentType)) return { DocumentSaveStatus::Failed, DocumentSaveFailureKind::Serialization, location, FbeArchive::Error() };
 	FbeArchive::Error error;
@@ -97,6 +99,8 @@ DocumentSaveResult DocumentSaveController::SaveCurrent(FB::Doc& document, Docume
 	if (!FbeArchive::SaveDocument(location, serialized, savedLocation, error)) return { DocumentSaveStatus::Failed, DocumentSaveFailureKind::ArchiveWrite, location, error };
 	session.SavedArchive(savedLocation);
     document.ProtectSavedBinaries(before);
+    document.ProtectSavedDescription(descriptionBefore);
+    document.ProtectSavedBody(bodyBefore);
 	operation.Succeeded();
 	return { DocumentSaveStatus::Success, DocumentSaveFailureKind::None, savedLocation, FbeArchive::Error() };
 }
