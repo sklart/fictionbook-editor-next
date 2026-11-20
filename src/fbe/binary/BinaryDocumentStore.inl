@@ -35,7 +35,7 @@ bool Doc::SameRecoveryBinaries(const RecoveryBinarySnapshot& left, const Recover
 {
     if (left.size() != right.size()) return false;
     for (size_t i = 0; i < left.size(); ++i)
-        if (left[i].id != right[i].id || left[i].mime != right[i].mime || left[i].payload != right[i].payload) return false;
+        if (left[i].id != right[i].id || left[i].mime != right[i].mime || !FbeBinary::BinaryPayloadStore::EqualSnapshot(left[i].payload, right[i].payload)) return false;
     return true;
 }
 

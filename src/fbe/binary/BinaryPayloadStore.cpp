@@ -153,6 +153,18 @@ std::shared_ptr<const CComVariant> BinaryPayloadStore::Snapshot(IDispatch* eleme
     const auto value = m_state->values.find(token->second);
     return value == m_state->values.end() ? nullptr : value->second;
 }
+bool BinaryPayloadStore::EqualSnapshot(const std::shared_ptr<const CComVariant>& left,
+    const std::shared_ptr<const CComVariant>& right) {
+    if (!left || !right) return false;
+    if (left == right) return true;
+    if (left->vt != right->vt) return false;
+    if (left->vt == VT_EMPTY || left->vt == VT_NULL) return true;
+    if (left->vt == VT_BSTR) {
+        const UINT a = ::SysStringLen(left->bstrVal), b = ::SysStringLen(right->bstrVal);
+        return a == b && (!a || std::memcmp(left->bstrVal, right->bstrVal, a * sizeof(wchar_t)) == 0);
+    }
+    return SameByteArray(*left, *right);
+}
 HRESULT BinaryPayloadStore::Assign(IDispatch* element, const std::shared_ptr<const CComVariant>& value) {
     FBE_BINARY_DIAG_ADD(assignCalls, 1);
     if (!value) return E_INVALIDARG;

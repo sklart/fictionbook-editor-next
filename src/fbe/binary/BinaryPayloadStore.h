@@ -44,6 +44,7 @@ public:
     HRESULT Attach(IDispatch* element);
     HRESULT AdoptLegacy(IDispatch* element);
     std::shared_ptr<const CComVariant> Snapshot(IDispatch* element) const;
+    static bool EqualSnapshot(const std::shared_ptr<const CComVariant>& left, const std::shared_ptr<const CComVariant>& right);
     HRESULT Assign(IDispatch* element, const std::shared_ptr<const CComVariant>& value);
     std::shared_ptr<RetainedPayload> Retain(const std::shared_ptr<const CComVariant>& value) {
         auto lease = std::make_shared<RetainedPayload>();

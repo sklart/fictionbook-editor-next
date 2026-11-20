@@ -1,10 +1,12 @@
 <# Real New/Open/Close operations must retain a dirty document and recovery when the save prompt receives WM_QUIT. #>
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 90)
+param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 90, [switch]$BinaryOnly)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $template = '<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Decision</book-title><lang>en</lang></title-info><document-info><id>save-decision-test</id><version>1.0</version></document-info></description><body><section><p>SAVE_DECISION_ORIGINAL</p></section></body></FictionBook>'
+if ($BinaryOnly) { $template = $template.Replace('</FictionBook>', '<binary id="payload.bin" content-type="application/octet-stream">AAECA/7/</binary></FictionBook>') }
+$oldBinary = $env:FBE_NEXT_TEST_DECISION_BINARY
 $savedMode, $savedScenario, $savedTarget = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_DECISION_OPEN_PATH
 try {
     foreach($operation in @('new', 'open', 'close')) {
@@ -18,6 +20,7 @@ try {
             [IO.File]::WriteAllText($fixture, $template, [Text.UTF8Encoding]::new($false))
             [IO.File]::WriteAllText($target, $template.Replace('SAVE_DECISION_ORIGINAL', 'OTHER_DOCUMENT'), [Text.UTF8Encoding]::new($false))
             $env:FBE_NEXT_TEST_MODE = '1'
+            if ($BinaryOnly) { $env:FBE_NEXT_TEST_DECISION_BINARY = '1' } else { $env:FBE_NEXT_TEST_DECISION_BINARY = $null }
             $env:FBE_NEXT_TEST_DECISION_OPEN_PATH = $target
             $scenario = "save-decision-quit-$operation"
             $report = Join-Path $isolation.Root "$scenario.tsv"
@@ -41,4 +44,5 @@ try {
     Write-Host 'New/Open/Close retained the dirty document and recovery after an unanswered save prompt; WM_QUIT code was preserved.'
 } finally {
     $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_DECISION_OPEN_PATH = $savedMode, $savedScenario, $savedTarget
+    $env:FBE_NEXT_TEST_DECISION_BINARY = $oldBinary
 }

@@ -1,3 +1,45 @@
+if (IsFbeTestScenario(L"binary-dirty-contract")) {
+  DWORD written=0;
+  try {
+    wchar_t caseName[32]={}; if (!::GetEnvironmentVariableW(L"FBE_NEXT_BINARY_DIRTY_CASE", caseName, _countof(caseName))) CheckError(E_INVALIDARG);
+    const CString mode(caseName); MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+    MSHTML::IHTMLWindow2Ptr window(document ? document->parentWindow : NULL); if (!window) CheckError(E_NOINTERFACE);
+    auto execute = [&](const wchar_t* script) { CheckError(window->execScript(_bstr_t(script), _bstr_t(L"JScript"))); };
+    const bool cleanBefore = !DocChanged(); if (!cleanBefore) CheckError(E_UNEXPECTED);
+    bool changed=false, cleanAfter=false, saved=false, saveFailed=false;
+    if (mode == L"read") {
+      execute(L"var dirtyRead=document.all.binobj.getElementsByTagName('DIV')[0].base64data;");
+      cleanAfter=!DocChanged();
+    } else if (mode == L"validate") {
+      int line=0,col=0; const bool valid=m_doc->Validate(line,col); cleanAfter=valid && !DocChanged();
+    } else if (mode == L"recovery-clean") {
+      const ULONGLONG before=g_recoveryDiagnostics.written; const bool ok=SaveRecoveryNow();
+      cleanAfter=ok && g_recoveryDiagnostics.written==before && !DocChanged();
+    } else {
+      if (mode == L"replace" || mode == L"save-error")
+        execute(L"var dirtyData=new ActiveXObject('Msxml2.DOMDocument.6.0');dirtyData.loadXML('<data/>');dirtyData.documentElement.dataType='bin.base64';dirtyData.documentElement.text='CQgHBg==';document.all.binobj.getElementsByTagName('DIV')[0].base64data=dirtyData.documentElement.nodeTypedValue;");
+      else if (mode == L"id") execute(L"document.all.binobj.getElementsByTagName('DIV')[0].all.id.value='changed.bin';");
+      else if (mode == L"mime") execute(L"document.all.binobj.getElementsByTagName('DIV')[0].all.type.value='image/example';");
+      else if (mode == L"delete") execute(L"document.all.binobj.getElementsByTagName('DIV')[0].removeNode(true);");
+      else if (mode == L"add") execute(L"var dirtyData=new ActiveXObject('Msxml2.DOMDocument.6.0');dirtyData.loadXML('<data/>');dirtyData.documentElement.dataType='bin.base64';dirtyData.documentElement.text='CQgHBg==';apiAddBinary('', 'added.bin', 'application/octet-stream', dirtyData.documentElement.nodeTypedValue);");
+      else CheckError(E_INVALIDARG);
+      changed=DocChanged();
+      if (mode == L"save-error") {
+        const DWORD oldAttrs=::GetFileAttributesW(m_doc->m_filename);
+        if (oldAttrs==INVALID_FILE_ATTRIBUTES || !::SetFileAttributesW(m_doc->m_filename,oldAttrs|FILE_ATTRIBUTE_READONLY)) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
+        saveFailed=!m_doc->Save(); ::SetFileAttributesW(m_doc->m_filename,oldAttrs);
+        cleanAfter=!DocChanged();
+      } else {
+        saved=m_doc->Save(); cleanAfter=saved && !DocChanged();
+      }
+    }
+    const bool readonlyCase=mode==L"read" || mode==L"validate" || mode==L"recovery-clean";
+    const bool passed=cleanBefore && (readonlyCase ? cleanAfter : changed && (mode==L"save-error" ? saveFailed && !cleanAfter : saved && cleanAfter));
+    CStringA report; report.Format("clean-before=%d changed=%d saved=%d save-failed=%d clean-after=%d\n",cleanBefore,changed,saved,saveFailed,cleanAfter);
+    output.Write(report,static_cast<DWORD>(report.GetLength()),&written);output.Close();::PostQuitMessage(passed?0:1);
+  } catch(const _com_error& error) { CStringA report;report.Format("exception=0x%08lX\n",static_cast<unsigned long>(error.Error()));output.Write(report,report.GetLength(),&written);output.Close();::PostQuitMessage(1); }
+  return 0;
+}
 if (IsFbeTestScenario(L"recovery-redo-links-probe")) {
   DWORD written=0;
   try {
@@ -2236,18 +2278,27 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		// dialog receives WM_QUIT, which must remain a non-answer and retain its
 		// exit code; the -b report does not bypass the close confirmation here.
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
-		ShowView(SOURCE);
-		const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
-		std::vector<char> source(static_cast<size_t>(length) + 1);
-		m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(source.data()));
-		char* marker = strstr(source.data(), "SAVE_DECISION_ORIGINAL");
-		if(marker != NULL)
-		{
-			const sptr_t start = static_cast<sptr_t>(marker - source.data());
-			m_source.SendMessage(SCI_SETSEL, start, start + strlen("SAVE_DECISION_ORIGINAL"));
-			m_source.SendMessage(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("SAVE_DECISION_DIRTY"));
-		}
-		const bool dirtyBefore = marker != NULL && DocChanged();
+        wchar_t binaryMode[4] = {};
+        const bool binaryOnly=::GetEnvironmentVariableW(L"FBE_NEXT_TEST_DECISION_BINARY",binaryMode,_countof(binaryMode))==1 && binaryMode[0]==L'1';
+        bool edited=false;
+        if (binaryOnly) {
+            MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document()->parentWindow);
+            const wchar_t* script=L"var n=new ActiveXObject('Msxml2.DOMDocument.6.0');n.loadXML('<data/>');n.documentElement.dataType='bin.base64';n.documentElement.text='CQgHBg==';document.all.binobj.getElementsByTagName('DIV')[0].base64data=n.documentElement.nodeTypedValue;";
+            edited=window && SUCCEEDED(window->execScript(_bstr_t(script),_bstr_t(L"JScript")));
+        } else {
+		    ShowView(SOURCE);
+		    const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
+		    std::vector<char> source(static_cast<size_t>(length) + 1);
+		    m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(source.data()));
+		    char* marker = strstr(source.data(), "SAVE_DECISION_ORIGINAL");
+		    if(marker != NULL) {
+			    const sptr_t start = static_cast<sptr_t>(marker - source.data());
+			    m_source.SendMessage(SCI_SETSEL, start, start + strlen("SAVE_DECISION_ORIGINAL"));
+			    m_source.SendMessage(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("SAVE_DECISION_DIRTY"));
+                edited=true;
+		    }
+        }
+		const bool dirtyBefore = edited && DocChanged();
 		const bool savedRecovery = dirtyBefore && SaveRecoveryNow();
 		const CString snapshot = m_recovery.SnapshotPath();
 		const bool recoveryBefore = savedRecovery && ::GetFileAttributesW(snapshot) != INVALID_FILE_ATTRIBUTES;

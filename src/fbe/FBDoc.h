@@ -202,6 +202,9 @@ public:
 private:
 	GUID m_clipboard_identity = GUID_NULL;
   bool m_recoverySnapshotInProgress = false;
+  RecoveryBinarySnapshot m_savedBinarySnapshot;
+  bool m_savedBinarySnapshotValid = false;
+  bool SavedBinaryMatches();
   //long		    m_desc_ver;
   long		    m_body_ver;
   //long		    m_desc_cp;

@@ -349,7 +349,14 @@ bool Doc::DocChanged() {
 			} catch (const _com_error&) { } catch (const std::bad_alloc&) { }
 		}
 	}
-	return m_body_ver != m_editor.GetVersionNumber() || formChanged;
+	return m_body_ver != m_editor.GetVersionNumber() || formChanged || !SavedBinaryMatches();
+}
+
+bool Doc::SavedBinaryMatches()
+{
+    if (!m_savedBinarySnapshotValid) return false;
+    RecoveryBinarySnapshot current;
+    return CaptureRecoveryBinaries(current) && SameRecoveryBinaries(m_savedBinarySnapshot, current);
 }
 
 void Doc::CaptureNewTemplateBaseline() {
@@ -388,6 +395,8 @@ void Doc::MarkSavePoint() {
 	m_hasSavedBodyHtml = CaptureBodyHtml(m_savedBodyHtml);
 	m_reconcilePasteHistoryClean = false;
 	m_editor.ResetFormChanged();
+    m_savedBinarySnapshot.clear();
+    m_savedBinarySnapshotValid = CaptureRecoveryBinaries(m_savedBinarySnapshot);
 	m_hasDescriptionSavepoint = CaptureDescriptionState(m_savedDescriptionState);
 	m_savedBinaryRevision = m_binaryStore.payloads.Revision();
 	m_savedLegacyEpoch = m_binaryLegacyEpoch;
@@ -399,7 +408,7 @@ void Doc::ReconcileDescriptionSavepoint() {
 	try { ReconcileBinaryStore(); } catch (...) { return; }
 	// A script can replace legacy binary properties outside the catalog. Do not
 	// infer a clean state across script execution or a payload revision change.
-	if (m_binaryStore.Dirty() ||
+	if (m_binaryStore.Dirty() || !SavedBinaryMatches() ||
 		m_savedBinaryRevision != m_binaryStore.payloads.Revision() || m_savedLegacyEpoch != m_binaryLegacyEpoch) return;
 	CString body, description;
 	if (!m_hasSavedBodyHtml || !CaptureBodyHtml(body) || body != m_savedBodyHtml ||
@@ -409,7 +418,7 @@ void Doc::ReconcileDescriptionSavepoint() {
 
 void Doc::ReconcileUnchangedStartupTemplate() {
 	CString current;
-	if (m_hasSavedBodyHtml && !m_editor.IsFormChanged() && CaptureBodyHtml(current) && current == m_savedBodyHtml)
+	if (m_hasSavedBodyHtml && !m_editor.IsFormChanged() && CaptureBodyHtml(current) && current == m_savedBodyHtml && SavedBinaryMatches())
 		MarkSavePoint();
 }
 
@@ -429,7 +438,7 @@ void Doc::RestoreCleanIfBodyMatches() {
 	if (!m_reconcilePasteHistoryClean) return;
 	CString current;
 	if (!CaptureBodyHtml(current)) return;
-	if (m_hasSavedBodyHtml && !m_editor.IsFormChanged() && current == m_savedBodyHtml)
+	if (m_hasSavedBodyHtml && !m_editor.IsFormChanged() && current == m_savedBodyHtml && SavedBinaryMatches())
 		MarkSavePoint();
 	if (m_hasRecoveryBodyHtml && !m_editor.IsFormCP() && current == m_recoveryBodyHtml)
 		MarkDocCP();
