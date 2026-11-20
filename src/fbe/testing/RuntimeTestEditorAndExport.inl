@@ -22,8 +22,14 @@
 			MSHTML::IHTMLWindow2Ptr window(doc->parentWindow);
 			auto script = [&](LPCWSTR text) { return SUCCEEDED(window->execScript(_bstr_t(text), _bstr_t(L"JScript"))); };
 			auto element = [&](LPCWSTR id) { return MSHTML::IHTMLElementPtr(MSHTML::IHTMLDocument3Ptr(doc)->getElementById(id)); };
+			auto focusEditor = [&]() {
+				m_doc->m_body.SetFocus();
+				const HWND focus = ::GetFocus(), view = m_view.GetActiveWnd();
+				return focus && view && (focus == view || ::IsChild(view, focus));
+			};
 			const CString originalA(static_cast<LPCWSTR>(element(L"table-a")->outerHTML));
 			const CString originalB(static_cast<LPCWSTR>(element(L"table-b")->outerHTML));
+			passed = focusEditor() && passed;
 			passed = script(L"var e=document.createEventObject();e.button=1;document.getElementById('a0').fireEvent('onmousedown',e);document.getElementById('a1').fireEvent('onmousemove',e);document.getElementById('a1').fireEvent('onmouseup',e);") && passed;
 			const size_t selectedCells = m_doc->m_body.TableSelectionCountForTest();
 			passed = selectedCells == 2 && passed; report.AppendFormat("selected-cells=%u\n", static_cast<unsigned>(selectedCells));
@@ -34,9 +40,12 @@
 			const UINT_PTR cancelTimer = ::SetTimer(m_hWnd, 0, 100, &MenuDriver::Cancel);
 			if (cancelTimer) passed = script(L"document.getElementById('b0').fireEvent('oncontextmenu');") && passed;
 			if (cancelTimer) ::KillTimer(m_hWnd, cancelTimer);
+			const bool focusAfterCancel = focusEditor();
+			passed = focusAfterCancel && passed; report.AppendFormat("focus-after-cancel=%d\n", focusAfterCancel);
 			::SendMessage(m_hWnd, WM_COMMAND, MAKEWPARAM(ID_TABLE_DELETE_TABLE, 0), 0);
 			const bool cancelSafe = cancelTimer && !element(L"table-a") && element(L"table-b");
 			BOOL handled = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+			passed = focusEditor() && passed;
 			passed = script(L"var e=document.createEventObject();e.button=1;document.getElementById('a0').fireEvent('onmousedown',e);document.getElementById('a1').fireEvent('onmousemove',e);document.getElementById('a1').fireEvent('onmouseup',e);") && passed;
 			passed = m_doc->m_body.TableSelectionCountForTest() == 2 && passed;
 			const UINT_PTR timer = ::SetTimer(m_hWnd, 0, 100, &MenuDriver::Select);
@@ -3148,12 +3157,27 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 			::RedrawWindow(m_hWndStatusBar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
 			RECT rect = {}; ::GetClientRect(m_hWndStatusBar, &rect);
-			HDC dc = ::GetDC(m_hWndStatusBar);
-			const COLORREF pixel = dc && rect.bottom > 4 ? ::GetPixel(dc, 2, rect.bottom / 2) : CLR_INVALID;
-			if(dc) ::ReleaseDC(m_hWndStatusBar, dc);
+			COLORREF pixel = CLR_INVALID;
+			unsigned attempts = 0;
+			for (; attempts < 20 && pixel == CLR_INVALID; ++attempts) {
+				HDC dc = ::GetDC(m_hWndStatusBar);
+				pixel = dc && rect.bottom > 4 ? ::GetPixel(dc, 2, rect.bottom / 2) : CLR_INVALID;
+				if(dc) ::ReleaseDC(m_hWndStatusBar, dc);
+				if (pixel == CLR_INVALID && attempts + 1 < 20) {
+					// An occluded or not-yet-presented window has no readable screen
+					// pixels. Wait for the same visible surface; never accept a
+					// substituted colour or retry an incorrect valid colour.
+					::SetForegroundWindow(m_hWnd);
+					MSG message = {};
+					while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); }
+					::RedrawWindow(m_hWndStatusBar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+					::Sleep(50);
+				}
+			}
 			const COLORREF expected = ThemeManager::ControlColor();
 			const bool ok = applied && pixel == expected;
 			surfaceDetails.AppendFormat("pixel_%s\t%d\r\npixel_%s_actual\t%lu\r\npixel_%s_expected\t%lu\r\n", name, ok ? 1 : 0, name, static_cast<unsigned long>(pixel), name, static_cast<unsigned long>(expected));
+			surfaceDetails.AppendFormat("pixel_%s_attempts\t%u\r\n", name, attempts);
 			surfacePixels = surfacePixels && ok;
 			const HWND contextCombo = m_contextAttributeBars.HrefCatalogForPopulation();
 			COMBOBOXINFO comboInfo = {}; comboInfo.cbSize = sizeof(comboInfo);
