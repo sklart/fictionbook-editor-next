@@ -1,8 +1,9 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$FbeExe, [ValidateRange(30,180)][int]$TimeoutSeconds=90)
+param([Parameter(Mandatory)][string]$FbeExe, [ValidateRange(30,180)][int]$TimeoutSeconds=90, [string]$Case)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
-$cases=@('read','validate','recovery-clean','replace','id','mime','delete','add','save-error')
+$cases=@('read','validate','recovery-clean','replace','id','mime','delete','add','save-error','reentrant-save')
+if ($Case) { if ($cases -notcontains $Case) { throw "Unknown case: $Case" }; $cases=@($Case) }
 foreach($case in $cases) {
  $iso=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'binary-dirty'; $passed=$false
  try {
@@ -16,7 +17,7 @@ foreach($case in $cases) {
   $state=if(Test-Path $report){Get-Content $report -Raw}else{'<missing>'}; Write-Host "case=$case exit=$code $state"
   if($code -ne 0) { throw "Binary dirty failed: $case $state" }
   if($case -eq 'save-error' -and (Get-FileHash $fixture).Hash -ne $before) { throw 'Failed Save changed the original file.' }
-  if($case -in @('replace','id','mime','delete','add')) {
+  if($case -in @('replace','id','mime','delete','add','reentrant-save')) {
    $doc=[Xml.XmlDocument]::new();$doc.XmlResolver=$null;$doc.Load($fixture);$ns=[Xml.XmlNamespaceManager]::new($doc.NameTable);$ns.AddNamespace('f','http://www.gribuser.ru/xml/fictionbook/2.0')
    $nodes=$doc.SelectNodes('/f:FictionBook/f:binary',$ns)
    if($case -eq 'delete') { if($nodes.Count -ne 0) { throw 'Removed binary survived Save.' } }

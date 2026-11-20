@@ -41,6 +41,9 @@ if (IsFbeTestScenario(L"binary-dirty-contract")) {
     } else if (mode == L"recovery-clean") {
       const ULONGLONG before=g_recoveryDiagnostics.written; const bool ok=SaveRecoveryNow();
       cleanAfter=ok && g_recoveryDiagnostics.written==before && !DocChanged();
+    } else if (mode == L"reentrant-save") {
+      execute(L"var savedGetBinaries=GetBinaries;GetBinaries=function(d){savedGetBinaries(d);var n=new ActiveXObject('Msxml2.DOMDocument.6.0');n.loadXML('<data/>');n.documentElement.dataType='bin.base64';n.documentElement.text='CQgHBg==';document.all.binobj.getElementsByTagName('DIV')[0].base64data=n.documentElement.nodeTypedValue;GetBinaries=savedGetBinaries;};");
+      saved=m_doc->Save(); changed=DocChanged(); cleanAfter=!changed;
     } else {
       if (mode == L"replace" || mode == L"save-error")
         execute(L"var dirtyData=new ActiveXObject('Msxml2.DOMDocument.6.0');dirtyData.loadXML('<data/>');dirtyData.documentElement.dataType='bin.base64';dirtyData.documentElement.text='CQgHBg==';document.all.binobj.getElementsByTagName('DIV')[0].base64data=dirtyData.documentElement.nodeTypedValue;");
@@ -60,7 +63,7 @@ if (IsFbeTestScenario(L"binary-dirty-contract")) {
       }
     }
     const bool readonlyCase=mode==L"read" || mode==L"validate" || mode==L"recovery-clean";
-    const bool passed=cleanBefore && (readonlyCase ? cleanAfter : changed && (mode==L"save-error" ? saveFailed && !cleanAfter : saved && cleanAfter));
+    const bool passed=cleanBefore && (readonlyCase ? cleanAfter : mode==L"reentrant-save" ? saved && changed : changed && (mode==L"save-error" ? saveFailed && !cleanAfter : saved && cleanAfter));
     CStringA report; report.Format("clean-before=%d changed=%d saved=%d save-failed=%d clean-after=%d\n",cleanBefore,changed,saved,saveFailed,cleanAfter);
     output.Write(report,static_cast<DWORD>(report.GetLength()),&written);output.Close();::PostQuitMessage(passed?0:1);
   } catch(const _com_error& error) { CStringA report;report.Format("exception=0x%08lX\n",static_cast<unsigned long>(error.Error()));output.Write(report,report.GetLength(),&written);output.Close();::PostQuitMessage(1); }

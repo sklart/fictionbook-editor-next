@@ -388,6 +388,12 @@ void Doc::ReconcileNewTemplateAfterUndo() {
 	} catch (const _com_error&) { } catch (const std::bad_alloc&) { }
 }
 
+void Doc::ProtectSavedBinaries(RecoveryBinarySnapshot& snapshot) {
+    m_savedBinarySnapshot.swap(snapshot);
+    m_savedBinarySnapshotValid = true;
+    m_preserveSavedBinarySnapshot = true;
+}
+
 void Doc::MarkSavePoint() {
 	m_hasNewTemplateBaseline = false;
 	m_newTemplateEdited = false;
@@ -395,8 +401,13 @@ void Doc::MarkSavePoint() {
 	m_hasSavedBodyHtml = CaptureBodyHtml(m_savedBodyHtml);
 	m_reconcilePasteHistoryClean = false;
 	m_editor.ResetFormChanged();
-    m_savedBinarySnapshot.clear();
-    m_savedBinarySnapshotValid = CaptureRecoveryBinaries(m_savedBinarySnapshot);
+    // A save may have serialized earlier bytes than a reentrant callback left
+    // in memory. Preserve that checkpoint until the current payload matches.
+    if (!m_preserveSavedBinarySnapshot || SavedBinaryMatches()) {
+        m_savedBinarySnapshot.clear();
+        m_savedBinarySnapshotValid = CaptureRecoveryBinaries(m_savedBinarySnapshot);
+        m_preserveSavedBinarySnapshot = false;
+    }
 	m_hasDescriptionSavepoint = CaptureDescriptionState(m_savedDescriptionState);
 	m_savedBinaryRevision = m_binaryStore.payloads.Revision();
 	m_savedLegacyEpoch = m_binaryLegacyEpoch;
@@ -2779,20 +2790,24 @@ bool Doc::SerializeToMemory(std::vector<unsigned char>& output, FictionBookFileT
 	catch (_com_error& e) { m_last_save_error = e.Error(); U::ReportError(e); return false; }
 }
 bool  Doc::Save() {
-  if (!m_namevalid)
-    return false;
+  if (!m_namevalid || !BeginUserSave()) return false;
+  struct Guard { Doc& doc; ~Guard() { doc.EndUserSave(); } } guard{*this};
+  RecoveryBinarySnapshot before; if (!CaptureRecoveryBinaries(before)) return false;
   AU::CPersistentWaitCursor wc;
   if (SaveToFile(m_filename, false, NULL, NULL, false)) {
-    MarkSavePoint();
+    MarkSavePoint(); ProtectSavedBinaries(before);
     return true;
   }
   return false;
 }
 
 bool  Doc::Save(const CString& filename) {
+  if (!BeginUserSave()) return false;
+  struct Guard { Doc& doc; ~Guard() { doc.EndUserSave(); } } guard{*this};
+  RecoveryBinarySnapshot before; if (!CaptureRecoveryBinaries(before)) return false;
   AU::CPersistentWaitCursor wc;
   if (SaveToFile(filename)) {
-    MarkSavePoint();
+    MarkSavePoint(); ProtectSavedBinaries(before);
     m_filename=filename;
 	m_file_type=DetectFictionBookFileType(filename);
 	U::SetCurrentDirectoryToFile(filename);

@@ -1,6 +1,8 @@
         if (request->scriptingMethod >= 164 && request->scriptingMethod <= 168) {
             try {
                 FbeScripts::DocumentSave::CheckContext(m_doc);
+                if (!m_doc->BeginUserSave()) CheckError(E_UNEXPECTED);
+                struct DocSaveScope { FB::Doc* doc; ~DocSaveScope() { doc->EndUserSave(); } } docSaveScope{m_doc};
                 static thread_local bool saving = false;
                 if (saving) CheckError(E_UNEXPECTED);
                 struct Guard {bool& flag;Guard(bool& value):flag(value){flag=true;}~Guard(){flag=false;}} guard(saving);
@@ -35,6 +37,9 @@
                 if (!current && method != 167 && DetectFictionBookFileType(path) != target) CheckError(E_INVALIDARG);
                 CString encoding = options.encoding == L"utf-8" ? L"utf-8" : m_doc->m_encoding;
                 CString message;
+                FB::Doc::RecoveryBinarySnapshot binaryBefore;
+                const bool protectBinaries = !IsSourceActive() && (method == 164 || method == 165);
+                if (protectBinaries && !m_doc->CaptureRecoveryBinaries(binaryBefore)) CheckError(E_FAIL);
                 MSXML2::IXMLDOMDocument2Ptr snapshot;
                 if (IsSourceActive()) {
                     SourceDocumentText source;
@@ -80,6 +85,7 @@
                     if (current) {
                         const auto saved = controller.SaveCurrentSnapshot(m_document_session, bytes);
                         if (!saved.Succeeded()) CheckError(saved.archiveError.systemError ? HRESULT_FROM_WIN32(saved.archiveError.systemError) : E_FAIL);
+                        if (protectBinaries) m_doc->ProtectSavedBinaries(binaryBefore);
                         CommitSuccessfulSave();
                     } else if (method == 165) {
                         controller.SaveAsSnapshot(m_document_session, path, target, bytes, options.overwrite);
@@ -87,6 +93,7 @@
                         m_doc->m_filename = path;m_doc->m_namevalid = true;m_doc->SetDocumentFileType(target);
                         m_recentDocuments.OnSavedAsNormal(path);
                         if (changedType) ResetValidationStatus();
+                        if (protectBinaries) m_doc->ProtectSavedBinaries(binaryBefore);
                         CommitSuccessfulSave();U::SetCurrentDirectoryToFile(path);
                     } else DocumentSaveController::WriteSnapshot(bytes, path, options.overwrite);
                     if (method <= 165) {

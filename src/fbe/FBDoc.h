@@ -92,7 +92,10 @@ public:
 
   HRESULT GetLastSaveError() const { return m_last_save_error; }
   bool    SaveRecoveryCopy(const CString& filename);
-  bool    RecoverySnapshotInProgress() const { return m_recoverySnapshotInProgress; }
+  bool    RecoverySnapshotInProgress() const { return m_recoverySnapshotInProgress || m_userSaveInProgress; }
+  bool    BeginUserSave() { if (RecoverySnapshotInProgress()) return false; m_userSaveInProgress = true; return true; }
+  void    EndUserSave() { m_userSaveInProgress = false; }
+  void    ProtectSavedBinaries(RecoveryBinarySnapshot& snapshot);
   bool	  Validate(int &errline,int &errcol) {
     AU::CPersistentWaitCursor wc;
     return SaveToFile(CString(),true,&errline,&errcol);
@@ -202,6 +205,8 @@ public:
 private:
 	GUID m_clipboard_identity = GUID_NULL;
   bool m_recoverySnapshotInProgress = false;
+  bool m_userSaveInProgress = false;
+  bool m_preserveSavedBinarySnapshot = false;
   RecoveryBinarySnapshot m_savedBinarySnapshot;
   bool m_savedBinarySnapshotValid = false;
   bool SavedBinaryMatches();

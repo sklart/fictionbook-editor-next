@@ -86,12 +86,17 @@ DocumentSaveResult DocumentSaveController::SaveCurrent(FB::Doc& document, Docume
 		return { DocumentSaveStatus::Success, DocumentSaveFailureKind::None, location, FbeArchive::Error() };
 	}
 
+    if (!document.BeginUserSave()) return { DocumentSaveStatus::Failed, DocumentSaveFailureKind::Serialization, location, FbeArchive::Error() };
+    struct Guard { FB::Doc& doc; ~Guard() { doc.EndUserSave(); } } guard{document};
+    FB::Doc::RecoveryBinarySnapshot before;
+    if (!document.CaptureRecoveryBinaries(before)) return { DocumentSaveStatus::Failed, DocumentSaveFailureKind::Serialization, location, FbeArchive::Error() };
 	std::vector<unsigned char> serialized;
 	if (!document.SerializeToMemory(serialized, location.documentType)) return { DocumentSaveStatus::Failed, DocumentSaveFailureKind::Serialization, location, FbeArchive::Error() };
 	FbeArchive::Error error;
 	DocumentLocation savedLocation;
 	if (!FbeArchive::SaveDocument(location, serialized, savedLocation, error)) return { DocumentSaveStatus::Failed, DocumentSaveFailureKind::ArchiveWrite, location, error };
 	session.SavedArchive(savedLocation);
+    document.ProtectSavedBinaries(before);
 	operation.Succeeded();
 	return { DocumentSaveStatus::Success, DocumentSaveFailureKind::None, savedLocation, FbeArchive::Error() };
 }
