@@ -216,7 +216,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT message, WPARAM wparam, LPARAM 
         if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS))) return 0;
         return RunSettingsDialogRuntime(output);
     }
-    if (RuntimeTests::IsScenario(L"ui-defects-runtime")) {
+    if (RuntimeTests::IsScenario(L"ui-defects-runtime") || RuntimeTests::IsScenario(L"quality-icon-theme-runtime")) {
         PluginOptionsProbe::paletteForWindow = EditorPluginProbePalette;
         CAtlFile output;
         if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS))) return 0;

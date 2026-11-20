@@ -1865,7 +1865,12 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		OnViewTree(0, 0, NULL, treeCommandHandled);
 		treeOption = treeOption && !_Settings.ViewDocumentTree() && m_splitter.GetSinglePaneMode() == SPLIT_PANE_RIGHT;
 		OnViewTree(0, 0, NULL, treeCommandHandled);
+		const EditorConfigurationSnapshot treeEnabledConfiguration = CaptureEditorConfigurationSnapshot();
 		_Settings.SetShowTreeInDescription(false);
+		const EditorConfigurationSnapshot treeDisabledConfiguration = CaptureEditorConfigurationSnapshot();
+		treeOption = treeOption && !(treeEnabledConfiguration == treeDisabledConfiguration) &&
+			!HasOnlyEditorBackgroundConfigurationChanged(treeEnabledConfiguration, treeDisabledConfiguration) &&
+			!HasOnlySourceEditorConfigurationChanged(treeEnabledConfiguration, treeDisabledConfiguration);
 		ApplyConfChanges(false, false);
 		treeOption = treeOption && m_splitter.GetSinglePaneMode() == SPLIT_PANE_RIGHT;
 		_Settings.SetShowTreeInDescription(true);

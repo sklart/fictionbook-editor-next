@@ -1967,6 +1967,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Add(m_updateChannel, L"fbe.settings.tooltip.general.update_channel", L"Controls which application versions are offered by the built-in updater.");
 	m_tooltips.Add(GetDlgItem(IDC_CREATE_BACKUP_FILE), L"fbe.settings.tooltip.general.backup", L"Creates a .bak copy before saving an existing file.");
 	m_tooltips.Add(GetDlgItem(IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE), L"fbe.settings.tooltip.general.full_path", L"Shows the complete file path in the application window title.");
+	m_tooltips.Add(GetDlgItem(IDC_SHOW_TREE_IN_DESCRIPTION), L"fbe.settings.tooltip.general.tree_in_description", L"Allows the document tree to be shown in Description when the tree is enabled.");
 
 	SetText(m_hWnd, IDC_OPTIONS_INTERFACE_GROUP, L"fbe.dialog.idd_options.interface", L"Interface");
 	SetText(m_hWnd, IDC_OPTIONS_LANGUAGE_LABEL, L"fbe.dialog.idd_options.language", L"Language:");

@@ -1202,6 +1202,7 @@ struct EditorConfigurationSnapshot
 	bool sourceShowSpecialChars;
 	DWORD sourceSpecialCharsStyle;
 	CString descriptionLayout;
+	bool treeInDescription;
 	bool sourceShowLineNumbers;
 	bool fastMode;
 	bool useSpellChecker;
@@ -1226,7 +1227,7 @@ struct EditorConfigurationSnapshot
 			checkRussianYoUsage == other.checkRussianYoUsage && sourceShowEol == other.sourceShowEol &&
 			sourceShowWhitespace == other.sourceShowWhitespace && sourceShowSpecialChars == other.sourceShowSpecialChars &&
 			sourceSpecialCharsStyle == other.sourceSpecialCharsStyle &&
-			descriptionLayout == other.descriptionLayout &&
+			descriptionLayout == other.descriptionLayout && treeInDescription == other.treeInDescription &&
 			sourceShowLineNumbers == other.sourceShowLineNumbers &&
 			fastMode == other.fastMode && useSpellChecker == other.useSpellChecker &&
 			highlightMisspells == other.highlightMisspells;
@@ -1265,11 +1266,61 @@ static EditorConfigurationSnapshot CaptureEditorConfigurationSnapshot()
 	snapshot.sourceShowSpecialChars = _Settings.XmlSrcShowSpecialChars();
 	snapshot.sourceSpecialCharsStyle = _Settings.XmlSrcSpecialCharsStyle();
 	snapshot.descriptionLayout = _Settings.GetDescriptionLayout();
+	snapshot.treeInDescription = _Settings.ShowTreeInDescription();
 	snapshot.sourceShowLineNumbers = _Settings.XMLSrcShowLineNumbers();
 	snapshot.fastMode = _Settings.FastMode();
 	snapshot.useSpellChecker = _Settings.GetUseSpellChecker();
 	snapshot.highlightMisspells = _Settings.GetHighlightMisspells();
 	return snapshot;
+}
+
+static int AddQualityToolbarIcon(HIMAGELIST images, HINSTANCE module, int size)
+{
+	HICON icon = static_cast<HICON>(::LoadImageW(module, MAKEINTRESOURCEW(IDI_FB2_QUALITY),
+		IMAGE_ICON, size, size, LR_DEFAULTCOLOR));
+	if (!icon) return -1;
+	int index = -1;
+	if (ThemeManager::IsDark() && !ThemeManager::IsHighContrast()) {
+		BITMAPINFO info = {};
+		info.bmiHeader.biSize = sizeof(info.bmiHeader);
+		info.bmiHeader.biWidth = size;
+		info.bmiHeader.biHeight = -size;
+		info.bmiHeader.biPlanes = 1;
+		info.bmiHeader.biBitCount = 32;
+		void* bits = nullptr;
+		HBITMAP bitmap = ::CreateDIBSection(nullptr, &info, DIB_RGB_COLORS, &bits, nullptr, 0);
+		HDC dc = ::CreateCompatibleDC(nullptr);
+		if (bitmap && bits && dc) {
+			memset(bits, 0, static_cast<size_t>(size) * size * sizeof(DWORD));
+			HGDIOBJ previous = ::SelectObject(dc, bitmap);
+			if (previous && previous != HGDI_ERROR && ::DrawIconEx(dc, 0, 0, icon, size, size, 0, nullptr, DI_NORMAL)) {
+				::GdiFlush();
+				DWORD* pixels = static_cast<DWORD*>(bits);
+				bool visible = false;
+				for (int i = 0; i < size * size; ++i) {
+					const DWORD pixel = pixels[i], alpha = pixel >> 24;
+					if (!alpha) continue;
+					visible = true;
+					const DWORD red = (pixel >> 16) & 255, green = (pixel >> 8) & 255, blue = pixel & 255;
+					// The dark blue outline disappears against dark toolbar backgrounds.
+					if ((std::max)({ red, green, blue }) * 255 / alpha < 110) {
+						const DWORD lift = 100 * alpha / 255;
+						pixels[i] = (alpha << 24) | ((std::min)(alpha, red + lift) << 16) |
+							((std::min)(alpha, green + lift) << 8) | (std::min)(alpha, blue + lift);
+					}
+				}
+				::SelectObject(dc, previous);
+				previous = nullptr;
+				if (visible) index = ::ImageList_Add(images, bitmap, nullptr);
+			}
+			if (previous && previous != HGDI_ERROR) ::SelectObject(dc, previous);
+		}
+		if (dc) ::DeleteDC(dc);
+		if (bitmap) ::DeleteObject(bitmap);
+	}
+	if (index < 0) index = ::ImageList_AddIcon(images, icon);
+	::DestroyIcon(icon);
+	return index;
 }
 
 static bool HasDocumentStyleConfigurationChanged(const EditorConfigurationSnapshot& before,
@@ -1305,7 +1356,7 @@ static bool HasOnlySourceEditorConfigurationChanged(const EditorConfigurationSna
 		before.editorBackgroundCustomPath == after.editorBackgroundCustomPath && before.editorBackgroundLayout == after.editorBackgroundLayout &&
 		before.customDictionary == after.customDictionary && before.nbsp == after.nbsp &&
 		before.customDictionaryCodepage == after.customDictionaryCodepage &&
-		before.descriptionLayout == after.descriptionLayout &&
+		before.descriptionLayout == after.descriptionLayout && before.treeInDescription == after.treeInDescription &&
 		before.fastMode == after.fastMode && before.useSpellChecker == after.useSpellChecker &&
 		before.highlightMisspells == after.highlightMisspells &&
 		before.checkRussianYoUsage == after.checkRussianYoUsage &&
@@ -4084,10 +4135,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	m_CmdToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
 	const int qualityImageSize = UiMetrics::ScaleForDpi(_Settings.GetMainToolbarIconSize(), UiMetrics::DpiForWindow(m_hWnd));
-	HICON qualityToolbarIcon = static_cast<HICON>(::LoadImageW(applicationModule, MAKEINTRESOURCEW(IDI_FB2_QUALITY),
-		IMAGE_ICON, qualityImageSize, qualityImageSize, LR_DEFAULTCOLOR));
-	const int qualityImageIndex = qualityToolbarIcon ? ::ImageList_AddIcon(m_commandToolbarImages, qualityToolbarIcon) : -1;
-	if(qualityToolbarIcon) ::DestroyIcon(qualityToolbarIcon);
+	const int qualityImageIndex = AddQualityToolbarIcon(m_commandToolbarImages, applicationModule, qualityImageSize);
 	if(qualityImageIndex < 0) return -1;
 	TBBUTTON qualityButton = {};
 	qualityButton.iBitmap = qualityImageIndex;
@@ -4832,9 +4880,7 @@ bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
         !ToolbarFactory::CreateCommandToolbarImages(replacement,IDR_MAINFRAME,dpi,_Settings.GetMainToolbarIconSize())) return false;
     const HINSTANCE module=ATL::_AtlBaseModule.GetModuleInstance();
     const int imageSize=UiMetrics::ScaleForDpi(_Settings.GetMainToolbarIconSize(),dpi ? dpi : 96);
-    HICON qualityIcon=static_cast<HICON>(::LoadImageW(module,MAKEINTRESOURCEW(IDI_FB2_QUALITY),IMAGE_ICON,imageSize,imageSize,LR_DEFAULTCOLOR));
-    const int qualityImage=qualityIcon ? ::ImageList_AddIcon(replacement,qualityIcon) : -1;
-    if(qualityIcon) ::DestroyIcon(qualityIcon);
+    const int qualityImage=AddQualityToolbarIcon(replacement,module,imageSize);
     if(qualityImage<0) return false;
     std::vector<int> imageIndices(kTableToolbarCommandCount);
     for(size_t i=0;i<kTableToolbarCommandCount;++i) {

@@ -1,3 +1,46 @@
+if (IsFbeTestScenario(L"quality-icon-theme-runtime")) {
+    const InterfacePalette original = ThemeManager::GetNamedPalette();
+    auto draw = [&](bool adapted, bool live) {
+        std::vector<DWORD> result;
+        HIMAGELIST list = live ? m_CmdToolbar.GetImageList() : ::ImageList_Create(32, 32, ILC_COLOR32, 1, 1);
+        HICON icon = live ? nullptr : static_cast<HICON>(::LoadImageW(_Module.GetResourceInstance(), MAKEINTRESOURCEW(IDI_FB2_QUALITY), IMAGE_ICON, 32, 32, LR_DEFAULTCOLOR));
+        int index = -1;
+        if (live) { TBBUTTON button = {}; const int position = m_CmdToolbar.CommandToIndex(ID_FILE_QUALITY_CHECK); if (position >= 0 && m_CmdToolbar.GetButton(position, &button)) index = button.iBitmap; }
+        else if (list && icon) index = adapted ? AddQualityToolbarIcon(list, _Module.GetResourceInstance(), 32) : ::ImageList_AddIcon(list, icon);
+        BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = 32; info.bmiHeader.biHeight = -32; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
+        void* bits = nullptr; HBITMAP bitmap = ::CreateDIBSection(nullptr, &info, DIB_RGB_COLORS, &bits, nullptr, 0); HDC dc = ::CreateCompatibleDC(nullptr);
+        if (bitmap && bits && dc && index >= 0) {
+            HGDIOBJ previous = ::SelectObject(dc, bitmap);
+            if (previous && previous != HGDI_ERROR) {
+                DWORD* pixels = static_cast<DWORD*>(bits); std::fill(pixels, pixels + 1024, 0x00232323);
+                if (::ImageList_Draw(list, index, dc, 0, 0, ILD_TRANSPARENT)) { ::GdiFlush(); result.assign(pixels, pixels + 1024); }
+                ::SelectObject(dc, previous);
+            }
+        }
+        if (dc) ::DeleteDC(dc); if (bitmap) ::DeleteObject(bitmap); if (icon) ::DestroyIcon(icon); if (list && !live) ::ImageList_Destroy(list);
+        return result;
+    };
+    const bool lightSet = ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CATPPUCCIN_LATTE);
+    const auto lightOriginal = draw(false, false), lightAdapted = draw(true, false);
+    const int oldSize = _Settings.GetMainToolbarIconSize(); _Settings.SetMainToolbarIconSize(32);
+    const bool lightRebuilt = RebuildCommandToolbarImages(96); const auto lightLive = draw(true, true);
+    const bool darkSet = ThemeManager::SetNamedPalette(INTERFACE_PALETTE_GRAPHITE);
+    const auto darkOriginal = draw(false, false), darkAdapted = draw(true, false);
+    const bool darkRebuilt = RebuildCommandToolbarImages(96); const auto darkLive = draw(true, true);
+    unsigned brighter = 0, drawn = 0;
+    if (darkOriginal.size() == darkAdapted.size()) for (size_t i = 0; i < darkOriginal.size(); ++i) {
+        const DWORD a = darkOriginal[i], b = darkAdapted[i];
+        if ((a & 0x00ffffff) != 0x00232323) ++drawn;
+        const int sumA = static_cast<int>((a & 255) + ((a >> 8) & 255) + ((a >> 16) & 255));
+        const int sumB = static_cast<int>((b & 255) + ((b >> 8) & 255) + ((b >> 16) & 255));
+        if (sumB > sumA + 60) ++brighter;
+    }
+    ThemeManager::SetNamedPalette(original); _Settings.SetMainToolbarIconSize(oldSize); RebuildCommandToolbarImages(UiMetrics::DpiForWindow(m_hWnd));
+    const bool liveMatches = lightRebuilt && darkRebuilt && lightLive == lightAdapted && darkLive == darkAdapted;
+    const bool passed = lightSet && darkSet && !lightOriginal.empty() && lightOriginal == lightAdapted && brighter >= 5 && liveMatches;
+    CStringA report; report.Format("result=%s\nlight_unchanged=%d\ndark_brighter_pixels=%u\ndrawn=%u\nlive_toolbar=%d\n", passed ? "PASS" : "FAIL", lightOriginal == lightAdapted && !lightOriginal.empty(), brighter, drawn, liveMatches);
+    DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
+}
 if (IsFbeTestScenario(L"ui-defects-runtime")) {
     bool passed = true; CStringA report;
     auto stage = [&](const char* name, int iteration) { CStringA line; line.Format("stage=%s:%d\n",name,iteration); DWORD written=0; output.Write(line,line.GetLength(),&written); output.Flush(); };
