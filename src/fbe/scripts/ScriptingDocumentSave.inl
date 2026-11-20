@@ -87,6 +87,7 @@
                         if (!saved.Succeeded()) CheckError(saved.archiveError.systemError ? HRESULT_FROM_WIN32(saved.archiveError.systemError) : E_FAIL);
                         if (protectBinaries) m_doc->ProtectSavedBinaries(binaryBefore);
                         CommitSuccessfulSave();
+                        if (protectBinaries) m_doc->ArmScriptDescriptionCheck();
                     } else if (method == 165) {
                         controller.SaveAsSnapshot(m_document_session, path, target, bytes, options.overwrite);
                         const bool changedType = m_doc->GetDocumentFileType() != target;
@@ -94,7 +95,9 @@
                         m_recentDocuments.OnSavedAsNormal(path);
                         if (changedType) ResetValidationStatus();
                         if (protectBinaries) m_doc->ProtectSavedBinaries(binaryBefore);
-                        CommitSuccessfulSave();U::SetCurrentDirectoryToFile(path);
+                        CommitSuccessfulSave();
+                        if (protectBinaries) m_doc->ArmScriptDescriptionCheck();
+                        U::SetCurrentDirectoryToFile(path);
                     } else DocumentSaveController::WriteSnapshot(bytes, path, options.overwrite);
                     if (method <= 165) {
                         m_need_title_update = true;InvalidateUi(UiDirtyDocument | UiDirtyStatus | UiDirtyToolbar);

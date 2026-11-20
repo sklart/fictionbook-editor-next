@@ -96,6 +96,7 @@ public:
   bool    BeginUserSave() { if (RecoverySnapshotInProgress()) return false; m_userSaveInProgress = true; return true; }
   void    EndUserSave() { m_userSaveInProgress = false; }
   void    ProtectSavedBinaries(RecoveryBinarySnapshot& snapshot);
+  void    ArmScriptDescriptionCheck();
   bool	  Validate(int &errline,int &errcol) {
     AU::CPersistentWaitCursor wc;
     return SaveToFile(CString(),true,&errline,&errcol);
@@ -207,6 +208,8 @@ private:
   bool m_recoverySnapshotInProgress = false;
   bool m_userSaveInProgress = false;
   bool m_preserveSavedBinarySnapshot = false;
+  bool m_scriptDescriptionCheckArmed = false;
+  CString m_scriptSavedDescription;
   RecoveryBinarySnapshot m_savedBinarySnapshot;
   bool m_savedBinarySnapshotValid = false;
   bool SavedBinaryMatches();
@@ -223,7 +226,7 @@ private:
 	unsigned long long m_savedBinaryRevision = 0, m_savedLegacyEpoch = 0, m_binaryLegacyEpoch = 0;
 	bool m_hasDescriptionSavepoint = false;
 	bool CaptureBodyHtml(CString& html);
-	bool CaptureDescriptionState(CString& state);
+	bool CaptureDescriptionState(CString& state, bool allowLegacy = false);
 
   // Последняя ошибка операции сохранения. Нужна, чтобы интерфейс мог
   // предложить «Сохранить как» при отказе в доступе к исходному файлу.

@@ -296,11 +296,11 @@ bool Doc::CaptureBodyHtml(CString& html) {
 	} catch (const _com_error&) { return false; }
 }
 
-bool Doc::CaptureDescriptionState(CString& state) {
+bool Doc::CaptureDescriptionState(CString& state, bool allowLegacy) {
 	state.Empty();
 	// Compare the complete Description markup and live control values; binary
 	// payloads are guarded separately by their document-owned revision.
-	if (m_binaryLegacyDepth || m_binaryStore.Dirty()) return false;
+	if (!allowLegacy && (m_binaryLegacyDepth || m_binaryStore.Dirty())) return false;
 	try {
 		MSHTML::IHTMLDocument3Ptr document(m_editor.Document());
 		MSHTML::IHTMLElementPtr description(document ? document->getElementById(L"fbw_desc") : NULL);
@@ -349,6 +349,10 @@ bool Doc::DocChanged() {
 			} catch (const _com_error&) { } catch (const std::bad_alloc&) { }
 		}
 	}
+	if (m_scriptDescriptionCheckArmed && m_binaryLegacyDepth) {
+		CString current;
+		if (!CaptureDescriptionState(current, true) || current != m_scriptSavedDescription) return true;
+	}
 	return m_body_ver != m_editor.GetVersionNumber() || formChanged || !SavedBinaryMatches();
 }
 
@@ -386,6 +390,12 @@ void Doc::ReconcileNewTemplateAfterUndo() {
 		m_newTemplateXml = baseline;
 		m_hasNewTemplateBaseline = true;
 	} catch (const _com_error&) { } catch (const std::bad_alloc&) { }
+}
+
+void Doc::ArmScriptDescriptionCheck() {
+	if (!m_binaryLegacyDepth) return;
+	m_scriptDescriptionCheckArmed = CaptureDescriptionState(m_scriptSavedDescription, true);
+	if (!m_scriptDescriptionCheckArmed) m_body.MarkDescriptionFormChanged();
 }
 
 void Doc::ProtectSavedBinaries(RecoveryBinarySnapshot& snapshot) {
@@ -796,6 +806,12 @@ void Doc::RunScript(LPCOLESTR filePath)
         ~LegacyBinaryScope() {
             // A reentrant command may replace the owning document.
             if (Doc* doc = Doc::BinaryOwner(identity)) {
+                if (doc->m_scriptDescriptionCheckArmed) {
+                    CString current;
+                    if (!doc->CaptureDescriptionState(current, true) || current != doc->m_scriptSavedDescription)
+                        doc->m_body.MarkDescriptionFormChanged();
+                    if (doc->m_binaryLegacyDepth == 1) doc->m_scriptDescriptionCheckArmed = false;
+                }
                 --doc->m_binaryLegacyDepth; doc->m_binaryStore.Invalidate(true);
                 if (!doc->m_binaryLegacyDepth) {
                     // A script may construct its own binary DIV/expando.
