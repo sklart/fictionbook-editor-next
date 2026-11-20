@@ -6,7 +6,7 @@ cannot safely be reused.
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('Prepare', 'Write')][string]$Action,
+    [Parameter(Mandatory)][ValidateSet('Prepare', 'Write', 'Verify')][string]$Action,
     [Parameter(Mandatory)][string]$DependencyName,
     [Parameter(Mandatory)][string]$BuildDirectory,
     [Parameter(Mandatory)][string]$InstallDirectory,
@@ -62,6 +62,15 @@ $fingerprint = Get-Fingerprint
 if ($Action -eq 'Write') {
     if (-not (Test-Path -LiteralPath $BuildDirectory)) { throw "Cannot write fingerprint: build directory '$BuildDirectory' does not exist." }
     $fingerprint | ConvertTo-Json | Set-Content -LiteralPath $metadataPath -Encoding utf8NoBOM
+    return [PSCustomObject]@{ Recreated = $false; MetadataPath = $metadataPath }
+}
+
+if ($Action -eq 'Verify') {
+    if (-not (Test-Path -LiteralPath $metadataPath -PathType Leaf)) { throw "Missing $DependencyName CMake fingerprint: $metadataPath" }
+    try { $actual = Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json } catch { throw "Invalid $DependencyName CMake fingerprint: $metadataPath" }
+    if (-not (Test-Fingerprint $actual $fingerprint) -or -not (Test-Path -LiteralPath ([string]$actual.installationPath))) {
+        throw "Incompatible $DependencyName CMake fingerprint: $metadataPath"
+    }
     return [PSCustomObject]@{ Recreated = $false; MetadataPath = $metadataPath }
 }
 

@@ -3,14 +3,16 @@ name: AddressSanitizer
 on:
   push:
     branches: [master]
-    tags: ['v*']
   pull_request:
+  schedule:
+    - cron: '17 2 * * 1'
+  workflow_call:
   workflow_dispatch:
     inputs:
       full_validation:
         description: Run the extended sanitizer runtime contour
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: read
@@ -32,21 +34,25 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           New-Item -ItemType Directory -Force out/tests/asan | Out-Null
-          ./tools/build/build.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143 -Sanitizer Address *> out/tests/asan/build.log
-          if (-not $? -or $LASTEXITCODE -ne 0) { throw 'ASan build failed; see build.log' }
+          $watch = [Diagnostics.Stopwatch]::StartNew()
+          try {
+            ./tools/build/build.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143 -Sanitizer Address *> out/tests/asan/build.log
+            if (-not $? -or $LASTEXITCODE -ne 0) { throw 'ASan build failed; see build.log' }
+          } finally { $watch.Stop(); "ASan build: $([math]::Round($watch.Elapsed.TotalSeconds, 1)) s." >> $env:GITHUB_STEP_SUMMARY }
       - name: Validate sanitizer policy and production package rejection
         shell: pwsh
         run: ./tools/tests/test-sanitizer-build-policy.ps1 *> out/tests/asan/build-policy.log
       - name: Run native regressions for confirmed memory defects
         shell: pwsh
         run: ./tools/tests/test-asan-regressions-native.ps1 -Sanitizer Address
-      - name: Run sanitizer FAST and infrastructure self-test
+      - name: Run focused sanitizer checks
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type != 'tag') || (github.event_name == 'workflow_dispatch' && !inputs.full_validation)
         shell: pwsh
-        run: ./tools/tests/run-sanitizers.ps1 -Sanitizer Address -Contour Fast
+        run: ./tools/tests/invoke-sanitizer-ci.ps1 -Sanitizer Address -Focused
       - name: Run sanitizer FULL
-        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.full_validation)
+        if: github.ref_type == 'tag' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.full_validation)
         shell: pwsh
-        run: ./tools/tests/run-sanitizers.ps1 -Sanitizer Address -Contour Full
+        run: ./tools/tests/invoke-sanitizer-ci.ps1 -Sanitizer Address
       - name: Ensure build failures also have a summary
         if: always()
         shell: pwsh
@@ -61,6 +67,8 @@ jobs:
           }
           @{status=$env:ASAN_JOB_STATUS; sanitizer='Address'; commit=$env:GITHUB_SHA; summaries=@($summaries.FullName)} |
             ConvertTo-Json | Set-Content out/tests/asan/ci-summary.json -Encoding utf8
+          $env:SANITIZER_JOB_STATUS = $env:ASAN_JOB_STATUS
+          ./tools/tests/write-sanitizer-ci-summary.ps1 -Directory asan
       - name: Upload sanitizer summaries
         if: always()
         uses: actions/upload-artifact@v7

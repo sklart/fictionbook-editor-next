@@ -157,6 +157,10 @@ function Assert-PreparedDependencies {
     if ($missing.Count -gt 0) {
         throw ("Нельзя пропустить подготовку зависимостей; отсутствуют: {0}" -f ($missing -join "; "))
     }
+    $emptyFiles = @($requiredPaths | Where-Object {
+        (Test-Path -LiteralPath $_ -PathType Leaf) -and (Get-Item -LiteralPath $_).Length -eq 0
+    })
+    if ($emptyFiles.Count -gt 0) { throw ("Подготовленные зависимости содержат пустые файлы: {0}" -f ($emptyFiles -join '; ')) }
 }
 
 function Get-FirstPartyToolchainFingerprint {
@@ -372,6 +376,10 @@ if ($ReusePreparedPcre2) {
     if (@($pcreInputs | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) }).Count -gt 0) {
         throw 'PCRE2 cache was reported as reusable, but its required files are missing.'
     }
+    # The helper also verifies the prepared fingerprint against the current
+    # compiler, generator, dependency revision and PCRE2 build options.
+    & pwsh @pcre2BuildArgs
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Write-Host "Используется только проверенный PCRE2 cache; остальные зависимости будут подготовлены отдельно."
 }
 else {
@@ -389,6 +397,17 @@ if ($Sanitizer -eq 'Undefined') {
 }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($ReusePreparedImageStack) {
+    # A cache key is not a substitute for the CMake tree's toolchain metadata.
+    # Verify without deleting or rebuilding a restored tree on mismatch.
+    $cacheVs = & (Join-Path $repoRoot 'tools\build\Resolve-VsCmake.ps1') -PlatformToolset $PlatformToolset
+    $suffix = if ($PlatformToolset) { "-$PlatformToolset" } else { '-default' }
+    foreach ($dependency in @('libwebp', 'openjpeg', 'aom', 'libde265', 'libheif')) {
+        $configurationDirectory = if ($dependency -in @('libwebp', 'openjpeg')) { $Configuration } else { "$Configuration$suffix" }
+        & (Join-Path $repoRoot 'tools\build\CmakeBuildTree.ps1') -Action Verify -DependencyName $dependency `
+            -BuildDirectory (Join-Path $repoRoot "build\$dependency\$configurationDirectory") `
+            -InstallDirectory (Join-Path $repoRoot "build\$dependency\install\$Configuration") `
+            -Vs $cacheVs -PlatformToolset $PlatformToolset | Out-Null
+    }
     $imageInputs = @(
         (Join-Path $repoRoot "build\libwebp\install\$Configuration\include"),
         (Join-Path $repoRoot "build\libwebp\install\$Configuration\lib\libwebp.lib"),

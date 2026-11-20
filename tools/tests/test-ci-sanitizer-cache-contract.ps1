@@ -1,0 +1,38 @@
+[CmdletBinding()]
+param()
+$ErrorActionPreference = 'Stop'
+$root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
+$workflow = Get-Content -LiteralPath (Join-Path $root '.github/workflows/build.yml') -Raw
+$runner = Get-Content -LiteralPath (Join-Path $root 'tools/tests/invoke-sanitizer-ci.ps1') -Raw
+foreach ($cache in @('pcre2-cache','hunspell-cache','image-stack-cache','editor-runtime-cache')) {
+    if ($workflow -notmatch "(?s)actions/cache/restore@v6\s*\r?\n\s*id: $cache") { throw "Missing explicit restore for $cache" }
+    if ($workflow -notmatch "(?s)if: steps\.$cache\.outputs\.cache-hit != 'true'\s*\r?\n\s*uses: actions/cache/save@v6\s*\r?\n\s*with:.*?key: \`$\{\{ steps\.$cache\.outputs\.cache-primary-key \}\}") { throw "Missing conditional save for $cache" }
+}
+$compile = $workflow.IndexOf('- name: Build Release Win32')
+$save = $workflow.IndexOf('- name: Save PCRE2 cache')
+$runtime = $workflow.IndexOf('- name: Run XML source theme v1 runtime regression')
+if ($compile -lt 0 -or $save -le $compile -or $runtime -le $save) { throw 'Caches must be saved after a successful build and before runtime tests.' }
+foreach ($required in @('Get-FileHash -LiteralPath $compiler','VCToolsVersion','ImageVersion')) {
+    if (-not $workflow.Contains($required)) { throw "Missing cache toolchain identity: $required" }
+}
+$build = Get-Content -LiteralPath (Join-Path $root 'tools/build/build.ps1') -Raw
+if ($build -notmatch '(?s)if \(\$ReusePreparedPcre2\).*?& pwsh @pcre2BuildArgs' -or
+    $build -notmatch '(?s)if \(\$ReusePreparedImageStack\).*?CmakeBuildTree\.ps1.*?-Action Verify') { throw 'Prepared dependencies must validate their toolchain fingerprints.' }
+$catalog = (& (Join-Path $PSScriptRoot 'get-release-test-catalog.ps1') -AsJson -Validate) | ConvertFrom-Json
+$ids = @([regex]::Matches($runner, "'(?<id>release\.[^']+)'") | ForEach-Object { $_.Groups['id'].Value })
+if ($ids.Count -lt 1 -or $ids.Count -ne @($ids | Select-Object -Unique).Count) { throw 'Focused sanitizer IDs must be nonempty and unique.' }
+foreach ($id in $ids) {
+    $entry = @($catalog.tests | Where-Object id -eq $id)
+    if ($entry.Count -ne 1 -or -not $entry[0].sanitizer.eligible -or 'FAST' -notin $entry[0].sanitizer.contours) { throw "Ineligible focused case: $id" }
+}
+foreach ($sanitizer in @('asan','ubsan')) {
+    $text = Get-Content -Raw -LiteralPath (Join-Path $root ".github/workflows/$sanitizer.yml")
+    foreach ($part in @('workflow_call:', 'schedule:', 'github.ref_type == ''tag''', 'github.event_name == ''schedule''', 'github.event_name == ''pull_request''', '-Focused', 'write-sanitizer-ci-summary.ps1')) {
+        if (-not $text.Contains($part)) { throw "$sanitizer is missing $part" }
+    }
+    if ($text -match "(?m)^\s*tags:\s*\[") { throw "$sanitizer would duplicate the tag-triggered reusable job" }
+    if ($workflow -notmatch "(?s)release-${sanitizer}:\s*\r?\n\s*if: github.ref_type == 'tag'\s*\r?\n\s*uses: ./\.github/workflows/$sanitizer.yml") { throw "Release must call $sanitizer on the tagged SHA" }
+}
+if ($workflow -notmatch 'needs: \[validate, package, release-asan, release-ubsan\]') { throw 'Publication must wait for both sanitizers.' }
+if (-not $runner.Contains("if (`$Focused) { `$arguments.Id = `$ids }")) { throw 'Focused coverage must use the existing -Id selector.' }
+Write-Host "CI cache and sanitizer gate contract passed; focused catalog IDs: $($ids.Count)."

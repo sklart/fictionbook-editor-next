@@ -104,10 +104,12 @@ Write-Host "PCRE2: каталог установки = $installDir"
 # PCRE2 uses the same generated-tree fingerprint contract as image codecs.
 # This removes only its own build/install output when an old VS instance or
 # MSVC minor toolset would otherwise be reused.
-& (Join-Path $PSScriptRoot 'CmakeBuildTree.ps1') -Action Prepare -DependencyName 'pcre2' `
-	-BuildDirectory $buildDir -InstallDirectory $installDir -Vs $vs -PlatformToolset $PlatformToolset | Out-Host
-New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
-New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+if (-not $ReusePreparedPcre2) {
+    & (Join-Path $PSScriptRoot 'CmakeBuildTree.ps1') -Action Prepare -DependencyName 'pcre2' `
+        -BuildDirectory $buildDir -InstallDirectory $installDir -Vs $vs -PlatformToolset $PlatformToolset | Out-Host
+    New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
+    New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+}
 
 $buildMutex = [System.Threading.Mutex]::new($false, $mutexName)
 $mutexAcquired = $false

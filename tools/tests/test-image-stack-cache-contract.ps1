@@ -20,8 +20,11 @@ $preparedVerifier = [regex]::Match($build, '(?s)function Assert-PreparedDependen
 if (-not $preparedVerifier.Contains('Test-Path -LiteralPath $_)')) {
     throw 'Prepared dependency verification must accept include directories as well as library files.'
 }
-if ($preparedVerifier.Contains('Test-Path -LiteralPath $_ -PathType Leaf')) {
+if ($preparedVerifier.Contains('-not (Test-Path -LiteralPath $_ -PathType Leaf)')) {
     throw 'Prepared dependency verification must not require include directories to be Leaf paths.'
+}
+if (-not $preparedVerifier.Contains('(Get-Item -LiteralPath $_).Length -eq 0')) {
+    throw 'Prepared dependency verification must reject empty required files.'
 }
 
 foreach ($script in @('build-libwebp.ps1','build-openjpeg.ps1')) {

@@ -68,8 +68,8 @@ foreach ($script in @('tools\build\build-libwebp.ps1','tools\build\build-openjpe
 }
 if ($workflow -notmatch '(?m)^\s*build:\s*\r?\n\s*needs:\s*validate\s*$' -or
     $workflow -notmatch '(?m)^\s*package:\s*\r?\n\s*if:.*\r?\n\s*needs:\s*\[validate, build\]\s*$' -or
-    $workflow -notmatch '(?m)^\s*publish:\s*\r?\n\s*if:.*\r?\n\s*needs:\s*\[validate, package\]\s*$') {
-    throw 'Build, package and publish must depend on successful validate.'
+    $workflow -notmatch '(?m)^\s*publish:\s*\r?\n\s*if:.*\r?\n\s*needs:\s*\[validate, package, release-asan, release-ubsan\]\s*$') {
+    throw 'Publication must depend on validate, package and both release sanitizer jobs.'
 }
 
 foreach ($artifact in @(

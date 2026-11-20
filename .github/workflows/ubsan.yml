@@ -3,14 +3,16 @@ name: UndefinedBehaviorSanitizer
 on:
   push:
     branches: [master]
-    tags: ['v*']
   pull_request:
+  schedule:
+    - cron: '47 2 * * 1'
+  workflow_call:
   workflow_dispatch:
     inputs:
       full_validation:
         description: Run the extended UBSan correctness contour
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: read
@@ -39,18 +41,22 @@ jobs:
       - name: Build isolated Release Win32 UndefinedBehaviorSanitizer
         shell: pwsh
         run: |
-          ./tools/build/build.ps1 -Configuration Release -Platform Win32 -Sanitizer Undefined *> out/tests/ubsan/build.log
-          if (-not $? -or $LASTEXITCODE -ne 0) { throw 'UBSan build failed; see build.log' }
+          $watch = [Diagnostics.Stopwatch]::StartNew()
+          try {
+            ./tools/build/build.ps1 -Configuration Release -Platform Win32 -Sanitizer Undefined *> out/tests/ubsan/build.log
+            if (-not $? -or $LASTEXITCODE -ne 0) { throw 'UBSan build failed; see build.log' }
+          } finally { $watch.Stop(); "UBSan build: $([math]::Round($watch.Elapsed.TotalSeconds, 1)) s." >> $env:GITHUB_STEP_SUMMARY }
       - name: Verify UBSan build and production rejection policy
         shell: pwsh
         run: ./tools/tests/test-ubsan-build-policy.ps1
-      - name: Run UBSan FAST
+      - name: Run focused sanitizer checks
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type != 'tag') || (github.event_name == 'workflow_dispatch' && !inputs.full_validation)
         shell: pwsh
-        run: ./tools/tests/run-sanitizers.ps1 -Sanitizer Undefined -Contour Fast
+        run: ./tools/tests/invoke-sanitizer-ci.ps1 -Sanitizer Undefined -Focused
       - name: Run UBSan FULL
-        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.full_validation)
+        if: github.ref_type == 'tag' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.full_validation)
         shell: pwsh
-        run: ./tools/tests/run-sanitizers.ps1 -Sanitizer Undefined -Contour Full
+        run: ./tools/tests/invoke-sanitizer-ci.ps1 -Sanitizer Undefined
       - name: Ensure failures have a summary
         if: always()
         shell: pwsh
@@ -61,6 +67,8 @@ jobs:
           $summaries = @(Get-ChildItem out/tests/ubsan -Recurse -Filter summary.json)
           @{status=$env:UBSAN_JOB_STATUS; sanitizer='Undefined'; commit=$env:GITHUB_SHA; summaries=@($summaries.FullName)} |
             ConvertTo-Json | Set-Content out/tests/ubsan/ci-summary.json -Encoding utf8
+          $env:SANITIZER_JOB_STATUS = $env:UBSAN_JOB_STATUS
+          ./tools/tests/write-sanitizer-ci-summary.ps1 -Directory ubsan
       - name: Upload diagnostic evidence only
         if: always()
         uses: actions/upload-artifact@v7

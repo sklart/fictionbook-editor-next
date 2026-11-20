@@ -62,6 +62,9 @@ jobs:
           ./tools/tests/test-release-pipeline-deduplication.ps1
           ./tools/tests/test-localization-preflight-regression.ps1
           ./tools/tests/test-ci-suite-deduplication.ps1
+          ./tools/tests/test-ci-sanitizer-cache-contract.ps1
+          ./tools/tests/test-ci-sanitizer-summary.ps1
+          ./tools/tests/test-ci-cache-fingerprint-verify.ps1
           ./tools/tests/test-image-stack-cache-contract.ps1
           ./tools/tests/test-update-release-pipeline.ps1
           ./tools/tests/test-update-manifest.ps1
@@ -101,6 +104,12 @@ jobs:
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-vsdev-environment-long-path.ps1
           ./tools/tests/test-cmake-build-tree-fingerprint.ps1
+      - name: Summarize validation
+        if: always()
+        shell: pwsh
+        env:
+          STAGE_STATUS: ${{ job.status }}
+        run: '"### Validate`nStatus: $env:STAGE_STATUS" >> $env:GITHUB_STEP_SUMMARY'
 
   build:
     needs: validate
@@ -110,19 +119,29 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 1
+      - name: Identify cache toolchain
+        id: cache-toolchain
+        shell: pwsh
+        run: |
+          . ./tools/build/Import-VsDevEnvironment.ps1 -Arch x86 -HostArch x64 -PlatformToolset v143 -VcVarsVersion 14.44
+          if (-not $env:ImageVersion -or -not $env:VCToolsVersion) { throw 'Runner image and compiler versions are required for dependency caches.' }
+          $compiler = (Get-Command cl.exe -ErrorAction Stop).Source
+          $compilerHash = (Get-FileHash -LiteralPath $compiler -Algorithm SHA256).Hash.ToLowerInvariant()
+          "identity=$($env:ImageVersion)-$($env:VCToolsVersion)-$compilerHash" >> $env:GITHUB_OUTPUT
       - name: Restore PCRE2 cache
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         id: pcre2-cache
         with:
           path: build/pcre2
-          key: ${{ runner.os }}-pcre2-release-win32-v143-vs2022-${{ hashFiles('third_party/pcre2/**', 'tools/build/build-pcre2.ps1') }}
+          key: ${{ runner.os }}-pcre2-v2-release-win32-v143-${{ steps.cache-toolchain.outputs.identity }}-${{ hashFiles('third_party/pcre2/**', 'tools/build/build-pcre2.ps1', 'tools/build/CmakeBuildTree.ps1', 'tools/build/Resolve-VsCmake.ps1') }}
       - name: Restore Hunspell cache
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
+        id: hunspell-cache
         with:
           path: build/hunspell
-          key: ${{ runner.os }}-hunspell-release-win32-v143-mt-${{ hashFiles('third_party/hunspell/**', 'tools/build/build-hunspell.ps1') }}
+          key: ${{ runner.os }}-hunspell-v2-release-win32-v143-mt-${{ steps.cache-toolchain.outputs.identity }}-${{ hashFiles('third_party/hunspell/**', 'tools/build/build-hunspell.ps1') }}
       - name: Restore prepared image stack cache
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         id: image-stack-cache
         with:
           path: |
@@ -131,21 +150,55 @@ jobs:
             build/aom
             build/libde265
             build/libheif
-          key: ${{ runner.os }}-image-stack-release-win32-v143-vc144-${{ hashFiles('third_party/libwebp/**', 'third_party/openjpeg/**', 'third_party/aom/**', 'third_party/libde265/**', 'third_party/libheif/**', 'tools/build/Resolve-VsCmake.ps1', 'tools/build/CmakeBuildTree.ps1', 'tools/build/build-libwebp.ps1', 'tools/build/build-openjpeg.ps1', 'tools/build/build-aom.ps1', 'tools/build/build-libde265.ps1', 'tools/build/build-libheif.ps1') }}
+          key: ${{ runner.os }}-image-stack-v2-release-win32-v143-${{ steps.cache-toolchain.outputs.identity }}-${{ hashFiles('third_party/libwebp/**', 'third_party/openjpeg/**', 'third_party/aom/**', 'third_party/libde265/**', 'third_party/libheif/**', 'tools/build/Resolve-VsCmake.ps1', 'tools/build/CmakeBuildTree.ps1', 'tools/build/build-libwebp.ps1', 'tools/build/build-openjpeg.ps1', 'tools/build/build-aom.ps1', 'tools/build/build-libde265.ps1', 'tools/build/build-libheif.ps1') }}
       - name: Restore universal editor runtime cache
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
+        id: editor-runtime-cache
         with:
           path: out/editor-runtime
-          key: ${{ runner.os }}-editor-runtime-win32-v143-vc144-${{ hashFiles('third_party/scintilla/**', 'third_party/lexilla/**', 'tools/build/build-scintilla.ps1', 'tools/build/editor-runtime-helpers.ps1') }}
+          key: ${{ runner.os }}-editor-runtime-v2-win32-v143-${{ steps.cache-toolchain.outputs.identity }}-${{ hashFiles('third_party/scintilla/**', 'third_party/lexilla/**', 'tools/build/build-scintilla.ps1', 'tools/build/editor-runtime-helpers.ps1') }}
       - name: Build Release Win32
+        id: compile
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
-          $arguments = @{ Configuration = 'Release'; Platform = 'Win32'; PlatformToolset = 'v143'; SkipUpx = $true; WarningsAsErrors = $true; StrictFirstPartyWarnings = $true; ReuseEditorRuntime = $true; SkipVersionSync = $true; BatchOutputDirectory = 'out/target-batches' }
-          if ($env:GITHUB_REF_TYPE -eq 'tag') { $arguments.ReleaseVersion = $env:GITHUB_REF_NAME.Substring(1) }
-          if ('${{ steps.pcre2-cache.outputs.cache-hit }}' -eq 'true') { $arguments.ReusePreparedPcre2 = $true }
-          if ('${{ steps.image-stack-cache.outputs.cache-hit }}' -eq 'true') { $arguments.ReusePreparedImageStack = $true }
-          ./tools/build/build.ps1 @arguments
+          $watch = [Diagnostics.Stopwatch]::StartNew()
+          try {
+            $arguments = @{ Configuration = 'Release'; Platform = 'Win32'; PlatformToolset = 'v143'; SkipUpx = $true; WarningsAsErrors = $true; StrictFirstPartyWarnings = $true; ReuseEditorRuntime = $true; SkipVersionSync = $true; BatchOutputDirectory = 'out/target-batches' }
+            if ($env:GITHUB_REF_TYPE -eq 'tag') { $arguments.ReleaseVersion = $env:GITHUB_REF_NAME.Substring(1) }
+            if ('${{ steps.pcre2-cache.outputs.cache-hit }}' -eq 'true') { $arguments.ReusePreparedPcre2 = $true }
+            if ('${{ steps.image-stack-cache.outputs.cache-hit }}' -eq 'true') { $arguments.ReusePreparedImageStack = $true }
+            ./tools/build/build.ps1 @arguments
+          } finally { $watch.Stop(); "seconds=$([math]::Round($watch.Elapsed.TotalSeconds, 1))" >> $env:GITHUB_OUTPUT }
+      - name: Save PCRE2 cache
+        if: steps.pcre2-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: build/pcre2
+          key: ${{ steps.pcre2-cache.outputs.cache-primary-key }}
+      - name: Save Hunspell cache
+        if: steps.hunspell-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: build/hunspell
+          key: ${{ steps.hunspell-cache.outputs.cache-primary-key }}
+      - name: Save prepared image stack cache
+        if: steps.image-stack-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            build/libwebp
+            build/openjpeg
+            build/aom
+            build/libde265
+            build/libheif
+          key: ${{ steps.image-stack-cache.outputs.cache-primary-key }}
+      - name: Save universal editor runtime cache
+        if: steps.editor-runtime-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: out/editor-runtime
+          key: ${{ steps.editor-runtime-cache.outputs.cache-primary-key }}
       - name: Run XML source theme v1 runtime regression
         shell: pwsh
         run: |
@@ -322,14 +375,18 @@ jobs:
           ./tools/tests/test-nsis-install-scopes.ps1
           ./tools/tests/test-prerelease-nsis-state.ps1
       - name: Verify universal release binaries, document tree and Dark Theme stabilization runtime
+        id: release-verification
         shell: pwsh
         env:
           FBE_RUNTIME_FAILURE_ARTIFACTS: out/tests/runtime-failure
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
-          $arguments = @{ Configuration = 'Release'; PlatformToolset = 'v143'; SkipUpdateManifest = $true; SkipLocalizationPreflight = $true; SkipEarlyRuntimeSuites = $true; BatchOutputDirectory = 'out/target-batches' }
-          if ($env:GITHUB_REF_TYPE -eq 'tag' -or '${{ inputs.full_validation }}' -eq 'true') { $arguments.FullValidation = $true }
-          ./tools/build/verify-release.ps1 @arguments
+          $watch = [Diagnostics.Stopwatch]::StartNew()
+          try {
+            $arguments = @{ Configuration = 'Release'; PlatformToolset = 'v143'; SkipUpdateManifest = $true; SkipLocalizationPreflight = $true; SkipEarlyRuntimeSuites = $true; BatchOutputDirectory = 'out/target-batches' }
+            if ($env:GITHUB_REF_TYPE -eq 'tag' -or '${{ inputs.full_validation }}' -eq 'true') { $arguments.FullValidation = $true }
+            ./tools/build/verify-release.ps1 @arguments
+          } finally { $watch.Stop(); "seconds=$([math]::Round($watch.Elapsed.TotalSeconds, 1))" >> $env:GITHUB_OUTPUT }
       - name: Smoke bundled plugin upgrade and uninstall
         if: github.event_name == 'pull_request'
         shell: pwsh
@@ -399,6 +456,28 @@ jobs:
           path: out/tests/runtime-failure/**
           if-no-files-found: error
           retention-days: 7
+      - name: Summarize build and verification
+        if: always()
+        shell: pwsh
+        env:
+          STAGE_STATUS: ${{ job.status }}
+          COMPILE_RESULT: ${{ steps.compile.outcome }}
+          COMPILE_SECONDS: ${{ steps.compile.outputs.seconds }}
+          VERIFY_RESULT: ${{ steps.release-verification.outcome }}
+          VERIFY_SECONDS: ${{ steps.release-verification.outputs.seconds }}
+          PCRE_HIT: ${{ steps.pcre2-cache.outputs.cache-hit }}
+          HUNSPELL_HIT: ${{ steps.hunspell-cache.outputs.cache-hit }}
+          IMAGE_HIT: ${{ steps.image-stack-cache.outputs.cache-hit }}
+          RUNTIME_HIT: ${{ steps.editor-runtime-cache.outputs.cache-hit }}
+        run: |
+          function Show([string]$value) { if ($value) { $value } else { 'NOT RUN' } }
+          @(
+            '### Build and verification',
+            "Job: $env:STAGE_STATUS; compile: $(Show $env:COMPILE_RESULT) ($(Show $env:COMPILE_SECONDS) s); verification: $(Show $env:VERIFY_RESULT) ($(Show $env:VERIFY_SECONDS) s).",
+            "Cache hits (empty means miss or not run): PCRE2=$(Show $env:PCRE_HIT), Hunspell=$(Show $env:HUNSPELL_HIT), image=$(Show $env:IMAGE_HIT), editor runtime=$(Show $env:RUNTIME_HIT).",
+            'Detailed test counts and failures: see the step log; a skipped verification is not PASS.',
+            "[Run artifacts]($env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID#artifacts)"
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
 
   package:
     if: github.event_name != 'pull_request'
@@ -480,10 +559,24 @@ jobs:
             out/release/update.xml
           if-no-files-found: error
           retention-days: 14
+      - name: Summarize package
+        if: always()
+        shell: pwsh
+        env:
+          STAGE_STATUS: ${{ job.status }}
+        run: '"### Package`nStatus: $env:STAGE_STATUS" >> $env:GITHUB_STEP_SUMMARY'
+
+  release-asan:
+    if: github.ref_type == 'tag'
+    uses: ./.github/workflows/asan.yml
+
+  release-ubsan:
+    if: github.ref_type == 'tag'
+    uses: ./.github/workflows/ubsan.yml
 
   publish:
     if: github.ref_type == 'tag'
-    needs: [validate, package]
+    needs: [validate, package, release-asan, release-ubsan]
     runs-on: windows-2022
     permissions:
       contents: write
@@ -552,3 +645,9 @@ jobs:
             }
             gh api --method PUT "repos/${{ github.repository }}/contents/$feed" -f "message=Синхронизировать манифест обновления ${{ github.ref_name }}" -f "content=$encodedContent" -f "sha=$($remoteFile.sha)" -f "branch=master"
           }
+      - name: Summarize publication
+        if: always()
+        shell: pwsh
+        env:
+          STAGE_STATUS: ${{ job.status }}
+        run: '"### Publish`nStatus: $env:STAGE_STATUS" >> $env:GITHUB_STEP_SUMMARY'
