@@ -9,6 +9,36 @@ Doc* Doc::BinaryOwner(const GUID& identity)
     }
     return nullptr;
 }
+bool Doc::CaptureRecoveryBinaries(RecoveryBinarySnapshot& snapshot)
+{
+    // Reentrant document replacement must not invalidate this Doc while COM
+    // is enumerating its binary elements.
+    if (m_recoverySnapshotInProgress) return false;
+    struct Guard { bool& active; explicit Guard(bool& value) : active(value) { active = true; } ~Guard() { active = false; } } guard(m_recoverySnapshotInProgress);
+    try {
+        ReconcileBinaryStore();
+        RecoveryBinarySnapshot result;
+        const auto objects = FbeScripts::Binary::Objects(m_body.Document());
+        result.reserve(objects.size());
+        for (const auto& object : objects) {
+            const auto payload = m_binaryStore.payloads.Snapshot(object.element);
+            if (!payload) return false;
+            result.push_back({object.id, object.mime, payload});
+        }
+        snapshot.swap(result);
+        return true;
+    } catch (const _com_error&) { return false; }
+    catch (const std::bad_alloc&) { return false; }
+}
+
+bool Doc::SameRecoveryBinaries(const RecoveryBinarySnapshot& left, const RecoveryBinarySnapshot& right)
+{
+    if (left.size() != right.size()) return false;
+    for (size_t i = 0; i < left.size(); ++i)
+        if (left[i].id != right[i].id || left[i].mime != right[i].mime || left[i].payload != right[i].payload) return false;
+    return true;
+}
+
 void Doc::ReconcileBinaryStore()
 {
     FBE_BINARY_DIAG_SCOPE(Reconcile); FBE_BINARY_DIAG_ADD(reconcileCalls, 1);

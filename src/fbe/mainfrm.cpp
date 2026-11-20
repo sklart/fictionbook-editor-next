@@ -1459,6 +1459,11 @@ void CMainFrame::AttachDocument(FB::Doc *doc)
 		StartupTrace::Warning(L"mainframe", L"M125", L"document attach deferred: HTML document is not ready");
 		return;
 	}
+    if (m_recoveryBinaryIdentity != doc->ClipboardIdentity()) {
+        m_recoveryBinarySnapshot.clear();
+        m_recoveryBinaryIdentity = doc->ClipboardIdentity();
+        m_recoveryBinaryValid = doc->CaptureRecoveryBinaries(m_recoveryBinarySnapshot);
+    }
 	/*if (IsSourceActive()) {
 	UIEnable(ID_VIEW_TREE, 1);
 	UISetCheck(ID_VIEW_TREE, m_save_sp_mode);
@@ -1695,6 +1700,7 @@ void CMainFrame::CommitSuccessfulSave()
 
 CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, const DocumentLocation* preferredArchiveLocation)
 {
+  if (m_doc && m_doc->RecoverySnapshotInProgress()) return CANCELLED;
   CString filename(initfilename);
   if (filename.IsEmpty())
     filename = GetOpenFileName();
@@ -4538,8 +4544,7 @@ LRESULT CMainFrame::OnQueryEndSession(UINT, WPARAM, LPARAM, BOOL&)
 {
     m_ui_watchdog.Pause();
 	HideCaretMarker();
-	if (DocChanged())
-		SaveRecoveryNow();
+	SaveRecoveryNow();
 	return TRUE;
 }
 
@@ -4549,14 +4554,14 @@ LRESULT CMainFrame::OnEndSession(UINT, WPARAM wParam, LPARAM, BOOL&)
 	if(wParam) HideCaretMarker();
 	if (wParam)
 	{
-		if (DocChanged())
-			SaveRecoveryNow();
+		SaveRecoveryNow();
 		KillTimer(RECOVERY_TIMER_ID);
 	}
 	return 0;
 }
 LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 {
+  if (m_doc && m_doc->RecoverySnapshotInProgress()) return 0;
     m_ui_watchdog.Pause();
 	HideCaretMarker();
   // Batch jobs have neither an operator nor an interactive close contract.
@@ -4635,11 +4640,19 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
   return 0;
 }
 
-bool CMainFrame::SaveRecoveryNow()
+bool CMainFrame::SaveRecoveryNow(bool forceBinary)
 {
-	// Forced paths (shutdown and explicit runtime recovery) must remain
-	// immediate, but never copy a complete Scintilla buffer for a clean file.
-	if (!DocChanged())
+	// Detect binary-only edits even in forced shutdown paths; never copy a
+    // complete Scintilla buffer for a clean document with unchanged binary.
+    if (!m_doc) return true;
+    FB::Doc::RecoveryBinarySnapshot binaryBefore;
+    if (!m_doc->CaptureRecoveryBinaries(binaryBefore)) return false;
+    const GUID identityBefore = m_doc->ClipboardIdentity();
+    const ULONGLONG generationBefore = m_recovery_generation;
+    const bool binaryChanged = !m_recoveryBinaryValid || m_recoveryBinaryIdentity != identityBefore ||
+        !FB::Doc::SameRecoveryBinaries(m_recoveryBinarySnapshot, binaryBefore);
+    const bool documentChanged = DocChanged();
+	if (!documentChanged && !forceBinary && !binaryChanged)
 	{
 		++g_recoveryDiagnostics.skippedClean;
 		g_recoveryDiagnostics.Report();
@@ -4654,12 +4667,17 @@ bool CMainFrame::SaveRecoveryNow()
 		sourceText.resize(static_cast<size_t>(textLength) + 1);
 		m_source.SendMessage(SCI_GETTEXT, textLength + 1, reinterpret_cast<LPARAM>(sourceText.data()));
 	}
-	FbeRecovery::SnapshotRequest request; request.documentChanged = DocChanged(); request.sourceActive = sourceActive; request.sourceXmlInvalid = m_bad_xml;
+	FbeRecovery::SnapshotRequest request; request.documentChanged = documentChanged || forceBinary || binaryChanged; request.sourceActive = sourceActive; request.sourceXmlInvalid = m_bad_xml;
 	request.sourceText = sourceText.empty() ? NULL : sourceText.data(); request.sourceTextLength = sourceText.empty() ? 0 : sourceText.size() - 1; request.location = m_document_session.Location();
 	const bool saved = m_doc && m_recovery.Save(*m_doc, request);
 	if (saved)
 	{
-		m_recovery_saved_generation = m_recovery_generation;
+		if (m_doc && m_doc->ClipboardIdentity() == identityBefore) {
+            m_recovery_saved_generation = generationBefore;
+            m_recoveryBinarySnapshot.swap(binaryBefore);
+            m_recoveryBinaryIdentity = identityBefore;
+            m_recoveryBinaryValid = true;
+        }
 		++g_recoveryDiagnostics.written;
 	}
 	g_recoveryDiagnostics.Report();
@@ -4674,14 +4692,17 @@ void CMainFrame::MarkRecoveryDirty()
 
 bool CMainFrame::TryAutoRecovery()
 {
-	if (!DocChanged())
+    FB::Doc::RecoveryBinarySnapshot current;
+    const bool captured = m_doc && m_recoveryBinaryValid && m_recoveryBinaryIdentity == m_doc->ClipboardIdentity() && m_doc->CaptureRecoveryBinaries(current);
+    const bool binaryChanged = !captured || !FB::Doc::SameRecoveryBinaries(m_recoveryBinarySnapshot, current);
+	if (!DocChanged() && !binaryChanged)
 	{
 		++g_recoveryDiagnostics.skippedClean;
 		g_recoveryDiagnostics.Report();
 		SetTimer(RECOVERY_TIMER_ID, RECOVERY_INTERVAL_MS);
 		return true;
 	}
-	if (m_recovery_generation == m_recovery_saved_generation)
+	if (m_recovery_generation == m_recovery_saved_generation && !binaryChanged)
 	{
 		SetTimer(RECOVERY_TIMER_ID, RECOVERY_INTERVAL_MS);
 		return true;
@@ -4695,7 +4716,7 @@ bool CMainFrame::TryAutoRecovery()
 		SetTimer(RECOVERY_TIMER_ID, (std::max)(1U, remaining));
 		return true;
 	}
-	const bool saved = SaveRecoveryNow();
+	const bool saved = SaveRecoveryNow(binaryChanged);
 	SetTimer(RECOVERY_TIMER_ID, RECOVERY_INTERVAL_MS);
 	return saved;
 }
@@ -5972,6 +5993,7 @@ LRESULT CMainFrame::OnNavigate(WORD, WORD, HWND, BOOL&)
 #include "document/ClosedDocumentPresentation.inl"
 LRESULT CMainFrame::OnFileNew(WORD, WORD, HWND, BOOL&)
 {
+  if (m_doc && m_doc->RecoverySnapshotInProgress()) return 0;
   if (!DiscardChanges())
     return 0;
 

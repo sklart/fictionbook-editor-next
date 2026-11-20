@@ -226,6 +226,9 @@ public:
   bool			  m_change_state:1;
   bool			  m_need_title_update:1;
 	FbeRecovery::RecoveryController m_recovery;
+    FB::Doc::RecoveryBinarySnapshot m_recoveryBinarySnapshot;
+    GUID m_recoveryBinaryIdentity = GUID_NULL;
+    bool m_recoveryBinaryValid = false;
 	ULONGLONG			  m_recovery_generation;
 	ULONGLONG			  m_recovery_saved_generation;
 	DWORD				  m_recovery_last_edit_tick;
@@ -345,7 +348,7 @@ public:
   FILE_OP_STATUS	  LoadFile(const wchar_t *initfilename=NULL, const DocumentLocation* preferredArchiveLocation=NULL);
   void RunPortableStateTestScenario();
   void TryRestoreRecovery();
-  bool SaveRecoveryNow();
+  bool SaveRecoveryNow(bool forceBinary = false);
 	bool TryAutoRecovery();
 	void MarkRecoveryDirty();
 

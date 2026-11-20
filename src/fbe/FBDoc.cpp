@@ -149,7 +149,7 @@ static CString GetDiagnosticFaultInjection()
 		L"second-set-external", L"optional-diagnostic-api-missing", L"navigate-error",
 		L"document-complete-timeout", L"controlled-load-failure+css-restore-failure",
 		L"drop-row-after-normalize", L"change-colspan-after-normalize",
-		L"drop-serialized-row-during-analysis"
+		L"drop-serialized-row-during-analysis", L"recovery-reentrant-new"
 	};
 	for (UINT index = 0; index < _countof(allowed); ++index)
 		if (point.CompareNoCase(allowed[index]) == 0)
@@ -1957,7 +1957,7 @@ HRESULT Doc::ValidateForScripting(BSTR sourceOverride, bool& valid, int& line, i
 
 MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool compactBinaries,
 	FictionBookFileType targetType, bool normalizeVisualDom, bool analysisSnapshot,
-	CString* analysisError, bool normalizeLiveLinks) {
+	CString* analysisError, bool normalizeLiveLinks, bool normalizeDetached) {
 	// GetBinaries converts every editor base64data value to bytes. MSXML formats
 	// the resulting bin.base64 text, so saving removes only that whitespace in
 	// place instead of converting every binary through MSXML a second time.
@@ -2064,11 +2064,20 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   };
 
   markTableSerializationPhase(L"native-before-normalize-start");
-  const MSHTML::IHTMLElementPtr visualRoot(MSHTML::IHTMLDocument3Ptr(m_editor.Document())->getElementById(L"fbw_body"));
+  const MSHTML::IHTMLElementPtr liveRoot(MSHTML::IHTMLDocument3Ptr(m_editor.Document())->getElementById(L"fbw_body"));
+  if (!liveRoot) _com_issue_error(E_FAIL);
+  const MSHTML::IHTMLElementPtr visualRoot(normalizeDetached ? MSHTML::IHTMLElementPtr(MSHTML::IHTMLDOMNodePtr(liveRoot)->cloneNode(VARIANT_TRUE)) : liveRoot);
   const TableSnapshot tablesBeforeNormalize = SnapshotNativeTables(visualRoot);
   markTableSerializationPhase(L"native-before-normalize-complete");
 
-  // normalize body first
+  // Recovery normalizes only an orphan copy.
+  if (normalizeDetached) {
+    m_editor.NormalizeDetachedForRecovery(MSHTML::IHTMLDOMNodePtr(visualRoot));
+    if (GetDiagnosticFaultInjection() == L"recovery-reentrant-new") {
+      ::SendMessage(m_frame, WM_COMMAND, MAKEWPARAM(ID_FILE_NEW, 0), 0);
+      ::SetEnvironmentVariableW(L"FBE_NEXT_RECOVERY_REENTERED", L"1");
+    }
+  }
   if (normalizeVisualDom) {
     _EDMnr.CleanUpAll();
     markTableSerializationPhase(L"normalize-start");
@@ -2154,10 +2163,11 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
     }
   }
 
-  MSXML2::IXMLDOMNodePtr  ann(GetDiv(fbw_body,ndoc,L"annotation",3,analysisSnapshot));
+  if (normalizeDetached) fbw_body = visualRoot;
+  MSXML2::IXMLDOMNodePtr  ann(GetDiv(fbw_body,ndoc,L"annotation",3,analysisSnapshot && !normalizeDetached));
 
   // fetch history
-  MSXML2::IXMLDOMNodePtr  hist(GetDiv(fbw_body,ndoc,L"history",3,analysisSnapshot));
+  MSXML2::IXMLDOMNodePtr  hist(GetDiv(fbw_body,ndoc,L"history",3,analysisSnapshot && !normalizeDetached));
 
   // fetch description
   CComDispatchDriver	body(m_editor.Script());
@@ -2172,8 +2182,8 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 
   // fetch body elements
   markTableSerializationPhase(L"get-bodies-start");
-	GetBodies(fbw_body, ndoc, targetType, normalizeVisualDom);
-	if (targetType == FictionBookFileType::Fb2 && normalizeVisualDom)
+	GetBodies(fbw_body, ndoc, targetType, normalizeVisualDom || normalizeDetached);
+	if (targetType == FictionBookFileType::Fb2 && (normalizeVisualDom || normalizeDetached))
 		EnsureMinimalFb2Body(ndoc);
   markTableSerializationPhase(L"get-bodies-complete");
 	if (analysisSnapshot && GetDiagnosticFaultInjection() == L"drop-serialized-row-during-analysis")
@@ -2502,13 +2512,28 @@ forcesave:
 
 bool Doc::SaveRecoveryCopy(const CString& filename)
 {
+	if (m_recoverySnapshotInProgress) return false;
+    struct SnapshotGuard { bool& active; explicit SnapshotGuard(bool& value) : active(value) { active = true; } ~SnapshotGuard() { active = false; } } guard(m_recoverySnapshotInProgress);
 	CString temporaryFile;
 	TraceRecoveryEvent(L"R110", L"Автосохранение начато", filename);
 	try
 	{
+        if (!CheckVisualNestingForConversion()) return false;
+        const FictionBookFileType targetType = ResolveFictionBookTargetType(filename, m_filename);
+        ReconcileBinaryStore();
+        CString bodyBefore, descriptionBefore;
+        if (!CaptureBodyHtml(bodyBefore) || !CaptureDescriptionState(descriptionBefore)) _com_issue_error(E_FAIL);
+        const unsigned long long binaryRevision = m_binaryStore.payloads.Revision();
+        const long version = m_editor.GetVersionNumber();
 		MSXML2::IXMLDOMDocument2Ptr document(CreateDOMImp(
 			_Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding(), true,
-			ResolveFictionBookTargetType(filename, m_filename)));
+            targetType, false, true, NULL, true, true));
+        if (!document || m_editor.GetVersionNumber() != version) _com_issue_error(E_FAIL);
+        MSXML2::ISAXXMLReaderPtr reader; CheckError(reader.CreateInstance(L"Msxml2.SAXXMLReader.6.0"));
+        MSXML2::IXMLDOMSchemaCollection2Ptr schemas; ConfigureFictionBookSaxReader(reader, targetType, schemas);
+        IStreamPtr input(document); if (!input) _com_issue_error(E_NOINTERFACE);
+        CheckError(reader->raw_parse(_variant_t(static_cast<IUnknown*>(input.GetInterfacePtr()))));
+        if (targetType == FictionBookFileType::Fbd && !ValidateFbdDocumentStructure(document, NULL)) _com_issue_error(E_FAIL);
 
 		CString directory(filename);
 		const int separator = directory.ReverseFind(L'\\');
@@ -2523,6 +2548,11 @@ bool Doc::SaveRecoveryCopy(const CString& filename)
 		if (FAILED(result))
 			_com_issue_errorex(result, document, __uuidof(document));
 
+        CString bodyAfter, descriptionAfter;
+        if (m_editor.GetVersionNumber() != version || m_binaryStore.Dirty() ||
+            m_binaryStore.payloads.Revision() != binaryRevision || !CaptureBodyHtml(bodyAfter) ||
+            !CaptureDescriptionState(descriptionAfter) || bodyAfter != bodyBefore || descriptionAfter != descriptionBefore)
+            _com_issue_error(E_FAIL);
 		CommitRecoveryFile(temporaryFile, filename);
 		TraceRecoveryEvent(L"R111", L"Автосохранение завершено", filename);
 		return true;

@@ -970,6 +970,7 @@ public:
   MSHTML::IHTMLElementPtr   SelectionsVAlign();
   MSHTML::IHTMLElementPtr   SelectionsVAlignB(_bstr_t& valign);
 
+  void                NormalizeDetachedForRecovery(MSHTML::IHTMLDOMNodePtr dom);
   void			    Normalize(MSHTML::IHTMLDOMNodePtr dom, bool normalizeLinks = true);
   MSHTML::IHTMLDOMNodePtr ResolveNormalizationScope();
   void			    NormalizeScope(MSHTML::IHTMLDOMNodePtr dom);

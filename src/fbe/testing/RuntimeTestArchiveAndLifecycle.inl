@@ -1,3 +1,121 @@
+if (IsFbeTestScenario(L"recovery-redo-links-probe")) {
+  DWORD written=0;
+  try {
+    MSHTML::IHTMLDocument2Ptr doc(m_doc->m_body.Document());
+    MSHTML::IHTMLElementPtr body(doc->all->item(L"fbw_body"));
+    MSHTML::IHTMLElementPtr section(MSHTML::IHTMLDocument3Ptr(doc)->getElementById(L"target"));
+    if(!section) CheckError(E_UNEXPECTED);
+    MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(section)->getElementsByTagName(L"P"));
+    MSHTML::IHTMLElementPtr target(paragraphs && paragraphs->length ? paragraphs->item(0L) : 0);
+    if(!doc || !body || !target) CheckError(E_UNEXPECTED);
+    wchar_t cleanMode[4] = {};
+    if (::GetEnvironmentVariableW(L"FBE_NEXT_RECOVERY_BINARY_CLEAN",cleanMode,_countof(cleanMode))==1 && cleanMode[0]==L'1') {
+      const bool cleanBefore=!DocChanged();
+      MSHTML::IHTMLWindow2Ptr window(doc->parentWindow); if (!window) CheckError(E_NOINTERFACE);
+      const wchar_t* script=L"var t=new ActiveXObject('Msxml2.DOMDocument.6.0');t.loadXML('<data/>');t.documentElement.dataType='bin.base64';t.documentElement.text='CQgHBg==';var a=document.all.binobj.getElementsByTagName('DIV');for(var i=0;i<a.length;i++){if(a[i].all.id.value=='payload.bin'){a[i].base64data=t.documentElement.nodeTypedValue;break;}}";
+      CheckError(window->execScript(_bstr_t(script),_bstr_t(L"JScript")));
+      m_recovery_last_edit_tick=0; const ULONGLONG before=g_recoveryDiagnostics.written;
+      wchar_t forcedMode[4] = {};
+      if (::GetEnvironmentVariableW(L"FBE_NEXT_RECOVERY_FORCED",forcedMode,_countof(forcedMode))==1 && forcedMode[0]==L'1') { BOOL handled=FALSE; OnQueryEndSession(0,0,0,handled); }
+      else TryAutoRecovery();
+      const bool writtenNow=g_recoveryDiagnostics.written==before+1;
+      CStringA row;row.Format("clean-before=%d binary-written=%d dirty-after=%d\n",cleanBefore,writtenNow,DocChanged());
+      output.Write(row,static_cast<DWORD>(row.GetLength()),&written);output.Close();::PostQuitMessage(cleanBefore && writtenNow ? 0 : 1);return 0;
+    }
+    CComPtr<IOleUndoManager> manager; IServiceProviderPtr services(doc);
+    CheckError(services->QueryService(SID_SOleUndoManager,IID_IOleUndoManager,reinterpret_cast<void**>(&manager)));
+    auto history=[&](bool redo) {
+      CComPtr<IEnumOleUndoUnits> e; CheckError(redo ? manager->EnumRedoable(&e) : manager->EnumUndoable(&e));
+      std::vector<CComPtr<IOleUndoUnit>> units;
+      for(;;) { CComPtr<IOleUndoUnit> u; HRESULT hr=e->Next(1,&u,nullptr); if(hr==S_FALSE)break;CheckError(hr);units.push_back(u); }
+      return units;
+    };
+    MSHTML::IMarkupServices2Ptr markup(m_doc->m_body.MarkupServices()); if(!markup) CheckError(E_NOINTERFACE);
+    for(int i=0;i<3;++i) {
+      MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(doc->body)->createTextRange());
+      CheckError(range->moveToElementText(target));CheckError(range->collapse(VARIANT_TRUE));
+      if(range->move(L"character",1)!=1)CheckError(E_UNEXPECTED);
+      m_doc->m_body.SetFocus();CheckError(range->select()); HWND focus=::GetFocus();if(!focus)CheckError(E_FAIL);
+      CheckError(markup->raw_BeginUndoUnit(const_cast<wchar_t*>(L"recovery probe edit")));
+      ::SendMessageW(focus,WM_CHAR,L'A'+i,0);CheckError(markup->raw_EndUndoUnit());
+    }
+    BOOL handled=FALSE;m_doc->m_body.OnUndo(0,0,m_doc->m_body,handled);m_doc->m_body.OnUndo(0,0,m_doc->m_body,handled);
+    wchar_t binaryMode[4] = {}, noopMode[4] = {};
+    const bool binarySecond=::GetEnvironmentVariableW(L"FBE_NEXT_RECOVERY_BINARY_SECOND",binaryMode,_countof(binaryMode))==1 && binaryMode[0]==L'1';
+    const bool binaryNoop=::GetEnvironmentVariableW(L"FBE_NEXT_RECOVERY_BINARY_NOOP",noopMode,_countof(noopMode))==1 && noopMode[0]==L'1';
+    if (binarySecond || binaryNoop) {
+      if (!SaveRecoveryNow()) CheckError(E_FAIL);
+      MSHTML::IHTMLWindow2Ptr window(doc->parentWindow); if (!window) CheckError(E_NOINTERFACE);
+      const wchar_t* script=L"var t=new ActiveXObject('Msxml2.DOMDocument.6.0');t.loadXML('<data/>');t.documentElement.dataType='bin.base64';t.documentElement.text='CQgHBg==';var a=document.all.binobj.getElementsByTagName('DIV');for(var i=0;i<a.length;i++){if(a[i].all.id.value=='payload.bin'){a[i].base64data=t.documentElement.nodeTypedValue;break;}}";
+      CString scriptText(script); if (binaryNoop) scriptText.Replace(L"CQgHBg==", L"AAECA/7/");
+      CheckError(window->execScript(_bstr_t(scriptText),_bstr_t(L"JScript")));
+      m_recovery_last_edit_tick=0;
+      const ULONGLONG before=g_recoveryDiagnostics.written; TryAutoRecovery();
+      const bool secondWritten=g_recoveryDiagnostics.written==before+1;
+      CStringA row; row.Format("first-saved=1 second-written=%d\n",secondWritten);
+      output.Write(row,static_cast<DWORD>(row.GetLength()),&written); output.Close(); ::PostQuitMessage(secondWritten != binaryNoop ? 0 : 1); return 0;
+    }
+    wchar_t secondMode[4]={}, writeMode[4]={};
+    const bool invalidSecond=::GetEnvironmentVariableW(L"FBE_NEXT_RECOVERY_SECOND_INVALID",secondMode,_countof(secondMode))==1 && secondMode[0]==L'1';
+    const bool writeFailure=::GetEnvironmentVariableW(L"FBE_NEXT_RECOVERY_WRITE_ERROR",writeMode,_countof(writeMode))==1 && writeMode[0]==L'1';
+    if(invalidSecond || writeFailure) {
+      if(!SaveRecoveryNow()) CheckError(E_FAIL);
+      wchar_t fixtureRoot[32768]={};
+      if(!::GetEnvironmentVariableW(L"FBE_NEXT_SCRIPT_API_ROOT",fixtureRoot,_countof(fixtureRoot))) CheckError(E_INVALIDARG);
+      const CString firstPath=CString(fixtureRoot)+L"\\first-recovery.fb2";
+      if(!::CopyFileW(m_recovery.SnapshotPath(),firstPath,TRUE)) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
+      if (invalidSecond) {
+        MSHTML::IHTMLElementPtr subtitle(doc->createElement(L"P"));subtitle->className=L"subtitle";
+        MSHTML::IHTMLElementPtr strong(doc->createElement(L"STRONG")), nested(doc->createElement(L"P"));nested->innerText=L"Invalid nested paragraph.";
+        MSHTML::IHTMLDOMNodePtr(strong)->appendChild(MSHTML::IHTMLDOMNodePtr(nested));
+        MSHTML::IHTMLDOMNodePtr(subtitle)->appendChild(MSHTML::IHTMLDOMNodePtr(strong));
+        MSHTML::IHTMLDOMNodePtr(section)->appendChild(MSHTML::IHTMLDOMNodePtr(subtitle));
+      }
+      HANDLE locked = INVALID_HANDLE_VALUE;
+      if (writeFailure) {
+        locked = ::CreateFileW(m_recovery.SnapshotPath(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (locked == INVALID_HANDLE_VALUE) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
+      }
+      const CString beforeInvalid(static_cast<const wchar_t*>(body->innerHTML));
+      const auto beforeUndo=history(false),beforeRedo=history(true);
+      auto writeHtml=[&](const wchar_t* name,const CString& html){CAtlFile file;CheckError(file.Create(CString(fixtureRoot)+L"\\"+name,GENERIC_WRITE,FILE_SHARE_READ,CREATE_NEW));CStringA bytes(CW2A(html,CP_UTF8));CheckError(file.Write(bytes,static_cast<DWORD>(bytes.GetLength())));};
+      writeHtml(L"before-invalid.html",beforeInvalid);
+      const ULONGLONG countBefore=g_recoveryDiagnostics.written;
+      const bool secondSaved=SaveRecoveryNow();
+      if (locked != INVALID_HANDLE_VALUE) ::CloseHandle(locked);
+      const CString afterInvalid(static_cast<const wchar_t*>(body->innerHTML));writeHtml(L"after-invalid.html",afterInvalid);
+      const bool unchanged=beforeInvalid==afterInvalid;
+      const auto afterUndo=history(false),afterRedo=history(true);
+      m_doc->m_body.SetFocus();
+      const HRESULT redoResult=static_cast<HRESULT>(m_doc->m_body.ExecCommand(IDM_REDO));
+      const CString afterRealRedo(static_cast<const wchar_t*>(body->innerHTML));
+      const HRESULT undoResult=static_cast<HRESULT>(m_doc->m_body.ExecCommand(IDM_UNDO));
+      const CString afterRealUndo(static_cast<const wchar_t*>(body->innerHTML));
+      const bool executed=!beforeRedo.empty() && SUCCEEDED(redoResult) && SUCCEEDED(undoResult) && afterRealRedo!=beforeInvalid && afterRealUndo==beforeInvalid;
+      const bool preserved=beforeUndo==afterUndo && beforeRedo==afterRedo;
+      CStringA row;row.Format("first-saved=1 second-saved=%d second-written=%d html-same=%d undo-before=%u undo-after=%u redo-before=%u redo-after=%u history-same=%d history-executed=%d\n",secondSaved,g_recoveryDiagnostics.written!=countBefore,unchanged,(unsigned)beforeUndo.size(),(unsigned)afterUndo.size(),(unsigned)beforeRedo.size(),(unsigned)afterRedo.size(),preserved,executed);
+      output.Write(row,static_cast<DWORD>(row.GetLength()),&written);output.Close();::PostQuitMessage(!secondSaved && unchanged && preserved && executed ? 0 : 1);return 0;
+    }
+    const auto undoBefore=history(false),redoBefore=history(true);const CString htmlBefore(static_cast<const wchar_t*>(body->innerHTML));
+    const bool dirty=m_doc->DocChanged(); const ULONGLONG writes=g_recoveryDiagnostics.written;
+    if(undoBefore.size()!=1 || redoBefore.size()!=2 || !dirty)CheckError(E_UNEXPECTED);
+    FB::Doc* const original=m_doc;
+    const bool saved=SaveRecoveryNow();const bool wrote=g_recoveryDiagnostics.written==writes+1;
+    if (m_doc != original) CheckError(E_UNEXPECTED);
+    wchar_t reentered[4] = {}; const bool reentrantObserved = ::GetEnvironmentVariableW(L"FBE_NEXT_RECOVERY_REENTERED", reentered, _countof(reentered)) == 1 && reentered[0] == L'1';
+    if (reentrantObserved) { const char* marker = "reentrant-observed=1\n"; output.Write(marker, static_cast<DWORD>(strlen(marker)), &written); }
+    const auto undoAfter=history(false),redoAfter=history(true);const CString htmlAfter(static_cast<const wchar_t*>(body->innerHTML));
+    m_doc->m_body.SetFocus();
+    const HRESULT redoResult=static_cast<HRESULT>(m_doc->m_body.ExecCommand(IDM_REDO));
+    const CString afterRedo(static_cast<const wchar_t*>(body->innerHTML));
+    const HRESULT undoResult=static_cast<HRESULT>(m_doc->m_body.ExecCommand(IDM_UNDO));
+    const CString afterUndo(static_cast<const wchar_t*>(body->innerHTML));
+    const bool historyExecuted=SUCCEEDED(redoResult) && SUCCEEDED(undoResult) && afterRedo!=htmlBefore && afterUndo==htmlBefore;
+    CStringA row;row.Format("saved=%d wrote=%d html-same=%d undo-before=%u undo-after=%u redo-before=%u redo-after=%u undo-same=%d redo-same=%d dirty-before=%d dirty-after=%d history-executed=%d\n",saved,wrote,htmlBefore==htmlAfter,(unsigned)undoBefore.size(),(unsigned)undoAfter.size(),(unsigned)redoBefore.size(),(unsigned)redoAfter.size(),undoBefore==undoAfter,redoBefore==redoAfter,dirty,m_doc->DocChanged(),historyExecuted);
+    output.Write(row,static_cast<DWORD>(row.GetLength()),&written);output.Close();::PostQuitMessage(saved && wrote && htmlBefore==htmlAfter && undoBefore==undoAfter && redoBefore==redoAfter && historyExecuted ? 0 : 1);
+  } catch(const _com_error& e) {CStringA row;row.Format("exception=0x%08lX\n",(unsigned long)e.Error());output.Write(row,row.GetLength(),&written);output.Close();::PostQuitMessage(1);}
+  return 0;
+}
 #include "RuntimeTestFileClose.inl"
 #include "RuntimeTestNewDocument.inl"
 #include "RuntimeTestNbspInput.inl"
@@ -2044,9 +2162,13 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 	if (IsFbeTestScenario(L"normal-recovery-verify"))
 	{
 		ShowView(SOURCE); const sptr_t length = m_source.SendMessage(SCI_GETLENGTH); std::vector<char> source(static_cast<size_t>(length) + 1); m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(source.data()));
-		const bool payload = strstr(source.data(), "RECOVERY_NORMAL") != NULL; const bool identity = CString(m_doc->m_filename) == L"Untitled.fb2" && !m_doc->m_namevalid && m_document_session.Location().storagePath.IsEmpty();
+        wchar_t contentMode[16] = {}; ::GetEnvironmentVariableW(L"FBE_NEXT_RECOVERY_VERIFY_CONTENT", contentMode, _countof(contentMode));
+        bool payload = strstr(source.data(), "RECOVERY_NORMAL") != NULL;
+        if (wcscmp(contentMode, L"binary") == 0) payload = strstr(source.data(), "CQgHBg==") && strstr(source.data(), "payload.bin") && strstr(source.data(), "Recovery");
+        else if (wcscmp(contentMode, L"links") == 0) payload = strstr(source.data(), "FAirst") && strstr(source.data(), "#target") && strstr(source.data(), "Recovery");
+        const bool identity = CString(m_doc->m_filename) == L"Untitled.fb2" && !m_doc->m_namevalid && m_document_session.Location().storagePath.IsEmpty();
 		const bool dirty = DocChanged(); const bool cleaned = ::GetFileAttributes(m_recovery.SnapshotPath()) == INVALID_FILE_ATTRIBUTES;
-		CStringA report; report.Format("payload=%d\nidentity=%d\ndirty=%d\ncleaned=%d\n", payload, identity, dirty, cleaned); DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close(); ::PostQuitMessage(identity && dirty && cleaned ? 0 : 1); return 0;
+		CStringA report; report.Format("payload=%d\nidentity=%d\ndirty=%d\ncleaned=%d\n", payload, identity, dirty, cleaned); DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close(); ::PostQuitMessage(payload && identity && dirty && cleaned ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"archive-recovery-verify"))
 	{

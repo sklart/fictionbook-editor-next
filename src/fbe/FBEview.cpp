@@ -2907,6 +2907,14 @@ HRESULT CFBEView::NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom, bool normali
   } catch (const _com_error& error) { return error.Error(); }
   catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
 }
+void CFBEView::NormalizeDetachedForRecovery(MSHTML::IHTMLDOMNodePtr dom)
+{
+    RemoveUnk(dom, Document());
+    MergeEqualHTMLElements(dom, Document());
+    FbeVisualDom::NormalizeStructure(Document(), dom);
+    FixupLinks(dom);
+}
+
 void CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom, bool normalizeLinks)
 {
 	CheckError(NormalizeWithoutUndo(dom, normalizeLinks));

@@ -43,6 +43,7 @@ DocumentLifecycleController::DocumentLifecycleController(CMainFrame& frame, FB::
 
 DocumentLifecycleResult DocumentLifecycleController::NewDocument()
 {
+	if (m_document && m_document->RecoverySnapshotInProgress()) return Failed(m_session.Location(), m_session.IsArchive());
 	PendingDocument pending(m_frame, m_document);
 	FB::Doc* document = &pending.Document();
 	if (!document->CreateBlank(m_view)) {
@@ -66,6 +67,7 @@ DocumentLifecycleResult DocumentLifecycleController::Open(const DocumentOpenSour
 
 DocumentLifecycleResult DocumentLifecycleController::Import(const MSXML2::IXMLDOMDocument2Ptr& dom, const CString& suggestedFilename)
 {
+	if (m_document && m_document->RecoverySnapshotInProgress()) return Failed(m_session.Location(), m_session.IsArchive());
 	if (!dom) return Failed(m_session.Location(), m_session.IsArchive());
 	PendingDocument pending(m_frame, m_document);
 	FB::Doc& document = pending.Document();
@@ -96,6 +98,7 @@ DocumentLifecycleResult DocumentLifecycleController::Import(const MSXML2::IXMLDO
 
 DocumentLifecycleResult DocumentLifecycleController::CloseDocument()
 {
+	if (m_document && m_document->RecoverySnapshotInProgress()) return Failed(m_session.Location(), m_session.IsArchive());
 	if (!m_session.HasDocument()) return Completed(DocumentLocation(), false);
 	// Prepare the private MSHTML host before releasing any part of the book.
 	// PendingDocument restores the old active document if preparation fails.
@@ -120,6 +123,7 @@ DocumentLifecycleResult DocumentLifecycleController::ReloadNormal(const CString&
 
 DocumentLifecycleResult DocumentLifecycleController::Load(const DocumentOpenSource& source, bool reload)
 {
+	if (m_document && m_document->RecoverySnapshotInProgress()) return Failed(m_session.Location(), m_session.IsArchive());
 	PendingDocument pending(m_frame, m_document);
 	FB::Doc* document = &pending.Document();
 	const CString& path = source.location.storagePath;

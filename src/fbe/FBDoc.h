@@ -21,6 +21,13 @@ namespace FB // put all FB2 related stuff into its own namespace
 class Doc
 {
 public:
+  struct RecoveryBinaryEntry {
+    CString id, mime;
+    std::shared_ptr<const CComVariant> payload;
+  };
+  using RecoveryBinarySnapshot = std::vector<RecoveryBinaryEntry>;
+  bool CaptureRecoveryBinaries(RecoveryBinarySnapshot& snapshot);
+  static bool SameRecoveryBinaries(const RecoveryBinarySnapshot& left, const RecoveryBinarySnapshot& right);
   FbeBinary::BinaryStore m_binaryStore;
   void ReconcileBinaryStore();
   CString BinaryInfo(const CString& id);
@@ -85,6 +92,7 @@ public:
 
   HRESULT GetLastSaveError() const { return m_last_save_error; }
   bool    SaveRecoveryCopy(const CString& filename);
+  bool    RecoverySnapshotInProgress() const { return m_recoverySnapshotInProgress; }
   bool	  Validate(int &errline,int &errcol) {
     AU::CPersistentWaitCursor wc;
     return SaveToFile(CString(),true,&errline,&errcol);
@@ -193,6 +201,7 @@ public:
 
 private:
 	GUID m_clipboard_identity = GUID_NULL;
+  bool m_recoverySnapshotInProgress = false;
   //long		    m_desc_ver;
   long		    m_body_ver;
   //long		    m_desc_cp;
@@ -224,7 +233,7 @@ private:
   MSXML2::IXMLDOMDocument2Ptr CreateDOMImp(const CString& encoding, bool compactBinaries,
                                            FictionBookFileType targetType, bool normalizeVisualDom = true,
                                            bool analysisSnapshot = false, CString* analysisError = NULL,
-                                           bool normalizeLiveLinks = true);
+                                           bool normalizeLiveLinks = true, bool normalizeDetached = false);
 
   // loading support
 	void	  TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr doc,
