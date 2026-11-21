@@ -23,9 +23,9 @@ $passed=$false
 $names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_CLOSE_SECOND','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_TEST_CLOSE_EPUB')
 $old=@{};foreach($name in $names){$old[$name]=[Environment]::GetEnvironmentVariable($name)}
 try {
-    $fixture=Join-Path $PSScriptRoot '../../out/tests/export-epub-cyrillic/fb2-metadata-cyrillic-smoke.epub'
+    $fixture=Join-Path $iso.Root 'generated-close-fixture.epub'
     if(!(Test-Path -LiteralPath $fixture)) {
-        & (Join-Path $PSScriptRoot 'test-export-epub-cyrillic.ps1') -OutputPath $fixture
+        & (Join-Path $PSScriptRoot 'test-export-epub-cyrillic.ps1') -DllPath (Join-Path (Split-Path (Resolve-Path -LiteralPath $FbeExe).Path) 'Plugins/ExportEPUB.dll') -OutputPath $fixture
         if($LASTEXITCODE -ne 0){throw 'EPUB fixture generation failed'}
     }
     $epubCopy=Join-Path $iso.Root 'import-source.epub'

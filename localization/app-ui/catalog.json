@@ -819,6 +819,24 @@
         "bg-BG": "Документът е запазен — не са открити грешки."
       }
     },
+    "fbe.status.saved.newer_changes": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "File saved; newer changes remain unsaved. Save again.",
+        "ru-RU": "Файл сохранён, но новые изменения не сохранены. Сохраните ещё раз.",
+        "uk-UA": "Файл збережено, але нові зміни не збережено. Збережіть ще раз.",
+        "de-DE": "Datei gespeichert; neuere Änderungen sind nicht gespeichert. Erneut speichern.",
+        "fr-FR": "Fichier enregistré ; les modifications récentes ne le sont pas. Enregistrez à nouveau.",
+        "es-ES": "Archivo guardado; hay cambios posteriores sin guardar. Guarde de nuevo.",
+        "it-IT": "File salvato; le modifiche successive non sono salvate. Salva di nuovo.",
+        "pl-PL": "Plik zapisano, ale nowsze zmiany nie są zapisane. Zapisz ponownie.",
+        "pt-PT": "Ficheiro guardado; existem alterações posteriores por guardar. Guarde novamente.",
+        "nl-NL": "Bestand opgeslagen; latere wijzigingen zijn niet opgeslagen. Sla opnieuw op.",
+        "cs-CZ": "Soubor byl uložen, ale novější změny uloženy nejsou. Uložte znovu.",
+        "bg-BG": "Файлът е запазен, но по-новите промени не са. Запазете отново."
+      }
+    },
     "fbe.messagebox.ok": {
       "resourceId": "IDS_MB_OK",
       "component": "fbe.core",

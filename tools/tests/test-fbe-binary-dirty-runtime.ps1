@@ -15,7 +15,7 @@ foreach($case in $cases) {
   $process=Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -WindowStyle Hidden -ArgumentList @('--portable','-b',('"'+$report+'"'),('"'+$fixture+'"')) -PassThru
   $code=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'binary-dirty-contract' -Report $report -TimeoutSeconds $TimeoutSeconds
   $state=if(Test-Path $report){Get-Content $report -Raw}else{'<missing>'}; Write-Host "case=$case exit=$code $state"
-  if($code -ne 0) { throw "Binary dirty failed: $case $state" }
+  if($code -ne 0 -or $state -notmatch 'clean-before=1 changed=[01] saved=[01] save-failed=[01] clean-after=[01]') { throw "Binary dirty failed or report missing: $case $state" }
   if($case -eq 'save-error' -and (Get-FileHash $fixture).Hash -ne $before) { throw 'Failed Save changed the original file.' }
   if($case -in @('replace','id','mime','delete','add','reentrant-save')) {
    $doc=[Xml.XmlDocument]::new();$doc.XmlResolver=$null;$doc.Load($fixture);$ns=[Xml.XmlNamespaceManager]::new($doc.NameTable);$ns.AddNamespace('f','http://www.gribuser.ru/xml/fictionbook/2.0')

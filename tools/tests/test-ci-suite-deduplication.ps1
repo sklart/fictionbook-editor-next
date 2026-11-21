@@ -46,4 +46,29 @@ for ($parent = $themeCall.Parent; $parent; $parent = $parent.Parent) {
         throw 'Theme policy runtime must be unconditional, including SkipEarlyRuntimeSuites and FAST.'
     }
 }
+# The P0 contour is owned by verify-release and must not be duplicated in CI.
+if ([regex]::Matches($verify, 'invoke-prerelease-p0\.ps1').Count -ne 1 -or $workflow.Contains('invoke-prerelease-p0.ps1')) { throw 'P0 runner must execute exactly once through verify-release.' }
+if (-not $workflow.Contains('out/tests/prerelease-p0/**') -or -not $workflow.Contains('name: prerelease-p0-${{ github.sha }}')) { throw 'CI must publish SHA-labelled P0 evidence.' }
+if ($verify -notmatch '(?s)if \(\$FullValidation\) \{ throw "FullValidation INCOMPLETE:') { throw 'FULL must fail if the verifier reports skipped mandatory checks.' }
+$runner = Get-Content -Raw -LiteralPath (Join-Path $root 'tools/tests/invoke-prerelease-p0.ps1')
+foreach ($test in @('test-fbe-issue72-runtime.ps1','test-fbe-issue72-save-runtime.ps1','test-fbe-save-timer-runtime.ps1','test-fbe-recovery-history-runtime.ps1','test-fbe-binary-dirty-runtime.ps1','test-fbe-reentrant-close-runtime.ps1','test-fbe-script-form-dirty-runtime.ps1')) {
+    if (-not $runner.Contains($test)) { throw "P0 runner is missing $test." }
+}
+if (-not $runner.Contains('executableSha256') -or -not $runner.Contains('GITHUB_SHA') -or -not $runner.Contains("status='RUNNING'") -or -not $runner.Contains("status='FAIL'")) { throw 'P0 reports must identify the source and binary and distinguish incomplete from failure.' }
+$probe = Join-Path ([IO.Path]::GetTempPath()) ('fbe-p0-preflight-' + [guid]::NewGuid().ToString('N'))
+try {
+    New-Item -ItemType Directory -Path $probe | Out-Null
+    $missingExe = Join-Path $probe 'missing.exe'
+    $process = Start-Process -FilePath (Get-Process -Id $PID).Path -Wait -PassThru -WindowStyle Hidden -ArgumentList @(
+        '-NoProfile', '-File', ('"' + (Join-Path $root 'tools/tests/invoke-prerelease-p0.ps1') + '"'),
+        '-FbeExe', ('"' + $missingExe + '"'), '-OutputDirectory', ('"' + $probe + '"'))
+    $reports = @(Get-ChildItem -LiteralPath $probe -Recurse -Filter summary.json)
+    if ($process.ExitCode -eq 0 -or $reports.Count -ne 1) { throw 'P0 preflight failure must produce one report and a nonzero exit.' }
+    $report = Get-Content -Raw -LiteralPath $reports[0].FullName | ConvertFrom-Json
+    if ($report.status -ne 'FAIL' -or -not $report.error.Contains('missing.exe') -or $report.sha -notmatch '^[0-9a-f]{40}$' -or $report.results.Count -ne 0) {
+        throw 'P0 preflight report must identify the SHA and describe failure before any test runs.'
+    }
+} finally {
+    if (Test-Path -LiteralPath $probe) { Remove-Item -LiteralPath $probe -Recurse -Force }
+}
 Write-Host 'CI duplicate-suite contract passed.'

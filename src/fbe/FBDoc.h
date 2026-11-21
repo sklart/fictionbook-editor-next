@@ -123,6 +123,7 @@ public:
 			m_editor.GetVersionNumber() == after && !m_editor.IsFormChanged()) m_body_ver = after;
 	}
 
+    bool ConsumePostSaveChanges() { const bool changed = m_postSaveChanges; m_postSaveChanges = false; return changed; }
 	void MarkSavePoint();
 	void CaptureNewTemplateBaseline();
 	void ReconcileNewTemplateAfterUndo();
@@ -237,14 +238,17 @@ private:
   // mutated the visual DOM. Do not allow a later Save to overwrite data.
   bool         m_serialization_unsafe;
   bool         m_save_transaction_active;
+  bool         m_postSaveChanges = false;
 
   // saving support
   bool	  SaveToFile(const CString& filename,bool fValidateOnly=false,int *errline=NULL,int *errcol=NULL,
-                   bool reportAccessDenied=true);
+                   bool reportAccessDenied=true, bool *contentChangedAfterSerialization=NULL);
   MSXML2::IXMLDOMDocument2Ptr CreateDOMImp(const CString& encoding, bool compactBinaries,
                                            FictionBookFileType targetType, bool normalizeVisualDom = true,
                                            bool analysisSnapshot = false, CString* analysisError = NULL,
-                                           bool normalizeLiveLinks = true, bool normalizeDetached = false);
+                                           bool normalizeLiveLinks = true, bool normalizeDetached = false,
+                                           CString* serializedBody = NULL, CString* serializedDescription = NULL,
+                                           bool* capturedSerializedState = NULL);
 
   // loading support
 	void	  TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr doc,

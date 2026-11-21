@@ -384,9 +384,17 @@ jobs:
           $watch = [Diagnostics.Stopwatch]::StartNew()
           try {
             $arguments = @{ Configuration = 'Release'; PlatformToolset = 'v143'; SkipUpdateManifest = $true; SkipLocalizationPreflight = $true; SkipEarlyRuntimeSuites = $true; BatchOutputDirectory = 'out/target-batches' }
-            if ($env:GITHUB_REF_TYPE -eq 'tag' -or '${{ inputs.full_validation }}' -eq 'true') { $arguments.FullValidation = $true }
+            if ($env:GITHUB_REF_TYPE -eq 'tag' -or '${{ inputs.full_validation }}' -eq 'true') { $arguments.FullValidation = $true; $arguments.AllowUserComRegistration = $true }
             ./tools/build/verify-release.ps1 @arguments
           } finally { $watch.Stop(); "seconds=$([math]::Round($watch.Elapsed.TotalSeconds, 1))" >> $env:GITHUB_OUTPUT }
+      - name: Upload prerequisite P0 reports
+        if: always() && steps.release-verification.outcome != 'skipped' && steps.release-verification.outcome != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: prerelease-p0-${{ github.sha }}
+          path: out/tests/prerelease-p0/**
+          if-no-files-found: error
+          retention-days: 14
       - name: Smoke bundled plugin upgrade and uninstall
         if: github.event_name == 'pull_request'
         shell: pwsh

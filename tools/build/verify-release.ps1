@@ -192,6 +192,8 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-editor-background-settings.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-settings-dialog-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-inputbox-layout-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+# This P0 contour also runs in CI when early suites are delegated.
+& (Join-Path $repoRoot "tools\tests\invoke-prerelease-p0.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Full:$FullValidation
 # Mandatory post-build Dark Theme stabilization contour. Each script throws
 # on failure and retains its isolated runtime diagnostics for inspection.
 & (Join-Path $repoRoot "tools\tests\test-fbe-status-bar-long-paint-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
@@ -762,6 +764,7 @@ if ($SkipSplitUndo -or $SkipClipboardRuntime -or -not $AllowUserComRegistration)
     if ($SkipSplitUndo) { $skipped += 'Split/Undo' }
     if ($SkipClipboardRuntime) { $skipped += 'clipboard runtime' }
     if (-not $AllowUserComRegistration) { $skipped += 'user COM registration smoke' }
+    if ($FullValidation) { throw "FullValidation INCOMPLETE: skipped $($skipped -join ', ')." }
     Write-Warning "Release verification for version $expectedVersion is INCOMPLETE: skipped $($skipped -join ', '). All other selected checks completed."
 } else {
     Write-Host "Проверка релиза для версии $expectedVersion прошла успешно."

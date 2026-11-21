@@ -1744,6 +1744,13 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 
 void CMainFrame::CommitSuccessfulSave()
 {
+    // The file was committed, but a later edit must remain dirty and retain recovery.
+    if (m_doc->ConsumePostSaveChanges()) {
+        const CString warning = FbeLoadRuntimeStringByKey(L"fbe.status.saved.newer_changes",
+            L"File saved; newer changes remain unsaved. Save again.");
+        ::SendMessage(m_hWnd, AU::WM_SETSTATUSTEXT, AU::StatusTextImmediate, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(warning)));
+        return;
+    }
 	m_doc->MarkSavePoint();
 	if (IsSourceActive()) m_source.SendMessage(SCI_SETSAVEPOINT);
 	m_recovery.DeleteIfWritten();

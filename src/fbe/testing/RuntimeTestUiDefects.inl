@@ -2,7 +2,7 @@ if (IsFbeTestScenario(L"quality-icon-theme-runtime")) {
     const InterfacePalette original = ThemeManager::GetNamedPalette();
     auto draw = [&](bool adapted, bool live) {
         std::vector<DWORD> result;
-        HIMAGELIST list = live ? m_CmdToolbar.GetImageList() : ::ImageList_Create(32, 32, ILC_COLOR32, 1, 1);
+        HIMAGELIST list = live ? static_cast<HIMAGELIST>(m_CmdToolbar.GetImageList()) : ::ImageList_Create(32, 32, ILC_COLOR32, 1, 1);
         HICON icon = live ? nullptr : static_cast<HICON>(::LoadImageW(_Module.GetResourceInstance(), MAKEINTRESOURCEW(IDI_FB2_QUALITY), IMAGE_ICON, 32, 32, LR_DEFAULTCOLOR));
         int index = -1;
         if (live) { TBBUTTON button = {}; const int position = m_CmdToolbar.CommandToIndex(ID_FILE_QUALITY_CHECK); if (position >= 0 && m_CmdToolbar.GetButton(position, &button)) index = button.iBitmap; }

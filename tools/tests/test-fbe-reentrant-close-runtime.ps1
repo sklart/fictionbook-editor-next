@@ -12,7 +12,7 @@ foreach($operation in @('close','new','open')) {
   $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO="save-decision-reentrant-$operation"; $env:FBE_NEXT_TEST_DECISION_OPEN_PATH=$other; $env:FBE_NEXT_TEST_FIRST_SAVE_PATH=$first
   $proc=Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Runtime -WindowStyle Hidden -ArgumentList @('--portable','-b',('"'+$report+'"'),('"'+$fixture+'"')) -PassThru
   $code=Wait-IsolatedFbeProcess -Process $proc -Isolation $iso -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds $TimeoutSeconds
-  $state=if(Test-Path $report){Get-Content $report -Raw}else{'<missing>'}; Write-Host "$operation exit=$code $state"; if($code -ne 0){throw "Operation failed: $operation"}
+  $state=if(Test-Path $report){Get-Content $report -Raw}else{'<missing>'}; Write-Host "$operation exit=$code $state"; if($code -ne 0 -or $state -notmatch 'dirty-before=1 dialog=1 answered=1 cancelled=1 retained=1 copied=1 saved=1 reopened=1 binary-same=1 closed=1'){throw "Operation failed or report missing: $operation"}
   foreach($item in @(@($first,'CQgHBg=='),@($fixture,'BQQDAg=='))) {
    $doc=[Xml.XmlDocument]::new(); $doc.XmlResolver=$null; $doc.Load($item[0]); $ns=[Xml.XmlNamespaceManager]::new($doc.NameTable); $ns.AddNamespace('f','http://www.gribuser.ru/xml/fictionbook/2.0'); $nodes=$doc.SelectNodes('/f:FictionBook/f:binary',$ns)
    if($nodes.Count -ne 1 -or $nodes[0].GetAttribute('id') -cne 'payload.bin' -or $nodes[0].GetAttribute('content-type') -cne 'application/octet-stream' -or [Convert]::ToBase64String([Convert]::FromBase64String($nodes[0].InnerText)) -cne $item[1]) { throw "Wrong binary in $($item[0])" }

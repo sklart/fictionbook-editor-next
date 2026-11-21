@@ -1,4 +1,129 @@
 #include "RuntimeTestMalformedFallback.inl"
+if (IsFbeTestScenario(L"issue72-timer-reopen")) {
+    DWORD written = 0; bool passed = false;
+    try {
+        MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+        MSHTML::IHTMLDocument3Ptr document3(document);
+        MSHTML::IHTMLElementPtr paragraph(document3->getElementById(L"probe"));
+        MSHTML::IHTMLElementPtr title(document3->getElementById(L"tiTitle"));
+        MSHTML::IHTMLInputElementPtr titleInput(title);
+        wchar_t timerCase[32] = {};
+        if (!::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SAVE_TIMER", timerCase, _countof(timerCase))) CheckError(E_INVALIDARG);
+        passed = wcscmp(timerCase, L"description") == 0
+            ? titleInput && CString(static_cast<LPCWSTR>(titleInput->value)) == L"AFTER_SAVE_TITLE"
+            : paragraph && CString(static_cast<LPCWSTR>(paragraph->innerText)) == L"AFTER_SAVE_BODY";
+    } catch (...) { passed = false; }
+    const char* result = passed ? "result=PASS\n" : "result=FAIL\n";
+    output.Write(result, static_cast<DWORD>(strlen(result)), &written); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
+}
+if (IsFbeTestScenario(L"issue72-normal-save") || IsFbeTestScenario(L"issue72-normal-save-as")) {
+    DWORD written = 0;
+    try {
+        MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+        MSHTML::IHTMLDocument3Ptr document3(document);
+        MSHTML::IHTMLElementPtr body(document->all->item(L"fbw_body"));
+        MSHTML::IHTMLElementPtr paragraph(document3->getElementById(L"probe"));
+        if (!paragraph && body) {
+            MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P"));
+            if (paragraphs && paragraphs->length) paragraph = paragraphs->item(0L);
+        }
+        if (!body || !paragraph) CheckError(E_FAIL);
+        paragraph->insertAdjacentText(L"beforeEnd", L" ISSUE72_SAVE_MARKER ");
+        const CString before(static_cast<LPCWSTR>(body->innerHTML));
+        const bool dirtyBefore = DocChanged();
+        wchar_t timerCase[32] = {};
+        const bool timerProbe = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SAVE_TIMER", timerCase, _countof(timerCase)) > 0;
+        if (timerProbe) {
+            wchar_t scriptRoot[MAX_PATH] = {};
+            if (!::GetEnvironmentVariableW(L"FBE_NEXT_SCRIPT_API_ROOT", scriptRoot, _countof(scriptRoot))) CheckError(E_INVALIDARG);
+            m_doc->RunScript(CString(scriptRoot) + L"\\timer.js");
+        }
+        wchar_t target[MAX_PATH] = {};
+        const bool saveAs = IsFbeTestScenario(L"issue72-normal-save-as");
+        if (saveAs && !::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SAVE_PATH", target, _countof(target))) CheckError(E_INVALIDARG);
+        std::atomic<bool> finished{false};
+        std::atomic<int> yesDialogs{0}, otherDialogs{0};
+        std::thread closer([&]() {
+            std::atomic<int>* counts[] = {&yesDialogs, &otherDialogs};
+            while (!finished.load()) {
+                ::EnumWindows([](HWND window, LPARAM context) -> BOOL {
+                    DWORD process = 0; ::GetWindowThreadProcessId(window, &process);
+                    if (process != ::GetCurrentProcessId() || !::IsWindowVisible(window)) return TRUE;
+                    wchar_t type[64] = {}; ::GetClassNameW(window, type, _countof(type));
+                    if (wcscmp(type, L"#32770") && wcscmp(type, L"FBEThemedMessageDialog")) return TRUE;
+                    const int answer = ::GetDlgItem(window, IDYES) ? IDYES : IDOK;
+                    if (::GetDlgItem(window, answer)) {
+                        auto* counts = reinterpret_cast<std::atomic<int>**>(context);
+                        ++*counts[answer == IDYES ? 0 : 1];
+                        if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SAVE_TIMER", nullptr, 0)) ::Sleep(500);
+                        ::PostMessageW(window, WM_COMMAND, answer, 0);
+                    }
+                    return TRUE;
+                }, reinterpret_cast<LPARAM>(counts));
+                ::Sleep(10);
+            }
+        });
+        bool saved = false, priorSafe = true;
+        try {
+            wchar_t prior[32] = {};
+            if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_ISSUE72_PRIOR", prior, _countof(prior))) {
+                BOOL handled = FALSE;
+                if (wcscmp(prior, L"validate") == 0) OnFileValidate(0, ID_FILE_VALIDATE, nullptr, handled);
+                else if (wcscmp(prior, L"source") == 0) OnViewSource(0, ID_VIEW_SOURCE, nullptr, handled);
+                else CheckError(E_INVALIDARG);
+                priorSafe = !IsSourceActive() && before == CString(static_cast<LPCWSTR>(body->innerHTML)) && DocChanged();
+            }
+            if (!priorSafe) CheckError(E_FAIL);
+            DocumentSaveController controller;
+            if (saveAs) {
+                DocumentSaveAsRequest request; request.filename = target; request.encoding = m_doc->m_encoding;
+                saved = controller.SaveAsNormal(*m_doc, m_document_session, request).Succeeded();
+            } else saved = controller.SaveCurrent(*m_doc, m_document_session, m_document_session.Location()).Succeeded();
+            if (saved) { CommitSuccessfulSave(); if (saveAs) UpdateStatusBar(); }
+        }
+        catch (...) { finished = true; closer.join(); throw; }
+        const CString after(static_cast<LPCWSTR>(body->innerHTML));
+        const bool dirtyAfter = DocChanged();
+        const bool marker = after.Find(L"ISSUE72_SAVE_MARKER") >= 0;
+        MSHTML::IHTMLElementPtr title(document3->getElementById(L"tiTitle"));
+        MSHTML::IHTMLInputElementPtr titleInput(title);
+        const bool timerRan = timerProbe && (wcscmp(timerCase, L"description") == 0
+            ? titleInput && CString(static_cast<LPCWSTR>(titleInput->value)) == L"AFTER_SAVE_TITLE"
+            : CString(static_cast<LPCWSTR>(paragraph->innerText)) == L"AFTER_SAVE_BODY");
+        bool notice = !timerProbe;
+        if (timerProbe && saved && dirtyAfter) {
+            const size_t length = LOWORD(::SendMessageW(m_status, SB_GETTEXTLENGTHW, 0, 0));
+            std::vector<wchar_t> status(length + 1);
+            ::SendMessageW(m_status, SB_GETTEXTW, 0, reinterpret_cast<LPARAM>(status.data()));
+            const CString expected = FbeLoadRuntimeStringByKey(L"fbe.status.saved.newer_changes",
+                L"File saved; newer changes remain unsaved. Save again.");
+            notice = CString(status.data()) == expected;
+        }
+        bool copied = false, closed = false, decision = false;
+        if (timerProbe && saved && timerRan && dirtyAfter) {
+            wchar_t first[MAX_PATH] = {};
+            copied = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_FIRST_SAVE_PATH", first, _countof(first)) &&
+                ::CopyFileW(m_doc->m_filename, first, TRUE);
+            if (copied) {
+                // Batch OnClose bypasses prompts. Exercise the real decision
+                // handler explicitly before using batch close for cleanup.
+                decision = DiscardChanges();
+                if (decision) {
+                    HWND originalWindow = m_hWnd; BOOL handled = FALSE;
+                    OnClose(WM_CLOSE, 0, 0, handled);
+                    closed = ::IsWindow(originalWindow) == FALSE;
+                }
+            }
+        }
+        finished = true; closer.join();
+        CStringA report; report.Format("result=PASS\nsaved=%d\ndirty-before=%d\ndirty-after=%d\nbody-same=%d\nmarker=%d\ntimer-ran=%d\nnotice=%d\nfirst-copy=%d\ndecision=%d\nclosed=%d\nprior-safe=%d\nyes-dialog-observations=%d\nother-dialog-observations=%d\n", saved, dirtyBefore, dirtyAfter, before == after, marker, timerRan, notice, copied, decision, closed, priorSafe, yesDialogs.load(), otherDialogs.load());
+        output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+        ::PostQuitMessage(0);
+    } catch (...) {
+        const char failure[] = "result=FAIL\n"; output.Write(failure, sizeof(failure)-1, &written); output.Close(); ::PostQuitMessage(1);
+    }
+    return 0;
+}
 	if (IsFbeTestScenario(L"issue72-source") || IsFbeTestScenario(L"issue72-validate"))
 	{
 		// The input is a disposable copy. Flush stages before calling production

@@ -1993,7 +1993,8 @@ HRESULT Doc::ValidateForScripting(BSTR sourceOverride, bool& valid, int& line, i
 
 MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool compactBinaries,
 	FictionBookFileType targetType, bool normalizeVisualDom, bool analysisSnapshot,
-	CString* analysisError, bool normalizeLiveLinks, bool normalizeDetached) {
+	CString* analysisError, bool normalizeLiveLinks, bool normalizeDetached,
+    CString* serializedBody, CString* serializedDescription, bool* capturedSerializedState) {
 	// GetBinaries converts every editor base64data value to bytes. MSXML formats
 	// the resulting bin.base64 text, so saving removes only that whitespace in
 	// place instead of converting every binary through MSXML a second time.
@@ -2215,6 +2216,9 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   args[2]=ndoc.GetInterfacePtr();
 
   CheckError(body.InvokeN(analysisSnapshot ? L"GetDescForAnalysis" : L"GetDesc",&args[0],3));
+  // These local snapshots correspond to the portions already serialized.
+  // Later script callbacks must not turn newer live data into a savepoint.
+  const bool capturedDescription = serializedDescription && CaptureDescriptionState(*serializedDescription, true);
 
   // fetch body elements
   markTableSerializationPhase(L"get-bodies-start");
@@ -2222,6 +2226,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 	if (targetType == FictionBookFileType::Fb2 && (normalizeVisualDom || normalizeDetached))
 		EnsureMinimalFb2Body(ndoc);
   markTableSerializationPhase(L"get-bodies-complete");
+  if (capturedSerializedState) *capturedSerializedState = capturedDescription && serializedBody && CaptureBodyHtml(*serializedBody);
 	if (analysisSnapshot && GetDiagnosticFaultInjection() == L"drop-serialized-row-during-analysis")
 	{
 		MSXML2::IXMLDOMNodePtr row(ndoc->selectSingleNode(L"/fb:FictionBook/fb:body//fb:table/fb:tr"));
@@ -2385,7 +2390,7 @@ static CString CreateTemporaryFileName(const CString& directory, const wchar_t* 
 	return CString(temporaryPath);
 }
 bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
-		      int *errline,int *errcol,bool reportAccessDenied)
+		      int *errline,int *errcol,bool reportAccessDenied, bool *contentChangedAfterSerialization)
 {
     FBE_BINARY_DIAG_SCOPE(Save);
 	StartupTrace::ScopedOperation operation(fValidateOnly ? StartupTrace::Operation::Validate : StartupTrace::Operation::None);
@@ -2397,6 +2402,9 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 	}
 	m_last_save_error = S_OK;
 	const FictionBookFileType targetType = ResolveFictionBookTargetType(filename, m_filename);
+    CString serializedBody, serializedDescription;
+    bool capturedSerializedState = false;
+    if (contentChangedAfterSerialization) *contentChangedAfterSerialization = true;
 	CString trace;
 	trace.Format(L"%s; file-present=%d", fValidateOnly ? L"book validation started" : L"book save started",
 		filename.IsEmpty() ? 0 : 1);
@@ -2420,7 +2428,11 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 	MSXML2::IXMLDOMDocument2Ptr	ndoc;
 	m_save_transaction_active = true;
 	try {
-		ndoc = CreateDOMImp(_Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding(), true, targetType);
+		ndoc = CreateDOMImp(_Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding(), true, targetType,
+            true, false, NULL, true, false,
+            contentChangedAfterSerialization ? &serializedBody : NULL,
+            contentChangedAfterSerialization ? &serializedDescription : NULL,
+            contentChangedAfterSerialization ? &capturedSerializedState : NULL);
 	}
 	catch (...) {
 		m_save_transaction_active = false;
@@ -2542,6 +2554,12 @@ forcesave:
     return false;
   }
 
+  if (contentChangedAfterSerialization) {
+    CString currentBody, currentDescription;
+    *contentChangedAfterSerialization = !capturedSerializedState ||
+        !CaptureBodyHtml(currentBody) || !CaptureDescriptionState(currentDescription, true) ||
+        currentBody != serializedBody || currentDescription != serializedDescription;
+  }
   operation.Succeeded();
   return true;
 }
@@ -2810,8 +2828,12 @@ bool  Doc::Save() {
   struct Guard { Doc& doc; ~Guard() { doc.EndUserSave(); } } guard{*this};
   RecoveryBinarySnapshot before; if (!CaptureRecoveryBinaries(before)) return false;
   AU::CPersistentWaitCursor wc;
-  if (SaveToFile(m_filename, false, NULL, NULL, false)) {
-    MarkSavePoint(); ProtectSavedBinaries(before);
+  bool changedAfterSerialization = true;
+  if (SaveToFile(m_filename, false, NULL, NULL, false, &changedAfterSerialization)) {
+    m_postSaveChanges = changedAfterSerialization;
+    if (changedAfterSerialization) { ResetSavePoint(); m_body.MarkDescriptionFormChanged(); }
+    else MarkSavePoint();
+    ProtectSavedBinaries(before);
     return true;
   }
   return false;
@@ -2822,8 +2844,12 @@ bool  Doc::Save(const CString& filename) {
   struct Guard { Doc& doc; ~Guard() { doc.EndUserSave(); } } guard{*this};
   RecoveryBinarySnapshot before; if (!CaptureRecoveryBinaries(before)) return false;
   AU::CPersistentWaitCursor wc;
-  if (SaveToFile(filename)) {
-    MarkSavePoint(); ProtectSavedBinaries(before);
+  bool changedAfterSerialization = true;
+  if (SaveToFile(filename, false, NULL, NULL, true, &changedAfterSerialization)) {
+    m_postSaveChanges = changedAfterSerialization;
+    if (changedAfterSerialization) { ResetSavePoint(); m_body.MarkDescriptionFormChanged(); }
+    else MarkSavePoint();
+    ProtectSavedBinaries(before);
     m_filename=filename;
 	m_file_type=DetectFictionBookFileType(filename);
 	U::SetCurrentDirectoryToFile(filename);
