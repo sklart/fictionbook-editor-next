@@ -22,6 +22,13 @@ function Get-FbeSanitizerMetadata {
     return [pscustomobject]@{eligible=($null -eq $reason);reason=$reason;contours=@($contours | Select-Object -Unique);parameters=$parameters;binaryParameters=$binaryParameters;expectedChildExitCodes=$expected}
 }
 
+function Assert-FbeSanitizerProvenance {
+    param([string]$Head, [string]$BuildCommit)
+    if ($Head -notmatch '^[0-9a-f]{40}$' -or $BuildCommit -cne $Head) {
+        throw 'Sanitizer build provenance does not match the current source SHA.'
+    }
+}
+
 function Assert-FbeSanitizerRegistrationIsolation {
     param([object[]]$Cases, [switch]$AllowUserComRegistration)
     if (-not $AllowUserComRegistration -and @($Cases | Where-Object {

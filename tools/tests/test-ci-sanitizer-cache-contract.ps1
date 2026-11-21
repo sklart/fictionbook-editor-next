@@ -37,6 +37,11 @@ foreach ($sanitizer in @('asan','ubsan')) {
     if ($workflow -notmatch "(?s)release-${sanitizer}:\s*\r?\n\s*if: github.ref_type == 'tag'.*\r?\n\s*uses: ./\.github/workflows/$sanitizer.yml") { throw "Release must call $sanitizer on the tagged SHA" }
 }
 . (Join-Path $PSScriptRoot 'SanitizerCatalog.ps1')
+$testSha = 'a' * 40
+Assert-FbeSanitizerProvenance -Head $testSha -BuildCommit $testSha
+$rejected = $false
+try { Assert-FbeSanitizerProvenance -Head $testSha -BuildCommit ('b' * 40) } catch { $rejected = $true }
+if (-not $rejected) { throw 'Sanitizer build from another SHA must be rejected.' }
 $registrationCase = @(@{ name='release.import-epub-registration.1' })
 $rejected = $false
 try { Assert-FbeSanitizerRegistrationIsolation -Cases $registrationCase } catch { $rejected = $true }

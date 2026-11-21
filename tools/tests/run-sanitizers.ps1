@@ -30,6 +30,11 @@ if($List) { $selected | Select-Object id,@{n='sanitizer';e={$_.sanitizer}}; retu
 if(-not $selected.Count -and -not $AdditionalCases) { throw 'Sanitizer contour is empty.' }
 $manifest=Get-Content -Raw (Join-Path $OutputDirectory 'fbe-sanitizer.json') | ConvertFrom-Json
 if($manifest.sanitizer -ne $Sanitizer -or $manifest.publishable) { throw 'Expected the selected diagnostic sanitizer output.' }
+$head=(& git -C $root rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0) { throw 'Cannot determine source SHA for sanitizer run.' }
+Assert-FbeSanitizerProvenance -Head $head -BuildCommit $manifest.gitCommit
+& git -C $root -c diff.ignoreSubmodules=all diff --quiet HEAD --
+if ($LASTEXITCODE -ne 0) { throw 'Sanitizer source worktree has tracked changes; use a clean checkout.' }
 if($Sanitizer -eq 'Undefined' -and $manifest.vendorExceptionPolicy.sha256 -ne (Get-FileHash -LiteralPath (Join-Path $root 'tools/msbuild/ubsan.ignorelist')).Hash) { throw 'UBSan binaries were built with another vendor exception policy.' }
 foreach($module in $manifest.modules) {
     if((Get-FileHash (Join-Path $OutputDirectory $module.path)).Hash -ne $module.sha256) { throw "Stale sanitizer module: $($module.path)" }
@@ -37,7 +42,7 @@ foreach($module in $manifest.modules) {
 . (Join-Path $PSScriptRoot 'SanitizerHarness.ps1')
 $run=Join-Path $root ("out/tests/$folder/"+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force $run | Out-Null
-$summary=[ordered]@{schemaVersion=1;commit=(& git -C $root rev-parse HEAD).Trim();sanitizer=$Sanitizer;contour=$Contour;selectionComplete=($Id.Count -eq 0);status='RUNNING';outputDirectory=$OutputDirectory;modules=$manifest.modules;uninstrumented=$manifest.uninstrumented;selfTest='NOT RUN';results=@();excluded=@($catalog.tests | Where-Object {-not $_.sanitizer.eligible} | ForEach-Object { @{id=$_.id;reason=$_.sanitizer.reason} })}
+$summary=[ordered]@{schemaVersion=1;commit=$head;sanitizer=$Sanitizer;contour=$Contour;selectionComplete=($Id.Count -eq 0);status='RUNNING';outputDirectory=$OutputDirectory;modules=$manifest.modules;uninstrumented=$manifest.uninstrumented;selfTest='NOT RUN';results=@();excluded=@($catalog.tests | Where-Object {-not $_.sanitizer.eligible} | ForEach-Object { @{id=$_.id;reason=$_.sanitizer.reason} })}
 $summaryPath=Join-Path $run 'summary.json'
 $summary | ConvertTo-Json -Depth 12 | Set-Content $summaryPath -Encoding utf8
 $savedPath=$env:PATH; $savedCL=$env:_CL_; $savedSymbolizer=$env:ASAN_SYMBOLIZER_PATH; $savedUbsanSymbolizer=$env:UBSAN_SYMBOLIZER_PATH
