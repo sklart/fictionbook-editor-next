@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][ValidateSet('Address','Undefined')][string]$Sanitizer,
-    [switch]$Focused
+    [switch]$Focused,
+    [switch]$AllowUserComRegistration
 )
 $ErrorActionPreference = 'Stop'
 # IDs are resolved and checked against the existing release catalog by the runner.
@@ -13,6 +14,7 @@ $ids = @(
 )
 $arguments = @{ Sanitizer = $Sanitizer; Contour = if ($Focused) { 'Fast' } else { 'Full' } }
 if ($Focused) { $arguments.Id = $ids }
+if ($AllowUserComRegistration) { $arguments.AllowUserComRegistration = $true }
 $watch = [Diagnostics.Stopwatch]::StartNew()
 try { & (Join-Path $PSScriptRoot 'run-sanitizers.ps1') @arguments }
 finally {

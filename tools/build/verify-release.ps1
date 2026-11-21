@@ -189,6 +189,7 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-editor-runtime-fingerprint.ps1")
 & (Join-Path $repoRoot "tools\tests\test-editor-background-assets.ps1") -RuntimeDirectory (Join-Path $outputDir "Backgrounds")
 & (Join-Path $repoRoot "tools\tests\test-runtime-directory-layout.ps1") -RuntimeDirectory $outputDir
+& (Join-Path $repoRoot "tools\tests\test-editor-background-snapshot-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-editor-background-settings.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-settings-dialog-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-inputbox-layout-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")

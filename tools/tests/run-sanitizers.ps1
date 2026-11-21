@@ -7,6 +7,8 @@ param(
     [string]$AdditionalCases,
     [switch]$List,
     [switch]$SkipInfrastructureSelfTest,
+    # Only use in a disposable user profile: the registration test writes HKCU.
+    [switch]$AllowUserComRegistration,
     [int]$CaseTimeoutSeconds=900
 )
 $ErrorActionPreference='Stop'
@@ -59,6 +61,7 @@ try {
         }
     })
     if($AdditionalCases) { $cases+=@(Get-Content -Raw -LiteralPath $AdditionalCases | ConvertFrom-Json) }
+    Assert-FbeSanitizerRegistrationIsolation -Cases $cases -AllowUserComRegistration:$AllowUserComRegistration
     $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach($case in $cases) {
         $safeName=$case.name -replace '[^A-Za-z0-9._-]','_'

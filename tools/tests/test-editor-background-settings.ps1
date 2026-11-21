@@ -3,7 +3,7 @@
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180, [switch]$KeepArtifacts)
 $ErrorActionPreference = 'Stop'; $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe)) { throw "Не найден FBE: $FbeExe" }
-function Get-Snapshot([string]$Path) { if(-not (Test-Path -LiteralPath $Path)) { return '<absent>' }; (Get-ChildItem -LiteralPath $Path -Recurse -File | Sort-Object FullName | ForEach-Object { "$($_.FullName)|$($_.Length)|$((Get-FileHash $_.FullName -Algorithm SHA256).Hash)" }) -join "`n" }
+function Get-Snapshot([string]$Path) { if(-not (Test-Path -LiteralPath $Path)) { return '<absent>' }; (Get-ChildItem -LiteralPath $Path -Recurse -File | Sort-Object FullName | ForEach-Object { "$($_.FullName)|$($_.Length)|$((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash)" }) -join "`n" }
 function Invoke-Fbe([string]$Name, [hashtable]$Environment) {
     $report = Join-Path $root "$Name.tsv"; $breadcrumb = Join-Path $root "$Name.startup.log"; $old = @{}
     foreach($key in $Environment.Keys) { $old[$key] = [Environment]::GetEnvironmentVariable($key, 'Process'); [Environment]::SetEnvironmentVariable($key, $Environment[$key], 'Process') }
