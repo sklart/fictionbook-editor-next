@@ -108,7 +108,10 @@ try {
         foreach ($restrictedPath in @($false, $true)) {
             # cmd searches PATH for bare command names. The release gate may
             # run with a different PATH, so use the system binary explicitly.
-            if ($restrictedPath) { [Environment]::SetEnvironmentVariable('Path', (Join-Path $testArtifacts 'no-path'), 'Process') }
+            if ($restrictedPath) {
+                [Environment]::SetEnvironmentVariable('Path', (Join-Path $testArtifacts 'no-path'), 'Process')
+                function Get-CimInstance { throw 'controlled CIM denial' }
+            }
             $owned = New-IsolatedFbeScratchDirectory -Name 'owned-process'
             $ownedExe = Join-Path $owned.Root 'owned-cmd.exe'
             Copy-Item -LiteralPath $env:ComSpec -Destination $ownedExe
@@ -117,7 +120,7 @@ try {
             $ownedChild = Start-Process -FilePath $ownedExe -ArgumentList $commandLine -WindowStyle Hidden -PassThru
             try {
                 $detected = $false
-                for ($i = 0; $i -lt 30 -and -not $detected; $i++) { $detected = @(Get-IsolatedRuntimeProcesses $owned | Where-Object ProcessId -eq $ownedChild.Id).Count -gt 0; if (-not $detected) { Start-Sleep -Milliseconds 100 } }
+                for ($i = 0; $i -lt 30 -and -not $detected; $i++) { $detected = @(Get-IsolatedRuntimeProcesses $owned -AllowFallback | Where-Object ProcessId -eq $ownedChild.Id).Count -gt 0; if (-not $detected) { Start-Sleep -Milliseconds 100 } }
                 if (-not $detected) {
                     $ownedChild.Refresh()
                     $state = if ($ownedChild.HasExited) { "exited=$($ownedChild.ExitCode)" } else { 'still-running' }
@@ -130,6 +133,7 @@ try {
             } finally {
                 if (-not $ownedChild.HasExited) { Stop-Process -Id $ownedChild.Id -Force -ErrorAction SilentlyContinue; $ownedChild.WaitForExit() }
                 if (Test-Path -LiteralPath $owned.Root) { Complete-IsolatedFbeRuntime -Isolation $owned -Passed $true }
+                if ($restrictedPath) { Remove-Item Function:Get-CimInstance -Force }
             }
         }
     } finally { [Environment]::SetEnvironmentVariable('Path', $savedProcessPath, 'Process') }
@@ -271,13 +275,35 @@ try {
         [IO.Directory]::Delete($junction)
         Complete-IsolatedFbeRuntime -Isolation $linked -Passed $true
     }
-    $unknownProcesses = New-IsolatedFbeScratchDirectory -Name 'unavailable-process-list'
-    function Get-CimInstance { throw 'controlled process enumeration failure' }
+    $externalProcess = New-IsolatedFbeScratchDirectory -Name 'external-helper'
+    function Get-CimInstance { throw 'controlled CIM denial' }
+    function Get-Process {
+        param([int]$Id)
+        if ($PSBoundParameters.ContainsKey('Id')) { Microsoft.PowerShell.Management\Get-Process -Id $Id }
+        else { [pscustomobject]@{ Id=12345; ProcessName='FBE'; MainModule=[pscustomobject]@{FileName='C:\outside\FBE.exe'}; StartTime=[DateTime]::Now } }
+    }
     try {
         $rejected = $false
-        try { Complete-IsolatedFbeRuntime -Isolation $unknownProcesses -Passed $true } catch { $rejected = $_.Exception.Message -like '*controlled process enumeration failure*' }
+        try { Complete-IsolatedFbeRuntime -Isolation $externalProcess -Passed $true } catch { $rejected = $_.Exception.Message -like '*Cannot attribute helper process*' }
+        if (!$rejected -or !(Test-Path -LiteralPath $externalProcess.Root)) { throw 'An external FBE with unknown command line must retain the runtime.' }
+    } finally {
+        Remove-Item Function:Get-Process -Force
+        Remove-Item Function:Get-CimInstance -Force
+        Complete-IsolatedFbeRuntime -Isolation $externalProcess -Passed $true
+    }
+    $unknownProcesses = New-IsolatedFbeScratchDirectory -Name 'unavailable-process-list'
+    function Get-CimInstance { throw 'controlled process enumeration failure' }
+    function Get-Process {
+        param([int]$Id)
+        if ($PSBoundParameters.ContainsKey('Id')) { Microsoft.PowerShell.Management\Get-Process -Id $Id }
+        else { throw 'controlled fallback enumeration failure' }
+    }
+    try {
+        $rejected = $false
+        try { Complete-IsolatedFbeRuntime -Isolation $unknownProcesses -Passed $true } catch { $rejected = $_.Exception.Message -like '*controlled fallback enumeration failure*' }
         if (!$rejected -or !(Test-Path -LiteralPath $unknownProcesses.Root)) { throw 'An unavailable process list must retain the runtime.' }
     } finally {
+        Remove-Item Function:Get-Process -Force
         Remove-Item Function:Get-CimInstance -Force
         Complete-IsolatedFbeRuntime -Isolation $unknownProcesses -Passed $true
     }

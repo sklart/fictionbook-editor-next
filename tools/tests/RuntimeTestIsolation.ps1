@@ -141,13 +141,37 @@ function Set-IsolatedRuntimeStage {
 }
 
 function Get-IsolatedRuntimeProcesses {
-    param([Parameter(Mandatory)]$Isolation)
+    param([Parameter(Mandatory)]$Isolation, [switch]$AllowFallback)
     $ownedRoot = [IO.Path]::GetFullPath($Isolation.Root).TrimEnd('\') + '\'
     # Failure to enumerate processes must never be interpreted as an empty list.
-    return @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+    try { return @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
         ($_.ExecutablePath -and $_.ExecutablePath.StartsWith($ownedRoot, [StringComparison]::OrdinalIgnoreCase)) -or
         ($_.Name -in @('FBE.exe', 'ImportEPUBBatch.exe', 'ExportEPUBBatch.exe', 'ExportDOCXBatch.exe', 'cl.exe', 'link.exe') -and $_.CommandLine -and $_.CommandLine.IndexOf($ownedRoot, [StringComparison]::OrdinalIgnoreCase) -ge 0)
-    })
+    }) } catch {
+        if (-not $AllowFallback) { throw }
+        # No command lines are available here. An external helper may use
+        # this runtime, so retain it if ownership cannot be established.
+        $helpers = @('FBE', 'cl', 'link', 'ImportEPUBBatch', 'ExportEPUBBatch', 'ExportDOCXBatch')
+        $names = @{}; foreach ($name in $helpers) { $names[$name] = $true }
+        foreach ($file in @(Get-ChildItem -LiteralPath $Isolation.Root -File -Filter '*.exe' -Recurse -Force -ErrorAction Stop)) { $names[$file.BaseName] = $true }
+        $found = @()
+        foreach ($process in @(Get-Process -ErrorAction Stop | Where-Object { $names.ContainsKey($_.ProcessName) })) {
+            try {
+                $path = $process.MainModule.FileName
+                if (-not $path) { throw 'Executable path unavailable' }
+                $ticks = $process.StartTime.ToUniversalTime().Ticks
+            } catch {
+                if (-not (Get-Process -Id $process.Id -ErrorAction SilentlyContinue)) { continue }
+                throw "Cannot verify process $($process.Id); runtime retained."
+            }
+            if ($path.StartsWith($ownedRoot, [StringComparison]::OrdinalIgnoreCase)) {
+                $found += [pscustomobject]@{ ProcessId = $process.Id; ExecutablePath = $path; StartTicks = $ticks }
+            } elseif ($process.ProcessName -in $helpers) {
+                throw "Cannot attribute helper process $($process.Id) without CIM; runtime retained."
+            }
+        }
+        return $found
+    }
 }
 
 function Get-IsolatedRuntimeDiagnostics {
@@ -204,13 +228,21 @@ function Complete-IsolatedFbeRuntime {
             if ($sameOwner) { throw "Runtime owner is still running; retained: $root" }
         }
     }
-    $leftovers = @(Get-IsolatedRuntimeProcesses $Isolation)
+    # The marker and (for abandoned runtimes) owner lifetime were verified above.
+    $leftovers = @(Get-IsolatedRuntimeProcesses $Isolation -AllowFallback)
     if ($leftovers.Count -gt 0) {
         foreach ($leftover in $leftovers) {
+            if ($null -ne $leftover.PSObject.Properties['StartTicks']) {
+                $current = Get-Process -Id $leftover.ProcessId -ErrorAction SilentlyContinue
+                if (-not $current) { continue }
+                try {
+                    if ($current.StartTime.ToUniversalTime().Ticks -ne $leftover.StartTicks -or $current.MainModule.FileName -ine $leftover.ExecutablePath) { throw 'Process identity changed' }
+                } catch { throw "Cannot verify isolated process $($leftover.ProcessId); runtime retained." }
+            }
             Stop-Process -Id $leftover.ProcessId -Force -ErrorAction SilentlyContinue
             Wait-Process -Id $leftover.ProcessId -Timeout 10 -ErrorAction SilentlyContinue
         }
-        if (@(Get-IsolatedRuntimeProcesses $Isolation).Count -gt 0) { throw "Could not stop an isolated process; runtime retained: $root" }
+        if (@(Get-IsolatedRuntimeProcesses $Isolation -AllowFallback).Count -gt 0) { throw "Could not stop an isolated process; runtime retained: $root" }
         $Passed = $false
     }
     # The installed-mode test hive is named from this validated runtime root.
