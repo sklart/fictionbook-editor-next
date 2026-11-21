@@ -2511,13 +2511,22 @@
 		wchar_t customPath[MAX_PATH] = {};
 		const DWORD customLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_YO_CUSTOM_PATH",
 			customPath, _countof(customPath));
-		bool custom = false;
+		bool custom = false, lockedCustom = false;
 		if(customLength > 0 && customLength < _countof(customPath))
 		{
 			m_Speller->SetCustomDictionary(customPath, 1251);
 			custom = m_Speller->CheckWord(L"газёта") == SPELL_OK &&
 				m_Speller->CheckWord(L"газёта\u0301") == SPELL_OK &&
 				m_Speller->CheckWord(L"дёлал") == SPELL_YO_WARNING;
+			HANDLE lock = ::CreateFileW(customPath, GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+				nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+			if (lock != INVALID_HANDLE_VALUE) {
+				LegacyTodoTest::MessageProbe messages;
+				m_Speller->SetCustomDictionary(customPath, 1251);
+				m_Speller->AddToDictionary(L"фбестестовоеслово");
+				lockedCustom = messages.timer != 0 && LegacyTodoTest::messageCount == 1;
+				::CloseHandle(lock);
+			}
 			m_Speller->SetCustomDictionary(L"", CP_UTF8);
 		}
 		m_Speller->IgnoreAll(L"газёта");
@@ -2526,11 +2535,11 @@
 		const bool unchanged = before == CString(static_cast<const wchar_t*>(_bstr_t(m_doc->m_body.Document()->body->outerHTML))) &&
 			undoBefore == m_Speller->GetUndoState();
 		CStringA report;
-		report.Format("legacy=%d\ndetected=%d\ncorrect=%d\nambiguous=%d\nmarked=%d\ncleared=%d\ncustom=%d\nignored=%d\nunchanged=%d\n",
-			legacy, detected, correct, ambiguous, marked, cleared, custom, ignored, unchanged);
+		report.Format("legacy=%d\ndetected=%d\ncorrect=%d\nambiguous=%d\nmarked=%d\ncleared=%d\ncustom=%d\nlocked-custom=%d\nignored=%d\nunchanged=%d\n",
+			legacy, detected, correct, ambiguous, marked, cleared, custom, lockedCustom, ignored, unchanged);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
 		output.Close();
-		::PostQuitMessage(legacy && detected && correct && ambiguous && marked && cleared && custom && ignored && unchanged ? 0 : 1);
+		::PostQuitMessage(legacy && detected && correct && ambiguous && marked && cleared && custom && lockedCustom && ignored && unchanged ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"toolbar-alpha-scale"))

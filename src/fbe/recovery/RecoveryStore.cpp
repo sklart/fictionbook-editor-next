@@ -2,6 +2,42 @@
 #include "RecoveryStore.h"
 #include "../utils/UnsignedDecimal.h"
 #include "..\\..\\common\\DeploymentContext.h"
+#include <bcrypt.h>
+#pragma comment(lib, "bcrypt.lib")
+
+namespace {
+bool TestFailure(const wchar_t* point)
+{
+	wchar_t mode[4] = {}, fault[40] = {};
+	if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", mode, _countof(mode)) != 1 || mode[0] != L'1' ||
+		!::GetEnvironmentVariableW(L"FBE_NEXT_TEST_RECOVERY_FAILURE", fault, _countof(fault)) || wcscmp(fault, point) != 0) return false;
+	::SetEnvironmentVariableW(L"FBE_NEXT_TEST_RECOVERY_FAILURE", nullptr);
+	return true;
+}
+bool SnapshotHash(const CString& path, CString& result)
+{
+	result.Empty();
+	HANDLE file = ::CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file == INVALID_HANDLE_VALUE) return false;
+	BCRYPT_ALG_HANDLE algorithm = NULL; BCRYPT_HASH_HANDLE hash = NULL;
+	bool ok = BCRYPT_SUCCESS(::BCryptOpenAlgorithmProvider(&algorithm, BCRYPT_SHA256_ALGORITHM, NULL, 0)) &&
+		BCRYPT_SUCCESS(::BCryptCreateHash(algorithm, &hash, NULL, 0, NULL, 0, 0));
+	BYTE buffer[65536], digest[32]; DWORD count = 0;
+	while (ok) {
+		if (!::ReadFile(file, buffer, sizeof(buffer), &count, NULL)) { ok = false; break; }
+		if (!count) break;
+		ok = BCRYPT_SUCCESS(::BCryptHashData(hash, buffer, count, 0));
+	}
+	if (ok) ok = BCRYPT_SUCCESS(::BCryptFinishHash(hash, digest, sizeof(digest), 0));
+	if (hash) ::BCryptDestroyHash(hash);
+	if (algorithm) ::BCryptCloseAlgorithmProvider(algorithm, 0);
+	::CloseHandle(file);
+	if (!ok) return false;
+	const wchar_t* hex = L"0123456789abcdef";
+	for (BYTE value : digest) { result.AppendChar(hex[value >> 4]); result.AppendChar(hex[value & 15]); }
+	return true;
+}
+}
 
 namespace FbeRecovery
 {
@@ -29,21 +65,31 @@ void RecoveryStore::DeleteFiles() const
 	::DeleteFile(ArchiveSidecarPath());
 }
 
+bool RecoveryStore::InvalidateArchiveLocation() const
+{
+	if (::DeleteFileW(ArchiveSidecarPath())) return true;
+	const DWORD error = ::GetLastError();
+	return error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND;
+}
+
 bool RecoveryStore::WriteArchiveLocation(const DocumentLocation& location) const
 {
+	CString digest;
+	if (!SnapshotHash(SnapshotPath(), digest)) return false;
+	if (TestFailure(L"sidecar-create")) return false;
 	const CString path = ArchiveSidecarPath(), temporary = path + L".tmp";
 	HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (file == INVALID_HANDLE_VALUE) return false;
 	CString text;
-	text.Format(L"2\r\n%u\r\n%u\r\n%u\r\n%I64u\r\n%I64u\r\n%s\r\n%s\r\n", static_cast<unsigned int>(location.containerKind), location.entryOccurrence,
+	text.Format(L"3\r\n%u\r\n%u\r\n%u\r\n%I64u\r\n%I64u\r\n%s\r\n%s\r\n%s\r\n", static_cast<unsigned int>(location.containerKind), location.entryOccurrence,
 		static_cast<unsigned int>(location.documentType), location.containerLastWriteTime, location.containerFileSize,
-		static_cast<LPCWSTR>(location.storagePath), static_cast<LPCWSTR>(location.entryPath));
+		static_cast<LPCWSTR>(location.storagePath), static_cast<LPCWSTR>(location.entryPath), static_cast<LPCWSTR>(digest));
 	DWORD written = 0;
-	bool ok = ::WriteFile(file, text.GetString(), text.GetLength() * sizeof(wchar_t), &written, NULL) && written == static_cast<DWORD>(text.GetLength() * sizeof(wchar_t));
-	if (ok && !::FlushFileBuffers(file))
+	bool ok = !TestFailure(L"sidecar-write") && ::WriteFile(file, text.GetString(), text.GetLength() * sizeof(wchar_t), &written, NULL) && written == static_cast<DWORD>(text.GetLength() * sizeof(wchar_t));
+	if (ok && (TestFailure(L"sidecar-flush") || !::FlushFileBuffers(file)))
 		ok = false;
 	::CloseHandle(file);
-	if (ok && ::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return true;
+	if (ok && !TestFailure(L"sidecar-rename") && ::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return true;
 	::DeleteFile(temporary); return false;
 }
 
@@ -59,7 +105,10 @@ bool RecoveryStore::ReadArchiveLocation(DocumentLocation& location) const
 	if (!ok || read != length) return false;
 	std::vector<CString> fields; int position = 0;
 	while (position >= 0) { CString field = CString(&text[0]).Tokenize(L"\n", position); field.TrimRight(L"\r"); fields.push_back(field); }
-	if (fields.size() < 8 || fields[0] != L"2") return false;
+	while (!fields.empty() && fields.back().IsEmpty()) fields.pop_back();
+	if (fields.size() != 9 || fields[0] != L"3") return false;
+	CString digest;
+	if (fields[8].GetLength() != 64 || !SnapshotHash(SnapshotPath(), digest) || fields[8] != digest) return false;
 	unsigned int kind = 0, occurrence = 0, type = 0;
 	unsigned __int64 lastWriteTime = 0, fileSize = 0;
 	if (!FbeNumbers::ParseUnsignedDecimal(fields[1], kind) || !FbeNumbers::ParseUnsignedDecimal(fields[2], occurrence) ||

@@ -398,6 +398,56 @@ if (IsFbeTestScenario(L"issue72-normal-save") || IsFbeTestScenario(L"issue72-nor
 		auto check = [&](const char* name, bool result) { CStringA row; row.Format("%s=%d\r\n", name, result); details += row; passed = result && passed; };
 		if (IsFbeTestScenario(L"undo-atomic-failures")) {
 			KillTimer(RECOVERY_TIMER_ID);
+			const CString beforeFootnote(bodyHtml());
+			const bool footnoteClosedBefore = closedGroup();
+			::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", L"footnote-after-begin");
+			BOOL footnoteHandled = FALSE;
+			m_doc->m_body.OnStyleFootnote(0, 0, nullptr, footnoteHandled);
+			wchar_t footnoteFault[80] = {};
+			const bool footnoteFaultConsumed = !::GetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", footnoteFault, _countof(footnoteFault));
+			::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", nullptr);
+			check("footnote-error-closes-undo", footnoteClosedBefore && footnoteFaultConsumed && closedGroup() && bodyHtml() == beforeFootnote);
+			prepareCaret();
+			MSHTML::IHTMLTxtRangePtr footnoteRange(document->selection->createRange());
+			footnoteRange->moveEnd(L"character", 3); footnoteRange->select();
+			const CString beforeLink(bodyHtml());
+			::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", L"footnote-after-link");
+			m_doc->m_body.OnStyleFootnote(0, 0, nullptr, footnoteHandled);
+			const bool footnoteLinkConsumed = !::GetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", footnoteFault, _countof(footnoteFault));
+			::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", nullptr);
+			const CString afterLink(bodyHtml());
+			const bool footnoteLinkClosed = closedGroup();
+			m_doc->m_body.ExecCommand(IDM_UNDO);
+			const bool footnoteLinkUndone = bodyHtml() == beforeLink;
+			m_doc->m_body.ExecCommand(IDM_REDO);
+			const bool footnoteLinkRedone = bodyHtml() == afterLink;
+			m_doc->m_body.ExecCommand(IDM_UNDO);
+			check("footnote-link-error-undoable", footnoteLinkConsumed && afterLink != beforeLink && footnoteLinkClosed &&
+				footnoteLinkUndone && footnoteLinkRedone && bodyHtml() == beforeLink);
+			prepareCaret();
+			const CString beforeTable(bodyHtml());
+			const bool tableClosedBefore = closedGroup();
+			::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", L"table-after-begin");
+			const bool insertedBeforeFault = m_doc->m_body.InsertTable(false, true, 1, 2);
+			wchar_t tableFault[80] = {};
+			const bool tableBeginConsumed = !::GetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", tableFault, _countof(tableFault));
+			::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", nullptr);
+			check("table-begin-error-closes-undo", tableClosedBefore && tableBeginConsumed && !insertedBeforeFault && closedGroup() && bodyHtml() == beforeTable);
+			prepareCaret();
+			::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", L"table-after-insert");
+			const bool insertedAfterFault = m_doc->m_body.InsertTable(false, true, 1, 2);
+			const bool tableInsertConsumed = !::GetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", tableFault, _countof(tableFault));
+			::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", nullptr);
+			const CString afterTable(bodyHtml());
+			const bool tableChanged = afterTable != beforeTable;
+			const bool tableClosedAfter = closedGroup();
+			m_doc->m_body.ExecCommand(IDM_UNDO);
+			const bool tableUndone = bodyHtml() == beforeTable;
+			m_doc->m_body.ExecCommand(IDM_REDO);
+			const bool tableRedone = bodyHtml() == afterTable;
+			m_doc->m_body.ExecCommand(IDM_UNDO);
+			check("table-insert-error-undoable", tableInsertConsumed && !insertedAfterFault && tableChanged && tableClosedAfter &&
+				tableUndone && tableRedone && bodyHtml() == beforeTable);
 			MSHTML::IHTMLWindow2Ptr window(document->parentWindow);
 			auto script = [&](LPCWSTR value) { CheckError(window->execScript(value, L"JScript")); };
 			auto state = [&]() {

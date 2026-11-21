@@ -33,6 +33,7 @@ try {
     $originalHash = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
     $custom = Join-Path $directory 'yo-custom.dic'
     [IO.File]::WriteAllText($custom, "газёта`n", [Text.Encoding]::GetEncoding(1251))
+    $customHash = (Get-FileHash -LiteralPath $custom -Algorithm SHA256).Hash
     $oldMode, $oldScenario, $oldCustom = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_YO_CUSTOM_PATH
     try {
         $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'spellcheck-russian-yo-usage'
@@ -49,11 +50,14 @@ try {
     }
     finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_YO_CUSTOM_PATH = $oldMode, $oldScenario, $oldCustom }
     $result = Get-Content -LiteralPath $report -Raw
-    foreach ($key in @('legacy', 'detected', 'correct', 'ambiguous', 'marked', 'cleared', 'custom', 'ignored', 'unchanged')) {
+    foreach ($key in @('legacy', 'detected', 'correct', 'ambiguous', 'marked', 'cleared', 'custom', 'locked-custom', 'ignored', 'unchanged')) {
         if ($result -notmatch "(?m)^$key=1$") { throw "Russian ё usage check failed ($key): $result" }
     }
     if ((Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $originalHash) {
         throw 'Russian ё usage check changed the FB2 file.'
+    }
+    if ((Get-FileHash -LiteralPath $custom -Algorithm SHA256).Hash -ne $customHash) {
+        throw 'The custom dictionary changed after a failed read.'
     }
     Write-Host 'Russian ё usage runtime regression passed.'
 }

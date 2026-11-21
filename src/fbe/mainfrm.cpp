@@ -4793,12 +4793,12 @@ void CMainFrame::TryRestoreRecovery()
 	// blocked forever, and the document passed on its command line is already
 	// the caller's explicit recovery choice.
 	const bool unattendedBatch = !AU::_ARGS.source_memory_benchmark_path.IsEmpty();
-	if ((unattendedTest || unattendedBatch) && !RuntimeTests::IsScenario(L"archive-recovery-verify") && !RuntimeTests::IsScenario(L"archive-recovery-external-verify") && !RuntimeTests::IsScenario(L"normal-recovery-verify"))
+	if ((unattendedTest || unattendedBatch) && !RuntimeTests::IsScenario(L"archive-recovery-verify") && !RuntimeTests::IsScenario(L"archive-recovery-external-verify") && !RuntimeTests::IsScenario(L"normal-recovery-verify") && !RuntimeTests::IsScenario(L"recovery-mismatch-verify") && !RuntimeTests::IsScenario(L"recovery-mismatch-verify-old") && !RuntimeTests::IsScenario(L"recovery-mismatch-verify-old-standalone"))
 		return;
 	FbeRecovery::RestoreCandidate candidate;
 	if (!m_recovery.GetRestoreCandidate(_ARGV.GetSize() > 0, candidate)) return;
 
-	if (!RuntimeTests::IsScenario(L"archive-recovery-verify") && !RuntimeTests::IsScenario(L"archive-recovery-external-verify") && !RuntimeTests::IsScenario(L"normal-recovery-verify") && U::MessageBox(MB_YESNO | MB_ICONQUESTION, IDS_RECOVERY_CAPTION, IDS_RECOVERY_MSG) != IDYES)
+	if (!RuntimeTests::IsScenario(L"archive-recovery-verify") && !RuntimeTests::IsScenario(L"archive-recovery-external-verify") && !RuntimeTests::IsScenario(L"normal-recovery-verify") && !RuntimeTests::IsScenario(L"recovery-mismatch-verify") && !RuntimeTests::IsScenario(L"recovery-mismatch-verify-old") && !RuntimeTests::IsScenario(L"recovery-mismatch-verify-old-standalone") && U::MessageBox(MB_YESNO | MB_ICONQUESTION, IDS_RECOVERY_CAPTION, IDS_RECOVERY_MSG) != IDYES)
 		return;
 
 	// Recovery replaces the startup document before it is ever shown to the
@@ -8747,28 +8747,26 @@ bool CMainFrame::LoadToScintilla(CString filename)
 		while (!load.eof());
 		load.close();
 
-		// send document to Scintilla
-		m_source.SendMessage(SCI_CLEARALL);
-		if (isUTF8)
-		{
-			m_source.SendMessage(SCI_APPENDTEXT, static_cast<WPARAM>(src.size()), reinterpret_cast<LPARAM>(src.data()));
-		}
-		else
+		// Finish conversions before clearing the existing buffer: allocation or
+		// conversion failure must leave its contents and undo history intact.
+		if (!isUTF8)
 		{
 			CA2W wide(src.c_str(), 1251);
-			CW2A s (wide, CP_UTF8);
-			m_source.SendMessage(SCI_APPENDTEXT, strlen(s),(LPARAM)(LPSTR)s);
+			CW2A converted(wide, CP_UTF8);
+			src.assign(static_cast<LPCSTR>(converted));
 		}
+		CheckError(FbeUndo::Inject(L"source-before-replace"));
+		m_bad_filename = filename;
+		m_doc->m_encoding = enc;
+		m_source.SendMessage(SCI_CLEARALL);
+		m_source.SendMessage(SCI_APPENDTEXT, static_cast<WPARAM>(src.size()), reinterpret_cast<LPARAM>(src.data()));
 		m_source.SendMessage(SCI_EMPTYUNDOBUFFER);
 		m_source.SendMessage(SCI_SETSAVEPOINT);
 
-		SciGotoWrongTag();
-
 		m_bad_xml = true;
-		m_bad_filename = filename;
-		m_doc->m_encoding = enc;
 
 		result = true;
+		SciGotoWrongTag();
 	}
 	catch(...) {};
 	return result;

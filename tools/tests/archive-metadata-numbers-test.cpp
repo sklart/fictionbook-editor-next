@@ -60,11 +60,44 @@ int wmain(int argc, wchar_t** argv) {
     Check(!FbeArchiveRecentDocuments::ParseKey(L"\x1e" L"archive\t1\t4294967296\tC:\\fixture\\book.zip\tbook.fb2", parsed), "MRU key overflow");
 
     FbeRecovery::RecoveryStore store;
+    HANDLE snapshot = ::CreateFileW(store.SnapshotPath(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    DWORD snapshotWritten = 0;
+    Check(snapshot != INVALID_HANDLE_VALUE && ::WriteFile(snapshot, "abc", 3, &snapshotWritten, nullptr) && snapshotWritten == 3, "create recovery snapshot");
+    if (snapshot != INVALID_HANDLE_VALUE) ::CloseHandle(snapshot);
     Check(store.WriteArchiveLocation(original), "write valid recovery metadata");
     Check(store.ReadArchiveLocation(parsed) && FbeArchiveRecentDocuments::SameIdentity(original, parsed) &&
         parsed.containerLastWriteTime == original.containerLastWriteTime && parsed.containerFileSize == original.containerFileSize,
         "recovery maximum values round trip");
-    const std::vector<CString> valid = { L"2", L"1", L"0", L"0", L"0", L"18446744073709551615", L"C:\\fixture\\book.zip", L"book.fb2" };
+    const std::vector<CString> valid = { L"3", L"1", L"0", L"0", L"0", L"18446744073709551615", L"C:\\fixture\\book.zip", L"book.fb2", L"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" };
+    auto legacy = valid; legacy[0] = L"2"; legacy.pop_back();
+    WriteSidecar(store.ArchiveSidecarPath(), legacy);
+    Check(!store.ReadArchiveLocation(parsed), "legacy identity is not trusted");
+    auto mismatched = valid; mismatched[8].SetAt(0, L'0');
+    WriteSidecar(store.ArchiveSidecarPath(), mismatched);
+    Check(!store.ReadArchiveLocation(parsed), "snapshot hash mismatch is not trusted");
+    WriteSidecar(store.ArchiveSidecarPath(), valid);
+    HANDLE locked = ::CreateFileW(store.ArchiveSidecarPath(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    Check(locked != INVALID_HANDLE_VALUE && !store.InvalidateArchiveLocation(), "locked sidecar cannot be invalidated");
+    if (locked != INVALID_HANDLE_VALUE) ::CloseHandle(locked);
+    Check(store.ReadArchiveLocation(parsed), "locked sidecar remains usable after failed invalidation");
+    Check(store.InvalidateArchiveLocation(), "invalidate old identity before writing");
+    HANDLE blockedTemp = ::CreateFileW(store.ArchiveSidecarPath() + L".tmp", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+    Check(blockedTemp != INVALID_HANDLE_VALUE && !store.WriteArchiveLocation(original), "sidecar temporary file failure is reported");
+    if (blockedTemp != INVALID_HANDLE_VALUE) ::CloseHandle(blockedTemp);
+    Check(!store.ReadArchiveLocation(parsed), "sidecar write failure leaves no trusted identity");
+    HANDLE blockedTarget = ::CreateFileW(store.ArchiveSidecarPath(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    Check(blockedTarget != INVALID_HANDLE_VALUE && !store.WriteArchiveLocation(original), "sidecar rename failure is reported");
+    if (blockedTarget != INVALID_HANDLE_VALUE) ::CloseHandle(blockedTarget);
+    Check(!store.ReadArchiveLocation(parsed), "failed sidecar rename leaves no trusted identity");
+    Check(store.InvalidateArchiveLocation(), "remove blocked target fixture");
+    Check(store.WriteArchiveLocation(original), "retry writes current identity");
+    snapshot = ::CreateFileW(store.SnapshotPath(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    Check(snapshot != INVALID_HANDLE_VALUE && ::WriteFile(snapshot, "abd", 3, &snapshotWritten, nullptr) && snapshotWritten == 3, "change snapshot");
+    if (snapshot != INVALID_HANDLE_VALUE) ::CloseHandle(snapshot);
+    Check(!store.ReadArchiveLocation(parsed), "changed snapshot rejects old identity");
+    snapshot = ::CreateFileW(store.SnapshotPath(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    Check(snapshot != INVALID_HANDLE_VALUE && ::WriteFile(snapshot, "abc", 3, &snapshotWritten, nullptr) && snapshotWritten == 3, "restore snapshot fixture");
+    if (snapshot != INVALID_HANDLE_VALUE) ::CloseHandle(snapshot);
     for (size_t field = 1; field <= 5; ++field) {
         for (const wchar_t* text : invalid) {
             auto fields = valid;

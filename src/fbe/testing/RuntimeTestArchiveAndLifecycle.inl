@@ -1,3 +1,23 @@
+if (IsFbeTestScenario(L"source-load-failure-probe")) {
+  DWORD written=0;
+  try {
+    wchar_t target[MAX_PATH]={}; if(!::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MALFORMED_SOURCE_PATH",target,_countof(target))) CheckError(E_INVALIDARG);
+    ShowView(SOURCE);
+    auto text=[&](){const sptr_t n=m_source.SendMessage(SCI_GETLENGTH); std::vector<char> bytes(static_cast<size_t>(n)+1);m_source.SendMessage(SCI_GETTEXT,n+1,reinterpret_cast<LPARAM>(bytes.data()));return CStringA(bytes.data());};
+    const CStringA before(text()); const FB::Doc* documentBefore=m_doc;
+    ::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE",L"source-before-replace");
+    const bool loaded=LoadToScintilla(target);
+    wchar_t fault[80]={};const bool consumed=!::GetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE",fault,_countof(fault));
+    ::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE",nullptr);
+    const bool preserved=text()==before && m_doc==documentBefore;
+    const char addition[]=" ";m_source.SendMessage(SCI_APPENDTEXT,1,reinterpret_cast<LPARAM>(addition));
+    const bool editable=text()!=before;m_source.SendMessage(SCI_UNDO);
+    const bool undone=text()==before;
+    CStringA report;report.Format("loaded=%d consumed=%d preserved=%d editable=%d undo=%d\n",loaded,consumed,preserved,editable,undone);
+    output.Write(report,report.GetLength(),&written);output.Close();::PostQuitMessage(!loaded && consumed && preserved && editable && undone ? 0 : 1);
+  } catch(const _com_error& e) {CStringA report;report.Format("error=0x%08lX\n",static_cast<unsigned long>(e.Error()));output.Write(report,report.GetLength(),&written);output.Close();::PostQuitMessage(2);}
+  return 0;
+}
 if (IsFbeTestScenario(L"recovery-source-refusal")) {
   DWORD written=0;
   try {
@@ -2262,6 +2282,56 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		const bool englishEmptyOk = englishEmptyCount == 1 && getMruItem(ID_FILE_MRU_FIRST, englishEmpty, englishEmptyState) && englishEmpty == L"No Recent Files" && (englishEmptyState & (MFS_DISABLED | MFS_GRAYED)) != 0;
 		CStringA report; report.Format("count=%d\nmenu_count=%d\norder=%d\nclean=%d\nempty=%d\ndisabled=%d\nraw=%d\nnumbered=%d\nduplicates=%d\nfolders=%d\nreopened=%d\nlocalized_nonempty=%d\nrussian_empty=%d\nrussian_locale=%d\nenglish_empty=%d\n", count, menuCount, exactOrder, cleanMenu, emptyCaption, disabledCaption, rawCaption, numberedCaption, duplicateCaption, minimalFolderContexts, reopened, nonEmptyMruLocalized, russianEmptyOk, russianLocaleSelected, englishEmptyOk); DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
 		::PostQuitMessage(count == 10 && menuCount == 10 && exactOrder && cleanMenu && reopened && nonEmptyMruLocalized && russianEmptyOk && englishEmptyOk ? 0 : 1); return 0;
+	}
+	if (IsFbeTestScenario(L"recovery-mismatch-create"))
+	{
+		DWORD written = 0;
+		try {
+			wchar_t second[MAX_PATH] = {};
+			if (!::GetEnvironmentVariableW(L"FBE_NEXT_TEST_RECOVERY_SECOND", second, _countof(second))) CheckError(E_INVALIDARG);
+			const CString firstPath = m_document_session.Location().storagePath;
+			FbeRecovery::SnapshotRequest request; request.documentChanged = true; request.location = m_document_session.Location();
+			const bool firstSaved = m_recovery.Save(*m_doc, request);
+			wchar_t lockOldValue[4] = {}; const bool lockOld = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_RECOVERY_LOCK_OLD", lockOldValue, _countof(lockOldValue)) == 1 && lockOldValue[0] == L'1';
+			wchar_t lockSnapshotValue[4] = {}; const bool lockSnapshot = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_RECOVERY_LOCK_SNAPSHOT", lockSnapshotValue, _countof(lockSnapshotValue)) == 1 && lockSnapshotValue[0] == L'1';
+			const CString oldSidecar = m_recovery.SnapshotPath().Left(m_recovery.SnapshotPath().ReverseFind(L'\\') + 1) + L"Recovery.archive.txt";
+			if (!::CopyFileW(m_recovery.SnapshotPath(), CString(second) + L".previous-snapshot", FALSE) ||
+				!::CopyFileW(oldSidecar, CString(second) + L".previous-sidecar", FALSE)) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
+			m_doc->MarkSavePoint();
+			if (IsSourceActive()) m_source.SendMessage(SCI_SETSAVEPOINT);
+			const bool loaded = LoadFile(second) == OK;
+			CString sidecar = m_recovery.SnapshotPath(); sidecar = sidecar.Left(sidecar.ReverseFind(L'\\') + 1) + L"Recovery.archive.txt";
+			wchar_t inject[40] = {}; const bool injected = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_RECOVERY_INJECT", inject, _countof(inject)) > 0;
+			HANDLE blocked = injected ? INVALID_HANDLE_VALUE : lockSnapshot ? ::CreateFileW(m_recovery.SnapshotPath(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL) : lockOld ? ::CreateFileW(sidecar, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL) :
+				::CreateFileW(sidecar + L".tmp", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, NULL);
+			if (!injected && blocked == INVALID_HANDLE_VALUE) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
+			if (injected) ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_RECOVERY_FAILURE", inject);
+			request.location = m_document_session.Location();
+			const bool secondSaved = loaded && m_recovery.Save(*m_doc, request);
+			if (blocked != INVALID_HANDLE_VALUE) ::CloseHandle(blocked);
+			wchar_t remainingFault[40] = {}; const bool consumed = !injected || !::GetEnvironmentVariableW(L"FBE_NEXT_TEST_RECOVERY_FAILURE", remainingFault, _countof(remainingFault));
+			::SetEnvironmentVariableW(L"FBE_NEXT_TEST_RECOVERY_FAILURE", nullptr);
+			FbeRecovery::RestoreCandidate candidate = {};
+			const bool present = m_recovery.GetRestoreCandidate(false, candidate);
+			const bool stale = present && candidate.archiveBacked && candidate.archiveLocation.storagePath.CompareNoCase(firstPath) == 0;
+			CStringA report; report.Format("first=%d loaded=%d second=%d candidate=%d stale=%d consumed=%d\n", firstSaved, loaded, secondSaved, present, stale, consumed);
+			output.Write(report, report.GetLength(), &written); output.Close();
+			::TerminateProcess(::GetCurrentProcess(), firstSaved && loaded && !secondSaved && present && consumed && (lockOld ? stale : !candidate.archiveBacked) ? 0 : 1);
+		} catch (const _com_error& e) { CStringA report; report.Format("error=0x%08lX\n", static_cast<unsigned long>(e.Error())); output.Write(report, report.GetLength(), &written); output.Close(); ::TerminateProcess(::GetCurrentProcess(), 2); }
+		return 0;
+	}
+	if (IsFbeTestScenario(L"recovery-mismatch-verify") || IsFbeTestScenario(L"recovery-mismatch-verify-old") || IsFbeTestScenario(L"recovery-mismatch-verify-old-standalone"))
+	{
+		ShowView(SOURCE);
+		const sptr_t length = m_source.SendMessage(SCI_GETLENGTH); std::vector<char> source(static_cast<size_t>(length) + 1);
+		m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(source.data()));
+		const bool contentB = strstr(source.data(), "RECOVERY_BOOK_B") != nullptr;
+		const bool contentA = strstr(source.data(), "RECOVERY_BOOK_A") != nullptr;
+		const bool archive = m_document_session.Location().IsArchive();
+		const bool standalone = !archive && !m_doc->m_namevalid;
+		const bool saveAsRequired = DocumentSavePlan::Create(false, m_doc->m_namevalid, m_document_session.Location()).target == DocumentSaveTarget::SaveAs;
+		CStringA report; report.Format("contentB=%d archive=%d save_as_required=%d\n", contentB, archive, saveAsRequired); DWORD written = 0;
+		output.Write(report, report.GetLength(), &written); output.Close(); ::PostQuitMessage(IsFbeTestScenario(L"recovery-mismatch-verify-old") ? (contentA && archive ? 0 : 1) : IsFbeTestScenario(L"recovery-mismatch-verify-old-standalone") ? (contentA && standalone && saveAsRequired ? 0 : 1) : (contentB && standalone && saveAsRequired ? 0 : 1)); return 0;
 	}
 	if (IsFbeTestScenario(L"archive-recovery-create"))
 	{

@@ -62,12 +62,22 @@ bool RecoveryService::Save(FB::Doc* document, bool documentChanged, bool sourceA
     // Never replace a confirmed recovery copy with malformed source text.
     const bool sourceSafe = !sourceActive || (!sourceXmlInvalid && IsValidSourceRecovery(document, sourceText, sourceTextLength));
     if (!sourceSafe) { StartupTrace::Warning(L"recovery", L"R131", L"source recovery skipped: source validation failed"); return false; }
+	// Invalidate the old identity before replacing its snapshot. A failed
+	// deletion leaves the previous pair intact, including for identical books.
+	if (!m_store.InvalidateArchiveLocation()) return false;
 	const bool saved = sourceActive ? SaveSourceSnapshot(snapshotPath, sourceText, sourceTextLength) : (!sourceXmlInvalid && document->SaveRecoveryCopy(snapshotPath));
 	if (!saved && sourceXmlInvalid) StartupTrace::Warning(L"recovery", L"R130", L"source recovery skipped because source XML is invalid");
-	if (saved && location.IsArchive()) m_store.WriteArchiveLocation(location);
-	else if (saved) ::DeleteFile(m_store.ArchiveSidecarPath());
 	m_written = saved || m_written;
-	return saved;
+	if (!saved) return false;
+	wchar_t testMode[4] = {}, testFault[40] = {};
+	if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1' &&
+		::GetEnvironmentVariableW(L"FBE_NEXT_TEST_RECOVERY_FAILURE", testFault, _countof(testFault)) && wcscmp(testFault, L"after-snapshot") == 0) {
+		::SetEnvironmentVariableW(L"FBE_NEXT_TEST_RECOVERY_FAILURE", nullptr);
+		return false;
+	}
+	// A failed sidecar write leaves a usable standalone snapshot, never a
+	// confirmed archive pair; report the incomplete update to the caller.
+	return !location.IsArchive() || m_store.WriteArchiveLocation(location);
 }
 
 void RecoveryService::DeleteIfWritten()

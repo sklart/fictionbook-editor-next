@@ -1113,12 +1113,12 @@ void CSpeller::CheckCurrentPage()
 //
 void CSpeller::LoadCustomDict()
 {
-	FbeLoadCustomDictionary(m_CustomDictPath, m_CustomDictCodepage, m_CustomDict);
+	m_CustomDictLoaded = FbeLoadCustomDictionary(m_CustomDictPath, m_CustomDictCodepage, m_CustomDict);
 }
 
 bool CSpeller::SaveCustomDict()
 {
-	return FbeSaveCustomDictionary(m_CustomDictPath, m_CustomDictCodepage, m_CustomDict);
+	return FbeSaveCustomDictionary(m_CustomDictPath, m_CustomDictCodepage, m_CustomDict, m_CustomDictLoaded);
 }
 
 void CSpeller::StartDocumentCheck(MSHTML::IMarkupServices2Ptr undoSrv)

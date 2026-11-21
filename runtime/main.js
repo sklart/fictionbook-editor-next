@@ -3817,12 +3817,20 @@ function InsInlineImage(check, id)
  if(check) return true;
 
  window.external.BeginUndoUnit(document,"insert inline image");
- if(id=="")
-  rng.pasteHTML(inlineimgcode);
- else
-     rng.pasteHTML("<SPAN onresizestart='return false' contentEditable='false' class='image' href='#" + id + "'><IMG src='fbw-internal:#" + id + "'></SPAN>");
-
- window.external.EndUndoUnit(document);
+ var operationError=null;
+ try
+ {
+  if(id=="")
+   rng.pasteHTML(inlineimgcode);
+  else
+   rng.pasteHTML("<SPAN onresizestart='return false' contentEditable='false' class='image' href='#" + id + "'><IMG src='fbw-internal:#" + id + "'></SPAN>");
+ }
+ catch(error) { operationError=error; throw error; }
+ finally
+ {
+  try { window.external.EndUndoUnit(document); }
+  catch(error) { if(!operationError) throw error; }
+ }
 
  return rng.parentElement();
 }

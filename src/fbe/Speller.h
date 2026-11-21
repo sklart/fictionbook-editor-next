@@ -332,6 +332,7 @@ protected:
 	CString m_CurrentSpellWord;
 	CString m_CustomDictPath;
 	DWORD	m_CustomDictCodepage;
+	bool m_CustomDictLoaded = false;
 	Hunhandle* LoadDictionary(CString dictPath, CString dictName);
 	UINT DetectDictionaryCodePage(Hunhandle* dict, UINT fallbackCodePage);
 	Hunhandle* GetDictionary(CString word);

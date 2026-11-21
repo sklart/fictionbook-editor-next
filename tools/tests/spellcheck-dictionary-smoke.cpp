@@ -81,7 +81,7 @@ static bool ProductionCustomDictionarySmoke() {
     CSimpleArray<CString> original;
     const CString word(L"фбеспеллеруникальный");
     original.Add(word);
-    FbeSaveCustomDictionary(tempFile, CP_UTF8, original);
+    FbeSaveCustomDictionary(tempFile, CP_UTF8, original, true);
     original.RemoveAll();
     std::ifstream input(tempFile, std::ios::binary);
     const std::vector<char> bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
@@ -101,6 +101,59 @@ static bool ProductionCustomDictionarySmoke() {
         !ATLPath::FileExists(CString(tempFile) + L".tmp");
     DeleteFileW(tempFile);
     return ok;
+}
+
+static bool LongCustomDictionaryRoundTrip() {
+    wchar_t directory[MAX_PATH], path[MAX_PATH];
+    if (!GetTempPathW(_countof(directory), directory) || !GetTempFileNameW(directory, L"fbe", 0, path)) return false;
+    DeleteFileW(path);
+    const CString belowLimit(L'\u044f', 127), atLimit(L'\u044f', 128), longWord(L'\u044f', 150), veryLong(L'a', 4096);
+    CSimpleArray<CString> original, loaded, reopened;
+    original.Add(L"before"); original.Add(belowLimit); original.Add(atLimit); original.Add(longWord); original.Add(veryLong); original.Add(L"after");
+    const bool initialSave = FbeSaveCustomDictionary(path, CP_UTF8, original, true);
+    const bool loadedOk = initialSave && FbeLoadCustomDictionary(path, CP_UTF8, loaded);
+    const bool complete = loadedOk && loaded.GetSize() == 6 && FbeCustomDictionaryContains(loaded, belowLimit) &&
+        FbeCustomDictionaryContains(loaded, atLimit) && FbeCustomDictionaryContains(loaded, longWord) &&
+        FbeCustomDictionaryContains(loaded, veryLong) && FbeCustomDictionaryContains(loaded, L"after");
+    loaded.Add(L"newword");
+    const bool resaved = FbeSaveCustomDictionary(path, CP_UTF8, loaded, loadedOk);
+    const bool reopenedOk = resaved && FbeLoadCustomDictionary(path, CP_UTF8, reopened);
+    const bool preserved = reopenedOk && reopened.GetSize() == 7 && FbeCustomDictionaryContains(reopened, belowLimit) &&
+        FbeCustomDictionaryContains(reopened, atLimit) && FbeCustomDictionaryContains(reopened, longWord) &&
+        FbeCustomDictionaryContains(reopened, veryLong) && FbeCustomDictionaryContains(reopened, L"after") &&
+        FbeCustomDictionaryContains(reopened, L"newword");
+    DeleteFileW(path);
+    if (!complete || !preserved) std::cerr << "long custom dictionary lost entries on load or save\n";
+    return initialSave && complete && resaved && preserved;
+}
+
+static bool LockedCustomDictionaryIsPreserved() {
+    wchar_t directory[MAX_PATH], path[MAX_PATH];
+    if (!GetTempPathW(_countof(directory), directory) || !GetTempFileNameW(directory, L"fbe", 0, path)) return false;
+    DeleteFileW(path);
+    CSimpleArray<CString> original, loaded, recovered;
+    const bool missingIsEmpty = FbeLoadCustomDictionary(path, CP_UTF8, loaded) && loaded.GetSize() == 0;
+    original.Add(L"original-entry");
+    const bool created = FbeSaveCustomDictionary(path, CP_UTF8, original, true);
+    HANDLE lock = created ? CreateFileW(path, GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr) : INVALID_HANDLE_VALUE;
+    if (lock == INVALID_HANDLE_VALUE) { DeleteFileW(path); return false; }
+    const bool readWhileLocked = FbeLoadCustomDictionary(path, CP_UTF8, loaded);
+    loaded.Add(L"newword");
+    const bool wroteWhileUnreadable = FbeSaveCustomDictionary(path, CP_UTF8, loaded, readWhileLocked);
+    CloseHandle(lock);
+    const bool readAfterUnlock = FbeLoadCustomDictionary(path, CP_UTF8, recovered);
+    const bool preserved = readAfterUnlock && recovered.GetSize() == 1 &&
+        FbeCustomDictionaryContains(recovered, L"original-entry");
+    recovered.Add(L"newword");
+    const bool savedAfterRetry = FbeSaveCustomDictionary(path, CP_UTF8, recovered, readAfterUnlock);
+    CSimpleArray<CString> reopened;
+    const bool reopenedOk = savedAfterRetry && FbeLoadCustomDictionary(path, CP_UTF8, reopened) && reopened.GetSize() == 2 &&
+        FbeCustomDictionaryContains(reopened, L"original-entry") && FbeCustomDictionaryContains(reopened, L"newword");
+    DeleteFileW(path);
+    if (!missingIsEmpty || readWhileLocked || wroteWhileUnreadable || !preserved || !reopenedOk)
+        std::cerr << "custom dictionary changed after read failure or failed retry\n";
+    return missingIsEmpty && !readWhileLocked && !wroteWhileUnreadable && preserved && reopenedOk;
 }
 
 static bool ProductionApostropheSpellFlow(Hunhandle* dict, UINT cp, const std::initializer_list<const wchar_t*> words) {
@@ -168,9 +221,9 @@ static bool CustomWordRoundTrip(Hunhandle* dict, const std::string& base, UINT c
     DeleteFileW(path);
     CSimpleArray<CString> words, restored;
     words.Add(word);
-    const bool saved = FbeSaveCustomDictionary(path, CP_UTF8, words);
+    const bool saved = FbeSaveCustomDictionary(path, CP_UTF8, words, true);
     words.Add(word + L"extra");
-    const bool replaced = saved && FbeSaveCustomDictionary(path, CP_UTF8, words);
+    const bool replaced = saved && FbeSaveCustomDictionary(path, CP_UTF8, words, true);
     FbeLoadCustomDictionary(path, CP_UTF8, restored);
     DeleteFileW(path);
     std::unique_ptr<Hunhandle, decltype(&Hunspell_destroy)> restarted(Hunspell_create((base + ".aff").c_str(), (base + ".dic").c_str()), Hunspell_destroy);
@@ -261,7 +314,7 @@ static bool TestDictionary(const std::string& directory, const char* name, const
 
 int main(int argc, char** argv) {
     if (argc != 2) return 2;
-    bool ok = ProductionTokenizerSmoke() && ProductionApostropheRestoreSmoke() && ProductionCustomDictionarySmoke() && IconvAddRemoveSmoke();
+    bool ok = ProductionTokenizerSmoke() && ProductionApostropheRestoreSmoke() && ProductionCustomDictionarySmoke() && LongCustomDictionaryRoundTrip() && LockedCustomDictionaryIsPreserved() && IconvAddRemoveSmoke();
     ok &= TestDictionary(argv[1], "en_US", "UTF-8", CP_UTF8);
     ok &= TestDictionary(argv[1], "ru_RU", "KOI8-R", 20866);
     ok &= TestDictionary(argv[1], "uk_UA", "UTF-8", CP_UTF8);

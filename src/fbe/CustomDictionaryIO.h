@@ -4,6 +4,7 @@
 #include <atlcoll.h>
 #include <atlpath.h>
 #include <fstream>
+#include <string>
 #include "SpellText.h"
 
 inline bool FbeCustomDictionaryContains(const CSimpleArray<CString>& words, const CString& word)
@@ -11,30 +12,35 @@ inline bool FbeCustomDictionaryContains(const CSimpleArray<CString>& words, cons
 	return words.Find(word) >= 0;
 }
 
-inline void FbeLoadCustomDictionary(const CString& path, UINT codePage, CSimpleArray<CString>& words)
+inline bool FbeLoadCustomDictionary(const CString& path, UINT codePage, CSimpleArray<CString>& words)
 {
 	words.RemoveAll();
-	char buffer[256];
-	if (!ATLPath::FileExists(path))
-		return;
+	std::string buffer;
+	const DWORD attributes = ::GetFileAttributesW(path);
+	if (attributes == INVALID_FILE_ATTRIBUTES) {
+		const DWORD error = ::GetLastError();
+		return error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND;
+	}
+	if (attributes & FILE_ATTRIBUTE_DIRECTORY) return false;
 	try
 	{
 		std::ifstream input;
 		input.open(path);
 		if (!input.is_open())
-			return;
-		while (input.getline(buffer, sizeof(buffer), '\n'))
+			return false;
+		while (std::getline(input, buffer))
 		{
-			CString word = FbeDecodeDictionaryWord(buffer, codePage);
-			if (!word.IsEmpty())
-				words.Add(word);
+			CString word = FbeDecodeDictionaryWord(buffer.c_str(), codePage);
+			if (!word.IsEmpty() && !words.Add(word)) return false;
 		}
+		return input.eof() && !input.bad();
 	}
-	catch (...) {}
+	catch (...) { return false; }
 }
 
-inline bool FbeSaveCustomDictionary(const CString& path, UINT codePage, const CSimpleArray<CString>& words)
+inline bool FbeSaveCustomDictionary(const CString& path, UINT codePage, const CSimpleArray<CString>& words, bool loadedSuccessfully)
 {
+	if (!loadedSuccessfully) return false;
 	const CString temporaryPath = path + L".tmp";
 	try
 	{

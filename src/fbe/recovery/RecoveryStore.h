@@ -11,6 +11,7 @@ public:
 	CString ArchiveSidecarPath() const;
 	bool HasSnapshot() const;
 	void DeleteFiles() const;
+	bool InvalidateArchiveLocation() const;
 	bool WriteArchiveLocation(const DocumentLocation& location) const;
 	bool ReadArchiveLocation(DocumentLocation& location) const;
 };

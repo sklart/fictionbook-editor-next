@@ -1062,14 +1062,16 @@ LRESULT CFBEView::OnStyleLink(WORD, WORD, HWND, BOOL&) {
 
 LRESULT CFBEView::OnStyleFootnote(WORD, WORD, HWND, BOOL&) {
   try {
-    m_mk_srv->BeginUndoUnit(L"Create Footnote");
+    FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"Create Footnote");
+    CheckError(FbeUndo::Inject(L"footnote-after-begin"));
     if (Document()->execCommand(L"CreateLink",VARIANT_FALSE,_variant_t(L""))==VARIANT_TRUE) {
+      CheckError(FbeUndo::Inject(L"footnote-after-link"));
       MSHTML::IHTMLTxtRangePtr  r(Document()->selection->createRange());
       MSHTML::IHTMLElementPtr	pe(r->parentElement());
       if (U::scmp(pe->tagName,L"A")==0)
 	pe->className=L"note";
     }
-    m_mk_srv->EndUndoUnit();
+    undo.Close();
     ::SendMessage(m_frame,WM_COMMAND,MAKELONG(0,IDN_SEL_CHANGE),(LPARAM)m_hWnd);
     ::SendMessage(m_frame,WM_COMMAND,MAKELONG(IDC_HREF,IDN_WANTFOCUS),(LPARAM)m_hWnd);
   }
@@ -6082,7 +6084,8 @@ bool  CFBEView::InsertTable(bool fCheck, bool bTitle, int nrows, int ncolumns) {
 			return false;
 
 		// * create an undo unit
-		m_mk_srv->BeginUndoUnit(L"insert table");
+		FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"insert table");
+		CheckError(FbeUndo::Inject(L"table-after-begin"));
 
 		MSHTML::IHTMLElementPtr te(Document()->createElement(L"TABLE"));
 		te->className = L"table";
@@ -6111,13 +6114,14 @@ bool  CFBEView::InsertTable(bool fCheck, bool bTitle, int nrows, int ncolumns) {
 		// Unlike pasteHTML/InsertHTML, direct insertion is supported by this
 		// MSHTML host and is captured by the surrounding undo unit.
 		MSHTML::IHTMLElement2Ptr(anchor)->insertAdjacentElement(L"afterEnd", te);
+		CheckError(FbeUndo::Inject(L"table-after-insert"));
 
 		// * ensure we have good html
 		FbeVisualDom::RelocateParagraphs(MSHTML::IHTMLDOMNodePtr(pe));
 		FbeVisualDom::FixupParagraphs(pe);
 
 		// * close undo unit
-		m_mk_srv->EndUndoUnit();
+		undo.Close();
 		if (firstCell) {
 			MSHTML::IHTMLTxtRangePtr cellRange(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
 			cellRange->moveToElementText(firstCell);
