@@ -19,6 +19,11 @@ on:
         description: Collect Stage3C and theme diagnostics after the normal build
         type: boolean
         default: false
+      diagnostic_image_ab:
+        description: 'Run partial ImageImport UBSan toolchain comparison only'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -29,8 +34,39 @@ concurrency:
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
 jobs:
+  rc3-ubsan-image-ab:
+    if: github.event_name == 'workflow_dispatch' && inputs.diagnostic_dirty && inputs.diagnostic_image_ab
+    runs-on: windows-2022
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - name: Prepare diagnostic toolchain and dependencies
+        shell: pwsh
+        run: |
+          if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Disposable runner required.' }
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/build/prepare-ubsan-llvm.ps1
+          ./tools/build/prepare-ubsan-type-libraries.ps1
+          ./tools/build/build-libwebp.ps1 -Configuration Release -PlatformToolset v143
+          ./tools/build/build-openjpeg.ps1 -Configuration Release -PlatformToolset v143
+          ./tools/build/build-libheif.ps1 -Configuration Release -PlatformToolset v143
+      - name: Compare ImageImport smoke on the same runner
+        shell: pwsh
+        run: ./tools/rc3-acceptance/test-ubsan-image-ab.ps1
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rc3-ubsan-image-ab
+          path: |
+            out/tests/rc3-ubsan-image-ab/**
+            out/tests/runtime-failure/**
+          if-no-files-found: warn
+          retention-days: 14
   rc3-dirty-diagnostic:
-    if: github.event_name == 'workflow_dispatch' && inputs.diagnostic_dirty
+    if: github.event_name == 'workflow_dispatch' && inputs.diagnostic_dirty && !inputs.diagnostic_image_ab
     runs-on: windows-2022
     timeout-minutes: 30
     steps:
