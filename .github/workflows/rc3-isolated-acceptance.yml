@@ -151,6 +151,8 @@ jobs:
           New-Item -ItemType Directory -Force out/tests/ubsan | Out-Null
           git -c diff.ignoreSubmodules=all diff --name-status --exit-code HEAD -- *> out/tests/ubsan/source-diff.log
           "diff_exit=$LASTEXITCODE" | Add-Content out/tests/ubsan/source-diff.log
+          git -c diff.ignoreSubmodules=all diff --no-ext-diff HEAD -- src/export-docx/ExportDOCX_i.c src/export-docx/ExportDOCX_i.h src/export-epub/ExportEPUB_i.c src/export-epub/ExportEPUB_i.h *> out/tests/ubsan/midl-generated.patch
+          "patch_exit=$LASTEXITCODE" | Add-Content out/tests/ubsan/source-diff.log
           git status --short --untracked-files=no *> out/tests/ubsan/source-status.log
           "status_exit=$LASTEXITCODE" | Add-Content out/tests/ubsan/source-status.log
       - name: Run full UBSan contour on disposable runner
