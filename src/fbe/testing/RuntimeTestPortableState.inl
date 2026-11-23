@@ -1561,6 +1561,9 @@ void CMainFrame::RunPortableStateTestScenario()
                 ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
                 ::SetFocus(choice); // Measure the unfocused field, outside the selection highlight.
                 ::RedrawWindow(page.m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+                // The page was just raised above an MSHTML sibling. Paint the
+                // measured HWND itself before reading its actual screen DC.
+                ::RedrawWindow(ordinaryCombo, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
                 RECT comboRect = {}; ::GetClientRect(ordinaryCombo, &comboRect);
                 HDC comboDc = ::GetDC(ordinaryCombo);
                 const COLORREF comboPixel = comboDc && comboRect.right > 60 ? ::GetPixel(comboDc, comboRect.right - 40, comboRect.bottom / 2) : CLR_INVALID;
