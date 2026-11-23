@@ -26,6 +26,9 @@ function global:git {
 try {
     $helper = Join-Path $PSScriptRoot 'ReconcileMidl.ps1'
     [IO.File]::WriteAllLines($target, [string[]]$generated)
+    $blocked = $false
+    try { & $helper -RepositoryRoot $root -EvidenceDirectory (Join-Path $base 'wrong-sha') -ExpectedSource ('0' * 40) } catch { $blocked = $_.ToString() -match 'Unexpected source SHA' }
+    if (-not $blocked -or $global:rc3MockRestored) { throw 'Unexpected source SHA was accepted or restored.' }
     & $helper -RepositoryRoot $root -EvidenceDirectory (Join-Path $base 'ok')
     if (-not $global:rc3MockRestored -or (Get-Content -Raw (Join-Path $base 'ok/midl-reconciliation.json') | ConvertFrom-Json).status -ne 'restored-clean') { throw 'Expected timestamp reconciliation failed.' }
     $global:rc3MockRestored = $false

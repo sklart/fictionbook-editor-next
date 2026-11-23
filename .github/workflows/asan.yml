@@ -34,6 +34,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
+      - name: Record and verify source before build
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out/tests/asan | Out-Null
+          $status = @(git status --porcelain=v1 --untracked-files=no)
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect source status before build.' }
+          [IO.File]::WriteAllLines((Join-Path (Get-Location) 'out/tests/asan/source-before.log'), [string[]]$status)
+          if ($status.Count) { throw 'Source is dirty before build.' }
       - name: Build isolated Release Win32 AddressSanitizer
         shell: pwsh
         run: |
@@ -50,6 +58,16 @@ jobs:
       - name: Run native regressions for confirmed memory defects
         shell: pwsh
         run: ./tools/tests/test-asan-regressions-native.ps1 -Sanitizer Address
+      - name: Record and reconcile verified MIDL output
+        shell: pwsh
+        run: |
+          git status --porcelain=v1 --untracked-files=no | Set-Content out/tests/asan/source-after.log
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect source status after build.' }
+          git diff HEAD --binary --output=out/tests/asan/source-after.patch
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot record source diff.' }
+          ./tools/rc3-acceptance/ReconcileMidl.ps1 -RepositoryRoot . -EvidenceDirectory out/tests/asan -ExpectedSource $env:GITHUB_SHA
+          $remaining = @(git status --porcelain=v1 --untracked-files=no)
+          if ($LASTEXITCODE -ne 0 -or $remaining.Count) { throw 'Tracked source or submodules remain dirty.' }
       - name: Run focused sanitizer checks
         if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type != 'tag') || ((github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && !inputs.full_validation)
         shell: pwsh
@@ -83,6 +101,10 @@ jobs:
             out/tests/asan/ci-summary.json
             out/tests/asan/**/summary.json
             out/tests/asan/**/result.json
+            out/tests/asan/source-before.log
+            out/tests/asan/source-after.log
+            out/tests/asan/source-after.patch
+            out/tests/asan/midl-reconciliation.json
             out/asan/Release/fbe-sanitizer.json
           if-no-files-found: error
           retention-days: 14
@@ -96,5 +118,7 @@ jobs:
             out/tests/asan/**/asan.*
             out/tests/asan/**/*.dmp
             out/tests/asan/**/case.json
+            out/tests/asan/**/*.patch
+            out/tests/asan/midl-reconciliation.json
           if-no-files-found: error
           retention-days: 14

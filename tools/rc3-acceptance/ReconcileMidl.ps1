@@ -1,9 +1,9 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$RepositoryRoot, [Parameter(Mandatory)][string]$EvidenceDirectory)
+param([Parameter(Mandatory)][string]$RepositoryRoot, [Parameter(Mandatory)][string]$EvidenceDirectory, [string]$ExpectedSource = 'c4bcb76c3cd03d1dff88fa557aa75261b4ec0461')
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath $RepositoryRoot).Path
 $head = (& git -C $root rev-parse HEAD).Trim()
-if ($LASTEXITCODE -ne 0 -or $head -cne 'c4bcb76c3cd03d1dff88fa557aa75261b4ec0461') { throw 'Unexpected source SHA.' }
+if ($LASTEXITCODE -ne 0 -or $head -cne $ExpectedSource) { throw 'Unexpected source SHA.' }
 $allowed = @('src/export-docx/ExportDOCX_i.c','src/export-docx/ExportDOCX_i.h','src/export-epub/ExportEPUB_i.c','src/export-epub/ExportEPUB_i.h')
 $changed = @(& git -C $root -c diff.ignoreSubmodules=all diff --name-only HEAD --)
 if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect source changes.' }

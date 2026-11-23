@@ -34,6 +34,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
+      - name: Record and verify source before build
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out/tests/ubsan | Out-Null
+          $status = @(git status --porcelain=v1 --untracked-files=no)
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect source status before build.' }
+          [IO.File]::WriteAllLines((Join-Path (Get-Location) 'out/tests/ubsan/source-before.log'), [string[]]$status)
+          if ($status.Count) { throw 'Source is dirty before build.' }
       - name: Prepare native LLVM with i386 UBSan runtime
         shell: pwsh
         run: |
@@ -54,6 +62,16 @@ jobs:
       - name: Verify UBSan build and production rejection policy
         shell: pwsh
         run: ./tools/tests/test-ubsan-build-policy.ps1
+      - name: Record and reconcile verified MIDL output
+        shell: pwsh
+        run: |
+          git status --porcelain=v1 --untracked-files=no | Set-Content out/tests/ubsan/source-after.log
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect source status after build.' }
+          git diff HEAD --binary --output=out/tests/ubsan/source-after.patch
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot record source diff.' }
+          ./tools/rc3-acceptance/ReconcileMidl.ps1 -RepositoryRoot . -EvidenceDirectory out/tests/ubsan -ExpectedSource $env:GITHUB_SHA
+          $remaining = @(git status --porcelain=v1 --untracked-files=no)
+          if ($LASTEXITCODE -ne 0 -or $remaining.Count) { throw 'Tracked source or submodules remain dirty.' }
       - name: Run focused sanitizer checks
         if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type != 'tag') || ((github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && !inputs.full_validation)
         shell: pwsh
@@ -85,6 +103,8 @@ jobs:
             out/tests/ubsan/**/summary.json
             out/tests/ubsan/**/result.json
             out/tests/ubsan/**/case.json
+            out/tests/ubsan/**/*.patch
+            out/tests/ubsan/midl-reconciliation.json
             out/tests/ubsan/ci-summary.json
             out/ubsan/Release/fbe-sanitizer.json
             out/ubsan/Release/fbe-ubsan-toolchain.json
