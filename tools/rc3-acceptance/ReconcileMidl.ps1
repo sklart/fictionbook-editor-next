@@ -27,11 +27,14 @@ foreach ($name in $changed) {
     if ($differences -ne 1) { throw "MIDL file lacks the exact expected timestamp difference: $name" }
     $records += @{path=$name;generatedSha256=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash;changedLines=$differences}
 }
-@{status='verified';source=$head;allowedChange='MIDL timestamp comment only';files=$records} |
-    ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $EvidenceDirectory 'midl-reconciliation.json') -Encoding utf8
+$report = @{status='verified-differences';source=$head;allowedChange='MIDL timestamp comment only';files=$records}
+$reportPath = Join-Path $EvidenceDirectory 'midl-reconciliation.json'
+$report | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $reportPath -Encoding utf8
 if ($changed.Count) {
     & git -C $root restore --source=HEAD --worktree -- @changed
     if ($LASTEXITCODE -ne 0) { throw 'Cannot restore verified MIDL comments.' }
 }
 & git -C $root -c diff.ignoreSubmodules=all diff --quiet HEAD --
 if ($LASTEXITCODE -ne 0) { throw 'Tracked source worktree remains dirty after MIDL reconciliation.' }
+$report.status = 'restored-clean'
+$report | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $reportPath -Encoding utf8
