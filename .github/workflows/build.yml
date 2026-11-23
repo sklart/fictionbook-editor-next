@@ -270,6 +270,7 @@ jobs:
           ./tools/tests/test-fbe-scripting-examples.ps1 -FbeExe out/Release/FBE.exe
       - name: Run real OLE Clipboard in a disposable user logon
         id: clipboard-ole
+        if: ${{ !cancelled() && steps.compile.outcome == 'success' }}
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
@@ -284,6 +285,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
       - name: Upload isolated OLE runtime receipt
+        if: ${{ !cancelled() && steps.clipboard-ole.outcome == 'success' }}
         uses: actions/upload-artifact@v7
         with:
           name: required-ci-runtime-${{ github.sha }}
