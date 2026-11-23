@@ -43,6 +43,7 @@ if ($env:VSCMD_ARG_TGT_ARCH -ne 'x86' -or $env:VCToolsVersion -notlike '14.44*')
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $probeExe -PathType Leaf)) { throw 'Native fast-fail probe compilation failed.' }
 $probeOut = Join-Path $probe 'collector-stdout.log'
 $probeErr = Join-Path $probe 'collector-stderr.log'
+. (Join-Path $PSScriptRoot 'CollectorObservation.ps1')
 if (Get-Process -Name FBE -ErrorAction SilentlyContinue) { throw 'Unexpected FBE.exe exists before collector probe.' }
 $probeProcess = Start-Process -FilePath $collector -ArgumentList @('-accepteula','-ma','-e','-w','FBE.exe',('"'+$probe+'"')) -RedirectStandardOutput $probeOut -RedirectStandardError $probeErr -PassThru
 $probeChild = $null
@@ -58,7 +59,7 @@ try {
     if ($probeChild -and -not $probeChild.HasExited) { Stop-Process -Id $probeChild.Id -Force -ErrorAction SilentlyContinue }
     if (-not $probeProcess.HasExited) { Stop-Process -Id $probeProcess.Id -Force -ErrorAction SilentlyContinue }
 }
-$probeLog = [string](Get-Content -Raw -LiteralPath $probeOut)
+$probeLog = Read-Rc3CollectorLog -Path $probeOut
 $probePid = [regex]::Escape([string]$probeChild.Id)
 if ($probeLog -notmatch ("(?im)^\s*Process:\s*FBE\.exe\s*\(${probePid}\)")) { throw 'Probe collector did not confirm the expected process.' }
 $probeDumps = @(Get-ChildItem -LiteralPath $probe -Filter '*.dmp' -File)
@@ -74,7 +75,6 @@ $dumpDir = Join-Path $evidence 'dumps'
 New-Item -ItemType Directory -Path $dumpDir | Out-Null
 $stdout = Join-Path $evidence 'collector-stdout.log'
 $stderr = Join-Path $evidence 'collector-stderr.log'
-. (Join-Path $PSScriptRoot 'CollectorObservation.ps1')
 if (Get-Process -Name FBE -ErrorAction SilentlyContinue) { throw 'Unexpected FBE.exe exists before the diagnostic case.' }
 $watcher = Start-Process -FilePath $collector -ArgumentList @('-accepteula','-ma','-e','-w','FBE.exe',('"'+$dumpDir+'"')) -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
 $caseError = $null
@@ -90,7 +90,7 @@ try {
     if (-not $watcher.WaitForExit(30000)) { $forcedStop = $true; Stop-Process -Id $watcher.Id -Force; $watcher.WaitForExit() }
 }
 $watcher.Refresh()
-$log = if (Test-Path -LiteralPath $stdout) { [string](Get-Content -Raw -LiteralPath $stdout) } else { '' }
+$log = if (Test-Path -LiteralPath $stdout) { Read-Rc3CollectorLog -Path $stdout } else { '' }
 $dumps = @(Get-ChildItem -LiteralPath $dumpDir -Filter '*.dmp' -File)
 $observation = Get-Rc3CollectorObservation -ForcedStop $forcedStop -ExitCode $watcher.ExitCode -Log $log -DumpCount $dumps.Count -ExpectedTempRoot (Join-Path $caseDir 'temp')
 @{status=$observation.status;reasons=$observation.reasons;forcedStop=$forcedStop;exitCode=$watcher.ExitCode;dumps=@($dumps.FullName);caseError=$(if($caseError){$caseError.ToString()}else{$null})} |

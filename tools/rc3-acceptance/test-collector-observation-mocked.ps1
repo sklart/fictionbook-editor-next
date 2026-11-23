@@ -3,6 +3,13 @@ $ErrorActionPreference = 'Stop'
 $tempRoot = Join-Path $PSScriptRoot 'mock-temp-root'
 $imagePath = Join-Path $tempRoot 'fr-0123456789abcdef0123456789abcdef/FBE.exe'
 $goodLog = "Process: FBE.exe (1234)`nProcess image: $imagePath`n[12:34:56] Process Exit: PID 1234, Exit Code 0x00000000`n"
+$logRoot = Join-Path $PSScriptRoot ('../../out/rc3-collector-log-mock-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $logRoot -Force | Out-Null
+$unicodePath = Join-Path $logRoot 'unicode.log'
+$utf8Path = Join-Path $logRoot 'utf8.log'
+[IO.File]::WriteAllBytes($unicodePath, [Text.Encoding]::Unicode.GetBytes($goodLog))
+[IO.File]::WriteAllBytes($utf8Path, [Text.Encoding]::UTF8.GetBytes($goodLog))
+if ((Read-Rc3CollectorLog -Path $unicodePath) -cne $goodLog -or (Read-Rc3CollectorLog -Path $utf8Path) -cne $goodLog) { throw 'Collector log encoding detection failed.' }
 $tests = @(
     @{name='clean'; forced=$false; code=0; log=$goodLog; dumps=0; expected='PASS'},
     @{name='forced'; forced=$true; code=0; log=$goodLog; dumps=0; expected='FAIL'},
