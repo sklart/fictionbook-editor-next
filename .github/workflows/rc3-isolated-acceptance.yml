@@ -291,6 +291,8 @@ jobs:
     timeout-minutes: 240
     outputs:
       stage3c: ${{ steps.stage3c.outcome }}
+      clipboard: ${{ steps.clipboard.outcome }}
+      release_gate: ${{ steps.release-verification.outcome }}
     steps:
       - name: Require GitHub-hosted runner
         id: hosted
@@ -454,6 +456,8 @@ jobs:
           ./tools/tests/test-fbe-scripting-stage3d.ps1 -FbeExe out/Release/FBE.exe -Mode installed -DocumentType fbd -InputEncoding utf-16
           ./tools/tests/test-fbe-scripting-examples.ps1 -FbeExe out/Release/FBE.exe
       - name: Run real OLE Clipboard in a disposable user logon
+        id: clipboard
+        continue-on-error: true
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
@@ -464,6 +468,7 @@ jobs:
             ./tools/tests/write-ci-ole-runtime-receipt.ps1 -FbeExe out/Release/FBE.exe
           } finally { $env:GITHUB_SHA = $workflowSha }
       - name: Upload isolated OLE runtime receipt
+        if: steps.clipboard.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
           name: required-ci-runtime-c4bcb76c3cd03d1dff88fa557aa75261b4ec0461
@@ -565,6 +570,7 @@ jobs:
           ./tools/tests/test-prerelease-nsis-state.ps1
       - name: Verify universal release binaries, document tree and Dark Theme stabilization runtime
         id: release-verification
+        continue-on-error: true
         shell: pwsh
         env:
           FBE_RUNTIME_FAILURE_ARTIFACTS: out/tests/runtime-failure
@@ -584,7 +590,7 @@ jobs:
         with:
           name: prerelease-p0-c4bcb76c3cd03d1dff88fa557aa75261b4ec0461
           path: out/tests/prerelease-p0/**
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
       - name: Smoke bundled plugin upgrade and uninstall
         if: github.event_name == 'pull_request'
@@ -677,12 +683,14 @@ jobs:
           IMAGE_HIT: ${{ steps.image-stack-cache.outputs.cache-hit }}
           RUNTIME_HIT: ${{ steps.editor-runtime-cache.outputs.cache-hit }}
           STAGE3C_RESULT: ${{ steps.stage3c.outcome }}
+          CLIPBOARD_RESULT: ${{ steps.clipboard.outcome }}
         run: |
           function Show([string]$value) { if ($value) { $value } else { 'NOT RUN' } }
           @(
             '### Build and verification',
             "Job: $env:STAGE_STATUS; compile: $(Show $env:COMPILE_RESULT) ($(Show $env:COMPILE_SECONDS) s); verification: $(Show $env:VERIFY_RESULT) ($(Show $env:VERIFY_SECONDS) s).",
             "Stage3C: $(Show $env:STAGE3C_RESULT).",
+            "OLE Clipboard: $(Show $env:CLIPBOARD_RESULT).",
             "Cache hits (empty means miss or not run): PCRE2=$(Show $env:PCRE_HIT), Hunspell=$(Show $env:HUNSPELL_HIT), image=$(Show $env:IMAGE_HIT), editor runtime=$(Show $env:RUNTIME_HIT).",
             'Detailed test counts and failures: see the step log; a skipped verification is not PASS.',
             "[Run artifacts]($env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID#artifacts)"
@@ -798,6 +806,8 @@ jobs:
           BUILD: ${{ needs.build.result }}
           PACKAGE: ${{ needs.package.result }}
           STAGE3C: ${{ needs.build.outputs.stage3c }}
+          CLIPBOARD: ${{ needs.build.outputs.clipboard }}
+          RELEASE_GATE: ${{ needs.build.outputs.release_gate }}
         run: |
-          printf 'candidate=%s compare=%s ubsan=%s validate=%s build=%s package=%s stage3c=%s\n' "$CANDIDATE" "$COMPARE" "$UBSAN" "$VALIDATE" "$BUILD" "$PACKAGE" "$STAGE3C"
-          test "$CANDIDATE" = success && test "$COMPARE" = success && test "$UBSAN" = success && test "$VALIDATE" = success && test "$BUILD" = success && test "$PACKAGE" = success && test "$STAGE3C" = success
+          printf 'candidate=%s compare=%s ubsan=%s validate=%s build=%s package=%s stage3c=%s clipboard=%s release_gate=%s\n' "$CANDIDATE" "$COMPARE" "$UBSAN" "$VALIDATE" "$BUILD" "$PACKAGE" "$STAGE3C" "$CLIPBOARD" "$RELEASE_GATE"
+          test "$CANDIDATE" = success && test "$COMPARE" = success && test "$UBSAN" = success && test "$VALIDATE" = success && test "$BUILD" = success && test "$PACKAGE" = success && test "$STAGE3C" = success && test "$CLIPBOARD" = success && test "$RELEASE_GATE" = success
