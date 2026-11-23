@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [ValidateSet('portable','installed')][string]$Mode='portable',
-    [ValidateSet('dialogs','clipboard','clipboard-ole','status')][string]$Part='dialogs')
+    [ValidateSet('dialogs','clipboard','clipboard-ole','status')][string]$Part='dialogs',
+    [switch]$PrepareHistory, [string]$EvidenceDirectory)
 $ErrorActionPreference='Stop'
 if ($Part -eq 'clipboard-ole' -and ($env:GITHUB_ACTIONS -ne 'true' -or
     $env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $env:FBE_NEXT_CLIPBOARD_CI_ACCOUNT -ne [Security.Principal.WindowsIdentity]::GetCurrent().User.Value)) {
@@ -10,7 +11,7 @@ if ($Part -eq 'clipboard-ole' -and ($env:GITHUB_ACTIONS -ne 'true' -or
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $iso=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'api3c'
 $passed=$false
-$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_SCRIPT_API_ROOT','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_TRACE')
+$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_SCRIPT_API_ROOT','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_TRACE','FBE_NEXT_STAGE3C_PREPARE_HISTORY')
 $old=@{};foreach($name in $names){$old[$name]=[Environment]::GetEnvironmentVariable($name)}
 try {
     $null=New-IsolatedFbeSettingsSeed $iso
@@ -35,6 +36,11 @@ function Run(){try{
  var range=document.body.createTextRange();range.moveToElementText(paragraphs[0]);range.collapse(true);range.moveEnd("character",8);range.select();result3c="PASS";
 }catch(e){result3c=String(e.message||e);}}
 function stage3cResult(){return result3c;}
+function stage3cPrepareHistory(){try{
+ var p=document.getElementById("fbw_body").getElementsByTagName("P")[0];a3c(!!p,"history paragraph");
+ for(var i=1;i<=2;i++){ext.BeginUndoUnit(document,"Stage3C history "+i);try{p.insertAdjacentText("beforeEnd"," history"+i);}finally{ext.EndUndoUnit(document);}}
+ return "PASS";
+}catch(e){return String(e.message||e);}}
 function stage3cPushA(){window.tokenA=ext.PushStatusBarText("outer");return "PASS";}
 function stage3cPushB(){window.tokenB=ext.PushStatusBarText("inner");return "PASS";}
 function stage3cBadPop(){try{bad3c(function(){ext.PopStatusBarText(window.tokenA);});bad3c(function(){ext.PopStatusBarText("foreign");});return "PASS";}catch(e){return String(e.message||e);}}
@@ -96,12 +102,17 @@ function stage3cDialog(title,index){try{
     'function Run(){window.external.PushStatusBarText("exception-leak");throw new Error("intentional stage3c failure");}' | Set-Content (Join-Path $root 'error.js') -Encoding utf8
     'function Run(){var e=window.external;e.PushStatusBarText("COM-leak");e.PopStatusBarText("foreign");}' | Set-Content (Join-Path $root 'comerror.js') -Encoding utf8
     $fixture=Join-Path $iso.Root 'api3c.fb2';$report=Join-Path $iso.Root 'api3c.txt'
-    '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>API3C</book-title><lang>en</lang></title-info><document-info><id>api3c</id><version>1</version></document-info></description><body><section><p>ordinary paragraph</p></section></body></FictionBook>' | Set-Content $fixture -Encoding utf8
+    '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>API3C</book-title><lang>en</lang></title-info><document-info><id>api3c</id><version>1</version></document-info></description><body><section><p>ordinary paragraph</p></section></body><binary id="stage3c.bin" content-type="application/octet-stream">AAECA/7/</binary></FictionBook>' | Set-Content $fixture -Encoding utf8
     $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO="scripting-stage3c-$Part";$env:FBE_NEXT_SCRIPT_API_ROOT=$root
     $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY=Join-Path $iso.DataPath 'Settings';$env:FBE_NEXT_TRACE='0'
+    $env:FBE_NEXT_STAGE3C_PREPARE_HISTORY=if($PrepareHistory){'1'}else{'0'}
     $process=Start-Process $iso.Exe -WorkingDirectory $iso.Root -ArgumentList @("--$Mode",'-b',$report,$fixture) -WindowStyle Hidden -PassThru
     $code=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario "stage3c-$Part" -Report $report -TimeoutSeconds 45
     $text=if(Test-Path $report){Get-Content $report -Raw}else{'missing report'}
+    if($EvidenceDirectory -and (Test-Path -LiteralPath $report -PathType Leaf)) {
+        New-Item -ItemType Directory -Force -Path $EvidenceDirectory | Out-Null
+        Copy-Item -LiteralPath $report -Destination (Join-Path $EvidenceDirectory 'api3c.txt') -Force
+    }
     if($code -ne 0 -or $text -notmatch 'result=PASS'){throw "Stage3C $Part failed: $text"}
     if($Part -in @('clipboard','clipboard-ole')) {
         foreach($log in @(Get-ChildItem -LiteralPath $iso.DataPath -Recurse -File -Filter '*.log')) {

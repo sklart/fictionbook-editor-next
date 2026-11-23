@@ -25,6 +25,17 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
             if(wcscmp(name,L"stage3cNested")&&(undo!=history(false)||redo!=history(true))){details="API changed Undo/Redo history";CheckError(E_FAIL);}
         };
         invoke(L"stage3cResult");
+        wchar_t prepareHistory[8]={}; ::GetEnvironmentVariableW(L"FBE_NEXT_STAGE3C_PREPARE_HISTORY",prepareHistory,_countof(prepareHistory));
+        if(!wcscmp(prepareHistory,L"1")) {
+            if(!IsFbeTestScenario(L"scripting-stage3c-dialogs")){details="history fixture requires dialogs";CheckError(E_INVALIDARG);}
+            CComVariant prepared; CheckError(m_doc->InvokeFunc(L"stage3cPrepareHistory",nullptr,0,prepared,true));
+            if(prepared.vt!=VT_BSTR||wcscmp(prepared.bstrVal,L"PASS")){details="cannot prepare dialog history";CheckError(E_FAIL);}
+            CheckError(static_cast<HRESULT>(m_doc->m_body.ExecCommand(IDM_UNDO)));
+            const auto preparedUndo=history(false),preparedRedo=history(true);
+            CStringA state;state.Format("history-prepared undo=%u redo=%u\r\n",static_cast<unsigned>(preparedUndo.size()),static_cast<unsigned>(preparedRedo.size()));
+            DWORD written=0;output.Write(state,state.GetLength(),&written);output.Flush();
+            if(preparedUndo.empty()||preparedRedo.empty()){details="dialog history fixture is empty";CheckError(E_FAIL);}
+        }
         const auto revision=m_doc->m_body.GetVersionNumber();
         const CString xml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
         CStringA initialState; initialState.Format("setup-dirty=%d,%d,%d revision=%ld,%ld\r\n",dirty?1:0,dirtyAfterSetup?1:0,DocChanged()?1:0,revisionAfterSetup,revision); DWORD initialBytes=0; output.Write(initialState,initialState.GetLength(),&initialBytes); output.Flush();
@@ -150,6 +161,10 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
             const auto revisionBeforeDialog=m_doc->m_body.GetVersionNumber(); const bool dirtyBeforeDialog=DocChanged();
             CString title; title.Format(L"FBE stage3c %lu %d",::GetCurrentProcessId(),index);
             const HWND priorFocus=::GetFocus(); const DWORD uiThread=::GetCurrentThreadId();
+            const auto beforeDocument=m_doc->CreateDOMForAnalysis();
+            if(!beforeDocument){details="cannot snapshot document before dialog";CheckError(E_FAIL);}
+            const CString beforeXml(static_cast<LPCWSTR>(beforeDocument->xml));
+            const bool beforeDirty=DocChanged(); const auto beforeUndo=history(false),beforeRedo=history(true);
             struct Driver { DWORD thread; HWND owner,dialog=nullptr,button=nullptr; bool owned=false; } driver={uiThread,m_hWnd};
             std::thread input([&]() {
                 for(int retry=0;retry<400&&!driver.button;++retry) {
@@ -173,6 +188,14 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
             HRESULT failure=S_OK;
             try { invoke(L"stage3cDialog",args,2); } catch(const _com_error& error) { failure=error.Error(); }
             input.join(); CheckError(failure);
+            const auto afterDocument=m_doc->CreateDOMForAnalysis();
+            if(!afterDocument){details="cannot snapshot document after dialog";CheckError(E_FAIL);}
+            const CString afterXml(static_cast<LPCWSTR>(afterDocument->xml));
+            const bool afterDirty=DocChanged(), xmlSame=beforeXml==afterXml;
+            const bool undoSame=beforeUndo==history(false),redoSame=beforeRedo==history(true);
+            CStringA isolation;isolation.Format("dialog=%d isolation xml=%d dirty=%d,%d undo=%d redo=%d\r\n",index,xmlSame?1:0,beforeDirty?1:0,afterDirty?1:0,undoSame?1:0,redoSame?1:0);
+            DWORD isolationBytes=0;output.Write(isolation,isolation.GetLength(),&isolationBytes);output.Flush();
+            if(!xmlSame||beforeDirty!=afterDirty||!undoSame||!redoSame){details="dialog changed document, save state, Undo or Redo";CheckError(E_FAIL);}
             CStringA transition; transition.Format("dialog=%d revision=%ld,%ld,%ld dirty=%d,%d,%d\r\n",index,revisionBeforeTheme,revisionBeforeDialog,m_doc->m_body.GetVersionNumber(),dirtyBeforeTheme?1:0,dirtyBeforeDialog?1:0,DocChanged()?1:0); DWORD transitionBytes=0; output.Write(transition,transition.GetLength(),&transitionBytes); output.Flush();
             if(!driver.owned||(::IsWindow(priorFocus)&&::GetFocus()!=priorFocus)) { details="dialog owner/focus"; CheckError(E_FAIL); }
             CStringA row; row.Format("dialog=%d PASS\r\n",index); DWORD written=0; output.Write(row,row.GetLength(),&written); output.Flush();
