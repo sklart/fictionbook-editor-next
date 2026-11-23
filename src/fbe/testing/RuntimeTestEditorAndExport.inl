@@ -3209,23 +3209,43 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			const HWND tableCombo = ::GetDlgItem(m_contextAttributeBars.TableBar2(), IDC_VALIGN);
 			COMBOBOXINFO tableInfo = {}; tableInfo.cbSize = sizeof(tableInfo);
 			COLORREF tableDisabled = CLR_INVALID; bool disabledTextVisible = false;
+			unsigned tableAttempts = 0; RECT tableClient = {}, tableScreen = {}, tableClip = {};
+			bool tablePointVisible = false; const bool tableExists = tableCombo && ::IsWindow(tableCombo);
+			const bool tableVisible = tableExists && ::IsWindowVisible(tableCombo);
 			if(tableCombo && ::IsWindowVisible(tableCombo) && ::GetComboBoxInfo(tableCombo, &tableInfo)) {
 				const bool wasEnabled = ::IsWindowEnabled(tableCombo) != FALSE;
 				const LRESULT originalSelection = ::SendMessageW(tableCombo, CB_GETCURSEL, 0, 0);
 				::SendMessageW(tableCombo, CB_SETCURSEL, 1, 0);
 				::EnableWindow(tableCombo, FALSE);
-				::RedrawWindow(tableCombo, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
-				HDC tableDc = ::GetDC(tableCombo);
-				if(tableDc) {
-					tableDisabled = ::GetPixel(tableDc, tableInfo.rcItem.right - 4, (tableInfo.rcItem.top + tableInfo.rcItem.bottom) / 2);
-					for(int y = tableInfo.rcItem.top; y < tableInfo.rcItem.bottom && !disabledTextVisible; ++y)
-						for(int x = tableInfo.rcItem.left + 2; x < tableInfo.rcItem.right - 5; ++x)
-							if(::GetPixel(tableDc, x, y) == ThemeManager::DisabledTextColor()) { disabledTextVisible = true; break; }
-					::ReleaseDC(tableCombo, tableDc);
+				::GetClientRect(tableCombo, &tableClient); ::GetWindowRect(tableCombo, &tableScreen);
+				const int sampleX = tableInfo.rcItem.right - 4, sampleY = (tableInfo.rcItem.top + tableInfo.rcItem.bottom) / 2;
+				for(; tableAttempts < 20 && tableDisabled == CLR_INVALID; ++tableAttempts) {
+					::RedrawWindow(tableCombo, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+					HDC tableDc = ::GetDC(tableCombo);
+					if(tableDc) {
+						::GetClipBox(tableDc, &tableClip); tablePointVisible = ::PtVisible(tableDc, sampleX, sampleY) != FALSE;
+						if(sampleX >= tableClient.left && sampleX < tableClient.right && sampleY >= tableClient.top && sampleY < tableClient.bottom)
+							tableDisabled = ::GetPixel(tableDc, sampleX, sampleY);
+						if(tableDisabled != CLR_INVALID) {
+							for(int y = tableInfo.rcItem.top; y < tableInfo.rcItem.bottom && !disabledTextVisible; ++y)
+								for(int x = tableInfo.rcItem.left + 2; x < tableInfo.rcItem.right - 5; ++x)
+									if(::GetPixel(tableDc, x, y) == ThemeManager::DisabledTextColor()) { disabledTextVisible = true; break; }
+						}
+						::ReleaseDC(tableCombo, tableDc);
+					}
+					if(tableDisabled == CLR_INVALID && tableAttempts + 1 < 20) {
+						::SetForegroundWindow(m_hWnd); MSG message = {};
+						while(::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); }
+						::Sleep(50);
+					}
 				}
 				::EnableWindow(tableCombo, wasEnabled);
 				::SendMessageW(tableCombo, CB_SETCURSEL, originalSelection, 0);
 			}
+			surfaceDetails.AppendFormat("table_combo_observation_%s\texists=%d visible=%d iconic=%d dpi=%u attempts=%u point_visible=%d client=%ld,%ld,%ld,%ld screen=%ld,%ld,%ld,%ld item=%ld,%ld,%ld,%ld clip=%ld,%ld,%ld,%ld\r\n", name,
+				tableExists ? 1 : 0, tableVisible ? 1 : 0, ::IsIconic(m_hWnd) ? 1 : 0, tableExists ? UiMetrics::DpiForWindow(tableCombo) : 0, tableAttempts, tablePointVisible ? 1 : 0,
+				tableClient.left, tableClient.top, tableClient.right, tableClient.bottom, tableScreen.left, tableScreen.top, tableScreen.right, tableScreen.bottom,
+				tableInfo.rcItem.left, tableInfo.rcItem.top, tableInfo.rcItem.right, tableInfo.rcItem.bottom, tableClip.left, tableClip.top, tableClip.right, tableClip.bottom);
 			surfaceDetails.AppendFormat("table_combo_disabled_%s\t%lu/%lu\r\n", name,
 				static_cast<unsigned long>(tableDisabled), static_cast<unsigned long>(expected));
 			surfaceDetails.AppendFormat("table_combo_disabled_text_%s\t%d\r\n", name, disabledTextVisible ? 1 : 0);
