@@ -63,7 +63,12 @@ $probeLog = Read-Rc3CollectorLog -Path $probeOut
 $probePid = [regex]::Escape([string]$probeChild.Id)
 if ($probeLog -notmatch ("(?im)^\s*Process:\s*FBE\.exe\s*\(${probePid}\)")) { throw 'Probe collector did not confirm the expected process.' }
 $probeDumps = @(Get-ChildItem -LiteralPath $probe -Filter '*.dmp' -File)
-if ($probeProcess.ExitCode -ne 0 -or $probeDumps.Count -ne 1 -or $probeDumps[0].Length -lt 32) { throw 'Collector probe did not produce a fast-fail dump.' }
+@{collectorExitCode=$probeProcess.ExitCode;childExitCode=$probeChild.ExitCode;dumpCount=$probeDumps.Count} |
+    ConvertTo-Json | Set-Content -LiteralPath (Join-Path $probe 'process-result.json') -Encoding utf8
+if ($probeDumps.Count -ne 1 -or $probeDumps[0].Length -lt 32 -or
+    $probeLog -notmatch '(?im)Unhandled:\s*C0000409\b' -or $probeLog -notmatch '(?im)Dump\s+1\s+complete:') {
+    throw 'Collector probe did not record a complete fast-fail dump.'
+}
 . (Join-Path $PSScriptRoot 'ProbeMinidump.ps1')
 $dumpStream = [IO.File]::OpenRead($probeDumps[0].FullName)
 try { $probeDumpSummary = Assert-Rc3FastFailMinidump -Stream $dumpStream }
