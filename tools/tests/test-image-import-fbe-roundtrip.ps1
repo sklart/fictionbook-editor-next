@@ -6,6 +6,7 @@ Verifies that production ImageImport output survives FBE Save -> Reopen -> Save.
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [string]$SmokeExe = (Join-Path $PSScriptRoot '..\..\out\tests\image-import\image-import-smoke.exe'),
+    [string]$JpegFixture = (Join-Path $PSScriptRoot '..\..\out\tests\image-import\original.jpeg'),
     [int]$TimeoutSeconds = 180
 )
 
@@ -13,6 +14,12 @@ $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 $SmokeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($SmokeExe)
 if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
+if (-not $PSBoundParameters.ContainsKey('SmokeExe')) {
+    # The native runner owns and cleans its scratch directory. Run the
+    # roundtrip inside that lifetime instead of depending on stale outputs.
+    & (Join-Path $PSScriptRoot 'test-image-import-native.ps1') -RoundtripFbeExe $FbeExe -TimeoutSeconds $TimeoutSeconds
+    return
+}
 if (-not (Test-Path -LiteralPath $SmokeExe -PathType Leaf)) { throw "Не найден ImageImport smoke bridge: $SmokeExe" }
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $schemaPath = Join-Path $repoRoot 'runtime\FictionBook.xsd'
@@ -58,7 +65,7 @@ try {
     & $SmokeExe '--make-jp2' $jp2
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $jp2)) { throw 'Smoke bridge не подготовил JPEG 2000 fixture.' }
     $cases = @(
-        @{ Id = 'jpeg'; Source = (Join-Path $repoRoot 'out\tests\image-import\original.jpeg'); Converted = $false },
+        @{ Id = 'jpeg'; Source = $JpegFixture; Converted = $false },
         @{ Id = 'png'; Source = (Join-Path $repoRoot 'src\fbe\res\imgph.png'); Converted = $false },
         @{ Id = 'avif'; Source = (Join-Path $repoRoot 'third_party\libheif\examples\example.avif'); Converted = $true },
         @{ Id = 'jpeg2000'; Source = $jp2; Converted = $true }

@@ -3,6 +3,7 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
     [string]$PlatformToolset,
+    [string]$RoundtripFbeExe,
     [ValidateRange(1, 600)][int]$TimeoutSeconds = 120
 )
 
@@ -133,7 +134,7 @@ $exe = Join-Path $testDir 'image-import-smoke.exe'
 $webp = Join-Path $repoRoot "build\libwebp\install\$Configuration"
 $openjpeg = Join-Path $repoRoot "build\openjpeg\install\$Configuration"
 
-$compiler = (Get-Command cl.exe -ErrorAction Stop).Source
+$compiler = if ($env:FBE_UBSAN_CLANG) { $env:FBE_UBSAN_CLANG } else { (Get-Command cl.exe -ErrorAction Stop).Source }
 $compileArguments = @(
     '/nologo', '/EHsc', '/std:c++17', '/MT', '/DUNICODE', '/D_UNICODE', '/DFBE_IMAGE_IMPORT_TESTING', "/Fo$testDir\\",
     "/I$repoRoot\src\fbe", "/I$repoRoot\third_party\wtl", "/I$webp\include", "/I$openjpeg\include", "/I$repoRoot\build\libheif\install\$Configuration\include",
@@ -141,6 +142,10 @@ $compileArguments = @(
     "/Fe$exe", '/link', '/SUBSYSTEM:CONSOLE', "/LIBPATH:$webp\lib", "/LIBPATH:$openjpeg\lib", "/LIBPATH:$repoRoot\build\libheif\install\$Configuration\lib", "/LIBPATH:$repoRoot\build\libde265\install\$Configuration\lib", "/LIBPATH:$repoRoot\build\aom\install\$Configuration\lib",
     'libwebpmux.lib', 'libwebp.lib', 'libsharpyuv.lib', 'openjp2.lib', 'heif.lib', 'libde265.lib', 'aom.lib', 'gdiplus.lib', 'mscms.lib', 'ole32.lib'
 )
+if ($env:FBE_UBSAN_CLANG) {
+    if (-not $global:FbeUbsanHelperOptions.Count) { throw 'Missing UBSan helper compiler options.' }
+    $compileArguments = @('--target=i686-pc-windows-msvc') + @($global:FbeUbsanHelperOptions) + $compileArguments
+}
 Invoke-ImageImportNativeProcess -Executable $compiler -Arguments $compileArguments -Stage 'compile'
 $smokeArguments = @(
     (Join-Path $repoRoot 'src\fbe\res\imgph.png'), $emptyFixture, $avifFixture,
@@ -156,6 +161,9 @@ $smokeArguments = @(
     (Join-Path $repoRoot 'tools\tests\fixtures\sdr_fox_10bit.avif')
 )
 Invoke-ImageImportNativeProcess -Executable $exe -Arguments $smokeArguments -Stage 'run-smoke'
+if ($RoundtripFbeExe) {
+    & (Join-Path $PSScriptRoot 'test-image-import-fbe-roundtrip.ps1') -FbeExe $RoundtripFbeExe -SmokeExe $exe -JpegFixture $jpegPassThroughFixture -TimeoutSeconds $TimeoutSeconds
+}
 $passed = $true
 Write-Host 'Native ImageImport smoke-test passed.'
 } catch {
