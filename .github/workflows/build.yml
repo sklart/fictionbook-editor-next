@@ -45,7 +45,7 @@ jobs:
       - name: Prepare diagnostic toolchain and dependencies
         shell: pwsh
         run: |
-          if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Disposable runner required.' }
+          if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or '${{ inputs.full_validation }}' -eq 'true') { throw 'Partial diagnostics require a hosted runner and cannot be the full gate.' }
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/build/prepare-ubsan-llvm.ps1
           ./tools/build/prepare-ubsan-type-libraries.ps1
@@ -411,6 +411,10 @@ jobs:
         if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.diagnostic_stage3c && steps.compile.outcome == 'success' }}
         shell: pwsh
         run: ./tools/rc3-acceptance/test-theme-diagnostic.ps1 -FbeExe out/Release/FBE.exe
+      - name: Diagnose settings ComboBox measurement
+        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.diagnostic_stage3c && steps.compile.outcome == 'success' }}
+        shell: pwsh
+        run: ./tools/rc3-acceptance/test-settings-theme-diagnostic.ps1 -FbeExe out/Release/FBE.exe
       - name: Upload targeted Stage3C and theme evidence
         if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.diagnostic_stage3c && steps.compile.outcome == 'success' }}
         uses: actions/upload-artifact@v7

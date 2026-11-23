@@ -1564,7 +1564,19 @@ void CMainFrame::RunPortableStateTestScenario()
                 COLORREF listPixel = CLR_INVALID, arrowPixel = CLR_INVALID, ownerArrowPixel = CLR_INVALID;
                 if(::GetComboBoxInfo(ordinaryCombo, &ordinaryInfo) && ordinaryInfo.hwndList) {
 					HDC arrowDc = ::GetDC(ordinaryCombo);
-					if(arrowDc) { arrowPixel = ::GetPixel(arrowDc, ordinaryInfo.rcButton.left + 2, ordinaryInfo.rcButton.top + 2); ::ReleaseDC(ordinaryCombo, arrowDc); }
+					if(arrowDc) {
+						const int x=ordinaryInfo.rcButton.left+2, y=ordinaryInfo.rcButton.top+2;
+						RECT clip={}, screen={}; ::GetClipBox(arrowDc,&clip); ::GetWindowRect(ordinaryCombo,&screen);
+						POINT point={x,y}; ::ClientToScreen(ordinaryCombo,&point); const HWND atPoint=::WindowFromPoint(point);
+						wchar_t atClass[128]={}; if(atPoint) ::GetClassNameW(atPoint,atClass,_countof(atClass));
+						arrowPixel=::GetPixel(arrowDc,x,y);
+						comboPixelDiagnostics.AppendFormat("combo-arrow-observation=point:%d,%d visible:%d own-window:%d class:%ls client:%ld,%ld,%ld,%ld screen:%ld,%ld,%ld,%ld button:%ld,%ld,%ld,%ld clip:%ld,%ld,%ld,%ld window-color:%lu\n",
+							x,y,::PtVisible(arrowDc,x,y)?1:0,atPoint==ordinaryCombo?1:0,atClass,
+							comboRect.left,comboRect.top,comboRect.right,comboRect.bottom,screen.left,screen.top,screen.right,screen.bottom,
+							ordinaryInfo.rcButton.left,ordinaryInfo.rcButton.top,ordinaryInfo.rcButton.right,ordinaryInfo.rcButton.bottom,
+							clip.left,clip.top,clip.right,clip.bottom,static_cast<unsigned long>(ThemeManager::WindowColor()));
+						::ReleaseDC(ordinaryCombo, arrowDc);
+					}
                     ::SendMessage(ordinaryCombo, CB_SHOWDROPDOWN, TRUE, 0);
                     ::RedrawWindow(ordinaryInfo.hwndList, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
                     RECT listRect = {}; ::GetClientRect(ordinaryInfo.hwndList, &listRect);
