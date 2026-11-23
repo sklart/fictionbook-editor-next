@@ -75,6 +75,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Cannot record MIDL source changes.' }
           git status --short --untracked-files=no *> out/rc3-evidence/source-status.log
           if ($LASTEXITCODE -ne 0) { throw 'Cannot record source status.' }
+      - name: Reconcile verified MIDL timestamp comments
+        shell: pwsh
+        working-directory: candidate
+        run: ../harness/tools/rc3-acceptance/ReconcileMidl.ps1 -RepositoryRoot . -EvidenceDirectory out/rc3-evidence
       - name: Record binary and symbol hashes
         shell: pwsh
         working-directory: candidate
@@ -138,6 +142,11 @@ jobs:
           ref: c4bcb76c3cd03d1dff88fa557aa75261b4ec0461
           submodules: recursive
           persist-credentials: false
+      - name: Checkout acceptance harness
+        uses: actions/checkout@v7
+        with:
+          path: .rc3-harness
+          persist-credentials: false
       - name: Prepare UBSan toolchain
         shell: pwsh
         run: |
@@ -163,6 +172,9 @@ jobs:
           "patch_exit=$LASTEXITCODE" | Add-Content out/tests/ubsan/source-diff.log
           git status --short --untracked-files=no *> out/tests/ubsan/source-status.log
           "status_exit=$LASTEXITCODE" | Add-Content out/tests/ubsan/source-status.log
+      - name: Reconcile verified MIDL timestamp comments
+        shell: pwsh
+        run: ./.rc3-harness/tools/rc3-acceptance/ReconcileMidl.ps1 -RepositoryRoot . -EvidenceDirectory out/tests/ubsan
       - name: Run full UBSan contour on disposable runner
         timeout-minutes: 120
         shell: pwsh
@@ -304,6 +316,11 @@ jobs:
           fetch-depth: 1
           ref: c4bcb76c3cd03d1dff88fa557aa75261b4ec0461
           persist-credentials: false
+      - name: Checkout acceptance harness
+        uses: actions/checkout@v7
+        with:
+          path: .rc3-harness
+          persist-credentials: false
       - name: Identify cache toolchain
         id: cache-toolchain
         shell: pwsh
@@ -355,6 +372,21 @@ jobs:
             if ('${{ steps.image-stack-cache.outputs.cache-hit }}' -eq 'true') { $arguments.ReusePreparedImageStack = $true }
             ./tools/build/build.ps1 @arguments
           } finally { $watch.Stop(); "seconds=$([math]::Round($watch.Elapsed.TotalSeconds, 1))" >> $env:GITHUB_OUTPUT }
+      - name: Record and reconcile MIDL timestamp comments
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out/tests/rc3-midl | Out-Null
+          git -c diff.ignoreSubmodules=all diff --no-ext-diff HEAD -- src/export-docx/ExportDOCX_i.c src/export-docx/ExportDOCX_i.h src/export-epub/ExportEPUB_i.c src/export-epub/ExportEPUB_i.h *> out/tests/rc3-midl/midl-generated.patch
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot record MIDL source changes.' }
+          ./.rc3-harness/tools/rc3-acceptance/ReconcileMidl.ps1 -RepositoryRoot . -EvidenceDirectory out/tests/rc3-midl
+      - name: Upload MIDL reconciliation evidence
+        if: always() && steps.hosted.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: rc3-release-midl-evidence
+          path: out/tests/rc3-midl/**
+          if-no-files-found: warn
+          retention-days: 14
       - name: Save PCRE2 cache
         if: steps.pcre2-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
