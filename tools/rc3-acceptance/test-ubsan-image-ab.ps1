@@ -18,11 +18,6 @@ if($LASTEXITCODE){throw 'Experimental libheif configure failed.'}
 if($LASTEXITCODE){throw 'Experimental libheif build failed.'}
 $source=Join-Path $root 'tools/tests/test-image-import-native.ps1'
 $sourceHash=(Get-FileHash $source -Algorithm SHA256).Hash
-$text=[IO.File]::ReadAllText($source)
-$old='"/LIBPATH:$repoRoot\build\libheif\install\$Configuration\lib"'
-$new='"/LIBPATH:$repoRoot\build\rc3-ubsan-image-ab\install\lib"'
-if(($text.Split(@($old),[StringSplitOptions]::None).Count-1) -ne 1){throw 'Expected exactly one libheif link path.'}
-$temporary=Join-Path (Split-Path $source) ('image-ab-'+[guid]::NewGuid().ToString('N')+'.ps1')
 $savedClang=$env:FBE_UBSAN_CLANG;$savedOptions=$env:UBSAN_OPTIONS
 $env:FBE_UBSAN_CLANG=$clang
 $global:FbeUbsanHelperOptions=@(('-fsanitize-ignorelist='+(Join-Path $root 'tools/msbuild/ubsan.ignorelist')),'-fuse-ld=lld','-fsanitize=undefined','-fno-sanitize-recover=undefined','/clang:-fno-omit-frame-pointer','/clang:-fno-sanitize-merge','/Zi','/DFBE_CLANG_TYPELIBS',('/I'+(Join-Path $root 'build/ubsan/generated/type-libraries')))
@@ -39,14 +34,13 @@ try {
     if($probe.ExitCode -eq 0 -or $reports.Count -ne 1 -or (Get-Content -Raw $reports[0].FullName) -notmatch 'signed integer overflow') {throw 'UBSan report self-test did not capture the expected failure.'}
     foreach($mode in @('stock-msvc','experimental-clang')) {
         $case=Join-Path $out $mode;New-Item -ItemType Directory -Force $case | Out-Null
-        $variant=if($mode -eq 'stock-msvc'){$text}else{$text.Replace($old,$new)}
-        [IO.File]::WriteAllText($temporary,$variant,[Text.UTF8Encoding]::new($true))
+        $heifInstall=if($mode -eq 'stock-msvc'){Join-Path $root 'build/libheif/install/Release'}else{$install}
         # Sanitizer options use ':' as a separator, including on Windows;
         # an absolute drive-letter path is parsed as a malformed option.
         # The helper is explicitly launched with $root as working directory.
         $env:UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1:log_path=out/tests/rc3-ubsan-image-ab/'+$mode+'/ubsan'
         $status='PASS';$details=''
-        try { & $temporary -Configuration Release -PlatformToolset v143 *>&1 | Out-File (Join-Path $case 'smoke.log') -Encoding utf8 }
+        try { & $source -Configuration Release -PlatformToolset v143 -HeifInstallDirectory $heifInstall *>&1 | Out-File (Join-Path $case 'smoke.log') -Encoding utf8 }
         catch {$status='FAIL';$details=$_.Exception.Message}
         $reports=@(Get-ChildItem $case -Filter 'ubsan.*' -File)
         if($reports.Count){$status='FAIL';$details+=' UBSan diagnostics were emitted.'}
@@ -56,7 +50,6 @@ try {
 } finally {
     $env:FBE_UBSAN_CLANG=$savedClang;$env:UBSAN_OPTIONS=$savedOptions
     Remove-Variable FbeUbsanHelperOptions -Scope Global -ErrorAction SilentlyContinue
-    if(Test-Path -LiteralPath $temporary){Remove-Item -LiteralPath $temporary -Force}
 }
 if((Get-FileHash $source -Algorithm SHA256).Hash -cne $sourceHash){throw 'Original test script changed.'}
 @{scope='partial A/B diagnostic, not release gate';sourceSha256=$sourceHash;results=@($results)} | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $out 'summary.json') -Encoding utf8

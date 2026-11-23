@@ -4,6 +4,7 @@ param(
     [string]$Configuration = 'Release',
     [string]$PlatformToolset,
     [string]$RoundtripFbeExe,
+    [string]$HeifInstallDirectory,
     [ValidateRange(1, 600)][int]$TimeoutSeconds = 120
 )
 
@@ -133,13 +134,26 @@ Copy-Item -LiteralPath $jpegFixture -Destination $jpegPassThroughFixture -Force
 $exe = Join-Path $testDir 'image-import-smoke.exe'
 $webp = Join-Path $repoRoot "build\libwebp\install\$Configuration"
 $openjpeg = Join-Path $repoRoot "build\openjpeg\install\$Configuration"
+$heif = Join-Path $repoRoot "build\libheif\install\$Configuration"
+if($HeifInstallDirectory) {
+    if(-not $env:FBE_UBSAN_CLANG){throw 'A libheif override is restricted to UBSan diagnostics.'}
+    $heif=(Resolve-Path -LiteralPath $HeifInstallDirectory).Path
+} elseif($env:FBE_UBSAN_CLANG) {
+    # MSVC x86 and clang UBSan can instantiate the same STL inline functions
+    # with incompatible stack alignment. Build this helper dependency with the
+    # recorded clang in private scratch; leave the release dependency untouched.
+    $heifBuild=Join-Path $testDir 'ubsan-libheif'
+    & (Join-Path $repoRoot 'tools/build/build-ubsan-libheif.ps1') -BuildRoot $heifBuild -ClangCl $env:FBE_UBSAN_CLANG
+    $heif=Join-Path $heifBuild 'install'
+}
+if(!(Test-Path -LiteralPath (Join-Path $heif 'include/libheif/heif.h') -PathType Leaf) -or !(Test-Path -LiteralPath (Join-Path $heif 'lib/heif.lib') -PathType Leaf)){throw 'Selected libheif headers or library are missing.'}
 
 $compiler = if ($env:FBE_UBSAN_CLANG) { $env:FBE_UBSAN_CLANG } else { (Get-Command cl.exe -ErrorAction Stop).Source }
 $compileArguments = @(
     '/nologo', '/EHsc', '/std:c++17', '/MT', '/DUNICODE', '/D_UNICODE', '/DFBE_IMAGE_IMPORT_TESTING', "/Fo$testDir\\",
-    "/I$repoRoot\src\fbe", "/I$repoRoot\third_party\wtl", "/I$webp\include", "/I$openjpeg\include", "/I$repoRoot\build\libheif\install\$Configuration\include",
+    "/I$repoRoot\src\fbe", "/I$repoRoot\third_party\wtl", "/I$webp\include", "/I$openjpeg\include", "/I$heif\include",
     (Join-Path $PSScriptRoot 'image-import-smoke.cpp'), (Join-Path $repoRoot 'src\fbe\ImageImport.cpp'),
-    "/Fe$exe", '/link', '/SUBSYSTEM:CONSOLE', "/LIBPATH:$webp\lib", "/LIBPATH:$openjpeg\lib", "/LIBPATH:$repoRoot\build\libheif\install\$Configuration\lib", "/LIBPATH:$repoRoot\build\libde265\install\$Configuration\lib", "/LIBPATH:$repoRoot\build\aom\install\$Configuration\lib",
+    "/Fe$exe", '/link', '/SUBSYSTEM:CONSOLE', "/LIBPATH:$webp\lib", "/LIBPATH:$openjpeg\lib", "/LIBPATH:$heif\lib", "/LIBPATH:$repoRoot\build\libde265\install\$Configuration\lib", "/LIBPATH:$repoRoot\build\aom\install\$Configuration\lib",
     'libwebpmux.lib', 'libwebp.lib', 'libsharpyuv.lib', 'openjp2.lib', 'heif.lib', 'libde265.lib', 'aom.lib', 'gdiplus.lib', 'mscms.lib', 'ole32.lib'
 )
 if ($env:FBE_UBSAN_CLANG) {
