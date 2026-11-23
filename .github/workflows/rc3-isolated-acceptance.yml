@@ -20,7 +20,10 @@ jobs:
           persist-credentials: false
       - name: Require the exact commit
         shell: bash
-        run: test "$(git rev-parse HEAD)" = c4bcb76c3cd03d1dff88fa557aa75261b4ec0461
+        run: |
+          product_sha="$(git rev-parse HEAD)"
+          test "$product_sha" = c4bcb76c3cd03d1dff88fa557aa75261b4ec0461
+          printf 'Production SHA: `%s`\nWorkflow SHA: `%s`\n' "$product_sha" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
 
   compare:
     needs: candidate
@@ -33,6 +36,7 @@ jobs:
         variant: [Address, Release]
     steps:
       - name: Require GitHub-hosted runner
+        id: hosted
         shell: pwsh
         run: if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Self-hosted runners are forbidden.' }
       - name: Checkout acceptance harness
@@ -87,7 +91,7 @@ jobs:
         run: |
           ./harness/tools/rc3-acceptance/run-with-collector.ps1 -Variant $env:VARIANT -RepositoryRoot ./candidate -EvidenceRoot ./candidate/out/rc3-evidence/diagnostic
       - name: Upload evidence even after failure
-        if: always()
+        if: always() && steps.hosted.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
           name: rc3-compare-${{ matrix.variant }}
@@ -107,7 +111,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Report case failure
-        if: always() && steps.case.outcome == 'failure'
+        if: always() && steps.hosted.outcome == 'success' && steps.case.outcome == 'failure'
         shell: pwsh
         run: throw 'Comparison case or collector failed; inspect the uploaded evidence.'
 
@@ -118,6 +122,7 @@ jobs:
     timeout-minutes: 300
     steps:
       - name: Require GitHub-hosted runner
+        id: hosted
         shell: pwsh
         run: if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Self-hosted runners are forbidden.' }
       - uses: actions/checkout@v7
@@ -139,12 +144,21 @@ jobs:
           ./tools/build/build.ps1 -Configuration Release -Platform Win32 -Sanitizer Undefined *> out/tests/ubsan/build.log
           if (-not $? -or $LASTEXITCODE -ne 0) { throw 'UBSan build failed.' }
           ./tools/tests/test-ubsan-build-policy.ps1
+      - name: Record UBSan source state
+        if: always() && steps.hosted.outcome == 'success'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out/tests/ubsan | Out-Null
+          git -c diff.ignoreSubmodules=all diff --name-status --exit-code HEAD -- *> out/tests/ubsan/source-diff.log
+          "diff_exit=$LASTEXITCODE" | Add-Content out/tests/ubsan/source-diff.log
+          git status --short --untracked-files=no *> out/tests/ubsan/source-status.log
+          "status_exit=$LASTEXITCODE" | Add-Content out/tests/ubsan/source-status.log
       - name: Run full UBSan contour on disposable runner
         timeout-minutes: 120
         shell: pwsh
         run: ./tools/tests/invoke-sanitizer-ci.ps1 -Sanitizer Undefined -AllowUserComRegistration
       - name: Upload UBSan diagnostics
-        if: always()
+        if: always() && steps.hosted.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
           name: rc3-ubsan-diagnostics
@@ -163,6 +177,7 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Require GitHub-hosted runner
+        id: hosted
         shell: pwsh
         run: if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Self-hosted runners are forbidden.' }
       - uses: actions/checkout@v7
@@ -205,7 +220,11 @@ jobs:
           git diff --exit-code -- packaging/nsis/Installer/version.nsh
           ./tools/tests/test-release-pipeline-deduplication.ps1
           ./tools/tests/test-localization-preflight-regression.ps1
-          ./tools/tests/test-ci-suite-deduplication.ps1
+          $workflowSha = $env:GITHUB_SHA
+          try {
+            $env:GITHUB_SHA = 'c4bcb76c3cd03d1dff88fa557aa75261b4ec0461'
+            ./tools/tests/test-ci-suite-deduplication.ps1
+          } finally { $env:GITHUB_SHA = $workflowSha }
           ./tools/tests/test-ci-sanitizer-cache-contract.ps1
           ./tools/tests/test-ci-sanitizer-summary.ps1
           ./tools/tests/test-ci-cache-fingerprint-verify.ps1
@@ -249,7 +268,7 @@ jobs:
           ./tools/tests/test-vsdev-environment-long-path.ps1
           ./tools/tests/test-cmake-build-tree-fingerprint.ps1
       - name: Summarize validation
-        if: always()
+        if: always() && steps.hosted.outcome == 'success'
         shell: pwsh
         env:
           STAGE_STATUS: ${{ job.status }}
@@ -264,6 +283,7 @@ jobs:
       stage3c: ${{ steps.stage3c.outcome }}
     steps:
       - name: Require GitHub-hosted runner
+        id: hosted
         shell: pwsh
         run: if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Self-hosted runners are forbidden.' }
       - uses: actions/checkout@v7
@@ -428,7 +448,11 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-fbe-scripting-clipboard-ole-ci.ps1 -FbeExe out/Release/FBE.exe
-          ./tools/tests/write-ci-ole-runtime-receipt.ps1 -FbeExe out/Release/FBE.exe
+          $workflowSha = $env:GITHUB_SHA
+          try {
+            $env:GITHUB_SHA = 'c4bcb76c3cd03d1dff88fa557aa75261b4ec0461'
+            ./tools/tests/write-ci-ole-runtime-receipt.ps1 -FbeExe out/Release/FBE.exe
+          } finally { $env:GITHUB_SHA = $workflowSha }
       - name: Upload isolated OLE runtime receipt
         uses: actions/upload-artifact@v7
         with:
@@ -449,7 +473,7 @@ jobs:
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-fb2-quality-checker-runtime.ps1 -FbeExe out/Release/FBE.exe -ArtifactDirectory ./out/tests/fb2-quality-ui
       - name: Upload FB2 quality checker visual capture
-        if: always()
+        if: always() && steps.hosted.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
           name: fb2-quality-ui-c4bcb76c3cd03d1dff88fa557aa75261b4ec0461
@@ -478,7 +502,7 @@ jobs:
           ./tools/tests/test-regex-help-runtime.ps1 -FbeExe ./out/Release/FBE.exe
           ./tools/tests/test-regex-help-visual-runtime.ps1 -ArtifactDirectory ./out/tests/full-regex-help-html
       - name: Upload Full Regex Help visual smoke captures
-        if: always() && steps.full-regex-help.outcome != 'skipped' && steps.full-regex-help.outcome != ''
+        if: always() && steps.hosted.outcome == 'success' && steps.full-regex-help.outcome != 'skipped' && steps.full-regex-help.outcome != ''
         uses: actions/upload-artifact@v7
         with:
           name: full-regex-help-html-c4bcb76c3cd03d1dff88fa557aa75261b4ec0461
@@ -537,13 +561,15 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           $watch = [Diagnostics.Stopwatch]::StartNew()
+          $workflowSha = $env:GITHUB_SHA
           try {
+            $env:GITHUB_SHA = 'c4bcb76c3cd03d1dff88fa557aa75261b4ec0461'
             $arguments = @{ Configuration = 'Release'; PlatformToolset = 'v143'; SkipUpdateManifest = $true; SkipLocalizationPreflight = $true; SkipEarlyRuntimeSuites = $true; BatchOutputDirectory = 'out/target-batches' }
             if ($env:GITHUB_REF_TYPE -eq 'tag' -or '${{ true }}' -eq 'true') { $arguments.FullValidation = $true; $arguments.AllowUserComRegistration = $true }
             ./tools/build/verify-release.ps1 @arguments
-          } finally { $watch.Stop(); "seconds=$([math]::Round($watch.Elapsed.TotalSeconds, 1))" >> $env:GITHUB_OUTPUT }
+          } finally { $env:GITHUB_SHA = $workflowSha; $watch.Stop(); "seconds=$([math]::Round($watch.Elapsed.TotalSeconds, 1))" >> $env:GITHUB_OUTPUT }
       - name: Upload prerequisite P0 reports
-        if: always() && steps.release-verification.outcome != 'skipped' && steps.release-verification.outcome != ''
+        if: always() && steps.hosted.outcome == 'success' && steps.release-verification.outcome != 'skipped' && steps.release-verification.outcome != ''
         uses: actions/upload-artifact@v7
         with:
           name: prerelease-p0-c4bcb76c3cd03d1dff88fa557aa75261b4ec0461
@@ -585,7 +611,7 @@ jobs:
           if-no-files-found: error
           retention-days: 3
       - name: Check runtime diagnostics availability
-        if: failure()
+        if: failure() && steps.hosted.outcome == 'success'
         id: runtime-diagnostics
         shell: pwsh
         run: |
@@ -596,7 +622,7 @@ jobs:
           "runtime_has_files=$(Test-DiagnosticFiles 'out/tests/runtime-failure')" >> $env:GITHUB_OUTPUT
           "issue64_has_files=$(Test-DiagnosticFiles 'out/issue64')" >> $env:GITHUB_OUTPUT
       - name: Upload failed issue64 capture diagnostics
-        if: failure() && steps.runtime-diagnostics.outputs.issue64_has_files == 'True'
+        if: failure() && steps.hosted.outcome == 'success' && steps.runtime-diagnostics.outputs.issue64_has_files == 'True'
         uses: actions/upload-artifact@v7
         with:
           name: issue64-capture-diagnostics-c4bcb76c3cd03d1dff88fa557aa75261b4ec0461
@@ -604,7 +630,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Upload editor background runtime diagnostics
-        if: failure() && steps.runtime-diagnostics.outputs.editor_background_has_files == 'True'
+        if: failure() && steps.hosted.outcome == 'success' && steps.runtime-diagnostics.outputs.editor_background_has_files == 'True'
         uses: actions/upload-artifact@v7
         with:
           name: editor-background-runtime-diagnostics
@@ -612,7 +638,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Upload failed runtime diagnostics
-        if: failure() && steps.runtime-diagnostics.outputs.runtime_has_files == 'True'
+        if: failure() && steps.hosted.outcome == 'success' && steps.runtime-diagnostics.outputs.runtime_has_files == 'True'
         uses: actions/upload-artifact@v7
         with:
           name: runtime-failure-diagnostics
@@ -620,7 +646,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Upload Stage3C failure diagnostics
-        if: always() && steps.stage3c.outcome == 'failure'
+        if: always() && steps.hosted.outcome == 'success' && steps.stage3c.outcome == 'failure'
         uses: actions/upload-artifact@v7
         with:
           name: rc3-stage3c-failure
@@ -628,7 +654,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: Summarize build and verification
-        if: always()
+        if: always() && steps.hosted.outcome == 'success'
         shell: pwsh
         env:
           STAGE_STATUS: ${{ job.status }}
@@ -659,6 +685,7 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Require GitHub-hosted runner
+        id: hosted
         shell: pwsh
         run: if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Self-hosted runners are forbidden.' }
       - uses: actions/checkout@v7
@@ -739,7 +766,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Summarize package
-        if: always()
+        if: always() && steps.hosted.outcome == 'success'
         shell: pwsh
         env:
           STAGE_STATUS: ${{ job.status }}
