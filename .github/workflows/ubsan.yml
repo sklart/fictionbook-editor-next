@@ -18,6 +18,10 @@ on:
         description: Run the extended UBSan correctness contour
         type: boolean
         default: true
+      diagnostic_cases:
+        description: Comma-separated catalog IDs for an explicitly partial diagnostic run
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -73,11 +77,21 @@ jobs:
           $remaining = @(git status --porcelain=v1 --untracked-files=no)
           if ($LASTEXITCODE -ne 0 -or $remaining.Count) { throw 'Tracked source or submodules remain dirty.' }
       - name: Run focused sanitizer checks
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type != 'tag') || ((github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && !inputs.full_validation)
+        if: (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type != 'tag') || ((github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && !inputs.full_validation)) && (github.event_name != 'workflow_dispatch' || inputs.diagnostic_cases == '')
         shell: pwsh
         run: ./tools/tests/invoke-sanitizer-ci.ps1 -Sanitizer Undefined -Focused
+      - name: Run selected diagnostic cases
+        if: github.event_name == 'workflow_dispatch' && inputs.diagnostic_cases != ''
+        shell: pwsh
+        env:
+          UBSAN_DIAGNOSTIC_CASES: ${{ inputs.diagnostic_cases }}
+        run: |
+          $ids = @($env:UBSAN_DIAGNOSTIC_CASES.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+          if (-not $ids.Count) { throw 'Diagnostic selection is empty.' }
+          'Partial diagnostic selection; this is not UBSan FULL.' >> $env:GITHUB_STEP_SUMMARY
+          ./tools/tests/run-sanitizers.ps1 -Sanitizer Undefined -Contour Full -Id $ids
       - name: Run UBSan FULL
-        if: github.ref_type == 'tag' || github.event_name == 'schedule' || ((github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && inputs.full_validation)
+        if: (github.ref_type == 'tag' || github.event_name == 'schedule' || ((github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && inputs.full_validation)) && (github.event_name != 'workflow_dispatch' || inputs.diagnostic_cases == '')
         shell: pwsh
         run: ./tools/tests/invoke-sanitizer-ci.ps1 -Sanitizer Undefined -AllowUserComRegistration
       - name: Ensure failures have a summary
