@@ -22,6 +22,15 @@ function Get-FbeSanitizerMetadata {
     return [pscustomobject]@{eligible=($null -eq $reason);reason=$reason;contours=@($contours | Select-Object -Unique);parameters=$parameters;binaryParameters=$binaryParameters;expectedChildExitCodes=$expected}
 }
 
+function Assert-FbeSanitizerRegistrationIsolation {
+    param([object[]]$Cases, [switch]$AllowUserComRegistration)
+    if (-not $AllowUserComRegistration -and @($Cases | Where-Object {
+        $_.name -match '^release\.import-epub-registration\.' -or $_.command -match '(?i)test-import-epub-registration\.ps1'
+    }).Count) {
+        throw 'Sanitizer contour requires user COM registration; run only in a disposable profile with -AllowUserComRegistration.'
+    }
+}
+
 function Get-FbeSanitizerMatrices {
     param([string]$RepositoryRoot)
     $sources=@(Get-Content -Raw (Join-Path $RepositoryRoot 'tools/build/verify-release.ps1'))

@@ -32,9 +32,22 @@ foreach ($sanitizer in @('asan','ubsan')) {
     }
     $group = 'group: ' + $sanitizer + '-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}'
     if (-not $text.Contains($group)) { throw "$sanitizer reusable and standalone runs must have distinct concurrency groups." }
+    if ($text -notmatch '(?s)name: Run (?:sanitizer|UBSan) FULL.*?invoke-sanitizer-ci\.ps1 -Sanitizer (?:Address|Undefined) -AllowUserComRegistration') { throw "$sanitizer FULL must explicitly opt into COM registration on its hosted runner." }
     if ($text -match "(?m)^\s*tags:\s*\[") { throw "$sanitizer would duplicate the tag-triggered reusable job" }
     if ($workflow -notmatch "(?s)release-${sanitizer}:\s*\r?\n\s*if: github.ref_type == 'tag'.*\r?\n\s*uses: ./\.github/workflows/$sanitizer.yml") { throw "Release must call $sanitizer on the tagged SHA" }
 }
+. (Join-Path $PSScriptRoot 'SanitizerCatalog.ps1')
+$registrationCase = @(@{ name='release.import-epub-registration.1' })
+$rejected = $false
+try { Assert-FbeSanitizerRegistrationIsolation -Cases $registrationCase } catch { $rejected = $true }
+if (-not $rejected) { throw 'COM registration must be rejected without an explicit disposable-profile opt-in.' }
+$rejected = $false
+try { Assert-FbeSanitizerRegistrationIsolation -Cases @(@{ name='custom.1'; command='test-import-epub-registration.ps1 -AllowUserRegistration' }) } catch { $rejected = $true }
+if (-not $rejected) { throw 'Custom registration cases must also require a disposable-profile opt-in.' }
+Assert-FbeSanitizerRegistrationIsolation -Cases $registrationCase -AllowUserComRegistration
+Assert-FbeSanitizerRegistrationIsolation -Cases @(@{ name='release.fbe-file-close-runtime.1' })
+$sanitizerRunner = Get-Content -Raw -LiteralPath (Join-Path $root 'tools/tests/run-sanitizers.ps1')
+if ($sanitizerRunner -notmatch '(?s)Assert-FbeSanitizerRegistrationIsolation.*?foreach\(\$case in \$cases\)') { throw 'COM registration isolation must be checked before executing cases.' }
 $scriptsWorkflow = Get-Content -Raw -LiteralPath (Join-Path $root '.github/workflows/check-scripts.yml')
 if (-not $scriptsWorkflow.Contains('group: check-scripts-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}')) { throw 'Reusable and standalone script checks must have distinct concurrency groups.' }
 if ($workflow -notmatch 'needs: \[validate, package, release-asan, release-ubsan, release-scripts, release-docs\]') { throw 'Publication must wait for both sanitizers.' }

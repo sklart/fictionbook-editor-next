@@ -61,7 +61,7 @@ jobs:
       - name: Run UBSan FULL
         if: github.ref_type == 'tag' || github.event_name == 'schedule' || ((github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && inputs.full_validation)
         shell: pwsh
-        run: ./tools/tests/invoke-sanitizer-ci.ps1 -Sanitizer Undefined
+        run: ./tools/tests/invoke-sanitizer-ci.ps1 -Sanitizer Undefined -AllowUserComRegistration
       - name: Ensure failures have a summary
         if: always()
         shell: pwsh
