@@ -1546,6 +1546,11 @@ void CMainFrame::RunPortableStateTestScenario()
             // Sample a real, non-owner-drawn settings combo and its popup.
             // Both the unfocused field and the list use the control surface.
             ShowWindow(SW_SHOWNORMAL); ::SetForegroundWindow(m_hWnd);
+            // This standalone page is a child of the editor, unlike the real
+            // modal settings sheet. Raise it above the MSHTML sibling before
+            // reading screen pixels; otherwise GetPixel can read the book.
+            passed = ::SetWindowPos(page.m_hWnd, HWND_TOP, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW) != FALSE && passed;
             HWND ordinaryCombo = page.GetDlgItem(IDC_MAIN_TOOLBAR_ICON_SIZE);
             passed = ordinaryCombo && ::IsWindowVisible(ordinaryCombo) &&
                 ::SendMessage(ordinaryCombo, CB_GETCOUNT, 0, 0) > 0 && passed;
@@ -1570,6 +1575,7 @@ void CMainFrame::RunPortableStateTestScenario()
 						POINT point={x,y}; ::ClientToScreen(ordinaryCombo,&point); const HWND atPoint=::WindowFromPoint(point);
 						wchar_t atClass[128]={}; if(atPoint) ::GetClassNameW(atPoint,atClass,_countof(atClass));
 						arrowPixel=::GetPixel(arrowDc,x,y);
+						passed = atPoint == ordinaryCombo && ::PtVisible(arrowDc,x,y) != FALSE && passed;
 						comboPixelDiagnostics.AppendFormat("combo-arrow-observation=point:%d,%d visible:%d own-window:%d class:%ls client:%ld,%ld,%ld,%ld screen:%ld,%ld,%ld,%ld button:%ld,%ld,%ld,%ld clip:%ld,%ld,%ld,%ld window-color:%lu\n",
 							x,y,::PtVisible(arrowDc,x,y)?1:0,atPoint==ordinaryCombo?1:0,atClass,
 							comboRect.left,comboRect.top,comboRect.right,comboRect.bottom,screen.left,screen.top,screen.right,screen.bottom,
