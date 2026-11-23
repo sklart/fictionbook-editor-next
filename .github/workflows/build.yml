@@ -11,16 +11,72 @@ on:
         description: Run full release validation without publishing a release
         type: boolean
         default: false
+      diagnostic_dirty:
+        description: Run only the partial RC3 no-op and real-edit diagnostic
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
 jobs:
+  rc3-dirty-diagnostic:
+    if: github.event_name == 'workflow_dispatch' && inputs.diagnostic_dirty
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Require disposable runner and unchanged production sources
+        shell: pwsh
+        run: |
+          if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or '${{ inputs.full_validation }}' -eq 'true') { throw 'Partial diagnostics require a hosted runner and cannot be the full gate.' }
+          $candidate = 'c4bcb76c3cd03d1dff88fa557aa75261b4ec0461'
+          $changed = @(git diff --name-only $candidate HEAD --)
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot compare source revisions.' }
+          $unexpected = @($changed | Where-Object { $_ -notmatch '^(\.github/workflows/|tools/tests/|tools/rc3-acceptance/|docs/3\.0\.11-release-decision\.md$)' })
+          if ($unexpected.Count) { throw "Production sources changed since the candidate: $($unexpected -join ', ')" }
+          'Partial diagnostic on an earlier production build; this is not the release gate.' >> $env:GITHUB_STEP_SUMMARY
+      - name: Download candidate build from isolated acceptance
+        uses: actions/download-artifact@v8
+        with:
+          name: FictionBookEditorNext-c4bcb76c3cd03d1dff88fa557aa75261b4ec0461-compiled
+          path: out
+          run-id: 45169083125
+          github-token: ${{ github.token }}
+      - name: Validate candidate binary provenance
+        shell: pwsh
+        run: |
+          $expected = 'c4bcb76c3cd03d1dff88fa557aa75261b4ec0461'
+          foreach ($name in @('CommonCore-Release.json','Runtime-Release.json')) {
+            $manifest = Get-Content -Raw -LiteralPath (Join-Path 'out/build-provenance' $name) | ConvertFrom-Json
+            if ($manifest.gitCommit -cne $expected -or $manifest.sanitizer -cne 'None') { throw "Unexpected candidate provenance: $name" }
+          }
+          if ((Get-FileHash -Algorithm SHA256 out/Release/FBE.exe).Hash -cne 'BFDA648AE2AC25278FDDD49932831E59AD853029C44B4C84025167F672AAFC7A') { throw 'Unexpected candidate FBE.exe hash.' }
+          ./tools/build/build-provenance.ps1 -Action Validate -Kind CommonCore -Configuration Release -CommonDirectory out/Release
+          ./tools/build/build-provenance.ps1 -Action Validate -Kind Runtime -Configuration Release -ProfileDirectory out/editor-runtime -BatchDirectory out/target-batches
+      - name: Run no-op and real-edit diagnostic
+        shell: pwsh
+        run: ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/Release/FBE.exe
+      - name: Upload partial diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rc3-noop-real-edits
+          path: |
+            out/tests/rc3-noop-real-edits/**
+            out/tests/runtime-failure/**
+          if-no-files-found: warn
+          retention-days: 14
+
   validate:
+    if: github.event_name != 'workflow_dispatch' || !inputs.diagnostic_dirty
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v7
