@@ -3135,6 +3135,14 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
 		ThemeManager::SetNamedPalette(INTERFACE_PALETTE_CLASSIC);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		bool samplingAlive = true;
+		auto pumpSamplingMessages = [&]() {
+			MSG message = {};
+			for(unsigned dispatched = 0; dispatched < 256 && ::PeekMessageW(&message, NULL, 0, 0, PM_REMOVE); ++dispatched) {
+				if(message.message == WM_QUIT) { ::PostQuitMessage(static_cast<int>(message.wParam)); samplingAlive = false; return; }
+				::TranslateMessage(&message); ::DispatchMessageW(&message);
+			}
+		};
 		auto classicPixel = [&](HWND window, int x, int y) {
 			::RedrawWindow(window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
 			HDC dc = ::GetDC(window); const COLORREF value = dc ? ::GetPixel(dc, x, y) : CLR_INVALID;
@@ -3144,7 +3152,7 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		::GetClientRect(m_hWndStatusBar, &classicStatusRect); ::GetClientRect(m_CmdToolbar, &classicToolbarRect);
 		const COLORREF classicStatus = classicPixel(m_hWndStatusBar, 2, classicStatusRect.bottom / 2);
 		const COLORREF classicToolbar = classicPixel(m_CmdToolbar, 5, classicToolbarRect.bottom - 3);
-		auto classicSurface = [](HWND window) {
+		auto classicSurface = [&](HWND window) {
 			std::vector<COLORREF> pixels; RECT rect = {};
 			::RedrawWindow(window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
 			if(!::GetClientRect(window, &rect) || rect.right <= 0 || rect.bottom <= 0) return pixels;
@@ -3152,10 +3160,13 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			pixels.reserve(static_cast<size_t>(rect.right) * static_cast<size_t>(rect.bottom) + 2);
 			pixels.push_back(static_cast<COLORREF>(rect.right)); pixels.push_back(static_cast<COLORREF>(rect.bottom));
 			bool valid = true;
-			for(int y = 0; y < rect.bottom; ++y) for(int x = 0; x < rect.right; ++x) {
-				const COLORREF pixel = ::GetPixel(dc, x, y); pixels.push_back(pixel); valid = valid && pixel != CLR_INVALID;
+			for(int y = 0; y < rect.bottom && samplingAlive; ++y) {
+				for(int x = 0; x < rect.right; ++x) {
+					const COLORREF pixel = ::GetPixel(dc, x, y); pixels.push_back(pixel); valid = valid && pixel != CLR_INVALID;
+				}
+				if((y & 7) == 7) pumpSamplingMessages();
 			}
-			::ReleaseDC(window, dc); if(!valid) pixels.clear(); return pixels;
+			::ReleaseDC(window, dc); if(!valid || !samplingAlive) pixels.clear(); return pixels;
 		};
 		themeStage("classic-toolbar-pixels",0); const auto classicToolbarImage = classicSurface(m_CmdToolbar);
 		themeStage("classic-status-pixels",0); const auto classicStatusImage = classicSurface(m_hWndStatusBar);
@@ -3316,8 +3327,11 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 					button.iBitmap < 0 || bounds.left < 0 || bounds.top < 0 || bounds.right > client.right || bounds.bottom > client.bottom)
 					continue;
 				ToolbarButtonPixels image = {}; image.command = button.idCommand; image.bounds = bounds;
-				for(int y = bounds.top; y < bounds.bottom; ++y) for(int x = bounds.left; x < bounds.right; ++x)
-					image.pixels.push_back(::GetPixel(dc, x, y));
+				for(int y = bounds.top; y < bounds.bottom && samplingAlive; ++y) {
+					for(int x = bounds.left; x < bounds.right; ++x) image.pixels.push_back(::GetPixel(dc, x, y));
+					if(((y - bounds.top) & 7) == 7) pumpSamplingMessages();
+				}
+				if(!samplingAlive) { buttons.clear(); break; }
 				buttons.push_back(std::move(image));
 			}
 			::ReleaseDC(m_CmdToolbar, dc); return buttons;
@@ -3346,18 +3360,19 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 				POINT point = {(first.bounds.left + first.bounds.right) / 2, (first.bounds.top + first.bounds.bottom) / 2};
 				::ClientToScreen(m_CmdToolbar, &point);
 				const HWND topAtPoint = ::WindowFromPoint(point);
+				DWORD topProcess = 0; if(topAtPoint) ::GetWindowThreadProcessId(topAtPoint, &topProcess);
 				wchar_t topClass[128] = {}; if(topAtPoint) ::GetClassNameW(topAtPoint, topClass, _countof(topClass));
 				HDC dc = ::GetDC(m_CmdToolbar);
 				const BOOL visible = dc ? ::PtVisible(dc, (first.bounds.left + first.bounds.right) / 2, (first.bounds.top + first.bounds.bottom) / 2) : FALSE;
 				if(dc) ::ReleaseDC(m_CmdToolbar, dc);
-				surfaceDetails.AppendFormat("icon_failure_%d\t%d/%d\r\nicon_observation_%d\tpoint_visible=%d own_window=%d class=%ls first=%lu,%lu backgrounds=%lu,%lu\r\n", first.command, sharedArtwork, changedBackground,
-					first.command, visible ? 1 : 0, topAtPoint == m_CmdToolbar.m_hWnd ? 1 : 0, topClass,
+				surfaceDetails.AppendFormat("icon_failure_%d\t%d/%d\r\nicon_observation_%d\tpoint_visible=%d own_window=%d class=%ls top_pid=%lu editor_pid=%lu editor_hung=%d first=%lu,%lu backgrounds=%lu,%lu\r\n", first.command, sharedArtwork, changedBackground,
+					first.command, visible ? 1 : 0, topAtPoint == m_CmdToolbar.m_hWnd ? 1 : 0, topClass, topProcess, ::GetCurrentProcessId(), ::IsHungAppWindow(m_hWnd) ? 1 : 0,
 					static_cast<unsigned long>(first.pixels.front()), static_cast<unsigned long>(match->pixels.front()),
 					static_cast<unsigned long>(latteBackground), static_cast<unsigned long>(sepiaBackground));
 			}
 		}
 		surfaceDetails.AppendFormat("icon_buttons_checked\t%d\r\nicon_buttons_passed\t%d\r\n", iconButtonsChecked, iconButtonsPassed);
-		surfacePixels = iconButtonsChecked >= 10 && static_cast<size_t>(iconButtonsChecked) == latteButtons.size() &&
+		surfacePixels = samplingAlive && iconButtonsChecked >= 10 && static_cast<size_t>(iconButtonsChecked) == latteButtons.size() &&
 			latteButtons.size() == sepiaButtons.size() && iconButtonsChecked == iconButtonsPassed && surfacePixels;
 		// Disable several known visible buttons temporarily and compare their
 		// real disabled rendering on both palette surfaces, then restore state.
