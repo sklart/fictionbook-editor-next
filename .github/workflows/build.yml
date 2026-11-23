@@ -15,6 +15,10 @@ on:
         description: Run only the partial RC3 no-op and real-edit diagnostic
         type: boolean
         default: false
+      diagnostic_stage3c:
+        description: Collect Stage3C and theme diagnostics after the normal build
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -322,6 +326,49 @@ jobs:
             }
           }
           ./tools/tests/test-status-bar-state.ps1
+      - name: Check strict warnings for changed editor project
+        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.diagnostic_stage3c && steps.compile.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          . ./tools/build/Import-VsDevEnvironment.ps1 -Arch x86 -HostArch x64 -PlatformToolset v143 -VcVarsVersion 14.44
+          $paths = @('out/Release/FBE.exe','runtime/Scintilla.dll','runtime/Lexilla.dll')
+          $hashes = @{}; foreach($path in $paths) { $hashes[$path]=(Get-FileHash -Algorithm SHA256 $path).Hash }
+          $msbuild=Join-Path $env:VSINSTALLDIR 'MSBuild/Current/Bin/MSBuild.exe'
+          $strictOut=Join-Path (Get-Location) 'out/strict-warnings'
+          $strictInt=Join-Path (Get-Location) 'build/strict-warnings'
+          try {
+            & $msbuild src/fbe/FBE.vcxproj /t:Rebuild /m:1 /v:minimal /nologo /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 "/p:FbeStrictWarningsOutRoot=$strictOut\" "/p:FbeStrictWarningsIntRoot=$strictInt\" /p:FbeStrictWarnings=true /p:FbeStrictWarningsIsolatedOutput=true /p:BuildProjectReferences=false
+            if($LASTEXITCODE -ne 0){throw 'Strict editor build failed.'}
+          } finally {
+            foreach($path in $paths) { if((Get-FileHash -Algorithm SHA256 $path).Hash -cne $hashes[$path]) { throw "Strict build modified $path" } }
+          }
+      - name: Diagnose Stage3C isolation with empty and nonempty history
+        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.diagnostic_stage3c && steps.compile.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          ./tools/rc3-acceptance/test-stage3c-isolation-mocked.ps1
+          ./tools/rc3-acceptance/test-stage3c-isolation.ps1 -FbeExe out/Release/FBE.exe
+      - name: Diagnose real edits after no-op
+        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.diagnostic_stage3c && steps.compile.outcome == 'success' }}
+        shell: pwsh
+        run: ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/Release/FBE.exe
+      - name: Diagnose theme pixel availability
+        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.diagnostic_stage3c && steps.compile.outcome == 'success' }}
+        shell: pwsh
+        run: ./tools/rc3-acceptance/test-theme-diagnostic.ps1 -FbeExe out/Release/FBE.exe
+      - name: Upload targeted Stage3C and theme evidence
+        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.diagnostic_stage3c && steps.compile.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: rc3-stage3c-theme-diagnostic
+          path: |
+            out/tests/rc3-stage3c-isolation/**
+            out/tests/rc3-noop-real-edits/**
+            out/tests/rc3-theme-capture/**
+            out/tests/rc3-theme-diagnostic/**
+            out/tests/runtime-failure/**
+          if-no-files-found: warn
+          retention-days: 14
       - name: Run File Close lifecycle regression in isolated profiles
         shell: pwsh
         run: |
