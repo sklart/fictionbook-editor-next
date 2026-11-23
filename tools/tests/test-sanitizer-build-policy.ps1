@@ -52,6 +52,8 @@ $commands=@(Get-FbeSanitizerCommands -Entry $registration -Matrices @{})
 if($commands.Count -ne 1 -or $commands[0] -notmatch 'Plugins/ImportEPUB\.dll' -or $commands[0] -match 'Plugins/ExportEPUB\.dll') { throw 'Import registration must exercise the diagnostic importer DLL.' }
 $abi=$catalog.tests | Where-Object id -eq 'release.import-epub-batch-dll-abi'
 if(1 -notin $abi.sanitizer.expectedChildExitCodes -or 3 -in $abi.sanitizer.expectedChildExitCodes) { throw 'Missing-plugin exit must be expected without accepting an ASan abort.' }
+$secureZip = @($catalog.tests | Where-Object id -eq 'release.import-epub-secure-zip')[0]
+if(1 -notin $secureZip.sanitizer.expectedChildExitCodes -or 3 -in $secureZip.sanitizer.expectedChildExitCodes) { throw 'Rejected ZIP exit must be expected without accepting an ASan abort.' }
 foreach($pair in @(@('release.fbe-cite-poem-undo-production',1),@('release.fbe-save-decision-runtime',73),@('release.fbe-themed-message-runtime',73))) {
     $entry=$catalog.tests | Where-Object id -eq $pair[0]
     if($pair[1] -notin $entry.sanitizer.expectedChildExitCodes -or 3 -in $entry.sanitizer.expectedChildExitCodes) { throw "Wrong expected native exit metadata: $($pair[0])" }

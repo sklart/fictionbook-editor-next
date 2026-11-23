@@ -16,6 +16,9 @@ function Get-FbeSanitizerMetadata {
     if($Entry.id -match '^release\.(runtime-paths-cli|fbe-cli-argument-parsing|prerelease-serialization)$') { $expected+=2 }
     if($Entry.id -match '^release\.(export-epub-v2-runtime|import-epub-fidelity|prerelease-epub-import)$') { $expected+=@(1,2) }
     if($Entry.id -eq 'release.import-epub-batch-dll-abi') { $expected+=1 }
+    # The secure ZIP suite intentionally invokes the batch importer with
+    # rejected archives and verifies failure and absence of output itself.
+    if($Entry.id -eq 'release.import-epub-secure-zip') { $expected+=1 }
     if($Entry.id -eq 'release.fbe-cite-poem-undo-production') { $expected+=1 }
     if($Entry.id -match '^release\.fbe-table-failure-safety(?:\.|$)') { $expected+=1 }
     if($Entry.id -match '^release\.fbe-(save-decision|themed-message)-runtime$') { $expected+=73 }
