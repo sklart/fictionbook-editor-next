@@ -269,11 +269,20 @@ jobs:
           ./tools/tests/test-fbe-scripting-stage3d.ps1 -FbeExe out/Release/FBE.exe -Mode installed -DocumentType fbd -InputEncoding utf-16
           ./tools/tests/test-fbe-scripting-examples.ps1 -FbeExe out/Release/FBE.exe
       - name: Run real OLE Clipboard in a disposable user logon
+        id: clipboard-ole
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-fbe-scripting-clipboard-ole-ci.ps1 -FbeExe out/Release/FBE.exe
           ./tools/tests/write-ci-ole-runtime-receipt.ps1 -FbeExe out/Release/FBE.exe
+      - name: Upload OLE Clipboard failure evidence
+        if: failure() && steps.clipboard-ole.outcome == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          name: clipboard-ole-failure
+          path: out/tests/clipboard-ole/**
+          if-no-files-found: warn
+          retention-days: 7
       - name: Upload isolated OLE runtime receipt
         uses: actions/upload-artifact@v7
         with:

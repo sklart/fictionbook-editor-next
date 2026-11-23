@@ -74,6 +74,7 @@ $ErrorActionPreference='Stop'
 try {
     $env:GITHUB_ACTIONS='true';$env:RUNNER_ENVIRONMENT='github-hosted'
     $env:TEMP=$PSScriptRoot;$env:TMP=$PSScriptRoot
+    $env:FBE_RUNTIME_FAILURE_ARTIFACTS=Join-Path $PSScriptRoot 'evidence'
     $env:FBE_NEXT_CLIPBOARD_CI_ACCOUNT='@@SID@@'
     if ([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne $env:FBE_NEXT_CLIPBOARD_CI_ACCOUNT) { throw 'Private CI logon identity mismatch' }
     if (@@PROBE@@) { 'Private batch logon: PASS (no FBE/Clipboard access)' | Set-Content (Join-Path $PSScriptRoot 'result.txt') }
@@ -110,9 +111,22 @@ try {
     if(!$ProbeOnly){Write-Host 'Real OLE Clipboard: PASS (disposable account, separate batch logon and window station)'}
 } finally {
     if($taskCreated){Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue;Unregister-ScheduledTask -TaskName $taskName -Confirm:$false}
+    # Copy bounded test evidence before deleting the private account's staging
+    # directory, including when the editor scenario itself failed.
+    $evidenceError=$null
+    try {
+        $evidence=Join-Path $root 'evidence'
+        if($rootCreated -and (Test-Path -LiteralPath $evidence -PathType Container)) {
+            $archive=Join-Path $PSScriptRoot ('../../out/tests/clipboard-ole/'+$id)
+            New-Item -ItemType Directory -Path $archive -Force -ErrorAction Stop | Out-Null
+            Copy-Item -LiteralPath $evidence -Destination $archive -Recurse -Force -ErrorAction Stop
+            Write-Host "Clipboard test evidence: $archive"
+        }
+    } catch { $evidenceError=$_ }
     if($batchGranted){try{[FbeClipboardBatchLogon]::Set($sidBytes,$false)}catch{Write-Warning "Disposable account rights cleanup failed: $($_.Exception.Message)"}}
     if($userCreated){Remove-LocalUser -Name $userName}
     # Only this exact, newly created directory can be removed.
     if ((Split-Path -Parent ([IO.Path]::GetFullPath($root))) -ne [IO.Path]::GetFullPath($env:PUBLIC)) {throw 'Unexpected CI staging path'}
-    if($rootCreated -and (Test-Path -LiteralPath $root)){Remove-Item -LiteralPath $root -Recurse -Force}
+    if($rootCreated -and -not $evidenceError -and (Test-Path -LiteralPath $root)){Remove-Item -LiteralPath $root -Recurse -Force}
+    if($evidenceError){throw "Clipboard evidence copy failed; staging retained at ${root}: $evidenceError"}
 }
