@@ -67,6 +67,14 @@ jobs:
           if ($env:VARIANT -eq 'Address') { $arguments.Sanitizer='Address' }
           try { ./tools/build/build.ps1 @arguments *> out/rc3-evidence/build.log; if (-not $? -or $LASTEXITCODE -ne 0) { throw 'Build failed.' } }
           finally { "candidate=$sha; variant=$env:VARIANT" | Set-Content out/rc3-evidence/build-identity.txt }
+      - name: Record generated-source changes
+        shell: pwsh
+        working-directory: candidate
+        run: |
+          git -c diff.ignoreSubmodules=all diff --no-ext-diff HEAD -- src/export-docx/ExportDOCX_i.c src/export-docx/ExportDOCX_i.h src/export-epub/ExportEPUB_i.c src/export-epub/ExportEPUB_i.h *> out/rc3-evidence/midl-generated.patch
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot record MIDL source changes.' }
+          git status --short --untracked-files=no *> out/rc3-evidence/source-status.log
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot record source status.' }
       - name: Record binary and symbol hashes
         shell: pwsh
         working-directory: candidate
