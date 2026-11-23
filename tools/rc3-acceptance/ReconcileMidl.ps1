@@ -25,6 +25,23 @@ foreach ($name in $changed) {
         $differences++
     }
     if ($differences -ne 1) { throw "MIDL file lacks the exact expected timestamp difference: $name" }
+    # ReadAllLines alone ignores BOM and line-ending changes. Replace only the
+    # verified ASCII timestamp in the raw bytes and compare the complete Git
+    # blob, including its original encoding and line endings.
+    $trackedBlob = (& git -C $root rev-parse ("HEAD:" + $name)).Trim()
+    if ($LASTEXITCODE -ne 0 -or $trackedBlob -notmatch '^[0-9a-f]{40}$') { throw "Cannot identify tracked MIDL blob: $name" }
+    $latin1 = [Text.Encoding]::GetEncoding(28591)
+    $raw = $latin1.GetString([IO.File]::ReadAllBytes($path))
+    $normalized = $raw.Replace('/* at Tue Jan 19 03:14:07 2038', '/* at Tue Jan 19 06:14:07 2038')
+    $bytes = $latin1.GetBytes($normalized)
+    $header = [Text.Encoding]::ASCII.GetBytes("blob $($bytes.Length)`0")
+    $stream = [IO.MemoryStream]::new()
+    try {
+        $stream.Write($header, 0, $header.Length)
+        $stream.Write($bytes, 0, $bytes.Length)
+        $blob = [Convert]::ToHexString([Security.Cryptography.SHA1]::HashData($stream.ToArray())).ToLowerInvariant()
+    } finally { $stream.Dispose() }
+    if ($blob -cne $trackedBlob) { throw "MIDL file contains a non-timestamp byte change: $name" }
     $records += @{path=$name;generatedSha256=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash;changedLines=$differences}
 }
 $report = @{status='verified-differences';source=$head;allowedChange='MIDL timestamp comment only';files=$records}
