@@ -35,5 +35,6 @@ if($LASTEXITCODE -ne 0 -or $vendorAfter -cne $vendorCommit){throw 'libheif revis
 $vendorChanges=@(& git -C $vendor status --porcelain=v1)
 if($LASTEXITCODE -ne 0 -or $vendorChanges.Count){throw 'libheif source changed during the build.'}
 @{compiler=$clang;compilerSha256=(Get-FileHash $clang -Algorithm SHA256).Hash;librarySha256=(Get-FileHash $library -Algorithm SHA256).Hash;libheifCommit=$vendorCommit;libde265Sha256=$dependencyHashes[0];aomSha256=$dependencyHashes[1];configuration='Release';platform='Win32';sanitizer='vendor-uninstrumented'} | ConvertTo-Json | Set-Content (Join-Path $destination 'provenance.json') -Encoding utf8
-Write-Host ('UBSan helper dependency provenance: ' + ((Get-Content -Raw (Join-Path $destination 'provenance.json') | ConvertFrom-Json | ConvertTo-Json -Compress)))
-Write-Host "UBSan helper libheif built in isolated staging: $destination"
+# The sanitizer collector treats a line starting with its name as a finding.
+Write-Host ('ImageImport helper dependency provenance: ' + ((Get-Content -Raw (Join-Path $destination 'provenance.json') | ConvertFrom-Json | ConvertTo-Json -Compress)))
+Write-Host "ImageImport helper libheif built in isolated staging: $destination"
