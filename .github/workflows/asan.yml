@@ -41,7 +41,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force out/tests/asan | Out-Null
-          $status = @(git status --porcelain=v1 --untracked-files=no)
+          $status = @(git status --porcelain=v1)
           if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect source status before build.' }
           [IO.File]::WriteAllLines((Join-Path (Get-Location) 'out/tests/asan/source-before.log'), [string[]]$status)
           if ($status.Count) { throw 'Source is dirty before build.' }
@@ -64,7 +64,7 @@ jobs:
       - name: Record and reconcile verified MIDL output
         shell: pwsh
         run: |
-          git status --porcelain=v1 --untracked-files=no | Set-Content out/tests/asan/source-after.log
+          git status --porcelain=v1 | Set-Content out/tests/asan/source-after.log
           if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect source status after build.' }
           git diff HEAD --binary --output=out/tests/asan/source-after.patch
           if ($LASTEXITCODE -ne 0) { throw 'Cannot record source diff.' }
