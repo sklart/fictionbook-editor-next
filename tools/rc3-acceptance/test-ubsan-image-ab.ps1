@@ -28,11 +28,23 @@ $env:FBE_UBSAN_CLANG=$clang
 $global:FbeUbsanHelperOptions=@(('-fsanitize-ignorelist='+(Join-Path $root 'tools/msbuild/ubsan.ignorelist')),'-fuse-ld=lld','-fsanitize=undefined','-fno-sanitize-recover=undefined','/clang:-fno-omit-frame-pointer','/clang:-fno-sanitize-merge','/Zi','/DFBE_CLANG_TYPELIBS',('/I'+(Join-Path $root 'build/ubsan/generated/type-libraries')))
 $results=[Collections.Generic.List[object]]::new()
 try {
+    $self=Join-Path $out 'self-test';New-Item -ItemType Directory -Force $self | Out-Null
+    $selfSource=Join-Path $self 'probe.cpp';$selfExe=Join-Path $self 'probe.exe'
+    [IO.File]::WriteAllText($selfSource,'#include <climits>' + "`n" + 'int main(){volatile int x=INT_MAX;return x+1;}')
+    & $clang --target=i686-pc-windows-msvc -fuse-ld=lld -fsanitize=undefined -fno-sanitize-recover=undefined /nologo /MT $selfSource ('/Fo'+(Join-Path $self 'probe.obj')) ('/Fe'+$selfExe)
+    if($LASTEXITCODE){throw 'UBSan report self-test did not compile.'}
+    $env:UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1:log_path=out/tests/rc3-ubsan-image-ab/self-test/ubsan'
+    $probe=Start-Process -FilePath $selfExe -WorkingDirectory $root -WindowStyle Hidden -Wait -PassThru -RedirectStandardError (Join-Path $self 'stderr.log')
+    $reports=@(Get-ChildItem $self -Filter 'ubsan.*' -File)
+    if($probe.ExitCode -eq 0 -or $reports.Count -ne 1 -or (Get-Content -Raw $reports[0].FullName) -notmatch 'signed integer overflow') {throw 'UBSan report self-test did not capture the expected failure.'}
     foreach($mode in @('stock-msvc','experimental-clang')) {
         $case=Join-Path $out $mode;New-Item -ItemType Directory -Force $case | Out-Null
         $variant=if($mode -eq 'stock-msvc'){$text}else{$text.Replace($old,$new)}
         [IO.File]::WriteAllText($temporary,$variant,[Text.UTF8Encoding]::new($true))
-        $env:UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1:log_path='+([IO.Path]::GetFullPath((Join-Path $case 'ubsan')) -replace '\\','/')
+        # Sanitizer options use ':' as a separator, including on Windows;
+        # an absolute drive-letter path is parsed as a malformed option.
+        # The helper is explicitly launched with $root as working directory.
+        $env:UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1:log_path=out/tests/rc3-ubsan-image-ab/'+$mode+'/ubsan'
         $status='PASS';$details=''
         try { & $temporary -Configuration Release -PlatformToolset v143 *>&1 | Out-File (Join-Path $case 'smoke.log') -Encoding utf8 }
         catch {$status='FAIL';$details=$_.Exception.Message}
