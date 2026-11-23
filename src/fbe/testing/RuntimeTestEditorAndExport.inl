@@ -3342,7 +3342,19 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 				if(a == latteBackground && b == sepiaBackground) ++changedBackground;
 			}
 			if(valid && sharedArtwork >= 2 && changedBackground >= 2) ++iconButtonsPassed;
-			else surfaceDetails.AppendFormat("icon_failure_%d\t%d/%d\r\n", first.command, sharedArtwork, changedBackground);
+			else {
+				POINT point = {(first.bounds.left + first.bounds.right) / 2, (first.bounds.top + first.bounds.bottom) / 2};
+				::ClientToScreen(m_CmdToolbar, &point);
+				const HWND topAtPoint = ::WindowFromPoint(point);
+				wchar_t topClass[128] = {}; if(topAtPoint) ::GetClassNameW(topAtPoint, topClass, _countof(topClass));
+				HDC dc = ::GetDC(m_CmdToolbar);
+				const BOOL visible = dc ? ::PtVisible(dc, (first.bounds.left + first.bounds.right) / 2, (first.bounds.top + first.bounds.bottom) / 2) : FALSE;
+				if(dc) ::ReleaseDC(m_CmdToolbar, dc);
+				surfaceDetails.AppendFormat("icon_failure_%d\t%d/%d\r\nicon_observation_%d\tpoint_visible=%d own_window=%d class=%ls first=%lu,%lu backgrounds=%lu,%lu\r\n", first.command, sharedArtwork, changedBackground,
+					first.command, visible ? 1 : 0, topAtPoint == m_CmdToolbar.m_hWnd ? 1 : 0, topClass,
+					static_cast<unsigned long>(first.pixels.front()), static_cast<unsigned long>(match->pixels.front()),
+					static_cast<unsigned long>(latteBackground), static_cast<unsigned long>(sepiaBackground));
+			}
 		}
 		surfaceDetails.AppendFormat("icon_buttons_checked\t%d\r\nicon_buttons_passed\t%d\r\n", iconButtonsChecked, iconButtonsPassed);
 		surfacePixels = iconButtonsChecked >= 10 && static_cast<size_t>(iconButtonsChecked) == latteButtons.size() &&
