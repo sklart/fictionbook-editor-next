@@ -69,6 +69,16 @@ try {
     foreach($file in @('test-fbe-scripting-stage3c.ps1','RuntimeTestIsolation.ps1')) {
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination $root
     }
+    if(!$ProbeOnly) {
+        # Keep the native driver's expected repository-relative evidence path
+        # entirely inside the new private staging directory.
+        $privateTests=Join-Path $root 'tools/tests'
+        New-Item -ItemType Directory -Force -Path $privateTests | Out-Null
+        New-Item -ItemType Directory -Force -Path (Join-Path $root 'build') | Out-Null
+        foreach($file in @('test-fbe-native-copy-paste-runtime.ps1','RuntimeTestIsolation.ps1')) {
+            Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination $privateTests
+        }
+    }
     $worker=@'
 $ErrorActionPreference='Stop'
 try {
@@ -79,8 +89,59 @@ try {
     if ([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne $env:FBE_NEXT_CLIPBOARD_CI_ACCOUNT) { throw 'Private CI logon identity mismatch' }
     if (@@PROBE@@) { 'Private batch logon: PASS (no FBE/Clipboard access)' | Set-Content (Join-Path $PSScriptRoot 'result.txt') }
     else {
-        & (Join-Path $PSScriptRoot 'test-fbe-scripting-stage3c.ps1') -FbeExe (Join-Path $PSScriptRoot 'runtime/FBE.exe') -Part clipboard-ole -Mode portable *>&1 |
-            Out-File (Join-Path $PSScriptRoot 'result.txt') -Encoding utf8
+        Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class FbePrivateClipboardStation {
+    [DllImport("user32.dll")] static extern IntPtr GetProcessWindowStation();
+    [DllImport("user32.dll", CharSet=CharSet.Unicode, SetLastError=true, ExactSpelling=true)]
+    static extern bool GetUserObjectInformationW(IntPtr handle, int index, StringBuilder value, int bytes, out int needed);
+    public static string Name() {
+        var text=new StringBuilder(256); int needed;
+        var station=GetProcessWindowStation();
+        return station != IntPtr.Zero && GetUserObjectInformationW(station,2,text,text.Capacity*2,out needed) ? text.ToString() : null;
+    }
+}
+"@
+        $station=[FbePrivateClipboardStation]::Name()
+        if([string]::IsNullOrWhiteSpace($station) -or $station -ieq 'WinSta0'){throw 'Native Clipboard tests require a noninteractive private window station.'}
+        "Private window station: $station" | Set-Content (Join-Path $PSScriptRoot 'result.txt')
+        $evidence=Join-Path $PSScriptRoot 'evidence';New-Item -ItemType Directory -Force -Path $evidence | Out-Null
+        $stageStatus='FAIL';$nativeStatus='FAIL';$stageError='';$nativeError=''
+        try {
+            & (Join-Path $PSScriptRoot 'test-fbe-scripting-stage3c.ps1') -FbeExe (Join-Path $PSScriptRoot 'runtime/FBE.exe') -Part clipboard-ole -Mode portable *>&1 |
+                Out-File (Join-Path $evidence 'ole-stage3c.log') -Encoding utf8
+            $stageStatus='PASS'
+        } catch { $stageError=$_.Exception.Message }
+        try {
+            & (Join-Path $PSScriptRoot 'tools/tests/test-fbe-native-copy-paste-runtime.ps1') -FbeExe (Join-Path $PSScriptRoot 'runtime/FBE.exe') -Cases @('word','formatted') *>&1 |
+                Out-File (Join-Path $evidence 'native-copy-paste.log') -Encoding utf8
+            $nativeStatus='PASS'
+        } catch { $nativeError=$_.Exception.Message }
+        $nativeEvidence=Join-Path $evidence 'native-copy-paste'
+        New-Item -ItemType Directory -Force -Path $nativeEvidence | Out-Null
+        $nativeDirectories=@(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'build') -Directory -Filter 'community-native-copy-*' -ErrorAction SilentlyContinue)
+        if($nativeStatus -eq 'PASS' -and $nativeDirectories.Count -ne 1){$nativeStatus='FAIL';$nativeError='Native evidence directory missing or ambiguous.'}
+        foreach($directory in $nativeDirectories) {
+            Copy-Item -LiteralPath $directory.FullName -Destination $nativeEvidence -Recurse -Force -ErrorAction Stop
+            if($nativeStatus -eq 'PASS') {
+                foreach($case in @('word','formatted')) {
+                    $original=Join-Path $directory.FullName ($case+'.txt')
+                    $copy=Join-Path (Join-Path $nativeEvidence $directory.Name) ($case+'.txt')
+                    if(-not (Test-Path -LiteralPath $original -PathType Leaf) -or -not (Test-Path -LiteralPath $copy -PathType Leaf) -or
+                        (Get-FileHash -LiteralPath $original -Algorithm SHA256).Hash -cne (Get-FileHash -LiteralPath $copy -Algorithm SHA256).Hash) {
+                        $nativeStatus='FAIL';$nativeError="Native $case report missing or not preserved.";break
+                    }
+                }
+            }
+        }
+        @{stage3c=$stageStatus;nativeCopyPaste=$nativeStatus;stageError=$stageError;nativeError=$nativeError} |
+            ConvertTo-Json | Set-Content (Join-Path $evidence 'clipboard-summary.json') -Encoding utf8
+        "Stage3C=$stageStatus; native Copy/Paste=$nativeStatus" | Add-Content (Join-Path $PSScriptRoot 'result.txt')
+        if($stageError){'Stage3C: '+$stageError | Add-Content (Join-Path $PSScriptRoot 'result.txt')}
+        if($nativeError){'Native Copy/Paste: '+$nativeError | Add-Content (Join-Path $PSScriptRoot 'result.txt')}
+        if($stageStatus -ne 'PASS' -or $nativeStatus -ne 'PASS'){throw 'One or more private Clipboard scenarios failed.'}
     }
     'PASS' | Set-Content (Join-Path $PSScriptRoot 'finished.txt')
 } catch {
@@ -92,12 +153,12 @@ try {
     $probeLiteral=if($ProbeOnly){'$true'}else{'$false'}
     $worker.Replace('@@SID@@',$user.SID.Value).Replace('@@PROBE@@',$probeLiteral) | Set-Content (Join-Path $root 'worker.ps1') -Encoding utf8
     $action=New-ScheduledTaskAction -Execute (Join-Path $PSHOME 'pwsh.exe') -Argument ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+(Join-Path $root 'worker.ps1')+'"') -WorkingDirectory $root
-    $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 2) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+    $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 6) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
     # Password logon is noninteractive; InteractiveToken would share WinSta0.
     $trigger=New-ScheduledTaskTrigger -Once -At ([DateTime]::Now.AddSeconds(5))
     Register-ScheduledTask -TaskName $taskName -Action $action -Settings $settings -Trigger $trigger -User "$env:COMPUTERNAME\$userName" -Password $password -RunLevel Limited | Out-Null
     $taskCreated=$true;$password=$null
-    $deadline=[DateTime]::UtcNow.AddSeconds(110)
+    $deadline=[DateTime]::UtcNow.AddSeconds(300)
     while (!(Test-Path -LiteralPath (Join-Path $root 'finished.txt')) -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 500 }
     $result=Join-Path $root 'result.txt'
     if(Test-Path -LiteralPath $result){Get-Content -LiteralPath $result | Write-Host}
@@ -110,7 +171,22 @@ try {
     }
     if(!$ProbeOnly){Write-Host 'Real OLE Clipboard: PASS (disposable account, separate batch logon and window station)'}
 } finally {
-    if($taskCreated){Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue;Unregister-ScheduledTask -TaskName $taskName -Confirm:$false}
+    $cleanupErrors=[Collections.Generic.List[string]]::new()
+    if($taskCreated){
+        try {
+            Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+            $deadline=[DateTime]::UtcNow.AddSeconds(20)
+            do {
+                $remaining=@(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+                    ($_.ExecutablePath -and $_.ExecutablePath.StartsWith($root+'\',[StringComparison]::OrdinalIgnoreCase)) -or
+                    ($_.CommandLine -and $_.CommandLine.IndexOf((Join-Path $root 'worker.ps1'),[StringComparison]::OrdinalIgnoreCase) -ge 0)
+                })
+                if($remaining.Count){Start-Sleep -Milliseconds 500}
+            } while($remaining.Count -and [DateTime]::UtcNow -lt $deadline)
+            if($remaining.Count){throw 'Private test processes are still running.'}
+            Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction Stop
+        } catch {$cleanupErrors.Add('Scheduled task/process cleanup: '+$_.Exception.Message)}
+    }
     # Copy bounded test evidence before deleting the private account's staging
     # directory, including when the editor scenario itself failed.
     $evidenceError=$null
@@ -123,10 +199,11 @@ try {
             Write-Host "Clipboard test evidence: $archive"
         }
     } catch { $evidenceError=$_ }
-    if($batchGranted){try{[FbeClipboardBatchLogon]::Set($sidBytes,$false)}catch{Write-Warning "Disposable account rights cleanup failed: $($_.Exception.Message)"}}
-    if($userCreated){Remove-LocalUser -Name $userName}
+    if($batchGranted){try{[FbeClipboardBatchLogon]::Set($sidBytes,$false)}catch{$cleanupErrors.Add('Disposable account rights cleanup: '+$_.Exception.Message)}}
+    if($userCreated){try{Remove-LocalUser -Name $userName -ErrorAction Stop}catch{$cleanupErrors.Add('Disposable account cleanup: '+$_.Exception.Message)}}
     # Only this exact, newly created directory can be removed.
     if ((Split-Path -Parent ([IO.Path]::GetFullPath($root))) -ne [IO.Path]::GetFullPath($env:PUBLIC)) {throw 'Unexpected CI staging path'}
-    if($rootCreated -and -not $evidenceError -and (Test-Path -LiteralPath $root)){Remove-Item -LiteralPath $root -Recurse -Force}
+    if($rootCreated -and -not $evidenceError -and -not $cleanupErrors.Count -and (Test-Path -LiteralPath $root)){Remove-Item -LiteralPath $root -Recurse -Force}
     if($evidenceError){throw "Clipboard evidence copy failed; staging retained at ${root}: $evidenceError"}
+    if($cleanupErrors.Count){throw "Clipboard cleanup failed; staging retained at ${root}: $($cleanupErrors -join '; ')"}
 }

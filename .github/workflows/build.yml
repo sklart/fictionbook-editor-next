@@ -44,8 +44,20 @@ jobs:
           $candidate = 'c4bcb76c3cd03d1dff88fa557aa75261b4ec0461'
           $changed = @(git diff --name-only $candidate HEAD --)
           if ($LASTEXITCODE -ne 0) { throw 'Cannot compare source revisions.' }
-          $unexpected = @($changed | Where-Object { $_ -notmatch '^(\.github/workflows/|tools/tests/|tools/rc3-acceptance/|docs/3\.0\.11-release-decision\.md$)' })
+          # These exact blobs alter test-mode observations only. The reused
+          # executable remains the older candidate, never the release build.
+          $testBlobs = @{
+            'src/fbe/testing/RuntimeTestEditorAndExport.inl' = '846fad70afee50142556eb6b866fa7e5420f2485'
+            'src/fbe/testing/RuntimeTestScriptingStage3C.inl' = '2c5bd271506b238379007d9db8dd9bbbdd47e28b'
+          }
+          $unexpected = @($changed | Where-Object { $_ -notmatch '^(\.github/workflows/|tools/tests/|tools/rc3-acceptance/|docs/3\.0\.11-release-decision\.md$)' -and -not $testBlobs.ContainsKey($_) })
           if ($unexpected.Count) { throw "Production sources changed since the candidate: $($unexpected -join ', ')" }
+          foreach ($path in $testBlobs.Keys) {
+            if ($changed -contains $path) {
+              $blob = git rev-parse ('HEAD:' + $path)
+              if ($LASTEXITCODE -ne 0 -or $blob -cne $testBlobs[$path]) { throw "Unrecognized test instrumentation: $path" }
+            }
+          }
           'Partial diagnostic on an earlier production build; this is not the release gate.' >> $env:GITHUB_STEP_SUMMARY
       - name: Download candidate build from isolated acceptance
         uses: actions/download-artifact@v8
@@ -90,6 +102,12 @@ jobs:
         if: ${{ !cancelled() && steps.candidate-provenance.outcome == 'success' }}
         shell: pwsh
         run: ./tools/rc3-acceptance/test-theme-capture.ps1 -FbeExe out/Release/FBE.exe
+      - name: Exercise native Copy and Paste in private batch logon
+        if: ${{ !cancelled() && steps.candidate-provenance.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          ./tools/rc3-acceptance/test-clipboard-worker-mocked.ps1
+          ./tools/tests/test-fbe-scripting-clipboard-ole-ci.ps1 -FbeExe out/Release/FBE.exe
       - name: Upload partial diagnostic evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -99,6 +117,7 @@ jobs:
             out/tests/rc3-noop-real-edits/**
             out/tests/rc3-stage3c-comparison/**
             out/tests/rc3-theme-capture/**
+            out/tests/clipboard-ole/**
             out/tests/runtime-failure/**
           if-no-files-found: warn
           retention-days: 14
