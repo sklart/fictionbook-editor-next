@@ -1,0 +1,248 @@
+--- a/src/fbe/FBDoc.cpp
++++ b/src/fbe/FBDoc.cpp
+@@ -801,6 +801,7 @@
+ 
+ namespace {
+ class ScriptHeadChangeSink : public MSHTML::IHTMLChangeSink {
++    volatile LONG references = 1;
+ public:
+     STDMETHOD(QueryInterface)(REFIID iid, void** value) override {
+         if (!value) return E_POINTER;
+@@ -808,8 +809,12 @@
+         if (iid != IID_IUnknown && iid != IID_IHTMLChangeSink) return E_NOINTERFACE;
+         *value = static_cast<MSHTML::IHTMLChangeSink*>(this); AddRef(); return S_OK;
+     }
+-    STDMETHOD_(ULONG, AddRef)() override { return 2; }
+-    STDMETHOD_(ULONG, Release)() override { return 1; }
++    STDMETHOD_(ULONG, AddRef)() override { return static_cast<ULONG>(::InterlockedIncrement(&references)); }
++    STDMETHOD_(ULONG, Release)() override {
++        const LONG remaining = ::InterlockedDecrement(&references);
++        if (!remaining) delete this;
++        return static_cast<ULONG>(remaining);
++    }
+     STDMETHOD(raw_Notify)() override { return S_OK; }
+ };
+ bool SameComIdentity(IUnknown* left, IUnknown* right) {
+@@ -829,18 +834,40 @@
+     MSHTML::IHTMLElementPtr head, oldElement, newElement;
+     MSHTML::IMarkupContainer2Ptr markup;
+     MSHTML::IMarkupServices2Ptr services;
+-    ScriptHeadChangeSink sink;
++    CComPtr<MSHTML::IHTMLChangeSink> sink;
++    sink.Attach(new (std::nothrow) ScriptHeadChangeSink());
+     DWORD cookie = 0;
+     struct RangeCleanup {
+         MSHTML::IMarkupContainer2Ptr& markup; DWORD& cookie;
+         ~RangeCleanup() { try { if (markup && cookie) markup->UnRegisterForDirtyRange(cookie); } catch (...) { } }
+     } cleanup{markup, cookie};
+-    CString bodyBefore, descriptionBefore, headBefore, oldHtml;
++    CString bodyBefore, descriptionBefore, optionsBefore, headBefore, oldHtml;
+     RecoveryBinarySnapshot binariesBefore;
+     long versionBefore = -1, savedBefore = -1, recoveryBefore = -1;
+     unsigned long long epochBefore = 0;
+     bool saveClean = false, recoveryClean = false, prepared = false;
+     const auto stillOwned = [&]() { return BinaryOwner(identity) == this && m_active_doc == this; };
++    const auto captureOptions = [&](CString& value) {
++        value.Empty();
++        MSHTML::IHTMLDocument3Ptr doc3(document);
++        MSHTML::IHTMLElementPtr description(doc3 ? doc3->getElementById(L"fbw_desc") : nullptr);
++        MSHTML::IHTMLElementCollectionPtr options(description ? MSHTML::IHTMLElement2Ptr(description)->getElementsByTagName(L"OPTION") : nullptr);
++        if (!options) return false;
++        for (long i = 0; i < options->length; ++i) {
++            MSHTML::IHTMLOptionElementPtr option(options->item(_variant_t(i), _variant_t()));
++            if (!option) return false;
++            value += option->selected == VARIANT_TRUE ? L'1' : L'0';
++        }
++        return true;
++    };
++    const auto immutableBinaryValues = [](const RecoveryBinarySnapshot& entries) {
++        for (const auto& entry : entries) {
++            if (!entry.payload) return false;
++            const VARTYPE type = entry.payload->vt;
++            if (type != VT_EMPTY && type != VT_NULL && type != VT_BSTR && type != (VT_ARRAY | VT_UI1)) return false;
++        }
++        return true;
++    };
+     try {
+         if (stillOwned() && !RecoverySnapshotInProgress()) {
+             document = m_editor.Document();
+@@ -866,10 +893,10 @@
+                         bodyBefore = static_cast<LPCWSTR>(body->outerHTML);
+                         headBefore = static_cast<LPCWSTR>(head->outerHTML);
+                         oldHtml = static_cast<LPCWSTR>(oldElement->outerHTML);
+-                        prepared = !oldHtml.IsEmpty() && CaptureDescriptionState(descriptionBefore, true) &&
+-                            CaptureRecoveryBinaries(binariesBefore) && stillOwned() && m_checkpointEpoch == epochBefore &&
++                        prepared = !oldHtml.IsEmpty() && CaptureDescriptionState(descriptionBefore, true) && captureOptions(optionsBefore) &&
++                            CaptureRecoveryBinaries(binariesBefore) && immutableBinaryValues(binariesBefore) && stillOwned() && m_checkpointEpoch == epochBefore &&
+                             m_editor.GetVersionNumber() == versionBefore && m_body_ver == savedBefore && m_body_cp == recoveryBefore &&
+-                            SUCCEEDED(markup->RegisterForDirtyRange(&sink, &cookie)) && cookie != 0;
++                            sink && SUCCEEDED(markup->RegisterForDirtyRange(sink, &cookie)) && cookie != 0;
+                     }
+                 }
+             }
+@@ -897,10 +924,11 @@
+         if (CString(static_cast<LPCWSTR>(head->outerHTML)) != expectedHead) return result;
+         MSHTML::IHTMLDocument3Ptr document3(document);
+         MSHTML::IHTMLElementPtr current(document3->getElementById(L"userCmd")), body(document3->getElementById(L"fbw_body"));
+-        CString descriptionAfter; RecoveryBinarySnapshot binariesAfter;
++        CString descriptionAfter, optionsAfter; RecoveryBinarySnapshot binariesAfter;
+         if (!current || !body || !SameComIdentity(current, newElement) || CString(static_cast<LPCWSTR>(body->outerHTML)) != bodyBefore ||
+             !CaptureDescriptionState(descriptionAfter, true) || descriptionAfter != descriptionBefore ||
+-            !CaptureRecoveryBinaries(binariesAfter) || !SameRecoveryBinaries(binariesBefore, binariesAfter) || !stillOwned() ||
++            !captureOptions(optionsAfter) || optionsAfter != optionsBefore ||
++            !CaptureRecoveryBinaries(binariesAfter) || !immutableBinaryValues(binariesAfter) || !SameRecoveryBinaries(binariesBefore, binariesAfter) || !stillOwned() ||
+             m_checkpointEpoch != epochBefore || m_body_ver != savedBefore || m_body_cp != recoveryBefore ||
+             m_editor.GetVersionNumber() != versionAfter) return result;
+         const bool formChanged = m_editor.IsFormChanged();
+@@ -909,8 +937,9 @@
+         if (!stillOwned()) return result;
+         const bool savedBinariesMatch = !saveClean || SavedBinaryMatches();
+         if (!stillOwned()) return result;
+-        CString finalDescription;
+-        if (!CaptureDescriptionState(finalDescription, true) || finalDescription != descriptionBefore || !stillOwned()) return result;
++        CString finalDescription, finalOptions;
++        if (!CaptureDescriptionState(finalDescription, true) || finalDescription != descriptionBefore ||
++            !captureOptions(finalOptions) || finalOptions != optionsBefore || !stillOwned()) return result;
+         const long finalVersion = m_editor.GetVersionNumber();
+         if (!stillOwned() || m_checkpointEpoch != epochBefore || m_body_ver != savedBefore || m_body_cp != recoveryBefore || finalVersion != versionAfter) return result;
+         const bool adjustSave = saveClean && !formChanged && savedBinariesMatch;
+--- a/tools/rc3-acceptance/test-noop-real-edits.ps1
++++ b/tools/rc3-acceptance/test-noop-real-edits.ps1
+@@ -1,5 +1,5 @@
+ [CmdletBinding()]
+-param([Parameter(Mandatory)][string]$FbeExe, [int]$TimeoutSeconds = 120, [ValidateSet('all','body-replacement','head-body','head-description','head-binary','head-save')][string]$Case = 'all')
++param([Parameter(Mandatory)][string]$FbeExe, [int]$TimeoutSeconds = 120, [ValidateSet('all','body-replacement','head-body','head-description','head-binary','head-save','head-select')][string]$Case = 'all')
+ $ErrorActionPreference = 'Stop'
+ if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
+     throw 'This diagnostic is restricted to a disposable GitHub-hosted runner.'
+@@ -12,12 +12,12 @@
+ $old = @{}; foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+ $results = [Collections.Generic.List[object]]::new()
+ try {
+-    $cases=if($Case -eq 'all'){@('body','description','binary','body-replacement','head-body','head-description','head-binary','head-save')}else{@($Case)}
+-    foreach ($case in $cases) {
+-        $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name ('rc3-noop-' + $case)
++    $scenarios=if($Case -eq 'all'){@('body','description','binary','body-replacement','head-body','head-description','head-binary','head-save','head-select')}else{@($Case)}
++    foreach ($scenario in $scenarios) {
++        $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name ('rc3-noop-' + $scenario)
+         $passed = $false; $details = ''; $processCode = $null; $noopDirty = $null
+-        $caseEvidence = Join-Path $evidenceRoot $case
+-        New-Item -ItemType Directory -Force -Path $caseEvidence | Out-Null
++        $scenarioEvidence = Join-Path $evidenceRoot $scenario
++        New-Item -ItemType Directory -Force -Path $scenarioEvidence | Out-Null
+         try {
+             $null = New-IsolatedFbeSettingsSeed $iso -StartupScriptsDirectory (Join-Path $iso.Root 'ProbeScripts')
+             $fixture = Join-Path $iso.Root 'fixture.fb2'
+@@ -26,19 +26,19 @@
+             [IO.File]::WriteAllBytes((Join-Path $iso.Root 'first.bin'), [byte[]](1,3,5,7))
+             [IO.File]::WriteAllBytes((Join-Path $iso.Root 'second.bin'), [byte[]](9,8,7,6,5))
+             [IO.File]::WriteAllText((Join-Path $iso.Root 'noop.js'), 'function Run(){}', [Text.UTF8Encoding]::new($false))
+-            $lookup = switch ($case) {
++            $lookup = switch ($scenario) {
+                 {$_ -in 'body','body-replacement','head-body','head-save'} { 'function value(){var p=document.getElementById("fbw_body").getElementsByTagName("P");for(var i=0;i<p.length;i++)if(String(p[i].innerText).indexOf("body")>=0)return String(p[i].innerText);throw new Error("body paragraph missing");}' }
+-                {$_ -in 'description','head-description'} { 'function value(){return String(document.getElementById("tiTitle").value);}' }
++                {$_ -in 'description','head-description','head-select'} { 'function value(){return String(document.getElementById("tiTitle").value);}' }
+                 default { 'function value(){var n=new ActiveXObject("Msxml2.DOMDocument.6.0");n.loadXML("<data/>");n.documentElement.dataType="bin.base64";n.documentElement.nodeTypedValue=GetImageData("payload.bin");return String(n.documentElement.text).replace(/\s/g,"");}' }
+             }
+-            $edit = switch ($case) {
++            $edit = switch ($scenario) {
+                 {$_ -in 'body','body-replacement','head-body','head-save'} { 'function edit(which){var p=document.getElementById("fbw_body").getElementsByTagName("P");for(var i=0;i<p.length;i++)if(String(p[i].innerText).indexOf("body")>=0){e.BeginUndoUnit(document,"RC3 body edit");try{p[i].innerText=which===1?"First body":"Second body";}finally{e.EndUndoUnit(document);}return;}throw new Error("body paragraph missing");}' }
+-                {$_ -in 'description','head-description'} { 'function edit(which){var f=document.getElementById("tiTitle"),token=e.BeginDocumentUpdate("RC3 description edit","{}");try{f.focus();var r=f.createTextRange();r.select();r.text=which===1?"First title":"Second title";}finally{e.EndDocumentUpdate(token);}}' }
++                {$_ -in 'description','head-description','head-select'} { 'function edit(which){var f=document.getElementById("tiTitle"),token=e.BeginDocumentUpdate("RC3 description edit","{}");try{f.focus();var r=f.createTextRange();r.select();r.text=which===1?"First title":"Second title";}finally{e.EndDocumentUpdate(token);}}' }
+                 default { 'function edit(which){e.ReplaceBinaryFromFile("payload.bin",which===1?@@FIRST@@:@@SECOND@@,"application/octet-stream");}' }
+             }
+             $edit = $edit.Replace('@@FIRST@@', ((Join-Path $iso.Root 'first.bin') | ConvertTo-Json -Compress)).Replace('@@SECOND@@', ((Join-Path $iso.Root 'second.bin') | ConvertTo-Json -Compress))
+-            $expectedFirst = switch ($case) { {$_ -in 'body','body-replacement','head-body','head-save'} { 'First body' } {$_ -in 'description','head-description'} { 'First title' } default { 'AQMFBw==' } }
+-            $expectedSecond = switch ($case) { {$_ -in 'body','body-replacement','head-body','head-save'} { 'Second body' } {$_ -in 'description','head-description'} { 'Second title' } default { 'CQgHBgU=' } }
++            $expectedFirst = switch ($scenario) { {$_ -in 'body','body-replacement','head-body','head-save'} { 'First body' } {$_ -in 'description','head-description','head-select'} { 'First title' } default { 'AQMFBw==' } }
++            $expectedSecond = switch ($scenario) { {$_ -in 'body','body-replacement','head-body','head-save'} { 'Second body' } {$_ -in 'description','head-description','head-select'} { 'Second title' } default { 'CQgHBgU=' } }
+             # The child edits at top level, during script loading, after its own
+             # save has cleared the loader's existing dirty indication.
+             $child = @'
+@@ -52,7 +52,7 @@
+ } catch(error) { window.rc3TopLevelResult="FAIL "+String(error.message||error.description||error); }
+ function Run(){}
+ '@
+-            $secondEdit=if($case -eq 'body-replacement'){'var original=e.GetSourceText(),replacement=original.replace("First body","Second body");a(replacement!==original,"replacement marker missing");a(e.ApplySourceText(replacement,"RC3 nested replacement"),"nested replacement failed");'}else{'edit(2);'}
++            $secondEdit=if($scenario -eq 'body-replacement'){'var original=e.GetSourceText(),replacement=original.replace("First body","Second body");a(replacement!==original,"replacement marker missing");a(e.ApplySourceText(replacement,"RC3 nested replacement"),"nested replacement failed");'}else{'edit(2);'}
+             $child=$child.Replace('@@SECOND_EDIT@@',$secondEdit)
+             [IO.File]::WriteAllText((Join-Path $iso.Root 'top-level.js'), $child, [Text.UTF8Encoding]::new($false))
+             $main = @'
+@@ -62,6 +62,7 @@
+ function a(ok,label){if(!ok)throw new Error(label);}
+ function mark(k,v){trace.push(k+"="+String(v));}
+ function Run(){try{
++ @@PREPARE@@
+  a(e.SaveCurrentDocument(),"checkpoint save");
+  var before=e.IsDocumentModified();mark("checkpoint_dirty",before?1:0);a(!before,"checkpoint not clean");
+  apiRunCmd(@@NOOP@@);var after=e.IsDocumentModified();mark("noop_dirty",after?1:0);
+@@ -77,37 +78,41 @@
+ }
+ function CompatResult(){return result;}
+ '@
+-            $firstEdit=if($case -like 'head-*'){
+-                $saveDuring=if($case -eq 'head-save'){'a(e.SaveCurrentDocument(),"reentrant save");'}else{''}
++            $prepare=if($scenario -eq 'head-select'){'var selectProbe=document.createElement("select");selectProbe.id="rc3-guard-probe";selectProbe.multiple=true;var optionA=document.createElement("option"),optionB=document.createElement("option");optionA.value="one";optionA.text="one";optionB.value="two";optionB.text="two";selectProbe.appendChild(optionA);selectProbe.appendChild(optionB);document.getElementById("fbw_desc").appendChild(selectProbe);optionA.selected=true;optionB.selected=false;'}else{''}
++            $firstEdit=if($scenario -eq 'head-select'){
++                'var oldNode=document.getElementById("userCmd"),freshNode=document.createElement("script"),selectProbe=document.getElementById("rc3-guard-probe");a(selectProbe&&selectProbe.options.length===2,"select fixture missing");freshNode.id="userCmd";freshNode.language="JavaScript";freshNode.type="text/javascript";var firstValue=String(selectProbe.value);e._ProtectUserCommandSwap(function(){oldNode.parentNode.replaceChild(freshNode,oldNode);selectProbe.options[1].selected=true;},oldNode,freshNode);a(String(selectProbe.value)===firstValue,"first selection changed");mark("selection_after_swap_dirty",e.IsDocumentModified()?1:0);a(e.IsDocumentModified(),"second selected option was hidden");edit(1);'
++            }elseif($scenario -like 'head-*'){
++                $saveDuring=if($scenario -eq 'head-save'){'a(e.SaveCurrentDocument(),"reentrant save");'}else{''}
+                 'var oldNode=document.getElementById("userCmd"),freshNode=document.createElement("script");freshNode.id="userCmd";freshNode.language="JavaScript";freshNode.type="text/javascript";e._ProtectUserCommandSwap(function(){oldNode.parentNode.replaceChild(freshNode,oldNode);'+$saveDuring+'edit(1);},oldNode,freshNode);'
+             }else{'edit(1);'}
+-            $main = $main.Replace('@@LOOKUP@@',$lookup).Replace('@@EDIT@@',$edit).Replace('@@FIRST_EDIT@@',$firstEdit).Replace('@@NOOP@@',((Join-Path $iso.Root 'noop.js') | ConvertTo-Json -Compress)).Replace('@@CHILD@@',((Join-Path $iso.Root 'top-level.js') | ConvertTo-Json -Compress)).Replace('@@TRACE@@',((Join-Path $iso.Root 'trace.txt') | ConvertTo-Json -Compress)).Replace('@@EXPECTED1@@',($expectedFirst | ConvertTo-Json -Compress)).Replace('@@EXPECTED2@@',($expectedSecond | ConvertTo-Json -Compress))
++            $main = $main.Replace('@@LOOKUP@@',$lookup).Replace('@@EDIT@@',$edit).Replace('@@PREPARE@@',$prepare).Replace('@@FIRST_EDIT@@',$firstEdit).Replace('@@NOOP@@',((Join-Path $iso.Root 'noop.js') | ConvertTo-Json -Compress)).Replace('@@CHILD@@',((Join-Path $iso.Root 'top-level.js') | ConvertTo-Json -Compress)).Replace('@@TRACE@@',((Join-Path $iso.Root 'trace.txt') | ConvertTo-Json -Compress)).Replace('@@EXPECTED1@@',($expectedFirst | ConvertTo-Json -Compress)).Replace('@@EXPECTED2@@',($expectedSecond | ConvertTo-Json -Compress))
+             [IO.File]::WriteAllText((Join-Path $iso.Root 'edit.js'), $main, [Text.UTF8Encoding]::new($false))
+             foreach ($check in @(@('undo.js',$expectedFirst),@('redo.js',$expectedSecond),@('reopen.js',$expectedSecond))) {
+                 $code = $lookup + "`r`nfunction Run(){} function CompatResult(){try{return value()===" + ($check[1] | ConvertTo-Json -Compress) + '?"PASS":"FAIL unexpected content: "+value();}catch(e){return "FAIL "+String(e.message||e);}}'
+                 [IO.File]::WriteAllText((Join-Path $iso.Root $check[0]), $code, [Text.UTF8Encoding]::new($false))
+             }
+-            $binaryFirst = if ($case -in 'binary','head-binary') { ' id="payload.bin" expected="first.bin"' } else { '' }
+-            $binarySecond = if ($case -in 'binary','head-binary') { ' id="payload.bin" expected="second.bin"' } else { '' }
++            $binaryFirst = if ($scenario -in 'binary','head-binary') { ' id="payload.bin" expected="first.bin"' } else { '' }
++            $binarySecond = if ($scenario -in 'binary','head-binary') { ' id="payload.bin" expected="second.bin"' } else { '' }
+             $suite = '<suite><step name="edit" script="edit.js"' + $binarySecond + '/><step name="undo" command="undo" script="undo.js"' + $binaryFirst + '/><step name="redo" command="redo" script="redo.js" save="saved.fb2"' + $binarySecond + '/><step name="close" command="close"/><step name="reopen" command="open" open="saved.fb2" script="reopen.js"' + $binarySecond + '/></suite>'
+             [IO.File]::WriteAllText((Join-Path $iso.Root 'suite.xml'), $suite, [Text.UTF8Encoding]::new($false))
+             $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='binary-scripting-compatibility'; $env:FBE_NEXT_SCRIPT_API_ROOT=$iso.Root
+             $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY=Join-Path $iso.DataPath 'Settings'
+             $report=Join-Path $iso.Root 'report.txt'
+             $process=Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Root -ArgumentList @('--portable','-b',('"'+$report+'"'),('"'+$fixture+'"')) -WindowStyle Hidden -PassThru
+-            $processCode=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario ('rc3-noop-'+$case) -Report $report -TimeoutSeconds $TimeoutSeconds
++            $processCode=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario ('rc3-noop-'+$scenario) -Report $report -TimeoutSeconds $TimeoutSeconds
+             $details=if(Test-Path -LiteralPath $report){Get-Content -LiteralPath $report -Raw}else{'missing report'}
+             $tracePath=Join-Path $iso.Root 'trace.txt'
+             $trace=if(Test-Path -LiteralPath $tracePath){Get-Content -LiteralPath $tracePath -Raw}else{''}
+             if ($trace -match '(?m)^noop_dirty=([01])\r?$') { $noopDirty = $Matches[1] -eq '1' }
+             foreach($file in @('report.txt','trace.txt','saved.fb2','suite.xml')) {
+                 $source=Join-Path $iso.Root $file
+-                if(Test-Path -LiteralPath $source -PathType Leaf){Copy-Item -LiteralPath $source -Destination (Join-Path $caseEvidence $file) -Force}
++                if(Test-Path -LiteralPath $source -PathType Leaf){Copy-Item -LiteralPath $source -Destination (Join-Path $scenarioEvidence $file) -Force}
+             }
+             if($processCode -ne 0 -or $details -notmatch '(?m)^result=PASS\r?$' -or $details -notmatch '(?m)^completed=5\r?$') { throw "Runtime scenario failed: $details" }
+             foreach($line in @('checkpoint_dirty=0','first_dirty=1','dirty_after_noop=1','first_save_dirty=0','top_level_checkpoint_dirty=0','top_level_edit_dirty=1','second_dirty=1','script_result=PASS')) {
+                 if($trace -notmatch ('(?m)^'+[regex]::Escape($line)+'\r?$')) { throw "Missing state: $line" }
+             }
++            if($scenario -eq 'head-select' -and $trace -notmatch '(?m)^selection_after_swap_dirty=1\r?$'){throw 'Changed selection was not reported dirty.'}
+             if($null -eq $noopDirty) { throw 'No-op dirty state was not recorded.' }
+             $saved=Join-Path $iso.Root 'saved.fb2'
+             $doc=[Xml.XmlDocument]::new(); $doc.XmlResolver=$null; $doc.Load($saved)
+@@ -115,15 +120,15 @@
+             $body=$doc.SelectSingleNode('/f:FictionBook/f:body/f:section/f:p',$ns).InnerText
+             $title=$doc.SelectSingleNode('/f:FictionBook/f:description/f:title-info/f:book-title',$ns).InnerText
+             $binary=$doc.SelectSingleNode('/f:FictionBook/f:binary[@id="payload.bin"]',$ns)
+-            if($case -in 'body','body-replacement','head-body','head-save' -and $body -cne 'Second body'){throw 'Saved Body mismatch.'}
+-            if($case -in 'description','head-description' -and $title -cne 'Second title'){throw 'Saved Description mismatch.'}
+-            if($case -in 'binary','head-binary' -and (-not $binary -or [Convert]::ToBase64String([Convert]::FromBase64String($binary.InnerText)) -cne 'CQgHBgU=')){throw 'Saved binary bytes mismatch.'}
++            if($scenario -in 'body','body-replacement','head-body','head-save' -and $body -cne 'Second body'){throw 'Saved Body mismatch.'}
++            if($scenario -in 'description','head-description','head-select' -and $title -cne 'Second title'){throw 'Saved Description mismatch.'}
++            if($scenario -in 'binary','head-binary' -and (-not $binary -or [Convert]::ToBase64String([Convert]::FromBase64String($binary.InnerText)) -cne 'CQgHBgU=')){throw 'Saved binary bytes mismatch.'}
+             $passed=$true
+-        } catch { $details = $_.ToString(); Write-Warning "$case diagnostic: $details" }
++        } catch { $details = $_.ToString(); Write-Warning "$scenario diagnostic: $details" }
+         finally {
+             try { Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed } catch { $passed=$false; $details += "; cleanup: $_" }
+         }
+-        $results.Add([pscustomobject]@{case=$case;noOpDirty=$noopDirty;realEditSaveUndoRedoReopen=$(if($passed){'PASS'}else{'FAIL'});exitCode=$processCode;details=$details})
++        $results.Add([pscustomobject]@{case=$scenario;noOpDirty=$noopDirty;realEditSaveUndoRedoReopen=$(if($passed){'PASS'}else{'FAIL'});exitCode=$processCode;details=$details})
+     }
+ } finally { foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $old[$name], 'Process') } }
+ $summary=@{scope='partial diagnostic, not release gate';results=@($results);noOpStatus=$(if(@($results | Where-Object { $_.noOpDirty -ne $false }).Count){'FAIL'}else{'PASS'})}

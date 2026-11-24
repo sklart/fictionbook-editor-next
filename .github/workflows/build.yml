@@ -4,125 +4,83 @@ on:
 permissions:
   contents: read
 jobs:
-  affected-script-regressions:
+  correction-targeted:
     runs-on: windows-2022
     timeout-minutes: 120
     env:
       FBE_CI_ISOLATED_PROFILE: '1'
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout candidate
+        uses: actions/checkout@v7
         with:
           ref: a48e891138f9df4417c9b92a5019ee2b33e87fad
           submodules: recursive
           fetch-depth: 1
           persist-credentials: false
-      - name: Verify exact source and submodules
+      - name: Verify base and pinned submodules
         shell: pwsh
         run: |
           if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Disposable runner required.' }
-          if ((git rev-parse HEAD) -cne 'a48e891138f9df4417c9b92a5019ee2b33e87fad' -or $LASTEXITCODE -ne 0) { throw 'Unexpected candidate.' }
-          if (@(git status --porcelain=v1).Count -or $LASTEXITCODE -ne 0) { throw 'Candidate is not clean.' }
+          if ((git rev-parse HEAD) -cne 'a48e891138f9df4417c9b92a5019ee2b33e87fad' -or $LASTEXITCODE -ne 0) { throw 'Unexpected base.' }
+          if (@(git status --porcelain=v1).Count -or $LASTEXITCODE -ne 0) { throw 'Base is not clean.' }
           $modules = @(git submodule status --recursive)
           if ($LASTEXITCODE -ne 0 -or -not $modules.Count -or @($modules | Where-Object { $_ -match '^[-+U]' }).Count) { throw 'Submodule mismatch.' }
           $dirty = @(git submodule foreach --quiet --recursive 'git status --porcelain=v1')
-          if ($LASTEXITCODE -ne 0 -or $dirty.Count) { throw 'Submodule is not clean.' }
+          if ($LASTEXITCODE -ne 0 -or $dirty.Count) { throw 'Dirty submodule.' }
+      - name: Checkout diagnostic harness
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: ci-harness
+          persist-credentials: false
+      - name: Apply exact correction
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $patch = 'ci-harness/tools/rc3-acceptance/rc3-noop-correction-candidate.patch'
+          $expected = '6EA93DE61950467A37655BF4BB04B52F0C39958FC0094C09D0C7336BD200F600'
+          if ((Get-FileHash $patch -Algorithm SHA256).Hash -cne $expected) { throw 'Patch hash mismatch.' }
+          git apply --check $patch
+          if ($LASTEXITCODE -ne 0) { throw 'Patch check failed.' }
+          git apply $patch
+          if ($LASTEXITCODE -ne 0) { throw 'Patch application failed.' }
+          New-Item -ItemType Directory -Force out/tests/rc3-correction | Out-Null
+          Copy-Item $patch out/tests/rc3-correction/applied.patch
+          Copy-Item tools/rc3-acceptance/test-noop-real-edits.ps1 out/tests/rc3-correction/corrected-driver.ps1
+          git diff --binary -- src/fbe/FBDoc.cpp tools/rc3-acceptance/test-noop-real-edits.ps1 | Set-Content out/tests/rc3-correction/applied.diff -Encoding utf8
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot save applied diff.' }
+          "base=a48e891138f9df4417c9b92a5019ee2b33e87fad`npatch-sha256=$expected`nharness=$env:GITHUB_SHA" | Set-Content out/tests/rc3-correction/identity.txt
       - name: Strict Release build
         shell: pwsh
         run: |
-          $test = 'src/fbe/testing/RuntimeTestScriptingStage3C.inl'
-          $text = [IO.File]::ReadAllText((Resolve-Path $test))
-          $anchor = '            if(!xmlSame||!liveSame||!binarySame||!savepointsSame||beforeDirty!=afterDirty||!undoSame||!redoSame)'
-          if (-not $text.Contains($anchor)) { throw 'Stage3C diagnostic anchor missing.' }
-          $diagnostic = @'
-            if (!savepointsSame) {
-                CStringA d;
-                d.Format("checkpoint saved=%ld,%ld recovery=%ld,%ld savedHtml=%d recoveryHtml=%d hasSaved=%d,%d hasRecovery=%d,%d reconcile=%d,%d clean=%d,%d recoveryClean=%d,%d\r\n", beforeSavepoints.savedVersion, afterSavepoints.savedVersion, beforeSavepoints.recoveryVersion, afterSavepoints.recoveryVersion, beforeSavepoints.savedHtml == afterSavepoints.savedHtml, beforeSavepoints.recoveryHtml == afterSavepoints.recoveryHtml, beforeSavepoints.hasSaved, afterSavepoints.hasSaved, beforeSavepoints.hasRecovery, afterSavepoints.hasRecovery, beforeSavepoints.reconcile, afterSavepoints.reconcile, beforeSavepoints.clean, afterSavepoints.clean, beforeSavepoints.recoveryClean, afterSavepoints.recoveryClean);
-                DWORD n=0; output.Write(d,d.GetLength(),&n); output.Flush();
-            }
-          '@
-          $text = $text.Replace($anchor, $diagnostic + "`r`n" + $anchor)
-          $marker = '            const auto beforeSavepoints=m_doc->CaptureUndoSavepoints();'
-          if (-not $text.Contains($marker)) { throw 'Stage3C before marker missing.' }
-          $text = $text.Replace($marker, $marker + "`r`n" + '            CStringA mark; mark.Format("dialog-%d-begin",index); StartupTrace::AppendTestStartupBreadcrumb(mark);')
-          $marker = '            const auto afterSavepoints=m_doc->CaptureUndoSavepoints();'
-          if (-not $text.Contains($marker)) { throw 'Stage3C after marker missing.' }
-          $text = $text.Replace($marker, '            mark.Format("dialog-%d-end",index); StartupTrace::AppendTestStartupBreadcrumb(mark);' + "`r`n" + $marker)
-          [IO.File]::WriteAllText((Resolve-Path $test), $text, [Text.UTF8Encoding]::new($false))
-          $cpp = (Resolve-Path 'src/fbe/FBDoc.cpp').Path
-          $text = [IO.File]::ReadAllText($cpp)
-          foreach ($item in @(
-            @('void Doc::MarkSavePoint() {', 'void Doc::MarkSavePoint() { StartupTrace::AppendTestStartupBreadcrumb("MarkSavePoint");'),
-            @('void Doc::ApplyThemeAppearance()', 'void Doc::ApplyThemeAppearance()'),
-            @('if(cleanBefore) m_body_ver = versionAfter;', 'if(cleanBefore) { StartupTrace::AppendTestStartupBreadcrumb("ApplyThemeAppearance-save-version"); m_body_ver = versionAfter; }'),
-            @('if (adjustSave) m_body_ver = versionAfter;', 'if (adjustSave) { StartupTrace::AppendTestStartupBreadcrumb("ProtectedSwap-save-version"); m_body_ver = versionAfter; }')
-          )) {
-            if (-not $text.Contains($item[0])) { throw "Missing checkpoint trace anchor: $($item[0])" }
-            $text = $text.Replace($item[0], $item[1])
-          }
-          [IO.File]::WriteAllText($cpp, $text, [Text.UTF8Encoding]::new($false))
-          $header = (Resolve-Path 'src/fbe/FBDoc.h').Path
-          $text = [IO.File]::ReadAllText($header)
-          $text = $text.Replace('#include "FBEView.h"', '#include "FBEView.h"' + "`r`n" + '#include "StartupTrace.h"')
-          foreach ($item in @(
-            @(('void' + "`t" + '  AdvanceDocVersion (int delta) {'), ('void' + "`t" + '  AdvanceDocVersion (int delta) { StartupTrace::AppendTestStartupBreadcrumb("AdvanceDocVersion");')),
-            @('void AdvanceDocVersionIfUnchanged(long before, long after) {', 'void AdvanceDocVersionIfUnchanged(long before, long after) { StartupTrace::AppendTestStartupBreadcrumb("AdvanceDocVersionIfUnchanged");'),
-            @('void RestoreUndoSavepoints(const UndoSavepoints& state) {', 'void RestoreUndoSavepoints(const UndoSavepoints& state) { StartupTrace::AppendTestStartupBreadcrumb("RestoreUndoSavepoints");'),
-            @(('void' + "`t" + '  ResetSavePoint() {'), ('void' + "`t" + '  ResetSavePoint() { StartupTrace::AppendTestStartupBreadcrumb("ResetSavePoint");'))
-          )) {
-            if (-not $text.Contains($item[0])) { throw "Missing checkpoint header anchor: $($item[0])" }
-            $text = $text.Replace($item[0], $item[1])
-          }
-          [IO.File]::WriteAllText($header, $text, [Text.UTF8Encoding]::new($false))
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/build/build.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143 -SkipUpx -WarningsAsErrors -StrictFirstPartyWarnings -SkipVersionSync -BatchOutputDirectory out/target-batches
           if (-not $? -or $LASTEXITCODE -ne 0) { throw 'Build failed.' }
-      - name: Reconcile verified MIDL output
+          Get-FileHash out/Release/FBE.exe -Algorithm SHA256 | Format-List | Out-File out/tests/rc3-correction/executable-sha256.txt
+      - name: Restore test source for MIDL reconciliation
         shell: pwsh
         run: |
-          git restore -- src/fbe/testing/RuntimeTestScriptingStage3C.inl src/fbe/FBDoc.cpp src/fbe/FBDoc.h
-          if ($LASTEXITCODE -ne 0) { throw 'Cannot restore diagnostic-only test instrumentation.' }
-          ./tools/rc3-acceptance/ReconcileMidl.ps1 -RepositoryRoot . -EvidenceDirectory out/tests/rc3-noop-fix -ExpectedSource 'a48e891138f9df4417c9b92a5019ee2b33e87fad'
-      - name: Script live-reload contract
-        if: ${{ false }}
-        id: contract
-        continue-on-error: true
-        shell: pwsh
-        run: ./tools/tests/test-fbe-script-live-reload-contract.ps1
-      - name: No-op, real edits and reentrant callbacks
-        if: ${{ false }}
+          git restore -- src/fbe/FBDoc.cpp tools/rc3-acceptance/test-noop-real-edits.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot restore temporary patch.' }
+          ./tools/rc3-acceptance/ReconcileMidl.ps1 -RepositoryRoot . -EvidenceDirectory out/tests/rc3-correction -ExpectedSource 'a48e891138f9df4417c9b92a5019ee2b33e87fad'
+          Copy-Item out/tests/rc3-correction/corrected-driver.ps1 tools/rc3-acceptance/test-noop-real-edits.ps1 -Force
+      - name: No-op, edits and reentrant callbacks
         id: edits
         continue-on-error: true
         shell: pwsh
-        run: |
-          $driver = (Resolve-Path 'tools/rc3-acceptance/test-noop-real-edits.ps1').Path
-          $text = [IO.File]::ReadAllText($driver)
-          if (-not $text.Contains('foreach ($case in $cases)')) { throw 'Driver loop anchor missing.' }
-          $text = $text.Replace('$case', '$scenario')
-          [IO.File]::WriteAllText($driver, $text, [Text.UTF8Encoding]::new($false))
-          ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/Release/FBE.exe
+        run: ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/Release/FBE.exe
       - name: Original Stage3C dialogs
         id: stage3c
+        if: steps.edits.outcome == 'success'
         continue-on-error: true
         shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force out/tests/rc3-noop-fix | Out-Null
-          $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB = (Join-Path (Resolve-Path out/tests/rc3-noop-fix) 'checkpoints.txt')
-          ./tools/tests/test-fbe-scripting-stage3c.ps1 -FbeExe out/Release/FBE.exe -Part dialogs -Mode portable -EvidenceDirectory out/tests/rc3-noop-fix/stage3c
-      - name: New document after no-op
-        if: ${{ false }}
+        run: ./tools/tests/test-fbe-scripting-stage3c.ps1 -FbeExe out/Release/FBE.exe -Part dialogs -Mode portable -EvidenceDirectory out/tests/rc3-correction/stage3c
+      - name: New document
         id: newdoc
+        if: steps.edits.outcome == 'success'
         continue-on-error: true
         shell: pwsh
         run: ./tools/tests/test-fbe-new-document-edit-state-runtime.ps1 -FbeExe out/Release/FBE.exe
-      - name: Script reload and legacy path
-        if: ${{ false }}
-        id: reload
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          ./tools/tests/test-fbe-script-live-reload-runtime.ps1 -FbeExe out/Release/FBE.exe
-          ./tools/tests/test-fbe-script-usercmd-path.ps1 -FbeExe out/Release/FBE.exe
-          ./tools/tests/test-fbe-script-usercmd-path.ps1 -FbeExe out/Release/FBE.exe -Encoding utf16be
       - name: Reentrant save and recovery
         id: recovery
         if: steps.edits.outcome == 'success' && steps.stage3c.outcome == 'success'
@@ -131,8 +89,8 @@ jobs:
         run: |
           ./tools/tests/test-fbe-script-form-dirty-runtime.ps1 -FbeExe out/Release/FBE.exe -SaveFirst
           ./tools/tests/test-fbe-reentrant-close-runtime.ps1 -FbeExe out/Release/FBE.exe
-          ./tools/tests/test-fbe-recovery-history-runtime.ps1 -FbeExe out/Release/FBE.exe -Case binary -Restart
-          ./tools/tests/test-fbe-recovery-history-runtime.ps1 -FbeExe out/Release/FBE.exe -Case description -Restart
+          ./tools/tests/test-fbe-recovery-history-runtime.ps1 -FbeExe out/Release/FBE.exe -Case binary-second -Restart
+          ./tools/tests/test-fbe-recovery-history-runtime.ps1 -FbeExe out/Release/FBE.exe -Case description
       - name: Save and reopen FB2, FBD and ZIP
         id: formats
         if: steps.edits.outcome == 'success' && steps.stage3c.outcome == 'success'
@@ -146,17 +104,17 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          $results = @('${{ steps.stage3c.outcome }}')
-          New-Item -ItemType Directory -Force out/tests/rc3-noop-fix | Out-Null
-          $results | Set-Content out/tests/rc3-noop-fix/step-outcomes.txt
-          if (@($results | Where-Object { $_ -ne 'success' }).Count) { throw 'Affected regression checks incomplete or failed.' }
+          $results = @('${{ steps.edits.outcome }}','${{ steps.stage3c.outcome }}','${{ steps.newdoc.outcome }}','${{ steps.recovery.outcome }}','${{ steps.formats.outcome }}')
+          New-Item -ItemType Directory -Force out/tests/rc3-correction | Out-Null
+          $results | Set-Content out/tests/rc3-correction/step-outcomes.txt
+          if (@($results | Where-Object { $_ -ne 'success' }).Count) { throw 'Affected checks incomplete or failed.' }
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: rc3-noop-fix-targeted
+          name: rc3-correction-targeted
           path: |
-            out/tests/rc3-noop-fix/**
+            out/tests/rc3-correction/**
             out/tests/rc3-noop-real-edits/**
             out/tests/runtime-failure/**
           if-no-files-found: warn
