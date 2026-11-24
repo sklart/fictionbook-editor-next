@@ -5,20 +5,20 @@ permissions:
   contents: read
   actions: read
 jobs:
-  top-level-diagnostic:
+  description-layout-diagnostic:
     runs-on: windows-2022
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: e505905c1a986e891766e16731ae053f64e2f423
+          ref: b2c0110ec9ca03477e497ffe05e5622d2a34e261
           fetch-depth: 1
           persist-credentials: false
       - name: Verify diagnostic source
         shell: pwsh
         run: |
           if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Disposable runner required.' }
-          if ((git rev-parse HEAD) -cne 'e505905c1a986e891766e16731ae053f64e2f423' -or $LASTEXITCODE -ne 0) { throw 'Unexpected source.' }
+          if ((git rev-parse HEAD) -cne 'b2c0110ec9ca03477e497ffe05e5622d2a34e261' -or $LASTEXITCODE -ne 0) { throw 'Unexpected source.' }
           if (@(git status --porcelain=v1).Count -or $LASTEXITCODE -ne 0) { throw 'Diagnostic source is not clean.' }
       - name: Download previously verified diagnostic package
         uses: actions/download-artifact@v8
@@ -27,7 +27,7 @@ jobs:
           run-id: 45316418525
           github-token: ${{ github.token }}
           path: out/package-evidence
-      - name: Check package and run top-level edit scenarios
+      - name: Check package and run Description layout-only diagnostic
         shell: pwsh
         run: |
           $zip = 'out/package-evidence/out/artifacts/FictionBookEditorNext-3.0.11-win32-portable.zip'
@@ -35,15 +35,15 @@ jobs:
           if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -cne $expected) { throw 'Diagnostic package hash mismatch.' }
           Expand-Archive -LiteralPath $zip -DestinationPath out/package-under-test
           'Package production SHA cee66fb6c22dfbcee12acb5ee9a35c3183947372; partial diagnostic; not a release gate.' | Set-Content out/package-under-test-scope.txt
-          ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/package-under-test/FBE.exe
+          ./tools/tests/test-description-layout-runtime.ps1 -FbeExe out/package-under-test/FBE.exe -DiagnosticLayoutOnly -TimeoutSeconds 180
       - name: Upload diagnostic evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: rc3-top-level-diagnostic
+          name: rc3-description-layout-diagnostic
           path: |
             out/package-under-test-scope.txt
-            out/tests/rc3-noop-real-edits/**
+            out/tests/description-layout/**
             out/tests/runtime-failure/**
           if-no-files-found: warn
           retention-days: 14
