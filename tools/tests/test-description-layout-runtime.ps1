@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'), [int]$TimeoutSeconds=45, [switch]$DiagnosticNoop, [switch]$DiagnosticHead, [string]$AssetRoot)
+param([string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'), [int]$TimeoutSeconds=45, [switch]$DiagnosticNoop, [switch]$DiagnosticHead, [switch]$DiagnosticLayoutOnly, [string]$AssetRoot)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $repoRoot=Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -38,7 +38,9 @@ try {
  if($DiagnosticNoop) { $startupProbe='function CompatResult(){return "PASS";}function Run(){}' }
  [IO.File]::WriteAllText((Join-Path $iso.Root 'startup.js'),$startupProbe,[Text.UTF8Encoding]::new($false))
  $probeHead = if($DiagnosticHead) { ' probeHead="true"' } else { '' }
- [IO.File]::WriteAllText((Join-Path $iso.Root 'suite.xml'),('<suite><step name="persisted-modern" script="startup.js" rawDirty="unchanged"'+$probeHead+'/><step name="description-light" descriptionTheme="light" script="description.js"/><step name="description-dark" descriptionTheme="dark" script="description.js"/><step name="description-light-again" descriptionTheme="light" script="description.js"/></suite>'),[Text.UTF8Encoding]::new($false))
+ if($DiagnosticLayoutOnly -and ($DiagnosticNoop -or $DiagnosticHead)){throw 'Layout-only diagnostic cannot be combined with startup probes.'}
+ $startupStep=if($DiagnosticLayoutOnly){''}else{'<step name="persisted-modern" script="startup.js" rawDirty="unchanged"'+$probeHead+'/>'}
+ [IO.File]::WriteAllText((Join-Path $iso.Root 'suite.xml'),('<suite>'+$startupStep+'<step name="description-light" descriptionTheme="light" script="description.js"/><step name="description-dark" descriptionTheme="dark" script="description.js"/><step name="description-light-again" descriptionTheme="light" script="description.js"/></suite>'),[Text.UTF8Encoding]::new($false))
  $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='binary-scripting-compatibility';$env:FBE_NEXT_SCRIPT_API_ROOT=$iso.Root
  $env:FBE_NEXT_TRACE='1'
  $env:FBE_NEXT_TRACE_VERBOSE='1'
@@ -50,7 +52,7 @@ try {
  $evidence=Join-Path $repoRoot 'out/tests/description-layout';New-Item -ItemType Directory -Force $evidence|Out-Null
  Copy-Item $report (Join-Path $evidence 'report.txt') -Force
  Copy-Item (Join-Path $iso.Root 'description-timings.txt') $evidence -Force
- @{status='PASS';fixtures=10;themes=@('light','dark','light');ignoredPreferences=@('modern','classic','unknown');binaryCounts=@(100,500);stressAuthors=30;exeSha256=(Get-FileHash $iso.Exe).Hash;mainJsSha256=(Get-FileHash (Join-Path $iso.Root 'main.js')).Hash;xslSha256=(Get-FileHash (Join-Path $iso.Root 'fb2.xsl')).Hash}|ConvertTo-Json|Set-Content (Join-Path $evidence 'summary.json') -Encoding utf8
+ @{status='PASS';scope=$(if($DiagnosticLayoutOnly){'layout-only diagnostic; startup dirty invariant not tested'}else{'complete scenario'});fixtures=10;themes=@('light','dark','light');ignoredPreferences=@('modern','classic','unknown');binaryCounts=@(100,500);stressAuthors=30;exeSha256=(Get-FileHash $iso.Exe).Hash;mainJsSha256=(Get-FileHash (Join-Path $iso.Root 'main.js')).Hash;xslSha256=(Get-FileHash (Join-Path $iso.Root 'fb2.xsl')).Hash}|ConvertTo-Json|Set-Content (Join-Path $evidence 'summary.json') -Encoding utf8
  Get-Content (Join-Path $evidence 'description-timings.txt')
- $passed=$true;Write-Host 'Legacy Description production MSHTML behavior PASS.'
+ $passed=$true;if($DiagnosticLayoutOnly){Write-Host 'Description layout-only diagnostic PASS; startup dirty invariant not tested.'}else{Write-Host 'Legacy Description production MSHTML behavior PASS.'}
 } finally {foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$old[$name],'Process')};Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed}
