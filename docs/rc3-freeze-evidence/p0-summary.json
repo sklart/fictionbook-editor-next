@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "sha": "83b4c409c6d8e621f8b2aae6724194b480549e52",
+  "executable": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\Release\\FBE.exe",
+  "executableSha256": "f721f10823535076665c68f9717b159f12c7bc086766cf480f1ac41d989d7dda",
+  "contour": "FULL",
+  "status": "PASS",
+  "results": [
+    {
+      "id": "issue72-full",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\issue72-full.log"
+    },
+    {
+      "id": "issue72-history",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\issue72-history.log"
+    },
+    {
+      "id": "issue72-normal-save-valid",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\issue72-normal-save-valid.log"
+    },
+    {
+      "id": "issue72-normal-save-nested",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\issue72-normal-save-nested.log"
+    },
+    {
+      "id": "issue72-normal-save-as-nested",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\issue72-normal-save-as-nested.log"
+    },
+    {
+      "id": "issue72-save-valid",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\issue72-save-valid.log"
+    },
+    {
+      "id": "issue72-normal-save-as-valid",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\issue72-normal-save-as-valid.log"
+    },
+    {
+      "id": "issue72-save-nested",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\issue72-save-nested.log"
+    },
+    {
+      "id": "issue72-save-as-valid",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\issue72-save-as-valid.log"
+    },
+    {
+      "id": "issue72-save-as-nested",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\issue72-save-as-nested.log"
+    },
+    {
+      "id": "issue72-after-source",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\issue72-after-source.log"
+    },
+    {
+      "id": "issue72-after-validate",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\issue72-after-validate.log"
+    },
+    {
+      "id": "save-timer-save-body",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\save-timer-save-body.log"
+    },
+    {
+      "id": "save-timer-save-description",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\save-timer-save-description.log"
+    },
+    {
+      "id": "save-timer-save-as-body",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\save-timer-save-as-body.log"
+    },
+    {
+      "id": "save-timer-save-as-description",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\save-timer-save-as-description.log"
+    },
+    {
+      "id": "save-hook-body",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\save-hook-body.log"
+    },
+    {
+      "id": "save-hook-description",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\save-hook-description.log"
+    },
+    {
+      "id": "recovery-history",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\recovery-history.log"
+    },
+    {
+      "id": "recovery-binary",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\recovery-binary.log"
+    },
+    {
+      "id": "recovery-write-error",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\recovery-write-error.log"
+    },
+    {
+      "id": "recovery-source-invalid",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\recovery-source-invalid.log"
+    },
+    {
+      "id": "binary-dirty",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\binary-dirty.log"
+    },
+    {
+      "id": "reentrant-close",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\reentrant-close.log"
+    },
+    {
+      "id": "description-script-save",
+      "status": "PASS",
+      "log": "D:\\a\\fictionbook-editor-next\\fictionbook-editor-next\\out\\tests\\prerelease-p0\\20261124-154254-29789b3e535d49078d307710fac2a78c\\description-script-save.log"
+    }
+  ]
+}

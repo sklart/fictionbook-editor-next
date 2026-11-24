@@ -1,0 +1,26 @@
+[
+  {
+    "kind": "fb2",
+    "status": "PASS",
+    "mode": "portable"
+  },
+  {
+    "kind": "fbd",
+    "status": "PASS",
+    "mode": "portable"
+  },
+  {
+    "kind": "fb2",
+    "status": "PASS",
+    "mode": "installed"
+  },
+  {
+    "kind": "fbd",
+    "status": "PASS",
+    "mode": "installed"
+  },
+  {
+    "status": "PASS",
+    "container": "zip"
+  }
+]

@@ -1,0 +1,8 @@
+checkpoint_dirty=0
+noop_dirty=1
+first_dirty=1
+first_save_dirty=0
+top_level_checkpoint_dirty=0
+top_level_edit_dirty=1
+second_dirty=1
+script_result=PASS
