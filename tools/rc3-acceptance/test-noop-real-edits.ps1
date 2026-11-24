@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$FbeExe, [int]$TimeoutSeconds = 120)
+param([Parameter(Mandatory)][string]$FbeExe, [int]$TimeoutSeconds = 120, [ValidateSet('all','body-replacement')][string]$Case = 'all')
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
     throw 'This diagnostic is restricted to a disposable GitHub-hosted runner.'
@@ -12,7 +12,8 @@ $names = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_SCRIPT_API_RO
 $old = @{}; foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 $results = [Collections.Generic.List[object]]::new()
 try {
-    foreach ($case in @('body','description','binary')) {
+    $cases=if($Case -eq 'body-replacement'){@('body-replacement')}else{@('body','description','binary','body-replacement')}
+    foreach ($case in $cases) {
         $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name ('rc3-noop-' + $case)
         $passed = $false; $details = ''; $processCode = $null; $noopDirty = $null
         $caseEvidence = Join-Path $evidenceRoot $case
@@ -26,18 +27,18 @@ try {
             [IO.File]::WriteAllBytes((Join-Path $iso.Root 'second.bin'), [byte[]](9,8,7,6,5))
             [IO.File]::WriteAllText((Join-Path $iso.Root 'noop.js'), 'function Run(){}', [Text.UTF8Encoding]::new($false))
             $lookup = switch ($case) {
-                'body' { 'function value(){var p=document.getElementById("fbw_body").getElementsByTagName("P");for(var i=0;i<p.length;i++)if(String(p[i].innerText).indexOf("body")>=0)return String(p[i].innerText);throw new Error("body paragraph missing");}' }
+                {$_ -in 'body','body-replacement'} { 'function value(){var p=document.getElementById("fbw_body").getElementsByTagName("P");for(var i=0;i<p.length;i++)if(String(p[i].innerText).indexOf("body")>=0)return String(p[i].innerText);throw new Error("body paragraph missing");}' }
                 'description' { 'function value(){return String(document.getElementById("tiTitle").value);}' }
                 default { 'function value(){var n=new ActiveXObject("Msxml2.DOMDocument.6.0");n.loadXML("<data/>");n.documentElement.dataType="bin.base64";n.documentElement.nodeTypedValue=GetImageData("payload.bin");return String(n.documentElement.text).replace(/\s/g,"");}' }
             }
             $edit = switch ($case) {
-                'body' { 'function edit(which){var p=document.getElementById("fbw_body").getElementsByTagName("P");for(var i=0;i<p.length;i++)if(String(p[i].innerText).indexOf("body")>=0){e.BeginUndoUnit(document,"RC3 body edit");try{p[i].innerText=which===1?"First body":"Second body";}finally{e.EndUndoUnit(document);}return;}throw new Error("body paragraph missing");}' }
+                {$_ -in 'body','body-replacement'} { 'function edit(which){var p=document.getElementById("fbw_body").getElementsByTagName("P");for(var i=0;i<p.length;i++)if(String(p[i].innerText).indexOf("body")>=0){e.BeginUndoUnit(document,"RC3 body edit");try{p[i].innerText=which===1?"First body":"Second body";}finally{e.EndUndoUnit(document);}return;}throw new Error("body paragraph missing");}' }
                 'description' { 'function edit(which){var f=document.getElementById("tiTitle"),token=e.BeginDocumentUpdate("RC3 description edit","{}");try{f.focus();var r=f.createTextRange();r.select();r.text=which===1?"First title":"Second title";}finally{e.EndDocumentUpdate(token);}}' }
                 default { 'function edit(which){e.ReplaceBinaryFromFile("payload.bin",which===1?@@FIRST@@:@@SECOND@@,"application/octet-stream");}' }
             }
             $edit = $edit.Replace('@@FIRST@@', ((Join-Path $iso.Root 'first.bin') | ConvertTo-Json -Compress)).Replace('@@SECOND@@', ((Join-Path $iso.Root 'second.bin') | ConvertTo-Json -Compress))
-            $expectedFirst = switch ($case) { 'body' { 'First body' } 'description' { 'First title' } default { 'AQMFBw==' } }
-            $expectedSecond = switch ($case) { 'body' { 'Second body' } 'description' { 'Second title' } default { 'CQgHBgU=' } }
+            $expectedFirst = switch ($case) { {$_ -in 'body','body-replacement'} { 'First body' } 'description' { 'First title' } default { 'AQMFBw==' } }
+            $expectedSecond = switch ($case) { {$_ -in 'body','body-replacement'} { 'Second body' } 'description' { 'Second title' } default { 'CQgHBgU=' } }
             # The child edits at top level, during script loading, after its own
             # save has cleared the loader's existing dirty indication.
             $child = @'
@@ -45,11 +46,14 @@ window.rc3TopLevelResult="NOT RUN";
 try {
  a(e.SaveCurrentDocument(),"top-level checkpoint save");
  var childClean=e.IsDocumentModified();mark("top_level_checkpoint_dirty",childClean?1:0);a(!childClean,"top-level checkpoint not clean");
- edit(2);var childDirty=e.IsDocumentModified();mark("top_level_edit_dirty",childDirty?1:0);a(childDirty,"top-level edit reported clean");
+ @@SECOND_EDIT@@
+ var childDirty=e.IsDocumentModified();mark("top_level_edit_dirty",childDirty?1:0);a(childDirty,"top-level edit reported clean");
  window.rc3TopLevelResult="PASS";
 } catch(error) { window.rc3TopLevelResult="FAIL "+String(error.message||error.description||error); }
 function Run(){}
 '@
+            $secondEdit=if($case -eq 'body-replacement'){'var original=e.GetSourceText(),replacement=original.replace("First body","Second body");a(replacement!==original,"replacement marker missing");a(e.ApplySourceText(replacement,"RC3 nested replacement"),"nested replacement failed");'}else{'edit(2);'}
+            $child=$child.Replace('@@SECOND_EDIT@@',$secondEdit)
             [IO.File]::WriteAllText((Join-Path $iso.Root 'top-level.js'), $child, [Text.UTF8Encoding]::new($false))
             $main = @'
 var e=window.external, result="NOT RUN", trace=[];
@@ -105,7 +109,7 @@ function CompatResult(){return result;}
             $body=$doc.SelectSingleNode('/f:FictionBook/f:body/f:section/f:p',$ns).InnerText
             $title=$doc.SelectSingleNode('/f:FictionBook/f:description/f:title-info/f:book-title',$ns).InnerText
             $binary=$doc.SelectSingleNode('/f:FictionBook/f:binary[@id="payload.bin"]',$ns)
-            if($case -eq 'body' -and $body -cne 'Second body'){throw 'Saved Body mismatch.'}
+            if($case -in 'body','body-replacement' -and $body -cne 'Second body'){throw 'Saved Body mismatch.'}
             if($case -eq 'description' -and $title -cne 'Second title'){throw 'Saved Description mismatch.'}
             if($case -eq 'binary' -and (-not $binary -or [Convert]::ToBase64String([Convert]::FromBase64String($binary.InnerText)) -cne 'CQgHBgU=')){throw 'Saved binary bytes mismatch.'}
             $passed=$true
