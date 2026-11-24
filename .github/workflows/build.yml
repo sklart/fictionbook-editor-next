@@ -64,10 +64,10 @@ jobs:
           $text = [IO.File]::ReadAllText($header)
           $text = $text.Replace('#include "FBEView.h"', '#include "FBEView.h"' + "`r`n" + '#include "StartupTrace.h"')
           foreach ($item in @(
-            @('void' + "`t" + '  AdvanceDocVersion (int delta) {', 'void' + "`t" + '  AdvanceDocVersion (int delta) { StartupTrace::AppendTestStartupBreadcrumb("AdvanceDocVersion");'),
+            @(('void' + "`t" + '  AdvanceDocVersion (int delta) {'), ('void' + "`t" + '  AdvanceDocVersion (int delta) { StartupTrace::AppendTestStartupBreadcrumb("AdvanceDocVersion");')),
             @('void AdvanceDocVersionIfUnchanged(long before, long after) {', 'void AdvanceDocVersionIfUnchanged(long before, long after) { StartupTrace::AppendTestStartupBreadcrumb("AdvanceDocVersionIfUnchanged");'),
             @('void RestoreUndoSavepoints(const UndoSavepoints& state) {', 'void RestoreUndoSavepoints(const UndoSavepoints& state) { StartupTrace::AppendTestStartupBreadcrumb("RestoreUndoSavepoints");'),
-            @('void' + "`t" + '  ResetSavePoint() {', 'void' + "`t" + '  ResetSavePoint() { StartupTrace::AppendTestStartupBreadcrumb("ResetSavePoint");')
+            @(('void' + "`t" + '  ResetSavePoint() {'), ('void' + "`t" + '  ResetSavePoint() { StartupTrace::AppendTestStartupBreadcrumb("ResetSavePoint");'))
           )) {
             if (-not $text.Contains($item[0])) { throw "Missing checkpoint header anchor: $($item[0])" }
             $text = $text.Replace($item[0], $item[1])
