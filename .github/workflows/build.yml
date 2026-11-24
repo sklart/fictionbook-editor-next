@@ -29,12 +29,28 @@ jobs:
       - name: Strict Release build
         shell: pwsh
         run: |
+          $test = 'src/fbe/testing/RuntimeTestScriptingStage3C.inl'
+          $text = [IO.File]::ReadAllText((Resolve-Path $test))
+          $anchor = '            if(!xmlSame||!liveSame||!binarySame||!savepointsSame||beforeDirty!=afterDirty||!undoSame||!redoSame)'
+          if (-not $text.Contains($anchor)) { throw 'Stage3C diagnostic anchor missing.' }
+          $diagnostic = @'
+            if (!savepointsSame) {
+                CStringA d;
+                d.Format("checkpoint saved=%ld,%ld recovery=%ld,%ld savedHtml=%d recoveryHtml=%d hasSaved=%d,%d hasRecovery=%d,%d reconcile=%d,%d clean=%d,%d recoveryClean=%d,%d\r\n", beforeSavepoints.savedVersion, afterSavepoints.savedVersion, beforeSavepoints.recoveryVersion, afterSavepoints.recoveryVersion, beforeSavepoints.savedHtml == afterSavepoints.savedHtml, beforeSavepoints.recoveryHtml == afterSavepoints.recoveryHtml, beforeSavepoints.hasSaved, afterSavepoints.hasSaved, beforeSavepoints.hasRecovery, afterSavepoints.hasRecovery, beforeSavepoints.reconcile, afterSavepoints.reconcile, beforeSavepoints.clean, afterSavepoints.clean, beforeSavepoints.recoveryClean, afterSavepoints.recoveryClean);
+                DWORD n=0; output.Write(d,d.GetLength(),&n); output.Flush();
+            }
+          '@
+          $text = $text.Replace($anchor, $diagnostic + "`r`n" + $anchor)
+          [IO.File]::WriteAllText((Resolve-Path $test), $text, [Text.UTF8Encoding]::new($false))
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/build/build.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143 -SkipUpx -WarningsAsErrors -StrictFirstPartyWarnings -SkipVersionSync -BatchOutputDirectory out/target-batches
           if (-not $? -or $LASTEXITCODE -ne 0) { throw 'Build failed.' }
       - name: Reconcile verified MIDL output
         shell: pwsh
-        run: ./tools/rc3-acceptance/ReconcileMidl.ps1 -RepositoryRoot . -EvidenceDirectory out/tests/rc3-noop-fix -ExpectedSource 'a48e891138f9df4417c9b92a5019ee2b33e87fad'
+        run: |
+          git restore -- src/fbe/testing/RuntimeTestScriptingStage3C.inl
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot restore diagnostic-only test instrumentation.' }
+          ./tools/rc3-acceptance/ReconcileMidl.ps1 -RepositoryRoot . -EvidenceDirectory out/tests/rc3-noop-fix -ExpectedSource 'a48e891138f9df4417c9b92a5019ee2b33e87fad'
       - name: Script live-reload contract
         id: contract
         continue-on-error: true
@@ -44,7 +60,13 @@ jobs:
         id: edits
         continue-on-error: true
         shell: pwsh
-        run: ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/Release/FBE.exe
+        run: |
+          $driver = (Resolve-Path 'tools/rc3-acceptance/test-noop-real-edits.ps1').Path
+          $text = [IO.File]::ReadAllText($driver)
+          if (-not $text.Contains('foreach ($case in $cases)')) { throw 'Driver loop anchor missing.' }
+          $text = $text.Replace('$case', '$scenario')
+          [IO.File]::WriteAllText($driver, $text, [Text.UTF8Encoding]::new($false))
+          ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/Release/FBE.exe
       - name: Original Stage3C dialogs
         id: stage3c
         continue-on-error: true
