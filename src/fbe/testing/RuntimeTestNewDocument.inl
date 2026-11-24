@@ -26,6 +26,13 @@ if(IsFbeTestScenario(L"new-document-edit-state-runtime")) {
         CStringA evidence; evidence.Format("new_immediate_clean=%d;after_pump_clean=%d;namevalid=%d;saved_version=%ld;current_version=%ld;form_changed=%d;body_same=%d;has_saved=%d\r\n", immediatelyClean, !DocChanged(), m_doc->m_namevalid, state.savedVersion, m_doc->m_body.GetVersionNumber(), m_doc->m_body.IsFormChanged(), state.savedHtml == currentHtml, state.hasSaved);
         DWORD evidenceBytes = 0; output.Write(evidence, evidence.GetLength(), &evidenceBytes); output.Flush();
         require(!DocChanged() && !m_doc->m_namevalid, "new document clean");
+        // Exercise the new-template savepoint path after the same no-op script
+        // loading that can advance MSHTML's version without editing the book.
+        wchar_t noopScript[32768] = {};
+        const DWORD noopLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NEW_EDIT_SCRIPT", noopScript, _countof(noopScript));
+        require(noopLength && noopLength < _countof(noopScript), "new document no-op script path");
+        m_doc->RunScript(noopScript); pump();
+        require(!DocChanged(), "new document no-op script preserves clean state");
         ::ShowWindow(m_hWnd, SW_SHOWNORMAL); ::SetForegroundWindow(m_hWnd);
         ShowView(DESC); pump();
         MSHTML::IHTMLDocument3Ptr descriptionHtmlDoc(m_doc->m_body.Document());
