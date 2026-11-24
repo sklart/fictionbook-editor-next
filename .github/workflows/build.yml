@@ -309,6 +309,11 @@ jobs:
             if ('${{ steps.image-stack-cache.outputs.cache-hit }}' -eq 'true') { $arguments.ReusePreparedImageStack = $true }
             ./tools/build/build.ps1 @arguments
           } finally { $watch.Stop(); "seconds=$([math]::Round($watch.Elapsed.TotalSeconds, 1))" >> $env:GITHUB_OUTPUT }
+      - name: Verify generated MIDL comments and restore the clean source for P0
+        shell: pwsh
+        run: |
+          ./tools/rc3-acceptance/ReconcileMidl.ps1 -RepositoryRoot . -EvidenceDirectory out/tests/build-midl -ExpectedSource $env:GITHUB_SHA
+          Get-Content -Raw out/tests/build-midl/midl-reconciliation.json
       - name: Save PCRE2 cache
         if: steps.pcre2-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
