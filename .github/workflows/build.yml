@@ -4,47 +4,28 @@ on:
 permissions:
   contents: read
 jobs:
-  new-document-noop:
+  mshtml-dirty-range-probe:
     runs-on: windows-2022
-    timeout-minutes: 120
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: 0ed486a10a4b0a3f4e6a4d7a0450852201634166
-          submodules: recursive
-          fetch-depth: 1
           persist-credentials: false
-      - name: Verify candidate
+      - name: Compile and run isolated MSHTML probe
         shell: pwsh
         run: |
           if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Disposable runner required.' }
-          if ((git rev-parse HEAD) -cne '0ed486a10a4b0a3f4e6a4d7a0450852201634166' -or $LASTEXITCODE -ne 0) { throw 'Unexpected candidate.' }
-          if (@(git status --porcelain=v1).Count -or $LASTEXITCODE -ne 0) { throw 'Candidate is not clean.' }
-          $modules = @(git submodule status --recursive)
-          if ($LASTEXITCODE -ne 0 -or -not $modules.Count -or @($modules | Where-Object { $_ -match '^[-+U]' }).Count) { throw 'Submodule mismatch.' }
-          $dirty = @(git submodule foreach --quiet --recursive 'git status --porcelain=v1')
-          if ($LASTEXITCODE -ne 0 -or $dirty.Count) { throw 'Submodule is not clean.' }
-      - name: Build Release with strict warnings
-        shell: pwsh
-        run: |
-          ./tools/build/Initialize-CiUtf8.ps1
-          ./tools/build/build.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143 -SkipUpx -WarningsAsErrors -StrictFirstPartyWarnings -SkipVersionSync -BatchOutputDirectory out/target-batches
-          if (-not $? -or $LASTEXITCODE -ne 0) { throw 'Build failed.' }
-      - name: Reconcile verified MIDL output
-        shell: pwsh
-        run: ./tools/rc3-acceptance/ReconcileMidl.ps1 -RepositoryRoot . -EvidenceDirectory out/tests/rc3-new-document-noop -ExpectedSource '0ed486a10a4b0a3f4e6a4d7a0450852201634166'
-      - name: Check new document after no-op and real edits
-        shell: pwsh
-        env:
-          FBE_CI_ISOLATED_PROFILE: '1'
-        run: ./tools/tests/test-fbe-new-document-edit-state-runtime.ps1 -FbeExe out/Release/FBE.exe
-      - name: Upload observations
+          . ./tools/build/Import-VsDevEnvironment.ps1 -Arch x86 -HostArch x64 -PlatformToolset v143 -VcVarsVersion 14.44
+          New-Item -ItemType Directory -Force out/probe | Out-Null
+          cl.exe /nologo /EHsc /W4 /WX /std:c++17 tools/rc3-acceptance/probe-mshtml-dirty-range.cpp /Fe:out/probe/probe.exe /Fo:out/probe/probe.obj ole32.lib oleaut32.lib uuid.lib
+          if ($LASTEXITCODE -ne 0) { throw 'Probe compilation failed.' }
+          & ./out/probe/probe.exe 2>&1 | Tee-Object out/probe/result.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Probe failed; see result.' }
+      - name: Upload probe result
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: rc3-new-document-noop
-          path: |
-            out/tests/rc3-new-document-noop/**
-            out/tests/runtime-failure/**
+          name: mshtml-dirty-range-probe
+          path: out/probe/**
           if-no-files-found: warn
           retention-days: 14
