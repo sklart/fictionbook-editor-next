@@ -5,20 +5,20 @@ permissions:
   contents: read
   actions: read
 jobs:
-  head-transition-comparison:
+  nested-replacement-diagnostic:
     runs-on: windows-2022
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: 9884dbb94f7c1f98c9e8eb1b3b7da53e21732151
+          ref: 1a96321b9621b5cf156f974e3c5b56b32969f661
           fetch-depth: 1
           persist-credentials: false
       - name: Verify diagnostic source
         shell: pwsh
         run: |
           if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Disposable runner required.' }
-          if ((git rev-parse HEAD) -cne '9884dbb94f7c1f98c9e8eb1b3b7da53e21732151' -or $LASTEXITCODE -ne 0) { throw 'Unexpected source.' }
+          if ((git rev-parse HEAD) -cne '1a96321b9621b5cf156f974e3c5b56b32969f661' -or $LASTEXITCODE -ne 0) { throw 'Unexpected source.' }
           if (@(git status --porcelain=v1).Count -or $LASTEXITCODE -ne 0) { throw 'Diagnostic source is not clean.' }
       - name: Download previously verified diagnostic package
         uses: actions/download-artifact@v8
@@ -27,7 +27,7 @@ jobs:
           run-id: 45316418525
           github-token: ${{ github.token }}
           path: out/package-evidence
-      - name: Check packages and compare head transition
+      - name: Check package and run nested source replacement
         shell: pwsh
         run: |
           $zip = 'out/package-evidence/out/artifacts/FictionBookEditorNext-3.0.11-win32-portable.zip'
@@ -35,19 +35,15 @@ jobs:
           if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -cne $expected) { throw 'Diagnostic package hash mismatch.' }
           Expand-Archive -LiteralPath $zip -DestinationPath out/package-under-test
           'Package production SHA cee66fb6c22dfbcee12acb5ee9a35c3183947372; partial diagnostic; not a release gate.' | Set-Content out/package-under-test-scope.txt
-          $baseline = Join-Path $env:RUNNER_TEMP 'fbe-3.0.10.zip'
-          Invoke-WebRequest -Uri 'https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.10/FictionBookEditorNext-3.0.10-win32-portable.zip' -OutFile $baseline
-          if ((Get-FileHash -LiteralPath $baseline -Algorithm SHA256).Hash -cne 'E63B235C23179297F8D9BF71288C7C82EA29FAAA4D2B5C2B8D64455873E5BC3C') { throw 'Baseline package hash mismatch.' }
-          Expand-Archive -LiteralPath $baseline -DestinationPath out/baseline-3010
-          ./tools/rc3-acceptance/compare-stage3c-noop.ps1 -BaselineExe out/baseline-3010/FBE.exe -CandidateExe out/package-under-test/FBE.exe -ProbeHeadTransition
+          ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/package-under-test/FBE.exe -Case body-replacement
       - name: Upload diagnostic evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: rc3-head-transition-comparison
+          name: rc3-nested-replacement-diagnostic
           path: |
             out/package-under-test-scope.txt
-            out/tests/rc3-stage3c-comparison/**
+            out/tests/rc3-noop-real-edits/**
             out/tests/runtime-failure/**
           if-no-files-found: warn
           retention-days: 14
