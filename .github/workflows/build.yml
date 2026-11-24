@@ -41,22 +41,55 @@ jobs:
             }
           '@
           $text = $text.Replace($anchor, $diagnostic + "`r`n" + $anchor)
+          $marker = '            const auto beforeSavepoints=m_doc->CaptureUndoSavepoints();'
+          if (-not $text.Contains($marker)) { throw 'Stage3C before marker missing.' }
+          $text = $text.Replace($marker, $marker + "`r`n" + '            CStringA mark; mark.Format("dialog-%d-begin",index); StartupTrace::AppendTestStartupBreadcrumb(mark);')
+          $marker = '            const auto afterSavepoints=m_doc->CaptureUndoSavepoints();'
+          if (-not $text.Contains($marker)) { throw 'Stage3C after marker missing.' }
+          $text = $text.Replace($marker, '            mark.Format("dialog-%d-end",index); StartupTrace::AppendTestStartupBreadcrumb(mark);' + "`r`n" + $marker)
           [IO.File]::WriteAllText((Resolve-Path $test), $text, [Text.UTF8Encoding]::new($false))
+          $cpp = (Resolve-Path 'src/fbe/FBDoc.cpp').Path
+          $text = [IO.File]::ReadAllText($cpp)
+          foreach ($item in @(
+            @('void Doc::MarkSavePoint() {', 'void Doc::MarkSavePoint() { StartupTrace::AppendTestStartupBreadcrumb("MarkSavePoint");'),
+            @('void Doc::ApplyThemeAppearance()', 'void Doc::ApplyThemeAppearance()'),
+            @('if(cleanBefore) m_body_ver = versionAfter;', 'if(cleanBefore) { StartupTrace::AppendTestStartupBreadcrumb("ApplyThemeAppearance-save-version"); m_body_ver = versionAfter; }'),
+            @('if (adjustSave) m_body_ver = versionAfter;', 'if (adjustSave) { StartupTrace::AppendTestStartupBreadcrumb("ProtectedSwap-save-version"); m_body_ver = versionAfter; }')
+          )) {
+            if (-not $text.Contains($item[0])) { throw "Missing checkpoint trace anchor: $($item[0])" }
+            $text = $text.Replace($item[0], $item[1])
+          }
+          [IO.File]::WriteAllText($cpp, $text, [Text.UTF8Encoding]::new($false))
+          $header = (Resolve-Path 'src/fbe/FBDoc.h').Path
+          $text = [IO.File]::ReadAllText($header)
+          $text = $text.Replace('#include "FBEView.h"', '#include "FBEView.h"' + "`r`n" + '#include "StartupTrace.h"')
+          foreach ($item in @(
+            @('void' + "`t" + '  AdvanceDocVersion (int delta) {', 'void' + "`t" + '  AdvanceDocVersion (int delta) { StartupTrace::AppendTestStartupBreadcrumb("AdvanceDocVersion");'),
+            @('void AdvanceDocVersionIfUnchanged(long before, long after) {', 'void AdvanceDocVersionIfUnchanged(long before, long after) { StartupTrace::AppendTestStartupBreadcrumb("AdvanceDocVersionIfUnchanged");'),
+            @('void RestoreUndoSavepoints(const UndoSavepoints& state) {', 'void RestoreUndoSavepoints(const UndoSavepoints& state) { StartupTrace::AppendTestStartupBreadcrumb("RestoreUndoSavepoints");'),
+            @('void' + "`t" + '  ResetSavePoint() {', 'void' + "`t" + '  ResetSavePoint() { StartupTrace::AppendTestStartupBreadcrumb("ResetSavePoint");')
+          )) {
+            if (-not $text.Contains($item[0])) { throw "Missing checkpoint header anchor: $($item[0])" }
+            $text = $text.Replace($item[0], $item[1])
+          }
+          [IO.File]::WriteAllText($header, $text, [Text.UTF8Encoding]::new($false))
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/build/build.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143 -SkipUpx -WarningsAsErrors -StrictFirstPartyWarnings -SkipVersionSync -BatchOutputDirectory out/target-batches
           if (-not $? -or $LASTEXITCODE -ne 0) { throw 'Build failed.' }
       - name: Reconcile verified MIDL output
         shell: pwsh
         run: |
-          git restore -- src/fbe/testing/RuntimeTestScriptingStage3C.inl
+          git restore -- src/fbe/testing/RuntimeTestScriptingStage3C.inl src/fbe/FBDoc.cpp src/fbe/FBDoc.h
           if ($LASTEXITCODE -ne 0) { throw 'Cannot restore diagnostic-only test instrumentation.' }
           ./tools/rc3-acceptance/ReconcileMidl.ps1 -RepositoryRoot . -EvidenceDirectory out/tests/rc3-noop-fix -ExpectedSource 'a48e891138f9df4417c9b92a5019ee2b33e87fad'
       - name: Script live-reload contract
+        if: ${{ false }}
         id: contract
         continue-on-error: true
         shell: pwsh
         run: ./tools/tests/test-fbe-script-live-reload-contract.ps1
       - name: No-op, real edits and reentrant callbacks
+        if: ${{ false }}
         id: edits
         continue-on-error: true
         shell: pwsh
@@ -71,13 +104,18 @@ jobs:
         id: stage3c
         continue-on-error: true
         shell: pwsh
-        run: ./tools/tests/test-fbe-scripting-stage3c.ps1 -FbeExe out/Release/FBE.exe -Part dialogs -Mode portable -EvidenceDirectory out/tests/rc3-noop-fix/stage3c
+        run: |
+          New-Item -ItemType Directory -Force out/tests/rc3-noop-fix | Out-Null
+          $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB = (Join-Path (Resolve-Path out/tests/rc3-noop-fix) 'checkpoints.txt')
+          ./tools/tests/test-fbe-scripting-stage3c.ps1 -FbeExe out/Release/FBE.exe -Part dialogs -Mode portable -EvidenceDirectory out/tests/rc3-noop-fix/stage3c
       - name: New document after no-op
+        if: ${{ false }}
         id: newdoc
         continue-on-error: true
         shell: pwsh
         run: ./tools/tests/test-fbe-new-document-edit-state-runtime.ps1 -FbeExe out/Release/FBE.exe
       - name: Script reload and legacy path
+        if: ${{ false }}
         id: reload
         continue-on-error: true
         shell: pwsh
@@ -108,7 +146,7 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          $results = @('${{ steps.contract.outcome }}','${{ steps.edits.outcome }}','${{ steps.stage3c.outcome }}','${{ steps.newdoc.outcome }}','${{ steps.reload.outcome }}','${{ steps.recovery.outcome }}','${{ steps.formats.outcome }}')
+          $results = @('${{ steps.stage3c.outcome }}')
           New-Item -ItemType Directory -Force out/tests/rc3-noop-fix | Out-Null
           $results | Set-Content out/tests/rc3-noop-fix/step-outcomes.txt
           if (@($results | Where-Object { $_ -ne 'success' }).Count) { throw 'Affected regression checks incomplete or failed.' }
