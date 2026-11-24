@@ -37,15 +37,21 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $patch = 'ci-harness/tools/rc3-acceptance/rc3-noop-correction-candidate.patch'
+          $checkoutPatch = 'ci-harness/tools/rc3-acceptance/rc3-noop-correction-candidate.patch'
           $expected = '6EA93DE61950467A37655BF4BB04B52F0C39958FC0094C09D0C7336BD200F600'
-          if ((Get-FileHash $patch -Algorithm SHA256).Hash -cne $expected) { throw 'Patch hash mismatch.' }
+          $utf8 = [Text.UTF8Encoding]::new($false, $true)
+          $content = $utf8.GetString([IO.File]::ReadAllBytes((Resolve-Path $checkoutPatch)))
+          $normalized = $content.Replace("`r`n", "`n")
+          if ($normalized.Contains("`r")) { throw 'Unexpected carriage return in patch.' }
+          $canonical = $utf8.GetBytes($normalized)
+          if ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($canonical)) -cne $expected) { throw 'Canonical patch hash mismatch.' }
+          New-Item -ItemType Directory -Force out/tests/rc3-correction | Out-Null
+          $patch = 'out/tests/rc3-correction/applied.patch'
+          [IO.File]::WriteAllBytes((Join-Path (Get-Location) $patch), $canonical)
           git apply --check $patch
           if ($LASTEXITCODE -ne 0) { throw 'Patch check failed.' }
           git apply $patch
           if ($LASTEXITCODE -ne 0) { throw 'Patch application failed.' }
-          New-Item -ItemType Directory -Force out/tests/rc3-correction | Out-Null
-          Copy-Item $patch out/tests/rc3-correction/applied.patch
           Copy-Item tools/rc3-acceptance/test-noop-real-edits.ps1 out/tests/rc3-correction/corrected-driver.ps1
           git diff --binary -- src/fbe/FBDoc.cpp tools/rc3-acceptance/test-noop-real-edits.ps1 | Set-Content out/tests/rc3-correction/applied.diff -Encoding utf8
           if ($LASTEXITCODE -ne 0) { throw 'Cannot save applied diff.' }
