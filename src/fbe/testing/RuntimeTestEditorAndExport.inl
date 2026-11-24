@@ -3154,7 +3154,11 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		const COLORREF classicToolbar = classicPixel(m_CmdToolbar, 5, classicToolbarRect.bottom - 3);
 		CStringA surfaceDetails;
 		auto classicSurface = [&](HWND window, const char* phase) {
-			std::vector<COLORREF> pixels; RECT rect = {};
+			std::vector<COLORREF> pixels;
+			for(unsigned attempt = 0; attempt < 3 && samplingAlive; ++attempt) {
+			pumpSamplingMessages();
+			if(!samplingAlive) break;
+			RECT rect = {};
 			::RedrawWindow(window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
 			if(!::GetClientRect(window, &rect) || rect.right <= 0 || rect.bottom <= 0) {
 				surfaceDetails.AppendFormat("classic_capture_%s\tinvalid-client:%ld,%ld,%ld,%ld\r\n", phase, rect.left, rect.top, rect.right, rect.bottom);
@@ -3174,6 +3178,7 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 				if((y & 7) == 7) pumpSamplingMessages();
 			}
 			::ReleaseDC(window, dc);
+			RECT after = {}; const bool stableSize = ::GetClientRect(window, &after) && ::EqualRect(&rect, &after);
 			if(!valid) {
 				POINT screen = {invalidX, invalidY}; ::ClientToScreen(window, &screen);
 				const HWND top = ::WindowFromPoint(screen); DWORD topPid = 0;
@@ -3184,7 +3189,13 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 					top == window ? 1 : 0, topClass, topPid, ::GetCurrentProcessId(), ::IsWindowVisible(window) ? 1 : 0,
 					::IsIconic(m_hWnd) ? 1 : 0, ::IsHungAppWindow(m_hWnd) ? 1 : 0);
 			}
-			if(!valid || !samplingAlive) pixels.clear(); return pixels;
+			if(valid && stableSize && samplingAlive) return pixels;
+			surfaceDetails.AppendFormat("classic_retry_%s_%u\tvalid=%d stable=%d before=%ld,%ld after=%ld,%ld\r\n", phase, attempt + 1,
+				valid ? 1 : 0, stableSize ? 1 : 0, rect.right, rect.bottom, after.right, after.bottom);
+			pixels.clear();
+			if(attempt + 1 < 3 && samplingAlive) ::Sleep(50);
+			}
+			return pixels;
 		};
 		themeStage("classic-toolbar-pixels",0); const auto classicToolbarImage = classicSurface(m_CmdToolbar, "toolbar_before");
 		themeStage("classic-status-pixels",0); const auto classicStatusImage = classicSurface(m_hWndStatusBar, "status_before");
