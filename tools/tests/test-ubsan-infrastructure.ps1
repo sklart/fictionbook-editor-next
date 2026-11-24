@@ -144,6 +144,27 @@ exit $LASTEXITCODE
         $_.Name -eq 'mspdbsrv.exe' -and -not $_.Instrumented -and $_.Executable -and (Get-FinalFilePath $_.Executable) -eq $lookalikeFinalPath
     })
     if($lookalikeResult.status -ne 'FAIL' -or -not $lookalikeResult.timedOut -or $lookalikeResult.infrastructureCleanup.Count -or -not $observedLookalike.Count) { throw 'Unrelated daemon was incorrectly accepted or cleaned as compiler infrastructure.' }
+    # Simulate the exact Hostx86 linker/telemetry pair without touching the real toolchain.
+    $fakeTools=Join-Path $out 'fake-vc-tools'
+    $fakeBin=Join-Path $fakeTools 'bin/HostX86/x86'
+    New-Item -ItemType Directory -Force $fakeBin | Out-Null
+    $fakeLink=Join-Path $fakeBin 'link.exe'; $fakeTelemetry=Join-Path $fakeBin 'vctip.exe'
+    & $toolchain.compilerPath --target=i686-pc-windows-msvc -fuse-ld=lld /nologo /EHsc /std:c++17 /MT /O1 $source ("/Fo"+(Join-Path $out 'telemetry-fixture.obj')) ("/Fe"+$fakeLink) /link /INCREMENTAL:NO /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup
+    if($LASTEXITCODE -ne 0) { throw 'Telemetry fixture compilation failed.' }
+    Copy-Item -LiteralPath $fakeLink -Destination $fakeTelemetry
+    $oldTools=$env:VCToolsInstallDir
+    try {
+        $env:VCToolsInstallDir=$fakeTools
+        ('& '+(& $quote $fakeLink)+" clean`nif(`$LASTEXITCODE){exit `$LASTEXITCODE}`nStart-Process -NoNewWindow -FilePath "+(& $quote $fakeTelemetry)+" -ArgumentList daemon | Out-Null`nexit 0") | Set-Content $worker
+        $telemetryResult=Invoke-SanitizerCase -Sanitizer Undefined -Name 'infrastructure.linker-telemetry' -Worker $worker -Directory (Join-Path $out 'linker-telemetry') -Executable $lookalike -TimeoutSeconds 10
+        if($telemetryResult.status -ne 'PASS' -or $telemetryResult.timedOut -or $telemetryResult.observationError -or $telemetryResult.infrastructureCleanup.Count -ne 1 -or $telemetryResult.infrastructureCleanup[0] -ine $fakeTelemetry) { throw 'Observed linker telemetry was not safely cleaned.' }
+        ('Start-Process -NoNewWindow -FilePath '+(& $quote $fakeTelemetry)+" -ArgumentList daemon | Out-Null`nexit 0") | Set-Content $worker
+        $unpairedResult=Invoke-SanitizerCase -Sanitizer Undefined -Name 'infrastructure.unpaired-telemetry' -Worker $worker -Directory (Join-Path $out 'unpaired-telemetry') -Executable $lookalike -TimeoutSeconds 3
+        if($unpairedResult.status -ne 'FAIL' -or -not $unpairedResult.timedOut -or $unpairedResult.infrastructureCleanup.Count) { throw 'Telemetry without an observed tool was incorrectly cleaned.' }
+        ('& '+(& $quote $fakeLink)+" clean`nStart-Process -NoNewWindow -FilePath "+(& $quote $fakeTelemetry)+" -ArgumentList daemon | Out-Null`nStart-Process -NoNewWindow -FilePath "+(& $quote $lookalike)+" -ArgumentList daemon | Out-Null`nexit 0") | Set-Content $worker
+        $mixedResult=Invoke-SanitizerCase -Sanitizer Undefined -Name 'infrastructure.mixed-processes' -Worker $worker -Directory (Join-Path $out 'mixed-processes') -Executable $lookalike -TimeoutSeconds 3
+        if($mixedResult.status -ne 'FAIL' -or -not $mixedResult.timedOut -or $mixedResult.infrastructureCleanup.Count) { throw 'Telemetry cleanup concealed another active process.' }
+    } finally { $env:VCToolsInstallDir=$oldTools }
     @{status='PASS';toolchain=$toolchain;clean=$clean;intentionalFindings=$findings;zeroExitDiagnostic=$recover;helperRouting=$helperResult;atlExceptionClean=$atlClean;atlExceptionOwnOverflow=$atlOwn;ignorelistSha256=(Get-FileHash -LiteralPath $toolchain.ignorelistPath).Hash;unrelatedDaemon=$lookalikeResult;extraChecks=$false} | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $out summary.json) -Encoding utf8
     Write-Host "PASS: clang-cl Win32, clean probe, overflow/shift/alignment/null source stacks and zero-exit diagnostic classification. $out"
 } finally { $env:UBSAN_SYMBOLIZER_PATH=$oldSymbolizer }

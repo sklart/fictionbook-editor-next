@@ -47,6 +47,7 @@ public sealed class SanitizerProcessMonitor : IDisposable {
     readonly Dictionary<uint,Entry> entries=new Dictionary<uint,Entry>();
     readonly object gate=new object();
     readonly string compilerTelemetry;
+    readonly string alternateTelemetry;
     readonly string sanitizer;
     readonly List<string> infrastructureCleanup=new List<string>();
     public string[] InfrastructureCleanup { get { lock(gate) return infrastructureCleanup.ToArray(); } }
@@ -91,10 +92,11 @@ public sealed class SanitizerProcessMonitor : IDisposable {
             throw new InvalidDataException("Unterminated PE import table.");
         }
     }
-    public SanitizerProcessMonitor(string compilerTelemetryPath=null, string sanitizerMode="Address") {
+    public SanitizerProcessMonitor(string compilerTelemetryPath=null, string sanitizerMode="Address", string alternateTelemetryPath=null) {
         if(sanitizerMode!="Address" && sanitizerMode!="Undefined") throw new ArgumentException("Unknown sanitizer mode.");
         sanitizer=sanitizerMode;
         compilerTelemetry=compilerTelemetryPath;
+        alternateTelemetry=alternateTelemetryPath;
         job=CreateJobObjectW(IntPtr.Zero,IntPtr.Zero); Require(job!=IntPtr.Zero);
         port=CreateIoCompletionPort(new IntPtr(-1),IntPtr.Zero,IntPtr.Zero,1); Require(port!=IntPtr.Zero);
         var association=new Port {Key=job,Handle=port};
@@ -153,17 +155,23 @@ public sealed class SanitizerProcessMonitor : IDisposable {
                 // CL telemetry can outlive compilation. Clean only exact selected-
                 // toolchain paths in this job, after all other children exited.
                 if(compilerTelemetry!=null && accounting.Total==entries.Count && accounting.Active>0) {
-                    var active=new List<Entry>(); bool complete=true, compilerSeen=false;
+                    var active=new List<Entry>(); bool complete=true;
                     foreach(var entry in entries.Values) {
                         uint code;
                         if(entry.Handle==IntPtr.Zero || entry.Path==null || !GetExitCodeProcess(entry.Handle,out code)) { complete=false; break; }
                         if(code==259) active.Add(entry);
-                        if(String.Equals(entry.Path,Path.Combine(Path.GetDirectoryName(compilerTelemetry),"cl.exe"),StringComparison.OrdinalIgnoreCase)) compilerSeen=true;
                     }
-                    bool onlyTelemetry=complete && compilerSeen && active.Count==accounting.Active;
+                    bool onlyTelemetry=complete && active.Count==accounting.Active;
                     foreach(var entry in active) {
-                        bool allowed=String.Equals(entry.Path,compilerTelemetry,StringComparison.OrdinalIgnoreCase);
-                        if(entry.Instrumented || !allowed) onlyTelemetry=false;
+                        bool allowed=String.Equals(entry.Path,compilerTelemetry,StringComparison.OrdinalIgnoreCase) ||
+                            (alternateTelemetry!=null && String.Equals(entry.Path,alternateTelemetry,StringComparison.OrdinalIgnoreCase));
+                        bool toolSeen=false;
+                        if(allowed) foreach(var observed in entries.Values) {
+                            string directory=Path.GetDirectoryName(entry.Path);
+                            if(String.Equals(observed.Path,Path.Combine(directory,"cl.exe"),StringComparison.OrdinalIgnoreCase) ||
+                               String.Equals(observed.Path,Path.Combine(directory,"link.exe"),StringComparison.OrdinalIgnoreCase)) toolSeen=true;
+                        }
+                        if(entry.Instrumented || !allowed || !toolSeen) onlyTelemetry=false;
                     }
                     if(onlyTelemetry) {
                         foreach(var entry in active) infrastructureCleanup.Add(entry.Path);

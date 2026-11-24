@@ -65,7 +65,8 @@ function Invoke-SanitizerCase {
     $monitor=$null; $process=$null; $timedOut=$false
     try {
         $telemetry=if($env:VCToolsInstallDir) { Join-Path $env:VCToolsInstallDir 'bin/HostX64/x86/VCTIP.EXE' } else { $null }
-        $monitor=[SanitizerProcessMonitor]::new($telemetry,$Sanitizer)
+        $alternateTelemetry=if($env:VCToolsInstallDir) { Join-Path $env:VCToolsInstallDir 'bin/HostX86/x86/VCTIP.EXE' } else { $null }
+        $monitor=[SanitizerProcessMonitor]::new($telemetry,$Sanitizer,$alternateTelemetry)
         $stdout=Join-Path $directoryPath 'stdout.log'; $stderr=Join-Path $directoryPath 'stderr.log'
         # The suspended worker receives one command line; reject embedded quotes in paths.
         if ($Worker.Contains('"') -or @($WorkerArguments | Where-Object { $_.Contains('"') }).Count) { throw 'Unsupported quote in worker argument.' }
