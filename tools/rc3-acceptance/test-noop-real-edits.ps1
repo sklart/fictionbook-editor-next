@@ -38,6 +38,19 @@ try {
             $edit = $edit.Replace('@@FIRST@@', ((Join-Path $iso.Root 'first.bin') | ConvertTo-Json -Compress)).Replace('@@SECOND@@', ((Join-Path $iso.Root 'second.bin') | ConvertTo-Json -Compress))
             $expectedFirst = switch ($case) { 'body' { 'First body' } 'description' { 'First title' } default { 'AQMFBw==' } }
             $expectedSecond = switch ($case) { 'body' { 'Second body' } 'description' { 'Second title' } default { 'CQgHBgU=' } }
+            # The child edits at top level, during script loading, after its own
+            # save has cleared the loader's existing dirty indication.
+            $child = @'
+window.rc3TopLevelResult="NOT RUN";
+try {
+ a(e.SaveCurrentDocument(),"top-level checkpoint save");
+ var childClean=e.IsDocumentModified();mark("top_level_checkpoint_dirty",childClean?1:0);a(!childClean,"top-level checkpoint not clean");
+ edit(2);var childDirty=e.IsDocumentModified();mark("top_level_edit_dirty",childDirty?1:0);a(childDirty,"top-level edit reported clean");
+ window.rc3TopLevelResult="PASS";
+} catch(error) { window.rc3TopLevelResult="FAIL "+String(error.message||error.description||error); }
+function Run(){}
+'@
+            [IO.File]::WriteAllText((Join-Path $iso.Root 'top-level.js'), $child, [Text.UTF8Encoding]::new($false))
             $main = @'
 var e=window.external, result="NOT RUN", trace=[];
 @@LOOKUP@@
@@ -50,14 +63,15 @@ function Run(){try{
  apiRunCmd(@@NOOP@@);var after=e.IsDocumentModified();mark("noop_dirty",after?1:0);
  edit(1);mark("first_dirty",e.IsDocumentModified()?1:0);a(e.IsDocumentModified(),"first edit reported clean");a(value()===@@EXPECTED1@@,"first edit content");
  a(e.SaveCurrentDocument(),"first save");mark("first_save_dirty",e.IsDocumentModified()?1:0);a(!e.IsDocumentModified(),"first save did not become clean");
- edit(2);mark("second_dirty",e.IsDocumentModified()?1:0);a(e.IsDocumentModified(),"second edit reported clean");a(value()===@@EXPECTED2@@,"second edit content");
+ apiRunCmd(@@CHILD@@);a(window.rc3TopLevelResult==="PASS",String(window.rc3TopLevelResult));
+ mark("second_dirty",e.IsDocumentModified()?1:0);a(e.IsDocumentModified(),"second edit reported clean");a(value()===@@EXPECTED2@@,"second edit content");
  result="PASS";
  }catch(error){result="FAIL "+String(error.message||error.description||error);}
  finally{mark("script_result",result);try{e.WriteTextFile(@@TRACE@@,trace.join("\r\n"),"utf-8");}catch(ignore){}}
 }
 function CompatResult(){return result;}
 '@
-            $main = $main.Replace('@@LOOKUP@@',$lookup).Replace('@@EDIT@@',$edit).Replace('@@NOOP@@',((Join-Path $iso.Root 'noop.js') | ConvertTo-Json -Compress)).Replace('@@TRACE@@',((Join-Path $iso.Root 'trace.txt') | ConvertTo-Json -Compress)).Replace('@@EXPECTED1@@',($expectedFirst | ConvertTo-Json -Compress)).Replace('@@EXPECTED2@@',($expectedSecond | ConvertTo-Json -Compress))
+            $main = $main.Replace('@@LOOKUP@@',$lookup).Replace('@@EDIT@@',$edit).Replace('@@NOOP@@',((Join-Path $iso.Root 'noop.js') | ConvertTo-Json -Compress)).Replace('@@CHILD@@',((Join-Path $iso.Root 'top-level.js') | ConvertTo-Json -Compress)).Replace('@@TRACE@@',((Join-Path $iso.Root 'trace.txt') | ConvertTo-Json -Compress)).Replace('@@EXPECTED1@@',($expectedFirst | ConvertTo-Json -Compress)).Replace('@@EXPECTED2@@',($expectedSecond | ConvertTo-Json -Compress))
             [IO.File]::WriteAllText((Join-Path $iso.Root 'edit.js'), $main, [Text.UTF8Encoding]::new($false))
             foreach ($check in @(@('undo.js',$expectedFirst),@('redo.js',$expectedSecond),@('reopen.js',$expectedSecond))) {
                 $code = $lookup + "`r`nfunction Run(){} function CompatResult(){try{return value()===" + ($check[1] | ConvertTo-Json -Compress) + '?"PASS":"FAIL unexpected content: "+value();}catch(e){return "FAIL "+String(e.message||e);}}'
@@ -81,7 +95,7 @@ function CompatResult(){return result;}
                 if(Test-Path -LiteralPath $source -PathType Leaf){Copy-Item -LiteralPath $source -Destination (Join-Path $caseEvidence $file) -Force}
             }
             if($processCode -ne 0 -or $details -notmatch '(?m)^result=PASS\r?$' -or $details -notmatch '(?m)^completed=5\r?$') { throw "Runtime scenario failed: $details" }
-            foreach($line in @('checkpoint_dirty=0','first_dirty=1','first_save_dirty=0','second_dirty=1','script_result=PASS')) {
+            foreach($line in @('checkpoint_dirty=0','first_dirty=1','first_save_dirty=0','top_level_checkpoint_dirty=0','top_level_edit_dirty=1','second_dirty=1','script_result=PASS')) {
                 if($trace -notmatch ('(?m)^'+[regex]::Escape($line)+'\r?$')) { throw "Missing state: $line" }
             }
             if($null -eq $noopDirty) { throw 'No-op dirty state was not recorded.' }
