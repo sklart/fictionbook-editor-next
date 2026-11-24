@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$FbeExe, [int]$TimeoutSeconds = 120, [ValidateSet('all','body-replacement')][string]$Case = 'all')
+param([Parameter(Mandatory)][string]$FbeExe, [int]$TimeoutSeconds = 120, [ValidateSet('all','body-replacement','head-body','head-description','head-binary','head-save')][string]$Case = 'all')
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
     throw 'This diagnostic is restricted to a disposable GitHub-hosted runner.'
@@ -12,7 +12,7 @@ $names = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_SCRIPT_API_RO
 $old = @{}; foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 $results = [Collections.Generic.List[object]]::new()
 try {
-    $cases=if($Case -eq 'body-replacement'){@('body-replacement')}else{@('body','description','binary','body-replacement')}
+    $cases=if($Case -eq 'all'){@('body','description','binary','body-replacement','head-body','head-description','head-binary','head-save')}else{@($Case)}
     foreach ($case in $cases) {
         $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name ('rc3-noop-' + $case)
         $passed = $false; $details = ''; $processCode = $null; $noopDirty = $null
@@ -27,18 +27,18 @@ try {
             [IO.File]::WriteAllBytes((Join-Path $iso.Root 'second.bin'), [byte[]](9,8,7,6,5))
             [IO.File]::WriteAllText((Join-Path $iso.Root 'noop.js'), 'function Run(){}', [Text.UTF8Encoding]::new($false))
             $lookup = switch ($case) {
-                {$_ -in 'body','body-replacement'} { 'function value(){var p=document.getElementById("fbw_body").getElementsByTagName("P");for(var i=0;i<p.length;i++)if(String(p[i].innerText).indexOf("body")>=0)return String(p[i].innerText);throw new Error("body paragraph missing");}' }
-                'description' { 'function value(){return String(document.getElementById("tiTitle").value);}' }
+                {$_ -in 'body','body-replacement','head-body','head-save'} { 'function value(){var p=document.getElementById("fbw_body").getElementsByTagName("P");for(var i=0;i<p.length;i++)if(String(p[i].innerText).indexOf("body")>=0)return String(p[i].innerText);throw new Error("body paragraph missing");}' }
+                {$_ -in 'description','head-description'} { 'function value(){return String(document.getElementById("tiTitle").value);}' }
                 default { 'function value(){var n=new ActiveXObject("Msxml2.DOMDocument.6.0");n.loadXML("<data/>");n.documentElement.dataType="bin.base64";n.documentElement.nodeTypedValue=GetImageData("payload.bin");return String(n.documentElement.text).replace(/\s/g,"");}' }
             }
             $edit = switch ($case) {
-                {$_ -in 'body','body-replacement'} { 'function edit(which){var p=document.getElementById("fbw_body").getElementsByTagName("P");for(var i=0;i<p.length;i++)if(String(p[i].innerText).indexOf("body")>=0){e.BeginUndoUnit(document,"RC3 body edit");try{p[i].innerText=which===1?"First body":"Second body";}finally{e.EndUndoUnit(document);}return;}throw new Error("body paragraph missing");}' }
-                'description' { 'function edit(which){var f=document.getElementById("tiTitle"),token=e.BeginDocumentUpdate("RC3 description edit","{}");try{f.focus();var r=f.createTextRange();r.select();r.text=which===1?"First title":"Second title";}finally{e.EndDocumentUpdate(token);}}' }
+                {$_ -in 'body','body-replacement','head-body','head-save'} { 'function edit(which){var p=document.getElementById("fbw_body").getElementsByTagName("P");for(var i=0;i<p.length;i++)if(String(p[i].innerText).indexOf("body")>=0){e.BeginUndoUnit(document,"RC3 body edit");try{p[i].innerText=which===1?"First body":"Second body";}finally{e.EndUndoUnit(document);}return;}throw new Error("body paragraph missing");}' }
+                {$_ -in 'description','head-description'} { 'function edit(which){var f=document.getElementById("tiTitle"),token=e.BeginDocumentUpdate("RC3 description edit","{}");try{f.focus();var r=f.createTextRange();r.select();r.text=which===1?"First title":"Second title";}finally{e.EndDocumentUpdate(token);}}' }
                 default { 'function edit(which){e.ReplaceBinaryFromFile("payload.bin",which===1?@@FIRST@@:@@SECOND@@,"application/octet-stream");}' }
             }
             $edit = $edit.Replace('@@FIRST@@', ((Join-Path $iso.Root 'first.bin') | ConvertTo-Json -Compress)).Replace('@@SECOND@@', ((Join-Path $iso.Root 'second.bin') | ConvertTo-Json -Compress))
-            $expectedFirst = switch ($case) { {$_ -in 'body','body-replacement'} { 'First body' } 'description' { 'First title' } default { 'AQMFBw==' } }
-            $expectedSecond = switch ($case) { {$_ -in 'body','body-replacement'} { 'Second body' } 'description' { 'Second title' } default { 'CQgHBgU=' } }
+            $expectedFirst = switch ($case) { {$_ -in 'body','body-replacement','head-body','head-save'} { 'First body' } {$_ -in 'description','head-description'} { 'First title' } default { 'AQMFBw==' } }
+            $expectedSecond = switch ($case) { {$_ -in 'body','body-replacement','head-body','head-save'} { 'Second body' } {$_ -in 'description','head-description'} { 'Second title' } default { 'CQgHBgU=' } }
             # The child edits at top level, during script loading, after its own
             # save has cleared the loader's existing dirty indication.
             $child = @'
@@ -65,7 +65,9 @@ function Run(){try{
  a(e.SaveCurrentDocument(),"checkpoint save");
  var before=e.IsDocumentModified();mark("checkpoint_dirty",before?1:0);a(!before,"checkpoint not clean");
  apiRunCmd(@@NOOP@@);var after=e.IsDocumentModified();mark("noop_dirty",after?1:0);
- edit(1);mark("first_dirty",e.IsDocumentModified()?1:0);a(e.IsDocumentModified(),"first edit reported clean");a(value()===@@EXPECTED1@@,"first edit content");
+ @@FIRST_EDIT@@
+ mark("first_dirty",e.IsDocumentModified()?1:0);a(e.IsDocumentModified(),"first edit reported clean");a(value()===@@EXPECTED1@@,"first edit content");
+ apiRunCmd(@@NOOP@@);mark("dirty_after_noop",e.IsDocumentModified()?1:0);a(e.IsDocumentModified()&&value()===@@EXPECTED1@@,"dirty document changed after no-op");
  a(e.SaveCurrentDocument(),"first save");mark("first_save_dirty",e.IsDocumentModified()?1:0);a(!e.IsDocumentModified(),"first save did not become clean");
  apiRunCmd(@@CHILD@@);a(window.rc3TopLevelResult==="PASS",String(window.rc3TopLevelResult));
  mark("second_dirty",e.IsDocumentModified()?1:0);a(e.IsDocumentModified(),"second edit reported clean");a(value()===@@EXPECTED2@@,"second edit content");
@@ -75,14 +77,18 @@ function Run(){try{
 }
 function CompatResult(){return result;}
 '@
-            $main = $main.Replace('@@LOOKUP@@',$lookup).Replace('@@EDIT@@',$edit).Replace('@@NOOP@@',((Join-Path $iso.Root 'noop.js') | ConvertTo-Json -Compress)).Replace('@@CHILD@@',((Join-Path $iso.Root 'top-level.js') | ConvertTo-Json -Compress)).Replace('@@TRACE@@',((Join-Path $iso.Root 'trace.txt') | ConvertTo-Json -Compress)).Replace('@@EXPECTED1@@',($expectedFirst | ConvertTo-Json -Compress)).Replace('@@EXPECTED2@@',($expectedSecond | ConvertTo-Json -Compress))
+            $firstEdit=if($case -like 'head-*'){
+                $saveDuring=if($case -eq 'head-save'){'a(e.SaveCurrentDocument(),"reentrant save");'}else{''}
+                'var oldNode=document.getElementById("userCmd"),freshNode=document.createElement("script");freshNode.id="userCmd";freshNode.language="JavaScript";freshNode.type="text/javascript";e._ProtectUserCommandSwap(function(){oldNode.parentNode.replaceChild(freshNode,oldNode);'+$saveDuring+'edit(1);},oldNode,freshNode);'
+            }else{'edit(1);'}
+            $main = $main.Replace('@@LOOKUP@@',$lookup).Replace('@@EDIT@@',$edit).Replace('@@FIRST_EDIT@@',$firstEdit).Replace('@@NOOP@@',((Join-Path $iso.Root 'noop.js') | ConvertTo-Json -Compress)).Replace('@@CHILD@@',((Join-Path $iso.Root 'top-level.js') | ConvertTo-Json -Compress)).Replace('@@TRACE@@',((Join-Path $iso.Root 'trace.txt') | ConvertTo-Json -Compress)).Replace('@@EXPECTED1@@',($expectedFirst | ConvertTo-Json -Compress)).Replace('@@EXPECTED2@@',($expectedSecond | ConvertTo-Json -Compress))
             [IO.File]::WriteAllText((Join-Path $iso.Root 'edit.js'), $main, [Text.UTF8Encoding]::new($false))
             foreach ($check in @(@('undo.js',$expectedFirst),@('redo.js',$expectedSecond),@('reopen.js',$expectedSecond))) {
                 $code = $lookup + "`r`nfunction Run(){} function CompatResult(){try{return value()===" + ($check[1] | ConvertTo-Json -Compress) + '?"PASS":"FAIL unexpected content: "+value();}catch(e){return "FAIL "+String(e.message||e);}}'
                 [IO.File]::WriteAllText((Join-Path $iso.Root $check[0]), $code, [Text.UTF8Encoding]::new($false))
             }
-            $binaryFirst = if ($case -eq 'binary') { ' id="payload.bin" expected="first.bin"' } else { '' }
-            $binarySecond = if ($case -eq 'binary') { ' id="payload.bin" expected="second.bin"' } else { '' }
+            $binaryFirst = if ($case -in 'binary','head-binary') { ' id="payload.bin" expected="first.bin"' } else { '' }
+            $binarySecond = if ($case -in 'binary','head-binary') { ' id="payload.bin" expected="second.bin"' } else { '' }
             $suite = '<suite><step name="edit" script="edit.js"' + $binarySecond + '/><step name="undo" command="undo" script="undo.js"' + $binaryFirst + '/><step name="redo" command="redo" script="redo.js" save="saved.fb2"' + $binarySecond + '/><step name="close" command="close"/><step name="reopen" command="open" open="saved.fb2" script="reopen.js"' + $binarySecond + '/></suite>'
             [IO.File]::WriteAllText((Join-Path $iso.Root 'suite.xml'), $suite, [Text.UTF8Encoding]::new($false))
             $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='binary-scripting-compatibility'; $env:FBE_NEXT_SCRIPT_API_ROOT=$iso.Root
@@ -99,7 +105,7 @@ function CompatResult(){return result;}
                 if(Test-Path -LiteralPath $source -PathType Leaf){Copy-Item -LiteralPath $source -Destination (Join-Path $caseEvidence $file) -Force}
             }
             if($processCode -ne 0 -or $details -notmatch '(?m)^result=PASS\r?$' -or $details -notmatch '(?m)^completed=5\r?$') { throw "Runtime scenario failed: $details" }
-            foreach($line in @('checkpoint_dirty=0','first_dirty=1','first_save_dirty=0','top_level_checkpoint_dirty=0','top_level_edit_dirty=1','second_dirty=1','script_result=PASS')) {
+            foreach($line in @('checkpoint_dirty=0','first_dirty=1','dirty_after_noop=1','first_save_dirty=0','top_level_checkpoint_dirty=0','top_level_edit_dirty=1','second_dirty=1','script_result=PASS')) {
                 if($trace -notmatch ('(?m)^'+[regex]::Escape($line)+'\r?$')) { throw "Missing state: $line" }
             }
             if($null -eq $noopDirty) { throw 'No-op dirty state was not recorded.' }
@@ -109,9 +115,9 @@ function CompatResult(){return result;}
             $body=$doc.SelectSingleNode('/f:FictionBook/f:body/f:section/f:p',$ns).InnerText
             $title=$doc.SelectSingleNode('/f:FictionBook/f:description/f:title-info/f:book-title',$ns).InnerText
             $binary=$doc.SelectSingleNode('/f:FictionBook/f:binary[@id="payload.bin"]',$ns)
-            if($case -in 'body','body-replacement' -and $body -cne 'Second body'){throw 'Saved Body mismatch.'}
-            if($case -eq 'description' -and $title -cne 'Second title'){throw 'Saved Description mismatch.'}
-            if($case -eq 'binary' -and (-not $binary -or [Convert]::ToBase64String([Convert]::FromBase64String($binary.InnerText)) -cne 'CQgHBgU=')){throw 'Saved binary bytes mismatch.'}
+            if($case -in 'body','body-replacement','head-body','head-save' -and $body -cne 'Second body'){throw 'Saved Body mismatch.'}
+            if($case -in 'description','head-description' -and $title -cne 'Second title'){throw 'Saved Description mismatch.'}
+            if($case -in 'binary','head-binary' -and (-not $binary -or [Convert]::ToBase64String([Convert]::FromBase64String($binary.InnerText)) -cne 'CQgHBgU=')){throw 'Saved binary bytes mismatch.'}
             $passed=$true
         } catch { $details = $_.ToString(); Write-Warning "$case diagnostic: $details" }
         finally {

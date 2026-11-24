@@ -83,6 +83,7 @@ public:
   HRESULT InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CComVariant &vtResult, bool quiet = false);
   void	  ShowDescription(bool Show);
   void	  RunScript(LPCOLESTR filePath);
+  HRESULT InvokeProtectedUserCommandSwap(IDispatch* callback, IDispatch* previous, IDispatch* replacement, EXCEPINFO* exceptionInfo);
   VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath);
 
   bool	  Save(const CString& filename);
@@ -116,11 +117,12 @@ public:
 
   // added by SeNS
   void	  AdvanceDocVersion (int delta) {
+	  ++m_checkpointEpoch;
 	  m_body_ver += delta;
   }
 	void AdvanceDocVersionIfUnchanged(long before, long after) {
 		if (before >= 0 && after >= before && m_body_ver == before &&
-			m_editor.GetVersionNumber() == after && !m_editor.IsFormChanged()) m_body_ver = after;
+			m_editor.GetVersionNumber() == after && !m_editor.IsFormChanged()) { ++m_checkpointEpoch; m_body_ver = after; }
 	}
 
     bool ConsumePostSaveChanges() { const bool changed = m_postSaveChanges; m_postSaveChanges = false; return changed; }
@@ -139,6 +141,7 @@ public:
 			m_hasSavedBodyHtml, m_hasRecoveryBodyHtml, m_reconcilePasteHistoryClean, !DocChanged(), !DocRelChanged()};
 	}
 	void RestoreUndoSavepoints(const UndoSavepoints& state) {
+		++m_checkpointEpoch;
 		m_body_ver = state.clean ? m_editor.GetVersionNumber() : state.savedVersion;
 		m_body_cp = state.recoveryClean ? m_editor.GetVersionNumber() : state.recoveryVersion;
 		m_savedBodyHtml = state.savedHtml; m_recoveryBodyHtml = state.recoveryHtml;
@@ -151,7 +154,7 @@ public:
 		if (recoveryClean && (m_body_cp == originalVersion || m_body_cp == -1)) MarkDocCP();
 		m_reconcilePasteHistoryClean = !saveClean || !recoveryClean;
 	}
-  void	  ResetSavePoint() { m_body_ver=-1; m_reconcilePasteHistoryClean = false; m_hasNewTemplateBaseline = false; m_newTemplateXml.Empty(); m_hasDescriptionSavepoint = false; }
+  void	  ResetSavePoint() { ++m_checkpointEpoch; m_body_ver=-1; m_reconcilePasteHistoryClean = false; m_hasNewTemplateBaseline = false; m_newTemplateXml.Empty(); m_hasDescriptionSavepoint = false; }
 
 	void MarkDocCP();
 	void MarkDocCPIfChanged(bool force = false);
@@ -205,6 +208,7 @@ public:
 	void GetWordList(int flags, CSimpleArray<Word>& words, CString tagName);
 
 private:
+	unsigned long long m_checkpointEpoch = 0;
 	GUID m_clipboard_identity = GUID_NULL;
   bool m_recoverySnapshotInProgress = false;
   bool m_userSaveInProgress = false;

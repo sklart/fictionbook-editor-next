@@ -2188,7 +2188,9 @@ function LoadUserCommandScript(path, charset)
 	script.language="JavaScript";
 	script.type="text/javascript";
 	if(charset) script.charset=charset;
-	previous.parentNode.replaceChild(script,previous);
+	window.external._ProtectUserCommandSwap(function() {
+		previous.parentNode.replaceChild(script,previous);
+	},previous,script);
 	script.src="file:///"+path;
 	return script;
 

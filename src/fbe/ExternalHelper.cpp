@@ -49,6 +49,7 @@ DISPID ScriptingMethodId(LPCWSTR name)
  if (_wcsicmp(name, L"_BinaryStoreUniqueId") == 0) return 1003;
  if (_wcsicmp(name, L"_DescriptionAddAttachment") == 0) return 1004;
  if (_wcsicmp(name, L"_SetGeneratedDocumentId") == 0) return 1005;
+ if (_wcsicmp(name, L"_ProtectUserCommandSwap") == 0) return 1006;
  return DISPID_UNKNOWN;
 }
 }
@@ -267,6 +268,20 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 		return DISP_E_UNKNOWNINTERFACE;
 	if (argumentError)
 		*argumentError = UINT_MAX;
+	if (dispid == 1006) {
+		if (!(flags & DISPATCH_METHOD)) return DISP_E_MEMBERNOTFOUND;
+		if (!parameters || parameters->cArgs != 3 || parameters->cNamedArgs || !parameters->rgvarg) return DISP_E_BADPARAMCOUNT;
+		CComVariant callback, previous, replacement;
+		HRESULT hr = ::VariantCopyInd(&callback, &parameters->rgvarg[2]);
+		if (SUCCEEDED(hr)) hr = ::VariantCopyInd(&previous, &parameters->rgvarg[1]);
+		if (SUCCEEDED(hr)) hr = ::VariantCopyInd(&replacement, &parameters->rgvarg[0]);
+		if (FAILED(hr)) return hr;
+		if (callback.vt != VT_DISPATCH || !callback.pdispVal || previous.vt != VT_DISPATCH || !previous.pdispVal || replacement.vt != VT_DISPATCH || !replacement.pdispVal) return DISP_E_TYPEMISMATCH;
+		FB::Doc* owner = FB::Doc::BinaryOwner(m_binaryDocumentIdentity);
+		if (owner) return owner->InvokeProtectedUserCommandSwap(callback.pdispVal, previous.pdispVal, replacement.pdispVal, exceptionInfo);
+		DISPPARAMS empty = {};
+		return callback.pdispVal->Invoke(DISPID_VALUE, IID_NULL, LOCALE_USER_DEFAULT, DISPATCH_METHOD, &empty, nullptr, exceptionInfo, nullptr);
+	}
 	if (dispid == 1005) {
 		if (!(flags & DISPATCH_METHOD)) return DISP_E_MEMBERNOTFOUND;
 		if (!parameters || parameters->cArgs != 1) return DISP_E_BADPARAMCOUNT;

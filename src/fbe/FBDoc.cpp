@@ -399,12 +399,14 @@ void Doc::ArmScriptDescriptionCheck() {
 }
 
 void Doc::ProtectSavedBinaries(RecoveryBinarySnapshot& snapshot) {
+    ++m_checkpointEpoch;
     m_savedBinarySnapshot.swap(snapshot);
     m_savedBinarySnapshotValid = true;
     m_preserveSavedBinarySnapshot = true;
 }
 
 void Doc::MarkSavePoint() {
+	++m_checkpointEpoch;
 	m_hasNewTemplateBaseline = false;
 	m_newTemplateEdited = false;
 	m_newTemplateXml.Empty();
@@ -444,6 +446,7 @@ void Doc::ReconcileUnchangedStartupTemplate() {
 }
 
 void Doc::MarkDocCP() {
+	++m_checkpointEpoch;
 	m_body_cp = m_editor.GetVersionNumber();
 	m_hasRecoveryBodyHtml = CaptureBodyHtml(m_recoveryBodyHtml);
 	m_editor.ResetFormCP();
@@ -794,6 +797,129 @@ void Doc::ShowDescription(bool Show)
 	V_BOOL(&params) = Show ? VARIANT_TRUE : VARIANT_FALSE;
 	InvokeFunc(L"apiShowDesc", &params, 1, vtResult);
 	return;
+}
+
+namespace {
+class ScriptHeadChangeSink : public MSHTML::IHTMLChangeSink {
+public:
+    STDMETHOD(QueryInterface)(REFIID iid, void** value) override {
+        if (!value) return E_POINTER;
+        *value = nullptr;
+        if (iid != IID_IUnknown && iid != IID_IHTMLChangeSink) return E_NOINTERFACE;
+        *value = static_cast<MSHTML::IHTMLChangeSink*>(this); AddRef(); return S_OK;
+    }
+    STDMETHOD_(ULONG, AddRef)() override { return 2; }
+    STDMETHOD_(ULONG, Release)() override { return 1; }
+    STDMETHOD(raw_Notify)() override { return S_OK; }
+};
+bool SameComIdentity(IUnknown* left, IUnknown* right) {
+    CComPtr<IUnknown> a, b;
+    return left && right && SUCCEEDED(left->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&a))) &&
+        SUCCEEDED(right->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&b))) && a == b;
+}
+}
+
+HRESULT Doc::InvokeProtectedUserCommandSwap(IDispatch* callback, IDispatch* previous, IDispatch* replacement, EXCEPINFO* exceptionInfo)
+{
+    // This guard is deliberately scoped to the empty script-node replacement,
+    // before src is assigned. On any uncertainty the callback still runs, but
+    // the existing dirty/recovery checkpoints are left untouched.
+    const GUID identity = ClipboardIdentity();
+    MSHTML::IHTMLDocument2Ptr document;
+    MSHTML::IHTMLElementPtr head, oldElement, newElement;
+    MSHTML::IMarkupContainer2Ptr markup;
+    MSHTML::IMarkupServices2Ptr services;
+    ScriptHeadChangeSink sink;
+    DWORD cookie = 0;
+    struct RangeCleanup {
+        MSHTML::IMarkupContainer2Ptr& markup; DWORD& cookie;
+        ~RangeCleanup() { try { if (markup && cookie) markup->UnRegisterForDirtyRange(cookie); } catch (...) { } }
+    } cleanup{markup, cookie};
+    CString bodyBefore, descriptionBefore, headBefore, oldHtml;
+    RecoveryBinarySnapshot binariesBefore;
+    long versionBefore = -1, savedBefore = -1, recoveryBefore = -1;
+    unsigned long long epochBefore = 0;
+    bool saveClean = false, recoveryClean = false, prepared = false;
+    const auto stillOwned = [&]() { return BinaryOwner(identity) == this && m_active_doc == this; };
+    try {
+        if (stillOwned() && !RecoverySnapshotInProgress()) {
+            document = m_editor.Document();
+            MSHTML::IHTMLDocument3Ptr document3(document);
+            oldElement = MSHTML::IHTMLElementPtr(previous); newElement = MSHTML::IHTMLElementPtr(replacement);
+            MSHTML::IHTMLDOMNodePtr oldNode(previous), newNode(replacement);
+            MSHTML::IHTMLScriptElementPtr newScript(replacement);
+            MSHTML::IHTMLDOMNodePtr parent(oldNode ? oldNode->parentNode : nullptr);
+            head = MSHTML::IHTMLElementPtr(parent);
+            markup = MSHTML::IMarkupContainer2Ptr(document);
+            services = MSHTML::IMarkupServices2Ptr(document);
+            MSHTML::IHTMLElementPtr current(document3 ? document3->getElementById(L"userCmd") : nullptr);
+            MSHTML::IHTMLElementPtr body(document3 ? document3->getElementById(L"fbw_body") : nullptr);
+            if (document && oldElement && newElement && oldNode && newNode && newScript && head && markup && services && current && body &&
+                !newNode->parentNode && U::scmp(head->tagName, L"HEAD") == 0 && U::scmp(oldElement->tagName, L"SCRIPT") == 0 && U::scmp(newElement->tagName, L"SCRIPT") == 0 &&
+                U::scmp(newElement->id, L"userCmd") == 0 && SameComIdentity(current, oldElement) &&
+                _bstr_t(newScript->src).length() == 0 && _bstr_t(newScript->text).length() == 0) {
+                versionBefore = m_editor.GetVersionNumber(); savedBefore = m_body_ver; recoveryBefore = m_body_cp; epochBefore = m_checkpointEpoch;
+                saveClean = versionBefore >= 0 && savedBefore == versionBefore && !m_editor.IsFormChanged() && SavedBinaryMatches();
+                if (stillOwned()) {
+                    recoveryClean = versionBefore >= 0 && recoveryBefore == versionBefore && !m_editor.IsFormCP();
+                    if (saveClean || recoveryClean) {
+                        bodyBefore = static_cast<LPCWSTR>(body->outerHTML);
+                        headBefore = static_cast<LPCWSTR>(head->outerHTML);
+                        oldHtml = static_cast<LPCWSTR>(oldElement->outerHTML);
+                        prepared = !oldHtml.IsEmpty() && CaptureDescriptionState(descriptionBefore, true) &&
+                            CaptureRecoveryBinaries(binariesBefore) && stillOwned() && m_checkpointEpoch == epochBefore &&
+                            m_editor.GetVersionNumber() == versionBefore && m_body_ver == savedBefore && m_body_cp == recoveryBefore &&
+                            SUCCEEDED(markup->RegisterForDirtyRange(&sink, &cookie)) && cookie != 0;
+                    }
+                }
+            }
+        }
+    } catch (...) { prepared = false; }
+
+    DISPPARAMS empty = {};
+    const HRESULT result = callback->Invoke(DISPID_VALUE, IID_NULL, LOCALE_USER_DEFAULT, DISPATCH_METHOD, &empty, nullptr, exceptionInfo, nullptr);
+    if (FAILED(result) || !prepared || !stillOwned()) return result;
+    try {
+        const long versionAfter = m_editor.GetVersionNumber();
+        if (versionAfter < versionBefore || m_checkpointEpoch != epochBefore || m_body_ver != savedBefore || m_body_cp != recoveryBefore ||
+            !SameComIdentity(document, m_editor.Document())) return result;
+        MSHTML::IMarkupPointerPtr begin, end;
+        CheckError(services->CreateMarkupPointer(&begin)); CheckError(services->CreateMarkupPointer(&end));
+        CheckError(markup->GetAndClearDirtyRange(cookie, begin, end));
+        MSHTML::IHTMLElementPtr first, last;
+        begin->CurrentScope(&first); end->CurrentScope(&last);
+        if (!first || !last || (first != head && head->contains(first) != VARIANT_TRUE) ||
+            (last != head && head->contains(last) != VARIANT_TRUE)) return result;
+        const CString newHtml(static_cast<LPCWSTR>(newElement->outerHTML));
+        const int position = headBefore.Find(oldHtml);
+        if (position < 0 || headBefore.Find(oldHtml, position + oldHtml.GetLength()) >= 0) return result;
+        const CString expectedHead = headBefore.Left(position) + newHtml + headBefore.Mid(position + oldHtml.GetLength());
+        if (CString(static_cast<LPCWSTR>(head->outerHTML)) != expectedHead) return result;
+        MSHTML::IHTMLDocument3Ptr document3(document);
+        MSHTML::IHTMLElementPtr current(document3->getElementById(L"userCmd")), body(document3->getElementById(L"fbw_body"));
+        CString descriptionAfter; RecoveryBinarySnapshot binariesAfter;
+        if (!current || !body || !SameComIdentity(current, newElement) || CString(static_cast<LPCWSTR>(body->outerHTML)) != bodyBefore ||
+            !CaptureDescriptionState(descriptionAfter, true) || descriptionAfter != descriptionBefore ||
+            !CaptureRecoveryBinaries(binariesAfter) || !SameRecoveryBinaries(binariesBefore, binariesAfter) || !stillOwned() ||
+            m_checkpointEpoch != epochBefore || m_body_ver != savedBefore || m_body_cp != recoveryBefore ||
+            m_editor.GetVersionNumber() != versionAfter) return result;
+        const bool formChanged = m_editor.IsFormChanged();
+        if (!stillOwned()) return result;
+        const bool recoveryFormChanged = m_editor.IsFormCP();
+        if (!stillOwned()) return result;
+        const bool savedBinariesMatch = !saveClean || SavedBinaryMatches();
+        if (!stillOwned()) return result;
+        CString finalDescription;
+        if (!CaptureDescriptionState(finalDescription, true) || finalDescription != descriptionBefore || !stillOwned()) return result;
+        const long finalVersion = m_editor.GetVersionNumber();
+        if (!stillOwned() || m_checkpointEpoch != epochBefore || m_body_ver != savedBefore || m_body_cp != recoveryBefore || finalVersion != versionAfter) return result;
+        const bool adjustSave = saveClean && !formChanged && savedBinariesMatch;
+        const bool adjustRecovery = recoveryClean && !recoveryFormChanged;
+        if (adjustSave) m_body_ver = versionAfter;
+        if (adjustRecovery) m_body_cp = versionAfter;
+        if (adjustSave || adjustRecovery) ++m_checkpointEpoch;
+    } catch (...) { /* Leave checkpoints unchanged on failed verification. */ }
+    return result;
 }
 
 void Doc::RunScript(LPCOLESTR filePath)
@@ -3002,6 +3128,7 @@ void Doc::ApplyThemeAppearance()
 		// though they do not touch editable BODY HTML or the FB2 model.
 		// Advance only matching baselines: never hide an existing user edit.
 		const long versionAfter = m_editor.GetVersionNumber();
+		if(cleanBefore || checkpointBefore) ++m_checkpointEpoch;
 		if(cleanBefore) m_body_ver = versionAfter;
 		if(checkpointBefore) m_body_cp = versionAfter;
 	}
