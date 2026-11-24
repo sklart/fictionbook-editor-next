@@ -4,28 +4,100 @@ on:
 permissions:
   contents: read
 jobs:
-  mshtml-dirty-range-probe:
+  affected-script-regressions:
     runs-on: windows-2022
-    timeout-minutes: 15
+    timeout-minutes: 120
+    env:
+      FBE_CI_ISOLATED_PROFILE: '1'
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: a48e891138f9df4417c9b92a5019ee2b33e87fad
+          submodules: recursive
+          fetch-depth: 1
           persist-credentials: false
-      - name: Compile and run isolated MSHTML probe
+      - name: Verify exact source and submodules
         shell: pwsh
         run: |
           if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Disposable runner required.' }
-          . ./tools/build/Import-VsDevEnvironment.ps1 -Arch x86 -HostArch x64 -PlatformToolset v143 -VcVarsVersion 14.44
-          New-Item -ItemType Directory -Force out/probe | Out-Null
-          cl.exe /nologo /EHsc /W4 /WX /std:c++17 tools/rc3-acceptance/probe-mshtml-dirty-range.cpp /Fe:out/probe/probe.exe /Fo:out/probe/probe.obj ole32.lib oleaut32.lib uuid.lib
-          if ($LASTEXITCODE -ne 0) { throw 'Probe compilation failed.' }
-          & ./out/probe/probe.exe 2>&1 | Tee-Object out/probe/result.txt
-          if ($LASTEXITCODE -ne 0) { throw 'Probe failed; see result.' }
-      - name: Upload probe result
+          if ((git rev-parse HEAD) -cne 'a48e891138f9df4417c9b92a5019ee2b33e87fad' -or $LASTEXITCODE -ne 0) { throw 'Unexpected candidate.' }
+          if (@(git status --porcelain=v1).Count -or $LASTEXITCODE -ne 0) { throw 'Candidate is not clean.' }
+          $modules = @(git submodule status --recursive)
+          if ($LASTEXITCODE -ne 0 -or -not $modules.Count -or @($modules | Where-Object { $_ -match '^[-+U]' }).Count) { throw 'Submodule mismatch.' }
+          $dirty = @(git submodule foreach --quiet --recursive 'git status --porcelain=v1')
+          if ($LASTEXITCODE -ne 0 -or $dirty.Count) { throw 'Submodule is not clean.' }
+      - name: Strict Release build
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/build/build.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143 -SkipUpx -WarningsAsErrors -StrictFirstPartyWarnings -SkipVersionSync -BatchOutputDirectory out/target-batches
+          if (-not $? -or $LASTEXITCODE -ne 0) { throw 'Build failed.' }
+      - name: Reconcile verified MIDL output
+        shell: pwsh
+        run: ./tools/rc3-acceptance/ReconcileMidl.ps1 -RepositoryRoot . -EvidenceDirectory out/tests/rc3-noop-fix -ExpectedSource 'a48e891138f9df4417c9b92a5019ee2b33e87fad'
+      - name: Script live-reload contract
+        id: contract
+        continue-on-error: true
+        shell: pwsh
+        run: ./tools/tests/test-fbe-script-live-reload-contract.ps1
+      - name: No-op, real edits and reentrant callbacks
+        id: edits
+        continue-on-error: true
+        shell: pwsh
+        run: ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/Release/FBE.exe
+      - name: Original Stage3C dialogs
+        id: stage3c
+        continue-on-error: true
+        shell: pwsh
+        run: ./tools/tests/test-fbe-scripting-stage3c.ps1 -FbeExe out/Release/FBE.exe -Part dialogs -Mode portable -EvidenceDirectory out/tests/rc3-noop-fix/stage3c
+      - name: New document after no-op
+        id: newdoc
+        continue-on-error: true
+        shell: pwsh
+        run: ./tools/tests/test-fbe-new-document-edit-state-runtime.ps1 -FbeExe out/Release/FBE.exe
+      - name: Script reload and legacy path
+        id: reload
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          ./tools/tests/test-fbe-script-live-reload-runtime.ps1 -FbeExe out/Release/FBE.exe
+          ./tools/tests/test-fbe-script-usercmd-path.ps1 -FbeExe out/Release/FBE.exe
+          ./tools/tests/test-fbe-script-usercmd-path.ps1 -FbeExe out/Release/FBE.exe -Encoding utf16be
+      - name: Reentrant save and recovery
+        id: recovery
+        if: steps.edits.outcome == 'success' && steps.stage3c.outcome == 'success'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          ./tools/tests/test-fbe-script-form-dirty-runtime.ps1 -FbeExe out/Release/FBE.exe -SaveFirst
+          ./tools/tests/test-fbe-reentrant-close-runtime.ps1 -FbeExe out/Release/FBE.exe
+          ./tools/tests/test-fbe-recovery-history-runtime.ps1 -FbeExe out/Release/FBE.exe -Case binary -Restart
+          ./tools/tests/test-fbe-recovery-history-runtime.ps1 -FbeExe out/Release/FBE.exe -Case description -Restart
+      - name: Save and reopen FB2, FBD and ZIP
+        id: formats
+        if: steps.edits.outcome == 'success' && steps.stage3c.outcome == 'success'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          ./tools/tests/test-fbe-file-close-runtime.ps1 -FbeExe out/Release/FBE.exe -Kind fb2 -Container normal
+          ./tools/tests/test-fbe-file-close-runtime.ps1 -FbeExe out/Release/FBE.exe -Kind fbd -Container normal
+          ./tools/tests/test-fbe-file-close-runtime.ps1 -FbeExe out/Release/FBE.exe -Kind fb2 -Container zip
+      - name: Require targeted checks
+        if: always()
+        shell: pwsh
+        run: |
+          $results = @('${{ steps.contract.outcome }}','${{ steps.edits.outcome }}','${{ steps.stage3c.outcome }}','${{ steps.newdoc.outcome }}','${{ steps.reload.outcome }}','${{ steps.recovery.outcome }}','${{ steps.formats.outcome }}')
+          New-Item -ItemType Directory -Force out/tests/rc3-noop-fix | Out-Null
+          $results | Set-Content out/tests/rc3-noop-fix/step-outcomes.txt
+          if (@($results | Where-Object { $_ -ne 'success' }).Count) { throw 'Affected regression checks incomplete or failed.' }
+      - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: mshtml-dirty-range-probe
-          path: out/probe/**
+          name: rc3-noop-fix-targeted
+          path: |
+            out/tests/rc3-noop-fix/**
+            out/tests/rc3-noop-real-edits/**
+            out/tests/runtime-failure/**
           if-no-files-found: warn
           retention-days: 14
