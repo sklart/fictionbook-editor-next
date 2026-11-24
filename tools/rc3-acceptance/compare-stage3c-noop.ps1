@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$BaselineExe, [Parameter(Mandatory)][string]$CandidateExe, [int]$TimeoutSeconds = 90)
+param([Parameter(Mandatory)][string]$BaselineExe, [Parameter(Mandatory)][string]$CandidateExe, [int]$TimeoutSeconds = 90, [switch]$ProbeHeadTransition)
 $ErrorActionPreference='Stop'
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Comparison requires a disposable GitHub-hosted runner.' }
 $repoRoot=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -18,6 +18,7 @@ function Run(){var rows=[];try{
  rows.push("after_save="+(ext.IsDocumentModified()?1:0));
  if(!saved)throw new Error("checkpoint save failed");
  var path=ext.GetDocumentFilePath(),beforeXml=ext.ReadTextFile(path);
+ @@HEAD@@
  apiRunCmd(@@NOOP@@);
  rows.push("after_noop="+(ext.IsDocumentModified()?1:0));
  var savedAfter=ext.SaveCurrentDocument();rows.push("noop_save_succeeded="+(savedAfter?1:0));
@@ -30,7 +31,21 @@ function Run(){var rows=[];try{
 }
 function stage3cResult(){return result3c;}
 '@
-$script=$script.Replace('@@NOOP@@',($noop | ConvertTo-Json -Compress)).Replace('@@TRACE@@',($trace | ConvertTo-Json -Compress))
+$headProbe=''
+if($ProbeHeadTransition){
+$headProbe=@'
+ var previous=document.getElementById("userCmd"),node=document.createElement("script");
+ if(!previous||!previous.parentNode)throw new Error("missing userCmd");
+ node.id="userCmd";node.language="JavaScript";node.type="text/javascript";
+ rows.push("head_before="+(ext.IsDocumentModified()?1:0));
+ previous.parentNode.replaceChild(node,previous);
+ rows.push("head_after="+(ext.IsDocumentModified()?1:0));
+ var headSaved=ext.SaveCurrentDocument();rows.push("head_save="+(headSaved?1:0));
+ rows.push("head_saved_clean="+(ext.IsDocumentModified()?0:1));
+ rows.push("head_xml_equal="+(headSaved&&beforeXml===ext.ReadTextFile(path)?1:0));
+'@
+}
+$script=$script.Replace('@@HEAD@@',$headProbe).Replace('@@NOOP@@',($noop | ConvertTo-Json -Compress)).Replace('@@TRACE@@',($trace | ConvertTo-Json -Compress))
 $fixture='<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>API3C</book-title><date value="2025-01-02">02 January 2025</date><lang>en</lang></title-info><document-info><author><first-name>T</first-name><last-name>T</last-name></author><program-used>FictionBook Editor fixture</program-used><date value="2025-01-02">02 January 2025</date><id>api3c</id><version>1</version></document-info></description><body><section><p>ordinary paragraph</p></section></body></FictionBook>'
 $names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_SCRIPT_API_ROOT','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_TRACE')
 $old=@{};foreach($name in $names){$old[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
@@ -57,6 +72,7 @@ try {
             $destination=Join-Path $evidence $label;New-Item -ItemType Directory -Force -Path $destination | Out-Null
             foreach($path in @($report,$trace,$scriptPath,$fixturePath)) { if(Test-Path -LiteralPath $path -PathType Leaf){Copy-Item -LiteralPath $path -Destination (Join-Path $destination (Split-Path -Leaf $path)) -Force} }
             if($exit -eq 0 -or $reportText -notmatch 'COMPARE_STOP' -or $traceText -notmatch '(?m)^save_succeeded=1\r?$' -or $traceText -notmatch '(?m)^after_save=0\r?$' -or $traceText -notmatch '(?m)^after_noop=([01])\r?$' -or $traceText -notmatch '(?m)^noop_save_succeeded=1\r?$' -or $traceText -notmatch '(?m)^after_noop_save=0\r?$' -or $traceText -notmatch '(?m)^noop_xml_equal=1\r?$' -or $traceText -notmatch '(?m)^script_result=COMPARE_STOP\r?$') { throw "Comparison did not reach its deliberate stop for ${label}: $reportText $traceText" }
+            if($ProbeHeadTransition -and ($traceText -notmatch '(?m)^head_before=0\r?$' -or $traceText -notmatch '(?m)^head_after=[01]\r?$' -or $traceText -notmatch '(?m)^head_save=1\r?$' -or $traceText -notmatch '(?m)^head_saved_clean=1\r?$' -or $traceText -notmatch '(?m)^head_xml_equal=1\r?$')) { throw "Head transition diagnostic incomplete for ${label}: $traceText" }
             $dirty=[regex]::Match($traceText,'(?m)^after_noop=([01])\r?$').Groups[1].Value -eq '1'
             $savedDocument=[Xml.XmlDocument]::new();$savedDocument.XmlResolver=$null;$savedDocument.PreserveWhitespace=$false;$savedDocument.Load($fixturePath)
             $canonicalBytes=[Text.Encoding]::UTF8.GetBytes($savedDocument.DocumentElement.OuterXml)
@@ -67,7 +83,7 @@ try {
     }
 } finally {foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$old[$name],'Process')}}
 if($results.Count -ne 2 -or $results[0].scriptSha256 -cne $results[1].scriptSha256 -or $results[0].fixtureInputSha256 -cne $results[1].fixtureInputSha256) { throw 'Comparison did not use identical scripts and input documents.' }
-$summary=@{scope='partial comparison, not release gate';results=@($results);sameNoOpDirty=($results[0].noOpDirty -eq $results[1].noOpDirty);sameCheckpointXml=($results[0].fixtureCanonicalSha256 -ceq $results[1].fixtureCanonicalSha256)}
+$summary=@{scope='partial comparison, not release gate';headTransitionProbed=[bool]$ProbeHeadTransition;results=@($results);sameNoOpDirty=($results[0].noOpDirty -eq $results[1].noOpDirty);sameCheckpointXml=($results[0].fixtureCanonicalSha256 -ceq $results[1].fixtureCanonicalSha256)}
 $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $evidence 'summary.json') -Encoding utf8
 $results | Format-List | Out-String | Write-Host
 if(-not $summary.sameCheckpointXml) { throw 'Saved checkpoint documents differ; the no-op comparison is incomplete.' }
