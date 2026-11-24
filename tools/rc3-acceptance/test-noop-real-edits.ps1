@@ -24,6 +24,7 @@ try {
             $fixture = Join-Path $iso.Root 'fixture.fb2'
             $xml = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><nickname>Tester</nickname></author><book-title>Original title</book-title><lang>en</lang></title-info><document-info><author><nickname>Tester</nickname></author><date value="2026-01-01">2026-01-01</date><id>rc3-noop-real-edits</id><version>1.0</version></document-info></description><body><section><p>Original body</p><p><a l:href="#payload.bin">binary reference</a></p></section></body><binary id="payload.bin" content-type="application/octet-stream">AAECA/7/</binary></FictionBook>'
             [IO.File]::WriteAllText($fixture, $xml, [Text.UTF8Encoding]::new($false))
+            [IO.File]::WriteAllBytes((Join-Path $iso.Root 'original.bin'), [byte[]](0,1,2,3,254,255))
             [IO.File]::WriteAllBytes((Join-Path $iso.Root 'first.bin'), [byte[]](1,3,5,7))
             [IO.File]::WriteAllBytes((Join-Path $iso.Root 'second.bin'), [byte[]](9,8,7,6,5))
             [IO.File]::WriteAllText((Join-Path $iso.Root 'noop.js'), 'function Run(){}', [Text.UTF8Encoding]::new($false))
@@ -84,8 +85,8 @@ function CompatResult(){return result;}
             }
             $recoveryScript = 'var e=window.external;' + $lookup + $edit + "`r`nfunction Run(){if(!e.SaveCurrentDocument())throw new Error('recovery checkpoint save');if(e.IsDocumentModified())throw new Error('recovery checkpoint dirty');edit(1);if(!e.IsDocumentModified())throw new Error('recovery edit clean');} function CompatResult(){try{return value()===" + ($expectedFirst | ConvertTo-Json -Compress) + '?"PASS":"FAIL recovery value";}catch(e){return "FAIL "+String(e.message||e);}}'
             [IO.File]::WriteAllText((Join-Path $iso.Root 'recovery.js'), $recoveryScript, [Text.UTF8Encoding]::new($false))
-            $binaryFirst = if ($scenario -eq 'binary') { ' id="payload.bin" expected="first.bin"' } else { '' }
-            $binarySecond = if ($scenario -eq 'binary') { ' id="payload.bin" expected="second.bin"' } else { '' }
+            $binaryFirst = if ($scenario -eq 'binary') { ' id="payload.bin" expected="first.bin"' } else { ' id="payload.bin" expected="original.bin"' }
+            $binarySecond = if ($scenario -eq 'binary') { ' id="payload.bin" expected="second.bin"' } else { ' id="payload.bin" expected="original.bin"' }
             $suite = '<suite><step name="edit" script="edit.js"' + $binarySecond + '/><step name="theme-dirty" command="theme-dirty"/><step name="undo" command="undo" script="undo.js"' + $binaryFirst + '/><step name="redo" command="redo" script="redo.js" save="saved.fb2"' + $binarySecond + '/><step name="close" command="close"/><step name="reopen" command="open" open="saved.fb2" script="reopen.js"' + $binarySecond + '/><step name="recovery-edit" script="recovery.js"' + $binaryFirst + '/><step name="recovery" command="recovery"/></suite>'
             [IO.File]::WriteAllText((Join-Path $iso.Root 'suite.xml'), $suite, [Text.UTF8Encoding]::new($false))
             $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='binary-scripting-compatibility'; $env:FBE_NEXT_SCRIPT_API_ROOT=$iso.Root
@@ -115,7 +116,9 @@ function CompatResult(){return result;}
             $binary=$doc.SelectSingleNode('/f:FictionBook/f:binary[@id="payload.bin"]',$ns)
             if($scenario -in 'body','body-replacement' -and $body -cne 'Second body'){throw 'Saved Body mismatch.'}
             if($scenario -eq 'description' -and $title -cne 'Second title'){throw 'Saved Description mismatch.'}
-            if($scenario -eq 'binary' -and (-not $binary -or [Convert]::ToBase64String([Convert]::FromBase64String($binary.InnerText)) -cne 'CQgHBgU=')){throw 'Saved binary bytes mismatch.'}
+            $savedPayload = if($scenario -eq 'binary') { 'CQgHBgU=' } else { 'AAECA/7/' }
+            if(-not $binary -or $binary.GetAttribute('content-type') -cne 'application/octet-stream' -or
+                [Convert]::ToBase64String([Convert]::FromBase64String($binary.InnerText)) -cne $savedPayload){throw 'Saved binary mismatch.'}
             $link=$doc.SelectSingleNode('/f:FictionBook/f:body/f:section/f:p/f:a[@l:href="#payload.bin"]',$ns)
             if(-not $link){throw 'Saved binary reference missing.'}
             $recovery=[Xml.XmlDocument]::new(); $recovery.XmlResolver=$null; $recovery.Load((Join-Path $iso.Root 'recovery.fb2'))
@@ -125,7 +128,9 @@ function CompatResult(){return result;}
             $recoveryBinary=$recovery.SelectSingleNode('/f:FictionBook/f:binary[@id="payload.bin"]',$recoveryNs)
             if($scenario -in 'body','body-replacement' -and $recoveryBody -cne 'First body'){throw 'Recovery Body mismatch.'}
             if($scenario -eq 'description' -and $recoveryTitle -cne 'First title'){throw 'Recovery Description mismatch.'}
-            if($scenario -eq 'binary' -and (-not $recoveryBinary -or [Convert]::ToBase64String([Convert]::FromBase64String($recoveryBinary.InnerText)) -cne 'AQMFBw==')){throw 'Recovery binary bytes mismatch.'}
+            $recoveryPayload = if($scenario -eq 'binary') { 'AQMFBw==' } else { 'AAECA/7/' }
+            if(-not $recoveryBinary -or $recoveryBinary.GetAttribute('content-type') -cne 'application/octet-stream' -or
+                [Convert]::ToBase64String([Convert]::FromBase64String($recoveryBinary.InnerText)) -cne $recoveryPayload){throw 'Recovery binary mismatch.'}
             if(-not $recovery.SelectSingleNode('/f:FictionBook/f:body/f:section/f:p/f:a[@l:href="#payload.bin"]',$recoveryNs)){throw 'Recovery binary reference missing.'}
             $hashes=@{saved=(Get-FileHash -Algorithm SHA256 $saved).Hash;recovery=(Get-FileHash -Algorithm SHA256 (Join-Path $iso.Root 'recovery.fb2')).Hash}
             $hashes | ConvertTo-Json | Set-Content (Join-Path $scenarioEvidence 'content-hashes.json') -Encoding utf8

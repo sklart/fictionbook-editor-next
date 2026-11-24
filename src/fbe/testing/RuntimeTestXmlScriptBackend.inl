@@ -31,7 +31,15 @@ __declspec(noinline) LRESULT CMainFrame::RunXmlScriptBackendRuntime(CAtlFile& ou
 		CStringA historyDetails;
 		try {
 			MSHTML::IHTMLDocument2Ptr dom(m_doc->m_body.Document());
-			CheckError(dom->parentWindow->execScript(L"window.external.BeginUndoUnit(document,'manual before Apply');var prior=document.body.createTextRange();prior.moveToElementText(document.getElementById('xml-prior'));prior.collapse(false);prior.select();prior.pasteHTML(' MANUAL');window.external.EndUndoUnit(document);", L"JScript"));
+			// A collapsed range at the end of a paragraph can land between
+			// paragraphs. Make the preceding native edit inside its text.
+			CheckError(dom->parentWindow->execScript(
+				L"var p=document.getElementById('xml-prior'),prior=document.body.createTextRange();"
+				L"prior.moveToElementText(p);"
+				L"if(!prior.findText('XML_API_AFTER',0,0))throw new Error('missing history fixture text');"
+				L"window.external.BeginUndoUnit(document,'manual before Apply');"
+				L"try{prior.select();prior.text='XML_API_AFTER MANUAL';}finally{window.external.EndUndoUnit(document);}",
+				L"JScript"));
 			CString manual; const bool manualCaptured = GetInternalXmlScriptSourceText(manual) && manual.Find(L"MANUAL") >= 0;
 			CString first(manual); first.Replace(L"XML_API_AFTER", L"XML_APPLY_ONE");
 			CString second(first); second.Replace(L"XML_APPLY_ONE", L"XML_APPLY_TWO");

@@ -66,8 +66,14 @@ try {
             }
             $results.Add([pscustomobject]@{case=$scenario.name;status='PASS';processExitCode=$code;expectedInvariantFailure=$scenario.failure})
             $passed=$true
+        } catch {
+            $results.Add([pscustomobject]@{case=$scenario.name;status='FAIL';details=$_.Exception.Message})
+            Write-Warning "$($scenario.name) failed: $($_.Exception.Message)"
         } finally { Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed }
     }
-    @{status='PASS';cases=$results;scope='native no-op acceptance and rejection of real mutations'} | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $evidence 'summary.json') -Encoding utf8
+    $failures = @($results | Where-Object status -eq 'FAIL')
+    $status = if ($failures.Count) { 'FAIL' } else { 'PASS' }
+    @{status=$status;cases=$results;scope='native no-op acceptance and rejection of real mutations'} | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $evidence 'summary.json') -Encoding utf8
+    if ($failures.Count) { throw "Description no-op policy failed: $($failures.case -join ', ')" }
     Write-Host "Description no-op policy: $($results.Count)/$($cases.Count) PASS; strict default and actual mutation failures preserved."
 } finally { foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$old[$name],'Process')} }
