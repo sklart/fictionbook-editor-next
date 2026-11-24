@@ -83,6 +83,10 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' && matrix.variant == 'Release' }}
         shell: pwsh
         run: ./tools/tests/test-fbe-body-theme-runtime.ps1 -FbeExe out/Release/FBE.exe
+      - name: Verify long InputBox prompt after document startup
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && matrix.variant == 'Release' }}
+        shell: pwsh
+        run: ./tools/tests/test-fbe-inputbox-layout-runtime.ps1 -FbeExe out/Release/FBE.exe
       - name: Run affected ASan cases with process monitoring
         if: ${{ !cancelled() && steps.build.outcome == 'success' && matrix.variant == 'Address' }}
         shell: pwsh

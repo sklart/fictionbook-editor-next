@@ -30,7 +30,6 @@ public static class InputBoxProbeWindows {
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr hwnd, StringBuilder text, int size);
   [DllImport("user32.dll")] public static extern IntPtr GetDlgItem(IntPtr hwnd, int id);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hwnd);
-  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hwnd, int command);
   [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hwnd, uint message, IntPtr wp, IntPtr lp);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hwnd, out Rect rect);
   [DllImport("user32.dll")] public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
@@ -53,6 +52,9 @@ public static class InputBoxProbeWindows {
   }
   public static string Class(IntPtr hwnd) {
     var name=new StringBuilder(128); GetClassName(hwnd,name,name.Capacity); return name.ToString();
+  }
+  public static string Title(IntPtr hwnd) {
+    var title=new StringBuilder(1024); GetWindowText(hwnd,title,title.Capacity); return title.ToString();
   }
   public static string[] List(int processId) {
     var result=new System.Collections.Generic.List<string>();
@@ -99,18 +101,27 @@ try {
         '  <Script uid="' + $uid + '" path="probe.js" fingerprint="0000000000000000" />' + "`r`n" +
         '</Scripts>' + "`r`n"
     [IO.File]::WriteAllText((Join-Path $settingsDirectory 'ScriptRegistry.xml'), $registry, [Text.Encoding]::Unicode)
-    $fixture = (Resolve-Path (Join-Path $PSScriptRoot 'fb2-validate-valid-smoke.fb2')).Path
+    $fixture = Join-Path $isolation.Root 'probe.fb2'
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'fb2-validate-valid-smoke.fb2') -Destination $fixture
     $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('--portable', ('"' + $fixture + '"')) -PassThru
     $frame = [IntPtr]::Zero
-    for ($i=0; $i -lt 80 -and $frame -eq [IntPtr]::Zero; ++$i) {
-        Start-Sleep -Milliseconds 100
-        if ($process.HasExited) { throw 'FBE exited before opening a document.' }
+    # WM_CREATE pumps messages while MSHTML and the script menu initialize.
+    # OnIdle sets the fixture title once the editor can accept its command.
+    $startup = [Diagnostics.Stopwatch]::StartNew()
+    $fixtureName = [IO.Path]::GetFileName($fixture)
+    do {
+        if ($process.HasExited) { throw "FBE exited before opening $fixtureName (exit $($process.ExitCode))." }
         $frame = [InputBoxProbeWindows]::Find($process.Id, $false)
+        if ($frame -ne [IntPtr]::Zero -and [InputBoxProbeWindows]::Title($frame).Contains($fixtureName)) { break }
+        if ($startup.Elapsed.TotalSeconds -ge 90) {
+            [InputBoxProbeWindows]::List($process.Id)
+            throw "FBE did not finish opening $fixtureName."
+        }
+        Start-Sleep -Milliseconds 100
+    } while ($true)
+    if (-not [InputBoxProbeWindows]::PostMessage($frame, 0x0111, [IntPtr]9001, [IntPtr]::Zero)) {
+        throw 'Cannot post the InputBox probe script command.'
     }
-    if ($frame -eq [IntPtr]::Zero) { throw 'FBE frame missing.' }
-    [void][InputBoxProbeWindows]::ShowWindow($frame, 5)
-    Start-Sleep -Seconds 3
-    [void][InputBoxProbeWindows]::PostMessage($frame, 0x0111, [IntPtr]9001, [IntPtr]::Zero)
     $dialog = [IntPtr]::Zero
     for ($i=0; $i -lt 80 -and $dialog -eq [IntPtr]::Zero; ++$i) {
         Start-Sleep -Milliseconds 100
