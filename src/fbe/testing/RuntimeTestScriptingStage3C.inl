@@ -154,7 +154,34 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
             if(::InterlockedCompareExchange(&opened,0,0)) {try{invoke(L"stage3cBusy");failure=S_OK;}catch(const _com_error& error){failure=error.Error();}}
             ::SetEvent(release);holder.join();CheckError(failure);
             details="isolated OLE formats and real busy access PASS; user clipboard unchanged";
-        } else for(int index=0;index<8;++index) {
+        } else {
+          // XML alone does not capture live form values, and dirty is already
+          // true in the known no-op failure. Inspect each component separately.
+          auto liveState=[&]() {
+            MSHTML::IHTMLDocument3Ptr document(m_doc->m_body.Document());
+            MSHTML::IHTMLElementPtr body(document->getElementById(L"fbw_body"));
+            MSHTML::IHTMLElementPtr description(document->getElementById(L"fbw_desc"));
+            if(!body||!description) CheckError(E_FAIL);
+            CString state;
+            auto append=[&](const _bstr_t& value) {
+                CString length; length.Format(L"%u:",value.length()); state+=length;
+                state.Append(static_cast<LPCWSTR>(value),static_cast<int>(value.length()));
+            };
+            append(_bstr_t(body->outerHTML)); append(_bstr_t(description->innerHTML));
+            MSHTML::IHTMLElementCollectionPtr controls(MSHTML::IHTMLElement2Ptr(description)->getElementsByTagName(L"*"));
+            if(!controls) CheckError(E_FAIL);
+            for(long i=0;i<controls->length;++i) {
+                IDispatchPtr element(controls->item(_variant_t(i),_variant_t()));
+                MSHTML::IHTMLInputElementPtr input(element);
+                if(input) { append(_bstr_t(input->value)); append(_bstr_t(input->checked?L"1":L"0")); continue; }
+                MSHTML::IHTMLTextAreaElementPtr area(element);
+                if(area) { append(_bstr_t(area->value)); continue; }
+                MSHTML::IHTMLSelectElementPtr select(element);
+                if(select) append(_bstr_t(select->value));
+            }
+            return state;
+          };
+          for(int index=0;index<8;++index) {
             const auto revisionBeforeTheme=m_doc->m_body.GetVersionNumber(); const bool dirtyBeforeTheme=DocChanged();
             if(index==2) ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
             if(index==3) ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
@@ -165,6 +192,10 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
             if(!beforeDocument){details="cannot snapshot document before dialog";CheckError(E_FAIL);}
             const CString beforeXml(static_cast<LPCWSTR>(beforeDocument->xml));
             const bool beforeDirty=DocChanged(); const auto beforeUndo=history(false),beforeRedo=history(true);
+            const CString beforeLive=liveState();
+            FB::Doc::RecoveryBinarySnapshot beforeBinaries;
+            if(!m_doc->CaptureRecoveryBinaries(beforeBinaries)){details="cannot snapshot binaries before dialog";CheckError(E_FAIL);}
+            const auto beforeSavepoints=m_doc->CaptureUndoSavepoints();
             struct Driver { DWORD thread; HWND owner,dialog=nullptr,button=nullptr; bool owned=false; } driver={uiThread,m_hWnd};
             std::thread input([&]() {
                 for(int retry=0;retry<400&&!driver.button;++retry) {
@@ -193,12 +224,23 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
             const CString afterXml(static_cast<LPCWSTR>(afterDocument->xml));
             const bool afterDirty=DocChanged(), xmlSame=beforeXml==afterXml;
             const bool undoSame=beforeUndo==history(false),redoSame=beforeRedo==history(true);
-            CStringA isolation;isolation.Format("dialog=%d isolation xml=%d dirty=%d,%d undo=%d redo=%d\r\n",index,xmlSame?1:0,beforeDirty?1:0,afterDirty?1:0,undoSame?1:0,redoSame?1:0);
+            const bool liveSame=beforeLive==liveState();
+            FB::Doc::RecoveryBinarySnapshot afterBinaries;
+            const bool binarySame=m_doc->CaptureRecoveryBinaries(afterBinaries)&&FB::Doc::SameRecoveryBinaries(beforeBinaries,afterBinaries);
+            const auto afterSavepoints=m_doc->CaptureUndoSavepoints();
+            const bool savepointsSame=beforeSavepoints.savedVersion==afterSavepoints.savedVersion&&
+                beforeSavepoints.recoveryVersion==afterSavepoints.recoveryVersion&&
+                beforeSavepoints.savedHtml==afterSavepoints.savedHtml&&beforeSavepoints.recoveryHtml==afterSavepoints.recoveryHtml&&
+                beforeSavepoints.hasSaved==afterSavepoints.hasSaved&&beforeSavepoints.hasRecovery==afterSavepoints.hasRecovery&&
+                beforeSavepoints.reconcile==afterSavepoints.reconcile&&beforeSavepoints.clean==afterSavepoints.clean&&
+                beforeSavepoints.recoveryClean==afterSavepoints.recoveryClean;
+            CStringA isolation;isolation.Format("dialog=%d isolation xml=%d live=%d binary=%d savepoints=%d dirty=%d,%d undo=%d redo=%d\r\n",index,xmlSame?1:0,liveSame?1:0,binarySame?1:0,savepointsSame?1:0,beforeDirty?1:0,afterDirty?1:0,undoSame?1:0,redoSame?1:0);
             DWORD isolationBytes=0;output.Write(isolation,isolation.GetLength(),&isolationBytes);output.Flush();
-            if(!xmlSame||beforeDirty!=afterDirty||!undoSame||!redoSame){details="dialog changed document, save state, Undo or Redo";CheckError(E_FAIL);}
+            if(!xmlSame||!liveSame||!binarySame||!savepointsSame||beforeDirty!=afterDirty||!undoSame||!redoSame){details="dialog changed document, save state, Undo or Redo";CheckError(E_FAIL);}
             CStringA transition; transition.Format("dialog=%d revision=%ld,%ld,%ld dirty=%d,%d,%d\r\n",index,revisionBeforeTheme,revisionBeforeDialog,m_doc->m_body.GetVersionNumber(),dirtyBeforeTheme?1:0,dirtyBeforeDialog?1:0,DocChanged()?1:0); DWORD transitionBytes=0; output.Write(transition,transition.GetLength(),&transitionBytes); output.Flush();
             if(!driver.owned||(::IsWindow(priorFocus)&&::GetFocus()!=priorFocus)) { details="dialog owner/focus"; CheckError(E_FAIL); }
             CStringA row; row.Format("dialog=%d PASS\r\n",index); DWORD written=0; output.Write(row,row.GetLength(),&written); output.Flush();
+          }
         }
         const bool dirtyAfter=DocChanged();
         const CString xmlAfter(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
