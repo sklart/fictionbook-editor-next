@@ -3,52 +3,47 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
-  stage3c-observation:
+  top-level-diagnostic:
     runs-on: windows-2022
-    timeout-minutes: 120
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: 8c9e8878a9b564c1dd91ad5f08ff434ef0221430
-          submodules: recursive
+          ref: e505905c1a986e891766e16731ae053f64e2f423
           fetch-depth: 1
           persist-credentials: false
-      - name: Verify candidate
+      - name: Verify diagnostic source
         shell: pwsh
         run: |
           if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Disposable runner required.' }
-          if ((git rev-parse HEAD) -cne '8c9e8878a9b564c1dd91ad5f08ff434ef0221430' -or $LASTEXITCODE -ne 0) { throw 'Unexpected candidate.' }
-          if (@(git status --porcelain=v1).Count -or $LASTEXITCODE -ne 0) { throw 'Candidate is not clean.' }
-          $modules = @(git submodule status --recursive)
-          if ($LASTEXITCODE -ne 0 -or -not $modules.Count -or @($modules | Where-Object { $_ -match '^[-+U]' }).Count) { throw 'Submodule mismatch.' }
-          $dirty = @(git submodule foreach --quiet --recursive 'git status --porcelain=v1')
-          if ($LASTEXITCODE -ne 0 -or $dirty.Count) { throw 'Submodule is not clean.' }
-      - name: Test diagnostic parser
-        shell: pwsh
-        run: ./tools/rc3-acceptance/test-stage3c-isolation-mocked.ps1
-      - name: Build Release with strict warnings
+          if ((git rev-parse HEAD) -cne 'e505905c1a986e891766e16731ae053f64e2f423' -or $LASTEXITCODE -ne 0) { throw 'Unexpected source.' }
+          if (@(git status --porcelain=v1).Count -or $LASTEXITCODE -ne 0) { throw 'Diagnostic source is not clean.' }
+      - name: Download previously verified diagnostic package
+        uses: actions/download-artifact@v8
+        with:
+          name: rc3-package-diagnostic-evidence
+          run-id: 45316418525
+          github-token: ${{ github.token }}
+          path: out/package-evidence
+      - name: Check package and run top-level edit scenarios
         shell: pwsh
         run: |
-          ./tools/build/Initialize-CiUtf8.ps1
-          ./tools/build/build.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143 -SkipUpx -WarningsAsErrors -StrictFirstPartyWarnings -SkipVersionSync -BatchOutputDirectory out/target-batches
-          if (-not $? -or $LASTEXITCODE -ne 0) { throw 'Build failed.' }
-      - name: Reconcile verified MIDL output
-        shell: pwsh
-        run: ./tools/rc3-acceptance/ReconcileMidl.ps1 -RepositoryRoot . -EvidenceDirectory out/tests/rc3-stage3c-observation -ExpectedSource '8c9e8878a9b564c1dd91ad5f08ff434ef0221430'
-      - name: Observe dialogs and no-op with two history states
-        shell: pwsh
-        env:
-          FBE_CI_ISOLATED_PROFILE: '1'
-        run: ./tools/rc3-acceptance/test-stage3c-isolation.ps1 -FbeExe out/Release/FBE.exe
-      - name: Upload observations
+          $zip = 'out/package-evidence/out/artifacts/FictionBookEditorNext-3.0.11-win32-portable.zip'
+          $expected = '5E020A21B1E86223A230996399D82849FDE797EF2B03A70E89B9EBF4A5369995'
+          if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -cne $expected) { throw 'Diagnostic package hash mismatch.' }
+          Expand-Archive -LiteralPath $zip -DestinationPath out/package-under-test
+          'Package production SHA cee66fb6c22dfbcee12acb5ee9a35c3183947372; partial diagnostic; not a release gate.' | Set-Content out/package-under-test-scope.txt
+          ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/package-under-test/FBE.exe
+      - name: Upload diagnostic evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: stage3c-observation
+          name: rc3-top-level-diagnostic
           path: |
-            out/tests/rc3-stage3c-observation/**
-            out/tests/rc3-stage3c-isolation/**
+            out/package-under-test-scope.txt
+            out/tests/rc3-noop-real-edits/**
             out/tests/runtime-failure/**
           if-no-files-found: warn
           retention-days: 14
