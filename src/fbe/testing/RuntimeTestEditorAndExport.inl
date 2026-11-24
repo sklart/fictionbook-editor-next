@@ -3152,26 +3152,44 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		::GetClientRect(m_hWndStatusBar, &classicStatusRect); ::GetClientRect(m_CmdToolbar, &classicToolbarRect);
 		const COLORREF classicStatus = classicPixel(m_hWndStatusBar, 2, classicStatusRect.bottom / 2);
 		const COLORREF classicToolbar = classicPixel(m_CmdToolbar, 5, classicToolbarRect.bottom - 3);
-		auto classicSurface = [&](HWND window) {
+		CStringA surfaceDetails;
+		auto classicSurface = [&](HWND window, const char* phase) {
 			std::vector<COLORREF> pixels; RECT rect = {};
 			::RedrawWindow(window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
-			if(!::GetClientRect(window, &rect) || rect.right <= 0 || rect.bottom <= 0) return pixels;
-			HDC dc = ::GetDC(window); if(!dc) return pixels;
+			if(!::GetClientRect(window, &rect) || rect.right <= 0 || rect.bottom <= 0) {
+				surfaceDetails.AppendFormat("classic_capture_%s\tinvalid-client:%ld,%ld,%ld,%ld\r\n", phase, rect.left, rect.top, rect.right, rect.bottom);
+				return pixels;
+			}
+			HDC dc = ::GetDC(window);
+			if(!dc) { surfaceDetails.AppendFormat("classic_capture_%s\tno-dc\r\n", phase); return pixels; }
 			pixels.reserve(static_cast<size_t>(rect.right) * static_cast<size_t>(rect.bottom) + 2);
 			pixels.push_back(static_cast<COLORREF>(rect.right)); pixels.push_back(static_cast<COLORREF>(rect.bottom));
-			bool valid = true;
+			bool valid = true; int invalidX = -1, invalidY = -1; BOOL invalidVisible = FALSE;
+			RECT clip = {}; const int clipType = ::GetClipBox(dc, &clip);
 			for(int y = 0; y < rect.bottom && samplingAlive; ++y) {
 				for(int x = 0; x < rect.right; ++x) {
-					const COLORREF pixel = ::GetPixel(dc, x, y); pixels.push_back(pixel); valid = valid && pixel != CLR_INVALID;
+					const COLORREF pixel = ::GetPixel(dc, x, y); pixels.push_back(pixel);
+					if(pixel == CLR_INVALID && valid) { invalidX = x; invalidY = y; invalidVisible = ::PtVisible(dc, x, y); valid = false; }
 				}
 				if((y & 7) == 7) pumpSamplingMessages();
 			}
-			::ReleaseDC(window, dc); if(!valid || !samplingAlive) pixels.clear(); return pixels;
+			::ReleaseDC(window, dc);
+			if(!valid) {
+				POINT screen = {invalidX, invalidY}; ::ClientToScreen(window, &screen);
+				const HWND top = ::WindowFromPoint(screen); DWORD topPid = 0;
+				if(top) ::GetWindowThreadProcessId(top, &topPid);
+				wchar_t topClass[128] = {}; if(top) ::GetClassNameW(top, topClass, _countof(topClass));
+				surfaceDetails.AppendFormat("classic_capture_%s\tinvalid=%d,%d screen=%ld,%ld point_visible=%d clip_type=%d clip=%ld,%ld,%ld,%ld own_window=%d top_class=%ls top_pid=%lu editor_pid=%lu visible=%d iconic=%d hung=%d\r\n", phase,
+					invalidX, invalidY, screen.x, screen.y, invalidVisible ? 1 : 0, clipType, clip.left, clip.top, clip.right, clip.bottom,
+					top == window ? 1 : 0, topClass, topPid, ::GetCurrentProcessId(), ::IsWindowVisible(window) ? 1 : 0,
+					::IsIconic(m_hWnd) ? 1 : 0, ::IsHungAppWindow(m_hWnd) ? 1 : 0);
+			}
+			if(!valid || !samplingAlive) pixels.clear(); return pixels;
 		};
-		themeStage("classic-toolbar-pixels",0); const auto classicToolbarImage = classicSurface(m_CmdToolbar);
-		themeStage("classic-status-pixels",0); const auto classicStatusImage = classicSurface(m_hWndStatusBar);
+		themeStage("classic-toolbar-pixels",0); const auto classicToolbarImage = classicSurface(m_CmdToolbar, "toolbar_before");
+		themeStage("classic-status-pixels",0); const auto classicStatusImage = classicSurface(m_hWndStatusBar, "status_before");
 		const bool classicScreenshot = captureMain(L"\\main-classic.bmp");
-		bool surfacePixels = classicScreenshot; CStringA surfaceDetails;
+		bool surfacePixels = classicScreenshot;
 		surfaceDetails.AppendFormat("screenshot_classic\t%d\r\n", classicScreenshot ? 1 : 0);
 		auto sampleStatus = [&](const char* name, bool applied) {
 			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
@@ -3422,8 +3440,8 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 		const COLORREF restoredStatus = classicPixel(m_hWndStatusBar, 2, classicStatusRect.bottom / 2);
 		const COLORREF restoredToolbar = classicPixel(m_CmdToolbar, 5, classicToolbarRect.bottom - 3);
-		const auto restoredToolbarImage = classicSurface(m_CmdToolbar);
-		const auto restoredStatusImage = classicSurface(m_hWndStatusBar);
+		const auto restoredToolbarImage = classicSurface(m_CmdToolbar, "toolbar_after");
+		const auto restoredStatusImage = classicSurface(m_hWndStatusBar, "status_after");
 		auto compareClassic = [&](const char* name, const std::vector<COLORREF>& before, const std::vector<COLORREF>& after) {
 			size_t different = 0, first = 0;
 			const size_t common = min(before.size(), after.size());
