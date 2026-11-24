@@ -110,6 +110,28 @@ __declspec(noinline) LRESULT CMainFrame::RunBinaryScriptingCompatibilityRuntime(
             else if (command == L"open") { saveBeforeLifecycle(); require(LoadFile(root + L"\\" + attr(L"open")) == OK, "open lifecycle"); }
             else if (command == L"new") { saveBeforeLifecycle(); BOOL handled = FALSE; OnFileNew(0, 0, nullptr, handled); }
             else if (command == L"close") { saveBeforeLifecycle(); BOOL handled = FALSE; OnFileClose(0, 0, nullptr, handled); }
+            else if (command == L"theme-dirty") {
+                require(m_doc && DocChanged(), "theme requires an unsaved real edit");
+                const GUID identity=m_doc->ClipboardIdentity();
+                const auto before=m_doc->CreateDOMForAnalysis();
+                require(!!before, "theme snapshot before");
+                const CString xmlBefore(static_cast<LPCWSTR>(before->xml));
+                FB::Doc::RecoveryBinarySnapshot binariesBefore, binariesAfter;
+                require(m_doc->CaptureRecoveryBinaries(binariesBefore), "theme binaries before");
+                ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+                ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+                require(m_doc && FB::Doc::BinaryOwner(identity)==m_doc && DocChanged(), "theme hid an unsaved edit");
+                const auto after=m_doc->CreateDOMForAnalysis();
+                require(after && xmlBefore==CString(static_cast<LPCWSTR>(after->xml)) &&
+                    m_doc->CaptureRecoveryBinaries(binariesAfter) && FB::Doc::SameRecoveryBinaries(binariesBefore,binariesAfter),
+                    "theme changed document or binaries");
+            }
+            else if (command == L"recovery") {
+                require(m_doc && DocChanged(), "recovery requires an unsaved real edit");
+                require(SaveRecoveryNow(true), "recovery snapshot write");
+                require(::CopyFileW(m_recovery.SnapshotPath(), root + L"\\recovery.fb2", FALSE) != FALSE, "copy recovery snapshot");
+                require(DocChanged(), "recovery must not clear dirty");
+            }
             else if (command == L"visual-source") { ShowView(SOURCE); require(IsSourceActive(), "source view"); ShowView(BODY); require(!IsSourceActive(), "visual view"); }
             else if (command == L"source-mutate") {
                 ShowView(SOURCE); std::string source = FbeScripts::SourceBytes(m_source);

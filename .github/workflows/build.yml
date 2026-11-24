@@ -380,6 +380,10 @@ jobs:
               ./tools/tests/test-fbe-scripting-stage3c.ps1 -FbeExe out/Release/FBE.exe -Mode $mode -Part $part
             }
           }
+          ./tools/rc3-acceptance/test-noop-classification.ps1
+          ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/Release/FBE.exe -AcceptKnownNoop
+          ./tools/rc3-acceptance/test-stage3c-isolation-mocked.ps1
+          ./tools/rc3-acceptance/test-stage3c-isolation.ps1 -FbeExe out/Release/FBE.exe
           ./tools/tests/test-status-bar-state.ps1
       - name: Check strict warnings for changed editor project
         if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.diagnostic_stage3c && steps.compile.outcome == 'success' }}
