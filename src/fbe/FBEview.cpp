@@ -4403,7 +4403,7 @@ void  CFBEView::OnDocumentComplete(IDispatch *pDisp,VARIANT *vtUrl) {
   m_complete=true;
 }
 
-bool CFBEView::Init()
+bool CFBEView::Init(bool normalizeDom)
 {
 	m_pendingHtmlPaste.reset();
 	m_activeHtmlPaste.reset();
@@ -4537,15 +4537,20 @@ bool CFBEView::Init()
     StartupTrace::Error(L"webbrowser", L"WB275", L"body does not expose required interfaces");
     return false;
   }
-  StartupTrace::Event(L"webbrowser", L"WB280", L"FixupParagraphs");
-	FbeVisualDom::FixupParagraphs(body2);
-  if (m_normalize)
+  // Undo/Redo has already restored the recorded, normalized DOM. Rebind its
+  // services and events without replacing nodes retained by inverse units.
+  if (normalizeDom)
   {
-    StartupTrace::Event(L"webbrowser", L"WB290", L"Normalize");
-    Normalize(bodyNode);
+    StartupTrace::Event(L"webbrowser", L"WB280", L"FixupParagraphs");
+    FbeVisualDom::FixupParagraphs(body2);
+    if (m_normalize)
+    {
+      StartupTrace::Event(L"webbrowser", L"WB290", L"Normalize");
+      Normalize(bodyNode);
+    }
   }
 
-  if (!m_normalize) {
+  if (normalizeDom && !m_normalize) {
     MSHTML::IHTMLElementCollectionPtr all(document->all);
     MSHTML::IHTMLInputElementPtr ii(all->item(L"diID"));
     if ((bool)ii && ii->value.length()==0) {

@@ -98,7 +98,8 @@ struct XmlVisualState
 			}
 		}
 		document->m_binaryStore.Invalidate();
-		if (!document->m_body.Init()) CheckError(E_FAIL);
+		// Re-normalizing here can detach nodes still owned by native Redo units.
+		if (!document->m_body.Init(false)) CheckError(E_FAIL);
 		document->RestoreUndoSavepoints(savepoints);
 	}
 };

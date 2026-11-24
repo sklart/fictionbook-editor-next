@@ -563,7 +563,7 @@ public:
   long              NavigationStatus() const { return m_navigation_status; }
 
   bool			    Loaded() { bool cmp=m_complete; m_complete=false; return cmp; }
-  bool			    Init();
+  bool			    Init(bool normalizeDom = true);
 
 	long			    GetVersionNumber() { return m_mkc ? m_mkc->GetVersionNumber() : -1; }
 	const CString& LastSearchError() const { return m_last_search_error; }

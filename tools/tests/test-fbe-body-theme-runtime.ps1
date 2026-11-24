@@ -8,6 +8,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'body-theme'
 $passed = $false
+$report = Join-Path $isolation.Root 'body-theme.tsv'
 try {
     $seed = New-IsolatedFbeSettingsSeed -Isolation $isolation
     $languageId = if($Locale -eq 'ru-RU') { 1049 } else { 1033 }
@@ -15,7 +16,6 @@ try {
     $settingsXml = [IO.File]::ReadAllText($seed).Replace('</Settings>', "<IntefaceLangID>$languageId</IntefaceLangID></Settings>")
     [IO.File]::WriteAllText($seed, $settingsXml, [Text.UTF8Encoding]::new($false))
     $fixture = Join-Path $isolation.Root 'body-theme.fb2'
-    $report = Join-Path $isolation.Root 'body-theme.tsv'
     $paragraphs = (1..100 | ForEach-Object {
         if($_ -eq 2) { '<p><strong>Theme target</strong> paragraph 2.</p>' }
         elseif($_ -eq 3) { '<p><a l:href="#target"><emphasis>Theme target</emphasis> paragraph 3.</a></p>' }
@@ -93,5 +93,24 @@ try {
     $passed = $true
     Write-Host 'BODY themes, document invariants, toolbar Open, Save, search, modes and Undo/Redo passed.'
 } finally {
+    if(-not $passed) {
+        # The isolation collector retains .txt, but not the historical
+        # .appearance suffix. Keep that name for existing consumers and add
+        # a collectible copy before the disposable runtime is removed.
+        try {
+            if(Test-Path -LiteralPath "$report.appearance" -PathType Leaf) {
+                Copy-Item -LiteralPath "$report.appearance" -Destination "$report.appearance.txt" -ErrorAction Stop
+            }
+        } catch { Write-Warning "Cannot preserve BODY appearance diagnostics: $_" -WarningAction Continue }
+        foreach($diagnostic in @("$report.diagnostics.txt", "$report.appearance", $report)) {
+            try {
+                if(Test-Path -LiteralPath $diagnostic -PathType Leaf) {
+                    $details = [IO.File]::ReadAllText($diagnostic)
+                    if($details.Length -gt 12000) { $details = $details.Substring(0, 12000) + "`n[truncated; see runtime artifact]" }
+                    Write-Host "BODY theme diagnostics ($([IO.Path]::GetFileName($diagnostic))):`n$details"
+                }
+            } catch { Write-Warning "Cannot read BODY theme diagnostics: $_" -WarningAction Continue }
+        }
+    }
     Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed
 }

@@ -1,0 +1,111 @@
+name: RC3 release repair
+
+on:
+  push:
+    branches: [codex/3.0.11-release-repair]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rc3-release-repair-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  affected:
+    name: Affected checks (${{ matrix.variant }})
+    runs-on: windows-2022
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [Release, Address]
+    env:
+      FBE_RUNTIME_FAILURE_ARTIFACTS: ${{ github.workspace }}\out\tests\runtime-failure
+    steps:
+      - name: Require disposable Windows runner
+        shell: pwsh
+        run: |
+          if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'A disposable GitHub-hosted runner is required.' }
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Build strict Release from the tested commit
+        id: build
+        shell: pwsh
+        env:
+          REPAIR_VARIANT: ${{ matrix.variant }}
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          New-Item -ItemType Directory -Force out/tests/rc3-repair | Out-Null
+          $status = @(git status --porcelain=v1)
+          if ($LASTEXITCODE -ne 0 -or $status.Count) { throw 'Source must be clean before building.' }
+          $arguments = @{
+            Configuration = 'Release'; Platform = 'Win32'; PlatformToolset = 'v143'
+            SkipUpx = $true; SkipVersionSync = $true
+            WarningsAsErrors = $true; StrictFirstPartyWarnings = $true
+          }
+          if ($env:REPAIR_VARIANT -eq 'Address') { $arguments.Sanitizer = 'Address' }
+          else { $arguments.BatchOutputDirectory = 'out/target-batches' }
+          ./tools/build/build.ps1 @arguments *> out/tests/rc3-repair/build.log
+          if (-not $? -or $LASTEXITCODE -ne 0) { throw 'Build failed; see build.log.' }
+          ./tools/rc3-acceptance/ReconcileMidl.ps1 -RepositoryRoot . -EvidenceDirectory out/tests/rc3-repair -ExpectedSource $env:GITHUB_SHA
+          $remaining = @(git status --porcelain=v1 --untracked-files=no)
+          if ($LASTEXITCODE -ne 0 -or $remaining.Count) { throw 'Tracked sources or submodules changed during build.' }
+          $output = if ($env:REPAIR_VARIANT -eq 'Address') { 'out/asan/Release' } else { 'out/Release' }
+          @{
+            source = (git rev-parse HEAD).Trim(); workflow = $env:GITHUB_SHA
+            variant = $env:REPAIR_VARIANT; executableSha256 = (Get-FileHash "$output/FBE.exe" -Algorithm SHA256).Hash
+          } | ConvertTo-Json | Set-Content out/tests/rc3-repair/build-identity.json -Encoding utf8
+      - name: Verify XML Undo and Redo with linked binary
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && matrix.variant == 'Release' }}
+        shell: pwsh
+        run: |
+          ./tools/tests/test-fbe-xml-script-backend-contract.ps1
+          ./tools/tests/test-fbe-xml-script-backend-runtime.ps1 -FbeExe out/Release/FBE.exe
+      - name: Verify real edits, Save, Reopen and Recovery after script loading
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && matrix.variant == 'Release' }}
+        shell: pwsh
+        run: |
+          ./tools/rc3-acceptance/test-noop-classification.ps1
+          ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/Release/FBE.exe -AcceptKnownNoop
+      - name: Verify Description with the explicit known script-load exception
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && matrix.variant == 'Release' }}
+        shell: pwsh
+        run: |
+          ./tools/rc3-acceptance/test-description-noop-policy.ps1 -FbeExe out/Release/FBE.exe
+          ./tools/tests/test-description-layout-runtime.ps1 -FbeExe out/Release/FBE.exe -TimeoutSeconds 90 -AcceptKnownNoop
+      - name: Verify BODY theme and appearance history
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && matrix.variant == 'Release' }}
+        shell: pwsh
+        run: ./tools/tests/test-fbe-body-theme-runtime.ps1 -FbeExe out/Release/FBE.exe
+      - name: Run affected ASan cases with process monitoring
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && matrix.variant == 'Address' }}
+        shell: pwsh
+        run: |
+          ./tools/tests/run-sanitizers.ps1 -Sanitizer Address -Contour Full -Id release.fbe-xml-script-backend-runtime,release.fbe-body-theme-runtime,release.description-layout-runtime
+      - name: Upload evidence even if an affected check fails
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rc3-repair-${{ matrix.variant }}-${{ github.sha }}
+          path: |
+            out/tests/rc3-repair/**
+            out/tests/rc3-noop-real-edits/**
+            out/tests/description-layout/**
+            out/tests/description-noop-policy/**
+            out/tests/binary-store/xml-undo/**
+            out/tests/runtime-failure/**
+            out/tests/asan/**
+            out/asan/Release/fbe-sanitizer.json
+            out/build-provenance/**
+            out/asan/build-provenance/**
+          if-no-files-found: error
+          retention-days: 14
+      - name: Report scope
+        if: always()
+        shell: pwsh
+        run: |
+          'This run covers the release repairs only. It does not replace full release validation or authorize publication.' >> $env:GITHUB_STEP_SUMMARY

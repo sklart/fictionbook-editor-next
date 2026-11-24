@@ -2830,10 +2830,24 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 	}
 	if (IsFbeTestScenario(L"body-theme-runtime"))
 	{
+		CStringA report("phase\tforeground\tbackground\ttable_dark\tno_important\tstate_ok\tconfigured_fg\tconfigured_bg\ttheme_dark\thigh_contrast\tsame_html\tsame_dirty\tsame_selection\tsame_scroll\tsame_undo\r\n");
+		const CString diagnosticPath = CString(AU::_ARGS.source_memory_benchmark_path) + L".diagnostics.txt";
+		CStringA diagnostics;
+		auto record = [&](const char* phase, const char* details) {
+			diagnostics.AppendFormat("phase=%s\n", phase);
+			diagnostics += details;
+			WritePortableStateTestText(diagnosticPath, diagnostics.GetString());
+		};
+		auto fail = [&](const char* phase) {
+			record(phase, "result=FAIL\n");
+			DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
+			output.Close(); ::PostQuitMessage(1);
+		};
+		record("document-interfaces", "");
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		MSHTML::IHTMLElementPtr body(document ? document->body : NULL);
 		MSHTML::IHTMLElement2Ptr scrollable(body);
-		if(!document || !body || !scrollable) { output.Close(); ::PostQuitMessage(1); return 0; }
+		if(!document || !body || !scrollable) { fail("document-interfaces"); return 0; }
 		_Settings.SetEditorBackgroundKind(L"none");
 		_Settings.SetColorFG(CLR_DEFAULT); _Settings.SetColorBG(CLR_DEFAULT);
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
@@ -2861,7 +2875,6 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		const bool baselineDirty = m_doc->DocChanged();
 		OLECMD baselineCommands[] = { { IDM_UNDO, 0 }, { IDM_REDO, 0 } };
 		m_doc->m_body.QueryStatus(baselineCommands, _countof(baselineCommands));
-		CStringA report("phase\tforeground\tbackground\ttable_dark\tno_important\tstate_ok\tconfigured_fg\tconfigured_bg\ttheme_dark\thigh_contrast\tsame_html\tsame_dirty\tsame_selection\tsame_scroll\tsame_undo\r\n");
 		auto append = [&](const char* phase)
 		{
 			MSHTML::IHTMLElement2Ptr themedBody(body);
@@ -2898,6 +2911,7 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 				sameHtml ? 1 : 0, sameDirty ? 1 : 0, sameSelection ? 1 : 0, sameScroll ? 1 : 0, sameUndo ? 1 : 0);
 			report += row;
 		};
+		record("theme-invariants", "");
 		append("light-auto");
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId()); append("dark-auto");
@@ -2916,6 +2930,8 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		bool namedPalettesApplied = true;
 		auto applyNamed = [&](InterfacePalette palette, const char* phase) {
 			const bool applied = ThemeManager::SetNamedPalette(palette);
+			CStringA detail; detail.Format("applied=%d\n", applied);
+			record(phase, detail);
 			namedPalettesApplied = applied && namedPalettesApplied;
 			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 			append(phase);
@@ -2929,7 +2945,7 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		customPalette.present[THEME_COLOR_WINDOW] = true; customPalette.colors[THEME_COLOR_WINDOW] = RGB(236, 230, 218);
 		namedPalettesApplied = ThemeManager::SetCustomPalette(customPalette) && namedPalettesApplied;
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId()); append("named-custom");
-		if(!namedPalettesApplied) { output.Close(); ::PostQuitMessage(1); return 0; }
+		if(!namedPalettesApplied) { fail("named-palettes"); return 0; }
 		// Test the combined icon-size and palette changes against real document
 		// edits, comparing the book DOM before and after both Undo and Redo.
 		struct AppearanceUndoCase { int mainSize; int scriptSize; InterfacePalette palette; bool custom; const char* name; };
@@ -2947,9 +2963,13 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 			if(test.palette == INTERFACE_PALETTE_GRAPHITE && !ThemeManager::IsDarkModeSupported()) {
 				appearanceReport.AppendFormat("%s=unsupported\n", test.name); continue;
 			}
+			record(test.name, "stage=edit\n");
 			const CString beforeEdit = bookHtml();
 			MSHTML::IHTMLTxtRangePtr range(bodyElement->createTextRange());
-			if(!range || !range->findText(L"Theme target", 0, 0)) { appearanceUndoOk = false; break; }
+			if(!range || !range->findText(L"Theme target", 0, 0)) {
+				appearanceReport.AppendFormat("%s=0\n", test.name);
+				record(test.name, "find-range=0\n"); appearanceUndoOk = false; break;
+			}
 			m_doc->m_body.BeginUndoUnit(L"Combined appearance edit");
 			try { range->text = L"Matrix target"; }
 			catch (...) { m_doc->m_body.EndUndoUnit(); throw; }
@@ -2969,15 +2989,22 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 			const bool resetOk = bookHtml() == beforeEdit;
 			const bool caseOk = paletteOk && mainOk && scriptsOk && preserved && undoOk && redoOk && resetOk;
 			appearanceReport.AppendFormat("%s=%d\n", test.name, caseOk); appearanceUndoOk = caseOk && appearanceUndoOk;
+			CStringA detail;
+			detail.Format("palette=%d main-icons=%d script-icons=%d preserved=%d undo=%d redo=%d reset=%d\n",
+				paletteOk, mainOk, scriptsOk, preserved, undoOk, redoOk, resetOk);
+			record(test.name, detail);
 		}
 		_Settings.SetMainToolbarIconSize(previousMainSize); _Settings.SetScriptIconSize(previousScriptSize);
-		appearanceUndoOk = RebuildCommandToolbarImages(UiMetrics::DpiForWindow(m_hWnd)) && ApplyScriptIconSize() && appearanceUndoOk;
+		const bool restoredIcons = RebuildCommandToolbarImages(UiMetrics::DpiForWindow(m_hWnd)) && ApplyScriptIconSize();
+		appearanceUndoOk = restoredIcons && appearanceUndoOk;
+		record("appearance-icons-restored", restoredIcons ? "restored=1\n" : "restored=0\n");
 		const CString appearanceReportPath = CString(AU::_ARGS.source_memory_benchmark_path) + L".appearance";
 		WritePortableStateTestText(appearanceReportPath, appearanceReport);
-		if(!appearanceUndoOk) { output.Close(); ::PostQuitMessage(1); return 0; }
+		if(!appearanceUndoOk) { fail("combined-appearance-undo"); return 0; }
 		// The undo stack must still operate on the document after a palette switch.
+		record("theme-edit", "");
 		MSHTML::IHTMLTxtRangePtr edit(bodyElement->createTextRange());
-		if(!edit || !edit->findText(L"Theme target", 0, 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
+		if(!edit || !edit->findText(L"Theme target", 0, 0)) { fail("theme-edit-range"); return 0; }
 		m_doc->m_body.BeginUndoUnit(L"Theme invariant edit");
 		try { edit->text = L"Edited target"; }
 		catch (...) { m_doc->m_body.EndUndoUnit(); throw; }
@@ -2991,7 +3018,10 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		const bool undoRestored = baselineHtml == CString(static_cast<LPCWSTR>(body->innerHTML));
 		m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, ID_EDIT_REDO, 0);
 		const bool redoRestored = editedBeforePalette == CString(static_cast<LPCWSTR>(body->innerHTML));
-		if(!restoredPalette || !editPreserved || !undoRestored || !redoRestored) { output.Close(); ::PostQuitMessage(1); return 0; }
+		CStringA editDetail;
+		editDetail.Format("palette=%d preserved=%d undo=%d redo=%d\n", restoredPalette, editPreserved, undoRestored, redoRestored);
+		record("theme-edit-undo", editDetail);
+		if(!restoredPalette || !editPreserved || !undoRestored || !redoRestored) { fail("theme-edit-undo"); return 0; }
 		// A later palette switch must not accidentally acknowledge a real edit.
 		const CString editedHtml(static_cast<LPCWSTR>(body->innerHTML));
 		const CString editedBook = bookHtml();
@@ -3001,8 +3031,9 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		if(!dirtyBeforeTheme || !m_doc->DocChanged() ||
 			editedHtml != CString(static_cast<LPCWSTR>(body->innerHTML)))
 		{
-			output.Close(); ::PostQuitMessage(1); return 0;
+			fail("theme-after-edit"); return 0;
 		}
+		record("toolbar-commands", "");
 		// Send mouse messages to the actual toolbar, not directly to the frame's command handler.
 		ShowWindow(SW_MAXIMIZE); UpdateLayout(); OnIdle();
 		auto clickToolbar = [&](UINT command) {
@@ -3093,7 +3124,9 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 			CString(static_cast<LPCWSTR>(m_doc->m_body.Document()->body->innerText)).Find(L"Opened second paragraph 1.") >= 0;
 		CStringA openDetail; openDetail.Format("open-clean=%d click=%d ready=%d submitted=%d opened=%d\n", cleanBeforeOpen, openClicked, openReady, openSubmitted, secondOpened); toolbarDetails += openDetail;
 		toolbarCommands = secondOpened && toolbarCommands;
-		if(!toolbarCommands) { DWORD detailWritten = 0; output.Write(toolbarDetails, static_cast<DWORD>(toolbarDetails.GetLength()), &detailWritten); output.Close(); ::PostQuitMessage(1); return 0; }
+		record("toolbar-commands", toolbarDetails);
+		if(!toolbarCommands) { record("toolbar-commands", "result=FAIL\n"); DWORD detailWritten = 0; output.Write(toolbarDetails, static_cast<DWORD>(toolbarDetails.GetLength()), &detailWritten); output.Close(); ::PostQuitMessage(1); return 0; }
+		record("complete", "result=PASS\n");
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}

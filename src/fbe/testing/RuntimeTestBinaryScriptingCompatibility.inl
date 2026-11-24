@@ -37,6 +37,33 @@ __declspec(noinline) LRESULT CMainFrame::RunBinaryScriptingCompatibilityRuntime(
         }
         return result;
     };
+    auto liveState = [&]() {
+        MSHTML::IHTMLDocument3Ptr document(m_doc->m_body.Document());
+        MSHTML::IHTMLElementPtr body(document->getElementById(L"fbw_body"));
+        MSHTML::IHTMLElementPtr description(document->getElementById(L"fbw_desc"));
+        require(body && description, "script dirty probe roots");
+        CString state;
+        auto append = [&](const _bstr_t& value) {
+            CString length; length.Format(L"%u:", value.length()); state += length;
+            state.Append(static_cast<LPCWSTR>(value), static_cast<int>(value.length()));
+        };
+        append(_bstr_t(body->outerHTML)); append(_bstr_t(description->outerHTML));
+        MSHTML::IHTMLElementCollectionPtr controls(MSHTML::IHTMLElement2Ptr(description)->getElementsByTagName(L"*"));
+        require(!!controls, "script dirty probe controls");
+        for (long index = 0; index < controls->length; ++index) {
+            IDispatchPtr element(controls->item(_variant_t(index), _variant_t()));
+            MSHTML::IHTMLInputElementPtr input(element);
+            if (input) { append(_bstr_t(input->value)); append(_bstr_t(input->checked ? L"1" : L"0")); continue; }
+            MSHTML::IHTMLTextAreaElementPtr area(element);
+            if (area) { append(_bstr_t(area->value)); continue; }
+            MSHTML::IHTMLSelectElementPtr select(element);
+            if (select) { append(_bstr_t(select->value)); continue; }
+            // A multi-select can change without changing select.value.
+            MSHTML::IHTMLOptionElementPtr option(element);
+            if (option) append(_bstr_t(option->selected ? L"1" : L"0"));
+        }
+        return state;
+    };
     auto snapshot = [&](const CString& label, const CString& id, const CString& expectedFile, bool absent) {
         require(m_doc != nullptr, "missing active document");
         CComPtr<IDispatch> external; CheckError(m_doc->m_body.Document()->parentWindow->get_external(&external));
@@ -162,19 +189,70 @@ __declspec(noinline) LRESULT CMainFrame::RunBinaryScriptingCompatibilityRuntime(
                     CStringA diagnostic; diagnostic.Format("head-load-versions=%ld,%ld,%ld\r\n", beforeReplace, afterReplace, afterSource);
                     DWORD bytes = 0; output.Write(diagnostic, diagnostic.GetLength(), &bytes); output.Flush();
                 }
-                const bool diagnoseDirty = attr(L"rawDirty") == L"unchanged";
+                const bool acceptKnownNoop = attr(L"rawDirty") == L"known-script-load";
+                const bool diagnoseDirty = acceptKnownNoop || attr(L"rawDirty") == L"unchanged";
+                const GUID identityBefore = m_doc->ClipboardIdentity();
                 const long versionBefore = diagnoseDirty ? m_doc->m_body.GetVersionNumber() : 0;
                 const bool formBefore = diagnoseDirty && m_doc->m_body.IsFormChanged();
+                const bool formCheckpointBefore = diagnoseDirty && m_doc->m_body.IsFormCP();
                 const auto historyBefore = diagnoseDirty ? history() : std::vector<CComPtr<IOleUndoUnit>>();
-                CString xmlBefore;
-                if(diagnoseDirty) xmlBefore = static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml);
+                CString xmlBefore, liveBefore;
+                FB::Doc::RecoveryBinarySnapshot binariesBefore;
+                FB::Doc::UndoSavepoints savepointsBefore = {};
+                if (diagnoseDirty) {
+                    const auto before = m_doc->CreateDOMForAnalysis();
+                    require(!!before, "script dirty probe XML before");
+                    xmlBefore = static_cast<LPCWSTR>(before->xml);
+                }
+                if (acceptKnownNoop) {
+                    require(!dirty && !formBefore && attr(L"probeHead") != L"true", "known script dirty probe requires a clean document");
+                    liveBefore = liveState();
+                    require(m_doc->CaptureRecoveryBinaries(binariesBefore), "script dirty probe binaries before");
+                    savepointsBefore = m_doc->CaptureUndoSavepoints();
+                    require(!DocChanged() && versionBefore == m_doc->m_body.GetVersionNumber() && historyBefore == history(),
+                        "script dirty probe changed its own baseline");
+                }
                 m_doc->RunScript(root + L"\\" + script);
+                if (diagnoseDirty) require(m_doc && FB::Doc::BinaryOwner(identityBefore) == m_doc, "script dirty probe document identity changed");
                 if (attr(L"corpus").IsEmpty()) {
                     CComVariant result; CheckError(m_doc->InvokeFunc(L"CompatResult", nullptr, 0, result, true));
                     if (result.vt != VT_BSTR || wcscmp(result.bstrVal, L"PASS")) { if (result.vt == VT_BSTR) details += ": " + CStringA(CW2A(result.bstrVal, CP_UTF8)); CheckError(E_FAIL); }
                 }
-                if (diagnoseDirty && dirty != DocChanged()) {
-                    const CString xmlAfter(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
+                if (acceptKnownNoop) {
+                    require(m_doc && FB::Doc::BinaryOwner(identityBefore) == m_doc, "script result changed document identity");
+                    const auto after = m_doc->CreateDOMForAnalysis();
+                    require(!!after, "script dirty probe XML after");
+                    const bool xmlSame = xmlBefore == CString(static_cast<LPCWSTR>(after->xml));
+                    const bool liveSame = liveBefore == liveState();
+                    FB::Doc::RecoveryBinarySnapshot binariesAfter;
+                    const bool binarySame = m_doc->CaptureRecoveryBinaries(binariesAfter) &&
+                        FB::Doc::SameRecoveryBinaries(binariesBefore, binariesAfter);
+                    const bool historySame = historyBefore == history();
+                    const auto savepointsAfter = m_doc->CaptureUndoSavepoints();
+                    const bool savepointsSame = savepointsBefore.savedVersion == savepointsAfter.savedVersion &&
+                        savepointsBefore.recoveryVersion == savepointsAfter.recoveryVersion &&
+                        savepointsBefore.savedHtml == savepointsAfter.savedHtml && savepointsBefore.recoveryHtml == savepointsAfter.recoveryHtml &&
+                        savepointsBefore.hasSaved == savepointsAfter.hasSaved && savepointsBefore.hasRecovery == savepointsAfter.hasRecovery &&
+                        savepointsBefore.reconcile == savepointsAfter.reconcile;
+                    const bool dirtyAfter = DocChanged();
+                    const bool formAfter = m_doc->m_body.IsFormChanged();
+                    const long versionAfter = m_doc->m_body.GetVersionNumber();
+                    const bool unchanged = xmlSame && liveSame && binarySame && historySame && savepointsSame && !formAfter &&
+                        formCheckpointBefore == m_doc->m_body.IsFormCP();
+                    const bool knownNoop = unchanged && !dirty && dirtyAfter && versionAfter > versionBefore;
+                    const bool cleanNoop = unchanged && !dirty && !dirtyAfter;
+                    CStringA observation;
+                    observation.Format("script-setup-observation before=%d after=%d version=%ld->%ld form=%d->%d xml=%d live=%d binary=%d history=%d savepoints=%d\r\n"
+                        "script-setup-raw-dirty=%s\r\nscript-setup-dirty=%s\r\n",
+                        dirty ? 1 : 0, dirtyAfter ? 1 : 0, versionBefore, versionAfter, formBefore ? 1 : 0, formAfter ? 1 : 0,
+                        xmlSame ? 1 : 0, liveSame ? 1 : 0, binarySame ? 1 : 0, historySame ? 1 : 0, savepointsSame ? 1 : 0,
+                        dirty == dirtyAfter ? "PASS" : "FAIL", knownNoop ? "KNOWN FAILURE" : cleanNoop ? "PASS" : "FAIL");
+                    DWORD written = 0; CheckError(output.Write(observation, static_cast<DWORD>(observation.GetLength()), &written)); output.Flush();
+                    require(knownNoop || cleanNoop, "script dirty probe changed content, form state, history or savepoints");
+                } else if (diagnoseDirty && dirty != DocChanged()) {
+                    const auto after = m_doc->CreateDOMForAnalysis();
+                    require(!!after, "script dirty probe XML after");
+                    const CString xmlAfter(static_cast<LPCWSTR>(after->xml));
                     details.Format("raw dirty changed: before=%d after=%d version=%ld->%ld form=%d->%d xml_equal=%d history_equal=%d",
                         dirty ? 1 : 0, DocChanged() ? 1 : 0, versionBefore, m_doc->m_body.GetVersionNumber(),
                         formBefore ? 1 : 0, m_doc->m_body.IsFormChanged() ? 1 : 0, xmlBefore == xmlAfter ? 1 : 0,

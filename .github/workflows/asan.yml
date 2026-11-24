@@ -123,5 +123,6 @@ jobs:
             out/tests/asan/**/case.json
             out/tests/asan/**/*.patch
             out/tests/asan/midl-reconciliation.json
+            out/tests/runtime-failure/
           if-no-files-found: error
           retention-days: 14

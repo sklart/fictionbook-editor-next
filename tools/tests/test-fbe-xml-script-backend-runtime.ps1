@@ -18,11 +18,13 @@ try {
     $null=New-IsolatedFbeSettingsSeed -Isolation $isolation
     $fixture = Join-Path $directory 'xml-script-backend.fb2'
     $report = Join-Path $directory 'xml-script-backend.txt'
+    # The link exercises normalization without permitting Undo/Redo to replace
+    # nodes retained by native history; keep it through the full history chain.
     @'
 <?xml version="1.0" encoding="utf-8"?>
-<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0">
-  <description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>XML API</book-title><lang>en</lang></title-info><document-info><id>xml-script-backend-test</id><version>1.0</version></document-info></description>
-  <body><section><p id="xml-prior">XML_API_BEFORE</p></section></body><binary id="runtime.bin" content-type="application/octet-stream">AQID</binary>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+  <description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>XML API</book-title><lang>en</lang></title-info><document-info><author><nickname>Tester</nickname></author><date value="2026-01-01">2026-01-01</date><id>xml-script-backend-test</id><version>1.0</version></document-info></description>
+  <body><section><p id="xml-prior">XML_API_BEFORE</p><p><a l:href="#runtime.bin">binary reference</a></p></section></body><binary id="runtime.bin" content-type="application/octet-stream">AQID</binary>
 </FictionBook>
 '@ | Set-Content -LiteralPath $fixture -Encoding utf8
     $savedMode, $savedScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
