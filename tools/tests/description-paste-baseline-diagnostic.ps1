@@ -12,6 +12,9 @@ using System.Text;
 public static class BaselineWindow {
     public delegate bool EnumProc(IntPtr window, IntPtr parameter);
     [DllImport("user32.dll")] public static extern bool EnumChildWindows(IntPtr parent, EnumProc callback, IntPtr data);
+    [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc callback, IntPtr data);
+    [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr window, StringBuilder text, int count);
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr window, StringBuilder text, int count);
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern uint RegisterWindowMessage(string text);
     [DllImport("user32.dll")] public static extern IntPtr SendMessageTimeout(IntPtr window, uint message, IntPtr wp, IntPtr lp, uint flags, uint timeout, out IntPtr result);
@@ -35,6 +38,23 @@ public static class BaselineWindow {
             return true;
         }, IntPtr.Zero);
         return found.ToArray();
+    }
+    public static string[] WindowTexts(uint pid) {
+        var texts = new List<string>();
+        EnumWindows((window, ignored) => {
+            uint owner; GetWindowThreadProcessId(window, out owner);
+            if (owner != pid) return true;
+            EnumProc collect = (child, unused) => {
+                var caption = new StringBuilder(2048);
+                GetWindowText(child, caption, caption.Capacity);
+                if (caption.Length > 0) texts.Add(caption.ToString());
+                return true;
+            };
+            collect(window, IntPtr.Zero);
+            EnumChildWindows(window, collect, IntPtr.Zero);
+            return true;
+        }, IntPtr.Zero);
+        return texts.ToArray();
     }
 }
 '@
@@ -103,11 +123,13 @@ try {
     [System.Windows.Forms.SendKeys]::SendWait('^v')
     Start-Sleep -Seconds 2
     Write-Host "Formatted clipboard title: $($field.value)"
+    Write-Host ("Windows after formatted paste: " + ([BaselineWindow]::WindowTexts([uint32]$process.Id) -join ' | '))
     [System.Windows.Forms.Clipboard]::SetText('Menu paste sample')
     $field.focus(); $field.select()
     [void][BaselineWindow]::PostMessage($process.MainWindowHandle, 0x111, [IntPtr]0xE125, [IntPtr]::Zero)
     Start-Sleep -Seconds 3
     Write-Host "Menu paste title: $($field.value)"
+    Write-Host ("Windows after menu paste: " + ([BaselineWindow]::WindowTexts([uint32]$process.Id) -join ' | '))
 } finally {
     if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
 }
