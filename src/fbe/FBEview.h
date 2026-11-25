@@ -417,6 +417,7 @@ protected:
   std::shared_ptr<DeferredHtmlPaste> m_activeHtmlPaste;
   UINT_PTR m_htmlPasteGeneration = 0;
   int m_htmlPasteCallbackDepth = 0;
+  int m_htmlPasteDrainDepth = 0;
   CMessageLoop* m_pasteIdleLoop = nullptr;
 	MSHTML::IHTMLDOMNodePtr m_pending_drop_normalization_scope;
 	CString m_drop_source_html, m_drop_target_html;
@@ -704,6 +705,7 @@ public:
 	LRESULT OnCut(WORD, WORD, HWND, BOOL&);
 	LRESULT OnCopy(WORD, WORD, HWND, BOOL&);
 	LRESULT OnPaste(WORD, WORD, HWND, BOOL&);
+	bool FlushPendingHtmlPasteForViewChange();
 	LRESULT OnBold(WORD, WORD, HWND, BOOL&) { return ExecCommand(IDM_BOLD); }
 	LRESULT OnItalic(WORD, WORD, HWND, BOOL&) { return ExecCommand(IDM_ITALIC); }
 	LRESULT OnStrik(WORD, WORD, HWND, BOOL&) { return ExecCommand(IDM_STRIKETHROUGH); }

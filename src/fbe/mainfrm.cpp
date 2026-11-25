@@ -2149,6 +2149,18 @@ BOOL CMainFrame::OnIdle()
 {
 	const bool profileIdle = StartupTrace::Enabled();
 	const ULONGLONG idleStarted = profileIdle ? ::GetTickCount64() : 0;
+	if (m_hasDeferredPasteView) {
+		if (!m_doc || !m_document_session.HasDocument() ||
+			!::IsEqualGUID(m_deferredPasteDocument, m_doc->ClipboardIdentity())) {
+			m_hasDeferredPasteView = false;
+		} else if (m_doc->m_body.FlushPendingHtmlPasteForViewChange()) {
+			const EditorView deferred = m_deferredPasteView;
+			m_hasDeferredPasteView = false;
+			if (m_doc && m_document_session.HasDocument() &&
+				::IsEqualGUID(m_deferredPasteDocument, m_doc->ClipboardIdentity()))
+				ShowView(deferred);
+		}
+	}
     if (m_doc && !m_document_session.HasDocument()) {
         if (m_ui_dirty != UiDirtyNone || m_need_title_update) PresentClosedDocument();
         m_ui_dirty = UiDirtyNone;
@@ -7542,6 +7554,19 @@ void CMainFrame::ShowView(EditorView vt)
 {
     if (!m_document_session.HasDocument()) return;
 	const EditorView previous = m_editor_view_state.Current();
+	if (previous == vt) m_hasDeferredPasteView = false;
+	if (previous != vt) {
+		const GUID document = m_doc->ClipboardIdentity();
+		if (!m_doc->m_body.FlushPendingHtmlPasteForViewChange()) {
+			m_hasDeferredPasteView = true;
+			m_deferredPasteView = vt;
+			m_deferredPasteDocument = document;
+			return;
+		}
+		if (!m_doc || !m_document_session.HasDocument() ||
+			!::IsEqualGUID(document, m_doc->ClipboardIdentity())) return;
+		m_hasDeferredPasteView = false;
+	}
 	StartupTrace::ScopedOperation operation(previous == vt ? StartupTrace::Operation::None : StartupTrace::Operation::ViewSwitch);
 	if(previous != vt) HideCaretMarker();
 	if (!m_editor_view_state.CtrlTabActive() && previous != vt)

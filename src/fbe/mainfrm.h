@@ -360,6 +360,9 @@ public:
 
   
 	EditorViewState m_editor_view_state;
+	bool m_hasDeferredPasteView = false;
+	EditorView m_deferredPasteView = EditorView::Body;
+	GUID m_deferredPasteDocument = GUID_NULL;
 	EditorViewController m_editor_view_controller;
 	EditorSelectionState m_editor_selection_state;
 	BodySourceSelectionCoordinator m_source_selection_coordinator;

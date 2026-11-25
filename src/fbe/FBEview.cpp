@@ -444,6 +444,11 @@ struct DeferredHtmlPaste {
                     ::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE",L"paste-post");
             }
         }
+        if (testMode[0] == L'1' && wcscmp(scenario, L"html-paste-runtime") == 0 &&
+            wcscmp(testCase, L"queue-description-reentrant") == 0) {
+            const HWND frame = ::GetAncestor(view, GA_ROOT);
+            if (frame) ::SendMessage(frame, WM_COMMAND, MAKEWPARAM(ID_VIEW_DESC, 0), 0);
+        }
         selection = view.Document()->selection->createRange();
         hasHtml = ::IsClipboardFormatAvailable(::RegisterClipboardFormat(L"HTML Format")) != FALSE;
         readableHtml = hasHtml && FbeClipboard::HtmlPasteSanitizer::ReadClipboardFragment(view, fragment);
@@ -5396,7 +5401,7 @@ BOOL CFBEView::OnIdle()
     // Posting may fail (for example, a full thread message queue). The WTL
     // idle handler is registered before the browser can emit paste events;
     // it can recover canceled events or replay requests after a reentrant post.
-    if (m_pendingHtmlPaste && !m_pendingHtmlPaste->posted && m_htmlPasteCallbackDepth == 0) {
+    if (m_pendingHtmlPaste && !m_pendingHtmlPaste->posted && m_htmlPasteCallbackDepth == 0 && m_htmlPasteDrainDepth == 0) {
         // A message consumed by a reentrant COM/clipboard pump still owns its
         // accepted requests. Replay them at idle if reposting was unavailable.
         if (!m_pendingHtmlPaste->requests.empty()) {
@@ -5408,22 +5413,37 @@ BOOL CFBEView::OnIdle()
             if (FAILED(result)) StartupTrace::HResult(L"clipboard", L"CP101", result, L"Canceled paste recovery");
         }
     }
-    if(m_htmlPasteCallbackDepth==0 && FAILED(m_htmlPasteCallbackFailure)) {
+    if(m_htmlPasteCallbackDepth==0 && m_htmlPasteDrainDepth==0 && FAILED(m_htmlPasteCallbackFailure)) {
         const HRESULT failure=m_htmlPasteCallbackFailure;m_htmlPasteCallbackFailure=S_OK;U::ReportError(failure);
     }
     return FALSE;
 }
 
+bool CFBEView::FlushPendingHtmlPasteForViewChange()
+{
+    if (m_htmlPasteDrainDepth != 0) return false;
+    if (!m_pendingHtmlPaste && !m_activeHtmlPaste) return true;
+    if (m_htmlPasteCallbackDepth != 0 || m_activeHtmlPaste) return false;
+    BOOL handled = FALSE;
+    OnDeferredHtmlPaste(0, m_pendingHtmlPaste->generation, 0, handled);
+    return !m_pendingHtmlPaste;
+}
+
 LRESULT CFBEView::OnDeferredHtmlPaste(UINT, WPARAM generation, LPARAM, BOOL&)
 {
     if (!m_pendingHtmlPaste || generation != m_pendingHtmlPaste->generation) return 0;
-    if (m_htmlPasteCallbackDepth > 0) {
+    if (m_htmlPasteCallbackDepth > 0 || m_htmlPasteDrainDepth > 0) {
         // Posted messages can be dispatched by STA calls made inside onpaste.
         // The native canceled event has not closed its Undo parent yet.
         m_pendingHtmlPaste->posted=false;
         return 0;
     }
     auto pending = std::move(m_pendingHtmlPaste);
+    struct DrainScope {
+        int& depth;
+        explicit DrainScope(int& value) : depth(value) { ++depth; }
+        ~DrainScope() { --depth; }
+    } draining(m_htmlPasteDrainDepth);
     try {
         CheckError(pending->Finish(m_ownerDocument));
         for (const auto& request : pending->requests) {
@@ -5432,7 +5452,8 @@ LRESULT CFBEView::OnDeferredHtmlPaste(UINT, WPARAM generation, LPARAM, BOOL&)
             if (!request->continueAtCaret && request->selection) request->selection->select();
             m_activeHtmlPaste = request;
             BOOL handled = FALSE;
-            OnPaste(0, ID_EDIT_PASTE, 0, handled);
+            try { OnPaste(0, ID_EDIT_PASTE, 0, handled); }
+            catch (...) { m_activeHtmlPaste.reset(); throw; }
             m_activeHtmlPaste.reset();
         }
     } catch (const _com_error& error) {

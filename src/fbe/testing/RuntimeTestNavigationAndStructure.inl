@@ -1177,10 +1177,15 @@ if (IsFbeTestScenario(L"issue72-normal-save") || IsFbeTestScenario(L"issue72-nor
                 const CString baselineHtml(static_cast<LPCWSTR>(editable->innerHTML)), baselineCaret(selectionState());
                 const bool baselineDirty = m_doc->DocChanged(), baselineRecovery = m_doc->DocRelChanged();
                 bool valid = !previousRedo.empty() && undoHistory() == previousUndo && (!cleanQueueFailure || (!baselineDirty && !baselineRecovery));
-                if (wcscmp(caseName, L"queue-description-focus") == 0) {
+                if (wcscmp(caseName, L"queue-description-focus") == 0 || wcscmp(caseName, L"queue-description-reentrant") == 0) {
                     setInput(1);
                     event();
-                    ShowView(DESC);
+                    if (wcscmp(caseName, L"queue-description-reentrant") == 0) {
+                        _Module.GetMessageLoop()->OnIdle(0);
+                        valid = valid && m_editor_view_state.Current() == DESC;
+                    } else {
+                        ShowView(DESC);
+                    }
                     MSHTML::IHTMLInputTextElementPtr titleField(document->all->item(L"tiTitle"));
                     if (!titleField) throw _com_error(E_FAIL);
                     const CString oldTitle(static_cast<LPCWSTR>(titleField->value));

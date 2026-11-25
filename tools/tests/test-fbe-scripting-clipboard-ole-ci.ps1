@@ -121,7 +121,7 @@ public static class FbePrivateClipboardStation {
             & (Join-Path $PSScriptRoot 'tools/tests/test-fbe-native-copy-paste-runtime.ps1') -FbeExe (Join-Path $PSScriptRoot 'runtime/FBE.exe') -Cases $cases *>&1 |
                 Out-File (Join-Path $evidence 'native-copy-paste.log') -Encoding utf8
             if($fullMatrix) {
-                & (Join-Path $PSScriptRoot 'tools/tests/test-fbe-html-paste-runtime.ps1') -FbeExe (Join-Path $PSScriptRoot 'runtime/FBE.exe') -Cases @('queue-reentrant','queue-reentrant-post-failure','queue-description-focus') *>&1 |
+                & (Join-Path $PSScriptRoot 'tools/tests/test-fbe-html-paste-runtime.ps1') -FbeExe (Join-Path $PSScriptRoot 'runtime/FBE.exe') -Cases @('queue-reentrant','queue-reentrant-post-failure','queue-description-focus','queue-description-reentrant') *>&1 |
                     Out-File (Join-Path $evidence 'reentrant-paste.log') -Encoding utf8
             }
             $nativeStatus='PASS'

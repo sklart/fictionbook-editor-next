@@ -2,7 +2,7 @@
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [ValidateRange(20, 120)][int]$TimeoutSeconds = 60,
-    [string[]]$Cases = @('word', 'title', 'plain', 'plain-single', 'plain-middle', 'internal', 'internal-dirty', 'internal-history', 'internal-history-middle', 'internal-end', 'internal-missing-link', 'internal-missing-image', 'legacy-unmarked', 'queue-reload', 'queue-reload-idle', 'queue-moved-selection', 'queue-capture-after-post', 'queue-capture-notice', 'queue-close-retry', 'queue-post-idle', 'queue-post-failure', 'queue-post-clean-failure', 'queue-failure-retry', 'queue-two', 'queue-three', 'queue-reentrant', 'queue-reentrant-post-failure', 'queue-plain-two', 'queue-description-focus'),
+    [string[]]$Cases = @('word', 'title', 'plain', 'plain-single', 'plain-middle', 'internal', 'internal-dirty', 'internal-history', 'internal-history-middle', 'internal-end', 'internal-missing-link', 'internal-missing-image', 'legacy-unmarked', 'queue-reload', 'queue-reload-idle', 'queue-moved-selection', 'queue-capture-after-post', 'queue-capture-notice', 'queue-close-retry', 'queue-post-idle', 'queue-post-failure', 'queue-post-clean-failure', 'queue-failure-retry', 'queue-two', 'queue-three', 'queue-reentrant', 'queue-reentrant-post-failure', 'queue-plain-two', 'queue-description-focus', 'queue-description-reentrant'),
     [switch]$KeepArtifacts,
     [switch]$RealPaste
 )
