@@ -10,12 +10,14 @@
 
 ## Каталог
 
-Подготовлен выпуск [3.0.10](3.0.10.md). Статус публикации и пакеты доступны на [странице v3.0.10](https://github.com/sklart/fictionbook-editor-next/releases/tag/v3.0.10); публикация зависит от успешного полного CI.
+Текущий стабильный выпуск — [3.0.11](3.0.11.md). Пакеты и описание доступны на [странице v3.0.11](https://github.com/sklart/fictionbook-editor-next/releases/tag/v3.0.11).
 
 Даты в таблице указаны **в UTC**, как `published_at` GitHub; для московского времени прибавляются три часа. Это особенно важно для поздних публикаций на границе суток.
 
 | Выпуск | Публикация UTC | Репозиторный документ | Опубликованное описание |
 | --- | --- | --- | --- |
+| 3.0.11 | 2026-11-25 | [3.0.11](3.0.11.md) | [v3.0.11](https://github.com/sklart/fictionbook-editor-next/releases/tag/v3.0.11) |
+| 3.0.10 | 2026-10-23 | [3.0.10](3.0.10.md) | [v3.0.10](https://github.com/sklart/fictionbook-editor-next/releases/tag/v3.0.10) |
 | 3.0.9 | 2026-10-19 | [3.0.9](3.0.9.md) | [v3.0.9](https://github.com/sklart/fictionbook-editor-next/releases/tag/v3.0.9) |
 | 3.0.8 RC2 | 2026-09-02 | [3.0.8 RC2](3.0.8-rc2.md) | [v3.0.8-rc2](https://github.com/sklart/fictionbook-editor-next/releases/tag/v3.0.8-rc2) |
 | 3.0.8 RC1 | 2026-08-25 | [3.0.8 RC1](3.0.8-rc.1.md) | [v3.0.8-rc.1](https://github.com/sklart/fictionbook-editor-next/releases/tag/v3.0.8-rc.1) |
