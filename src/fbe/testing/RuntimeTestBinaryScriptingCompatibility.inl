@@ -189,9 +189,9 @@ __declspec(noinline) LRESULT CMainFrame::RunBinaryScriptingCompatibilityRuntime(
                     CStringA diagnostic; diagnostic.Format("head-load-versions=%ld,%ld,%ld\r\n", beforeReplace, afterReplace, afterSource);
                     DWORD bytes = 0; output.Write(diagnostic, diagnostic.GetLength(), &bytes); output.Flush();
                 }
-                const bool acceptKnownNoop = attr(L"rawDirty") == L"known-script-load";
+                const bool cleanBaseline = attr(L"rawDirty") == L"clean-snapshot";
                 const CString state = attr(L"snapshot");
-                const bool compareState = !state.IsEmpty() || acceptKnownNoop;
+                const bool compareState = !state.IsEmpty() || cleanBaseline;
                 const bool diagnoseDirty = compareState || attr(L"rawDirty") == L"unchanged";
                 const GUID identityBefore = m_doc->ClipboardIdentity();
                 const long versionBefore = diagnoseDirty ? m_doc->m_body.GetVersionNumber() : 0;
@@ -207,7 +207,7 @@ __declspec(noinline) LRESULT CMainFrame::RunBinaryScriptingCompatibilityRuntime(
                     xmlBefore = static_cast<LPCWSTR>(before->xml);
                 }
                 if (compareState) {
-                    if (acceptKnownNoop) require(!dirty && !formBefore && attr(L"probeHead") != L"true", "known script dirty probe requires a clean document");
+                    if (cleanBaseline) require(!dirty && !formBefore && attr(L"probeHead") != L"true", "strict dirty probe requires a clean document");
                     if (state == L"clean") require(!dirty, "expected a clean document");
                     if (state == L"dirty") require(dirty && historyBefore.front(), "expected unsaved edit with Undo");
                     if (state == L"redo") require(historyBefore.size() >= 3 && historyBefore[historyBefore.size()-2], "expected a Redo branch");
@@ -257,16 +257,15 @@ __declspec(noinline) LRESULT CMainFrame::RunBinaryScriptingCompatibilityRuntime(
                     const long versionAfter = m_doc->m_body.GetVersionNumber();
                     const bool unchanged = xmlSame && liveSame && binarySame && historySame && savepointsSame && formBefore == formAfter &&
                         formCheckpointBefore == m_doc->m_body.IsFormCP();
-                    const bool knownNoop = acceptKnownNoop && unchanged && !dirty && dirtyAfter && versionAfter > versionBefore;
-                    const bool cleanNoop = unchanged && dirty == dirtyAfter && versionBefore == versionAfter;
+                    const bool sameState = unchanged && dirty == dirtyAfter && versionBefore == versionAfter;
                     CStringA observation;
                     observation.Format("script-setup-observation before=%d after=%d version=%ld->%ld form=%d->%d xml=%d live=%d binary=%d history=%d savepoints=%d\r\n"
                         "script-setup-raw-dirty=%s\r\nscript-setup-dirty=%s\r\n",
                         dirty ? 1 : 0, dirtyAfter ? 1 : 0, versionBefore, versionAfter, formBefore ? 1 : 0, formAfter ? 1 : 0,
                         xmlSame ? 1 : 0, liveSame ? 1 : 0, binarySame ? 1 : 0, historySame ? 1 : 0, savepointsSame ? 1 : 0,
-                        dirty == dirtyAfter ? "PASS" : "FAIL", knownNoop ? "KNOWN FAILURE" : cleanNoop ? "PASS" : "FAIL");
+                        dirty == dirtyAfter ? "PASS" : "FAIL", sameState ? "PASS" : "FAIL");
                     DWORD written = 0; CheckError(output.Write(observation, static_cast<DWORD>(observation.GetLength()), &written)); output.Flush();
-                    require(knownNoop || cleanNoop, "script dirty probe changed content, form state, history or savepoints");
+                    require(sameState, "script dirty probe changed content, form state, history or savepoints");
                 } else if (diagnoseDirty && dirty != DocChanged()) {
                     const auto after = m_doc->CreateDOMForAnalysis();
                     require(!!after, "script dirty probe XML after");

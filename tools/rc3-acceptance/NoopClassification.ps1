@@ -1,5 +1,5 @@
 function Get-Rc3NoopStatus {
-    param([object[]]$Results, [string[]]$ExpectedCases, [bool]$AcceptKnownNoop)
+    param([object[]]$Results, [string[]]$ExpectedCases)
     if (@($Results).Count -ne @($ExpectedCases).Count -or @($ExpectedCases).Count -eq 0) { return 'INCOMPLETE' }
     $seen = @{}
     foreach ($item in $Results) {
@@ -9,7 +9,6 @@ function Get-Rc3NoopStatus {
         $seen[[string]$item.case] = $true
     }
     if (@($Results | Where-Object { $_.noOpDirty }).Count) {
-        if ($AcceptKnownNoop) { return 'KNOWN FAILURE' }
         return 'FAIL'
     }
     return 'PASS'

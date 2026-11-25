@@ -8,18 +8,17 @@ New-Item -ItemType Directory -Force $evidence | Out-Null
 $names = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_SCRIPT_API_ROOT','FBE_NEXT_TEST_SETTINGS_DIRECTORY')
 $old = @{}; foreach($name in $names){$old[$name] = [Environment]::GetEnvironmentVariable($name,'Process')}
 $results = [Collections.Generic.List[object]]::new()
-$noopWasDirty = $null
 $cases = @(
-    @{name='accepted-noop';policy='known-script-load';script='';failure=''},
+    @{name='accepted-noop';policy='clean-snapshot';script='';failure=''},
     @{name='bundled-noop-matrix';policy='snapshot';script='';failure=''},
     @{name='strict-noop';policy='unchanged';script='';failure=''},
-    @{name='body-edit';policy='known-script-load';script='document.getElementById("fbw_body").getElementsByTagName("P")[0].innerText="Changed body";';failure='live=0'},
-    @{name='description-edit';policy='known-script-load';script='document.getElementById("tiTitle").value="Changed title";';failure='live=0'},
-    @{name='binary-edit';policy='known-script-load';script='e.ReplaceBinaryFromFile("payload.bin",@@BINARY@@,"application/octet-stream");';failure='binary=0'},
-    @{name='checkbox-live';policy='known-script-load';prepare='<input id="noopCheckbox" type="checkbox">';script='document.getElementById("noopCheckbox").checked=true;';failure='live=0'},
-    @{name='multiselect-live';policy='known-script-load';prepare='<select id="noopSelect" multiple><option value="first" selected>First</option><option value="second">Second</option></select>';script='var s=document.getElementById("noopSelect");if(s.value!=="first")throw new Error("multiselect fixture");s.options[1].selected=true;if(s.value!=="first")throw new Error("first selected option changed");';failure='live=0'},
-    @{name='checkpoint-save';policy='known-script-load';script='var p=document.getElementById("fbw_body").getElementsByTagName("P")[0],original=p.innerText;p.innerText=original+" changed";p.innerText=original;if(!e.SaveCurrentDocument())throw new Error("checkpoint save failed");';failure='savepoints=0'},
-    @{name='native-history';policy='known-script-load';script='var p=document.getElementById("fbw_body").getElementsByTagName("P")[0],s=p.innerText;e.BeginUndoUnit(document,"No-op policy history probe");try{p.innerText="Temporary edit";p.innerText=s;}finally{e.EndUndoUnit(document);}';failure='history=0'}
+    @{name='body-edit';policy='clean-snapshot';script='document.getElementById("fbw_body").getElementsByTagName("P")[0].innerText="Changed body";';failure='live=0'},
+    @{name='description-edit';policy='clean-snapshot';script='document.getElementById("tiTitle").value="Changed title";';failure='live=0'},
+    @{name='binary-edit';policy='clean-snapshot';script='e.ReplaceBinaryFromFile("payload.bin",@@BINARY@@,"application/octet-stream");';failure='binary=0'},
+    @{name='checkbox-live';policy='clean-snapshot';prepare='<input id="noopCheckbox" type="checkbox">';script='document.getElementById("noopCheckbox").checked=true;';failure='live=0'},
+    @{name='multiselect-live';policy='clean-snapshot';prepare='<select id="noopSelect" multiple><option value="first" selected>First</option><option value="second">Second</option></select>';script='var s=document.getElementById("noopSelect");if(s.value!=="first")throw new Error("multiselect fixture");s.options[1].selected=true;if(s.value!=="first")throw new Error("first selected option changed");';failure='live=0'},
+    @{name='checkpoint-save';policy='clean-snapshot';script='var p=document.getElementById("fbw_body").getElementsByTagName("P")[0],original=p.innerText;p.innerText=original+" changed";p.innerText=original;if(!e.SaveCurrentDocument())throw new Error("checkpoint save failed");';failure='savepoints=0'},
+    @{name='native-history';policy='clean-snapshot';script='var p=document.getElementById("fbw_body").getElementsByTagName("P")[0],s=p.innerText;e.BeginUndoUnit(document,"No-op policy history probe");try{p.innerText="Temporary edit";p.innerText=s;}finally{e.EndUndoUnit(document);}';failure='history=0'}
 )
 try {
     foreach($scenario in $cases) {
@@ -89,17 +88,12 @@ function CompatResult(){return window.noopResult;}
             if(Test-Path $report){Copy-Item $report (Join-Path $evidence ($scenario.name+'.txt')) -Force}
             if($scenario.name -eq 'accepted-noop') {
                 if($code -ne 0 -or $text -notmatch '(?m)^result=PASS\r?$' -or $text -notmatch '(?m)^completed=1\r?$'){throw "No-op was not accepted: $text"}
-                $noopWasDirty=$text -match '(?m)^script-setup-raw-dirty=FAIL\r?$'
-                $expected=if($noopWasDirty){'KNOWN FAILURE'}else{'PASS'}
-                if($text -notmatch ('(?m)^script-setup-dirty='+$expected+'\r?$')){throw "No-op classification missing: $text"}
+                if($text -notmatch '(?m)^script-setup-dirty=PASS\r?$'){throw "Snapshot changed: $text"}
             } elseif ($scenario.name -eq 'bundled-noop-matrix') {
                 if ($code -ne 0 -or $text -notmatch '(?m)^completed=11\r?$' -or
                     [regex]::Matches($text,'(?m)^script-setup-dirty=PASS\r?$').Count -ne 9) { throw "Bundled no-op matrix failed: $text" }
             } elseif($scenario.name -eq 'strict-noop') {
-                if($null -eq $noopWasDirty){throw 'Known-noop control did not run.'}
-                if($noopWasDirty) {
-                    if($code -ne 1 -or $text -notmatch 'raw dirty changed: before=0 after=1' -or $text -notmatch '(?m)^result=FAIL\r?$'){throw "Strict dirty regression was bypassed: $text"}
-                } elseif($code -ne 0 -or $text -notmatch '(?m)^result=PASS\r?$'){throw "Clean strict no-op failed: $text"}
+                if($code -ne 0 -or $text -notmatch '(?m)^result=PASS\r?$'){throw "Clean strict no-op failed: $text"}
             } else {
                 if($code -ne 1 -or $text -notmatch '(?m)^result=FAIL\r?$' -or $text -notmatch '(?m)^script-setup-dirty=FAIL\r?$' -or $text -notmatch [regex]::Escape($scenario.failure)) {
                     throw "Mutation was not rejected by its invariant ($($scenario.name)): $text"

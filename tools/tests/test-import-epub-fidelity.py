@@ -1042,12 +1042,12 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         root = self.convert('<h1>Chapter 1: Beggar<span hidden=""> | </span>'
                             '<div><a href="https://example.com/book">Kingdom’s Bloodline</a></div>'
                             'continued</h1><p>Text.</p>', navigation=False)
-        title = root.find('.//f:body//f:title/f:p', NS)
+        title = root.find('f:body/f:section/f:title/f:p', NS)
         self.assertIsNotNone(title)
         self.assertEqual(self.text(title), 'Chapter 1: Beggar Kingdom’s Bloodline continued')
         self.assertTrue(any(a.get(HREF) == 'https://example.com/book' for a in title.findall('.//f:a', NS)))
         root = self.convert('<h1>Before <div>Middle</div> after</h1><p>Text.</p>', navigation=False)
-        title = root.find('.//f:body//f:title/f:p', NS)
+        title = root.find('f:body/f:section/f:title/f:p', NS)
         self.assertEqual(self.text(title), 'Before Middle after')
 
     def test_empty_parent_and_heading_levels(self):

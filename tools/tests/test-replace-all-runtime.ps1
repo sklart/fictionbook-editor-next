@@ -13,7 +13,7 @@ $names = @('FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_REPLAC
 $old = @{}; foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name) }
 $passed = $false
 try {
-    New-IsolatedFbeSettingsSeed -Isolation $iso | Out-Null
+    New-IsolatedFbeSettingsSeed -Isolation $iso -StartupScriptsDirectory (Join-Path $iso.Root 'empty-scripts') | Out-Null
     $fixture = Join-Path $iso.DataPath 'input.fb2'
     $fb2 = @'
 <?xml version="1.0" encoding="utf-8"?>

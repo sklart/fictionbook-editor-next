@@ -61,11 +61,13 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
             DWORD written=0;output.Write(state,state.GetLength(),&written);output.Flush();
             if(preparedUndo.empty()||preparedRedo.empty()){details="dialog history fixture is empty";CheckError(E_FAIL);}
         }
+        const bool dirtyBeforeDialogs=DocChanged();
         const auto revision=m_doc->m_body.GetVersionNumber();
         const CString xml(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
         CStringA initialState; initialState.Format("setup-dirty=%d,%d,%d revision=%ld,%ld\r\n",dirty?1:0,dirtyAfterSetup?1:0,DocChanged()?1:0,revisionAfterSetup,revision); DWORD initialBytes=0; output.Write(initialState,initialState.GetLength(),&initialBytes); output.Flush();
-        const char* noopStatus=dirtyAfterSetup ? "script-setup-dirty=KNOWN FAILURE\r\n" : "script-setup-dirty=PASS\r\n";
+        const char* noopStatus=dirtyAfterSetup ? "script-setup-dirty=FAIL\r\n" : "script-setup-dirty=PASS\r\n";
         DWORD noopBytes=0; output.Write(noopStatus,static_cast<DWORD>(strlen(noopStatus)),&noopBytes); output.Flush();
+        if(dirtyAfterSetup) { details="script setup changed dirty state"; CheckError(E_FAIL); }
         const InterfaceTheme initialTheme=ThemeManager::GetSelectedTheme();
         struct RestoreTheme { InterfaceTheme value; ~RestoreTheme(){ThemeManager::SetSelectedTheme(value);} } restoreTheme={initialTheme};
         FbeScripts::ScriptExecutionScope context(script);
@@ -281,10 +283,10 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
         }
         const bool dirtyAfter=DocChanged();
         const CString xmlAfter(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml));
-        if(dirtyAfterSetup!=dirtyAfter||xml!=xmlAfter) {
+        if(dirtyBeforeDialogs!=dirtyAfter||xml!=xmlAfter) {
             int firstDifference=0; const int commonLength=(std::min)(xml.GetLength(),xmlAfter.GetLength());
             while(firstDifference<commonLength && xml[firstDifference]==xmlAfter[firstDifference]) ++firstDifference;
-            details.Format("dialog changed document: dirty=%d->%d xml_equal=%d xml_length=%d->%d first_difference=%d revision=%ld->%ld",dirtyAfterSetup?1:0,dirtyAfter?1:0,xml==xmlAfter?1:0,xml.GetLength(),xmlAfter.GetLength(),firstDifference,revision,m_doc->m_body.GetVersionNumber());
+            details.Format("dialog changed document: dirty=%d->%d xml_equal=%d xml_length=%d->%d first_difference=%d revision=%ld->%ld",dirtyBeforeDialogs?1:0,dirtyAfter?1:0,xml==xmlAfter?1:0,xml.GetLength(),xmlAfter.GetLength(),firstDifference,revision,m_doc->m_body.GetVersionNumber());
             CheckError(E_FAIL);
         }
         CStringA versions;versions.Format("revision-before=%ld revision-after=%ld\r\n",revision,m_doc->m_body.GetVersionNumber());

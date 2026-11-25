@@ -18,8 +18,7 @@ foreach($withHistory in @($false,$true)) {
     $setup=[regex]::Match($report,'setup-dirty=([01]),([01]),([01])')
     $setupDirtyStatus='INCOMPLETE'
     if($setup.Success -and $setup.Groups[1].Value -eq '0') {
-        if($setup.Groups[2].Value -eq '0' -and $setup.Groups[3].Value -eq '0' -and $report -match '(?m)^script-setup-dirty=PASS\r?$') { $setupDirtyStatus='PASS' }
-        elseif($setup.Groups[2].Value -eq '1' -and $setup.Groups[3].Value -eq '1' -and $report -match '(?m)^script-setup-dirty=KNOWN FAILURE\r?$') { $setupDirtyStatus='KNOWN FAILURE' }
+        if($setup.Groups[2].Value -eq '0' -and ($withHistory -or $setup.Groups[3].Value -eq '0') -and $report -match '(?m)^script-setup-dirty=PASS\r?$') { $setupDirtyStatus='PASS' }
         else { $setupDirtyStatus='FAIL' }
     }
     $pattern='(?m)^dialog=(\d+) isolation xml=([01]) live=([01]) binary=([01]) savepoints=([01]) dirty=([01]),([01]) undo=([01]) redo=([01])\r?$'
@@ -34,7 +33,7 @@ foreach($withHistory in @($false,$true)) {
     $history=[regex]::Match($report,'history-prepared undo=(\d+) redo=(\d+)')
     $historyVerified=-not $withHistory -or ($history.Success -and [int]$history.Groups[1].Value -gt 0 -and [int]$history.Groups[2].Value -gt 0)
     $isolation=if($rows.Count -ne 8 -or -not $historyVerified){'INCOMPLETE'}elseif($rowsValid){'PASS'}else{'FAIL'}
-    $scenarioStatus=if(-not $report){'INCOMPLETE'}elseif($isolation -eq 'FAIL' -or $setupDirtyStatus -eq 'FAIL' -or $invocationError){'FAIL'}elseif($setupDirtyStatus -in @('PASS','KNOWN FAILURE') -and $isolation -eq 'PASS' -and $report -match '(?m)^result=PASS\r?$'){'PASS'}else{'INCOMPLETE'}
+    $scenarioStatus=if(-not $report){'INCOMPLETE'}elseif($isolation -eq 'FAIL' -or $setupDirtyStatus -eq 'FAIL' -or $invocationError){'FAIL'}elseif($setupDirtyStatus -eq 'PASS' -and $isolation -eq 'PASS' -and $report -match '(?m)^result=PASS\r?$'){'PASS'}else{'INCOMPLETE'}
     $results.Add([pscustomobject]@{case=$label;setupDirtyStatus=$setupDirtyStatus;dialogIsolation=$isolation;historyVerified=$historyVerified;dialogRows=$rows.Count;scenarioStatus=$scenarioStatus;invocationError=$invocationError})
 }
 $summary=@{scope='dialog isolation; standalone no-op result is recorded separately';results=@($results)}

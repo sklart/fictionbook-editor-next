@@ -11,6 +11,7 @@ $ErrorActionPreference = 'Stop'
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "FBE.exe not found: $FbeExe" }
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $scratch = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'html-paste'
+$null = New-IsolatedFbeSettingsSeed -Isolation $scratch -StartupScriptsDirectory (Join-Path $scratch.Root 'empty-scripts')
 $directory = $scratch.Root
 $completed = $false
 $fixture = Join-Path $directory 'html-paste.fb2'

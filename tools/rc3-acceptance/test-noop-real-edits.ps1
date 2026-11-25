@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$FbeExe, [int]$TimeoutSeconds = 120, [ValidateSet('all','body-replacement')][string]$Case = 'all', [switch]$AcceptKnownNoop)
+param([Parameter(Mandatory)][string]$FbeExe, [int]$TimeoutSeconds = 120, [ValidateSet('all','body-replacement')][string]$Case = 'all')
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
     throw 'This diagnostic is restricted to a disposable GitHub-hosted runner.'
@@ -142,9 +142,9 @@ function CompatResult(){return result;}
         $results.Add([pscustomobject]@{case=$scenario;noOpDirty=$noopDirty;realEditSaveUndoRedoReopen=$(if($passed){'PASS'}else{'FAIL'});exitCode=$processCode;details=$details})
     }
 } finally { foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $old[$name], 'Process') } }
-$noOpStatus=Get-Rc3NoopStatus -Results @($results) -ExpectedCases $scenarios -AcceptKnownNoop ([bool]$AcceptKnownNoop)
-$summary=@{scope='required known-no-op and real-edit Save/Reopen/Recovery contour';exeSha256=(Get-FileHash -LiteralPath $FbeExe -Algorithm SHA256).Hash;results=@($results);noOpStatus=$noOpStatus}
+$noOpStatus=Get-Rc3NoopStatus -Results @($results) -ExpectedCases $scenarios
+$summary=@{scope='required no-op and real-edit Save/Reopen/Recovery contour';exeSha256=(Get-FileHash -LiteralPath $FbeExe -Algorithm SHA256).Hash;results=@($results);noOpStatus=$noOpStatus}
 $summary | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $evidenceRoot 'summary.json') -Encoding utf8
 $results | Format-Table -AutoSize | Out-String | Write-Host
-if($summary.noOpStatus -notin @('PASS','KNOWN FAILURE')) { throw 'No-op and real-edit diagnostic did not fully pass; see summary.json.' }
+if($summary.noOpStatus -cne 'PASS') { throw 'No-op and real-edit diagnostic did not fully pass; see summary.json.' }
 Write-Host "Real-edit diagnostic PASS; No-op Script Dirty: $($summary.noOpStatus)."
