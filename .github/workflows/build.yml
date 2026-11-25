@@ -469,7 +469,8 @@ jobs:
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
-          ./tools/tests/test-fbe-scripting-clipboard-ole-ci.ps1 -FbeExe out/Release/FBE.exe
+          $fullMatrix = '${{ github.event_name == 'workflow_dispatch' && inputs.full_validation }}' -eq 'true'
+          ./tools/tests/test-fbe-scripting-clipboard-ole-ci.ps1 -FbeExe out/Release/FBE.exe -FullNativeMatrix:$fullMatrix
           ./tools/tests/write-ci-ole-runtime-receipt.ps1 -FbeExe out/Release/FBE.exe
       - name: Upload OLE Clipboard failure evidence
         if: failure() && steps.clipboard-ole.outcome == 'failure'
@@ -580,6 +581,28 @@ jobs:
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-nsis-install-scopes.ps1
           ./tools/tests/test-prerelease-nsis-state.ps1
+      - name: Check community editor scenarios on the release build
+        if: github.event_name == 'workflow_dispatch' && inputs.full_validation
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path out/Release/FBE.exe).Path
+          ./tools/rc3-acceptance/test-description-noop-policy.ps1 -FbeExe $exe
+          ./tools/tests/test-fbe-script-live-reload-runtime.ps1 -FbeExe $exe
+          ./tools/tests/test-fbe-script-usercmd-subscript-runtime.ps1 -FbeExe $exe
+          ./tools/tests/test-plugin-settings-runtime.ps1 -FbeExe $exe
+          ./tools/tests/test-script-card-dialog-runtime.ps1 -FbeExe $exe -AllowClipboardMutation
+          ./tools/tests/test-script-card-external-runtime.ps1 -FbeExe $exe
+          ./tools/tests/test-search-history-runtime.ps1 -FbeExe $exe
+          ./tools/tests/test-fbe-generated-id-runtime.ps1 -FbeExe $exe
+          ./tools/tests/test-fbe-generated-id-undo-runtime.ps1 -FbeExe $exe
+          ./tools/tests/test-fbe-community-body-input-runtime.ps1 -FbeExe $exe
+          ./tools/tests/test-replace-all-runtime.ps1 -FbeExe $exe -Mode digits
+          ./tools/tests/test-replace-all-runtime.ps1 -FbeExe $exe -Mode cancel-preview
+          ./tools/tests/test-nbsp-input-runtime.ps1 -FbeExe $exe
+          foreach ($context in 'plain','emphasis','strong','link') {
+            ./tools/tests/test-nbsp-input-runtime.ps1 -FbeExe $exe -Context $context -CheckDirectInput
+          }
+          ./tools/tests/test-nbsp-input-runtime.ps1 -FbeExe $exe -Modes square -Context plain -CheckHistoryGuard
       - name: Verify universal release binaries, document tree and Dark Theme stabilization runtime
         id: release-verification
         shell: pwsh
@@ -793,20 +816,20 @@ jobs:
       full_validation: true
 
   release-scripts:
-    if: github.ref_type == 'tag'
+    if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.full_validation)
     uses: ./.github/workflows/check-scripts.yml
 
   release-docs:
-    if: github.ref_type == 'tag'
+    if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.full_validation)
     uses: ./.github/workflows/docs.yml
 
   manual-full-gate:
     if: always() && github.event_name == 'workflow_dispatch' && inputs.full_validation
-    needs: [validate, package, release-asan, release-ubsan]
+    needs: [validate, package, release-asan, release-ubsan, release-scripts, release-docs]
     runs-on: ubuntu-latest
     steps:
       - name: Require every full validation job
-        if: ${{ needs.validate.result != 'success' || needs.package.result != 'success' || needs.release-asan.result != 'success' || needs.release-ubsan.result != 'success' }}
+        if: ${{ needs.validate.result != 'success' || needs.package.result != 'success' || needs.release-asan.result != 'success' || needs.release-ubsan.result != 'success' || needs.release-scripts.result != 'success' || needs.release-docs.result != 'success' }}
         run: exit 1
       - run: echo "Full validation passed"
 

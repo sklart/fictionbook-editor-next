@@ -916,7 +916,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         extra = {'notes.xhtml': ('notes', 'application/xhtml+xml',
                  '<aside epub:type="footnote" id="a"><p>First in file</p></aside>'
                  '<aside epub:type="footnote" id="b"><p>Second in file</p><p><em>More text</em></p></aside>')}
-        normal = self.convert(body, extra)
+        normal = self.convert(body, extra, options=['--no-unify-note-numbers'])
         self.assertEqual([self.text(a) for a in normal.findall('.//f:a[@type="note"]', NS)], ['42', '7', '42'])
         root = self.convert(body, extra, options=['--unify-note-numbers'])
         notes = self.notes(root)
@@ -1288,10 +1288,10 @@ Write-Output 'Independent FB2 XSD validation: PASS'
 
     def test_asterisk_separators_are_optional_and_do_not_change_other_paragraphs(self):
         body = '<p>Before</p><p>***</p><p>* * *</p><p>2 * 3 = 6</p><p>After</p>'
-        default = self.convert(body, navigation=False)
-        self.assertEqual([self.text(p) for p in default.findall('.//f:p', NS) if self.text(p) in ('***', '* * *')], ['***', '* * *'])
-        self.assertFalse(any(self.text(n) in ('***', '* * *') for n in default.findall('.//f:subtitle', NS)))
-        converted = self.convert(body, navigation=False, options=('--separator-subtitles',))
+        disabled = self.convert(body, navigation=False, options=('--no-separator-subtitles',))
+        self.assertEqual([self.text(p) for p in disabled.findall('.//f:p', NS) if self.text(p) in ('***', '* * *')], ['***', '* * *'])
+        self.assertFalse(any(self.text(n) in ('***', '* * *') for n in disabled.findall('.//f:subtitle', NS)))
+        converted = self.convert(body, navigation=False)
         self.assertEqual([self.text(n) for n in converted.findall('.//f:subtitle', NS) if self.text(n) in ('***', '* * *')], ['***', '* * *'])
         self.assert_once(converted, 'Before', '2 * 3 = 6', 'After')
 
@@ -1869,7 +1869,10 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         images = {'one/same.png': ('coveritem', 'image/png', PNG),
                   'два/same.png': ('other', 'image/png', PNG)}
         body = '<p><img src="../one/same.png"/><img src="../%D0%B4%D0%B2%D0%B0/same.png"/><img src="../one/same.png"/></p>'
-        for options in ([], ['--unify-image-names'], ['--unify-image-names', '--separate-cover-name'], ['--separate-cover-name']):
+        for options in (['--no-unify-image-names', '--no-separate-cover-name'],
+                        ['--unify-image-names', '--no-separate-cover-name'],
+                        ['--unify-image-names', '--separate-cover-name'],
+                        ['--no-unify-image-names', '--separate-cover-name']):
             with self.subTest(options=options):
                 root = self.convert(body, images, options=options, cover_id='coveritem')
                 binaries = {n.get('id'): base64.b64decode(n.text or '') for n in root.findall('f:binary', NS)}
@@ -1982,7 +1985,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         chapter = '<p>Body<a id="ref1" href="toc.xhtml#n1"><sup>1</sup></a></p>'
         contents = '<p class="footnote"><a id="n1" href="chapter.xhtml#ref1">1</a> Actual note text.</p>'
         root = self.convert(chapter, {'Text/toc.xhtml': ('contents', 'application/xhtml+xml', contents)},
-                            spine=['chapter', 'contents'], navigation=False)
+                            spine=['chapter', 'contents'], navigation=False, options=['--no-unify-note-numbers'])
         link = next(a for a in root.findall('.//f:a', NS) if self.text(a) == '1')
         self.assertEqual(link.get('type'), 'note')
         self.assertTrue(any('Actual note text' in self.text(n) for n in self.notes(root)))
@@ -3273,7 +3276,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         root = self.convert('<div><div id="_ednref1">Before<a href="#_edn1"><sup>1</sup></a> after.</div>'
                             '<div id="_ednref1"><br/></div><h2>Footnotes</h2>'
                             '<div id="_edn1"><p><a href="#_ednref1"><sup>1</sup></a> Note text.</p></div></div>',
-                            navigation=False)
+                            navigation=False, options=['--no-unify-note-numbers'])
         main = next(b for b in root.findall('f:body', NS) if b.get('name') != 'notes')
         paragraph = next(p for p in main.findall('.//f:p', NS) if 'Before' in ''.join(p.itertext()))
         self.assertEqual(''.join(paragraph.itertext()), 'Before1 after.')
@@ -3287,7 +3290,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         previous = ('<h1>Previous</h1><p>Earlier text.</p><div id="_edn1"><p>'
                     '<a href="chapter.xhtml#_ednref1"><sup>1</sup></a> Earlier note.</p></div>')
         root = self.convert(chapter, extra={'Text/previous.xhtml': ('previous', 'application/xhtml+xml', previous)},
-                            spine=['previous', 'chapter'], navigation=False)
+                            spine=['previous', 'chapter'], navigation=False, options=['--no-unify-note-numbers'])
         main = next(b for b in root.findall('f:body', NS) if b.get('name') != 'notes')
         paragraph = next(p for p in main.findall('.//f:p', NS) if 'Before' in ''.join(p.itertext()))
         self.assertEqual(''.join(paragraph.itertext()), 'Before1 after.')
@@ -3299,7 +3302,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
                             '<p class="foot"><a href="#ref1" id="en1"><sup>*</sup></a> First heading</p>'
                             '<p class="foot">First body.</p><p class="foot-para">First continuation.</p>'
                             '<p class="foot"><a href="#ref2" id="en2"><sup>†</sup></a> Second heading</p>'
-                            '<p class="foot">Second body.</p><p>Following main text.</p>', navigation=False)
+                            '<p class="foot">Second body.</p><p>Following main text.</p>', navigation=False, options=['--no-unify-note-numbers'])
         notes = self.notes(root)
         self.assertEqual(len(notes), 2)
         first = next(n for n in notes if n.get('id') == 'en1')
@@ -3339,7 +3342,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         notes = ('<section epub:type="endnotes"><p><span epub:type="pagebreak" id="pg255" '
                  'title="255"/><a id="note9" href="chapter.xhtml#ref9">9</a> Actual note.</p></section>')
         root = self.convert(chapter, extra={'Text/notes.xhtml': ('notes', 'application/xhtml+xml', notes)},
-                            spine=['chapter', 'notes'], navigation=False)
+                            spine=['chapter', 'notes'], navigation=False, options=['--no-unify-note-numbers'])
         main = next(body for body in root.findall('f:body', NS) if body.get('name') != 'notes')
         links = main.findall('.//f:a', NS)
         note = next(a for a in links if self.text(a) == '9')
@@ -3352,7 +3355,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         chapter = chapter.replace('#pg255', '#pg_255')
         notes = notes.replace('<span epub:type="pagebreak" id="pg255" title="255"/>', '<a id="pg_255"/>')
         root = self.convert(chapter, extra={'Text/notes.xhtml': ('notes', 'application/xhtml+xml', notes)},
-                            spine=['chapter', 'notes'], navigation=False)
+                            spine=['chapter', 'notes'], navigation=False, options=['--no-unify-note-numbers'])
         main = next(body for body in root.findall('f:body', NS) if body.get('name') != 'notes')
         page = next(a for a in main.findall('.//f:a', NS) if self.text(a) == '255')
         self.assertIsNone(page.get('type'))

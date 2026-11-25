@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$FbeExe,
       [ValidateSet('none', 'before-first', 'after-one', 'middle', 'format', 'format-command', 'format-italic-command', 'format-partial', 'end')][string]$Fault = 'none',
-      [ValidateSet('digits', 'no-match', 'literal', 'zero-length', 'stale-preview', 'scope-selection', 'scope-section', 'cross-inline', 'format-success', 'format-italic')][string]$Mode = 'digits',
+      [ValidateSet('digits', 'cancel-preview', 'no-match', 'literal', 'zero-length', 'stale-preview', 'scope-selection', 'scope-section', 'cross-inline', 'format-success', 'format-italic')][string]$Mode = 'digits',
       [string]$ArtifactDirectory)
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -95,7 +95,7 @@ try {
         }
         $beforeText[$i].Value = $actual
     }
-    $expectedCount = switch ($Mode) { 'no-match' { 0 } 'stale-preview' { 0 } 'cross-inline' { 1 } 'format-success' { 1 } 'format-italic' { 1 } 'literal' { 3 } 'zero-length' { 1 } 'scope-selection' { 1 } 'scope-section' { 1 } default { switch ($Fault) { 'before-first' { 0 } 'after-one' { 1 } 'middle' { 9 } 'format' { 1 } 'format-command' { 1 } 'format-italic-command' { 1 } 'format-partial' { 1 } default { 18 } } } }
+    $expectedCount = switch ($Mode) { 'no-match' { 0 } 'cancel-preview' { 0 } 'stale-preview' { 0 } 'cross-inline' { 1 } 'format-success' { 1 } 'format-italic' { 1 } 'literal' { 3 } 'zero-length' { 1 } 'scope-selection' { 1 } 'scope-section' { 1 } default { switch ($Fault) { 'before-first' { 0 } 'after-one' { 1 } 'middle' { 9 } 'format' { 1 } 'format-command' { 1 } 'format-italic-command' { 1 } 'format-partial' { 1 } default { 18 } } } }
     if ($replaced -ne $expectedCount) { throw "Expected $expectedCount replacements, got $replaced." }
     if ($before.OuterXml -cne $after.OuterXml) { throw 'Saved FB2 differs from independently transformed original DOM.' }
     if ($Mode -eq 'digits' -and $Fault -in @('none', 'end') -and ($after.SelectSingleNode('//fb:title/fb:p', $afterNs).InnerText -cne '+.+ — создание файла' -or
@@ -103,7 +103,7 @@ try {
     $reader = [Xml.XmlReader]::Create((Join-Path $iso.DataPath 'after.fb2'), $settings)
     try { while ($reader.Read()) {} } finally { $reader.Dispose() }
     $passed = $true
-    $history = if ($Mode -eq 'stale-preview') { 'Undo/Redo not tested for external edit' } elseif ($Fault -eq 'before-first' -or $Mode -eq 'no-match') { 'Undo/Redo not needed without mutation' } else { 'Undo/Redo verified' }
+    $history = if ($Mode -eq 'stale-preview') { 'Undo/Redo not tested for external edit' } elseif ($Fault -eq 'before-first' -or $Mode -in 'no-match','cancel-preview') { 'Undo/Redo not needed without mutation' } else { 'Undo/Redo verified' }
     [IO.File]::AppendAllText((Join-Path $ArtifactDirectory 'report.txt'), "validated-replacements=$replaced`nindependent-xml=1`nxsd=1`n")
     Write-Host "Replace All native DOM/XML, $history, Save/Reopen and XSD: PASS ($Fault; replacements=$replaced)."
 } finally {

@@ -11,6 +11,7 @@ $results = [Collections.Generic.List[object]]::new()
 $noopWasDirty = $null
 $cases = @(
     @{name='accepted-noop';policy='known-script-load';script='';failure=''},
+    @{name='bundled-noop-matrix';policy='snapshot';script='';failure=''},
     @{name='strict-noop';policy='unchanged';script='';failure=''},
     @{name='body-edit';policy='known-script-load';script='document.getElementById("fbw_body").getElementsByTagName("P")[0].innerText="Changed body";';failure='live=0'},
     @{name='description-edit';policy='known-script-load';script='document.getElementById("tiTitle").value="Changed title";';failure='live=0'},
@@ -41,6 +42,43 @@ try {
                 $prepare = '<step name="prepare-live-controls" script="prepare.js"/>'
             }
             $suite = '<suite>'+$prepare+'<step name="'+$scenario.name+'" script="probe.js" rawDirty="'+$scenario.policy+'"/></suite>'
+            if ($scenario.name -eq 'bundled-noop-matrix') {
+                $encoding = [Text.UTF8Encoding]::new($true)
+                $scripts = Join-Path $repoRoot 'runtime/Scripts'
+                $cancel = [IO.File]::ReadAllText((Join-Path $scripts '05_Иллюстрации/05_Удалить все вложения.js'))
+                $reportScript = [IO.File]::ReadAllText((Join-Path $scripts '10_Статистика/03_Статистика документа.js'))
+                # Observe the actual prompt and report while keeping their native dialogs and responses.
+                $cancel += @"
+
+var candidateCancelRun=Run;
+Run=function(){var ask=window.AskYesNo,seen=false;try{
+ window.AskYesNo=function(msg){var yes=ask(msg);seen=!yes && String(msg).indexOf("удалить все вложения")>=0;return yes;};
+ candidateCancelRun();
+}finally{window.AskYesNo=ask;}window.noopResult=seen?"PASS":"missing cancellation";};
+function CompatResult(){return window.noopResult;}
+"@
+                $reportScript += @"
+
+var candidateReportRun=Run;
+Run=function(){var show=window.MsgBox,seen=false;try{
+ window.MsgBox=function(msg){seen=String(msg).indexOf("Общий размер текста")>=0;return show(msg);};
+ candidateReportRun();
+}finally{window.MsgBox=show;}window.noopResult=seen?"PASS":"missing report";};
+function CompatResult(){return window.noopResult;}
+"@
+                [IO.File]::WriteAllText((Join-Path $iso.Root 'cancel.js'),$cancel,$encoding)
+                [IO.File]::WriteAllText((Join-Path $iso.Root 'report.js'),$reportScript,$encoding)
+                $edit = 'function Run(){var e=window.external;e.BeginUndoUnit(document,"Fixture edit");try{document.getElementById("fbw_body").getElementsByTagName("p")[0].innerText+=" edited";}finally{e.EndUndoUnit(document);}}function CompatResult(){return "PASS";}'
+                [IO.File]::WriteAllText((Join-Path $iso.Root 'edit.js'),$edit,$encoding)
+                $steps = foreach ($state in 'clean','dirty','redo') {
+                    if ($state -eq 'dirty') { '<step name="make-edit" script="edit.js"/>' }
+                    if ($state -eq 'redo') { '<step name="create-redo" command="undo"/>' }
+                    foreach ($name in 'probe','cancel','report') {
+                        "<step name=`"$state-$name`" script=`"$name.js`" snapshot=`"$state`" answer=`"no`"/>"
+                    }
+                }
+                $suite = '<suite>' + ($steps -join '') + '</suite>'
+            }
             [IO.File]::WriteAllText((Join-Path $iso.Root 'suite.xml'),$suite,[Text.UTF8Encoding]::new($false))
             $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='binary-scripting-compatibility';$env:FBE_NEXT_SCRIPT_API_ROOT=$iso.Root
             $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY=Join-Path $iso.DataPath 'Settings'
@@ -54,6 +92,9 @@ try {
                 $noopWasDirty=$text -match '(?m)^script-setup-raw-dirty=FAIL\r?$'
                 $expected=if($noopWasDirty){'KNOWN FAILURE'}else{'PASS'}
                 if($text -notmatch ('(?m)^script-setup-dirty='+$expected+'\r?$')){throw "No-op classification missing: $text"}
+            } elseif ($scenario.name -eq 'bundled-noop-matrix') {
+                if ($code -ne 0 -or $text -notmatch '(?m)^completed=11\r?$' -or
+                    [regex]::Matches($text,'(?m)^script-setup-dirty=PASS\r?$').Count -ne 9) { throw "Bundled no-op matrix failed: $text" }
             } elseif($scenario.name -eq 'strict-noop') {
                 if($null -eq $noopWasDirty){throw 'Known-noop control did not run.'}
                 if($noopWasDirty) {

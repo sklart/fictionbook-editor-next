@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),[switch]$ProbeOnly)
+param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),[switch]$ProbeOnly,[switch]$FullNativeMatrix)
 $ErrorActionPreference='Stop'
 # This launcher creates a disposable batch logon with its own noninteractive
 # window station (and therefore its own clipboard), never the runner desktop.
@@ -75,7 +75,8 @@ try {
         $privateTests=Join-Path $root 'tools/tests'
         New-Item -ItemType Directory -Force -Path $privateTests | Out-Null
         New-Item -ItemType Directory -Force -Path (Join-Path $root 'build') | Out-Null
-        foreach($file in @('test-fbe-native-copy-paste-runtime.ps1','RuntimeTestIsolation.ps1')) {
+        if($FullNativeMatrix) { New-Item -ItemType File -Path (Join-Path $root 'full-native-matrix') | Out-Null }
+        foreach($file in @('test-fbe-native-copy-paste-runtime.ps1','test-fbe-html-paste-runtime.ps1','RuntimeTestIsolation.ps1')) {
             Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination $privateTests
         }
     }
@@ -108,6 +109,8 @@ public static class FbePrivateClipboardStation {
         if([string]::IsNullOrWhiteSpace($station) -or $station -ieq 'WinSta0'){throw 'Native Clipboard tests require a noninteractive private window station.'}
         "Private window station: $station" | Set-Content (Join-Path $PSScriptRoot 'result.txt')
         $evidence=Join-Path $PSScriptRoot 'evidence';New-Item -ItemType Directory -Force -Path $evidence | Out-Null
+        $fullMatrix=Test-Path -LiteralPath (Join-Path $PSScriptRoot 'full-native-matrix')
+        $cases=if($fullMatrix){@('char','word','paragraph','within','between','section','formatted','repeat','cross-document')}else{@('word','formatted')}
         $stageStatus='FAIL';$nativeStatus='FAIL';$stageError='';$nativeError=''
         try {
             & (Join-Path $PSScriptRoot 'test-fbe-scripting-stage3c.ps1') -FbeExe (Join-Path $PSScriptRoot 'runtime/FBE.exe') -Part clipboard-ole -Mode portable *>&1 |
@@ -115,8 +118,12 @@ public static class FbePrivateClipboardStation {
             $stageStatus='PASS'
         } catch { $stageError=$_.Exception.Message }
         try {
-            & (Join-Path $PSScriptRoot 'tools/tests/test-fbe-native-copy-paste-runtime.ps1') -FbeExe (Join-Path $PSScriptRoot 'runtime/FBE.exe') -Cases @('word','formatted') *>&1 |
+            & (Join-Path $PSScriptRoot 'tools/tests/test-fbe-native-copy-paste-runtime.ps1') -FbeExe (Join-Path $PSScriptRoot 'runtime/FBE.exe') -Cases $cases *>&1 |
                 Out-File (Join-Path $evidence 'native-copy-paste.log') -Encoding utf8
+            if($fullMatrix) {
+                & (Join-Path $PSScriptRoot 'tools/tests/test-fbe-html-paste-runtime.ps1') -FbeExe (Join-Path $PSScriptRoot 'runtime/FBE.exe') -Cases @('queue-reentrant','queue-reentrant-post-failure') *>&1 |
+                    Out-File (Join-Path $evidence 'reentrant-paste.log') -Encoding utf8
+            }
             $nativeStatus='PASS'
         } catch { $nativeError=$_.Exception.Message }
         $nativeEvidence=Join-Path $evidence 'native-copy-paste'
@@ -126,7 +133,9 @@ public static class FbePrivateClipboardStation {
         foreach($directory in $nativeDirectories) {
             Copy-Item -LiteralPath $directory.FullName -Destination $nativeEvidence -Recurse -Force -ErrorAction Stop
             if($nativeStatus -eq 'PASS') {
-                foreach($case in @('word','formatted')) {
+                $reports=@($cases | Where-Object { $_ -ne 'cross-document' })
+                if($fullMatrix){$reports+=@('cross-source','cross-target')}
+                foreach($case in $reports) {
                     $original=Join-Path $directory.FullName ($case+'.txt')
                     $copy=Join-Path (Join-Path $nativeEvidence $directory.Name) ($case+'.txt')
                     if(-not (Test-Path -LiteralPath $original -PathType Leaf) -or -not (Test-Path -LiteralPath $copy -PathType Leaf) -or
@@ -153,12 +162,12 @@ public static class FbePrivateClipboardStation {
     $probeLiteral=if($ProbeOnly){'$true'}else{'$false'}
     $worker.Replace('@@SID@@',$user.SID.Value).Replace('@@PROBE@@',$probeLiteral) | Set-Content (Join-Path $root 'worker.ps1') -Encoding utf8
     $action=New-ScheduledTaskAction -Execute (Join-Path $PSHOME 'pwsh.exe') -Argument ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+(Join-Path $root 'worker.ps1')+'"') -WorkingDirectory $root
-    $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 6) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+    $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 14) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
     # Password logon is noninteractive; InteractiveToken would share WinSta0.
     $trigger=New-ScheduledTaskTrigger -Once -At ([DateTime]::Now.AddSeconds(5))
     Register-ScheduledTask -TaskName $taskName -Action $action -Settings $settings -Trigger $trigger -User "$env:COMPUTERNAME\$userName" -Password $password -RunLevel Limited | Out-Null
     $taskCreated=$true;$password=$null
-    $deadline=[DateTime]::UtcNow.AddSeconds(300)
+    $deadline=[DateTime]::UtcNow.AddSeconds(780)
     while (!(Test-Path -LiteralPath (Join-Path $root 'finished.txt')) -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 500 }
     $result=Join-Path $root 'result.txt'
     if(Test-Path -LiteralPath $result){Get-Content -LiteralPath $result | Write-Host}

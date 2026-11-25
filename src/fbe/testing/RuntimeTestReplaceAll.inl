@@ -57,6 +57,8 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 		if (!m_doc->m_body.ConfigureReplaceAllRuntimeTest(pattern, replacement, !literal && !crossInline)) CheckError(E_FAIL);
 		static MSHTML::IHTMLTxtRangePtr modalMutation;
 		static bool modalChanged = false;
+		static bool cancelPreview;
+		cancelPreview = wcscmp(mode, L"cancel-preview") == 0;
 		modalMutation = NULL; modalChanged = false;
 		if (stalePreview) {
 			MSHTML::IHTMLBodyElementPtr bodyElement(document->body);
@@ -72,7 +74,7 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 					if (modalMutation && !modalChanged) {
 						try { modalMutation->text = L"!"; modalChanged = true; } catch (const _com_error&) {}
 					}
-					::PostMessageW(window, WM_COMMAND, IDYES, 0);
+					::PostMessageW(window, WM_COMMAND, cancelPreview ? IDNO : IDYES, 0);
 				}
 				return TRUE;
 			}, 0);
@@ -142,6 +144,7 @@ if (IsFbeTestScenario(L"replace-all-runtime"))
 		report.Format("fault=%S\ncount=%d\nerror-empty=%d\npartial-warning=%d\nchanged=%d\nstale-rejected=%d\nmodal-changed=%d\nundo-tested=%d\nundo-available=%d\nredo-available=%d\nundo=%d\nredo=%d\nsubsequent-edit=%d\nsubsequent-changed=%d\nsubsequent-undo=%d\nsubsequent-redo=%d\nsubsequent-restore=%d\nsaved=%d\nreopened=%d\nxml-matches=%d\nsaved-copy-recovery=%d\n",
 			fault, count, error.IsEmpty(), partialWarning, changed, rejectedStale, modalChanged, changed && !stalePreview, undoAvailable, redoAvailable, undo, redo, subsequentEdit, subsequentChanged, subsequentUndo, subsequentRedo, subsequentRestore, saved, reopened, xmlMatches, savedCopyRecovery);
 		const bool operation = expectedFailure ? count == -1 && !error.IsEmpty() && partialWarning == expectedMutation && changed == expectedMutation
+			: cancelPreview ? count == -2 && error.IsEmpty() && !changed && beforeXml == afterXml
 			: stalePreview ? rejectedStale && changed : noMatch ? count == 0 && error.IsEmpty() && !changed && beforeXml == afterXml : count > 0 && error.IsEmpty() && changed;
 		passed = operation && (!changed || stalePreview || (undo && redo && undoAvailable > 0 && redoAvailable > 0)) && subsequentEdit && saved && reopened && xmlMatches && savedCopyRecovery;
 		modalMutation = NULL;
