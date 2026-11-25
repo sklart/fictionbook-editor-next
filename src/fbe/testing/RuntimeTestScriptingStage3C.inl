@@ -184,8 +184,7 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
             ::SetEvent(release);holder.join();CheckError(failure);
             details="isolated OLE formats and real busy access PASS; user clipboard unchanged";
         } else {
-          // XML alone does not capture live form values, and dirty is already
-          // true in the known no-op failure. Inspect each component separately.
+          // Capture live form values as well as the serialized XML.
           auto liveState=[&]() {
             MSHTML::IHTMLDocument3Ptr document(m_doc->m_body.Document());
             MSHTML::IHTMLElementPtr body(document->getElementById(L"fbw_body"));
