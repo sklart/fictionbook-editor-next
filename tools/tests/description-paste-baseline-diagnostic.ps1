@@ -16,6 +16,7 @@ public static class BaselineWindow {
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern uint RegisterWindowMessage(string text);
     [DllImport("user32.dll")] public static extern IntPtr SendMessageTimeout(IntPtr window, uint message, IntPtr wp, IntPtr lp, uint flags, uint timeout, out IntPtr result);
     [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wp, IntPtr lp);
+    [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr window, uint message, IntPtr wp, IntPtr lp);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr window);
     [DllImport("oleacc.dll")] public static extern int ObjectFromLresult(IntPtr result, ref Guid iid, IntPtr wp, [MarshalAs(UnmanagedType.Interface)] out object obj);
     public static object[] Documents(IntPtr root) {
@@ -75,6 +76,38 @@ try {
     Write-Host "Baseline title after: $after"
     Write-Host "Baseline insertion matched: $($after -ceq 'Baseline clipboard test')"
     Write-Host "Baseline clipboard preserved: $([System.Windows.Forms.Clipboard]::GetText() -ceq 'Baseline clipboard test')"
+    foreach ($id in @('tiKwd', 'first', 'last', 'nick', 'home', 'piName', 'piPub', 'piISBN')) {
+        try {
+            $input = $document.all.item($id)
+            if (-not $input -or $input.length) { Write-Host "Field $id unavailable or ambiguous"; continue }
+            $input.focus()
+            $input.select()
+            [System.Windows.Forms.SendKeys]::SendWait('^v')
+            Start-Sleep -Milliseconds 500
+            Write-Host "Field $id value: $($input.value)"
+        } catch { Write-Host "Field $id error: $($_.Exception.Message)" }
+    }
+    $htmlData = New-Object System.Windows.Forms.DataObject
+    $htmlData.SetData([System.Windows.Forms.DataFormats]::UnicodeText, 'Formatted sample')
+    $prefix = '<html><body><!--StartFragment-->'
+    $fragment = '<b>Formatted sample</b>'
+    $suffix = '<!--EndFragment--></body></html>'
+    $template = "Version:0.9`r`nStartHTML:{0:D10}`r`nEndHTML:{1:D10}`r`nStartFragment:{2:D10}`r`nEndFragment:{3:D10}`r`n"
+    $headerLength = ($template -f 0, 0, 0, 0).Length
+    $startFragment = $headerLength + $prefix.Length
+    $endFragment = $startFragment + $fragment.Length
+    $header = $template -f $headerLength, ($endFragment + $suffix.Length), $startFragment, $endFragment
+    $htmlData.SetData('HTML Format', $header + $prefix + $fragment + $suffix)
+    [System.Windows.Forms.Clipboard]::SetDataObject($htmlData, $true)
+    $field.focus(); $field.select()
+    [System.Windows.Forms.SendKeys]::SendWait('^v')
+    Start-Sleep -Seconds 2
+    Write-Host "Formatted clipboard title: $($field.value)"
+    [System.Windows.Forms.Clipboard]::SetText('Menu paste sample')
+    $field.focus(); $field.select()
+    [void][BaselineWindow]::PostMessage($process.MainWindowHandle, 0x111, [IntPtr]0xE125, [IntPtr]::Zero)
+    Start-Sleep -Seconds 3
+    Write-Host "Menu paste title: $($field.value)"
 } finally {
     if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
 }
