@@ -312,6 +312,7 @@ try {
         [void][BaselineWindow]::SendMessage($process.MainWindowHandle, 0x111, [IntPtr]32809, [IntPtr]::Zero)
         Start-Sleep -Seconds 1
         $field.focus(); $field.select()
+        Write-Host "Before body-to-title paste: active=$($document.activeElement.id); clipboard='$([System.Windows.Forms.Clipboard]::GetText())'; title='$($field.value)'"
         [System.Windows.Forms.SendKeys]::SendWait('^v')
         Start-Sleep -Seconds 1
         if ([string]$field.value -cne $copiedBody) { throw "Pasting text copied from the book body failed: expected '$copiedBody', got '$($field.value)'. Windows: $([BaselineWindow]::WindowTexts([uint32]$process.Id) -join ' | ')" }
