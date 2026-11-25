@@ -21,7 +21,72 @@ public static class BaselineWindow {
     [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wp, IntPtr lp);
     [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr window, uint message, IntPtr wp, IntPtr lp);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr window);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string cls, string title);
+    [DllImport("user32.dll")] static extern uint GetMenuState(IntPtr menu, uint item, uint flags);
+    [DllImport("user32.dll")] static extern int GetMenuItemCount(IntPtr menu);
+    [DllImport("user32.dll")] static extern uint GetMenuItemID(IntPtr menu, int position);
+    [DllImport("user32.dll")] static extern bool GetMenuItemRect(IntPtr window, IntPtr menu, uint item, out RECT rect);
+    [DllImport("user32.dll")] static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
+    [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
+    [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
+    [DllImport("kernel32.dll")] static extern IntPtr VirtualAllocEx(IntPtr process, IntPtr address, UIntPtr size, uint allocation, uint protection);
+    [DllImport("kernel32.dll")] static extern bool VirtualFreeEx(IntPtr process, IntPtr address, UIntPtr size, uint type);
+    [DllImport("kernel32.dll")] static extern bool ReadProcessMemory(IntPtr process, IntPtr address, byte[] buffer, int size, out IntPtr read);
+    [StructLayout(LayoutKind.Sequential)] struct RECT { public int Left, Top, Right, Bottom; }
     [DllImport("oleacc.dll")] public static extern int ObjectFromLresult(IntPtr result, ref Guid iid, IntPtr wp, [MarshalAs(UnmanagedType.Interface)] out object obj);
+    public static void ClickPasteToolbar(IntPtr root, uint pid, int command) {
+        IntPtr toolbar = IntPtr.Zero;
+        int index = -1;
+        EnumChildWindows(root, (window, ignored) => {
+            var cls = new StringBuilder(256); GetClassName(window, cls, cls.Capacity);
+            if (cls.ToString() != "ToolbarWindow32") return true;
+            int found = SendMessage(window, 0x419, (IntPtr)command, IntPtr.Zero).ToInt32();
+            if (found < 0) return true;
+            toolbar = window; index = found; return false;
+        }, IntPtr.Zero);
+        if (toolbar == IntPtr.Zero || SendMessage(toolbar, 0x409, (IntPtr)command, IntPtr.Zero) == IntPtr.Zero)
+            throw new InvalidOperationException("Paste toolbar button missing or disabled.");
+        IntPtr process = OpenProcess(0x438, false, pid);
+        if (process == IntPtr.Zero) throw new InvalidOperationException("Cannot inspect toolbar process.");
+        IntPtr address = IntPtr.Zero;
+        try {
+            address = VirtualAllocEx(process, IntPtr.Zero, (UIntPtr)16, 0x3000, 4);
+            if (address == IntPtr.Zero || SendMessage(toolbar, 0x41d, (IntPtr)index, address) == IntPtr.Zero)
+                throw new InvalidOperationException("Cannot read paste button rectangle.");
+            byte[] data = new byte[16]; IntPtr count;
+            if (!ReadProcessMemory(process, address, data, data.Length, out count) || count.ToInt32() != data.Length)
+                throw new InvalidOperationException("Cannot retrieve paste button rectangle.");
+            int x = (BitConverter.ToInt32(data, 0) + BitConverter.ToInt32(data, 8)) / 2;
+            int y = (BitConverter.ToInt32(data, 4) + BitConverter.ToInt32(data, 12)) / 2;
+            IntPtr point = (IntPtr)((y << 16) | (x & 0xffff));
+            SendMessage(toolbar, 0x201, (IntPtr)1, point);
+            SendMessage(toolbar, 0x202, IntPtr.Zero, point);
+        } finally {
+            if (address != IntPtr.Zero) VirtualFreeEx(process, address, UIntPtr.Zero, 0x8000);
+            CloseHandle(process);
+        }
+    }
+    public static bool ClickContextPaste(uint pid, uint command) {
+        IntPtr popup = IntPtr.Zero;
+        while ((popup = FindWindowEx(IntPtr.Zero, popup, "#32768", null)) != IntPtr.Zero) {
+            uint owner; GetWindowThreadProcessId(popup, out owner);
+            if (owner != pid) continue;
+            IntPtr menu = SendMessage(popup, 0x1e1, IntPtr.Zero, IntPtr.Zero);
+            uint state = GetMenuState(menu, command, 0);
+            if (state == 0xffffffff || (state & 3) != 0) throw new InvalidOperationException("Context paste is missing or disabled.");
+            int count = GetMenuItemCount(menu);
+            for (int i = 0; i < count; ++i) {
+                if (GetMenuItemID(menu, i) != command) continue;
+                RECT rect;
+                if (!GetMenuItemRect(popup, menu, (uint)i, out rect)) throw new InvalidOperationException("Cannot locate context paste.");
+                SetCursorPos((rect.Left + rect.Right) / 2, (rect.Top + rect.Bottom) / 2);
+                mouse_event(2, 0, 0, 0, UIntPtr.Zero); mouse_event(4, 0, 0, 0, UIntPtr.Zero);
+                return true;
+            }
+        }
+        return false;
+    }
     public static object[] Documents(IntPtr root) {
         var found = new List<object>();
         EnumChildWindows(root, (window, ignored) => {
@@ -186,6 +251,36 @@ try {
         throw 'Menu paste did not update the title field.'
     }
     if ($ExpectFixed) {
+        $sequence = $document.all.item('tiSeq').getElementsByTagName('INPUT').item(0)
+        if (-not $sequence) { throw 'Series name field was not found.' }
+        [System.Windows.Forms.Clipboard]::SetText('Series clipboard test')
+        $sequence.focus(); $sequence.select()
+        [System.Windows.Forms.SendKeys]::SendWait('^v')
+        Start-Sleep -Seconds 1
+        if ([string]$sequence.value -cne 'Series clipboard test') { throw 'Series name paste failed.' }
+        [System.Windows.Forms.Clipboard]::SetText('Plain command sample')
+        $field.focus(); $field.select()
+        [void][BaselineWindow]::PostMessage($process.MainWindowHandle, 0x111, [IntPtr]32933, [IntPtr]::Zero)
+        Start-Sleep -Seconds 1
+        if ([string]$field.value -cne 'Plain command sample') { throw 'Paste as plain text command failed.' }
+        [System.Windows.Forms.Clipboard]::SetText('Toolbar paste sample')
+        $field.focus(); $field.select()
+        Start-Sleep -Seconds 2
+        [BaselineWindow]::ClickPasteToolbar($process.MainWindowHandle, [uint32]$process.Id, 0xE125)
+        Start-Sleep -Seconds 1
+        if ([string]$field.value -cne 'Toolbar paste sample') { throw 'Toolbar paste failed.' }
+        [System.Windows.Forms.Clipboard]::SetText('Context paste sample')
+        $field.focus(); $field.select()
+        [System.Windows.Forms.SendKeys]::Send('+{F10}')
+        [System.Windows.Forms.Application]::DoEvents()
+        $contextClicked = $false
+        for ($attempt = 0; $attempt -lt 20 -and -not $contextClicked; ++$attempt) {
+            Start-Sleep -Milliseconds 250
+            $contextClicked = [BaselineWindow]::ClickContextPaste([uint32]$process.Id, 0xE125)
+        }
+        if (-not $contextClicked) { throw 'Description context menu did not open.' }
+        Start-Sleep -Seconds 1
+        if ([string]$field.value -cne 'Context paste sample') { throw 'Context menu paste failed.' }
         $keyword = $document.all.item('tiKwd')
         $keyword.focus(); $keyword.select()
         [System.Windows.Forms.SendKeys]::SendWait('^c')

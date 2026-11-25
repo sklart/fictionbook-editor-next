@@ -1,0 +1,25 @@
+name: Description paste UI diagnostic
+on:
+  push:
+    branches: [codex/3.0.12-description-paste]
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+jobs:
+  ui:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: 45695651081
+          name: description-paste-runtime-d985e671431e3aaf23c5186321613da05aae217d
+          path: runtime
+      - name: Exercise metadata controls and paste entry points
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File tools/tests/test-fbe-description-clipboard-runtime.ps1 -RuntimeDirectory runtime -ExpectFixed
+          if ($LASTEXITCODE -ne 0) { throw 'Metadata UI diagnostic failed.' }
