@@ -63,6 +63,7 @@ $exe = Join-Path $root 'FBE.exe'
 if ((Get-FileHash -LiteralPath $exe).Hash -ne 'D159E6709C39787D205C9D447226B63EE04D7488C480D8D5EF6F598D6AB50759') {
     throw 'The baseline executable does not match the 3.0.11 release.'
 }
+$env:FBE_NEXT_TRACE = '1'
 $process = Start-Process -FilePath $exe -WorkingDirectory $root -ArgumentList @('--portable', (Join-Path $root 'blank.fb2')) -PassThru
 try {
     $deadline = [DateTime]::UtcNow.AddSeconds(90)
@@ -124,6 +125,10 @@ try {
     Start-Sleep -Seconds 2
     Write-Host "Formatted clipboard title: $($field.value)"
     Write-Host ("Windows after formatted paste: " + ([BaselineWindow]::WindowTexts([uint32]$process.Id) -join ' | '))
+    $trace = Get-ChildItem -LiteralPath (Join-Path $root 'Data') -Filter 'fbe-session-*.txt' -Recurse -File -ErrorAction SilentlyContinue
+    foreach ($file in $trace) {
+        Select-String -LiteralPath $file.FullName -Pattern 'CP201|CP202|CP206|CP3[0-9][0-9]|CP4[0-9][0-9]' | ForEach-Object { Write-Host $_.Line }
+    }
     [System.Windows.Forms.Clipboard]::SetText('Menu paste sample')
     $field.focus(); $field.select()
     [void][BaselineWindow]::PostMessage($process.MainWindowHandle, 0x111, [IntPtr]0xE125, [IntPtr]::Zero)
