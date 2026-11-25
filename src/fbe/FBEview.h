@@ -437,6 +437,7 @@ protected:
   std::vector<MSHTML::IHTMLElementPtr> m_table_selection_cells;
   bool                      m_table_selection_dragging;
   MSHTML::IHTMLInputTextElementPtr m_cur_input;
+  MSHTML::IHTMLTextAreaElementPtr m_cur_textarea;
   _bstr_t		    m_cur_val;
   bool			    m_form_changed;
   bool			    m_form_cp;

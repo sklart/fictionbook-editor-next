@@ -27,3 +27,30 @@ jobs:
           Expand-Archive -LiteralPath $zip.FullName -DestinationPath baseline/runtime
           powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File tools/tests/description-paste-baseline-diagnostic.ps1 -RuntimeDirectory baseline/runtime
           if ($LASTEXITCODE -ne 0) { throw 'Baseline diagnostic failed.' }
+  candidate:
+    runs-on: windows-2022
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Build candidate with strict warnings
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          New-Item -ItemType Directory -Force out/tests/description-paste | Out-Null
+          ./tools/build/build.ps1 -Configuration Release -Platform Win32 -SkipUpx -SkipVersionSync -WarningsAsErrors -StrictFirstPartyWarnings *> out/tests/description-paste/build.log
+          if (-not $? -or $LASTEXITCODE -ne 0) { throw 'Candidate build failed.' }
+      - name: Check metadata insertion in real editor
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File tools/tests/description-paste-baseline-diagnostic.ps1 -RuntimeDirectory out/Release -ExpectFixed
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate diagnostic failed.' }
+      - name: Preserve diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: description-paste-candidate-diagnostics
+          path: out/tests/description-paste/
+          if-no-files-found: warn

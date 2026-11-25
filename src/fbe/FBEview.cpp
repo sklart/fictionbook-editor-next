@@ -2947,12 +2947,47 @@ LRESULT CFBEView::OnCut(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
+static bool IsDescriptionElement(MSHTML::IHTMLElementPtr element)
+{
+	for (; element; element = element->parentElement) {
+		if (U::scmp(element->id, L"fbw_desc") == 0) return true;
+		if (U::scmp(element->id, L"fbw_body") == 0) return false;
+	}
+	return false;
+}
+
+static bool IsDescriptionTextControl(MSHTML::IHTMLElementPtr element)
+{
+	if (!element || !IsDescriptionElement(element)) return false;
+	if (U::scmp(element->tagName, L"TEXTAREA") == 0) return true;
+	if (U::scmp(element->tagName, L"INPUT") != 0) return false;
+	MSHTML::IHTMLInputTextElementPtr input(element);
+	return input && U::scmp(input->type, L"text") == 0;
+}
+
+static CString DescriptionTextControlValue(MSHTML::IHTMLElementPtr element)
+{
+	MSHTML::IHTMLInputTextElementPtr input(element);
+	if (input) return CString(static_cast<LPCWSTR>(input->value));
+	MSHTML::IHTMLTextAreaElementPtr textarea(element);
+	return textarea ? CString(static_cast<LPCWSTR>(textarea->value)) : CString();
+}
+
 LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 {
 	const wchar_t* pasteStage = L"CP301";
 	const wchar_t* pasteRoute = L"CP401";
 	try
 	{
+		MSHTML::IHTMLElementPtr target(Document()->activeElement);
+		if (IsDescriptionTextControl(target)) {
+			const CString before = DescriptionTextControlValue(target);
+			PasteEnableScope pasteEnabled(m_enable_paste);
+			ExecCommand(IDM_PASTE);
+			if (DescriptionTextControlValue(target) != before)
+				MarkDescriptionFormChanged();
+			return 0;
+		}
         if (m_pendingHtmlPaste) {
             BOOL handled = FALSE;
             OnDeferredHtmlPaste(0, m_pendingHtmlPaste->generation, 0, handled);
@@ -4702,7 +4737,7 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 		menu.AppendMenu(MF_STRING, ID_TABLE_DELETE_TABLE, GetLocalizedMainMenuText(ID_TABLE_DELETE_TABLE, L"Delete table"));
 	}
 
-	if(m_normalize)
+	if(m_normalize && !IsDescriptionElement(MSHTML::IHTMLElementPtr(oe->srcElement)))
 	{
 		menu.AppendMenu(MF_SEPARATOR);
 		MSHTML::IHTMLElementPtr cur(SelectionContainer());
@@ -5322,7 +5357,8 @@ VARIANT_BOOL  CFBEView::OnKeyDown(IDispatch *evt)
 
 VARIANT_BOOL CFBEView::OnKeyUp(IDispatch*)
 {
-	if (m_cur_input && m_cur_input->value != m_cur_val)
+	if ((m_cur_input && m_cur_input->value != m_cur_val) ||
+		(m_cur_textarea && m_cur_textarea->value != m_cur_val))
 	{
 		m_form_changed = true;
 		m_form_cp = true;
@@ -5394,6 +5430,10 @@ VARIANT_BOOL  CFBEView::OnRealPaste(IDispatch* evt)
     } callback(m_htmlPasteCallbackDepth);
 	MSHTML::IHTMLEventObjPtr oe(evt);
 	oe->cancelBubble = VARIANT_TRUE;
+	if (IsDescriptionTextControl(MSHTML::IHTMLElementPtr(oe->srcElement))) {
+		oe->returnValue = VARIANT_TRUE;
+		return VARIANT_TRUE;
+	}
 	if(!m_enable_paste)
 	{
 		// MSHTML can roll back DOM edits made inside the canceled paste event.
@@ -5451,12 +5491,16 @@ VARIANT_BOOL  CFBEView::OnRealPaste(IDispatch* evt)
 bool  CFBEView::IsFormChanged() {
   if (!m_form_changed && (bool)m_cur_input)
     m_form_changed=m_form_changed || m_cur_input->value != m_cur_val;
+  if (!m_form_changed && (bool)m_cur_textarea)
+    m_form_changed=m_form_changed || m_cur_textarea->value != m_cur_val;
   return m_form_changed;
 }
 
 bool  CFBEView::IsFormCP() {
   if (!m_form_cp && (bool)m_cur_input)
     m_form_cp=m_form_cp || m_cur_input->value != m_cur_val;
+  if (!m_form_cp && (bool)m_cur_textarea)
+    m_form_cp=m_form_cp || m_cur_textarea->value != m_cur_val;
   return m_form_cp;
 }
 
@@ -5464,12 +5508,16 @@ void  CFBEView::ResetFormChanged() {
   m_form_changed=false;
   if (m_cur_input)
     m_cur_val=m_cur_input->value;
+  else if (m_cur_textarea)
+    m_cur_val=m_cur_textarea->value;
 }
 
 void  CFBEView::ResetFormCP() {
   m_form_cp=false;
   if (m_cur_input)
     m_cur_val=m_cur_input->value;
+  else if (m_cur_textarea)
+    m_cur_val=m_cur_textarea->value;
 }
 
 void  CFBEView::OnFocusIn(IDispatch *evt) {
@@ -5481,15 +5529,28 @@ void  CFBEView::OnFocusIn(IDispatch *evt) {
     m_form_cp=m_form_cp || cv;
     m_cur_input.Release();
   }
+  if (m_cur_textarea) {
+    bool cv=m_cur_textarea->value != m_cur_val;
+    m_form_changed=m_form_changed || cv;
+    m_form_cp=m_form_cp || cv;
+    m_cur_textarea.Release();
+  }
 
   MSHTML::IHTMLEventObjPtr  oe(evt);
   if (!(bool)oe)
     return;
 
   MSHTML::IHTMLElementPtr   te(oe->srcElement);
-  if (!(bool)te || U::scmp(te->tagName,L"INPUT"))
+  if (!(bool)te)
     return;
 
+  if (U::scmp(te->tagName,L"TEXTAREA") == 0 && IsDescriptionElement(te)) {
+    m_cur_textarea=te;
+    if (m_cur_textarea) m_cur_val=m_cur_textarea->value;
+    return;
+  }
+  if (U::scmp(te->tagName,L"INPUT"))
+    return;
   m_cur_input=te;
   if (!(bool)m_cur_input)
     return;

@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][string]$RuntimeDirectory)
+param([Parameter(Mandatory)][string]$RuntimeDirectory, [switch]$ExpectFixed)
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
     throw 'Run only on a disposable GitHub-hosted Windows runner.'
@@ -60,7 +60,7 @@ public static class BaselineWindow {
 '@
 $root = (Resolve-Path -LiteralPath $RuntimeDirectory).Path
 $exe = Join-Path $root 'FBE.exe'
-if ((Get-FileHash -LiteralPath $exe).Hash -ne 'D159E6709C39787D205C9D447226B63EE04D7488C480D8D5EF6F598D6AB50759') {
+if (-not $ExpectFixed -and (Get-FileHash -LiteralPath $exe).Hash -ne 'D159E6709C39787D205C9D447226B63EE04D7488C480D8D5EF6F598D6AB50759') {
     throw 'The baseline executable does not match the 3.0.11 release.'
 }
 $env:FBE_NEXT_TRACE = '1'
@@ -97,6 +97,7 @@ try {
     Write-Host "Baseline title after: $after"
     Write-Host "Baseline insertion matched: $($after -ceq 'Baseline clipboard test')"
     Write-Host "Baseline clipboard preserved: $([System.Windows.Forms.Clipboard]::GetText() -ceq 'Baseline clipboard test')"
+    if ($after -cne 'Baseline clipboard test') { throw 'Plain text insertion failed.' }
     foreach ($id in @('tiKwd', 'first', 'last', 'nick', 'home', 'piName', 'piPub', 'piISBN')) {
         try {
             $input = $document.all.item($id)
@@ -126,7 +127,11 @@ try {
     Write-Host "Formatted clipboard title: $($field.value)"
     $windows = [BaselineWindow]::WindowTexts([uint32]$process.Id)
     Write-Host ("Windows after formatted paste: " + ($windows -join ' | '))
-    if ($windows -notcontains 'COM Error' -or -not ($windows -match '80004005')) {
+    if ($ExpectFixed) {
+        if ($windows -contains 'COM Error' -or [string]$field.value -cne 'Formatted sample') {
+            throw 'Formatted clipboard text was not inserted into the title field.'
+        }
+    } elseif ($windows -notcontains 'COM Error' -or -not ($windows -match '80004005')) {
         throw 'The baseline did not show the reported COM error after formatted paste.'
     }
     $trace = Get-ChildItem -LiteralPath $root -Filter 'fbe-*.log' -Recurse -File -ErrorAction SilentlyContinue
@@ -142,6 +147,9 @@ try {
     Start-Sleep -Seconds 3
     Write-Host "Menu paste title: $($field.value)"
     Write-Host ("Windows after menu paste: " + ([BaselineWindow]::WindowTexts([uint32]$process.Id) -join ' | '))
+    if ($ExpectFixed -and [string]$field.value -cne 'Menu paste sample') {
+        throw 'Menu paste did not update the title field.'
+    }
 } finally {
     if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
 }
