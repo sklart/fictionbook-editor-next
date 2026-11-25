@@ -301,9 +301,12 @@ try {
         if (-not $paragraph) { throw 'Body paragraph was not found.' }
         [void][BaselineWindow]::SetForegroundWindow($process.MainWindowHandle)
         $document.all.item('fbw_body').focus()
-        [System.Windows.Forms.SendKeys]::SendWait('^{HOME}')
-        [System.Windows.Forms.SendKeys]::SendWait('+{END}')
+        [System.Windows.Forms.SendKeys]::SendWait('^a')
         Start-Sleep -Milliseconds 500
+        $bodyRange = $document.selection.createRange()
+        $bodyRange.collapse($true)
+        if (-not $bodyRange.findText('Body remains unchanged.')) { throw 'Body text could not be located within the editor selection.' }
+        $bodyRange.select()
         $selectedBody = [string]$document.selection.createRange().text
         if ($selectedBody.Trim() -cne 'Body remains unchanged.') { throw "Unexpected body selection: '$selectedBody'." }
         [System.Windows.Forms.SendKeys]::SendWait('^c')
