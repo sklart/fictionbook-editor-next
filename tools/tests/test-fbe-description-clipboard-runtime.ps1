@@ -314,7 +314,7 @@ try {
         $field.focus(); $field.select()
         [System.Windows.Forms.SendKeys]::SendWait('^v')
         Start-Sleep -Seconds 1
-        if ([string]$field.value -cne $copiedBody) { throw 'Pasting text copied from the book body failed.' }
+        if ([string]$field.value -cne $copiedBody) { throw "Pasting text copied from the book body failed: expected '$copiedBody', got '$($field.value)'. Windows: $([BaselineWindow]::WindowTexts([uint32]$process.Id) -join ' | ')" }
         $previousTitle = [string]$field.value
         $unicode = ([string][char]0x041f) + [char]0x0440 + [char]0x0438 + [char]0x0432 + [char]0x0435 + [char]0x0442 + [char]0x00a0 + [char]0x03a9
         [System.Windows.Forms.Clipboard]::SetText($unicode)
