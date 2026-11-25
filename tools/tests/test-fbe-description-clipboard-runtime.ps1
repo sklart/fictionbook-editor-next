@@ -41,7 +41,7 @@ public static class BaselineWindow {
         EnumChildWindows(root, (window, ignored) => {
             var cls = new StringBuilder(256); GetClassName(window, cls, cls.Capacity);
             if (cls.ToString() != "ToolbarWindow32") return true;
-            int found = SendMessage(window, 0x419, (IntPtr)command, IntPtr.Zero).ToInt32();
+            int found = unchecked((int)SendMessage(window, 0x419, (IntPtr)command, IntPtr.Zero).ToInt64());
             if (found < 0) return true;
             toolbar = window; index = found; return false;
         }, IntPtr.Zero);

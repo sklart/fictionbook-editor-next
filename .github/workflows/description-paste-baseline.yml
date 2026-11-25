@@ -1,8 +1,6 @@
 name: Description paste baseline diagnostic
 on:
   workflow_dispatch:
-  push:
-    branches: [codex/3.0.12-description-paste]
 permissions:
   contents: read
   actions: read
