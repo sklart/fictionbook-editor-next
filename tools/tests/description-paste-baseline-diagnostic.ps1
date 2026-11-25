@@ -48,6 +48,8 @@ try {
     do { Start-Sleep -Milliseconds 500; $process.Refresh() } until ($process.MainWindowHandle -ne [IntPtr]::Zero -or $process.HasExited -or [DateTime]::UtcNow -ge $deadline)
     if ($process.HasExited -or $process.MainWindowHandle -eq [IntPtr]::Zero) { throw 'Editor window did not start.' }
     Start-Sleep -Seconds 15
+    $process.Refresh()
+    if ($process.MainWindowHandle -eq [IntPtr]::Zero) { throw 'Main window is unavailable after startup.' }
     Write-Host "Editor window title: $($process.MainWindowTitle)"
     [void][BaselineWindow]::SendMessage($process.MainWindowHandle, 0x111, [IntPtr]32809, [IntPtr]::Zero)
     $field = $null
