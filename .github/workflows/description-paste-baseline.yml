@@ -1,0 +1,29 @@
+name: Description paste baseline diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/3.0.12-description-paste]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  baseline:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: 45631151901
+          name: FictionBookEditorNext-2cb31d085927df30a0e82cd9958c73b57478ce49-release
+          path: baseline
+      - name: Exercise released editor on a clean Windows runner
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem baseline -Recurse -Filter '*-portable.zip' | Select-Object -First 1
+          if (-not $zip) { throw 'Original portable archive missing.' }
+          if ((Get-FileHash $zip.FullName).Hash -ne '6938153e1c40acecf0b7fec901f14684012be2268dfa75390c72e1fe769261a9') { throw 'Original archive hash mismatch.' }
+          Expand-Archive -LiteralPath $zip.FullName -DestinationPath baseline/runtime
+          powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File tools/tests/description-paste-baseline-diagnostic.ps1 -RuntimeDirectory baseline/runtime
+          if ($LASTEXITCODE -ne 0) { throw 'Baseline diagnostic failed.' }
