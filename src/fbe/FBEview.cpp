@@ -2973,6 +2973,14 @@ static CString DescriptionTextControlValue(MSHTML::IHTMLElementPtr element)
 	return textarea ? CString(static_cast<LPCWSTR>(textarea->value)) : CString();
 }
 
+static bool IsDescriptionTextControlEditable(MSHTML::IHTMLElementPtr element)
+{
+	MSHTML::IHTMLInputTextElementPtr input(element);
+	if (input) return input->disabled != VARIANT_TRUE && input->readOnly != VARIANT_TRUE;
+	MSHTML::IHTMLTextAreaElementPtr textarea(element);
+	return textarea && textarea->disabled != VARIANT_TRUE && textarea->readOnly != VARIANT_TRUE;
+}
+
 LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 {
 	const wchar_t* pasteStage = L"CP301";
@@ -2980,10 +2988,13 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 	try
 	{
 		MSHTML::IHTMLElementPtr target(Document()->activeElement);
-		if (IsDescriptionTextControl(target)) {
+		if (!m_activeHtmlPaste && IsDescriptionTextControl(target)) {
+			if (!IsDescriptionTextControlEditable(target)) return 0;
 			const CString before = DescriptionTextControlValue(target);
 			PasteEnableScope pasteEnabled(m_enable_paste);
-			ExecCommand(IDM_PASTE);
+			const HRESULT result = static_cast<HRESULT>(ExecCommand(IDM_PASTE));
+			if (FAILED(result) && (::IsClipboardFormatAvailable(CF_UNICODETEXT) || ::IsClipboardFormatAvailable(CF_TEXT)))
+				CheckError(result);
 			if (DescriptionTextControlValue(target) != before)
 				MarkDescriptionFormChanged();
 			return 0;
@@ -5543,6 +5554,8 @@ void  CFBEView::OnFocusIn(IDispatch *evt) {
   MSHTML::IHTMLElementPtr   te(oe->srcElement);
   if (!(bool)te)
     return;
+  if (IsDescriptionElement(te))
+    ::PostMessage(m_frame, AU::WM_DESCRIPTION_FOCUS_CHANGED, 0, 0);
 
   if (U::scmp(te->tagName,L"TEXTAREA") == 0 && IsDescriptionElement(te)) {
     m_cur_textarea=te;

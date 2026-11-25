@@ -1177,6 +1177,40 @@ if (IsFbeTestScenario(L"issue72-normal-save") || IsFbeTestScenario(L"issue72-nor
                 const CString baselineHtml(static_cast<LPCWSTR>(editable->innerHTML)), baselineCaret(selectionState());
                 const bool baselineDirty = m_doc->DocChanged(), baselineRecovery = m_doc->DocRelChanged();
                 bool valid = !previousRedo.empty() && undoHistory() == previousUndo && (!cleanQueueFailure || (!baselineDirty && !baselineRecovery));
+                if (wcscmp(caseName, L"queue-description-focus") == 0) {
+                    setInput(1);
+                    event();
+                    ShowView(DESC);
+                    MSHTML::IHTMLInputTextElementPtr titleField(document->all->item(L"tiTitle"));
+                    if (!titleField) throw _com_error(E_FAIL);
+                    const CString oldTitle(static_cast<LPCWSTR>(titleField->value));
+                    MSHTML::IHTMLElement2Ptr titleElement(titleField);
+                    CheckError(titleElement->focus());
+                    CheckError(titleField->select());
+                    setInput(2);
+                    const DWORD metadataClipboard = ::GetClipboardSequenceNumber();
+                    m_doc->m_body.OnPaste(0, ID_EDIT_PASTE, 0, handled);
+                    drain();
+                    _Module.GetMessageLoop()->OnIdle(0);
+                    const CString titleAfter(static_cast<LPCWSTR>(titleField->value));
+                    const CString bodyAfter(static_cast<LPCWSTR>(editable->innerHTML));
+                    const int bodyMarker = bodyAfter.Find(L"Queue1");
+                    valid = valid && titleAfter == L"Queue2" && bodyMarker >= 0 &&
+                        bodyAfter.Find(L"Queue1", bodyMarker + 1) < 0 && bodyAfter.Find(L"Queue2") < 0 &&
+                        ::GetClipboardSequenceNumber() == metadataClipboard && m_doc->DocChanged() && m_doc->DocRelChanged() && closed();
+                    edit(ID_EDIT_UNDO);
+                    const bool undo = CString(static_cast<LPCWSTR>(titleField->value)) == oldTitle;
+                    edit(ID_EDIT_REDO);
+                    const bool redo = CString(static_cast<LPCWSTR>(titleField->value)) == titleAfter;
+                    int line = 0, column = 0;
+                    const bool persisted = m_doc->Validate(line, column) && saveReopen();
+                    valid = valid && undo && redo && persisted;
+                    CStringA row; row.Format("%S\t%d\t1\t1\t1\t1\t%d\t%d\t1\t1\t1\t%d\t%d\t%s\r\n",
+                        caseName, valid, undo, redo, persisted, persisted, valid ? "pass" : "fail");
+                    output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
+                    if (!restoreClipboard()) return 0;
+                    output.Flush(); output.Close(); ::PostQuitMessage(valid ? 0 : 1); return 0;
+                }
                 auto traceQueue = [&](LPCSTR stage) {
                     CStringA message; message.Format("queue-stage: %s valid=%d undo=%u redo=%u caret=%S html=%S\r\n", stage, valid,
                         static_cast<unsigned>(undoHistory().size()), static_cast<unsigned>(redoHistory().size()),

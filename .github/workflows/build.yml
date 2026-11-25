@@ -889,19 +889,38 @@ jobs:
             build/evidence-takir-id-undo/generated
           if-no-files-found: warn
 
+  description-paste:
+    needs: build
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Download verified editor
+        uses: actions/download-artifact@v8
+        with:
+          name: FictionBookEditorNext-${{ github.sha }}-compiled
+          path: out
+      - name: Verify metadata clipboard behavior
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File tools/tests/test-fbe-description-clipboard-runtime.ps1 -RuntimeDirectory out/Release -ExpectFixed
+          if ($LASTEXITCODE -ne 0) { throw 'Metadata clipboard regression failed.' }
+
   manual-full-gate:
     if: always() && github.event_name == 'workflow_dispatch' && inputs.full_validation
-    needs: [validate, package, release-asan, release-ubsan, release-scripts, release-docs, community-runtime]
+    needs: [validate, package, release-asan, release-ubsan, release-scripts, release-docs, community-runtime, description-paste]
     runs-on: ubuntu-latest
     steps:
       - name: Require every full validation job
-        if: ${{ needs.validate.result != 'success' || needs.package.result != 'success' || needs.release-asan.result != 'success' || needs.release-ubsan.result != 'success' || needs.release-scripts.result != 'success' || needs.release-docs.result != 'success' || needs.community-runtime.result != 'success' }}
+        if: ${{ needs.validate.result != 'success' || needs.package.result != 'success' || needs.release-asan.result != 'success' || needs.release-ubsan.result != 'success' || needs.release-scripts.result != 'success' || needs.release-docs.result != 'success' || needs.community-runtime.result != 'success' || needs.description-paste.result != 'success' }}
         run: exit 1
       - run: echo "Full validation passed"
 
   publish:
     if: github.event_name == 'push' && github.ref_type == 'tag'
-    needs: [validate, package, release-asan, release-ubsan, release-scripts, release-docs]
+    needs: [validate, package, release-asan, release-ubsan, release-scripts, release-docs, description-paste]
     runs-on: windows-2022
     permissions:
       contents: write

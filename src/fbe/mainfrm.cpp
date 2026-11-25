@@ -4595,6 +4595,13 @@ LRESULT CMainFrame::OnDescriptionFormChanged(UINT, WPARAM, LPARAM, BOOL&)
 	return 0;
 }
 
+LRESULT CMainFrame::OnDescriptionFocusChanged(UINT, WPARAM, LPARAM, BOOL&)
+{
+	UpdateClipboardCommands();
+	InvalidateUi(UiDirtyToolbar);
+	return 0;
+}
+
 LRESULT CMainFrame::OnQueryEndSession(UINT, WPARAM, LPARAM, BOOL&)
 {
     m_ui_watchdog.Pause();
@@ -8179,6 +8186,16 @@ void CMainFrame::UpdateClipboardCommands()
 	{
 		UIEnable(ID_EDIT_PASTE, m_source.SendMessage(SCI_CANPASTE) || m_clipboard_has_bitmap);
 		UIEnable(ID_EDIT_PASTE_TEXT, ::IsClipboardFormatAvailable(CF_UNICODETEXT));
+	}
+	else if (m_editor_view_state.Current() == DESC)
+	{
+		OLECMD command = { IDM_PASTE, 0 };
+		m_doc->m_body.QueryStatus(&command, 1);
+		const bool hasText = ::IsClipboardFormatAvailable(CF_UNICODETEXT) || ::IsClipboardFormatAvailable(CF_TEXT);
+		const bool canPaste = hasText && (command.cmdf & OLECMDF_ENABLED) != 0;
+		UIEnable(ID_EDIT_PASTE, canPaste);
+		UIEnable(ID_EDIT_PASTE_TEXT, canPaste);
+		UIEnable(ID_EDIT_PASTE2, canPaste);
 	}
 }
 
