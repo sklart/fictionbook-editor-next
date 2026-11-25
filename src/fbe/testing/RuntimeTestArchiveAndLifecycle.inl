@@ -975,8 +975,10 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		const CString original = field ? CString(static_cast<LPCWSTR>(field->value)) : CString();
 		const CString generated(L"probe-generated-id");
 		ProbeUnit* unit = field ? new ProbeUnit(field, original, generated) : NULL;
+		// Set up the edited state before registering our unit. Otherwise MSHTML
+		// places its native edit above the probe and Undo never calls ProbeUnit.
+		if (field) field->value = static_cast<LPCWSTR>(generated);
 		const HRESULT added = manager && unit ? manager->Add(unit) : E_NOINTERFACE;
-		if (SUCCEEDED(added)) field->value = static_cast<LPCWSTR>(generated);
 		OLECMD undo = { IDM_UNDO, 0 }; m_doc->m_body.QueryStatus(&undo, 1);
 		SendMessage(WM_COMMAND, ID_EDIT_UNDO, 0);
 		const bool restored = field && CString(static_cast<LPCWSTR>(field->value)) == original;
