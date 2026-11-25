@@ -1581,6 +1581,8 @@ if (IsFbeTestScenario(L"issue72-normal-save") || IsFbeTestScenario(L"issue72-nor
 			MSG pendingPaste = {};
 			while (::PeekMessage(&pendingPaste, m_doc->m_body, WM_COMMAND, WM_COMMAND, PM_REMOVE))
 				::DispatchMessage(&pendingPaste);
+			while (::PeekMessage(&pendingPaste, m_doc->m_body, AU::WM_FINALIZE_HTML_PASTE, AU::WM_FINALIZE_HTML_PASTE, PM_REMOVE))
+				::DispatchMessage(&pendingPaste);
 			editable = document->all->item(L"fbw_body"); targetSection = byId(emptyTarget ? L"title-target-empty" : L"title-target");
 			normalizedNested = countNestedTitle(targetSection) > 0;
 			normalizedDuplicate = countDirectTitles(targetSection) > 1;
