@@ -2592,10 +2592,10 @@ void CMainFrame::RunPortableStateTestScenario()
 			characteristicDpiDetails.AppendFormat("dpi-%u-font-height=%ld;window-dpi=%u;layout-dpi=%u\n", dpi, fontInfo.lfHeight,
 				UiMetrics::DpiForWindow(m_script_card_window.m_hWnd), m_script_card_window.LayoutDpi());
 			characteristicDpiMatrix = characteristicDpiMatrix && m_script_card_window.LayoutDpi() == dpi;
-			for(const int logicalWidth : { 1200, 420, 260 })
+			for(const int logicalWidth : { 1200, 1201, 1202, 420, 260 })
 			{
 				const int actualRows = layoutAtViewportWidth(logicalWidth, dpi);
-				const int expectedRows = logicalWidth == 1200 ? 1 : logicalWidth == 420 ? 2 : 3;
+				const int expectedRows = logicalWidth >= 1200 ? 1 : logicalWidth == 420 ? 2 : 3;
 				RECT actualViewport = {}; ::GetClientRect(characteristicViewport, &actualViewport);
 				characteristicDpiDetails.AppendFormat("dpi-%u-width-%d=%d/%d;client=%ld;scroll=%d\n",
 					dpi, logicalWidth, actualRows, expectedRows, actualViewport.right - actualViewport.left,

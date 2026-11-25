@@ -592,7 +592,9 @@ void CScriptCardDlg::LayoutVisualBlocks(int width, int height)
 				usable - 2 * thirdWidth >= headingWidth(m_blocks[index + 2]))
 			{
 				count = 3;
-				widths = { thirdWidth, thirdWidth, usable - 2 * thirdWidth };
+				widths.assign(3, thirdWidth);
+				for(int column = 0; column < usable % 3; ++column)
+					++widths[column];
 			}
 			else if(first && index + 1 < m_blocks.size() && m_blocks[index + 1].layout == 3 &&
 				halfWidth >= headingWidth(m_blocks[index]) &&
