@@ -3069,6 +3069,12 @@ if(IsFbeTestScenario(L"issue64-runtime")) return RunIssue64Runtime(output);
 		const bool undoClicked = clickToolbar(ID_EDIT_UNDO); pumpToolbar();
 		const CString afterToolbarUndo(static_cast<LPCWSTR>(body->innerHTML));
 		const CString bookAfterToolbarUndo = bookHtml();
+		// MSHTML reports the new Redo state after processing the Undo notification.
+		const ULONGLONG redoDeadline = ::GetTickCount64() + 3000;
+		while ((m_CmdToolbar.SendMessage(TB_GETSTATE, ID_EDIT_REDO, 0) & TBSTATE_ENABLED) == 0 &&
+			::GetTickCount64() < redoDeadline) {
+			pumpToolbar();
+		}
 		const bool redoClicked = clickToolbar(ID_EDIT_REDO); pumpToolbar();
 		const CString afterToolbarRedo(static_cast<LPCWSTR>(body->innerHTML));
 		const CString bookAfterToolbarRedo = bookHtml();

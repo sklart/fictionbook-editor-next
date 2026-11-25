@@ -1,19 +1,21 @@
 [CmdletBinding()]
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 90)
 $ErrorActionPreference = 'Stop'
-$FbeExe = (Resolve-Path -LiteralPath $FbeExe).Path
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-generated-id-' + [guid]::NewGuid().ToString('N'))
-[void](New-Item -ItemType Directory -Path $directory)
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'generated-id'
+$directory = $iso.Root
+$passed = $false
 try {
+    $null = New-IsolatedFbeSettingsSeed $iso
     $fixture = Join-Path $directory 'id.fb2'; $report = Join-Path $directory 'report.txt'
     [IO.File]::WriteAllText($fixture, '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Generated ID</book-title><lang>en</lang></title-info><document-info><id>original-id</id><version>1.0</version></document-info></description><body><section><p>Body</p></section></body></FictionBook>', [Text.UTF8Encoding]::new($false))
     $oldMode, $oldScenario, $oldExpected = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_EXPECTED_ID
     try {
         $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'generated-id-runtime'
-        $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -PassThru
-        if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Generated ID runtime timed out.' }
+        $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Root -ArgumentList @('--portable', '-b', $report, $fixture) -WindowStyle Hidden -PassThru
+        $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds $TimeoutSeconds
         $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<report missing>' }
-        if($process.ExitCode -ne 0) { throw "Generated ID runtime failed ($($process.ExitCode)):`n$text" }
+        if($code -ne 0) { throw "Generated ID runtime failed ($code):`n$text" }
         foreach($key in @('initially-clean','canceled-clean','generated','dirty','source-current','saved','clean-after-save','persisted')) { if($text -notmatch "(?m)^$key=1$") { throw "Generated ID runtime failed ($key):`n$text" } }
         foreach($key in @('undo-before','undo-after')) { $match = [regex]::Match($text, "(?m)^$key=(\d+)$"); if(-not $match.Success) { throw "Missing $key diagnostic." }; Write-Host "$key=$($match.Groups[1].Value)" }
         foreach($key in @('undo-units-before','undo-units-after')) { $match = [regex]::Match($text, "(?m)^$key=(\d+)$"); if(-not $match.Success) { throw "Cannot enumerate $key diagnostic.`n$text" }; Write-Host "$key=$($match.Groups[1].Value)" }
@@ -21,10 +23,11 @@ try {
         $savedId = $savedXml.SelectSingleNode("/*[local-name()='FictionBook']/*[local-name()='description']/*[local-name()='document-info']/*[local-name()='id']").InnerText
         if(-not $savedId -or $savedId -eq 'original-id') { throw 'Saved document has no generated ID.' }
         $env:FBE_NEXT_TEST_EXPECTED_ID = $savedId; $env:FBE_NEXT_TEST_SCENARIO = 'generated-id-reopen-runtime'
-        $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -PassThru
-        if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Generated ID reopen timed out.' }
+        $process = Start-Process -FilePath $iso.Exe -WorkingDirectory $iso.Root -ArgumentList @('--portable', '-b', $report, $fixture) -WindowStyle Hidden -PassThru
+        $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds $TimeoutSeconds
         $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<report missing>' }
-        if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^description-current=1$' -or $text -notmatch '(?m)^source-current=1$') { throw "Generated ID reopen failed ($($process.ExitCode)):`n$text" }
+        if($code -ne 0 -or $text -notmatch '(?m)^description-current=1$' -or $text -notmatch '(?m)^source-current=1$') { throw "Generated ID reopen failed ($code):`n$text" }
     } finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario; $env:FBE_NEXT_TEST_EXPECTED_ID=$oldExpected }
+    $passed = $true
     Write-Host 'Generated ID runtime checks passed.'
-} finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+} finally { Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed }

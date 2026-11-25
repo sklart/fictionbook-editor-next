@@ -18,8 +18,8 @@ $names = @('export-html','export-docx','import-epub','export-epub')
 $legacy = @('PluginSettings\ExportHTML','ExportDOCX','ImportEPUB','Plugins\ExportEPUB')
 $base = 'Software\FBETeam\FictionBook Editor Next\'
 function Snapshot {
+    if (-not (Test-Path -LiteralPath 'HKCU:\Software\FBETeam\FictionBook Editor Next')) { return '<absent>' }
     $text = & reg.exe query 'HKCU\Software\FBETeam\FictionBook Editor Next' /s 2>&1
-    if($LASTEXITCODE -eq 1) { return '<absent>' }
     if($LASTEXITCODE -ne 0) { throw 'Could not snapshot registry.' }
     return ($text -join "`n")
 }
