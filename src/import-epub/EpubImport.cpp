@@ -3217,6 +3217,7 @@ namespace
     struct InlineFontState { bool italic = false; bool bold = false; };
     struct CssSelectorPart
     {
+        bool directChild = false;
         CStringW element;
         std::vector<CStringW> classes;
     };
@@ -3427,23 +3428,37 @@ namespace
         return true;
     }
 
+    MSXML2::IXMLDOMNodePtr ParentNode(const MSXML2::IXMLDOMNodePtr& node);
+
     bool MatchesCssRule(const MSXML2::IXMLDOMNodePtr& node, const CssFontRule& rule, int pseudo = 0)
     {
-        if (rule.pseudo != pseudo || rule.parts.empty() || !MatchesCssPart(node, rule.parts.back())) return false;
-        MSXML2::IXMLDOMNodePtr ancestor(node);
-        for (size_t index = rule.parts.size() - 1; index > 0; --index)
+        if (rule.pseudo != pseudo || rule.parts.empty()) return false;
+        size_t index = rule.parts.size() - 1;
+        auto candidate = node;
+        bool scanAncestors = false;
+        while (candidate)
         {
-            bool found = false;
-            while (ancestor)
+            // Match a complete chain of child selectors before committing to
+            // a descendant match. A nearer partial chain may otherwise hide
+            // a valid chain farther up the tree.
+            auto current = candidate;
+            size_t part = index;
+            while (MatchesCssPart(current, rule.parts[part]))
             {
-                IXMLDOMNode* parent = nullptr;
-                if (FAILED(ancestor->get_parentNode(&parent))) return false;
-                ancestor = MSXML2::IXMLDOMNodePtr(parent, false);
-                if (MatchesCssPart(ancestor, rule.parts[index - 1])) { found = true; break; }
+                if (part == 0) return true;
+                current = ParentNode(current);
+                if (!rule.parts[part--].directChild) break;
             }
-            if (!found) return false;
+            if (part < index && !rule.parts[part + 1].directChild)
+            {
+                index = part;
+                candidate = current;
+                scanAncestors = true;
+            }
+            else if (scanAncestors) candidate = ParentNode(candidate);
+            else return false;
         }
-        return true;
+        return false;
     }
 
     void ApplyInlineFont(const MSXML2::IXMLDOMNodePtr& node, InlineFontState& font)
@@ -3793,13 +3808,23 @@ namespace
                     if (lowerSelector.Right(8) == L"::before") { rule.pseudo = 1; selector = selector.Left(selector.GetLength() - 8); }
                     else if (lowerSelector.Right(7) == L"::after") { rule.pseudo = 2; selector = selector.Left(selector.GetLength() - 7); }
                     selector.TrimRight();
+                    selector.Replace(L">", L" > ");
+                    bool directChild = false;
                     bool valid = true;
                     int partPosition = 0;
                     while (partPosition != -1)
                     {
                         const CStringW token = selector.Tokenize(L" \t\r\n\f", partPosition);
                         if (token.IsEmpty()) continue;
+                        if (token == L">")
+                        {
+                            if (rule.parts.empty() || directChild) { valid = false; break; }
+                            directChild = true;
+                            continue;
+                        }
                         CssSelectorPart part;
+                        part.directChild = directChild;
+                        directChild = false;
                         const int dot = token.Find(L'.');
                         part.element = dot >= 0 ? token.Left(dot) : token;
                         if (!part.element.IsEmpty() && !IsCssIdentifier(part.element)) { valid = false; break; }
@@ -3817,7 +3842,7 @@ namespace
                         if (!part.element.IsEmpty()) ++rule.elementSpecificity;
                         rule.parts.push_back(part);
                     }
-                    valid = valid && !rule.parts.empty();
+                    valid = valid && !directChild && !rule.parts.empty();
                     if (!valid) { warning += L"Unsupported CSS font selector or declaration: " + originalSelector + L"\r\n"; continue; }
                     rule.declarations = supported;
                     if (rule.pseudo)
@@ -8682,9 +8707,34 @@ namespace
         finishWord();
         const unsigned letters = latin + cyrillic;
         if (letters < 400) return CStringW();
-        if (cyrillic * 100 >= letters * 85 && ruWords >= 8 && ruDistinct.size() >= 4) return L"ru";
-        if (latin * 100 >= letters * 85 && enWords >= 8 && enDistinct.size() >= 4) return L"en";
+        if (cyrillic * 100 >= letters * 70 && ruWords >= 8 && ruDistinct.size() >= 4) return L"ru";
+        if (latin * 100 >= letters * 70 && enWords >= 8 && enDistinct.size() >= 4) return L"en";
         return CStringW();
+    }
+
+    CStringW AuthorDisplayName(const CStringW& creator)
+    {
+        std::vector<CStringW> parts;
+        SplitPersonName(creator, parts);
+        // Description uses the source order for first, middle and last name.
+        // A single name, a collective or an opaque credit keeps its spelling.
+        if (parts.size() != 2 && parts.size() != 3) return TrimString(creator);
+        CStringW display = parts.front();
+        for (size_t i = 1; i < parts.size(); ++i) display += L" " + parts[i];
+        return display;
+    }
+
+    CStringW MetadataAuthorLine(const EpubPackage& package)
+    {
+        CStringW authors;
+        for (const auto& creator : package.creators)
+        {
+            const CStringW name = AuthorDisplayName(creator);
+            if (name.IsEmpty()) continue;
+            if (!authors.IsEmpty()) authors += L", ";
+            authors += name;
+        }
+        return authors;
     }
 
     bool HasEquivalentOpeningTitle(const CStringW& body, const EpubPackage& package, bool& readable)
@@ -8723,6 +8773,7 @@ namespace
         readable = true;
         std::vector<MSXML2::IXMLDOMNodePtr> paragraphs;
         CollectElementsByLocalName(MsxmlGetDocumentElement(document), L"p", paragraphs);
+        const CStringW authorLine = MetadataAuthorLine(package);
         bool titleFound = false;
         std::vector<bool> authorsFound(package.creators.size(), false);
         const size_t count = (std::min)(paragraphs.size(), static_cast<size_t>(10));
@@ -8732,8 +8783,13 @@ namespace
             if (text.IsEmpty()) continue;
             bool matches = false;
             if (text.CompareNoCase(package.title) == 0) { titleFound = true; matches = true; }
+            if (!authorLine.IsEmpty() && text.CompareNoCase(authorLine) == 0)
+            {
+                std::fill(authorsFound.begin(), authorsFound.end(), true);
+                matches = true;
+            }
             for (size_t j = 0; j < package.creators.size(); ++j)
-                if (text.CompareNoCase(package.creators[j]) == 0) { authorsFound[j] = true; matches = true; }
+                if (text.CompareNoCase(AuthorDisplayName(package.creators[j])) == 0) { authorsFound[j] = true; matches = true; }
             if (!matches)
             {
                 MSXML2::IXMLDOMNode* rawParent = nullptr;
@@ -8749,14 +8805,7 @@ namespace
 
     CStringW BuildMetadataTitleBlock(const EpubPackage& package)
     {
-        CStringW authors;
-        for (const auto& author : package.creators)
-        {
-            CStringW name = TrimString(author);
-            if (name.IsEmpty()) continue;
-            if (!authors.IsEmpty()) authors += L", ";
-            authors += name;
-        }
+        const CStringW authors = MetadataAuthorLine(package);
         CStringW block = L"    <title>\r\n";
         if (!authors.IsEmpty()) block += L"      <p>" + XmlEscape(authors) + L"</p>\r\n";
         block += L"      <p>" + XmlEscape(package.title) + L"</p>\r\n    </title>\r\n";
@@ -9332,6 +9381,37 @@ namespace
         }
     }
 
+    MSXML2::IXMLDOMNodePtr EdgeImage(MSXML2::IXMLDOMNodePtr node, bool leading, CStringW& warning)
+    {
+        while (node && MsxmlGetNodeType(node) == MSXML2::NODE_ELEMENT)
+        {
+            const CStringW tag = LocalName(node);
+            if (tag == L"image") return node;
+            const auto attributes = MsxmlGetAttributes(node);
+            if ((tag != L"strong" && tag != L"emphasis") ||
+                (attributes && MsxmlGetNamedNodeMapLength(attributes) > 0))
+            {
+                if (FindFirstElementByLocalName(node, L"image"))
+                    warning += L"Kept inline image to preserve its enclosing link or formatting.\r\n";
+                break;
+            }
+            // Keep the wrapper around its remaining text. Empty wrappers
+            // may be meaningful to the source and stay intact.
+            if (TrimString(NodeText(node)).IsEmpty()) break;
+            const auto children = MsxmlGetChildNodes(node);
+            const long count = MsxmlGetNodeListLength(children);
+            node = nullptr;
+            for (long i = 0; i < count; ++i)
+            {
+                const auto child = MsxmlGetNodeListItem(children, leading ? i : count - 1 - i);
+                if (MsxmlGetNodeType(child) == MSXML2::NODE_TEXT && TrimString(NodeText(child)).IsEmpty()) continue;
+                node = child;
+                break;
+            }
+        }
+        return nullptr;
+    }
+
     void NormalizeSectionChildren(const MSXML2::IXMLDOMDocument2Ptr& dom, const MSXML2::IXMLDOMNodePtr& node, CStringW& warning)
     {
         std::vector<MSXML2::IXMLDOMNodePtr> children;
@@ -9371,6 +9451,8 @@ namespace
                         if (!first) first = part;
                         last = part;
                     }
+                    first = EdgeImage(first, true, warning);
+                    last = EdgeImage(last, false, warning);
                     if (first && LocalName(first) == L"image" && (edgeHasBody || !hasHeaderImage))
                     {
                         IXMLDOMNode* inserted = nullptr;
@@ -9737,7 +9819,7 @@ namespace
             }
             if (markerOnly && textNodes.size() == 1)
                 CheckError(textNodes[0]->put_nodeValue(CComVariant(mapped->second.marker)));
-            else
+            else if (text.Right(mapped->second.marker.GetLength()) != mapped->second.marker)
             {
                 IXMLDOMText* raw = nullptr;
                 CheckError(dom->createTextNode(CComBSTR(L" " + mapped->second.marker), &raw));
@@ -9763,9 +9845,15 @@ namespace
                 if (numericTitle || oldTitle == CStringW(entry.first.c_str()))
                 {
                     const CStringW number = entry.second.marker.Mid(1, entry.second.marker.GetLength() - 2);
-                    CheckError(paragraph->put_text(CComBSTR(number)));
-                    continue;
+                    std::vector<MSXML2::IXMLDOMNodePtr> textNodes;
+                    CollectNoteMarkerTextNodes(paragraph, textNodes);
+                    if (textNodes.size() == 1)
+                    {
+                        CheckError(textNodes.front()->put_nodeValue(CComVariant(number)));
+                        continue;
+                    }
                 }
+                if (oldTitle.Left(entry.second.marker.GetLength()) == entry.second.marker) continue;
                 IXMLDOMText* rawText = nullptr;
                 CheckError(dom->createTextNode(CComBSTR(entry.second.marker + L" "), &rawText));
                 MSXML2::IXMLDOMNodePtr marker(rawText, false);
@@ -9799,6 +9887,58 @@ namespace
             if (!selectedSections.count(section.GetInterfacePtr())) ordered.push_back(section);
         }
         for (const auto& section : ordered) AppendDomChild(notesBody, section);
+    }
+
+    bool IsTechnicalAnchorId(const CStringW& id)
+    {
+        if (id.GetLength() > 18 && id.Left(9).CompareNoCase(L"footnote-") == 0 && id.Right(9).CompareNoCase(L"-backlink") == 0)
+        {
+            const CStringW number = id.Mid(9, id.GetLength() - 18);
+            return !number.IsEmpty() && number.SpanIncluding(L"0123456789") == number;
+        }
+        for (const auto prefix : {L"Section", L"backlink", L"fnback", L"fnref"})
+        {
+            const int length = static_cast<int>(wcslen(prefix));
+            if (id.Left(length).CompareNoCase(prefix) != 0) continue;
+            int i = length;
+            if (i < id.GetLength() && (id[i] == L'_' || id[i] == L'-')) ++i;
+            if (i == id.GetLength()) continue;
+            while (i < id.GetLength() && id[i] >= L'0' && id[i] <= L'9') ++i;
+            if (i == id.GetLength()) return true;
+        }
+        return false;
+    }
+
+    void RemoveUnusedTechnicalIds(const MSXML2::IXMLDOMDocument2Ptr& dom)
+    {
+        // Use the final xlink targets, including links in notes and Description.
+        IXMLDOMNodeList* raw = nullptr;
+        CheckError(dom->selectNodes(CComBSTR(L"//@*[local-name()='href']"), &raw));
+        MSXML2::IXMLDOMNodeListPtr hrefs(raw, false);
+        std::set<std::wstring> targets;
+        const long count = MsxmlGetNodeListLength(hrefs);
+        for (long i = 0; i < count; ++i)
+        {
+            const CStringW href = NodeText(MsxmlGetNodeListItem(hrefs, i));
+            if (!href.IsEmpty() && href[0] == L'#') targets.emplace(href.Mid(1).GetString());
+        }
+        raw = nullptr;
+        CheckError(dom->selectNodes(CComBSTR(L"/*/*[local-name()='body' and not(@name)]"
+            L"//*[@id and (local-name()='p' or local-name()='section')]"), &raw));
+        MSXML2::IXMLDOMNodeListPtr nodes(raw, false);
+        const long nodeCount = MsxmlGetNodeListLength(nodes);
+        for (long i = 0; i < nodeCount; ++i)
+        {
+            const auto node = MsxmlGetNodeListItem(nodes, i);
+            const CStringW id = Attr(node, L"id");
+            if (IsTechnicalAnchorId(id) && !targets.count(id.GetString()))
+            {
+                const auto attributes = MsxmlGetAttributes(node);
+                IXMLDOMNode* removed = nullptr;
+                CheckError(attributes->removeNamedItem(CComBSTR(L"id"), &removed));
+                if (removed) removed->Release();
+            }
+        }
     }
 
     struct CompactBinaryValidation
@@ -9920,6 +10060,7 @@ namespace
         NormalizeSectionChildren(dom, MsxmlGetDocumentElement(dom), warning);
         if (g_options.blankBeforeImages || g_options.blankAfterImages) ApplyImageSpacing(dom, warning);
         if (g_options.importNotes && g_options.unifyNoteNumbers) ApplyUnifiedNoteNumbers(dom);
+        RemoveUnusedTechnicalIds(dom);
         // Keep the original only when the user requested an intermediate FB2
         // on error. Otherwise release it before serializing the DOM, which can
         // require another very large allocation for image-heavy books.

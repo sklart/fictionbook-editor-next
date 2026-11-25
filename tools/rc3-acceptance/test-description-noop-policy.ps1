@@ -17,7 +17,7 @@ $cases = @(
     @{name='binary-edit';policy='known-script-load';script='e.ReplaceBinaryFromFile("payload.bin",@@BINARY@@,"application/octet-stream");';failure='binary=0'},
     @{name='checkbox-live';policy='known-script-load';prepare='<input id="noopCheckbox" type="checkbox">';script='document.getElementById("noopCheckbox").checked=true;';failure='live=0'},
     @{name='multiselect-live';policy='known-script-load';prepare='<select id="noopSelect" multiple><option value="first" selected>First</option><option value="second">Second</option></select>';script='var s=document.getElementById("noopSelect");if(s.value!=="first")throw new Error("multiselect fixture");s.options[1].selected=true;if(s.value!=="first")throw new Error("first selected option changed");';failure='live=0'},
-    @{name='checkpoint-save';policy='known-script-load';script='if(!e.SaveCurrentDocument())throw new Error("checkpoint save failed");';failure='savepoints=0'},
+    @{name='checkpoint-save';policy='known-script-load';script='var p=document.getElementById("fbw_body").getElementsByTagName("P")[0],original=p.innerText;p.innerText=original+" changed";p.innerText=original;if(!e.SaveCurrentDocument())throw new Error("checkpoint save failed");';failure='savepoints=0'},
     @{name='native-history';policy='known-script-load';script='var p=document.getElementById("fbw_body").getElementsByTagName("P")[0],s=p.innerText;e.BeginUndoUnit(document,"No-op policy history probe");try{p.innerText="Temporary edit";p.innerText=s;}finally{e.EndUndoUnit(document);}';failure='history=0'}
 )
 try {

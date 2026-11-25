@@ -24,7 +24,7 @@ struct HtmlExportSettings
 	bool includeAuthors = true;
 	bool includeTranslators = true;
 	bool includeCustomInfo = true;
-	int tocDepth = 1;
+	int tocDepth = 3;
 	int imageMaxWidth = 0;
 	int imageMaxHeight = 0;
 	int documentStructure = 0; // 0 = one HTML page; split mode is reserved.

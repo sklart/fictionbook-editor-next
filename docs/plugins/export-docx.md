@@ -1,5 +1,7 @@
 # ExportDOCX
 
+A new profile includes the table of contents, reads the document language from FB2 and writes a successful export without a separate text report. Each saved option takes precedence over its default.
+
 `ExportDOCX.dll` exports an FBE FB2 document to Microsoft Word DOCX. `ExportDOCXBatch.exe` supports unattended single-file and corpus conversion. Build through `tools/build/build.ps1`: the plug-in is written to `out/Release/Plugins`, while the batch executable is written to the selected batch-output directory (or `out/Release` by default).
 
 ## Capabilities

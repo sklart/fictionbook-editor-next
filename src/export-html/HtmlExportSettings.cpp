@@ -39,12 +39,10 @@ template<class Key> void LoadSettings(Key& registry, HtmlExportSettings& setting
 	settings.usingCustomTemplate = templateSelection.custom;
 	settings.customCss = FbePluginSettings::PortableFilePath(FbePluginSettings::ReadString(registry, L"CustomCss", L""), false);
 	settings.includeToc = ReadBool(registry, L"IncludeToc", true);
-	settings.tocDepth = ReadInt(registry, L"TOCDepth", 1, 1, 10);
+	settings.tocDepth = ReadInt(registry, L"TOCDepth", 3, 1, 10);
 	settings.imageMaxWidth = ReadInt(registry, L"ImageMaxWidth", 0, 0, 10000);
 	settings.imageMaxHeight = ReadInt(registry, L"ImageMaxHeight", 0, 0, 10000);
 
-	DWORD metadataValue = 0;
-	const bool hasMetadataSettings = registry.QueryDWORDValue(L"IncludeAnnotation", metadataValue) == ERROR_SUCCESS;
 	const bool legacyIncludeDescription = ReadBool(registry, L"IncludeDesc", true);
 	settings.includeMetadata = ReadBool(registry, L"IncludeMetadata", legacyIncludeDescription);
 	settings.includeDescription = ReadBool(registry, L"IncludeDescription", legacyIncludeDescription);
@@ -56,17 +54,6 @@ template<class Key> void LoadSettings(Key& registry, HtmlExportSettings& setting
 	settings.includeAuthors = ReadBool(registry, L"IncludeAuthors", legacyIncludeDescription);
 	settings.includeTranslators = ReadBool(registry, L"IncludeTranslators", legacyIncludeDescription);
 	settings.includeCustomInfo = ReadBool(registry, L"IncludeCustomInfo", legacyIncludeDescription);
-	if (!hasMetadataSettings) {
-		settings.includeDescription = legacyIncludeDescription;
-		settings.includeAnnotation = legacyIncludeDescription;
-		settings.includeTitleInfo = legacyIncludeDescription;
-		settings.includeDocumentInfo = legacyIncludeDescription;
-		settings.includePublishInfo = legacyIncludeDescription;
-		settings.includeHistory = legacyIncludeDescription;
-		settings.includeAuthors = legacyIncludeDescription;
-		settings.includeTranslators = legacyIncludeDescription;
-		settings.includeCustomInfo = legacyIncludeDescription;
-	}
 
 	settings.documentStructure = ReadInt(registry, L"DocumentStructure", 0, 0, 1);
 	settings.style = ReadInt(registry, L"Style", 0, 0, 2);
@@ -90,7 +77,6 @@ template<class Key> void SaveSettings(Key& registry, const HtmlExportSettings& s
 {
 	registry.SetDWORDValue(L"UseCustomTemplate", settings.usingCustomTemplate ? 1 : 0);
 	if (settings.usingCustomTemplate) registry.SetStringValue(L"Template", FbePluginSettings::PortableFilePath(settings.templatePath, true));
-	else registry.DeleteValue(L"Template");
 	registry.SetStringValue(L"CustomCss", FbePluginSettings::PortableFilePath(settings.customCss, true));
 	WriteBool(registry, L"IncludeToc", settings.includeToc);
 	WriteBool(registry, L"IncludeMetadata", settings.includeMetadata);

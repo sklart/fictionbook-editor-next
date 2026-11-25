@@ -128,6 +128,7 @@
 #define IDS_SAVE_BUTTON                  220
 #define IDS_TOOLTIP_DOCUMENT_STRUCTURE_FORMAT 221
 #define IDS_TOOLTIP_DOCUMENT_STRUCTURE_CUSTOM_TEMPLATE 222
+#define IDC_HTML_DEFAULTS                 1950
 #define IDC_OPTIONS_TABS                 1014
 #define IDC_INCLUDE_TOC                  1015
 #define IDC_FORMAT_VALUE                 1017

@@ -2531,7 +2531,7 @@ struct ExportPluginSettings {
     bool includeAnnotationInToc = true;
     bool includeNotesInToc = true;
     bool includeNoteBacklinks = true;
-    bool useFirstImageAsCoverWhenMissing = true;
+    bool useFirstImageAsCoverWhenMissing = false;
     bool removeUnusedImages = false;
     DWORD warnLargeXhtmlKb = 512;
     DWORD maxTocDepth = 6;

@@ -59,6 +59,7 @@ LRESULT CHtmlExportOptionsDialog::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
         const CString text = LoadExportHtmlString(id);
         if(!text.IsEmpty()) SetDlgItemText(id, text);
     }
+    SetDlgItemText(IDC_HTML_DEFAULTS, LoadExportHtmlString(IDS_OPTIONS_VALUE_DEFAULT));
     CTabCtrl tabs(GetDlgItem(IDC_OPTIONS_TABS));
     ::SetPropW(tabs,L"FBE.PluginOptionsTabs",reinterpret_cast<HANDLE>(1));
     const UINT titles[] = { IDS_OPTIONS_TAB_GENERAL, IDS_OPTIONS_TAB_APPEARANCE, IDS_OPTIONS_TAB_IMAGES, IDS_OPTIONS_TAB_NOTES };
@@ -92,6 +93,7 @@ LRESULT CHtmlExportOptionsDialog::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
         return rect;
     };
     m_initialTabs = initialRect(IDC_OPTIONS_TABS);
+    m_initialDefaults = initialRect(IDC_HTML_DEFAULTS);
     m_initialOk = initialRect(IDOK);
     m_initialCancel = initialRect(IDCANCEL);
     MONITORINFO monitor = { sizeof(monitor) };
@@ -331,6 +333,9 @@ void CHtmlExportOptionsDialog::LayoutChrome()
     GetDlgItem(IDC_OPTIONS_TABS).MoveWindow(scale(m_initialTabs.left), scale(m_initialTabs.top),
         max(0, scale(m_initialTabs.Width()) + extraWidth),
         max(0, scale(m_initialTabs.Height()) + extraHeight));
+    GetDlgItem(IDC_HTML_DEFAULTS).MoveWindow(scale(m_initialDefaults.left),
+        client.bottom - scale(m_initialClient.cy - m_initialDefaults.top),
+        scale(m_initialDefaults.Width()), scale(m_initialDefaults.Height()));
     GetDlgItem(IDOK).MoveWindow(client.right - scale(m_initialClient.cx - m_initialOk.left),
         client.bottom - scale(m_initialClient.cy - m_initialOk.top),
         scale(m_initialOk.Width()), scale(m_initialOk.Height()));
@@ -346,6 +351,20 @@ void CHtmlExportOptionsDialog::SelectPage(int page)
     HWND pages[] = { m_generalPage.m_hWnd, m_appearancePage.m_hWnd, m_imagesPage.m_hWnd, m_notesPage.m_hWnd };
     for (int index = 0; index < static_cast<int>(_countof(pages)); ++index)
         if (pages[index]) ::ShowWindow(pages[index], index == page ? SW_SHOW : SW_HIDE);
+}
+LRESULT CHtmlExportOptionsDialog::OnDefaults(WORD, WORD, HWND, BOOL&)
+{
+    HtmlExportSettings defaults;
+    defaults.templatePath = U::GetProgDirFile(L"html.xsl");
+    defaults.customCss = m_workingSettings.customCss;
+    defaults.customFontFamily = m_workingSettings.customFontFamily;
+    defaults.externalImagesFolderName = m_workingSettings.externalImagesFolderName;
+    m_workingSettings = defaults;
+    m_generalPage.LoadFromSettings();
+    m_imagesPage.LoadFromSettings();
+    m_appearancePage.LoadFromSettings();
+    m_notesPage.LoadFromSettings();
+    return 0;
 }
 LRESULT CHtmlExportOptionsDialog::OnOk(WORD, WORD, HWND, BOOL&)
 {

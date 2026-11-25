@@ -1136,6 +1136,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         paragraph = next(p for p in root.findall('.//f:p', NS) if 'Italic' in self.text(p))
         self.assertEqual(len(root.findall('.//f:body//f:image', NS)), 1)
         self.assertIsNotNone(paragraph.find('f:emphasis', NS))
+        self.assertIsNotNone(root.find('.//f:section/f:image', NS))
 
     def test_optional_spacing_around_block_images_not_inline_images(self):
         body = ('<h1>Pictures</h1><p>Opening</p><img src="../a.png"/>'
@@ -1217,13 +1218,26 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertEqual(root.find('.//f:document-info/f:program-used', NS).text,
                          'FBE Next ImportEPUB plugin, FictionBook Editor Next ' + version)
 
-    def test_section_id_and_intentional_repeated_heading_text(self):
-        root = self.convert('<section id="Section0035"><h1>Repeated Heading</h1>'
-                            '<p>Repeated Heading</p><p>Following body</p></section>', navigation=False)
-        ids = [node.get('id', '') for node in root.iter()]
-        self.assertTrue(any('Section0035' in identifier for identifier in ids), ids)
+    def test_intentional_repeated_heading_text(self):
+        root = self.convert('<section><h1>Repeated Heading</h1><p>Repeated Heading</p>'
+                            '<p>Following body</p></section>', navigation=False)
         self.assertEqual(self.text(root).count('Repeated Heading'), 2)
         self.assert_once(root, 'Following body')
+
+    def test_final_internal_targets_control_technical_id_cleanup(self):
+        root = self.convert('<section id="Section0035"><p id="footnote-042-backlink">Unreferenced</p></section>'
+                            '<section id="Section0036"><p id="fnref8">Referenced</p>'
+                            '<p id="authors-anchor">Author target</p></section>',
+                            {'Text/other.xhtml': ('other', 'application/xhtml+xml',
+                             '<p><a href="chapter.xhtml#Section0036">Section</a>'
+                             '<a href="chapter.xhtml#fnref8">Paragraph</a></p>')},
+                            spine=['chapter', 'other'], navigation=False)
+        ids = {n.get('id') for n in root.iter() if n.get('id')}
+        self.assertFalse({'Section0035', 'footnote-042-backlink'} & ids)
+        self.assertTrue({'Section0036', 'fnref8', 'authors-anchor'} <= ids, ids)
+        for a in root.findall('.//f:a', NS):
+            self.assertIn(a.get(HREF)[1:], ids)
+        self.assert_once(root, 'Unreferenced', 'Referenced', 'Author target')
 
     def test_navigation_heading_has_no_generated_duplicate(self):
         root = self.convert('<h1 id="chapter">Chapter Heading</h1><p>Body text</p>',
@@ -1237,7 +1251,7 @@ Write-Output 'Independent FB2 XSD validation: PASS'
             self.assertNotEqual(self.text(title).strip(), 'Текст')
 
     def test_optional_title_block_uses_metadata_and_avoids_existing_equivalent(self):
-        plain = self.convert('<p>Opening text</p>', navigation=False, chapter_title='Chapter')
+        plain = self.convert('<p>Opening text</p>', navigation=False, chapter_title='Chapter', options=('--no-title-block',))
         self.assertNotIn('Tester', self.text(plain.find('f:body', NS)))
         added = self.convert('<p>Opening text</p>', navigation=False, chapter_title='Chapter', options=('--title-block',))
         body = added.find('f:body', NS)
@@ -1432,8 +1446,19 @@ Write-Output 'Independent FB2 XSD validation: PASS'
 
     def test_unsupported_css_font_selector_is_reported(self):
         self.convert('<p class="a"><span class="b">Text survives</span></p>',
-                     head='<style>.a > .b {font-style: italic}</style>', navigation=False)
+                     head='<style>.a + .b {font-style: italic}</style>', navigation=False)
         self.assertIn('Unsupported CSS font selector', self.diagnostics)
+
+    def test_css_child_combinator_and_descendant_cascade(self):
+        root = self.convert('<div class="outer"><p class="target">Direct</p>'
+                            '<div><p class="target">Nested</p></div></div><p>Outside</p>',
+                            head='<style>.outer .target {font-weight:bold} '
+                                 'div.outer>p.target {font-style:italic !important} '
+                                 '.target {font-style:normal}</style>', navigation=False)
+        for label, bold, italic in [('Direct', True, True), ('Nested', True, False), ('Outside', False, False)]:
+            p = next(n for n in root.findall('.//f:p', NS) if self.text(n) == label)
+            self.assertEqual(p.find('.//f:strong', NS) is not None, bold)
+            self.assertEqual(p.find('.//f:emphasis', NS) is not None, italic)
 
     def test_css_descendant_selectors_match_ancestors_and_cascade(self):
         root = self.convert('<div class="outer"><p><span class="target">Nested italic</span></p>'
@@ -1680,6 +1705,16 @@ Write-Output 'Independent FB2 XSD validation: PASS'
         self.assertEqual(lang(self.convert('<h1>' + english + '</h1><p>Short.</p>', language='', navigation=False)), 'und')
         french = ('Le livre raconte une histoire dans laquelle la personne a vu sa maison et son jardin. ' * 16)
         self.assertEqual(lang(self.convert('<p>' + french + '</p>', language='', navigation=False)), 'und')
+
+    def test_body_language_threshold_and_explicit_french(self):
+        for percent, expected in [(69, 'und'), (70, 'ru'), (71, 'ru')]:
+            words = ('это и что в на ' * 12)
+            cyrillic = sum(c.isalpha() for c in words)
+            sample = words + 'я' * (percent * 10 - cyrillic) + ' ' + 'x' * ((100 - percent) * 10)
+            root = self.convert('<p>' + sample + '</p>', language='', navigation=False)
+            self.assertEqual(root.find('.//f:title-info/f:lang', NS).text, expected)
+        root = self.convert('<p>' + words * 10 + '</p>', language='fr', navigation=False)
+        self.assertEqual(root.find('.//f:title-info/f:lang', NS).text, 'fr')
 
     def test_language_sample_excludes_retained_navigation_document(self):
         russian = 'Это история о том как человек увидел свой дом и понял что он был здесь. ' * 16

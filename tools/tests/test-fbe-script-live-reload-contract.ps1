@@ -21,10 +21,9 @@ $runner = Get-Content -LiteralPath (Join-Path $root 'tools\tests\test-fbe-naviga
 $runtimeRunner = Get-Content -LiteralPath (Join-Path $root 'tools\tests\test-fbe-script-live-reload-runtime.ps1') -Raw
 
 Require $runtime 'function LoadUserCommandScript\(path,\s*charset\)' 'Runtime no longer has the charset-aware fresh user-script loader.'
-Require $runtime 'replaceChild\(script,previous\)' 'Runtime must replace the previous userCmd node before each execution.'
-Require $runtime 'script\.id="userCmd"' 'Fresh script node must preserve the legacy userCmd id.'
+Require $runtime 'var script=document.getElementById\("userCmd"\)' 'Loader must reuse the host script element.'
 Require $runtime 'if\(!LoadUserCommandScript\(path,\s*charset\)\)\s*return;\s*Run\(\);' 'Run must use the charset-aware fresh user-script loader.'
-Require $runtime 'if\(charset\)\s*script\.charset=charset' 'The fresh script node must receive the requested charset.'
+Require $runtime 'script\.charset=charset \|\| document.charset' 'Loader must reset the encoding for every invocation.'
 Require $ids 'ID_TOOLS_REFRESH_SCRIPTS\s+32901' 'Refresh Scripts command id must remain 32901.'
 Require $ids 'IDB_TOOLS_REFRESH_SCRIPTS' 'Refresh Scripts menu bitmap id is missing.'
 Require $resource 'MENUITEM "Refresh &scripts",\s+ID_TOOLS_REFRESH_SCRIPTS' 'Refresh Scripts menu item is missing.'

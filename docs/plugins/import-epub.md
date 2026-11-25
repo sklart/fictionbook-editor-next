@@ -1,5 +1,7 @@
 # ImportEPUB
 
+In 3.0.11, a new profile converts star separators to subtitles, creates a metadata title block when needed, uses consistent image names and a separate cover name, and numbers notes in reading order. Explicit saved choices and batch switches override these defaults. The importer supports direct-child CSS selectors and uses a 70% threshold for Russian or English when the body sample is sufficient.
+
 `ImportEPUB.dll` imports EPUB into the FBE FB2 DOM. `ImportEPUBBatch.exe` provides single-file and corpus EPUB-to-FB2 conversion. Build with `tools/build/build.ps1`: plug-in DLLs are under `out/Release/Plugins`; batch executables use the configured batch-output directory.
 
 Import logs are written next to the source EPUB. The first uses

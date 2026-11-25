@@ -16,7 +16,7 @@
   <X:param name="embedimages" select="0"/>
   <X:param name="imgprefix" select="''"/>
   <X:param name="includedesc" select="1"/>
-  <X:param name="tocdepth" select="1"/>
+  <X:param name="tocdepth" select="3"/>
   <X:param name="customcss" select="''"/>
   <X:param name="imagemaxwidth" select="0"/>
   <X:param name="imagemaxheight" select="0"/>  <X:param name="includetoc" select="1"/>

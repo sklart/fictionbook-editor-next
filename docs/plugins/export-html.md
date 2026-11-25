@@ -1,5 +1,7 @@
 # ExportHTML
 
+A new profile includes three levels of headings in the table of contents. An existing profile keeps its saved depth. Each metadata option inherits the old description switch only when its own entry is missing.
+
 > Тип: Действующая инструкция. Документационная база: FBE Next 3.0.9, `master` / `1ad7c507d1ed`; сверка 19 октября 2026 года.
 
 ## Возможности

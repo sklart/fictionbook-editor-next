@@ -2,7 +2,7 @@ name: RC3 release repair
 
 on:
   push:
-    branches: [codex/3.0.11-release-repair]
+    branches: [codex/3.0.11-release-repair, codex/3.0.11-finalization]
   workflow_dispatch:
 
 permissions:
@@ -70,15 +70,15 @@ jobs:
         shell: pwsh
         run: |
           ./tools/rc3-acceptance/test-noop-classification.ps1
-          ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/Release/FBE.exe -AcceptKnownNoop
+          ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/Release/FBE.exe
       - name: Verify Description no-op policy
         if: ${{ !cancelled() && steps.build.outcome == 'success' && matrix.variant == 'Release' }}
         shell: pwsh
         run: ./tools/rc3-acceptance/test-description-noop-policy.ps1 -FbeExe out/Release/FBE.exe
-      - name: Verify Description layout with the explicit known script-load exception
+      - name: Verify Description layout and strict script-load dirty invariant
         if: ${{ !cancelled() && steps.build.outcome == 'success' && matrix.variant == 'Release' }}
         shell: pwsh
-        run: ./tools/tests/test-description-layout-runtime.ps1 -FbeExe out/Release/FBE.exe -TimeoutSeconds 90 -AcceptKnownNoop
+        run: ./tools/tests/test-description-layout-runtime.ps1 -FbeExe out/Release/FBE.exe -TimeoutSeconds 90
       - name: Verify BODY theme and appearance history
         if: ${{ !cancelled() && steps.build.outcome == 'success' && matrix.variant == 'Release' }}
         shell: pwsh

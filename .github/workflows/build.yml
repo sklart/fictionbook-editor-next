@@ -386,7 +386,7 @@ jobs:
             }
           }
           ./tools/rc3-acceptance/test-noop-classification.ps1
-          ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/Release/FBE.exe -AcceptKnownNoop
+          ./tools/rc3-acceptance/test-noop-real-edits.ps1 -FbeExe out/Release/FBE.exe
           ./tools/rc3-acceptance/test-stage3c-isolation-mocked.ps1
           ./tools/rc3-acceptance/test-stage3c-isolation.ps1 -FbeExe out/Release/FBE.exe
           ./tools/tests/test-status-bar-state.ps1

@@ -548,16 +548,16 @@ struct DocxExportSettings {
     DocxExportSettings()
         : exportImages(true), exportCover(true), wordFootnotes(true),
           notesEndFallback(false), justifyText(true), firstLineIndent(true),
-          chapterPageBreak(false), addToc(false), exportMetadata(true),
+          chapterPageBreak(false), addToc(true), exportMetadata(true),
           exportHyperlinks(true), createBookmarks(true), enhancedFb2Styles(true),
-          validateDocx(true), createReport(true), limitImageWidth(true), customFont(false),
+          validateDocx(true), createReport(false), limitImageWidth(true), customFont(false),
           titlePage(true), titleIncludeAnnotation(true), titleIncludeGenres(true),
           titleIncludeSeries(true), titleIncludeFb2Info(false), titleIncludeTranslators(true),
           titleIncludePublishInfo(true), titleIncludeSrcTitleInfo(true), appendHistory(false),
           coverSeparatePage(true), coverPageBreakAfter(true), imageCaptions(true), addTocPageBreak(true),
           addHeaders(false), addPageNumbers(true), noTitlePageNumber(true), restartPageNumbering(true),
           autoHyphenation(false), openAfterExport(false),
-          notesMode(0), exportPreset(0), styleProfile(0), pageSize(0), docLanguage(0), tocDepth(3), emptyLineMode(2),
+          notesMode(0), exportPreset(0), styleProfile(0), pageSize(0), docLanguage(2), tocDepth(3), emptyLineMode(2),
           imageMaxWidthCm(14), fontSizePt(12), fontName(L"Times New Roman") {}
 };
 

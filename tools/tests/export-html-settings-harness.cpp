@@ -84,6 +84,19 @@ int main()
 	HtmlExportSettings migrated;
 	HtmlExportSettingsStore::Load(migrationRegistry, migrated);
 	ok &= Expect(migrated.includeMetadata && migrated.includeDescription && migrated.includeAnnotation && migrated.includeTitleInfo && migrated.includeDocumentInfo && migrated.includePublishInfo && migrated.includeHistory && migrated.includeAuthors && migrated.includeTranslators && migrated.includeCustomInfo, "IncludeDesc=1 migration failed");
+	ok &= Expect(migrated.tocDepth == 3, "clean TOC depth");
+	migrationRegistry.SetDWORDValue(L"IncludeHistory", 0);
+	migrationRegistry.SetDWORDValue(L"TOCDepth", 1);
+	migrationRegistry.SetDWORDValue(L"UnknownFutureSetting", 19);
+	migrationRegistry.SetStringValue(L"Template", L"custom.xsl");
+	HtmlExportSettingsStore::Load(migrationRegistry, migrated);
+	ok &= Expect(migrated.tocDepth == 1 && migrated.includeAnnotation && !migrated.includeHistory, "partial profile fallback");
+	HtmlExportSettingsStore::Save(migrationRegistry, migrated);
+	HtmlExportSettings reopened;
+	HtmlExportSettingsStore::Load(migrationRegistry, reopened);
+	ok &= Expect(reopened.tocDepth == 1 && !reopened.includeHistory, "partial profile after restart");
+	ok &= Expect(FbePluginSettings::ReadDword(migrationRegistry, L"UnknownFutureSetting", 0) == 19 &&
+	    FbePluginSettings::ReadString(migrationRegistry, L"Template", L"") == L"custom.xsl", "retained profile values");
 	migrationRegistry.Close();
 	CRegKey parent;
 	if (parent.Open(HKEY_CURRENT_USER, L"Software\\FBETeam", KEY_WRITE) == ERROR_SUCCESS) {

@@ -1,5 +1,7 @@
 # ExportEPUB
 
+A new profile exports the explicit FB2 cover. If the book has no cover, the first illustration stays in the text. Users can enable the first-image fallback in export settings. A separate title page remains optional.
+
 `ExportEPUB.dll` exports FBE FB2 documents to EPUB; `ExportEPUBBatch.exe` supports repeatable corpus conversion. Use `tools/build/build.ps1` for builds. The plug-in is emitted to `out/Release/Plugins` and the batch executable to the chosen batch-output directory.
 
 ## Formats and capabilities

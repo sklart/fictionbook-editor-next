@@ -55,6 +55,7 @@ public:
     int m_currentPage = 0;
     bool m_splitSupported = true;
     CRect m_initialTabs;
+    CRect m_initialDefaults;
     CRect m_initialOk;
     CRect m_initialCancel;
     CSize m_initialClient;
@@ -77,6 +78,7 @@ public:
         MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
         MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
         NOTIFY_HANDLER(IDC_OPTIONS_TABS, TCN_SELCHANGE, OnTabChanged)
+        COMMAND_ID_HANDLER(IDC_HTML_DEFAULTS, OnDefaults)
         COMMAND_ID_HANDLER(IDOK, OnOk)
         COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
     END_MSG_MAP()
@@ -86,6 +88,7 @@ public:
     LRESULT OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnGetMinMaxInfo(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnTabChanged(int, LPNMHDR, BOOL&);
+    LRESULT OnDefaults(WORD, WORD, HWND, BOOL&);
     LRESULT OnOk(WORD, WORD, HWND, BOOL&);
     LRESULT OnCancel(WORD, WORD, HWND, BOOL&);
     LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&);

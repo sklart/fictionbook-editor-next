@@ -56,45 +56,40 @@ try {
     [IO.File]::WriteAllText($xsl, '<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"/>')
     [IO.File]::WriteAllText($css, 'body { color: black; }')
     $unicodeFont = 'Unicode ' + [char]0x0416
-    $seed = @{schemaVersion=1;values=@{UseCustomTemplate=1;Template=$xsl;CustomCss=$css;CustomFontFamily=$unicodeFont}} | ConvertTo-Json
+    $seed = @{schemaVersion=1;values=@{IncludeDesc=1;IncludeHistory=0;UseCustomTemplate=1;Template=$xsl;CustomCss=$css;CustomFontFamily=$unicodeFont}} | ConvertTo-Json
     [IO.File]::WriteAllText((Join-Path $assets '../export-html.json'), $seed, [Text.UTF8Encoding]::new($false))
     foreach($action in @('ui-position-default','ui-position-move','ui-position-verify')) { Probe $iso.Root portable $action }
     Probe $iso.Root portable dialogs
     $profileA = Join-Path $iso.Root 'ProfileA/Settings/Plugins'
     $first = Profiles $profileA
     $importSettings = $first['import-epub'] | ConvertFrom-Json
-    if($null -eq $importSettings.values.SeparatorSubtitles -or $importSettings.values.SeparatorSubtitles -ne 0) { throw 'SeparatorSubtitles must be persisted and disabled by default.' }
-    if($null -eq $importSettings.values.CreateTitleBlock -or $importSettings.values.CreateTitleBlock -ne 0) { throw 'CreateTitleBlock must be persisted and disabled by default.' }
-    foreach($field in @('UnifyImageNames','SeparateCoverName','UnifyNoteNumbers','BlankBeforeImages','BlankAfterImages')) {
-        if($null -eq $importSettings.values.$field -or $importSettings.values.$field -ne 0) { throw "$field must be persisted and disabled by default." }
+    $toggles = @(
+        @('ui-import-separator', 'SeparatorSubtitles', 1), @('ui-import-title', 'CreateTitleBlock', 1),
+        @('ui-import-unify-images', 'UnifyImageNames', 1), @('ui-import-cover-name', 'SeparateCoverName', 1),
+        @('ui-import-unify-notes', 'UnifyNoteNumbers', 1), @('ui-import-blank-before', 'BlankBeforeImages', 0),
+        @('ui-import-blank-after', 'BlankAfterImages', 0)
+    )
+    foreach($toggle in $toggles) {
+        $action, $key, $defaultValue = $toggle
+        if($importSettings.values.$key -ne $defaultValue) { throw "Incorrect clean import default for $key." }
+        foreach($expectedValue in @((1 - $defaultValue), $defaultValue)) {
+            Probe $iso.Root portable $action
+            Probe $iso.Root portable dialogs
+            $reopened = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
+            if($reopened.values.$key -ne $expectedValue) { throw "Lost saved option $key=$expectedValue on restart." }
+        }
     }
-    foreach($pair in @(@('ui-import-unify-images','UnifyImageNames'),@('ui-import-cover-name','SeparateCoverName'),@('ui-import-unify-notes','UnifyNoteNumbers'),@('ui-import-blank-before','BlankBeforeImages'),@('ui-import-blank-after','BlankAfterImages'))) {
-        Probe $iso.Root portable $pair[0]
-        $enabled = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
-        if($enabled.values.($pair[1]) -ne 1) { throw "Option $($pair[1]) was not enabled through the dialog." }
-        Probe $iso.Root portable dialogs
-        $reloaded = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
-        if($reloaded.values.($pair[1]) -ne 1) { throw "Option $($pair[1]) did not survive reloading." }
-        Probe $iso.Root portable $pair[0]
+    $defaults = @{
+        'export-html' = @{TOCDepth=3; IncludeHistory=0; IncludeAnnotation=1}
+        'export-docx' = @{AddToc=1; DocLanguage=2; CreateReport=0}
+        'export-epub' = @{UseFirstImageAsCoverWhenMissing=0; IncludeTitlePage=0}
     }
-    Probe $iso.Root portable ui-import-title
-    $titleEnabled = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
-    if($titleEnabled.values.CreateTitleBlock -ne 1) { throw 'The title block option was not enabled through the dialog.' }
-    Probe $iso.Root portable dialogs
-    $titleReloaded = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
-    if($titleReloaded.values.CreateTitleBlock -ne 1) { throw 'The title block option was not retained after reopening.' }
-    Probe $iso.Root portable ui-import-title
-    $titleDisabled = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
-    if($titleDisabled.values.CreateTitleBlock -ne 0) { throw 'The title block option was not disabled through the dialog.' }
-    Probe $iso.Root portable ui-import-separator
-    $enabledSettings = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
-    if($enabledSettings.values.SeparatorSubtitles -ne 1) { throw 'The separator option was not enabled through the dialog.' }
-    Probe $iso.Root portable dialogs
-    $reloadedSettings = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
-    if($reloadedSettings.values.SeparatorSubtitles -ne 1) { throw 'The separator option was not retained after reopening.' }
-    Probe $iso.Root portable ui-import-separator
-    $disabledSettings = Get-Content (Join-Path $profileA 'import-epub.json') -Raw | ConvertFrom-Json
-    if($disabledSettings.values.SeparatorSubtitles -ne 0) { throw 'The separator option was not disabled through the dialog.' }
+    foreach($plugin in $defaults.Keys) {
+        $values = ($first[$plugin] | ConvertFrom-Json).values
+        foreach($key in $defaults[$plugin].Keys) {
+            if($values.$key -ne $defaults[$plugin][$key]) { throw "Incorrect default for $plugin/$key." }
+        }
+    }
     foreach($entry in @(@('export-epub','IncludeCoverPage'), @('export-docx','ExportImages'), @('import-epub','ImportImages'))) {
         $settings = $first[$entry[0]] | ConvertFrom-Json
         if($settings.values.($entry[1]) -ne 1) { throw "Default setting was lost by the dialog: $($entry -join '/')" }
@@ -154,7 +149,7 @@ try {
         $expected = @{IncludeNcxFallbackInEpub3=1;IncludeCoverPage=1;IncludeAnnotationPage=1;IncludeTitlePage=0;WriteDiagnosticLog=0;
             ShowSummaryAfterExport=0;OpenFileAfterExport=0;OpenFolderAfterExport=0;ShowPreflightWarnings=1;CssJustifyText=1;
             CssFirstLineIndent=0;CssHyphenate=0;IncludeCoverInToc=1;IncludeAnnotationInToc=1;IncludeNotesInToc=1;IncludeNoteBacklinks=1;
-            UseFirstImageAsCoverWhenMissing=1;RemoveUnusedImages=0;WarnLargeXhtmlKb=512;MaxTocDepth=6}
+            UseFirstImageAsCoverWhenMissing=0;RemoveUnusedImages=0;WarnLargeXhtmlKb=512;MaxTocDepth=6}
         if($action -eq 'ui-compat') { $expected.CssJustifyText=0; $expected.WarnLargeXhtmlKb=384; $expected.MaxTocDepth=4 }
         if($action -eq 'ui-rich') { $expected.ShowSummaryAfterExport=1; $expected.IncludeTitlePage=1; $expected.CssHyphenate=1; $expected.RemoveUnusedImages=1; $expected.MaxTocDepth=8 }
         $actual = Get-Content (Join-Path $profileA 'export-epub.json') -Raw | ConvertFrom-Json

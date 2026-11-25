@@ -31,7 +31,7 @@ namespace
             , importTables(true), importLists(true), importPoemsEpigraphs(true), importSubtitles(true), splitSectionsByHeadings(true), preserveLinks(true)
             , cleanTypography(true), importPageBreaks(true), skipHiddenElements(true), validateResult(true), addDiagnosticSection(false), writeImportLog(false)
             , saveFb2Copy(false), useCssSemanticClasses(true), removeFootnoteBacklinks(true), removeServiceSections(false), writeLogOnWarnings(true)
-            , saveIntermediateFb2OnError(false), keepTempOnError(false), separatorSubtitles(false), createTitleBlock(false), unifyImageNames(false), separateCoverName(false), unifyNoteNumbers(false), blankBeforeImages(false), blankAfterImages(false), svgConversionMode(SVG_IMPORT_CONVERT_PNG)
+            , saveIntermediateFb2OnError(false), keepTempOnError(false), separatorSubtitles(true), createTitleBlock(true), unifyImageNames(true), separateCoverName(true), unifyNoteNumbers(true), blankBeforeImages(false), blankAfterImages(false), svgConversionMode(SVG_IMPORT_CONVERT_PNG)
         {
         }
     };
@@ -1440,38 +1440,15 @@ namespace
         quality = Fb2QualityStats();
         ImportEpubOptionsV6 apiOptions = {};
         apiOptions.base.base.base.base.base = MakeImportEpubApiOptions(options);
-        if (options.separatorSubtitles)
-        {
-            apiOptions.base.base.base.base.base.cbSize = sizeof(ImportEpubOptionsV2);
-            apiOptions.base.base.base.base.base.version = IMPORT_EPUB_API_VERSION_2;
-            apiOptions.base.base.base.base.separatorSubtitles = 1;
-        }
-        if (options.createTitleBlock)
-        {
-            apiOptions.base.base.base.base.base.cbSize = sizeof(ImportEpubOptionsV3);
-            apiOptions.base.base.base.base.base.version = IMPORT_EPUB_API_VERSION_3;
-            apiOptions.base.base.base.createTitleBlock = 1;
-        }
-        if (options.unifyImageNames || options.separateCoverName)
-        {
-            apiOptions.base.base.base.base.base.cbSize = sizeof(ImportEpubOptionsV4);
-            apiOptions.base.base.base.base.base.version = IMPORT_EPUB_API_VERSION_4;
-            apiOptions.base.base.unifyImageNames = options.unifyImageNames ? 1 : 0;
-            apiOptions.base.base.separateCoverName = options.separateCoverName ? 1 : 0;
-        }
-        if (options.unifyNoteNumbers)
-        {
-            apiOptions.base.base.base.base.base.cbSize = sizeof(ImportEpubOptionsV5);
-            apiOptions.base.base.base.base.base.version = IMPORT_EPUB_API_VERSION_5;
-            apiOptions.base.unifyNoteNumbers = 1;
-        }
-        if (options.blankBeforeImages || options.blankAfterImages)
-        {
-            apiOptions.base.base.base.base.base.cbSize = sizeof(apiOptions);
-            apiOptions.base.base.base.base.base.version = IMPORT_EPUB_API_VERSION_6;
-            apiOptions.blankBeforeImages = options.blankBeforeImages ? 1 : 0;
-            apiOptions.blankAfterImages = options.blankAfterImages ? 1 : 0;
-        }
+        apiOptions.base.base.base.base.base.cbSize = sizeof(apiOptions);
+        apiOptions.base.base.base.base.base.version = IMPORT_EPUB_API_VERSION_6;
+        apiOptions.base.base.base.base.separatorSubtitles = options.separatorSubtitles;
+        apiOptions.base.base.base.createTitleBlock = options.createTitleBlock;
+        apiOptions.base.base.unifyImageNames = options.unifyImageNames;
+        apiOptions.base.base.separateCoverName = options.separateCoverName;
+        apiOptions.base.unifyNoteNumbers = options.unifyNoteNumbers;
+        apiOptions.blankBeforeImages = options.blankBeforeImages;
+        apiOptions.blankAfterImages = options.blankAfterImages;
         BSTR apiFb2 = nullptr;
         BSTR apiError = nullptr;
         ImportEpubRuntimeStatsV1 runtimeStats = {};

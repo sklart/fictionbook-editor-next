@@ -2172,23 +2172,16 @@ function apiRunCmd(path, htmlFolder, charset)
 	} finally { window.external._LeaveScriptContext(executionToken); }
 }
 
-// MSHTML may reuse a script whose src has already been assigned. Replace the
-// element so every command invocation is a fresh load; the id remains stable
-// for legacy combo scripts which address userCmd directly.
+// Keep the host script node outside the editable history. Replacing it in
+// HEAD advances MSHTML's document version even when Run does nothing.
 function LoadUserCommandScript(path, charset)
 {
 	var executionToken=window.external._EnterScriptContext(String(path));
 	try {
 
-	var previous=document.getElementById("userCmd");
-	if(!previous || !previous.parentNode)
-		return null;
-	var script=document.createElement("script");
-	script.id="userCmd";
-	script.language="JavaScript";
-	script.type="text/javascript";
-	if(charset) script.charset=charset;
-	previous.parentNode.replaceChild(script,previous);
+	var script=document.getElementById("userCmd");
+	if(!script) return null;
+	script.charset=charset || document.charset;
 	script.src="file:///"+path;
 	return script;
 
