@@ -125,7 +125,7 @@ try {
     Start-Sleep -Seconds 2
     Write-Host "Formatted clipboard title: $($field.value)"
     Write-Host ("Windows after formatted paste: " + ([BaselineWindow]::WindowTexts([uint32]$process.Id) -join ' | '))
-    $trace = Get-ChildItem -LiteralPath $root -Filter 'fbe-session-*.txt' -Recurse -File -ErrorAction SilentlyContinue
+    $trace = Get-ChildItem -LiteralPath $root -Filter 'fbe-*.log' -Recurse -File -ErrorAction SilentlyContinue
     Write-Host "Trace files: $($trace.Count)"
     foreach ($file in $trace) {
         Write-Host "Trace path: $($file.FullName)"
