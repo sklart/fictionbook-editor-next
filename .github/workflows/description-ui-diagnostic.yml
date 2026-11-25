@@ -7,6 +7,29 @@ permissions:
   actions: read
   contents: read
 jobs:
+  queue:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: 45700383616
+          name: description-paste-runtime-07c7fe0764e789b0ec5ec2b784f52db154ff2ef0
+          path: runtime
+      - name: Exercise queued paste across description transitions
+        shell: pwsh
+        run: ./tools/tests/test-fbe-html-paste-runtime.ps1 -FbeExe runtime/FBE.exe -RealPaste -Cases queue-description-focus,queue-description-reentrant
+      - name: Preserve queue diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: description-queue-diagnostic-${{ github.sha }}
+          path: |
+            build/community-feedback-html-paste/
+            out/tests/runtime-failure/
+          if-no-files-found: warn
   ui:
     runs-on: windows-2022
     timeout-minutes: 15

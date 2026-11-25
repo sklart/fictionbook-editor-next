@@ -28,6 +28,7 @@ public static class BaselineWindow {
     [DllImport("user32.dll")] static extern bool GetMenuItemRect(IntPtr window, IntPtr menu, uint item, out RECT rect);
     [DllImport("user32.dll")] static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
+    [DllImport("user32.dll")] static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
     [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
     [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
     [DllImport("kernel32.dll")] static extern IntPtr VirtualAllocEx(IntPtr process, IntPtr address, UIntPtr size, uint allocation, uint protection);
@@ -35,6 +36,10 @@ public static class BaselineWindow {
     [DllImport("kernel32.dll")] static extern bool ReadProcessMemory(IntPtr process, IntPtr address, byte[] buffer, int size, out IntPtr read);
     [StructLayout(LayoutKind.Sequential)] struct RECT { public int Left, Top, Right, Bottom; }
     [DllImport("oleacc.dll")] public static extern int ObjectFromLresult(IntPtr result, ref Guid iid, IntPtr wp, [MarshalAs(UnmanagedType.Interface)] out object obj);
+    public static void OpenKeyboardContextMenu() {
+        keybd_event(0x10, 0, 0, UIntPtr.Zero); keybd_event(0x79, 0, 0, UIntPtr.Zero);
+        keybd_event(0x79, 0, 2, UIntPtr.Zero); keybd_event(0x10, 0, 2, UIntPtr.Zero);
+    }
     public static void ClickPasteToolbar(IntPtr root, uint pid, int command) {
         IntPtr toolbar = IntPtr.Zero;
         int index = -1;
@@ -271,8 +276,7 @@ try {
         if ([string]$field.value -cne 'Toolbar paste sample') { throw 'Toolbar paste failed.' }
         [System.Windows.Forms.Clipboard]::SetText('Context paste sample')
         $field.focus(); $field.select()
-        [System.Windows.Forms.SendKeys]::Send('+{F10}')
-        [System.Windows.Forms.Application]::DoEvents()
+        [BaselineWindow]::OpenKeyboardContextMenu()
         $contextClicked = $false
         for ($attempt = 0; $attempt -lt 20 -and -not $contextClicked; ++$attempt) {
             Start-Sleep -Milliseconds 250
@@ -298,10 +302,10 @@ try {
         $bodyRange = $document.body.createTextRange()
         $bodyRange.moveToElementText($paragraph)
         $bodyRange.select()
-        [System.Windows.Forms.SendKeys]::SendWait('^c')
+        [void][BaselineWindow]::PostMessage($process.MainWindowHandle, 0x111, [IntPtr]0xE122, [IntPtr]::Zero)
         Start-Sleep -Milliseconds 500
         $copiedBody = [System.Windows.Forms.Clipboard]::GetText().Trim()
-        if ($copiedBody -cne 'Body remains unchanged.') { throw 'Copy from the book body did not reach the clipboard.' }
+        if ($copiedBody -cne 'Body remains unchanged.') { throw "Copy from the book body did not reach the clipboard: '$copiedBody'." }
         [void][BaselineWindow]::SendMessage($process.MainWindowHandle, 0x111, [IntPtr]32809, [IntPtr]::Zero)
         Start-Sleep -Seconds 1
         $field.focus(); $field.select()
