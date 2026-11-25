@@ -28,7 +28,9 @@ public static class BaselineWindow {
             if (SendMessageTimeout(window, RegisterWindowMessage("WM_HTML_GETOBJECT"), IntPtr.Zero, IntPtr.Zero, 2, 1000, out result) == IntPtr.Zero) return true;
             var iid = new Guid("332C4425-26CB-11D0-B483-00C04FD90119");
             object document;
-            if (ObjectFromLresult(result, ref iid, IntPtr.Zero, out document) == 0 && document != null) found.Add(document);
+            var status = ObjectFromLresult(result, ref iid, IntPtr.Zero, out document);
+            Console.WriteLine("HTML document result: 0x" + status.ToString("X8"));
+            if (status == 0 && document != null) found.Add(document);
             return true;
         }, IntPtr.Zero);
         return found.ToArray();
@@ -45,13 +47,17 @@ try {
     $deadline = [DateTime]::UtcNow.AddSeconds(90)
     do { Start-Sleep -Milliseconds 500; $process.Refresh() } until ($process.MainWindowHandle -ne [IntPtr]::Zero -or $process.HasExited -or [DateTime]::UtcNow -ge $deadline)
     if ($process.HasExited -or $process.MainWindowHandle -eq [IntPtr]::Zero) { throw 'Editor window did not start.' }
+    Start-Sleep -Seconds 15
+    Write-Host "Editor window title: $($process.MainWindowTitle)"
     [void][BaselineWindow]::SendMessage($process.MainWindowHandle, 0x111, [IntPtr]32809, [IntPtr]::Zero)
     $field = $null
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
     do {
         Start-Sleep -Milliseconds 500
-        foreach ($document in [BaselineWindow]::Documents($process.MainWindowHandle)) {
-            try { $field = $document.all.item('tiTitle'); if ($field) { break } } catch {}
+        $documents = [BaselineWindow]::Documents($process.MainWindowHandle)
+        Write-Host "Documents found: $($documents.Count)"
+        foreach ($document in $documents) {
+            try { $field = $document.all.item('tiTitle'); if ($field) { break } } catch { Write-Host "Document access: $($_.Exception.Message)" }
         }
     } until ($field -or [DateTime]::UtcNow -ge $deadline)
     if (-not $field) { throw 'Description title input was not located.' }
