@@ -124,7 +124,11 @@ try {
     [System.Windows.Forms.SendKeys]::SendWait('^v')
     Start-Sleep -Seconds 2
     Write-Host "Formatted clipboard title: $($field.value)"
-    Write-Host ("Windows after formatted paste: " + ([BaselineWindow]::WindowTexts([uint32]$process.Id) -join ' | '))
+    $windows = [BaselineWindow]::WindowTexts([uint32]$process.Id)
+    Write-Host ("Windows after formatted paste: " + ($windows -join ' | '))
+    if ($windows -notcontains 'COM Error' -or -not ($windows -match '80004005')) {
+        throw 'The baseline did not show the reported COM error after formatted paste.'
+    }
     $trace = Get-ChildItem -LiteralPath $root -Filter 'fbe-*.log' -Recurse -File -ErrorAction SilentlyContinue
     Write-Host "Trace files: $($trace.Count)"
     foreach ($file in $trace) {
