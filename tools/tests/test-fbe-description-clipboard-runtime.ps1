@@ -311,7 +311,7 @@ try {
         if ($selectedBody.Trim() -cne 'Body remains unchanged.') { throw "Unexpected body selection: '$selectedBody'." }
         [System.Windows.Forms.SendKeys]::SendWait('^c')
         Start-Sleep -Seconds 1
-        $copiedBody = [System.Windows.Forms.Clipboard]::GetText()
+        $copiedBody = [System.Windows.Forms.Clipboard]::GetText().Trim()
         if ($copiedBody -cne 'Body remains unchanged.') { throw "Copy from the book body did not reach the clipboard: '$copiedBody'." }
         [void][BaselineWindow]::SendMessage($process.MainWindowHandle, 0x111, [IntPtr]32809, [IntPtr]::Zero)
         Start-Sleep -Seconds 1
