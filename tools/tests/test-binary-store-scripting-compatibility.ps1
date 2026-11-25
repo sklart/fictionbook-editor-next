@@ -67,8 +67,8 @@ function CompatResult(){return compatResult;}
     function State([string]$Name,[string]$Key,[string]$Body,[string]$Save='') {
         $attrs=@{name=$Name;id='image1.png';expected=$data[$Key].file};if($Save){$attrs.save=$Save};Add-Case $attrs $Body
     }
-    Add-Case @{name='initial-read-PNG-JPEG-blob-small';id='image1.png';expected=$data.A.file;readOnly100='true'} 'A(e.GetScriptingApiVersion()==="1.5.0","public API version");A(!e.HasScriptingMethod("BinaryStore")&&!e.HasScriptingMethod("_BinaryStoreChanged")&&!e.HasScriptingMethod("_BinaryStoreUniqueId"),"store exposed as public API");Check("image1.png","A");Check("photo.jpg","C");Check("blob.bin","blob");Check("small.bin","small");Check("duplicate.png","A");A(Obj("image1.png")!==Obj("duplicate.png"),"semantic deduplication");Refs("image1.png");'
-    Add-Case @{name='raw-B-same-size-dimensions';id='image1.png';expected=$data.B.file;save='raw-b.fb2';rawDirty='unchanged'} 'Raw("B");Check("image1.png","B");Refs("image1.png");'
+    Add-Case @{name='initial-read-PNG-JPEG-blob-small';id='image1.png';expected=$data.A.file;readOnly100='true';rawDirty='clean-snapshot'} 'A(e.GetScriptingApiVersion()==="1.5.0","public API version");A(!e.HasScriptingMethod("BinaryStore")&&!e.HasScriptingMethod("_BinaryStoreChanged")&&!e.HasScriptingMethod("_BinaryStoreUniqueId"),"store exposed as public API");Check("image1.png","A");Check("photo.jpg","C");Check("blob.bin","blob");Check("small.bin","small");Check("duplicate.png","A");A(Obj("image1.png")!==Obj("duplicate.png"),"semantic deduplication");Refs("image1.png");'
+    Add-Case @{name='raw-B-same-size-dimensions';id='image1.png';expected=$data.B.file;save='raw-b.fb2'} 'Raw("B");Check("image1.png","B");Refs("image1.png");'
     $reader='reader-c.js';[IO.File]::WriteAllText((Join-Path $iso.Root $reader),$helpers+"`r`nfunction Run(){try{Check('image1.png','C');compatResult='PASS';}catch(error){compatResult='FAIL';}}",[Text.UTF8Encoding]::new($false))
     Add-Case @{name='script-A-writes-B-reads-without-save';id='image1.png';expected=$data.C.file;reader=$reader;save='raw-c.fb2'} 'Raw("C");'
     State 'raw-D-latest-generation' D 'Raw("D");Check("image1.png","D");Refs("image1.png");' 'raw-d.fb2'
@@ -139,6 +139,8 @@ function CompatResult(){return compatResult;}
     $states=@(Import-Csv (Join-Path $iso.Root 'states.tsv') -Delimiter "`t")
     foreach($state in $states){
         $step=$steps | Where-Object name -eq $state.case | Select-Object -First 1
+        if($state.case -eq 'initial-read-PNG-JPEG-blob-small' -and $state.dirty -ne '0'){throw 'A read-only binary lookup dirtied the clean fixture.'}
+        if($state.case -eq 'raw-B-same-size-dimensions' -and $state.dirty -ne '1'){throw 'Replacing same-sized binary content did not mark the document modified.'}
         $oracle=$data.Values | Where-Object file -eq $step.expected | Select-Object -First 1
         if($state.sha256 -cne $oracle.sha256 -or [long]$state.size -ne $oracle.size){throw "Hash/size: $($state.case)"}
         if($state.metadata -ne 'null'){$meta=$state.metadata | ConvertFrom-Json;if($meta.size -ne $oracle.size -or $meta.width -ne $oracle.width -or $meta.height -ne $oracle.height){throw "Metadata: $($state.case)"}}
