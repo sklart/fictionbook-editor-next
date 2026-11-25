@@ -299,11 +299,15 @@ try {
         Start-Sleep -Seconds 1
         $paragraph = $document.all.item('fbw_body').getElementsByTagName('P').item(0)
         if (-not $paragraph) { throw 'Body paragraph was not found.' }
+        [void][BaselineWindow]::SetForegroundWindow($process.MainWindowHandle)
+        $document.all.item('fbw_body').focus()
         $bodyRange = $document.body.createTextRange()
         $bodyRange.moveToElementText($paragraph)
         $bodyRange.select()
-        [void][BaselineWindow]::PostMessage($process.MainWindowHandle, 0x111, [IntPtr]0xE122, [IntPtr]::Zero)
-        Start-Sleep -Milliseconds 500
+        $selectedBody = [string]$document.selection.createRange().text
+        if ($selectedBody.Trim() -cne 'Body remains unchanged.') { throw "Unexpected body selection: '$selectedBody'." }
+        [System.Windows.Forms.SendKeys]::SendWait('^c')
+        Start-Sleep -Seconds 1
         $copiedBody = [System.Windows.Forms.Clipboard]::GetText().Trim()
         if ($copiedBody -cne 'Body remains unchanged.') { throw "Copy from the book body did not reach the clipboard: '$copiedBody'." }
         [void][BaselineWindow]::SendMessage($process.MainWindowHandle, 0x111, [IntPtr]32809, [IntPtr]::Zero)
