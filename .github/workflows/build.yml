@@ -467,9 +467,11 @@ jobs:
         id: clipboard-ole
         if: ${{ !cancelled() && steps.compile.outcome == 'success' }}
         shell: pwsh
+        env:
+          FBE_FULL_NATIVE_MATRIX: ${{ github.event_name == 'workflow_dispatch' && inputs.full_validation }}
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
-          $fullMatrix = '${{ github.event_name == 'workflow_dispatch' && inputs.full_validation }}' -eq 'true'
+          $fullMatrix = $env:FBE_FULL_NATIVE_MATRIX -eq 'true'
           ./tools/tests/test-fbe-scripting-clipboard-ole-ci.ps1 -FbeExe out/Release/FBE.exe -FullNativeMatrix:$fullMatrix
           ./tools/tests/write-ci-ole-runtime-receipt.ps1 -FbeExe out/Release/FBE.exe
       - name: Upload OLE Clipboard failure evidence
@@ -628,6 +630,19 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: FictionBookEditorNext-${{ github.sha }}-compiled
+          path: |
+            out/Release
+            out/editor-runtime
+            out/package/shell-build
+            out/target-batches
+            out/build-provenance
+          if-no-files-found: error
+          retention-days: 3
+      - name: Preserve diagnostic build inputs after a failed manual release check
+        if: failure() && github.event_name == 'workflow_dispatch' && inputs.full_validation && steps.compile.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: FictionBookEditorNext-${{ github.sha }}-diagnostic-inputs
           path: |
             out/Release
             out/editor-runtime
