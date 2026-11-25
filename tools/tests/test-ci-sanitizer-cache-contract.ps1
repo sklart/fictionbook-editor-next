@@ -62,7 +62,7 @@ foreach ($check in @('scripts','docs')) {
     if ($workflow -notmatch "(?s)release-${check}:\s*\r?\n\s*$trigger\s*\r?\n\s*uses: ./\.github/workflows/$file.yml") { throw "Missing release $check gate." }
     if (-not (Get-Content -Raw (Join-Path $root ".github/workflows/$file.yml")).Contains('workflow_call:')) { throw "Missing reusable $check workflow." }
 }
-if ($workflow -notmatch "(?s)manual-full-gate:.*?always\(\).*?needs: \[validate, package, release-asan, release-ubsan, release-scripts, release-docs\].*?needs.release-asan.result != 'success'.*?needs.release-ubsan.result != 'success'.*?needs.release-scripts.result != 'success'.*?needs.release-docs.result != 'success'") { throw 'Manual full gate must reject skipped or failed sanitizer, script and documentation jobs.' }
+if ($workflow -notmatch "(?s)manual-full-gate:.*?always\(\).*?needs: \[validate, package, release-asan, release-ubsan, release-scripts, release-docs, community-runtime\].*?needs.release-asan.result != 'success'.*?needs.release-ubsan.result != 'success'.*?needs.release-scripts.result != 'success'.*?needs.release-docs.result != 'success'.*?needs.community-runtime.result != 'success'") { throw 'Manual full gate must reject skipped or failed sanitizer, script and documentation jobs.' }
 foreach ($sanitizer in @('asan','ubsan')) {
     if ($workflow -notmatch "(?s)release-${sanitizer}:.*?workflow_dispatch.*?inputs.full_validation.*?uses: ./\.github/workflows/$sanitizer.yml\s*\r?\n\s*with:\s*\r?\n\s*full_validation: true") { throw "Manual FULL must explicitly call $sanitizer." }
 }

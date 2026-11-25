@@ -2782,6 +2782,13 @@ void CMainFrame::RunPortableStateTestScenario()
 				::Sleep(10);
 			}
 		};
+		// WM_TIMER is low priority. Observe the actual hide transition after the
+		// 250 ms production timer, including delivery on a busy desktop.
+		auto waitForPreviewExit = [&]() {
+		    const ULONGLONG deadline = ::GetTickCount64() + 3000;
+		    do { pumpPreviewFor(20); }
+		    while(tree.ScriptPreviewVisible() && ::GetTickCount64() < deadline);
+		};
 		::SetCursorPos(bridgePoint.x, bridgePoint.y);
 		POINT bridgeCursor = {};
 		::GetCursorPos(&bridgeCursor);
@@ -2790,7 +2797,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool previewBridgeTimer = previewBridge && bridgeCursor.x == bridgePoint.x &&
 			bridgeCursor.y == bridgePoint.y && tree.ScriptPreviewVisible() && tree.ScriptPreviewUid() == infoUid;
 		::SetCursorPos(emptyPoint.x, emptyPoint.y);
-		pumpPreviewFor(320);
+		waitForPreviewExit();
 		POINT exitCursor = {};
 		::GetCursorPos(&exitCursor);
 		const bool previewBridgeExit = previewBridgeTimer && exitCursor.x == emptyPoint.x &&
@@ -2803,12 +2810,15 @@ void CMainFrame::RunPortableStateTestScenario()
 		::SendMessageW(tree.m_hWnd, WM_MOUSELEAVE, 0, 0);
 		::SetCursorPos(popupPoint.x, popupPoint.y);
 		::SendMessageW(previewWindow, WM_MOUSEMOVE, 0, MAKELPARAM(popupPoint.x - previewBounds.left, popupPoint.y - previewBounds.top));
+		pumpPreviewFor(30); // Deliver real pointer input before simulating its departure.
 		const bool previewPointerLink = previewBridgeExit && tree.ScriptPreviewVisible() &&
 			tree.ScriptPreviewUid() == infoUid && ::WindowFromPoint(popupPoint) == previewWindow;
 		::SetCursorPos(emptyPoint.x, emptyPoint.y);
 		::SendMessageW(previewWindow, WM_MOUSELEAVE, 0, 0);
-		pumpPreviewFor(320);
+		waitForPreviewExit();
 		::GetCursorPos(&exitCursor);
+		characteristicDpiDetails.AppendFormat("popup-exit-cursor=%ld,%ld target=%ld,%ld visible=%d transition=%d\n",
+		    exitCursor.x, exitCursor.y, emptyPoint.x, emptyPoint.y, tree.ScriptPreviewVisible(), tree.ScriptPreviewTransitionContains(exitCursor));
 		const bool previewPointerExit = previewPointerLink && exitCursor.x == emptyPoint.x &&
 			exitCursor.y == emptyPoint.y && !tree.ScriptPreviewVisible();
 		::SetCursorPos(infoPoint.x, infoPoint.y);
