@@ -128,6 +128,8 @@ try {
     $trace = Get-ChildItem -LiteralPath $root -Filter 'fbe-session-*.txt' -Recurse -File -ErrorAction SilentlyContinue
     Write-Host "Trace files: $($trace.Count)"
     foreach ($file in $trace) {
+        Write-Host "Trace path: $($file.FullName)"
+        Get-Content -LiteralPath $file.FullName -Tail 80 | ForEach-Object { Write-Host $_ }
         Select-String -LiteralPath $file.FullName -Pattern 'CP201|CP202|CP206|CP3[0-9][0-9]|CP4[0-9][0-9]' | ForEach-Object { Write-Host $_.Line }
     }
     [System.Windows.Forms.Clipboard]::SetText('Menu paste sample')
