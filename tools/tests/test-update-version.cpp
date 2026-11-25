@@ -29,6 +29,8 @@ int wmain()
 		GetUpdateAssetVersion(L"3.1.0+build.7") != L"3.1.0" ||
 		!GetUpdateAssetVersion(L"bad").IsEmpty()) return 1;
     return ExpectCompare(L"3.0.7", L"3.0.7", 0) ||
+        ExpectCompare(L"3.0.12", L"3.0.11", 1) ||
+        ExpectCompare(L"3.0.11", L"3.0.12", -1) ||
         ExpectCompare(L"3.0.8", L"3.0.7", 1) ||
         ExpectCompare(L"3.1.0", L"3.0.9", 1) ||
         ExpectCompare(L"3.1.0-alpha", L"3.1.0-alpha.1", -1) ||

@@ -153,6 +153,15 @@ try {
     Write-Host "Formatted clipboard title: $($field.value)"
     $windows = [BaselineWindow]::WindowTexts([uint32]$process.Id)
     Write-Host ("Windows after formatted paste: " + ($windows -join ' | '))
+    $trace = Get-ChildItem -LiteralPath $root -Filter 'fbe-*.log' -Recurse -File -ErrorAction SilentlyContinue
+    Write-Host "Trace files: $($trace.Count)"
+    $pasteDiagnostics = @()
+    foreach ($file in $trace) {
+        Write-Host "Trace path: $($file.FullName)"
+        Get-Content -LiteralPath $file.FullName -Tail 80 | ForEach-Object { Write-Host $_ }
+        $pasteDiagnostics += @(Select-String -LiteralPath $file.FullName -Pattern 'CP201|CP202|CP206|CP3[0-9][0-9]|CP4[0-9][0-9]' | ForEach-Object { $_.Line })
+    }
+    $pasteDiagnostics | ForEach-Object { Write-Host $_ }
     if ($ExpectFixed) {
         if ($windows -contains 'COM Error' -or [string]$field.value -cne 'Formatted sample') {
             throw 'Formatted clipboard text was not inserted into the title field.'
@@ -160,12 +169,12 @@ try {
     } elseif ($windows -notcontains 'COM Error' -or -not ($windows -match '80004005')) {
         throw 'The baseline did not show the reported COM error after formatted paste.'
     }
-    $trace = Get-ChildItem -LiteralPath $root -Filter 'fbe-*.log' -Recurse -File -ErrorAction SilentlyContinue
-    Write-Host "Trace files: $($trace.Count)"
-    foreach ($file in $trace) {
-        Write-Host "Trace path: $($file.FullName)"
-        Get-Content -LiteralPath $file.FullName -Tail 80 | ForEach-Object { Write-Host $_ }
-        Select-String -LiteralPath $file.FullName -Pattern 'CP201|CP202|CP206|CP3[0-9][0-9]|CP4[0-9][0-9]' | ForEach-Object { Write-Host $_.Line }
+    if ($ExpectFixed -and ($pasteDiagnostics -match 'code=CP20[0126]')) {
+        throw 'Paste diagnostic recorded a clipboard error.'
+    }
+    if (-not $ExpectFixed -and (-not ($pasteDiagnostics -match 'CP200.*0x80004005.*CP309') -or
+        -not ($pasteDiagnostics -match 'CP201.*0x80004005.*CP313'))) {
+        throw 'The baseline trace did not contain the expected CP309 and CP313 failure stages.'
     }
     [System.Windows.Forms.Clipboard]::SetText('Menu paste sample')
     $field.focus(); $field.select()
@@ -177,6 +186,34 @@ try {
         throw 'Menu paste did not update the title field.'
     }
     if ($ExpectFixed) {
+        $keyword = $document.all.item('tiKwd')
+        $keyword.focus(); $keyword.select()
+        [System.Windows.Forms.SendKeys]::SendWait('^c')
+        Start-Sleep -Milliseconds 500
+        $copiedField = [System.Windows.Forms.Clipboard]::GetText()
+        if ($copiedField -cne 'Baseline clipboard test') { throw 'Copy from metadata did not reach the clipboard.' }
+        $field.focus(); $field.select()
+        [System.Windows.Forms.SendKeys]::SendWait('^v')
+        Start-Sleep -Seconds 1
+        if ([string]$field.value -cne $copiedField) { throw 'Pasting text copied from metadata failed.' }
+        [void][BaselineWindow]::SendMessage($process.MainWindowHandle, 0x111, [IntPtr]32810, [IntPtr]::Zero)
+        Start-Sleep -Seconds 1
+        $paragraph = $document.all.item('fbw_body').getElementsByTagName('P').item(0)
+        if (-not $paragraph) { throw 'Body paragraph was not found.' }
+        $bodyRange = $document.body.createTextRange()
+        $bodyRange.moveToElementText($paragraph)
+        $bodyRange.select()
+        [System.Windows.Forms.SendKeys]::SendWait('^c')
+        Start-Sleep -Milliseconds 500
+        $copiedBody = [System.Windows.Forms.Clipboard]::GetText().Trim()
+        if ($copiedBody -cne 'Body remains unchanged.') { throw 'Copy from the book body did not reach the clipboard.' }
+        [void][BaselineWindow]::SendMessage($process.MainWindowHandle, 0x111, [IntPtr]32809, [IntPtr]::Zero)
+        Start-Sleep -Seconds 1
+        $field.focus(); $field.select()
+        [System.Windows.Forms.SendKeys]::SendWait('^v')
+        Start-Sleep -Seconds 1
+        if ([string]$field.value -cne $copiedBody) { throw 'Pasting text copied from the book body failed.' }
+        $previousTitle = [string]$field.value
         $unicode = ([string][char]0x041f) + [char]0x0440 + [char]0x0438 + [char]0x0432 + [char]0x0435 + [char]0x0442 + [char]0x00a0 + [char]0x03a9
         [System.Windows.Forms.Clipboard]::SetText($unicode)
         $field.focus(); $field.select()
@@ -186,10 +223,22 @@ try {
         if ([System.Windows.Forms.Clipboard]::GetText() -cne $unicode) { throw 'Paste changed the clipboard.' }
         [System.Windows.Forms.SendKeys]::SendWait('^z')
         Start-Sleep -Seconds 1
-        if ([string]$field.value -cne 'Menu paste sample') { throw 'Undo did not restore the previous title.' }
+        if ([string]$field.value -cne $previousTitle) { throw 'Undo did not restore the previous title.' }
+        [System.Windows.Forms.Clipboard]::Clear()
+        [System.Windows.Forms.SendKeys]::SendWait('^v')
+        Start-Sleep -Milliseconds 500
+        if ([string]$field.value -cne $previousTitle) { throw 'Empty clipboard changed the title after Undo.' }
         [System.Windows.Forms.SendKeys]::SendWait('^y')
         Start-Sleep -Seconds 1
         if ([string]$field.value -cne $unicode) { throw 'Redo did not restore the pasted title.' }
+        $field.readOnly = $true
+        try {
+            [System.Windows.Forms.Clipboard]::SetText('must not be inserted')
+            $field.focus(); $field.select()
+            [void][BaselineWindow]::PostMessage($process.MainWindowHandle, 0x111, [IntPtr]0xE125, [IntPtr]::Zero)
+            Start-Sleep -Seconds 1
+            if ([string]$field.value -cne $unicode) { throw 'Read-only field was changed.' }
+        } finally { $field.readOnly = $false }
         $range = $field.createTextRange()
         $null = $range.moveStart('character', 1)
         $null = $range.moveEnd('character', -5)
@@ -230,14 +279,36 @@ try {
         if ([BaselineWindow]::WindowTexts([uint32]$process.Id) -contains 'COM Error') { throw 'COM error appeared during metadata paste.' }
         Write-Host 'Additional fields, Unicode, NBSP, Shift+Insert, maxlength and multiline paste: PASS.'
         Write-Host 'Book body and binary DOM unchanged: PASS.'
-        [System.Windows.Forms.SendKeys]::SendWait('^s')
-        Start-Sleep -Seconds 3
+        foreach ($viewCommand in @(127, 32810, 32809)) {
+            [void][BaselineWindow]::SendMessage($process.MainWindowHandle, 0x111, [IntPtr]$viewCommand, [IntPtr]::Zero)
+            Start-Sleep -Milliseconds 500
+        }
+        foreach ($current in [BaselineWindow]::Documents($process.MainWindowHandle)) {
+            try {
+                $updatedField = $current.all.item('tiTitle')
+                if ($updatedField) { $document = $current; $field = $updatedField; break }
+            } catch {}
+        }
+        if ([string]$field.value -cne ('A' * 256)) { throw 'View switching changed the title.' }
+        Write-Host 'Description, Source and Body transitions: PASS.'
+        $fileBeforeSave = (Get-FileHash -LiteralPath $fixture).Hash
+        [void][BaselineWindow]::PostMessage($process.MainWindowHandle, 0x111, [IntPtr]0xE103, [IntPtr]::Zero)
+        $saveDeadline = [DateTime]::UtcNow.AddSeconds(15)
+        do {
+            Start-Sleep -Milliseconds 500
+            $fileAfterSave = (Get-FileHash -LiteralPath $fixture).Hash
+        } until ($fileAfterSave -ne $fileBeforeSave -or [DateTime]::UtcNow -ge $saveDeadline)
+        if ($fileAfterSave -eq $fileBeforeSave) {
+            throw ("Save did not update the fixture. Windows: " + ([BaselineWindow]::WindowTexts([uint32]$process.Id) -join ' | '))
+        }
         [xml]$saved = [IO.File]::ReadAllText($fixture, [Text.Encoding]::UTF8)
         $manager = New-Object System.Xml.XmlNamespaceManager($saved.NameTable)
         $manager.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
-        if ($saved.SelectSingleNode('/fb:FictionBook/fb:description/fb:title-info/fb:book-title', $manager).InnerText -cne ('A' * 256)) { throw 'Saved title was lost.' }
+        $savedTitle = $saved.SelectSingleNode('/fb:FictionBook/fb:description/fb:title-info/fb:book-title', $manager).InnerText
+        if ($savedTitle -cne ('A' * 256)) { throw "Saved title was lost. Length: $($savedTitle.Length); value: $savedTitle" }
         if ($saved.SelectSingleNode('/fb:FictionBook/fb:binary[@id="attachment"]', $manager).InnerText -cne 'AQIDBA==') { throw 'Saved binary was changed.' }
         if ($saved.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:p', $manager).InnerText -cne 'Body remains unchanged.') { throw 'Saved book body was changed.' }
+        if ($saved.SelectSingleNode('/fb:FictionBook/fb:description/fb:custom-info[@info-type="test"]', $manager).InnerText -cne 'unchanged') { throw 'Unrelated metadata was changed.' }
         $reader = [System.Xml.XmlReader]::Create($fixture, $settings)
         try { while ($reader.Read()) {} } finally { $reader.Dispose() }
         Write-Host 'Saved FB2, title, body, binary and XSD: PASS.'

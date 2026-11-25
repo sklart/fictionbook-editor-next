@@ -7,6 +7,66 @@ permissions:
   contents: read
   actions: read
 jobs:
+  saved-file-diagnostic:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: d985e671431e3aaf23c5186321613da05aae217d
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: 45695651081
+          name: description-paste-runtime-d985e671431e3aaf23c5186321613da05aae217d
+          path: out/Release
+      - name: Probe save on already built candidate
+        shell: pwsh
+        run: |
+          $source = [IO.File]::ReadAllText('tools/tests/test-fbe-description-clipboard-runtime.ps1')
+          $original = "[System.Windows.Forms.SendKeys]::SendWait('^s')"
+          if (-not $source.Contains($original)) { throw 'Save probe insertion point not found.' }
+          $replacement = '[void][BaselineWindow]::PostMessage($process.MainWindowHandle, 0x111, [IntPtr]0xE103, [IntPtr]::Zero)'
+          $source = $source.Replace($original, $replacement)
+          [IO.File]::WriteAllText('out/save-probe.ps1', $source, [Text.UTF8Encoding]::new($false))
+          powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File out/save-probe.ps1 -RuntimeDirectory out/Release -ExpectFixed
+          if ($LASTEXITCODE -ne 0) { throw 'Save probe failed.' }
+      - name: Preserve saved fixture
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: description-save-probe
+          path: |
+            out/Release/description-paste-fixture.fb2
+            out/Release/Data/Diagnostics/
+          if-no-files-found: warn
+  queued-paste-diagnostic:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: d985e671431e3aaf23c5186321613da05aae217d
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: 45695651081
+          name: description-paste-runtime-d985e671431e3aaf23c5186321613da05aae217d
+          path: out/Release
+      - name: Exercise queued paste and focus transition
+        shell: pwsh
+        run: ./tools/tests/test-fbe-html-paste-runtime.ps1 -Cases @('queue-description-focus') -KeepArtifacts
+      - name: Preserve queued-paste diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: description-queued-paste-probe
+          path: |
+            out/tests/runtime-failure/
+            build/community-feedback-html-paste/
+          if-no-files-found: warn
   baseline:
     runs-on: windows-2022
     timeout-minutes: 15
@@ -73,5 +133,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: description-paste-candidate-diagnostics
-          path: out/tests/description-paste/
+          path: |
+            out/tests/description-paste/
+            out/tests/runtime-failure/
+            out/tests/clipboard-ole/
+            build/community-feedback-html-paste/
           if-no-files-found: warn

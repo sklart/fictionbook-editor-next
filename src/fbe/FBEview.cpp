@@ -2988,7 +2988,8 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 	try
 	{
 		MSHTML::IHTMLElementPtr target(Document()->activeElement);
-		if (!m_activeHtmlPaste && IsDescriptionTextControl(target)) {
+		if (!m_activeHtmlPaste && IsDescriptionElement(target)) {
+			if (!IsDescriptionTextControl(target)) return 0;
 			if (!IsDescriptionTextControlEditable(target)) return 0;
 			const CString before = DescriptionTextControlValue(target);
 			PasteEnableScope pasteEnabled(m_enable_paste);
@@ -4694,6 +4695,7 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 	MSHTML::IHTMLEventObjPtr oe(evt);
 	oe->cancelBubble = VARIANT_TRUE;
 	oe->returnValue = VARIANT_FALSE;
+	const bool descriptionElement = IsDescriptionElement(MSHTML::IHTMLElementPtr(oe->srcElement));
 	if(!m_normalize)
 	{
 		MSHTML::IHTMLElementPtr elem(oe->srcElement);
@@ -4718,16 +4720,27 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 	itemName = FbeLoadCString(IDS_CTXMENU_COPY);
 	menu.AppendMenu(MF_STRING, ID_EDIT_COPY, itemName);
 
+	UINT pasteFlags = MF_STRING;
+	if (descriptionElement) {
+		MSHTML::IHTMLElementPtr target(oe->srcElement);
+		const bool canPaste = IsDescriptionTextControl(target) && IsDescriptionTextControlEditable(target) &&
+			(::IsClipboardFormatAvailable(CF_UNICODETEXT) || ::IsClipboardFormatAvailable(CF_TEXT));
+		if (!canPaste) pasteFlags |= MF_GRAYED;
+		else if (Document()->activeElement != target) {
+			MSHTML::IHTMLElement2Ptr focusTarget(target);
+			if (focusTarget) focusTarget->focus();
+		}
+	}
 	itemName = FbeLoadCString(IDS_CTXMENU_PASTE);
-	menu.AppendMenu(MF_STRING, ID_EDIT_PASTE, itemName);
+	menu.AppendMenu(pasteFlags, ID_EDIT_PASTE, itemName);
 	itemName = FbeLoadCString(IDS_CTXMENU_PASTE_TEXT);
-	menu.AppendMenu(MF_STRING, ID_EDIT_PASTE_TEXT, itemName);
+	menu.AppendMenu(pasteFlags, ID_EDIT_PASTE_TEXT, itemName);
 
 	// The table commands must be available where the user edits a cell, not
 	// only in the main menu.  The source element may be an inline child, so
 	// walk up to its TD/TH ancestor.
 	MSHTML::IHTMLElementPtr contextCell(FbeTable::FindTableCell(MSHTML::IHTMLElementPtr(oe->srcElement)));
-	if (m_normalize && contextCell)
+	if (m_normalize && contextCell && !descriptionElement)
 	{
 		// Right-click does not reliably move the MSHTML selection.  Retain the
 		// clicked cell so the command modifies the cell the menu was opened on.
@@ -4748,7 +4761,7 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 		menu.AppendMenu(MF_STRING, ID_TABLE_DELETE_TABLE, GetLocalizedMainMenuText(ID_TABLE_DELETE_TABLE, L"Delete table"));
 	}
 
-	if(m_normalize && !IsDescriptionElement(MSHTML::IHTMLElementPtr(oe->srcElement)))
+	if(m_normalize && !descriptionElement)
 	{
 		menu.AppendMenu(MF_SEPARATOR);
 		MSHTML::IHTMLElementPtr cur(SelectionContainer());
@@ -5441,7 +5454,7 @@ VARIANT_BOOL  CFBEView::OnRealPaste(IDispatch* evt)
     } callback(m_htmlPasteCallbackDepth);
 	MSHTML::IHTMLEventObjPtr oe(evt);
 	oe->cancelBubble = VARIANT_TRUE;
-	if (IsDescriptionTextControl(MSHTML::IHTMLElementPtr(oe->srcElement))) {
+	if (IsDescriptionElement(MSHTML::IHTMLElementPtr(oe->srcElement))) {
 		oe->returnValue = VARIANT_TRUE;
 		return VARIANT_TRUE;
 	}

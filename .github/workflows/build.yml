@@ -905,8 +905,17 @@ jobs:
       - name: Verify metadata clipboard behavior
         shell: pwsh
         run: |
-          powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File tools/tests/test-fbe-description-clipboard-runtime.ps1 -RuntimeDirectory out/Release -ExpectFixed
+          New-Item -ItemType Directory -Force out/tests/description-clipboard | Out-Null
+          powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File tools/tests/test-fbe-description-clipboard-runtime.ps1 -RuntimeDirectory out/Release -ExpectFixed *>&1 |
+            Tee-Object -FilePath out/tests/description-clipboard/runtime.log
           if ($LASTEXITCODE -ne 0) { throw 'Metadata clipboard regression failed.' }
+      - name: Preserve metadata clipboard evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: description-clipboard-${{ github.sha }}
+          path: out/tests/description-clipboard/
+          if-no-files-found: warn
 
   manual-full-gate:
     if: always() && github.event_name == 'workflow_dispatch' && inputs.full_validation

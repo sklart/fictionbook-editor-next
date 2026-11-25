@@ -55,14 +55,14 @@ $sanitizerRunner = Get-Content -Raw -LiteralPath (Join-Path $root 'tools/tests/r
 if ($sanitizerRunner -notmatch '(?s)Assert-FbeSanitizerRegistrationIsolation.*?foreach\(\$case in \$cases\)') { throw 'COM registration isolation must be checked before executing cases.' }
 $scriptsWorkflow = Get-Content -Raw -LiteralPath (Join-Path $root '.github/workflows/check-scripts.yml')
 if (-not $scriptsWorkflow.Contains('group: check-scripts-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}')) { throw 'Reusable and standalone script checks must have distinct concurrency groups.' }
-if ($workflow -notmatch 'needs: \[validate, package, release-asan, release-ubsan, release-scripts, release-docs\]') { throw 'Publication must wait for both sanitizers.' }
+if ($workflow -notmatch 'needs: \[validate, package, release-asan, release-ubsan, release-scripts, release-docs, description-paste\]') { throw 'Publication must wait for both sanitizers and the description paste regression.' }
 foreach ($check in @('scripts','docs')) {
     $file = if ($check -eq 'scripts') { 'check-scripts' } else { 'docs' }
     $trigger = [regex]::Escape("if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.full_validation)")
     if ($workflow -notmatch "(?s)release-${check}:\s*\r?\n\s*$trigger\s*\r?\n\s*uses: ./\.github/workflows/$file.yml") { throw "Missing release $check gate." }
     if (-not (Get-Content -Raw (Join-Path $root ".github/workflows/$file.yml")).Contains('workflow_call:')) { throw "Missing reusable $check workflow." }
 }
-if ($workflow -notmatch "(?s)manual-full-gate:.*?always\(\).*?needs: \[validate, package, release-asan, release-ubsan, release-scripts, release-docs, community-runtime\].*?needs.release-asan.result != 'success'.*?needs.release-ubsan.result != 'success'.*?needs.release-scripts.result != 'success'.*?needs.release-docs.result != 'success'.*?needs.community-runtime.result != 'success'") { throw 'Manual full gate must reject skipped or failed sanitizer, script and documentation jobs.' }
+if ($workflow -notmatch "(?s)manual-full-gate:.*?always\(\).*?needs: \[validate, package, release-asan, release-ubsan, release-scripts, release-docs, community-runtime, description-paste\].*?needs.release-asan.result != 'success'.*?needs.release-ubsan.result != 'success'.*?needs.release-scripts.result != 'success'.*?needs.release-docs.result != 'success'.*?needs.community-runtime.result != 'success'.*?needs.description-paste.result != 'success'") { throw 'Manual full gate must reject skipped or failed sanitizer, script, documentation and description paste jobs.' }
 foreach ($sanitizer in @('asan','ubsan')) {
     if ($workflow -notmatch "(?s)release-${sanitizer}:.*?workflow_dispatch.*?inputs.full_validation.*?uses: ./\.github/workflows/$sanitizer.yml\s*\r?\n\s*with:\s*\r?\n\s*full_validation: true") { throw "Manual FULL must explicitly call $sanitizer." }
 }
