@@ -7,7 +7,17 @@ function Save-FbeRuntimeClipboard {
     if ($original) {
         foreach ($format in $original.GetFormats($false)) {
             $value = $original.GetData($format, $false)
-            if ($null -eq $value) { throw "Cannot capture clipboard format: $format" }
+            if ($null -eq $value) {
+                # A disposable hosted runner may retain an unrenderable delayed
+                # format from an earlier test. Never discard such data on a
+                # developer desktop, where it may belong to the user.
+                if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
+                    throw "Cannot capture clipboard format: $format"
+                }
+                Write-Warning "Discarding unavailable clipboard format on disposable hosted runner: $format"
+                [Windows.Forms.Clipboard]::Clear()
+                return [pscustomobject]@{ HadData = $false; Data = $copy }
+            }
             if ($value -is [IO.Stream]) {
                 $position = $value.Position; $value.Position = 0
                 $stream = [IO.MemoryStream]::new(); $value.CopyTo($stream); $value.Position = $position; $stream.Position = 0
