@@ -53,6 +53,10 @@ if (IsFbeTestScenario(L"ui-defects-runtime")) {
     PluginOptionsProbe::captures=captures.data();PluginOptionsProbe::dialog=m_hWnd;
     auto showTools=[&](HMENU menu,const std::wstring& name) {
         PluginOptionsProbe::prefix=name;::RemovePropW(m_hWnd,L"FBE.MenuCapture");
+        // Theme and locale changes can deactivate the test window. A popup
+        // opened without an active owner can close before its capture timer.
+        ::SetForegroundWindow(m_hWnd);
+        ::SetActiveWindow(m_hWnd);
         struct MenuProbe { ULONGLONG started; unsigned ticks=0, visible=0; static void CALLBACK Tick(HWND,UINT,UINT_PTR,DWORD) {
             auto* self=reinterpret_cast<MenuProbe*>(::GetPropW(PluginOptionsProbe::dialog,L"FBE.MenuCaptureProbe"));
             if(!self) { ::EndMenu(); return; }
