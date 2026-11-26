@@ -76,7 +76,7 @@ try {
         New-Item -ItemType Directory -Force -Path $privateTests | Out-Null
         New-Item -ItemType Directory -Force -Path (Join-Path $root 'build') | Out-Null
         if($FullNativeMatrix) { New-Item -ItemType File -Path (Join-Path $root 'full-native-matrix') | Out-Null }
-        foreach($file in @('test-fbe-native-copy-paste-runtime.ps1','test-fbe-html-paste-runtime.ps1','RuntimeTestIsolation.ps1')) {
+        foreach($file in @('test-fbe-native-copy-paste-runtime.ps1','test-fbe-html-paste-runtime.ps1','RuntimeTestIsolation.ps1','RuntimeClipboardSnapshot.ps1')) {
             Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination $privateTests
         }
     }
