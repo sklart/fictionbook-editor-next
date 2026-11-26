@@ -1,6 +1,7 @@
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '../../out/Release/FBE.exe'))
+param([string]$FbeExe)
 $ErrorActionPreference = 'Stop'
+if (-not $FbeExe) { $FbeExe = Join-Path $PSScriptRoot '../../out/Release/FBE.exe' }
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
     throw 'This clipboard-mutating regression requires a disposable GitHub-hosted runner.'
 }
