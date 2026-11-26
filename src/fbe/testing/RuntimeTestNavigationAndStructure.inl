@@ -815,8 +815,15 @@ if (IsFbeTestScenario(L"issue72-normal-save") || IsFbeTestScenario(L"issue72-nor
 		bool pasteNormalized = false;
 		wchar_t skipClipboardValue[2] = {};
 		const bool skipClipboard = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SKIP_CLIPBOARD", skipClipboardValue, _countof(skipClipboardValue)) == 1 && skipClipboardValue[0] == L'1';
-		CComPtr<IDataObject> originalClipboard;
-		if (!skipClipboard && SUCCEEDED(::OleGetClipboard(&originalClipboard)) && ::OpenClipboard(m_hWnd)) {
+		if (!skipClipboard && ::OpenClipboard(m_hWnd)) {
+			::SetLastError(ERROR_SUCCESS);
+			const UINT clipboardFormats = ::CountClipboardFormats();
+			const DWORD clipboardError = ::GetLastError();
+			const bool clipboardEmpty = clipboardFormats == 0 && clipboardError == ERROR_SUCCESS;
+			if (!clipboardEmpty) {
+				::CloseClipboard();
+				output.Close(); ::PostQuitMessage(1); return 0;
+			}
 			::EmptyClipboard();
 			const SIZE_T pasteBytes = static_cast<SIZE_T>(pastePayload.GetLength() + 1) * sizeof(wchar_t);
 			HGLOBAL pasteMemory = ::GlobalAlloc(GMEM_MOVEABLE, pasteBytes);
@@ -841,7 +848,7 @@ if (IsFbeTestScenario(L"issue72-normal-save") || IsFbeTestScenario(L"issue72-nor
 				const bool scopeIsolated = adjacent && adjacentHtml.Find(L"<BR") >= 0 && pastedSection && pastedSectionHtml.Find(L"<BR") < 0;
 				pasteNormalized = alpha >= 0 && beta > alpha && gamma > beta && (pastedHtml.Find(L"&nbsp;") >= 0 || pastedHtml.Find(L"\x00a0") >= 0) && scopeIsolated;
 			}
-			::OleSetClipboard(originalClipboard);
+			if (FAILED(::OleSetClipboard(nullptr))) { output.Close(); ::PostQuitMessage(1); return 0; }
 		}
 		CStringA pasteRow; pasteRow.Format("paste-normal\t0\t0\t0\t%d\t%d\t%d\t%d\t%d\t%s\r\n", pasteNormalized ? 1 : 0, pasteNormalized ? 1 : 0, pasteNormalized ? 1 : 0, 1, pasteNormalized ? 1 : 0, skipClipboard ? "skip" : (pasteNormalized ? "pass" : "fail"));
 		output.Write(pasteRow, static_cast<DWORD>(pasteRow.GetLength()), &written);

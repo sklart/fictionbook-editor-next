@@ -8,11 +8,14 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'RuntimeClipboardSnapshot.ps1')
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "FBE.exe not found: $FbeExe" }
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-clipboard-paste-runtime-' + [guid]::NewGuid().ToString('N'))
 $fixture = Join-Path $directory 'clipboard-paste.fb2'
 $report = Join-Path $directory 'clipboard-paste.tsv'
+$clipboardSnapshot = $null
 try {
+    $clipboardSnapshot = Save-FbeRuntimeClipboard
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
     @"
 <?xml version="1.0" encoding="utf-8"?>
@@ -33,5 +36,8 @@ try {
         throw "Production clipboard paste did not preserve one normalized NBSP insertion: $($paste | ConvertTo-Json -Compress)"
     }
 }
-finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+finally {
+    try { if ($clipboardSnapshot) { Restore-FbeRuntimeClipboard $clipboardSnapshot } }
+    finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+}
 Write-Host 'Clipboard paste production runtime passed.'

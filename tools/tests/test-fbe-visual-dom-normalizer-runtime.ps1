@@ -5,12 +5,15 @@ scenario: this test exercises CFBEView::Normalize and VisualDomNormalizer. #>
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180, [switch]$KeepArtifacts, [switch]$SkipClipboard)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+. (Join-Path $PSScriptRoot 'RuntimeClipboardSnapshot.ps1')
 $isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'visual-dom-normalizer'
 $directory = $isolation.Root
 $fixture = Join-Path $directory 'normalizer.fb2'
 $report = Join-Path $directory 'normalizer.tsv'
 $passed = $false
+$clipboardSnapshot = $null
 try {
+    if (-not $SkipClipboard) { $clipboardSnapshot = Save-FbeRuntimeClipboard }
     # Keep this document/view probe independent of migrated user preferences.
     $null = New-IsolatedFbeSettingsSeed -Isolation $isolation
     @"
@@ -59,7 +62,8 @@ try {
     $passed = $true
 }
 finally {
-    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -KeepArtifacts:$KeepArtifacts
+    try { if ($clipboardSnapshot) { Restore-FbeRuntimeClipboard $clipboardSnapshot } }
+    finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -KeepArtifacts:$KeepArtifacts }
 }
 if($SkipClipboard) { Write-Warning 'Visual DOM normalizer passed without clipboard paste; paste remains unverified.' }
 else { Write-Host 'Visual DOM normalizer production runtime passed.' }
