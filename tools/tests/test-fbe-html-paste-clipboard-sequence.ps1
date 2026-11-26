@@ -18,7 +18,9 @@ try {
     $restored = [Windows.Forms.Clipboard]::GetDataObject()
     if (-not $restored -or $restored.GetData([Windows.Forms.DataFormats]::UnicodeText, $false) -cne $expectedText -or
         $restored.GetData([Windows.Forms.DataFormats]::Html, $false) -cne $expectedHtml) {
-        throw 'Normalizer paste did not restore the original Unicode and HTML clipboard data.'
+        $textValue = if ($restored) { $restored.GetData([Windows.Forms.DataFormats]::UnicodeText, $false) } else { $null }
+        $htmlValue = if ($restored) { $restored.GetData([Windows.Forms.DataFormats]::Html, $false) } else { $null }
+        throw "Normalizer paste did not restore clipboard data: text=[$textValue], html=[$htmlValue]."
     }
     & (Join-Path $PSScriptRoot 'test-fbe-clipboard-title-paste-runtime.ps1') -FbeExe $FbeExe
     & (Join-Path $PSScriptRoot 'test-fbe-html-paste-runtime.ps1') -FbeExe $FbeExe -RealPaste -Cases word
