@@ -1399,6 +1399,7 @@ if (IsFbeTestScenario(L"issue72-normal-save") || IsFbeTestScenario(L"issue72-nor
 					caseName, unchanged, clipboardUnchanged, unchanged, unchanged,
 					unchanged && clipboardUnchanged ? "pass" : "fail");
 				output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
+				if (!restoreClipboard()) return 0;
 				output.Flush(); output.Close(); ::PostQuitMessage(unchanged && clipboardUnchanged ? 0 : 1); return 0;
 			}
 			if (legacy) {
@@ -1411,6 +1412,7 @@ if (IsFbeTestScenario(L"issue72-normal-save") || IsFbeTestScenario(L"issue72-nor
 				CStringA row; row.Format("%S\t%d\t0\t0\t0\t%d\t0\t0\t0\t0\t0\t%d\t%d\t%s\r\n",
 					caseName, unchanged, clipboardUnchanged, valid, valid, unchanged && clipboardUnchanged && valid ? "pass" : "fail");
 				output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
+				if (!restoreClipboard()) return 0;
 				output.Flush(); output.Close(); ::PostQuitMessage(unchanged && clipboardUnchanged && valid ? 0 : 1); return 0;
 			}
 			dirtyAfterPaste = m_doc->DocChanged();
