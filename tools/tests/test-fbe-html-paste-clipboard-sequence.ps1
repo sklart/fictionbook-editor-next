@@ -8,7 +8,7 @@ if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hoste
 if ([Threading.Thread]::CurrentThread.GetApartmentState() -ne [Threading.ApartmentState]::STA) { throw 'PowerShell -STA is required.' }
 Add-Type -AssemblyName System.Windows.Forms
 $expectedText = 'Clipboard ' + [char]0x0416 + ' ' + [char]0x03a9
-$expectedHtml = '<html><body><!--StartFragment--><b>' + $expectedText + '</b><!--EndFragment--></body></html>'
+$expectedHtml = '<html><body><!--StartFragment--><b>Clipboard HTML</b><!--EndFragment--></body></html>'
 $data = [Windows.Forms.DataObject]::new()
 $data.SetData([Windows.Forms.DataFormats]::UnicodeText, $false, $expectedText)
 $data.SetData([Windows.Forms.DataFormats]::Html, $false, $expectedHtml)
