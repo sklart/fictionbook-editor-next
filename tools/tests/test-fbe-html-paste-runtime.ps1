@@ -17,7 +17,30 @@ $completed = $false
 $fixture = Join-Path $directory 'html-paste.fb2'
 $oldRoute = $env:FBE_NEXT_TEST_HTML_REAL_PASTE
 $oldMode, $oldScenario, $oldCase = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_HTML_PASTE_CASE
+$clipboardCaptured = $false
 try {
+    if ([Threading.Thread]::CurrentThread.GetApartmentState() -ne [Threading.ApartmentState]::STA) { throw 'HTML paste test requires PowerShell -STA to preserve the clipboard.' }
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Drawing
+    # Materialize the original formats before any test changes the clipboard.
+    # An IDataObject returned by OleGetClipboard can be a live proxy rather
+    # than a snapshot; feeding that proxy back to OLE can recurse indefinitely.
+    $originalClipboard = [Windows.Forms.Clipboard]::GetDataObject()
+    $clipboardSnapshot = [Windows.Forms.DataObject]::new()
+    if ($originalClipboard) {
+        foreach ($format in $originalClipboard.GetFormats($false)) {
+            $value = $originalClipboard.GetData($format, $false)
+            if ($null -eq $value) { throw "Cannot capture clipboard format: $format" }
+            if ($value -is [IO.Stream]) {
+                $position = $value.Position; $value.Position = 0
+                $copy = [IO.MemoryStream]::new(); $value.CopyTo($copy); $value.Position = $position; $copy.Position = 0
+                $value = $copy
+            } elseif ($value -is [Drawing.Image]) { $value = $value.Clone() }
+            $clipboardSnapshot.SetData($format, $false, $value)
+        }
+    }
+    $clipboardCaptured = $true
+    [Windows.Forms.Clipboard]::Clear()
     $xml = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>Paste</first-name><last-name>Test</last-name></author><book-title>HTML paste</book-title><lang>en</lang></title-info><document-info><author><first-name>Paste</first-name><last-name>Test</last-name></author><date value="2026-10-15">2026-10-15</date><id>html-paste-test</id><version>1.0</version></document-info></description><body><section id="paste-target"><title><p>Heading</p></title><p>Before</p></section><section id="paste-neighbor"><p>Neighbor</p></section></body></FictionBook>'
     $env:FBE_NEXT_TEST_MODE = '1'
     $env:FBE_NEXT_TEST_SCENARIO = 'html-paste-runtime'
@@ -58,7 +81,14 @@ try {
     $completed = $true
 }
 finally {
-    $env:FBE_NEXT_TEST_HTML_REAL_PASTE = $oldRoute
-    $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_HTML_PASTE_CASE = $oldMode, $oldScenario, $oldCase
-    Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $completed -KeepArtifacts:$KeepArtifacts -PreserveContents
+    try {
+        if ($clipboardCaptured) {
+            if ($originalClipboard) { [Windows.Forms.Clipboard]::SetDataObject($clipboardSnapshot, $true, 10, 100) }
+            else { [Windows.Forms.Clipboard]::Clear() }
+        }
+    } finally {
+        $env:FBE_NEXT_TEST_HTML_REAL_PASTE = $oldRoute
+        $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_HTML_PASTE_CASE = $oldMode, $oldScenario, $oldCase
+        Complete-IsolatedFbeRuntime -Isolation $scratch -Passed $completed -KeepArtifacts:$KeepArtifacts -PreserveContents
+    }
 }

@@ -909,6 +909,12 @@ jobs:
           powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File tools/tests/test-fbe-description-clipboard-runtime.ps1 -RuntimeDirectory out/Release -ExpectFixed *>&1 |
             Tee-Object -FilePath out/tests/description-clipboard/runtime.log
           if ($LASTEXITCODE -ne 0) { throw 'Metadata clipboard regression failed.' }
+      - name: Verify clipboard sequence and restoration
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File tools/tests/test-fbe-html-paste-clipboard-sequence.ps1 *>&1 |
+            Tee-Object -FilePath out/tests/description-clipboard/sequence.log
+          if ($LASTEXITCODE -ne 0) { throw 'Clipboard sequence regression failed.' }
       - name: Preserve metadata clipboard evidence
         if: always()
         uses: actions/upload-artifact@v7

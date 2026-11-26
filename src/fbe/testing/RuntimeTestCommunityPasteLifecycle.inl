@@ -1,8 +1,12 @@
 if(IsFbeTestScenario(L"html-paste-runtime")) {
  wchar_t name[64]={};::GetEnvironmentVariableW(L"FBE_NEXT_TEST_HTML_PASTE_CASE",name,_countof(name));
  if(wcscmp(name,L"queue-reload")==0 || wcscmp(name,L"queue-reload-idle")==0) {
-  bool passed=true;CComPtr<IDataObject> clipboard;::OleGetClipboard(&clipboard);const CString filename(m_doc->m_filename);
+  const BOOL opened=::OpenClipboard(m_hWnd);UINT formats=0;DWORD countError=ERROR_SUCCESS;BOOL closed=FALSE;
+  if(opened){::SetLastError(ERROR_SUCCESS);formats=::CountClipboardFormats();countError=::GetLastError();closed=::CloseClipboard();}
+  const bool clipboardReady=opened && closed && formats==0 && countError==ERROR_SUCCESS;
+  bool passed=clipboardReady;const CString filename(m_doc->m_filename);
   try {
+   CheckError(passed?S_OK:E_FAIL);
    {
     ShowView(BODY);MSHTML::IHTMLDocument2Ptr html(m_doc->m_body.Document());
     MSHTML::IHTMLElementPtr target(MSHTML::IHTMLDocument3Ptr(html)->getElementById(L"paste-target"));
@@ -25,7 +29,7 @@ if(IsFbeTestScenario(L"html-paste-runtime")) {
    MSHTML::IHTMLElementPtr root(MSHTML::IHTMLDocument3Ptr(m_doc->m_body.Document())->getElementById(L"fbw_body"));
    const CString current(static_cast<LPCWSTR>(root->innerText));passed=passed && current.Find(L"Queue")==-1 && current.Find(L"Before")>=0 && !m_doc->DocChanged();
   } catch(const _com_error&){passed=false;}
-  const HRESULT restored=::OleSetClipboard(clipboard);passed=passed && SUCCEEDED(restored);if(clipboard)passed=SUCCEEDED(::OleFlushClipboard()) && passed;
+  const HRESULT restored=clipboardReady?::OleSetClipboard(nullptr):E_FAIL;passed=passed && SUCCEEDED(restored);
   CStringA report;report.Format("case\tresult\r\n%S\t%s\r\n",name,passed?"pass":"fail");DWORD written=0;output.Write(report,static_cast<DWORD>(report.GetLength()),&written);output.Close();::PostQuitMessage(passed?0:1);return 0;
  }
 }

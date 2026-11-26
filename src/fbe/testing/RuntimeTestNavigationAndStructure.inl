@@ -970,17 +970,28 @@ if (IsFbeTestScenario(L"issue72-normal-save") || IsFbeTestScenario(L"issue72-nor
 		bool dirtyAfterPaste = false, cleanAfterUndo = false, dirtyAfterRedo = false;
 		bool twoPasteOk = true, safetyOk = true;
 		CStringA twoPasteTrace;
-		CComPtr<IDataObject> originalClipboard;
-		        const HRESULT clipboardCaptured=::OleGetClipboard(&originalClipboard);
+		// The driver snapshots the user's clipboard before starting the test.
+		// Never restore an OleGetClipboard proxy after replacing its backing data:
+		// it can refer to the new clipboard and recursively request itself.
+		const BOOL clipboardOpened = ::OpenClipboard(m_hWnd);
+		UINT clipboardFormats = 0;
+		DWORD clipboardError = ERROR_SUCCESS;
+		BOOL clipboardClosed = FALSE;
+		if (clipboardOpened) {
+			::SetLastError(ERROR_SUCCESS);
+			clipboardFormats = ::CountClipboardFormats();
+			clipboardError = ::GetLastError();
+			clipboardClosed = ::CloseClipboard();
+		}
+		const HRESULT clipboardCaptured = clipboardOpened && clipboardClosed &&
+			clipboardFormats == 0 && clipboardError == ERROR_SUCCESS ? S_OK : E_FAIL;
         auto restoreClipboard=[&]() {
-            HRESULT restored=clipboardCaptured,flushed=S_OK;
+            HRESULT restored=clipboardCaptured;
             if(SUCCEEDED(restored)) {
-                for(int attempt=0;attempt<10;++attempt){restored=::OleSetClipboard(originalClipboard);if(SUCCEEDED(restored))break;::Sleep(20);}
-                if(SUCCEEDED(restored) && originalClipboard)
-                    for(int attempt=0;attempt<10;++attempt){flushed=::OleFlushClipboard();if(SUCCEEDED(flushed))break;::Sleep(20);}
+                for(int attempt=0;attempt<10;++attempt){restored=::OleSetClipboard(nullptr);if(SUCCEEDED(restored))break;::Sleep(20);}
             }
-            if(FAILED(restored) || FAILED(flushed)) {
-                CStringA diagnostic;diagnostic.Format("clipboard_restore_hresult=0x%08lX; flush_hresult=0x%08lX\r\n",static_cast<unsigned long>(restored),static_cast<unsigned long>(flushed));
+            if(FAILED(restored)) {
+                CStringA diagnostic;diagnostic.Format("clipboard_restore_hresult=0x%08lX\r\n",static_cast<unsigned long>(restored));
                 output.Write(diagnostic,static_cast<DWORD>(diagnostic.GetLength()),&written);output.Flush();output.Close();::PostQuitMessage(1);return false;
             }
             return true;
