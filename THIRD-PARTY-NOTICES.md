@@ -26,7 +26,7 @@ is needed to build the project but is not shipped as a separate component.
 | LunaSVG | 3.5.0 | MIT | EPUB import SVG renderer, statically linked into `ImportEPUBLunaSVG.dll` | <https://github.com/sammycage/lunasvg> |
 | PlutoVG | 1.3.3 | MIT | LunaSVG raster backend, statically linked into `ImportEPUBLunaSVG.dll` | <https://github.com/sammycage/plutovg> |
 | Microsoft Fluent UI System Icons — Pin | a347af95478f989038cccbf085978865264c048a | MIT | Regular/Filled Pin SVGs rasterized into FBE at build time | <https://github.com/microsoft/fluentui-system-icons> |
-| UPX | 5.3.0 | GPL-2.0-or-later with UPX exception | Optional build-time executable packer; disabled for standard builds | <https://github.com/upx/upx> |
+| UPX | 5.3.1 | GPL-2.0-or-later with UPX exception | Optional build-time executable packer; disabled for standard builds | <https://github.com/upx/upx> |
 | UAC plugin helper | 0.2.4c (source snapshot; manual review) | zlib/libpng license | Build-time UAC support for the NSIS installer | <https://nsis.sourceforge.io/UAC_plug-in> |
 
 ## Bundled XML source-editor palettes
