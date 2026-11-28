@@ -583,7 +583,7 @@ jobs:
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-nsis-install-scopes.ps1
           ./tools/tests/test-prerelease-nsis-state.ps1
-      - name: Verify universal release binaries, document tree and Dark Theme stabilization runtime
+      - name: Verify release binaries, font preview, document tree and theme runtime
         id: release-verification
         shell: pwsh
         env:

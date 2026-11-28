@@ -1095,7 +1095,7 @@ private:
         // system tab texture, which can disagree with that palette on Win10.
         ApplyRuntimeTexts();
         InitTabs();
-        FontPreviewCombo::Attach(GetDlgItem(IDC_FONT_NAME), FbeRuntimeLocalization::GetPreferredRuntimeLocaleName());
+        FontPreviewCombo::Attach(GetDlgItem(IDC_FONT_NAME));
         CheckDlgButton(IDC_EXPORT_IMAGES, m_settings.exportImages ? BST_CHECKED : BST_UNCHECKED);
         CheckDlgButton(IDC_EXPORT_COVER, m_settings.exportCover ? BST_CHECKED : BST_UNCHECKED);
         CheckDlgButton(IDC_LIMIT_IMAGE_WIDTH, m_settings.limitImageWidth ? BST_CHECKED : BST_UNCHECKED);

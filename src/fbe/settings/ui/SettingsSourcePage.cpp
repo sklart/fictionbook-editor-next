@@ -251,7 +251,7 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	m_tag_highlight_mode.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.tag_highlight_name_only", L"Tag name only")); m_tag_highlight_mode.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.tag_highlight_full_tag", L"Whole tag"));
 	m_tag_highlight_mode.SetCurSel(_Settings.XmlSrcTagHighlightMode() ? 1 : 0);
 	m_srcfonts = GetDlgItem(IDC_SRCFONT);
-	FontPreviewCombo::Attach(m_srcfonts, _Settings.GetInterfaceLanguageName());
+	FontPreviewCombo::Attach(m_srcfonts);
 	m_previewFontSize = static_cast<int>(_Settings.GetFontSize());
 	EditorFontFamilies::Fill(m_srcfonts, _Settings.GetSrcFont());
 	m_src_wrap = GetDlgItem(IDC_WRAP); m_src_hl = GetDlgItem(IDC_SYNTAXHL); m_src_taghl = GetDlgItem(IDC_TAGHL);

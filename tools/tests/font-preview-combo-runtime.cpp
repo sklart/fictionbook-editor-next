@@ -4,11 +4,25 @@
 #include <stdexcept>
 #include <vector>
 
+#pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+
 namespace {
 using FontPreviewCoverage::Support;
 COLORREF background = RGB(255, 255, 255);
 COLORREF foreground = RGB(30, 30, 30);
 HBRUSH surface = nullptr;
+HBRUSH selection = nullptr;
+constexpr COLORREF selectionColor = RGB(82, 37, 118);
+
+BOOL CALLBACK FindTooltip(HWND window, LPARAM data)
+{
+    wchar_t name[32] = {};
+    if (::GetClassNameW(window, name, _countof(name)) && wcscmp(name, TOOLTIPS_CLASSW) == 0) {
+        *reinterpret_cast<HWND*>(data) = window;
+        return FALSE;
+    }
+    return TRUE;
+}
 
 void Require(bool ok, const char* message)
 {
@@ -50,10 +64,10 @@ public:
         ::DeleteDC(m_dc);
     }
     void Draw(HWND combo, int index, UINT state = 0, HFONT expectedFont = nullptr,
-        Support expectedCoverage = Support::None) const {
+        Support expectedCoverage = Support::None, int width = Width) const {
         const int height = static_cast<int>(::SendMessageW(combo, CB_GETITEMHEIGHT, state & ODS_COMBOBOXEDIT ? -1 : 0, 0));
         Require(height > 0 && height <= Height, "invalid item height");
-        RECT area = {0, 0, Width, height};
+        RECT area = {0, 0, width, height};
         if (expectedFont) {
             wchar_t label[128] = {};
             ::SendMessageW(combo, CB_GETLBTEXT, index, reinterpret_cast<LPARAM>(label));
@@ -62,9 +76,7 @@ public:
             ::SetBkMode(m_dc, TRANSPARENT);
             ::SetTextColor(m_dc, foreground);
             ::SelectObject(m_dc, expectedFont);
-            HDC windowDc = ::GetDC(combo);
-            const int padding = (std::max)(3, ::MulDiv(3, ::GetDeviceCaps(windowDc, LOGPIXELSY), 96));
-            ::ReleaseDC(combo, windowDc);
+            const int padding = (std::max)(3, ::MulDiv(3, FbeWin32::WindowDpi(combo), 96));
             const auto interfaceFont = reinterpret_cast<HFONT>(::SendMessageW(combo, WM_GETFONT, 0, 0));
             SIZE sampleSize = {};
             ::SelectObject(m_dc, interfaceFont ? interfaceFont : static_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT)));
@@ -73,7 +85,7 @@ public:
             const int sampleWidth = sampleSize.cx + sampleSize.cx * 2 / 5 + 4 * padding;
             const int rightColumn = Width - (std::min)(sampleWidth, Width / 2);
             const bool closed = (state & ODS_COMBOBOXEDIT) != 0;
-            RECT nameArea = {padding, 0, (closed ? Width : rightColumn) - padding, height};
+            RECT nameArea = {padding, 0, (closed || expectedCoverage == Support::None ? Width : rightColumn) - padding, height};
             ::SelectObject(m_dc, expectedFont);
             const UINT flags = DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS;
             ::DrawTextW(m_dc, label, -1, &nameArea, flags);
@@ -100,6 +112,13 @@ public:
         return {m_bits, m_bits + Width * height};
     }
     DWORD FirstPixel() const { ::GdiFlush(); return m_bits[0] & 0xffffff; }
+    bool HasInk(const RECT& area) const {
+        ::GdiFlush();
+        for (LONG y = area.top; y < area.bottom; ++y)
+            for (LONG x = area.left; x < area.right; ++x)
+                if ((m_bits[y * Width + x] & 0xffffff) != (m_bits[0] & 0xffffff)) return true;
+        return false;
+    }
     static constexpr int Width = 650;
 private:
     static constexpr int Height = 96;
@@ -124,6 +143,7 @@ DWORD DibColor(COLORREF color)
 
 int main()
 {
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
     try {
         FontPreviewCoverage::AlphabetGlyphs glyphs = {};
         glyphs.fill(7);
@@ -146,7 +166,10 @@ int main()
         const HWND host = ::CreateWindowW(hostClass.lpszClassName, L"", WS_OVERLAPPEDWINDOW,
             0, 0, 800, 600, nullptr, nullptr, instance, nullptr);
         Require(host != nullptr, "host window");
-        FontPreviewCoverage::Install(host);
+        selection = ::CreateSolidBrush(selectionColor);
+        FontPreviewCoverage::Install(host, []() -> FontPreviewCoverage::Palette {
+            return {selection, RGB(255, 255, 255), background, foreground};
+        }, [](wchar_t* buffer, int capacity) { ::lstrcpynW(buffer, L"Partial Cyrillic coverage", capacity); });
         Canvas canvas;
         const auto resources = [] { return ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS); };
         // Opening Windows' first native combo initializes per-process GDI resources.
@@ -208,7 +231,7 @@ int main()
                     }
                     if (!fallback) ::DeleteObject(expected);
                     canvas.Draw(list, index, ODS_SELECTED);
-                    Require(canvas.FirstPixel() == DibColor(::GetSysColor(COLOR_HIGHLIGHT)), "selection background");
+                    Require(canvas.FirstPixel() == DibColor(selectionColor), "palette selection background");
                 }
                 ::DeleteObject(surface);
             }
@@ -235,7 +258,26 @@ int main()
             Require(partialPixels == canvas.Pixels(list), "partial support indicator");
             ::DeleteObject(partialFont);
 
+            // Force the Arial specimen to be both taller and wider than its cell.
+            ::SendMessageW(list, CB_SETITEMHEIGHT, 0, 10);
+            canvas.Draw(list, 0, 0, nullptr, Support::None, 112);
+            Require(canvas.HasInk({3, 1, 54, 9}) && canvas.HasInk({56, 1, 108, 9}),
+                "constrained row lost the name or the specimen");
+            ::SendMessageW(list, CB_SETITEMHEIGHT, 0, height);
+
             const int original = static_cast<int>(::SendMessageW(list, CB_SETCURSEL, 2, 0));
+            HDC fontDc = ::GetDC(list);
+            LOGFONTW enumerate = {};
+            enumerate.lfCharSet = DEFAULT_CHARSET;
+            ::EnumFontFamiliesExW(fontDc, &enumerate, [](const LOGFONTW* font, const TEXTMETRICW*, DWORD, LPARAM value) -> int {
+                const auto combo = reinterpret_cast<HWND>(value);
+                if (::SendMessageW(combo, CB_FINDSTRINGEXACT, static_cast<WPARAM>(-1),
+                    reinterpret_cast<LPARAM>(font->lfFaceName)) == CB_ERR) Add(combo, font->lfFaceName);
+                return 1;
+            }, reinterpret_cast<LPARAM>(list), 0);
+            ::ReleaseDC(list, fontDc);
+            const int installed = static_cast<int>(::SendMessageW(list, CB_GETCOUNT, 0, 0));
+            Require(installed > 9, "installed fonts were not enumerated");
             for (int i = 0; i < 600; ++i) {
                 const std::wstring name = L"FBE Test Family " + std::to_wstring(i);
                 Add(list, name.c_str());
@@ -245,24 +287,45 @@ int main()
             const auto prepared = std::chrono::steady_clock::now();
             ::SendMessageW(list, CB_SHOWDROPDOWN, TRUE, 0);
             const auto opened = std::chrono::steady_clock::now();
+            COMBOBOXINFO popup = {};
+            popup.cbSize = sizeof(popup);
+            Require(::GetComboBoxInfo(list, &popup) && popup.hwndList, "scroll popup");
+            for (int top : {30, 60, 90, 120, 160, 0}) {
+                ::SendMessageW(popup.hwndList, LB_SETTOPINDEX, top, 0);
+                ::UpdateWindow(popup.hwndList);
+            }
+            const auto scrolled = std::chrono::steady_clock::now();
             ::SendMessageW(list, CB_SHOWDROPDOWN, FALSE, 0);
+            const auto repeatStart = std::chrono::steady_clock::now();
+            for (int repeat = 0; repeat < 3; ++repeat) {
+                ::SendMessageW(list, CB_SHOWDROPDOWN, TRUE, 0);
+                ::SendMessageW(list, CB_SHOWDROPDOWN, FALSE, 0);
+            }
+            const auto redrawStart = std::chrono::steady_clock::now();
             Require(::SendMessageW(list, CB_GETDROPPEDWIDTH, 0, 0) > 165, "long name did not widen popup");
             const int count = static_cast<int>(::SendMessageW(list, CB_GETCOUNT, 0, 0));
             for (int index = 0; index < count; ++index) canvas.Draw(list, index, ODS_HOTLIGHT);
             Require(::SendMessageW(list, CB_GETCURSEL, 0, 0) == original, "drawing or opening changed selection");
             Require(::SendMessageW(list, CB_FINDSTRING, static_cast<WPARAM>(-1),
                 reinterpret_cast<LPARAM>(L"Consol")) == original, "native prefix search");
-            const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started);
+            const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - redrawStart);
             const auto prepareTime = std::chrono::duration_cast<std::chrono::microseconds>(prepared - started);
             const auto openTime = std::chrono::duration_cast<std::chrono::microseconds>(opened - prepared);
-            std::printf("%d DPI: %d entries, preparation: %lld us, native opening: %lld us, total with row draws: %lld ms\n",
-                dpi, count, prepareTime.count(), openTime.count(), elapsed.count());
+            const auto repeatTime = std::chrono::duration_cast<std::chrono::milliseconds>(redrawStart - repeatStart);
+            const auto scrollTime = std::chrono::duration_cast<std::chrono::milliseconds>(scrolled - opened);
+            std::printf("%d DPI: %d initial and %d total, preparation %lld us, first popup %lld us, three reopens %lld ms, six scrolls %lld ms, all row draws %lld ms\n",
+                dpi, installed, count, prepareTime.count(), openTime.count(), repeatTime.count(), scrollTime.count(), elapsed.count());
+            // The native popup can animate on CI. Keep the rendering threshold independent of animation.
+            Require(prepareTime < std::chrono::milliseconds(500) && openTime < std::chrono::seconds(2) &&
+                repeatTime < std::chrono::seconds(5) && scrollTime < std::chrono::seconds(3) &&
+                elapsed < std::chrono::seconds(6), "font picker performance regression");
             ::DestroyWindow(list);
             ::DeleteObject(normal);
             ::DeleteObject(surface);
             std::printf("GDI objects after closing combo: %lu\n", resources());
             if (!steadyResources) steadyResources = resources();
-            Require(resources() <= steadyResources, "font GDI resources grew across recreated combos");
+            // Windows may initialize its animation buffers after the first cycle.
+            Require(resources() <= steadyResources + 2, "font GDI resources grew across recreated combos");
         }
         surface = ::CreateSolidBrush(background);
         const HWND editable = ::CreateWindowW(WC_COMBOBOXW, L"", WS_CHILD | WS_VSCROLL | CBS_AUTOHSCROLL |
@@ -280,8 +343,36 @@ int main()
         ::DestroyWindow(editable);
         ::DeleteObject(surface);
         std::printf("GDI objects before/after scenario: %lu -> %lu\n", baseline, resources());
-        Require(resources() <= steadyResources, "editable combo GDI resources leaked");
+        Require(resources() <= steadyResources + 2, "editable combo GDI resources leaked");
+
+        surface = ::CreateSolidBrush(background);
+        const HWND label = ::CreateWindowW(WC_COMBOBOXW, L"", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST |
+            CBS_OWNERDRAWFIXED | CBS_HASSTRINGS, 0, 0, 100, 200, host, nullptr, instance, nullptr);
+        Require(label != nullptr, "tooltip combo");
+        FontPreviewCombo::Attach(label);
+        const wchar_t longName[] = L"Full readable name of an unavailable font family";
+        ::SendMessageW(label, CB_SETCURSEL, Add(label, longName), 0);
+        ::SetWindowPos(host, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        canvas.Draw(label, 0, ODS_COMBOBOXEDIT, nullptr, Support::None, 80);
+        COMBOBOXINFO control = {};
+        control.cbSize = sizeof(control);
+        Require(::GetComboBoxInfo(label, &control), "tooltip combo rectangle");
+        ::SendMessageW(label, WM_MOUSEMOVE, 0, MAKELPARAM(control.rcItem.left + 4, control.rcItem.top + 4));
+        std::puts("Full-name tooltip hover dispatched.");
+        HWND tip = nullptr;
+        ::EnumThreadWindows(::GetCurrentThreadId(), FindTooltip, reinterpret_cast<LPARAM>(&tip));
+        Require(tip != nullptr, "tooltip window was not created");
+        Require(::IsWindowVisible(tip), "full-name tooltip did not open");
+        wchar_t tooltipText[256] = {};
+        ::GetWindowTextW(tip, tooltipText, _countof(tooltipText));
+        Require(wcscmp(tooltipText, longName) == 0, "full-name tooltip text mismatch");
+        ::SendMessageW(label, WM_MOUSELEAVE, 0, 0);
+        Require(!::IsWindowVisible(tip), "tooltip did not close");
+        ::DestroyWindow(label);
+        Require(!::IsWindow(tip), "tooltip survived combo destruction");
+        ::DeleteObject(surface);
         ::DestroyWindow(host);
+        ::DeleteObject(selection);
         std::puts("Font picker runtime checks passed.");
         return 0;
     } catch (const std::exception& error) {

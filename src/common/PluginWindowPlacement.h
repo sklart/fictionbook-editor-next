@@ -1,16 +1,10 @@
 #pragma once
 #include "PluginSettingsStore.h"
+#include "win32/WindowDpi.h"
 #include <algorithm>
 
 namespace FbePluginUi {
-inline UINT WindowDpi(HWND window) {
-    using GetDpi = UINT (WINAPI*)(HWND);
-    const auto getDpi = reinterpret_cast<GetDpi>(::GetProcAddress(::GetModuleHandleW(L"user32.dll"), "GetDpiForWindow"));
-    if(getDpi) return getDpi(window);
-    HDC dc = ::GetDC(window); const UINT dpi = dc ? static_cast<UINT>(::GetDeviceCaps(dc, LOGPIXELSX)) : 96;
-    if(dc) ::ReleaseDC(window, dc);
-    return dpi ? dpi : 96;
-}
+using FbeWin32::WindowDpi;
 
 // Geometry is independent of the confirmed conversion parameters. Remembering
 // a cancelled window must not change their revision or overwrite newer edits.

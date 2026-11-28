@@ -9,6 +9,7 @@
 #include "scripts/ScriptMenuBitmap.h"
 #include "../common/ModernFileDialog.h"
 #include "../common/RuntimeLocalizationCommon.h"
+#include "../common/win32/FontPreviewCoverage.h"
 #include "settings/SettingsFileTransaction.h"
 #include "../common/DeploymentContext.h"
 #include <algorithm>
@@ -779,7 +780,8 @@ bool IsPlainDropDownList(HWND window)
 	// These two owner-drawn selectors use plain strings in their closed field;
 	// only their popup rows need the page's custom group labels and availability.
 	const int id = ::GetDlgCtrlID(window);
-	return (style & CBS_HASSTRINGS) && (id == IDC_INTERFACE_THEME || id == IDC_INTERFACE_PALETTE);
+	return (style & CBS_HASSTRINGS) && (id == IDC_INTERFACE_THEME || id == IDC_INTERFACE_PALETTE ||
+		::GetPropW(window, FontPreviewCoverage::ControlProperty));
 }
 
 bool HasPlainComboList(HWND window)
@@ -802,17 +804,24 @@ void PaintPaletteDropDownList(HWND window, HDC dc)
 	::FrameRect(dc, &client, ThemeManager::Brush(focused ? THEME_COLOR_FOCUS : THEME_COLOR_BORDER));
 	COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
 	if(::GetComboBoxInfo(window, &info)) {
-		RECT text = info.rcItem; ::InflateRect(&text, -UiMetrics::ScaleForDpi(3, UiMetrics::DpiForWindow(window)), 0);
 		const LRESULT selected = ::SendMessageW(window, CB_GETCURSEL, 0, 0);
-		const LRESULT length = selected == CB_ERR ? CB_ERR : ::SendMessageW(window, CB_GETLBTEXTLEN, selected, 0);
-		if(length >= 0 && length < 32768) {
-			std::vector<wchar_t> caption(static_cast<size_t>(length) + 1, 0);
-			if(::SendMessageW(window, CB_GETLBTEXT, selected, reinterpret_cast<LPARAM>(caption.data())) != CB_ERR) {
-				HFONT font = reinterpret_cast<HFONT>(::SendMessageW(window, WM_GETFONT, 0, 0));
-				HGDIOBJ old = font ? ::SelectObject(dc, font) : NULL;
-				::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
-				::DrawTextW(dc, caption.data(), static_cast<int>(length), &text, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX | DT_END_ELLIPSIS);
-				if(old) ::SelectObject(dc, old);
+		if(::GetPropW(window, FontPreviewCoverage::ControlProperty)) {
+			const auto id = static_cast<UINT>(::GetDlgCtrlID(window));
+			DRAWITEMSTRUCT item = {ODT_COMBOBOX, id, static_cast<UINT>(selected), 0,
+				ODS_COMBOBOXEDIT | (enabled ? 0U : ODS_DISABLED), window, dc, info.rcItem, 0};
+			::SendMessageW(::GetParent(window), WM_DRAWITEM, id, reinterpret_cast<LPARAM>(&item));
+		} else {
+			RECT text = info.rcItem; ::InflateRect(&text, -UiMetrics::ScaleForDpi(3, UiMetrics::DpiForWindow(window)), 0);
+			const LRESULT length = selected == CB_ERR ? CB_ERR : ::SendMessageW(window, CB_GETLBTEXTLEN, selected, 0);
+			if(length >= 0 && length < 32768) {
+				std::vector<wchar_t> caption(static_cast<size_t>(length) + 1, 0);
+				if(::SendMessageW(window, CB_GETLBTEXT, selected, reinterpret_cast<LPARAM>(caption.data())) != CB_ERR) {
+					HFONT font = reinterpret_cast<HFONT>(::SendMessageW(window, WM_GETFONT, 0, 0));
+					HGDIOBJ old = font ? ::SelectObject(dc, font) : NULL;
+					::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
+					::DrawTextW(dc, caption.data(), static_cast<int>(length), &text, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX | DT_END_ELLIPSIS);
+					if(old) ::SelectObject(dc, old);
+				}
 			}
 		}
 		if(info.rcButton.right > info.rcButton.left && info.rcButton.bottom > info.rcButton.top) {

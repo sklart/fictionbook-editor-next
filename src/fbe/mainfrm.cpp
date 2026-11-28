@@ -4528,7 +4528,14 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   if(m_diagnostic_crash_discovery.Start(true)) SetTimer(DIAGNOSTIC_DISCOVERY_TIMER_ID,100);
   StartupTrace::AppendTestStartupBreadcrumb("mainframe-finalize-start");
 	ThemeManager::ApplyToWindow(m_hWnd);
-	FontPreviewCoverage::Install(m_hWnd);
+	FontPreviewCoverage::Install(m_hWnd, []() -> FontPreviewCoverage::Palette {
+		if(!ThemeManager::UsesPaletteSurface()) return {};
+		return {ThemeManager::Brush(THEME_COLOR_SELECTION_BACKGROUND), ThemeManager::SelectionTextColor(),
+			ThemeManager::ControlColor(), ThemeManager::TextColor()};
+	}, [](wchar_t* buffer, int capacity) {
+		::lstrcpynW(buffer, FbeLoadRuntimeStringByKey(L"fbe.font_preview.partial_cyrillic",
+			L"This font supports only part of the Russian alphabet."), capacity);
+	});
   m_need_title_update = true;
 	StartupTrace::AppendTestStartupBreadcrumb("mainframe-finalize-complete");
   StartupTrace::Event(L"mainframe", L"M199", L"OnCreate completed");

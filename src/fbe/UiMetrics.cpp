@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "UiMetrics.h"
+#include "../common/win32/WindowDpi.h"
 #include <vector>
 
 namespace
@@ -51,20 +52,7 @@ UINT UiMetrics::s_dpi = 96;
 
 UINT UiMetrics::GetDpi(HWND window)
 {
-	typedef UINT (WINAPI* GetDpiForWindowProc)(HWND);
-	HMODULE user32 = ::GetModuleHandle(L"user32.dll");
-	GetDpiForWindowProc getDpiForWindow = user32
-		? reinterpret_cast<GetDpiForWindowProc>(::GetProcAddress(user32, "GetDpiForWindow")) : NULL;
-	if(getDpiForWindow && window != NULL)
-	{
-		const UINT dpi = getDpiForWindow(window);
-		if(dpi) return dpi;
-	}
-
-	HDC dc = ::GetDC(window);
-	const UINT dpi = dc ? static_cast<UINT>(::GetDeviceCaps(dc, LOGPIXELSX)) : 96;
-	if(dc) ::ReleaseDC(window, dc);
-	return dpi ? dpi : 96;
+	return FbeWin32::WindowDpi(window);
 }
 
 void UiMetrics::EnsureFonts()

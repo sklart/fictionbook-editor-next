@@ -46,12 +46,25 @@ struct Entry
     Support support = Support::None;
 };
 
+struct Palette
+{
+    HBRUSH selection = nullptr;
+    COLORREF selectionText = 0;
+    COLORREF tooltipBackground = 0;
+    COLORREF tooltipText = 0;
+};
+
+using ReadPalette = Palette (*)();
+using ReadPartialHint = void (*)(wchar_t*, int);
+
 // Published on the editor's root owner, so plug-in DLLs use the same results.
 // Fixed-size values require no cross-module allocation or GDI ownership.
 struct Cache
 {
     unsigned generation = 1;
     std::array<Entry, 1024> entries = {};
+    ReadPalette readPalette = nullptr;
+    ReadPartialHint readPartialHint = nullptr;
 
     Support Lookup(HDC dc, const std::wstring& family)
     {
@@ -64,7 +77,8 @@ struct Cache
     }
 };
 
-inline constexpr wchar_t CacheProperty[] = L"FBE.FontPreviewCoverage";
+inline constexpr wchar_t CacheProperty[] = L"FBE.FontPreviewCoverage.v2";
+inline constexpr wchar_t ControlProperty[] = L"FBE.FontPreviewCombo";
 
 inline Cache* ForWindow(HWND window)
 {
@@ -79,11 +93,14 @@ inline void Invalidate(HWND root)
     }
 }
 
-inline void Install(HWND root)
+inline void Install(HWND root, ReadPalette palette = nullptr, ReadPartialHint partialHint = nullptr)
 {
     if (::GetPropW(root, CacheProperty)) return;
     auto* cache = new (std::nothrow) Cache;
-    if (cache && !::SetPropW(root, CacheProperty, cache)) delete cache;
+    if (!cache) return;
+    cache->readPalette = palette;
+    cache->readPartialHint = partialHint;
+    if (!::SetPropW(root, CacheProperty, cache)) delete cache;
 }
 
 inline void Uninstall(HWND root)
