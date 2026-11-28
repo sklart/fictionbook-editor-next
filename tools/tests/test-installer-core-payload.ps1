@@ -14,7 +14,10 @@ $destination = Join-Path $root ('out/tests/installer-core-payload-' + [guid]::Ne
 New-Item -ItemType Directory -Path $destination | Out-Null
 & $SevenZip x $installerPath "-o$destination" -y | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Installer extraction failed: $destination" }
-$files = @('languages.txt', 'root_genres.xml', 'genres.librusec.txt', 'genres.rus.librusec.txt', 'Dict/sources.json')
+$files = @('languages.txt', 'root_genres.xml', 'genres.librusec.txt', 'genres.rus.librusec.txt', 'Dict/sources.json',
+    'Plugins/ImportFB3.dll', 'Plugins/ExportFB3.dll', 'ImportFB3Batch.exe', 'ExportFB3Batch.exe',
+    'FB3Schemas/fb3_body.xsd', 'FB3Schemas/fb3_descr.xsd', 'FB3Schemas/fb3_descr_classes.xsd',
+    'FB3Schemas/fb3_general.xsd', 'FB3Schemas/fb3_links.xsd', 'FB3Schemas/fb3_relations.xsd', 'FB3Schemas/license.txt')
 if (Test-Path -LiteralPath (Join-Path $destination 'DescriptionIcons')) { throw 'Installer contains unused DescriptionIcons.' }
 foreach ($relative in $files) {
     $expected = Join-Path $inputPath $relative; $actual = Join-Path $destination $relative

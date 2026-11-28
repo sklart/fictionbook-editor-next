@@ -34,10 +34,10 @@ function Get-CommonSourcePath([string]$Directory, [string]$Name) {
     return Get-SourcePath $Directory $Name
 }
 
-$commonNames = @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll','html.xsl')
-$pluginNames = @('ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')
+$commonNames = @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll','ImportFB3.dll','ExportFB3.dll','html.xsl')
+$pluginNames = @('ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll','ImportFB3.dll','ExportFB3.dll')
 $profileNames = @('Scintilla.dll','Lexilla.dll')
-if ($Kind -ne 'CommonCore') { $profileNames += @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe') }
+if ($Kind -ne 'CommonCore') { $profileNames += @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe','ImportFB3Batch.exe','ExportFB3Batch.exe') }
 
 if ($Action -eq 'Write') {
     $artifacts = [ordered]@{}

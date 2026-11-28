@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildThisFileDirectory)FBE.Fb3Package.props" />
+  <ItemDefinitionGroup>
+    <Link><AdditionalDependencies>xmllite.lib;%(AdditionalDependencies)</AdditionalDependencies></Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="$(FbeRepoRoot)\src\common\fb3\Fb3Export.cpp" />
+    <ClCompile Include="$(FbeRepoRoot)\src\common\fb3\Fb3Schema.cpp" />
+    <ClCompile Include="$(FbeRepoRoot)\src\common\fb3\Fb3Batch.cpp" />
+  </ItemGroup>
+</Project>

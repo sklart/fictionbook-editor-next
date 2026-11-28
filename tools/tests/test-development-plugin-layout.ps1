@@ -14,8 +14,8 @@ $BatchOutputDirectory = if ($BatchOutputDirectory) {
     $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchOutputDirectory)
 } else { $OutputDirectory }
 $pluginsDirectory = Join-Path $OutputDirectory 'Plugins'
-$pluginDllNames = @('ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')
-$pluginSymbolNames = @('ExportHTML.pdb','ExportDOCX.pdb','ExportEPUB.pdb','ImportEPUB.pdb','ImportEPUBLunaSVG.pdb')
+$pluginDllNames = @('ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll','ImportFB3.dll','ExportFB3.dll')
+$pluginSymbolNames = @('ExportHTML.pdb','ExportDOCX.pdb','ExportEPUB.pdb','ImportEPUB.pdb','ImportEPUBLunaSVG.pdb','ImportFB3.pdb','ExportFB3.pdb')
 
 foreach ($name in $pluginDllNames + $pluginSymbolNames) {
     $packagedPath = Join-Path $pluginsDirectory $name
@@ -36,7 +36,9 @@ $pluginProjects = @(
     'src\export-docx\ExportDOCX.vcxproj',
     'src\export-epub\ExportEPUB.vcxproj',
     'src\import-epub\ImportEPUB.vcxproj',
-    'src\import-epub\ImportEPUBLunaSVG.vcxproj'
+    'src\import-epub\ImportEPUBLunaSVG.vcxproj',
+    'src\import-fb3\ImportFB3.vcxproj',
+    'src\export-fb3\ExportFB3.vcxproj'
 )
 foreach ($project in $pluginProjects) {
     [xml]$content = Get-Content -LiteralPath (Join-Path $repoRoot $project) -Raw
@@ -47,7 +49,7 @@ foreach ($project in $pluginProjects) {
     $outputs = @($content.SelectNodes('/msb:Project/msb:PropertyGroup/msb:OutDir', $namespace) | Where-Object {
         $groupCondition = $_.ParentNode.GetAttribute('Condition') -replace '\s+', ''
         $condition = $_.GetAttribute('Condition') -replace '\s+', ''
-        $groupCondition -eq $releaseCondition -and ($condition -eq '' -or $condition -eq $ordinaryCondition) -and
+        ($groupCondition -eq '' -or $groupCondition -eq $releaseCondition) -and ($condition -eq '' -or $condition -eq $ordinaryCondition) -and
             $_.InnerText -match 'out\\\$\(Configuration\)\\Plugins\\$'
     })
     if ($outputs.Count -ne 1) {
@@ -58,7 +60,8 @@ foreach ($project in $pluginProjects) {
 # Batch utilities are executable tools, not plugins.  They and their symbols
 # deliberately stay in their configured development output directory while
 # their DLL probes use the sibling Plugins directory first.
-foreach ($name in @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe','ExportDOCXBatch.pdb','ExportEPUBBatch.pdb','ImportEPUBBatch.pdb')) {
+foreach ($name in @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe','ImportFB3Batch.exe','ExportFB3Batch.exe',
+    'ExportDOCXBatch.pdb','ExportEPUBBatch.pdb','ImportEPUBBatch.pdb','ImportFB3Batch.pdb','ExportFB3Batch.pdb')) {
     if (-not (Test-Path -LiteralPath (Join-Path $BatchOutputDirectory $name) -PathType Leaf)) {
         throw "Batch converter artifact is missing from development output directory: $name"
     }

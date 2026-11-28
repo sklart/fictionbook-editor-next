@@ -20,7 +20,7 @@ if($Sanitizer -eq 'Address') {
     $toolchain | ConvertTo-Json | Set-Content (Join-Path $output 'fbe-ubsan-toolchain.json') -Encoding utf8
 }
 if (Test-Path -LiteralPath $symbolizer) { Copy-Item -LiteralPath $symbolizer -Destination $output -Force }
-$modules=@('FBE.exe','FBV.exe','FBShell.dll','Plugins\ExportHTML.dll','Plugins\ExportDOCX.dll','Plugins\ExportEPUB.dll','Plugins\ImportEPUB.dll','Plugins\ImportEPUBLunaSVG.dll','ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe')
+$modules=@('FBE.exe','FBV.exe','FBShell.dll','Plugins\ExportHTML.dll','Plugins\ExportDOCX.dll','Plugins\ExportEPUB.dll','Plugins\ImportEPUB.dll','Plugins\ImportEPUBLunaSVG.dll','Plugins\ImportFB3.dll','Plugins\ExportFB3.dll','ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe','ImportFB3Batch.exe','ExportFB3Batch.exe')
 $coverage=@(foreach ($name in $modules) {
     $path=Join-Path $output $name
     if (-not (Test-Path -LiteralPath $path)) { throw "Missing sanitizer module: $name" }

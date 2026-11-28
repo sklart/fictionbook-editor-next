@@ -339,6 +339,57 @@
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
+	if (IsFbeTestScenario(L"fb3-editor-runtime"))
+	{
+		const auto commandFor = [&](const auto& plugins, WORD base, LPCWSTR id) -> WORD {
+			for (int i = 0; i < plugins.GetSize(); ++i) {
+				const auto* plugin = m_plugins.Manager().FindPlugin(plugins[i]);
+				if (plugin && plugin->id == id) return static_cast<WORD>(base + i);
+			}
+			return 0;
+		};
+		const WORD import = commandFor(m_plugins.ImportPlugins(), ID_IMPORT_BASE, L"import-fb3");
+		const WORD exportCommand = commandFor(m_plugins.ExportPlugins(), ID_EXPORT_BASE, L"export-fb3");
+		wchar_t savedPath[32768] = {}, exportedPath[32768] = {};
+		const DWORD savedLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SAVE_PATH", savedPath, _countof(savedPath));
+		const DWORD exportedLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_FB3_PATH", exportedPath, _countof(exportedPath));
+		bool imported = false, edited = false, saved = false, reopened = false, exported = false;
+		struct ScenarioGuard { ~ScenarioGuard() { ::SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO", L"fb3-editor-runtime"); } } guard;
+		if (import && exportCommand && savedLength && savedLength < _countof(savedPath) && exportedLength && exportedLength < _countof(exportedPath)) {
+			m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT);
+			::SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO", L"import-fb3");
+			SendMessage(WM_COMMAND, import);
+			imported = m_document_session.HasDocument() && !m_doc->m_namevalid && DocChanged();
+			if (imported) {
+				ShowView(SOURCE);
+				constexpr char marker[] = "FB3_RUNTIME_ORIGINAL";
+				const auto source = FbeScripts::SourceBytes(m_source);
+				const auto position = source.find(marker);
+				if (position != std::string::npos) {
+					m_source.SendMessage(SCI_SETTARGETSTART, position);
+					m_source.SendMessage(SCI_SETTARGETEND, position + sizeof(marker) - 1);
+					m_source.SendMessage(SCI_REPLACETARGET, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>("FB3_RUNTIME_EDITED"));
+					edited = FbeScripts::SourceBytes(m_source).find("FB3_RUNTIME_EDITED") != std::string::npos;
+				}
+				::SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO", L"fb3-editor-runtime");
+				saved = edited && SaveFile(true) == OK;
+				reopened = saved && LoadFile(savedPath) == OK;
+				if (reopened) {
+					ShowView(SOURCE);
+					reopened = FbeScripts::SourceBytes(m_source).find("FB3_RUNTIME_EDITED") != std::string::npos;
+					ShowView(BODY);
+					::SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO", L"export-fb3");
+					SendMessage(WM_COMMAND, exportCommand);
+					exported = ::GetFileAttributesW(exportedPath) != INVALID_FILE_ATTRIBUTES;
+				}
+			}
+		}
+		const bool passed = imported && edited && saved && reopened && exported;
+		CStringA report;
+		report.Format("imported=%d\nedited=%d\nsaved=%d\nreopened=%d\nexported=%d\nresult=%s\n", imported, edited, saved, reopened, exported, passed ? "PASS" : "FAIL");
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"issue43-menu-quality-visual-runtime"))
 	{
 		auto menuText = [](HMENU menu, int position) -> CString {
@@ -361,24 +412,30 @@
 				pluginCaption(menu, position) == FbeLoadRuntimeStringByKey(key);
 		};
 		const bool pluginCount = installedImport && installedExport &&
-			::GetMenuItemCount(installedImport) == 1 && ::GetMenuItemCount(installedExport) == 3;
+			::GetMenuItemCount(installedImport) == 2 && ::GetMenuItemCount(installedExport) == 4;
 		const bool pluginIds = pluginCount &&
 			pluginItemMatches(installedImport, 0, ID_IMPORT_BASE, L"fbe.plugin.import_epub.menu") &&
+			pluginItemMatches(installedImport, 1, ID_IMPORT_BASE + 1, L"fbe.plugin.import_fb3.menu") &&
 			pluginItemMatches(installedExport, 0, ID_EXPORT_BASE, L"fbe.plugin.export_html.menu") &&
 			pluginItemMatches(installedExport, 1, ID_EXPORT_BASE + 1, L"fbe.plugin.export_docx.menu") &&
-			pluginItemMatches(installedExport, 2, ID_EXPORT_BASE + 2, L"fbe.plugin.export_epub.menu");
-		const bool pluginDescriptors = m_plugins.ImportPlugins().GetSize() == 1 &&
-			m_plugins.ExportPlugins().GetSize() == 3 &&
-			m_plugins.Manager().GetPlugins().size() == 4 &&
+			pluginItemMatches(installedExport, 2, ID_EXPORT_BASE + 2, L"fbe.plugin.export_epub.menu") &&
+			pluginItemMatches(installedExport, 3, ID_EXPORT_BASE + 3, L"fbe.plugin.export_fb3.menu");
+		const bool pluginDescriptors = m_plugins.ImportPlugins().GetSize() == 2 &&
+			m_plugins.ExportPlugins().GetSize() == 4 &&
+			m_plugins.Manager().GetPlugins().size() == 6 &&
 			m_plugins.Manager().FindPlugin(m_plugins.ImportPlugins()[0]) != NULL &&
+			m_plugins.Manager().FindPlugin(m_plugins.ImportPlugins()[1]) != NULL &&
 			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[0]) != NULL &&
 			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[1]) != NULL &&
-			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[2]) != NULL;
+			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[2]) != NULL &&
+			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[3]) != NULL;
 		const bool pluginNames = pluginDescriptors &&
 			m_plugins.Manager().FindPlugin(m_plugins.ImportPlugins()[0])->id == L"import-epub" &&
+			m_plugins.Manager().FindPlugin(m_plugins.ImportPlugins()[1])->id == L"import-fb3" &&
 			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[0])->id == L"export-html" &&
 			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[1])->id == L"export-docx" &&
-			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[2])->id == L"export-epub";
+			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[2])->id == L"export-epub" &&
+			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[3])->id == L"export-fb3";
 		const bool populated = pluginIds && pluginNames;
 		HMENU emptyMenu = ::LoadMenuW(_Module.GetResourceInstance(), MAKEINTRESOURCEW(IDR_MAINFRAME));
 		if(emptyMenu) ApplyRuntimeMainFrameMenuLocalization(emptyMenu);

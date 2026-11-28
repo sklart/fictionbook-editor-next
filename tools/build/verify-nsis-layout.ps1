@@ -54,9 +54,15 @@ if ($nsiText -notmatch [regex]::Escape('SetOutPath "$INSTDIR\Plugins"') -or
     $nsiText -notmatch [regex]::Escape('File "${INPUTDIR}\Plugins\plugins.json"')) {
     throw "MakeInstaller.nsi должен устанавливать манифест bundled plug-ins в Plugins\\plugins.json."
 }
-foreach ($name in @('ExportHTML.dll', 'ExportDOCX.dll', 'ExportEPUB.dll', 'ImportEPUB.dll', 'ImportEPUBLunaSVG.dll')) {
+foreach ($name in @('ExportHTML.dll', 'ExportDOCX.dll', 'ExportEPUB.dll', 'ImportEPUB.dll', 'ImportEPUBLunaSVG.dll', 'ImportFB3.dll', 'ExportFB3.dll')) {
     if ($nsiText -notmatch [regex]::Escape(('File "${INPUTDIR}\Plugins\' + $name + '"'))) {
         throw "MakeInstaller.nsi должен устанавливать $name в Plugins."
+    }
+}
+foreach ($name in @('ImportFB3Batch.exe', 'ExportFB3Batch.exe', 'FB3Schemas\fb3_body.xsd', 'FB3Schemas\fb3_descr.xsd',
+    'FB3Schemas\fb3_descr_classes.xsd', 'FB3Schemas\fb3_general.xsd', 'FB3Schemas\fb3_links.xsd', 'FB3Schemas\fb3_relations.xsd', 'FB3Schemas\license.txt')) {
+    if ($nsiText -notmatch [regex]::Escape(('File "${INPUTDIR}\' + $name + '"'))) {
+        throw "MakeInstaller.nsi должен устанавливать $name."
     }
 }
 if ($nsiText -match [regex]::Escape('Section /o "Legacy COM compatibility"')) {

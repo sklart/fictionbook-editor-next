@@ -66,5 +66,7 @@ private:
 };
 
 CComPtr<IXMLDOMDocument2> LoadXmlPart(const Part& part);
+CComPtr<IXMLDOMDocument2> LoadXmlBytes(const std::wstring& name, const std::vector<BYTE>& bytes);
+CComPtr<IXMLDOMDocument2> LoadFb2Snapshot(const std::vector<BYTE>& bytes);
 
 }

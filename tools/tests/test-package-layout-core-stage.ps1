@@ -17,15 +17,18 @@ try {
         New-Item -ItemType Directory -Force -Path $path | Out-Null
     }
     foreach ($name in @('FBE.exe', 'FBV.exe', 'html.xsl')) { Set-Content -LiteralPath (Join-Path $common $name) -Value $name -Encoding ascii }
-    foreach ($name in @('ExportHTML.dll', 'ExportDOCX.dll', 'ExportEPUB.dll', 'ImportEPUB.dll', 'ImportEPUBLunaSVG.dll')) { Set-Content -LiteralPath (Join-Path $plugins $name) -Value $name -Encoding ascii }
+    foreach ($name in @('ExportHTML.dll', 'ExportDOCX.dll', 'ExportEPUB.dll', 'ImportEPUB.dll', 'ImportEPUBLunaSVG.dll', 'ImportFB3.dll', 'ExportFB3.dll')) { Set-Content -LiteralPath (Join-Path $plugins $name) -Value $name -Encoding ascii }
     foreach ($name in @('Scintilla.dll', 'Lexilla.dll')) { Set-Content -LiteralPath (Join-Path $editorRuntime $name) -Value $name -Encoding ascii }
-    foreach ($name in @('ExportDOCXBatch.exe', 'ExportEPUBBatch.exe', 'ImportEPUBBatch.exe')) { Set-Content -LiteralPath (Join-Path $batch $name) -Value $name -Encoding ascii }
+    foreach ($name in @('ExportDOCXBatch.exe', 'ExportEPUBBatch.exe', 'ImportEPUBBatch.exe', 'ImportFB3Batch.exe', 'ExportFB3Batch.exe')) { Set-Content -LiteralPath (Join-Path $batch $name) -Value $name -Encoding ascii }
 
     & (Join-Path $repoRoot 'tools\build\build-provenance.ps1') -Action Write -Kind CommonCore -Configuration $configuration -CommonDirectory $common -ProvenanceDirectory $provenance
     & (Join-Path $repoRoot 'tools\build\build-provenance.ps1') -Action Write -Kind Runtime -Configuration $configuration -ProfileDirectory $editorRuntime -BatchDirectory $batch -ProvenanceDirectory $provenance
     & (Join-Path $repoRoot 'tools\build\stage-core.ps1') -Configuration $configuration -OutputDirectory $stage -EditorRuntimeDirectory $editorRuntime -BatchOutputDirectory $batch -ProvenanceDirectory $provenance -BuildOutputDirectory $common
 
-    foreach ($relativePath in @('FBE.exe', 'FBV.exe', 'Plugins\ImportEPUB.dll', 'LICENSE', 'genres.librusec.txt', 'Resources\Words.xml', 'THIRD-PARTY-LICENSES\PCRE2.txt', 'THIRD-PARTY-LICENSES\Theme-palettes-MIT.txt', 'Utilities\Save Sections As Separate Documents\SaveSectionsAsSeparateDocuments.hta')) {
+    foreach ($relativePath in @('FBE.exe', 'FBV.exe', 'Plugins\ImportEPUB.dll', 'Plugins\ImportFB3.dll', 'Plugins\ExportFB3.dll',
+        'ImportFB3Batch.exe', 'ExportFB3Batch.exe', 'FB3Schemas\fb3_body.xsd', 'FB3Schemas\license.txt', 'LICENSE', 'genres.librusec.txt',
+        'Resources\Words.xml', 'THIRD-PARTY-LICENSES\PCRE2.txt', 'THIRD-PARTY-LICENSES\Theme-palettes-MIT.txt',
+        'Utilities\Save Sections As Separate Documents\SaveSectionsAsSeparateDocuments.hta')) {
         if (-not (Test-Path -LiteralPath (Join-Path $stage $relativePath) -PathType Leaf)) {
             throw "Layout-driven Core stage omitted: $relativePath"
         }

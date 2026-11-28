@@ -23,11 +23,13 @@ $releaseFiles = @(
     'Plugins\ExportDOCX.dll',
     'Plugins\ExportEPUB.dll',
     'Plugins\ImportEPUB.dll',
-    'Plugins\ImportEPUBLunaSVG.dll'
+    'Plugins\ImportEPUBLunaSVG.dll',
+    'Plugins\ImportFB3.dll',
+    'Plugins\ExportFB3.dll'
 )
 $releaseDirectory = Join-Path $repoRoot "out\$Configuration"
 $batchDirectory = Join-Path $repoRoot 'out\target-batches'
-$batchFiles = @('ExportDOCXBatch.exe', 'ExportEPUBBatch.exe', 'ImportEPUBBatch.exe')
+$batchFiles = @('ExportDOCXBatch.exe', 'ExportEPUBBatch.exe', 'ImportEPUBBatch.exe', 'ImportFB3Batch.exe', 'ExportFB3Batch.exe')
 $strictOutRoot = Join-Path $repoRoot 'out\strict-warnings'
 $strictIntRoot = Join-Path $repoRoot 'build\strict-warnings'
 
@@ -88,7 +90,11 @@ $projects = @(
     'src\export-docx\ExportDOCXBatch.vcxproj',
     'src\export-epub\ExportEPUBBatch.vcxproj',
     'src\import-epub\ImportEPUBBatch.vcxproj',
-    'src\import-epub\ImportEPUBLunaSVG.vcxproj'
+    'src\import-epub\ImportEPUBLunaSVG.vcxproj',
+    'src\import-fb3\ImportFB3.vcxproj',
+    'src\import-fb3\ImportFB3Batch.vcxproj',
+    'src\export-fb3\ExportFB3.vcxproj',
+    'src\export-fb3\ExportFB3Batch.vcxproj'
 )
 
 foreach ($relativeProject in $projects) {

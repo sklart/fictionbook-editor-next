@@ -169,10 +169,8 @@ bool PartNameLess::operator()(const std::wstring& left, const std::wstring& righ
     return ::CompareStringOrdinal(left.c_str(), -1, right.c_str(), -1, TRUE) == CSTR_LESS_THAN;
 }
 
-CComPtr<IXMLDOMDocument2> LoadXmlPart(const Part& part) {
-    std::error_code error;
-    const auto size = std::filesystem::file_size(part.file, error);
-    if (error || !size || size > XmlBytes) Fail(L"Missing, empty or oversized XML part: " + part.name);
+namespace {
+CComPtr<IXMLDOMDocument2> LoadXmlStream(const std::wstring& name, IStream* stream) {
     CComPtr<IXMLDOMDocument2> document;
     CComVariant prohibitDtd;
     prohibitDtd.vt = VT_BOOL;
@@ -182,18 +180,44 @@ CComPtr<IXMLDOMDocument2> LoadXmlPart(const Part& part) {
         FAILED(document->put_resolveExternals(VARIANT_FALSE)) || FAILED(document->put_preserveWhiteSpace(VARIANT_TRUE)) ||
         FAILED(document->setProperty(CComBSTR(L"ProhibitDTD"), prohibitDtd)) ||
         FAILED(document->setProperty(CComBSTR(L"MaxElementDepth"), CComVariant(192L))))
-        Fail(L"Cannot configure the XML reader for " + part.name);
-    CComPtr<IStream> stream;
-    if (FAILED(::SHCreateStreamOnFileEx(part.file.c_str(), STGM_READ | STGM_SHARE_DENY_WRITE,
-        FILE_ATTRIBUTE_NORMAL, FALSE, nullptr, &stream))) Fail(L"Cannot read " + part.name);
+        Fail(L"Cannot configure the XML reader for " + name);
     VARIANT_BOOL loaded = VARIANT_FALSE;
-    if (FAILED(document->load(CComVariant(static_cast<IUnknown*>(stream.p)), &loaded)) || loaded != VARIANT_TRUE) {
+    if (FAILED(document->load(CComVariant(static_cast<IUnknown*>(stream)), &loaded)) || loaded != VARIANT_TRUE) {
         CComPtr<IXMLDOMParseError> parseError;
         CComBSTR reason;
         if (SUCCEEDED(document->get_parseError(&parseError)) && parseError) parseError->get_reason(&reason);
-        Fail(L"Invalid XML in " + part.name + (reason ? L": " + std::wstring(reason, reason.Length()) : std::wstring()));
+        Fail(L"Invalid XML in " + name + (reason ? L": " + std::wstring(reason, reason.Length()) : std::wstring()));
     }
     return document;
+}
+}
+
+CComPtr<IXMLDOMDocument2> LoadXmlPart(const Part& part) {
+    std::error_code error;
+    const auto size = std::filesystem::file_size(part.file, error);
+    if (error || !size || size > XmlBytes) Fail(L"Missing, empty or oversized XML part: " + part.name);
+    CComPtr<IStream> stream;
+    if (FAILED(::SHCreateStreamOnFileEx(part.file.c_str(), STGM_READ | STGM_SHARE_DENY_WRITE,
+        FILE_ATTRIBUTE_NORMAL, FALSE, nullptr, &stream))) Fail(L"Cannot read " + part.name);
+    return LoadXmlStream(part.name, stream);
+}
+
+namespace {
+CComPtr<IXMLDOMDocument2> LoadMemoryXml(const std::wstring& name, const std::vector<BYTE>& bytes, size_t limit) {
+    if (bytes.empty() || bytes.size() > limit) Fail(L"Empty or oversized XML part: " + name);
+    CComPtr<IStream> stream;
+    stream.Attach(::SHCreateMemStream(bytes.data(), static_cast<UINT>(bytes.size())));
+    if (!stream) Fail(L"Cannot read " + name);
+    return LoadXmlStream(name, stream);
+}
+}
+
+CComPtr<IXMLDOMDocument2> LoadXmlBytes(const std::wstring& name, const std::vector<BYTE>& bytes) {
+    return LoadMemoryXml(name, bytes, XmlBytes);
+}
+
+CComPtr<IXMLDOMDocument2> LoadFb2Snapshot(const std::vector<BYTE>& bytes) {
+    return LoadMemoryXml(L"FB2 document", bytes, 96ULL << 20);
 }
 
 Package::Package(const std::filesystem::path& source) {

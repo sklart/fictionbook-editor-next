@@ -22,13 +22,23 @@ class ATL_NO_VTABLE PluginHost : public CComObjectRootEx<CComSingleThreadModel>,
 {
 public:
     HWND m_owner = NULL; CString m_locale; CComPtr<IFBEProgressSink> m_progress; CComPtr<IFBECancellationToken> m_cancellation;
+    CString m_warnings, m_errors;
     BEGIN_COM_MAP(PluginHost) COM_INTERFACE_ENTRY(IFBEPluginHost) END_COM_MAP()
     STDMETHOD(GetHostVersion)(BSTR* version) { if (!version) return E_POINTER; wchar_t value[64] = {}; ::MultiByteToWideChar(CP_ACP, 0, FBE_VERSION_STRING, -1, value, _countof(value)); *version = ::SysAllocString(value); return *version ? S_OK : E_OUTOFMEMORY; }
     STDMETHOD(GetUiLocale)(BSTR* locale) { if (!locale) return E_POINTER; *locale = m_locale.AllocSysString(); return *locale ? S_OK : E_OUTOFMEMORY; }
     STDMETHOD(GetOwnerWindow)(LONGLONG* hwnd) { if (!hwnd) return E_POINTER; *hwnd = static_cast<LONGLONG>(reinterpret_cast<INT_PTR>(m_owner)); return S_OK; }
     STDMETHOD(GetProgressSink)(IFBEProgressSink** sink) { if (!sink) return E_POINTER; *sink = m_progress; if (*sink) (*sink)->AddRef(); return *sink ? S_OK : E_UNEXPECTED; }
     STDMETHOD(GetCancellationToken)(IFBECancellationToken** token) { if (!token) return E_POINTER; *token = m_cancellation; if (*token) (*token)->AddRef(); return *token ? S_OK : E_UNEXPECTED; }
-    STDMETHOD(ReportMessage)(LONG severity, BSTR code, BSTR) { CString detail; detail.Format(L"severity=%ld; code=%s", severity, code ? code : L""); StartupTrace::Event(L"plugin", L"P221", L"plugin-message; " + detail); return S_OK; }
+    STDMETHOD(ReportMessage)(LONG severity, BSTR code, BSTR message) {
+        CString detail; detail.Format(L"severity=%ld; code=%s", severity, code ? code : L""); StartupTrace::Event(L"plugin", L"P221", L"plugin-message; " + detail);
+        if (code && message && (severity == 1 || severity == 2) &&
+            (wcsncmp(code, L"import-fb3-", 11) == 0 || wcsncmp(code, L"export-fb3-", 11) == 0)) {
+            auto& target = severity == 1 ? m_warnings : m_errors;
+            if (!target.IsEmpty()) target += L"\r\n";
+            target += message;
+        }
+        return S_OK;
+    }
     STDMETHOD(Trace)(BSTR eventName, BSTR) { StartupTrace::Event(L"plugin", L"P222", CString(L"plugin-trace; event=") + (eventName ? eventName : L"")); return S_OK; }
 };
 class ATL_NO_VTABLE DocumentSnapshot : public CComObjectRootEx<CComSingleThreadModel>, public IFBEDocumentSnapshot
@@ -51,6 +61,11 @@ HRESULT FbePluginApiV2::CreateHost(HWND owner, LPCWSTR locale, IFBEPluginHost** 
     CComObject<PluginCancellationToken>* cancellation = NULL; hr = CComObject<PluginCancellationToken>::CreateInstance(&cancellation); if (FAILED(hr)) { progress->Release(); return hr; } cancellation->AddRef();
     CComObject<PluginHost>* result = NULL; hr = CComObject<PluginHost>::CreateInstance(&result); if (FAILED(hr)) { cancellation->Release(); progress->Release(); return hr; }
     result->AddRef(); result->m_owner = owner; result->m_locale = locale ? locale : L""; result->m_progress.Attach(progress); result->m_cancellation.Attach(cancellation); *host = result; StartupTrace::Event(L"plugin", L"P210", L"plugin-host-created"); return S_OK;
+}
+CString FbePluginApiV2::ReportedMessage(IFBEPluginHost* host, LONG severity) {
+    // Only hosts created by CreateHost are used by the controller.
+    const auto* implementation = static_cast<PluginHost*>(host);
+    return severity == 1 ? implementation->m_warnings : implementation->m_errors;
 }
 HRESULT FbePluginApiV2::CreateSnapshot(MSXML2::IXMLDOMDocument2* document, LPCWSTR sourcePath, LPCWSTR /* unused: encoding */, IFBEDocumentSnapshot** snapshot) {
     if (!snapshot) return E_POINTER; *snapshot = NULL; if (!document) return E_INVALIDARG; CComObject<DocumentSnapshot>* result = NULL; HRESULT hr = CComObject<DocumentSnapshot>::CreateInstance(&result); if (FAILED(hr)) return hr;

@@ -1327,6 +1327,15 @@ nthere:
   File "${INPUTDIR}\html.xsl"
   File "${INPUTDIR}\FBE.exe"
   File "${INPUTDIR}\FictionBook.xsd"
+  SetOutPath "$INSTDIR\FB3Schemas"
+  File "${INPUTDIR}\FB3Schemas\fb3_body.xsd"
+  File "${INPUTDIR}\FB3Schemas\fb3_descr.xsd"
+  File "${INPUTDIR}\FB3Schemas\fb3_descr_classes.xsd"
+  File "${INPUTDIR}\FB3Schemas\fb3_general.xsd"
+  File "${INPUTDIR}\FB3Schemas\fb3_links.xsd"
+  File "${INPUTDIR}\FB3Schemas\fb3_relations.xsd"
+  File "${INPUTDIR}\FB3Schemas\license.txt"
+  SetOutPath "$INSTDIR"
   File "${INPUTDIR}\FictionBookGenres.xsd"
   File "${INPUTDIR}\FictionBookLang.xsd"
   File "${INPUTDIR}\FictionBookLinks.xsd"
@@ -1667,6 +1676,10 @@ SectionGroup /e !$(PluginsGroup) PluginsGroup_id
 			SetOutPath "$INSTDIR\Plugins"
 			File "${INPUTDIR}\Plugins\ImportEPUBLunaSVG.dll"
 		SectionEnd
+		Section "FictionBook 3 (.fb3)" ImportFB3_Plugin_id
+			SetOutPath "$INSTDIR\Plugins"
+			File "${INPUTDIR}\Plugins\ImportFB3.dll"
+		SectionEnd
 	SectionGroupEnd
 
 	SectionGroup /e !$(ExportPluginsGroup) ExportPluginsGroup_id
@@ -1682,6 +1695,10 @@ SectionGroup /e !$(PluginsGroup) PluginsGroup_id
 			SetOutPath "$INSTDIR\Plugins"
 			File "${INPUTDIR}\Plugins\ExportEPUB.dll"
 		SectionEnd
+		Section "FictionBook 3 (.fb3)" ExportFB3_Plugin_id
+			SetOutPath "$INSTDIR\Plugins"
+			File "${INPUTDIR}\Plugins\ExportFB3.dll"
+		SectionEnd
 	SectionGroupEnd
 
 	Section /o $(Plugin_BatchConverters) BatchConverters_id
@@ -1689,6 +1706,8 @@ SectionGroup /e !$(PluginsGroup) PluginsGroup_id
 		File "${INPUTDIR}\ExportDOCXBatch.exe"
 		File "${INPUTDIR}\ExportEPUBBatch.exe"
 		File "${INPUTDIR}\ImportEPUBBatch.exe"
+		File "${INPUTDIR}\ImportFB3Batch.exe"
+		File "${INPUTDIR}\ExportFB3Batch.exe"
 
 		; Консольные batch-конвертеры используют те же библиотеки, что и GUI-плагины.
 		; Копируем зависимости здесь тоже, чтобы секция была самодостаточной, даже если
@@ -2056,6 +2075,14 @@ fbd_uninstall_done:
   Delete "$INSTDIR\FictionBookLang.xsd"
   Delete "$INSTDIR\FictionBookGenres.xsd"
   Delete "$INSTDIR\FictionBook.xsd"
+  Delete "$INSTDIR\FB3Schemas\fb3_body.xsd"
+  Delete "$INSTDIR\FB3Schemas\fb3_descr.xsd"
+  Delete "$INSTDIR\FB3Schemas\fb3_descr_classes.xsd"
+  Delete "$INSTDIR\FB3Schemas\fb3_general.xsd"
+  Delete "$INSTDIR\FB3Schemas\fb3_links.xsd"
+  Delete "$INSTDIR\FB3Schemas\fb3_relations.xsd"
+  Delete "$INSTDIR\FB3Schemas\license.txt"
+  RMDir "$INSTDIR\FB3Schemas"
   Delete "$INSTDIR\fb2.xsl"
   Delete "$INSTDIR\eng.xsl"
   Delete "$INSTDIR\rus.xsl"
@@ -2068,12 +2095,16 @@ fbd_uninstall_done:
   Delete "$INSTDIR\ExportDOCXBatch.exe"
   Delete "$INSTDIR\ExportEPUBBatch.exe"
   Delete "$INSTDIR\ImportEPUBBatch.exe"
+  Delete "$INSTDIR\ImportFB3Batch.exe"
+  Delete "$INSTDIR\ExportFB3Batch.exe"
   Delete "$INSTDIR\ImportEPUBLunaSVG.dll"
   Delete "$INSTDIR\Plugins\ImportEPUB.dll"
   Delete "$INSTDIR\Plugins\ExportHTML.dll"
   Delete "$INSTDIR\Plugins\ExportDOCX.dll"
   Delete "$INSTDIR\Plugins\ExportEPUB.dll"
   Delete "$INSTDIR\Plugins\ImportEPUBLunaSVG.dll"
+  Delete "$INSTDIR\Plugins\ImportFB3.dll"
+  Delete "$INSTDIR\Plugins\ExportFB3.dll"
   Delete "$INSTDIR\Plugins\plugins.json"
   RMDir "$INSTDIR\Plugins"
   Delete "$INSTDIR\gdiplus.manifest"

@@ -1,0 +1,26 @@
+#include <windows.h>
+#include "../version.h"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION FBE_VERSION_NUMBER
+PRODUCTVERSION FBE_VERSION_NUMBER
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_DLL
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "FileDescription", "FictionBook 3 export plugin"
+            VALUE "FileVersion", FBE_VERSION_STRING
+            VALUE "InternalName", "ExportFB3"
+            VALUE "OriginalFilename", "ExportFB3.dll"
+            VALUE "ProductName", FBE_PRODUCT_NAME
+            VALUE "ProductVersion", FBE_VERSION_STRING
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

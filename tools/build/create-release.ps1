@@ -294,9 +294,13 @@ $symbolNames = @(
     "ExportEPUB.pdb",
     "ImportEPUB.pdb",
     "ImportEPUBLunaSVG.pdb",
+    "ImportFB3.pdb",
+    "ExportFB3.pdb",
     "ExportDOCXBatch.pdb",
     "ExportEPUBBatch.pdb",
     "ImportEPUBBatch.pdb",
+    "ImportFB3Batch.pdb",
+    "ExportFB3Batch.pdb",
     "FBShell.pdb"
 )
 
@@ -305,13 +309,17 @@ $pluginSymbolNames = @(
     "ExportDOCX.pdb",
     "ExportEPUB.pdb",
     "ImportEPUB.pdb",
-    "ImportEPUBLunaSVG.pdb"
+    "ImportEPUBLunaSVG.pdb",
+    "ImportFB3.pdb",
+    "ExportFB3.pdb"
 )
 
 $batchSymbolNames = @(
     "ExportDOCXBatch.pdb",
     "ExportEPUBBatch.pdb",
-    "ImportEPUBBatch.pdb"
+    "ImportEPUBBatch.pdb",
+    "ImportFB3Batch.pdb",
+    "ExportFB3Batch.pdb"
 )
 
 foreach ($name in $symbolNames) {

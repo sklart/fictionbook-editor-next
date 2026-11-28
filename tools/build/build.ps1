@@ -69,6 +69,10 @@ function Remove-ObsoleteReleaseArtifacts {
         "ExportEPUB.lib",
         "ImportEPUB.exp",
         "ImportEPUB.lib",
+        "ImportFB3.exp",
+        "ImportFB3.lib",
+        "ExportFB3.exp",
+        "ExportFB3.lib",
         "FBShell.exp",
         "FBShell.lib",
         "FBE.exe.manifest",
@@ -526,8 +530,8 @@ Export-EditorBackgroundAssets -OutputDirectory $commonOutput
 # A partial or interrupted build must never leave the previous ImportEPUB
 # output looking authoritative.
 
-$bundledPluginDlls = @('ExportHTML.dll', 'ExportDOCX.dll', 'ExportEPUB.dll', 'ImportEPUB.dll', 'ImportEPUBLunaSVG.dll')
-$bundledPluginSymbols = @('ExportHTML.pdb', 'ExportDOCX.pdb', 'ExportEPUB.pdb', 'ImportEPUB.pdb', 'ImportEPUBLunaSVG.pdb')
+$bundledPluginDlls = @('ExportHTML.dll', 'ExportDOCX.dll', 'ExportEPUB.dll', 'ImportEPUB.dll', 'ImportEPUBLunaSVG.dll', 'ImportFB3.dll', 'ExportFB3.dll')
+$bundledPluginSymbols = @('ExportHTML.pdb', 'ExportDOCX.pdb', 'ExportEPUB.pdb', 'ImportEPUB.pdb', 'ImportEPUBLunaSVG.pdb', 'ImportFB3.pdb', 'ExportFB3.pdb')
 $pluginOutput = Join-Path $commonOutput 'Plugins'
 foreach ($name in $bundledPluginDlls + $bundledPluginSymbols + @('ImportEPUB.lib', 'ImportEPUB.exp')) {
     Remove-Item -LiteralPath (Join-Path $commonOutput $name) -Force -ErrorAction SilentlyContinue
@@ -567,7 +571,11 @@ foreach ($requiredProject in @(
     # never attempts to link ImportEPUBLunaSVG.dll before its libraries exist.
     "third_party\lunasvg\plutovg.vcxproj",
     "third_party\lunasvg\lunasvg.vcxproj",
-    "src\import-epub\ImportEPUBLunaSVG.vcxproj"
+    "src\import-epub\ImportEPUBLunaSVG.vcxproj",
+    "src\import-fb3\ImportFB3.vcxproj",
+    "src\import-fb3\ImportFB3Batch.vcxproj",
+    "src\export-fb3\ExportFB3.vcxproj",
+    "src\export-fb3\ExportFB3Batch.vcxproj"
 )) {
     Invoke-RequiredProjectBuild -ProjectPath (Join-Path $repoRoot $requiredProject)
 }

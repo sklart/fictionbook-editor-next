@@ -28,6 +28,7 @@ struct PluginImportResult
 	HRESULT hr = E_FAIL;
 	CLSID clsid = CLSID_NULL;
 	CString suggestedFilename;
+	CString warning, error;
 	MSXML2::IXMLDOMDocument2Ptr document;
 	bool Succeeded() const { return status == PluginExecutionStatus::Success; }
 	bool Cancelled() const { return status == PluginExecutionStatus::Cancelled; }
@@ -49,6 +50,7 @@ struct PluginExecutionResult
 	PluginExecutionFailure failure = PluginExecutionFailure::None;
 	HRESULT hr = E_FAIL;
 	CLSID clsid = CLSID_NULL;
+	CString warning, error;
 	bool Succeeded() const { return status == PluginExecutionStatus::Success; }
 	bool Cancelled() const { return status == PluginExecutionStatus::Cancelled; }
 };

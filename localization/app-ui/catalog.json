@@ -4022,6 +4022,42 @@
         "bg-BG": "От EPUB..."
       }
     },
+    "fbe.plugin.import_fb3.menu": {
+      "resourceId": "RUNTIME_FBE_PLUGIN_IMPORT_FB3_MENU",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "From FictionBook 3 (.fb3)...",
+        "ru-RU": "из FictionBook 3 (.fb3)...",
+        "uk-UA": "з FictionBook 3 (.fb3)...",
+        "de-DE": "Aus FictionBook 3 (.fb3)...",
+        "fr-FR": "Depuis FictionBook 3 (.fb3)...",
+        "es-ES": "Desde FictionBook 3 (.fb3)...",
+        "it-IT": "Da FictionBook 3 (.fb3)...",
+        "pl-PL": "Z FictionBook 3 (.fb3)...",
+        "pt-PT": "De FictionBook 3 (.fb3)...",
+        "nl-NL": "Uit FictionBook 3 (.fb3)...",
+        "cs-CZ": "Z FictionBook 3 (.fb3)...",
+        "bg-BG": "От FictionBook 3 (.fb3)..."
+      }
+    },
+    "fbe.plugin.export_fb3.menu": {
+      "resourceId": "RUNTIME_FBE_PLUGIN_EXPORT_FB3_MENU",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "To FictionBook 3 (.fb3)...",
+        "ru-RU": "в FictionBook 3 (.fb3)...",
+        "uk-UA": "у FictionBook 3 (.fb3)...",
+        "de-DE": "Nach FictionBook 3 (.fb3)...",
+        "fr-FR": "Vers FictionBook 3 (.fb3)...",
+        "es-ES": "A FictionBook 3 (.fb3)...",
+        "it-IT": "In FictionBook 3 (.fb3)...",
+        "pl-PL": "Do FictionBook 3 (.fb3)...",
+        "pt-PT": "Para FictionBook 3 (.fb3)...",
+        "nl-NL": "Naar FictionBook 3 (.fb3)...",
+        "cs-CZ": "Do FictionBook 3 (.fb3)...",
+        "bg-BG": "Към FictionBook 3 (.fb3)..."
+      }
+    },
     "fbe.plugin.export_docx.menu": {
       "resourceId": "RUNTIME_FBE_PLUGIN_EXPORT_DOCX_MENU",
       "component": "fbe.core",

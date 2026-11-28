@@ -50,6 +50,8 @@ PluginImportResult PluginExecutionController::Import(PluginManager& manager,
 	if (FAILED(hr)) { TracePluginExecution(L"Import", clsid, L"CreateHost", hr, 0); result.failure = PluginExecutionFailure::HostCreation; result.hr = hr; return result; }
 	CComBSTR suggestedFilename; CComPtr<IStream> stream;
 	hr = plugin->Import(host, &suggestedFilename, &stream);
+	result.warning = FbePluginApiV2::ReportedMessage(host, 1);
+	result.error = FbePluginApiV2::ReportedMessage(host, 2);
 	TracePluginExecution(L"Import", clsid, L"ImportV2", hr, stream ? 1 : 0);
 	if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) { result.status = PluginExecutionStatus::Cancelled; result.hr = hr; return result; }
 	if (FAILED(hr)) { result.failure = PluginExecutionFailure::PluginCall; result.hr = hr; return result; }
@@ -89,7 +91,13 @@ PluginExecutionResult PluginExecutionController::Export(PluginManager& manager,
 	hr = plugin->Export(host, _bstr_t(static_cast<LPCWSTR>(request.sourceFilename)), snapshot);
 	TracePluginExecution(L"Export", request.clsid, L"ExportV2", hr, 0);
 	if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return Cancelled(request.clsid);
-	if (FAILED(hr)) return Failure(request.clsid, PluginExecutionFailure::PluginCall, hr);
+	if (FAILED(hr)) {
+		result.failure = PluginExecutionFailure::PluginCall;
+		result.hr = hr;
+		result.error = FbePluginApiV2::ReportedMessage(host, 2);
+		return result;
+	}
+	result.warning = FbePluginApiV2::ReportedMessage(host, 1);
 	result.status = PluginExecutionStatus::Success; result.failure = PluginExecutionFailure::None; result.hr = S_OK;
 	TracePluginExecution(L"Export", request.clsid, L"completed", S_OK, 0);
 	return result;

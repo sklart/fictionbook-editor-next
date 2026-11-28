@@ -59,9 +59,9 @@ $batchOutputDir = if ($BatchOutputDirectory) {
 } else {
     $outputDir
 }
-$batchNames = @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "ExportDOCXBatch.pdb", "ExportEPUBBatch.pdb", "ImportEPUBBatch.pdb")
-$pluginDllNames = @("ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll")
-$pluginSymbolNames = @("ExportHTML.pdb", "ExportDOCX.pdb", "ExportEPUB.pdb", "ImportEPUB.pdb", "ImportEPUBLunaSVG.pdb")
+$batchNames = @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "ImportFB3Batch.exe", "ExportFB3Batch.exe", "ExportDOCXBatch.pdb", "ExportEPUBBatch.pdb", "ImportEPUBBatch.pdb", "ImportFB3Batch.pdb", "ExportFB3Batch.pdb")
+$pluginDllNames = @("ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ImportFB3.dll", "ExportFB3.dll")
+$pluginSymbolNames = @("ExportHTML.pdb", "ExportDOCX.pdb", "ExportEPUB.pdb", "ImportEPUB.pdb", "ImportEPUBLunaSVG.pdb", "ImportFB3.pdb", "ExportFB3.pdb")
 function Get-ReleaseOutputPath([string]$Name) {
     $directory = if ($Name -in $batchNames) { $batchOutputDir } elseif ($Name -in ($pluginDllNames + $pluginSymbolNames)) { Join-Path $outputDir 'Plugins' } else { $outputDir }
     return Join-Path $directory $Name
@@ -97,9 +97,13 @@ $requiredFiles = @(
     "ExportEPUB.dll",
     "ImportEPUB.dll",
     "ImportEPUBLunaSVG.dll",
+    "ImportFB3.dll",
+    "ExportFB3.dll",
     "ExportDOCXBatch.exe",
     "ExportEPUBBatch.exe",
     "ImportEPUBBatch.exe",
+    "ImportFB3Batch.exe",
+    "ExportFB3Batch.exe",
     "FBShell.dll",
     "Scintilla.dll",
     "Lexilla.dll"
@@ -120,9 +124,13 @@ $requiredSymbols = @(
     "ExportEPUB.pdb",
     "ImportEPUB.pdb",
     "ImportEPUBLunaSVG.pdb",
+    "ImportFB3.pdb",
+    "ExportFB3.pdb",
     "ExportDOCXBatch.pdb",
     "ExportEPUBBatch.pdb",
     "ImportEPUBBatch.pdb",
+    "ImportFB3Batch.pdb",
+    "ExportFB3Batch.pdb",
     "FBShell.pdb"
 )
 
@@ -395,6 +403,10 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-last-plugin-routing.ps1")
 & (Join-Path $repoRoot "tools\tests\test-plugin-v2-abi.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-plugin-v2-negotiation-policy.ps1")
+if ($Configuration -eq 'Release') {
+    & (Join-Path $repoRoot 'tools\tests\test-fb3-package.ps1')
+}
+& (Join-Path $repoRoot 'tools\tests\test-fb3-editor-runtime.ps1') -FbeExe (Join-Path $outputDir 'FBE.exe') -BatchOutputDirectory $batchOutputDir
 & (Join-Path $repoRoot "tools\tests\test-export-html-v2-runtime.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-export-epub-v2-runtime.ps1") -Configuration $Configuration -BatchExecutable (Join-Path $batchOutputDir "ExportEPUBBatch.exe")
 & (Join-Path $repoRoot "tools\tests\test-export-epub-zip-core.ps1") -Configuration $Configuration
@@ -538,7 +550,7 @@ if ($FullValidation) {
 & (Join-Path $repoRoot "tools\tests\test-win7-import-input-coverage.ps1")
 $sharedReleaseFiles = @(
     "FBE.exe", "FBV.exe", "Plugins\ExportHTML.dll", "Plugins\ExportDOCX.dll", "Plugins\ExportEPUB.dll",
-    "Plugins\ImportEPUB.dll", "Plugins\ImportEPUBLunaSVG.dll", "FBShell.dll", "Lang\Shell\FBVVerbResources.dll"
+    "Plugins\ImportEPUB.dll", "Plugins\ImportEPUBLunaSVG.dll", "Plugins\ImportFB3.dll", "Plugins\ExportFB3.dll", "FBShell.dll", "Lang\Shell\FBVVerbResources.dll"
 )
 & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
     -Configuration $Configuration `
@@ -548,7 +560,7 @@ $sharedReleaseFiles = @(
 & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
     -Configuration $Configuration `
     -OutputDirectory $batchOutputDir `
-    -IncludeNames @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe")
+    -IncludeNames @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "ImportFB3Batch.exe", "ExportFB3Batch.exe")
 
 $editorRuntimeDir = Join-Path $repoRoot "out\editor-runtime"
 & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `

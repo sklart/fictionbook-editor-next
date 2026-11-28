@@ -109,10 +109,15 @@ try {
     # OnIdle sets the fixture title once the editor can accept its command.
     $startup = [Diagnostics.Stopwatch]::StartNew()
     $fixtureName = [IO.Path]::GetFileName($fixture)
+    $fixtureStem = [IO.Path]::GetFileNameWithoutExtension($fixture)
     do {
         if ($process.HasExited) { throw "FBE exited before opening $fixtureName (exit $($process.ExitCode))." }
         $frame = [InputBoxProbeWindows]::Find($process.Id, $false)
-        if ($frame -ne [IntPtr]::Zero -and [InputBoxProbeWindows]::Title($frame).Contains($fixtureName)) { break }
+        if ($frame -ne [IntPtr]::Zero) {
+            $title = [InputBoxProbeWindows]::Title($frame)
+            if ($title.StartsWith("$fixtureName - ", [StringComparison]::Ordinal) -or
+                $title.StartsWith("$fixtureStem - ", [StringComparison]::Ordinal)) { break }
+        }
         if ($startup.Elapsed.TotalSeconds -ge 90) {
             [InputBoxProbeWindows]::List($process.Id)
             throw "FBE did not finish opening $fixtureName."

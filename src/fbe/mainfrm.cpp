@@ -1563,7 +1563,7 @@ CString	CMainFrame::GetSaveFileName(CString& encoding) {
 	if (RuntimeTests::IsScenario(L"save-as-cancel-runtime")) return CString();
 	// Runtime integration uses an explicitly supplied output only in this
 	// narrowly scoped test mode; normal Save As always shows the native dialog.
-	if (RuntimeTests::IsScenario(L"archive-rar-save-runtime") || RuntimeTests::IsScenario(L"save-as-failure-runtime") || RuntimeTests::IsScenario(L"diagnostic-operations-runtime") || RuntimeTests::IsScenario(L"script-document-path-runtime"))
+	if (RuntimeTests::IsScenario(L"archive-rar-save-runtime") || RuntimeTests::IsScenario(L"save-as-failure-runtime") || RuntimeTests::IsScenario(L"diagnostic-operations-runtime") || RuntimeTests::IsScenario(L"script-document-path-runtime") || RuntimeTests::IsScenario(L"fb3-editor-runtime"))
 	{
 		const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", NULL, 0);
 		if (length)
@@ -6401,6 +6401,14 @@ LRESULT CMainFrame::OnViewOptions(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
+namespace {
+void ShowFb3PluginMessage(HWND owner, const CString& text, UINT icon)
+{
+  if (text.IsEmpty() || RuntimeTests::IsScenario(L"import-fb3") || RuntimeTests::IsScenario(L"export-fb3")) return;
+  ::MessageBoxW(owner, text, L"FictionBook 3", MB_OK | icon);
+}
+}
+
 LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
   wID-=ID_IMPORT_BASE;
   if (wID<m_plugins.ImportPlugins().GetSize()) {
@@ -6409,7 +6417,8 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
       pluginClsid, m_hWnd, _Settings.GetInterfaceLanguageName());
     if (execution.Cancelled()) return 0;
     if (!execution.Succeeded()) {
-      if (execution.failure != PluginExecutionFailure::InterfaceUnavailable &&
+      if (!execution.error.IsEmpty()) ShowFb3PluginMessage(m_hWnd, execution.error, MB_ICONERROR);
+      else if (execution.failure != PluginExecutionFailure::InterfaceUnavailable &&
         execution.failure != PluginExecutionFailure::ResultStream)
         U::ReportError(execution.hr);
       return 0;
@@ -6432,6 +6441,7 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
           ResetStatusForDocument();
           if (!execution.suggestedFilename.IsEmpty()) U::SetCurrentDirectoryToFile(execution.suggestedFilename);
           m_plugins.SetLastCommand(wID + ID_IMPORT_BASE);
+          ShowFb3PluginMessage(m_hWnd, execution.warning, MB_ICONWARNING);
         } else U::ReportError(E_FAIL);
       }
     } catch (_com_error& e) { U::ReportError(e); }
@@ -6458,11 +6468,13 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 			const PluginExecutionResult execution = m_plugin_execution.Export(m_plugins.Manager(), request);
 			if (execution.Cancelled()) return 0;
 			if (!execution.Succeeded()) {
-				if (execution.failure != PluginExecutionFailure::InterfaceUnavailable)
+				if (!execution.error.IsEmpty()) ShowFb3PluginMessage(m_hWnd, execution.error, MB_ICONERROR);
+				else if (execution.failure != PluginExecutionFailure::InterfaceUnavailable)
 					U::ReportError(execution.hr);
 				return 0;
 			}
 			m_plugins.SetLastCommand(wID + ID_EXPORT_BASE);
+			ShowFb3PluginMessage(m_hWnd, execution.warning, MB_ICONWARNING);
 			return 0;
 		}
 		catch(_com_error& e)

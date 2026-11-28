@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Fb3Archive>$(FbeRepoRoot)\build\libarchive\install\$(Configuration)</Fb3Archive>
+    <Fb3Zlib>$(FbeRepoRoot)\build\zlib\install\$(Configuration)</Fb3Zlib>
+    <Fb3ZlibLibrary Condition="'$(Configuration)' == 'Debug'">zsd.lib</Fb3ZlibLibrary>
+    <Fb3ZlibLibrary Condition="'$(Configuration)' != 'Debug'">zs.lib</Fb3ZlibLibrary>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <RuntimeLibrary Condition="'$(Configuration)' == 'Debug'">MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary Condition="'$(Configuration)' != 'Debug'">MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(FbeApiOutputDirectory);$(Fb3Archive)\include;$(Fb3Zlib)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(Fb3Archive)\lib;$(Fb3Zlib)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>archive.lib;$(Fb3ZlibLibrary);crypt32.lib;ole32.lib;oleaut32.lib;shlwapi.lib;uuid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="$(FbeRepoRoot)\src\common\fb3\Fb3Image.cpp" />
+    <ClCompile Include="$(FbeRepoRoot)\src\common\fb3\Fb3Package.cpp" />
+    <ClCompile Include="$(FbeRepoRoot)\src\common\fb2\Fb2BinaryInspector.cpp" />
+    <ClCompile Include="$(FbeRepoRoot)\src\import-epub\SecureEpubZip.cpp" />
+    <ProjectReference Include="$(FbeRepoRoot)\src\contracts\FBEContracts.vcxproj">
+      <Project>{A6F27D46-6116-4A85-A1E5-8C68E79E5B4D}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+</Project>

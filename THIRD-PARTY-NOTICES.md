@@ -22,9 +22,10 @@ is needed to build the project but is not shipped as a separate component.
 | libaom | 3.15.3 | BSD-2-Clause and Alliance for Open Media Patent License 1.0 | Static AV1 decoder used by bundled libheif | <https://aomedia.googlesource.com/aom> |
 | zlib | 1.3.2 | zlib License | Static DEFLATE backend used by libarchive | <https://github.com/madler/zlib> |
 | libarchive | 3.8.11 | BSD-2-Clause | Static ZIP/RAR/RAR5 reader and ZIP writer linked into FBE | <https://github.com/libarchive/libarchive> |
+| FictionBook 3 normative schemas | `92bdc0d1fe89d9ac122ad342fd3c4cdc81a11c24` | Litres unmodified redistribution terms | Original schema files and copyright notice in `runtime/FB3Schemas` | <https://github.com/gribuser/FB3/tree/92bdc0d1fe89d9ac122ad342fd3c4cdc81a11c24> |
 | Windows Template Library (WTL) | 10.01 | MS-PL | UI and Windows shell components, compiled into FBE, FBV, and FBShell | <https://sourceforge.net/projects/wtl/> |
-| LunaSVG | 3.5.0 | MIT | EPUB import SVG renderer, statically linked into `ImportEPUBLunaSVG.dll` | <https://github.com/sammycage/lunasvg> |
-| PlutoVG | 1.3.3 | MIT | LunaSVG raster backend, statically linked into `ImportEPUBLunaSVG.dll` | <https://github.com/sammycage/plutovg> |
+| LunaSVG | 3.5.0 | MIT | SVG renderer linked into `ImportEPUBLunaSVG.dll`, `ImportFB3.dll`, and `ImportFB3Batch.exe` | <https://github.com/sammycage/lunasvg> |
+| PlutoVG | 1.3.3 | MIT | LunaSVG raster backend linked into `ImportEPUBLunaSVG.dll`, `ImportFB3.dll`, and `ImportFB3Batch.exe` | <https://github.com/sammycage/plutovg> |
 | Microsoft Fluent UI System Icons — Pin | a347af95478f989038cccbf085978865264c048a | MIT | Regular/Filled Pin SVGs rasterized into FBE at build time | <https://github.com/microsoft/fluentui-system-icons> |
 | UPX | 5.3.1 | GPL-2.0-or-later with UPX exception | Optional build-time executable packer; disabled for standard builds | <https://github.com/upx/upx> |
 | UAC plugin helper | 0.2.4c (source snapshot; manual review) | zlib/libpng license | Build-time UAC support for the NSIS installer | <https://nsis.sourceforge.io/UAC_plug-in> |

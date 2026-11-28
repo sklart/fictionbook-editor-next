@@ -93,7 +93,7 @@ try {
         if ($entries -ccontains $forbidden -or ($entries | Where-Object { $_ -clike "$forbidden\*" })) { throw "Portable archive contains forbidden payload: $forbidden" }
     }
     if ($entries | Where-Object { $_ -match '\.(pdb|lib|exp|obj)$' }) { throw 'Portable archive contains build artifacts.' }
-    foreach ($name in @('Scintilla.dll', 'Lexilla.dll', 'ExportDOCXBatch.exe', 'ExportEPUBBatch.exe', 'ImportEPUBBatch.exe', 'portable.ini')) {
+    foreach ($name in @('Scintilla.dll', 'Lexilla.dll', 'ExportDOCXBatch.exe', 'ExportEPUBBatch.exe', 'ImportEPUBBatch.exe', 'ImportFB3Batch.exe', 'ExportFB3Batch.exe', 'portable.ini')) {
         if ($entries -notcontains $name) { throw "Portable archive is missing release component: $name" }
     }
 }
@@ -105,6 +105,7 @@ try {
         'FBE.pdb', 'FBV.pdb', 'ExportHTML.pdb', 'ExportDOCX.pdb', 'ExportEPUB.pdb',
         'ImportEPUB.pdb', 'ImportEPUBLunaSVG.pdb', 'ExportDOCXBatch.pdb',
         'ExportEPUBBatch.pdb', 'ImportEPUBBatch.pdb',
+        'ImportFB3.pdb', 'ExportFB3.pdb', 'ImportFB3Batch.pdb', 'ExportFB3Batch.pdb',
         'FBShell.propertyhandler.win32.pdb', 'FBShell.propertyhandler.x64.pdb'
     )
     foreach ($symbol in $requiredSymbols) {
