@@ -1,4 +1,4 @@
-﻿<# CI contract: production shell build scripts, UTF-8 console setup and output locations. #>
+<# CI contract: production shell build scripts, UTF-8 console setup and output locations. #>
 [CmdletBinding()]
 param(
     [string]$Configuration = 'Release',
@@ -40,6 +40,15 @@ foreach ($suite in @('test-search-core-suite.ps1')) {
         throw "The '$suite' suite must be invoked once in build and once in the default local verifier."
     }
 }
+foreach ($project in @('src/import-fb3/ImportFB3Batch.vcxproj', 'src/export-fb3/ExportFB3Batch.vcxproj')) {
+    [xml]$batchProject = Get-Content -LiteralPath (Join-Path $root $project) -Raw
+    $output = @($batchProject.Project.PropertyGroup.OutDir | Where-Object { $_.InnerText -ceq '$(BatchOutputDirectory)' })
+    if ($output.Count -ne 1 -or ($output[0].GetAttribute('Condition') -replace '\s+', '') -cne
+        '(''$(BatchOutputDirectory)''!='''')and''$(FbeSanitizer)''==''None''') {
+        throw "FB3 batch project must honor BatchOutputDirectory without overriding sanitizer outputs: $project"
+    }
+}
+
 $packageBlock = [regex]::Match($workflow, '(?s)package:.*?publish:').Value
 if ($packageBlock -match '(?m)^\s*submodules:\s*recursive\s*$' -or
     $packageBlock -notmatch 'git submodule update --init --depth=1 third_party/scintilla third_party/pcre2 third_party/hunspell third_party/libwebp third_party/openjpeg third_party/libheif third_party/libde265 third_party/aom third_party/lunasvg third_party/uac' -or
