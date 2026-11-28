@@ -161,16 +161,17 @@ bool OpenDirectoryNoReparse(const CStringW& path, Handles& handles) {
 }
 }
 
-bool ExtractSecureEpubZip(const CStringW& source, const CStringW& destination, CStringW& error) {
+static bool ExtractZip(const CStringW& source, const CStringW& destination, const SecureZipLimits& limits,
+    bool epub, CStringW& error) {
     error.Empty();
     Handles sourceLock;
     HANDLE sourceHandle = ::CreateFileW(source, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (sourceHandle == INVALID_HANDLE_VALUE) { error = L"Cannot open EPUB ZIP archive."; return false; }
     sourceLock.values.push_back(sourceHandle);
     if (!ValidateZipDirectory(source)) { error = L"Invalid or incomplete EPUB ZIP directory."; return false; }
-    const unsigned long long maxEntryBytes = 8ULL * 1024 * 1024 * 1024;
-    const unsigned long long maxTotalBytes = 32ULL * 1024 * 1024 * 1024;
-    const size_t maxEntries = 100000;
+    const auto maxEntryBytes = limits.entryBytes;
+    const auto maxTotalBytes = limits.totalBytes;
+    const auto maxEntries = limits.entries;
     if (!::CreateDirectoryW(destination, nullptr)) { error = L"Cannot create EPUB extraction directory."; return false; }
     Handles rootLock;
     if (!OpenDirectoryNoReparse(destination, rootLock)) { error = L"Unsafe EPUB extraction directory."; return false; }
@@ -190,7 +191,7 @@ bool ExtractSecureEpubZip(const CStringW& source, const CStringW& destination, C
     std::set<std::wstring, CaseInsensitiveLess> names;
     unsigned long long total = 0, nextSpaceCheck = 16ULL * 1024 * 1024; size_t count = 0; archive_entry* entry = nullptr;
     wchar_t testMode[4] = {}, delayedLeaf[MAX_PATH] = {}, rootReport[MAX_PATH] = {};
-    const bool delay = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1' &&
+    const bool delay = epub && ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1' &&
         ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_EPUB_DELAY_ENTRY", delayedLeaf, _countof(delayedLeaf)) > 0;
     bool delayed = false;
     for (;;) {
@@ -254,4 +255,24 @@ bool ExtractSecureEpubZip(const CStringW& source, const CStringW& destination, C
     }
     if (!count || (delay && !delayed) || archive_read_close(reader.value) != ARCHIVE_OK) { error = L"EPUB ZIP archive is empty or incomplete."; return false; }
     return true;
+}
+
+bool ExtractSecureEpubZip(const CStringW& source, const CStringW& destination, CStringW& error) {
+    return ExtractZip(source, destination, {8ULL << 30, 32ULL << 30, 100000}, true, error);
+}
+
+bool ExtractSecureZip(const CStringW& source, const CStringW& destination, const SecureZipLimits& limits,
+    CStringW& error) {
+    const bool ok = ExtractZip(source, destination, limits, false, error);
+    if (!ok) {
+        const int detail = error.Find(L":");
+        if (detail >= 0) {
+            CStringW context = error.Left(detail);
+            context.Replace(L"EPUB ", L"");
+            error = context + error.Mid(detail);
+        } else {
+            error.Replace(L"EPUB ", L"");
+        }
+    }
+    return ok;
 }
