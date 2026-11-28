@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "SettingsEditorPage.h"
 #include "EditorFontFamilies.h"
+#include "../../../common/win32/FontPreviewCombo.h"
 #include "..\\..\\Settings.h"
 #include "..\\..\\RuntimeLocalization.h"
 #include "..\\..\\ThemeManager.h"
@@ -118,6 +119,7 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_foreground.SubclassWindow(GetDlgItem(IDC_FG));
 	m_background.SubclassWindow(GetDlgItem(IDC_BG));
 	m_fonts = GetDlgItem(IDC_FONT);
+	FontPreviewCombo::Attach(m_fonts, _Settings.GetInterfaceLanguageName());
 	m_fontSize = GetDlgItem(IDC_FONT_SIZE);
 	m_previewFontSize = static_cast<int>(_Settings.GetFontSize());
 	m_nbspCharacter = GetDlgItem(IDC_NBSP_CHAR);

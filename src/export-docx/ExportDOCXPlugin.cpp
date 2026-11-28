@@ -1,6 +1,8 @@
 // PVS-Studio: WTL message-map macros intentionally assign bHandled inside generated code.
 //-V::1048
 #include "stdafx.h"
+#include "../common/win32/FontPreviewCombo.h"
+#include "../common/RuntimeLocalizationCommon.h"
 #include "../common/PluginSettingsStore.h"
 #include "../common/PluginWindowPlacement.h"
 #include "ExportDOCXPlugin.h"
@@ -1093,6 +1095,7 @@ private:
         // system tab texture, which can disagree with that palette on Win10.
         ApplyRuntimeTexts();
         InitTabs();
+        FontPreviewCombo::Attach(GetDlgItem(IDC_FONT_NAME), FbeRuntimeLocalization::GetPreferredRuntimeLocaleName());
         CheckDlgButton(IDC_EXPORT_IMAGES, m_settings.exportImages ? BST_CHECKED : BST_UNCHECKED);
         CheckDlgButton(IDC_EXPORT_COVER, m_settings.exportCover ? BST_CHECKED : BST_UNCHECKED);
         CheckDlgButton(IDC_LIMIT_IMAGE_WIDTH, m_settings.limitImageWidth ? BST_CHECKED : BST_UNCHECKED);

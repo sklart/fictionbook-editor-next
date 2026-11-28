@@ -115,13 +115,10 @@ $previousTrace = $env:FBE_NEXT_TRACE
 try {
     $env:FBE_NEXT_TRACE = '1'
     $fixture = (Resolve-Path (Join-Path $PSScriptRoot 'fb2-validate-valid-smoke.fb2')).Path
-    $settingsDirectory = Join-Path $isolation.DataPath 'Settings'
-    New-Item -ItemType Directory -Path $settingsDirectory -Force | Out-Null
-    $template = [IO.File]::ReadAllText((Join-Path $isolation.Runtime 'Data\Settings\Settings.xml'))
-    if ($template -notmatch '<IntefaceLangID>[0-9]+</IntefaceLangID>') { throw 'Interface language setting missing.' }
-    $settings = [regex]::Replace($template, '<IntefaceLangID>[0-9]+</IntefaceLangID>',
-        '<IntefaceLangID>16506882</IntefaceLangID>', 1)
-    [IO.File]::WriteAllText((Join-Path $settingsDirectory 'Settings.xml'), $settings, [Text.UTF8Encoding]::new($false))
+    $settingsFile = New-IsolatedFbeSettingsSeed -Isolation $isolation
+    $settings = [IO.File]::ReadAllText($settingsFile).Replace('</Settings>',
+        '<IntefaceLangID>16506882</IntefaceLangID></Settings>')
+    [IO.File]::WriteAllText($settingsFile, $settings, [Text.UTF8Encoding]::new($false))
     $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('--portable', ('"' + $fixture + '"')) -PassThru
     $frame = [IntPtr]::Zero
     for ($i=0; $i -lt 100 -and $frame -eq [IntPtr]::Zero; ++$i) {

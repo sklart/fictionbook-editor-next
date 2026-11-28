@@ -2,6 +2,8 @@
 #include "HtmlExportAppearancePage.h"
 #include "RuntimeLocalization.h"
 #include "utils.h"
+#include "../common/win32/FontPreviewCombo.h"
+#include "../common/RuntimeLocalizationCommon.h"
 #include "..\\common\\ModernFileDialog.h"
 
 #include <vector>
@@ -74,6 +76,7 @@ void HtmlExportAppearancePage::FillCombo(UINT id, const UINT* strings, size_t co
 
 LRESULT HtmlExportAppearancePage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
+    FontPreviewCombo::Attach(GetDlgItem(IDC_CUSTOM_FONT), FbeRuntimeLocalization::GetPreferredRuntimeLocaleName());
     SetDlgItemText(IDC_STYLE_LABEL, LoadExportHtmlString(IDS_OPTIONS_STYLE));
     SetDlgItemText(IDC_FONT_LABEL, LoadExportHtmlString(IDS_OPTIONS_FONT));
     SetDlgItemText(IDC_FONT_SIZE_LABEL, LoadExportHtmlString(IDS_OPTIONS_FONT_SIZE));

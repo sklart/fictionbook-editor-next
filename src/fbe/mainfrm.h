@@ -521,6 +521,7 @@ public:
         MESSAGE_HANDLER(WM_TIMER, OnTimer)
         MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
 		MESSAGE_HANDLER(WM_SETFOCUS, OnSetFocus)
+		MESSAGE_HANDLER(WM_FONTCHANGE, OnFontChange)
 		MESSAGE_HANDLER(WM_SETTINGCHANGE, OnSettingChange)
 		MESSAGE_HANDLER(WM_SYSCOLORCHANGE, OnSettingChange)
 
@@ -712,6 +713,7 @@ public:
       return TRUE;
   }
   LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnFontChange(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnCaretMarkerActivation(UINT, WPARAM, LPARAM, BOOL&);
 	void HideCaretMarker();
 	LRESULT OnClipboardUpdate(UINT, WPARAM, LPARAM, BOOL&);

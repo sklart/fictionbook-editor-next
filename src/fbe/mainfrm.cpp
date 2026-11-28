@@ -37,6 +37,7 @@
 #include "settings/SettingsPaths.h"
 #include "XmlSourceThemes.h"
 #include "ThemeManager.h"
+#include "../common/win32/FontPreviewCoverage.h"
 #include "settings\\EditorBackgrounds.h"
 #include "utils.h"
 #include "scripts/ScriptBinaryDocument.h"
@@ -4527,6 +4528,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   if(m_diagnostic_crash_discovery.Start(true)) SetTimer(DIAGNOSTIC_DISCOVERY_TIMER_ID,100);
   StartupTrace::AppendTestStartupBreadcrumb("mainframe-finalize-start");
 	ThemeManager::ApplyToWindow(m_hWnd);
+	FontPreviewCoverage::Install(m_hWnd);
   m_need_title_update = true;
 	StartupTrace::AppendTestStartupBreadcrumb("mainframe-finalize-complete");
   StartupTrace::Event(L"mainframe", L"M199", L"OnCreate completed");
@@ -4537,6 +4539,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
+    FontPreviewCoverage::Uninstall(m_hWnd);
     FbeScripts::Status::Invalidate(m_hWnd);
     m_ui_watchdog.Stop();
     KillTimer(DIAGNOSTIC_DISCOVERY_TIMER_ID);
@@ -4833,6 +4836,13 @@ void CMainFrame::TryRestoreRecovery()
 			m_bad_filename = L"Untitled.fb2";
 		m_recovery.CompleteRestore();
 	}
+}
+
+LRESULT CMainFrame::OnFontChange(UINT, WPARAM, LPARAM, BOOL& handled)
+{
+	FontPreviewCoverage::Invalidate(m_hWnd);
+	handled = FALSE;
+	return 0;
 }
 
 LRESULT CMainFrame::OnSettingChange(UINT, WPARAM, LPARAM, BOOL&)
