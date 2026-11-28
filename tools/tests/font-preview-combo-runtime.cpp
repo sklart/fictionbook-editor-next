@@ -119,6 +119,53 @@ public:
                 if ((m_bits[y * Width + x] & 0xffffff) != (m_bits[0] & 0xffffff)) return true;
         return false;
     }
+    int SpecimenLeft(HWND combo, int width) const {
+        const int saved = ::SaveDC(m_dc);
+        const auto font = reinterpret_cast<HFONT>(::SendMessageW(combo, WM_GETFONT, 0, 0));
+        ::SelectObject(m_dc, font ? font : ::GetStockObject(DEFAULT_GUI_FONT));
+        const auto& sample = FontPreviewCoverage::Sample;
+        SIZE extent = {};
+        ::GetTextExtentPoint32W(m_dc, sample, _countof(sample) - 1, &extent);
+        ::RestoreDC(m_dc, saved);
+        const int padding = (std::max)(3, ::MulDiv(3, FbeWin32::WindowDpi(combo), 96));
+        return width - (std::min)(static_cast<int>(extent.cx + extent.cx * 2 / 5 + 4 * padding), width / 2);
+    }
+    bool MatchesReducedSpecimen(HWND combo, LOGFONTW request, int width, int height) const {
+        const int padding = (std::max)(3, ::MulDiv(3, FbeWin32::WindowDpi(combo), 96));
+        const RECT area = {SpecimenLeft(combo, width), 0, width - padding, height};
+        const auto read = [&] {
+            ::GdiFlush();
+            std::vector<DWORD> pixels;
+            for (LONG y = area.top; y < area.bottom; ++y)
+                pixels.insert(pixels.end(), m_bits + y * Width + area.left, m_bits + y * Width + area.right);
+            return pixels;
+        };
+        const auto actual = read();
+        const int saved = ::SaveDC(m_dc);
+        ::SetTextColor(m_dc, foreground);
+        ::SetBkMode(m_dc, TRANSPARENT);
+        bool matched = false;
+        // The reference only accepts a complete drawing at a smaller size.
+        for (++request.lfHeight; request.lfHeight < 0 && !matched; ++request.lfHeight) {
+            const HFONT candidate = ::CreateFontIndirectW(&request);
+            Require(candidate != nullptr, "reference specimen font");
+            const auto old = ::SelectObject(m_dc, candidate);
+            RECT measured = {};
+            const auto& sample = FontPreviewCoverage::Sample;
+            constexpr UINT flags = DT_SINGLELINE | DT_NOPREFIX;
+            ::DrawTextW(m_dc, sample, -1, &measured, flags | DT_CALCRECT);
+            if (measured.right <= area.right - area.left && measured.bottom <= height) {
+                ::FillRect(m_dc, &area, surface);
+                RECT target = area;
+                ::DrawTextW(m_dc, sample, -1, &target, flags | DT_VCENTER);
+                matched = HasInk(area) && actual == read();
+            }
+            ::SelectObject(m_dc, old);
+            ::DeleteObject(candidate);
+        }
+        ::RestoreDC(m_dc, saved);
+        return matched;
+    }
     static constexpr int Width = 650;
 private:
     static constexpr int Height = 96;
@@ -138,6 +185,54 @@ int Add(HWND combo, const wchar_t* label)
 DWORD DibColor(COLORREF color)
 {
     return RGB(GetBValue(color), GetGValue(color), GetRValue(color));
+}
+
+HWND ExpectTooltip(HWND window, int x, int y, const wchar_t* expected)
+{
+    ::SendMessageW(window, WM_MOUSEMOVE, 0, MAKELPARAM(x, y));
+    HWND tip = nullptr;
+    ::EnumThreadWindows(::GetCurrentThreadId(), FindTooltip, reinterpret_cast<LPARAM>(&tip));
+    Require(tip && ::IsWindowVisible(tip), "tooltip did not open");
+    wchar_t text[256] = {};
+    ::GetWindowTextW(tip, text, _countof(text));
+    Require(wcscmp(text, expected) == 0, "tooltip text mismatch");
+    ::SendMessageW(window, WM_MOUSELEAVE, 0, 0);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+    while (::IsWindowVisible(tip) && std::chrono::steady_clock::now() < deadline) {
+        MSG message = {};
+        while (::PeekMessageW(&message, tip, 0, 0, PM_REMOVE)) ::DispatchMessageW(&message);
+        ::Sleep(10);
+    }
+    Require(!::IsWindowVisible(tip), "tooltip did not close");
+    return tip;
+}
+
+bool CheckRealPartialFont(HWND host)
+{
+    LOGFONTW request = {};
+    request.lfHeight = -16;
+    request.lfCharSet = DEFAULT_CHARSET;
+    wcscpy_s(request.lfFaceName, L"Complex");
+    const HFONT font = ::CreateFontIndirectW(&request);
+    Require(font != nullptr, "Complex font handle");
+    const HDC dc = ::GetDC(host);
+    const auto old = ::SelectObject(dc, font);
+    wchar_t realized[LF_FACESIZE] = {};
+    FontPreviewCoverage::AlphabetGlyphs glyphs = {};
+    const auto& alphabet = FontPreviewCoverage::Alphabet;
+    const bool available = ::GetTextFaceW(dc, _countof(realized), realized) > 0 && _wcsicmp(realized, request.lfFaceName) == 0;
+    if (available) {
+        Require(::GetGlyphIndicesW(dc, alphabet, static_cast<int>(glyphs.size()), glyphs.data(),
+            GGI_MARK_NONEXISTING_GLYPHS) == glyphs.size(), "Complex glyph query failed");
+        Require(std::all_of(glyphs.begin(), glyphs.end() - 2, FontPreviewCoverage::IsGlyph) &&
+            !FontPreviewCoverage::IsGlyph(glyphs[64]) && !FontPreviewCoverage::IsGlyph(glyphs[65]) &&
+            FontPreviewCoverage::Probe(dc) == Support::Partial, "Complex must lack exactly Ё and ё");
+    }
+    ::SelectObject(dc, old);
+    ::ReleaseDC(host, dc);
+    ::DeleteObject(font);
+    std::puts(available ? "Complex: 64/66 glyphs, Ё and ё absent." : "Complex not installed: real partial font NOT RUN.");
+    return available;
 }
 }
 
@@ -170,6 +265,7 @@ int main()
         FontPreviewCoverage::Install(host, []() -> FontPreviewCoverage::Palette {
             return {selection, RGB(255, 255, 255), background, foreground};
         }, [](wchar_t* buffer, int capacity) { ::lstrcpynW(buffer, L"Partial Cyrillic coverage", capacity); });
+        const bool hasComplex = CheckRealPartialFont(host);
         Canvas canvas;
         const auto resources = [] { return ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS); };
         // Opening Windows' first native combo initializes per-process GDI resources.
@@ -263,6 +359,9 @@ int main()
             canvas.Draw(list, 0, 0, nullptr, Support::None, 112);
             Require(canvas.HasInk({3, 1, 54, 9}) && canvas.HasInk({56, 1, 108, 9}),
                 "constrained row lost the name or the specimen");
+            LOGFONTW arial = ui;
+            wcscpy_s(arial.lfFaceName, L"Arial");
+            Require(canvas.MatchesReducedSpecimen(list, arial, 112, 10), "constrained row lost part of the sample");
             ::SendMessageW(list, CB_SETITEMHEIGHT, 0, height);
 
             const int original = static_cast<int>(::SendMessageW(list, CB_SETCURSEL, 2, 0));
@@ -357,19 +456,27 @@ int main()
         COMBOBOXINFO control = {};
         control.cbSize = sizeof(control);
         Require(::GetComboBoxInfo(label, &control), "tooltip combo rectangle");
-        ::SendMessageW(label, WM_MOUSEMOVE, 0, MAKELPARAM(control.rcItem.left + 4, control.rcItem.top + 4));
-        std::puts("Full-name tooltip hover dispatched.");
-        HWND tip = nullptr;
-        ::EnumThreadWindows(::GetCurrentThreadId(), FindTooltip, reinterpret_cast<LPARAM>(&tip));
-        Require(tip != nullptr, "tooltip window was not created");
-        Require(::IsWindowVisible(tip), "full-name tooltip did not open");
-        wchar_t tooltipText[256] = {};
-        ::GetWindowTextW(tip, tooltipText, _countof(tooltipText));
-        Require(wcscmp(tooltipText, longName) == 0, "full-name tooltip text mismatch");
-        ::SendMessageW(label, WM_MOUSELEAVE, 0, 0);
-        Require(!::IsWindowVisible(tip), "tooltip did not close");
+        const HWND tip = ExpectTooltip(label, control.rcItem.left + 4, control.rcItem.top + 4, longName);
+        if (hasComplex) {
+            const int row = Add(label, L"Complex");
+            ::SendMessageW(label, CB_SETCURSEL, row, 0);
+            ::SendMessageW(label, CB_SHOWDROPDOWN, TRUE, 0);
+            Require(::GetComboBoxInfo(label, &control) && control.hwndList, "Complex popup");
+            RECT bounds = {};
+            Require(::SendMessageW(control.hwndList, LB_GETITEMRECT, row, reinterpret_cast<LPARAM>(&bounds)) != LB_ERR,
+                "Complex row bounds");
+            canvas.Draw(label, row, 0, nullptr, Support::None, bounds.right - bounds.left);
+            ExpectTooltip(control.hwndList, bounds.left + canvas.SpecimenLeft(label, bounds.right - bounds.left) + 3,
+                (bounds.top + bounds.bottom) / 2, L"Partial Cyrillic coverage");
+            ::SendMessageW(label, CB_SHOWDROPDOWN, FALSE, 0);
+        }
         ::DestroyWindow(label);
         Require(!::IsWindow(tip), "tooltip survived combo destruction");
+        DRAWITEMSTRUCT stale = {};
+        stale.CtlType = ODT_COMBOBOX;
+        stale.hwndItem = label;
+        Require(::SendMessageW(host, WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&stale)) == 0,
+            "destroyed combo left a parent draw handler");
         ::DeleteObject(surface);
         ::DestroyWindow(host);
         ::DeleteObject(selection);
