@@ -88,7 +88,9 @@ std::vector<fs::path> Sources(const fs::path& input, bool directory, bool recurs
 
 struct Result {
     std::wstring input, output, error;
-    std::vector<std::wstring> warnings;
+    Diagnostics diagnostics;
+    const wchar_t* errorCode = L"batch-failed";
+    std::wstring errorElement, errorLocation;
 };
 
 std::wstring Json(std::wstring_view value) {
@@ -124,17 +126,30 @@ void Reports(const fs::path& base, const std::vector<Result>& results, size_t fa
     bool next = false;
     for (const auto& result : results) {
         text += result.input + L" -> " + result.output + L"\r\n";
-        if (!result.error.empty()) text += L"  ERROR " + result.error + L"\r\n";
         if (next) json += L',';
         next = true;
         json += L"{\"input\":" + Json(result.input) + L",\"output\":" + Json(result.output) +
             L",\"status\":" + Json(result.error.empty() ? L"converted" : L"failed") + L",\"error\":" + Json(result.error) + L",\"warnings\":[";
         bool more = false;
-        for (const auto& warning : result.warnings) {
-            text += L"  WARNING " + warning + L"\r\n";
+        for (const auto& diagnostic : result.diagnostics) {
+            if (diagnostic.severity != Severity::Warning) continue;
             if (more) json += L',';
             more = true;
-            json += Json(warning);
+            json += Json(diagnostic.message);
+        }
+        json += L"],\"diagnostics\":[";
+        more = false;
+        const auto appendDiagnostic = [&](const Diagnostic& diagnostic) {
+            text += L"  " + FormatDiagnostic(diagnostic) + L"\r\n";
+            if (more) json += L',';
+            more = true;
+            json += L"{\"severity\":" + Json(SeverityName(diagnostic.severity)) + L",\"code\":" + Json(diagnostic.code) +
+                L",\"message\":" + Json(diagnostic.message) + L",\"element\":" + Json(diagnostic.element) +
+                L",\"location\":" + Json(diagnostic.location) + L"}";
+        };
+        for (const auto& diagnostic : result.diagnostics) appendDiagnostic(diagnostic);
+        if (!result.error.empty()) {
+            appendDiagnostic({Severity::Error, result.errorCode, result.error, result.errorElement, result.errorLocation});
         }
         json += L"]}";
     }
@@ -167,14 +182,21 @@ int Execute(const Options& options, const wchar_t* inputExtension, const wchar_t
     for (const auto& source : sources) {
         auto relative = directory ? source.lexically_relative(input) : source.filename();
         const auto destination = output / relative.replace_extension(outputExtension);
-        Result result{source.wstring(), destination.wstring(), {}, {}};
+        Result result;
+        result.input = source.wstring();
+        result.output = destination.wstring();
         try {
             if (fs::exists(destination)) Fail(L"Output already exists: " + destination.wstring());
             fs::create_directories(destination.parent_path());
             PendingFile pending(destination);
-            result.warnings = convert(source, pending.Path(), runtime);
+            result.diagnostics = convert(source, pending.Path(), runtime);
             pending.Publish(destination);
-        } catch (const Error& error) { result.error = error.message; }
+        } catch (const Error& error) {
+            result.error = error.message;
+            result.errorCode = error.code;
+            result.errorElement = error.element;
+            result.errorLocation = error.location;
+        }
         catch (const ATL::CAtlException& error) { result.error = L"COM failure " + std::to_wstring(error.m_hr); }
         catch (const fs::filesystem_error& error) { result.error = L"File system error " + std::to_wstring(error.code().value()); }
         catch (const std::bad_alloc&) { result.error = L"Insufficient memory."; }
@@ -183,8 +205,12 @@ int Execute(const Options& options, const wchar_t* inputExtension, const wchar_t
             ++failures;
             Console(result.input + L"\r\n  ERROR " + result.error + L"\r\n", stderr);
         } else Console(result.input + L" -> " + result.output + L"\r\n", stdout);
-        for (const auto& warning : result.warnings) Console(L"  WARNING " + warning + L"\r\n", stdout);
-        warnings += result.warnings.size();
+        for (const auto& diagnostic : result.diagnostics) {
+            if (diagnostic.severity == Severity::Warning) {
+                Console(L"  " + FormatDiagnostic(diagnostic) + L"\r\n", stdout);
+                ++warnings;
+            }
+        }
         results.push_back(std::move(result));
     }
     Console(Summary(results.size(), failures, warnings), stdout);

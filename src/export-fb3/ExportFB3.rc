@@ -1,3 +1,4 @@
+#pragma code_page(65001)
 #include <windows.h>
 #include "../version.h"
 
@@ -24,3 +25,5 @@ BEGIN
         VALUE "Translation", 0x0409, 1200
     END
 END
+
+#include "../common/fb3/Fb3DiagnosticStrings.rc2"

@@ -1,0 +1,27 @@
+#include "Fb3DiagnosticResources.h"
+
+STRINGTABLE
+BEGIN
+    FB3_MSG_SOURCE_FRAGMENT, "The source FB3 is a preview. Only the available text was imported."
+    (FB3_MSG_SOURCE_FRAGMENT + FB3_MSG_RU_OFFSET), "Источник FB3 содержит ознакомительный фрагмент. Импортирован доступный текст."
+    FB3_MSG_SOURCE_COVER, "The cover file is missing from the source FB3."
+    (FB3_MSG_SOURCE_COVER + FB3_MSG_RU_OFFSET), "В исходном FB3 отсутствует файл обложки."
+    FB3_MSG_SOURCE_METADATA, "The source lacks some required metadata. Default values were used."
+    (FB3_MSG_SOURCE_METADATA + FB3_MSG_RU_OFFSET), "В источнике отсутствует часть обязательных метаданных. Использованы значения по умолчанию."
+    FB3_MSG_LIST_LAYOUT, "Lists were converted to paragraphs with visible markers."
+    (FB3_MSG_LIST_LAYOUT + FB3_MSG_RU_OFFSET), "Списки перенесены в абзацы с видимыми маркерами."
+    FB3_MSG_LINK_TARGET, "An internal link target is missing or ambiguous. The link text was retained."
+    (FB3_MSG_LINK_TARGET + FB3_MSG_RU_OFFSET), "Цель внутренней ссылки отсутствует или неоднозначна. Текст ссылки сохранён."
+    FB3_MSG_NOTE_GROUPS, "Note or comment groups were adapted to the FB3 structure."
+    (FB3_MSG_NOTE_GROUPS + FB3_MSG_RU_OFFSET), "Группы сносок или комментариев приведены к структуре FB3."
+    FB3_MSG_MISSING_NOTE, "Conversion stopped because a note link could not be resolved."
+    (FB3_MSG_MISSING_NOTE + FB3_MSG_RU_OFFSET), "Преобразование прервано. Не удалось восстановить ссылку на сноску."
+    FB3_MSG_MISSING_IMAGE, "Conversion stopped because a required image is missing or damaged."
+    (FB3_MSG_MISSING_IMAGE + FB3_MSG_RU_OFFSET), "Преобразование прервано. Отсутствует или повреждено необходимое изображение."
+    FB3_MSG_MISSING_LINK, "Conversion stopped because an internal link could not be resolved."
+    (FB3_MSG_MISSING_LINK + FB3_MSG_RU_OFFSET), "Преобразование прервано. Не удалось восстановить внутреннюю ссылку."
+    FB3_MSG_INVALID_DOCUMENT, "Conversion stopped. Check the book structure and package files."
+    (FB3_MSG_INVALID_DOCUMENT + FB3_MSG_RU_OFFSET), "Преобразование прервано. Проверьте структуру книги и файлы пакета."
+    FB3_MSG_LAYOUT, "Some markup or formatting was adapted during conversion."
+    (FB3_MSG_LAYOUT + FB3_MSG_RU_OFFSET), "При переносе изменены отдельные элементы разметки или оформления."
+END

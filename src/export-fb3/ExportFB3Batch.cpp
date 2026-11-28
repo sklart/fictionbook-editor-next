@@ -3,7 +3,7 @@
 
 namespace {
 
-std::vector<std::wstring> Convert(const std::filesystem::path& source,
+FbeFb3::Diagnostics Convert(const std::filesystem::path& source,
     const std::filesystem::path& target, const std::filesystem::path& runtime) {
     return FbeFb3::ExportBook(FbeFb3::ReadFb2File(source), target, runtime, true);
 }

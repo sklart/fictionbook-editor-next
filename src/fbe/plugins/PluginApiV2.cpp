@@ -31,8 +31,9 @@ public:
     STDMETHOD(GetCancellationToken)(IFBECancellationToken** token) { if (!token) return E_POINTER; *token = m_cancellation; if (*token) (*token)->AddRef(); return *token ? S_OK : E_UNEXPECTED; }
     STDMETHOD(ReportMessage)(LONG severity, BSTR code, BSTR message) {
         CString detail; detail.Format(L"severity=%ld; code=%s", severity, code ? code : L""); StartupTrace::Event(L"plugin", L"P221", L"plugin-message; " + detail);
-        if (code && message && (severity == 1 || severity == 2) &&
-            (wcsncmp(code, L"import-fb3-", 11) == 0 || wcsncmp(code, L"export-fb3-", 11) == 0)) {
+        const bool fb3 = code && (wcsncmp(code, L"import-fb3-", 11) == 0 || wcsncmp(code, L"export-fb3-", 11) == 0);
+        if (fb3) StartupTrace::Event(L"plugin", code, detail);
+        if (fb3 && message && (severity == 1 || severity == 2)) {
             auto& target = severity == 1 ? m_warnings : m_errors;
             if (!target.IsEmpty()) target += L"\r\n";
             target += message;

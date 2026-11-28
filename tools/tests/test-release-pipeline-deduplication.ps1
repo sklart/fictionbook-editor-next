@@ -44,6 +44,19 @@ $pluginUpgradeSmoke = Text 'tools\tests\test-bundled-plugin-upgrade-uninstall.ps
 foreach ($needle in @('validate:', 'build:', 'package:', 'publish:', 'Restore universal editor runtime cache', 'Build Release Win32', 'Write Runtime build provenance', 'Verify universal release binaries', 'Create release artifacts without compiling', 'Verify release archives')) { Require $workflow $needle 'workflow' }
 Require $workflow 'Smoke bundled plugin upgrade and uninstall' 'workflow installer smoke'
 Require $workflow 'test-bundled-plugin-upgrade-uninstall.ps1' 'workflow installer smoke invocation'
+$releaseVerification = [regex]::Match($workflow, '(?ms)^      - name: Verify universal release binaries[^\r\n]*\r?\n(?<step>.*?)(?=^      - name:)').Groups['step'].Value
+Require $releaseVerification './tools/build/verify-release.ps1 @arguments' 'mandatory build verification step'
+if ($releaseVerification -match '(?m)^        (if|continue-on-error):') {
+    throw 'The release verification step must run and block Build on failure.'
+}
+foreach ($dependency in @(@('build', 'validate'), @('package', 'validate'), @('package', 'build'),
+    @('publish', 'validate'), @('publish', 'package'), @('publish', 'release-asan'), @('publish', 'release-ubsan'),
+    @('publish', 'release-scripts'), @('publish', 'release-docs'), @('publish', 'description-paste'))) {
+    $job = [regex]::Escape($dependency[0])
+    $needed = [regex]::Escape($dependency[1])
+    $body = [regex]::Match($workflow, "(?ms)^  $job\x3a\r?\n(?<job>.*?)(?=^  [\w-]+:|\z)").Groups['job'].Value
+    if ($body -notmatch "(?m)^    needs:[^\r\n]*\b$needed\b") { throw "$job must depend on $needed." }
+}
 foreach ($needle in @('Synthetic plugin upgrade installer', 'Synthetic plugin upgrade uninstaller', 'plugins.json', 'PluginSourceDirectory')) { Require $pluginUpgradeSmoke $needle 'bundled plugin upgrade smoke' }
 foreach ($needle in @('CompatibilityTarget', 'EditorRuntimeOnly', 'BatchConvertersOnly', 'Restore Modern editor runtime cache', 'Restore Win7 editor runtime cache', 'Build Modern', 'Build Win7', 'target-batches/Modern', 'target-batches/Win7', 'artifacts/Modern', 'artifacts/Win7')) { Forbid $workflow $needle 'workflow' }
 foreach ($needle in @('CompatibilityTarget', 'EditorRuntimeOnly', 'BatchConvertersOnly')) { Forbid $build $needle 'build.ps1' }

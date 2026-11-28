@@ -1,4 +1,5 @@
 #include <atlbase.h>
+#include <algorithm>
 #include <atlcom.h>
 #include <msxml6.h>
 #include <cstdio>
@@ -21,13 +22,14 @@ public:
     END_COM_MAP()
 
     STDMETHOD(GetHostVersion)(BSTR*) override { return E_NOTIMPL; }
-    STDMETHOD(GetUiLocale)(BSTR* value) override { *value = ::SysAllocString(L"ru-RU"); return *value ? S_OK : E_OUTOFMEMORY; }
+    STDMETHOD(GetUiLocale)(BSTR* value) override { *value = ::SysAllocString(locale); return *value ? S_OK : E_OUTOFMEMORY; }
     STDMETHOD(GetOwnerWindow)(LONGLONG*) override { return E_UNEXPECTED; }
     STDMETHOD(GetProgressSink)(IFBEProgressSink** sink) override { return QueryInterface(__uuidof(IFBEProgressSink), reinterpret_cast<void**>(sink)); }
     STDMETHOD(GetCancellationToken)(IFBECancellationToken** token) override { return QueryInterface(__uuidof(IFBECancellationToken), reinterpret_cast<void**>(token)); }
     STDMETHOD(IsCancellationRequested)(BOOL* value) override { *value = cancelled || (cancelAtStart && starts >= cancelAtStart); return S_OK; }
     STDMETHOD(ReportMessage)(LONG severity, BSTR, BSTR text) override {
-        if (text && *text && severity == 1) ++warnings;
+        if (text && *text && severity == 0) ++details;
+        if (text && *text && severity == 1) { ++warnings; warningText += text; }
         if (text && *text && severity == 2) ++errors;
         return S_OK;
     }
@@ -37,9 +39,11 @@ public:
         if (completed == 1 && total == 1) ++completions;
         return S_OK;
     }
+    const wchar_t* locale = L"ru-RU";
+    std::wstring warningText;
     BOOL cancelled = FALSE;
     unsigned cancelAtStart = 0;
-    unsigned starts = 0, completions = 0, warnings = 0, errors = 0;
+    unsigned starts = 0, completions = 0, details = 0, warnings = 0, errors = 0;
 };
 
 class Snapshot : public CComObjectRootEx<CComSingleThreadModel>, public IFBEDocumentSnapshot {
@@ -101,8 +105,22 @@ bool CheckExport(HMODULE dll, const wchar_t* input, const wchar_t* broken, IStre
     const char invalid[] = "<broken>";
     ULONG written = 0;
     if (FAILED(snapshotObject->xml->Write(invalid, sizeof(invalid) - 1, &written)) || written != sizeof(invalid) - 1) return false;
-    return plugin->Export(host, CComBSTR(input), snapshot) == HRESULT_FROM_WIN32(ERROR_INVALID_DATA) &&
-        ReadBytes(target) == output && rawHost->errors == 1 && rawHost->completions == 1;
+    if (plugin->Export(host, CComBSTR(input), snapshot) != HRESULT_FROM_WIN32(ERROR_INVALID_DATA) ||
+        ReadBytes(target) != output || rawHost->errors != 1 || rawHost->completions != 1) return false;
+
+    auto* infoHost = new CComObjectNoLock<Host>;
+    CComPtr<IFBEPluginHost> infoHostInterface(infoHost);
+    snapshotObject->xml.Release();
+    constexpr char minimal[] =
+        "<FictionBook xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\"><description>"
+        "<title-info><genre>sf</genre><author><nickname>Author</nickname></author><book-title>Test</book-title><lang>en</lang></title-info>"
+        "<document-info><author><nickname>Editor</nickname></author><date value=\"2026-11-28\">2026-11-28T00:00:00Z</date>"
+        "<id>7027fa9a-0c72-52af-a708-2526bf9c3054</id><version>1.0</version></document-info></description>"
+        "<body><section><p>Chapter without an ID</p></section></body></FictionBook>";
+    if (FAILED(::CreateStreamOnHGlobal(nullptr, TRUE, &snapshotObject->xml)) ||
+        FAILED(snapshotObject->xml->Write(minimal, sizeof(minimal) - 1, &written)) || written != sizeof(minimal) - 1) return false;
+    return SUCCEEDED(plugin->Export(infoHostInterface, CComBSTR(input), snapshot)) &&
+        infoHost->details && !infoHost->warnings && !infoHost->errors && infoHost->completions == 1;
 }
 
 bool Check(HMODULE dll, const wchar_t* input, const wchar_t* broken, HMODULE exporter) {
@@ -122,7 +140,18 @@ bool Check(HMODULE dll, const wchar_t* input, const wchar_t* broken, HMODULE exp
         !::SetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_FB3_PATH", input)) return false;
     if (FAILED(plugin->Import(host, &name, &stream)) || !stream || !name ||
         std::filesystem::path(static_cast<const wchar_t*>(name)) != std::filesystem::path(input).replace_extension(L".fb2") ||
-        rawHost->starts != 1 || rawHost->completions != 1 || !rawHost->warnings || rawHost->errors) return false;
+        rawHost->starts != 1 || rawHost->completions != 1 || !rawHost->warnings || !rawHost->details || rawHost->errors) return false;
+    const auto hasCyrillic = [](const std::wstring& text) {
+        return std::any_of(text.begin(), text.end(), [](wchar_t ch) { return ch >= 0x0400 && ch <= 0x04ff; });
+    };
+    auto* englishHost = new CComObjectNoLock<Host>;
+    CComPtr<IFBEPluginHost> englishHostInterface(englishHost);
+    englishHost->locale = L"en-US";
+    CComBSTR englishName;
+    CComPtr<IStream> englishStream;
+    if (FAILED(plugin->Import(englishHostInterface, &englishName, &englishStream)) || !englishName || !englishStream ||
+        !englishHost->warnings || !englishHost->details || englishHost->errors ||
+        !hasCyrillic(rawHost->warningText) || hasCyrillic(englishHost->warningText)) return false;
     CComPtr<IXMLDOMDocument2> xml;
     VARIANT_BOOL parsed = VARIANT_FALSE;
     if (FAILED(xml.CoCreateInstance(__uuidof(DOMDocument60))) || FAILED(xml->put_async(VARIANT_FALSE)) ||

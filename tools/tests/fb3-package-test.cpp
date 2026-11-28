@@ -22,7 +22,7 @@ int wmain(int argc, wchar_t** argv) {
     try {
         if (argc == 5 && (wcscmp(argv[1], L"export") == 0 || badExportLink)) {
             const auto warnings = FbeFb3::ExportBook(FbeFb3::ReadFb2File(argv[2]), argv[4], argv[3], true);
-            for (const auto& warning : warnings) std::fwprintf(stdout, L"%ls\n", warning.c_str());
+            for (const auto& diagnostic : warnings) std::fwprintf(stdout, L"%ls\n", FbeFb3::FormatDiagnostic(diagnostic).c_str());
             if (expected) result = 0;
         } else if (argc == 5) {
             const auto book = FbeFb3::ImportBook(argv[2], argv[3]);
@@ -37,7 +37,7 @@ int wmain(int argc, wchar_t** argv) {
                 output.exceptions(std::ios::failbit | std::ios::badbit);
                 output.write(encoded.data(), encoded.size());
                 output.close();
-                for (const auto& warning : book.warnings) std::fwprintf(stdout, L"%ls\n", warning.c_str());
+                for (const auto& diagnostic : book.diagnostics) std::fwprintf(stdout, L"%ls\n", FbeFb3::FormatDiagnostic(diagnostic).c_str());
                 result = 0;
             } else std::fwprintf(stderr, L"Invalid conversion was accepted.\n");
         } else if (argc == 4) {

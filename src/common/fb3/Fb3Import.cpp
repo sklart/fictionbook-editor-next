@@ -54,7 +54,14 @@ String Text(const Node& node) {
 String Xml(const Node& node) {
     CComBSTR value;
     node->get_xml(&value);
-    return Value(value);
+    String xml;
+    const auto size = value.Length();
+    xml.reserve(size);
+    // XML line endings are insignificant in a serialized supplementary fragment.
+    for (unsigned index = 0; index < size; ++index) {
+        if (value[index] != L'\r' || index + 1 == size || value[index + 1] != L'\n') xml += value[index];
+    }
+    return xml;
 }
 
 template<class Function>
@@ -112,7 +119,9 @@ bool SafeLink(View target) {
     return false;
 }
 
-[[noreturn]] void Fail(String message) { throw Error{std::move(message)}; }
+[[noreturn]] void Fail(String message, const wchar_t* code = L"invalid-document", String element = {}, String location = {}) {
+    throw Error{std::move(message), code, std::move(element), std::move(location)};
+}
 
 void StripSvg11Doctype(std::vector<BYTE>& bytes) {
     const std::string_view prefix(reinterpret_cast<const char*>(bytes.data()), (std::min)(bytes.size(), size_t(512)));
@@ -197,7 +206,9 @@ void ValidateFb2(const String& xml, const std::filesystem::path& schema) {
 
 class Converter {
 public:
-    explicit Converter(const Package& package) : m_package(package) { m_book.warnings = package.Warnings(); }
+    explicit Converter(const Package& package) : m_package(package) {
+        for (const auto& warning : package.Warnings()) Warn(warning, L"source-cover", L"img");
+    }
     ImportedBook Convert(const std::filesystem::path& schema);
 
 private:
@@ -205,7 +216,13 @@ private:
     struct Reference { size_t opening; size_t position; size_t content; size_t closing; size_t end; String id; bool note; };
     struct Anchor { String outputId; bool note; bool ambiguous = false; };
 
-    void Warn(String message);
+    void Report(Severity severity, const wchar_t* code, String message, String element, String location);
+    void Warn(String message, const wchar_t* code = L"layout", String element = {}, String location = {}) {
+        Report(Severity::Warning, code, std::move(message), std::move(element), std::move(location));
+    }
+    void Info(String message, const wchar_t* code, String element = {}, String location = {}) {
+        Report(Severity::Info, code, std::move(message), std::move(element), std::move(location));
+    }
     void Escape(View text);
     void Attr(View name, View value);
     void Element(View name, View text);
@@ -230,10 +247,10 @@ private:
     void Table(const Node& node);
     void List(const Node& node, BlockContext context);
     void Section(const Node& node, bool note = false);
-    void Body(const Node& node);
+    void Body(const Node& node, const Node& description);
     void Metadata(const Node& node, const std::filesystem::path& schema);
     bool Person(const Node& node, View role);
-    void Sequence(const Node& node);
+    void Sequence(const Node& node, bool keepIdentity = false);
     void Custom(View type, View value);
 
     const Package& m_package;
@@ -245,10 +262,13 @@ private:
     std::map<const Part*, String> m_images;
     std::vector<const Part*> m_imageOrder;
     std::vector<Reference> m_references;
+    std::vector<std::pair<String, String>> m_seriesIdentities;
 };
 
-void Converter::Warn(String message) {
-    if (m_warningSet.insert(message).second) m_book.warnings.push_back(std::move(message));
+void Converter::Report(Severity severity, const wchar_t* code, String message, String element, String location) {
+    if (m_warningSet.insert(message).second) {
+        m_book.diagnostics.push_back({severity, code, std::move(message), std::move(element), std::move(location)});
+    }
 }
 
 void Converter::Escape(View text) {
@@ -306,7 +326,7 @@ void Converter::CollectInlineIds(const Node& node, std::vector<String>& ids) {
         const auto id = Attribute(child, L"id");
         if (!id.empty()) {
             ids.push_back(id);
-            Warn(L"FB3 <" + Name(child) + L"> anchor " + id + L" was moved to its containing FB2 block.");
+            Info(L"FB3 <" + Name(child) + L"> anchor " + id + L" was moved to its containing FB2 block.", L"anchor-mapped", Name(child), id);
         }
         CollectInlineIds(child, ids);
     }
@@ -319,8 +339,8 @@ void Converter::ResolveReferences() {
     for (const auto& reference : m_references) {
         const auto found = m_anchors.find(reference.id);
         if (found == m_anchors.end() || found->second.ambiguous || (reference.note && !found->second.note)) {
-            if (reference.note) Fail(L"Unresolved or ambiguous FB3 note: " + reference.id);
-            Warn(L"Unresolved or ambiguous FB3 link #" + reference.id + L" was converted to its visible text.");
+            if (reference.note) Fail(L"Unresolved or ambiguous FB3 note: " + reference.id, L"missing-note", L"note", reference.id);
+            Warn(L"Unresolved or ambiguous FB3 link #" + reference.id + L" was converted to its visible text.", L"link-target", L"a", reference.id);
             resolved.append(m_xml, start, reference.opening - start);
             resolved.append(m_xml, reference.content, reference.closing - reference.content);
             start = reference.end;
@@ -468,9 +488,9 @@ void Converter::Image(const Node& node, bool inlineImage) {
     const auto& links = m_package.Links(m_package.Body().name);
     const auto link = links.find(source);
     if (link == links.end() || link->second.type != ImageRelationship || link->second.external)
-        Fail(L"Invalid FB3 image relationship: " + source);
+        Fail(L"Invalid FB3 image relationship: " + source, L"missing-image", L"img", source);
     const auto* part = m_package.FindPart(link->second.target);
-    if (!part) Fail(L"Missing FB3 image: " + link->second.target);
+    if (!part) Fail(L"Missing FB3 image: " + link->second.target, L"missing-image", L"img", link->second.target);
     m_xml += L"<image";
     if (!inlineImage) AnchorId(node);
     ImageTarget(*part);
@@ -498,7 +518,8 @@ void Converter::Binaries() {
         if (svg) {
             bytes = RasterizeSvg(*part, bytes);
             type = L"image/png";
-            Warn(L"FB3 SVG image " + part->name + L" was rasterized to PNG. Vector data and animation are unavailable in the imported image.");
+            Info(L"FB3 SVG image " + part->name + L" was rasterized to PNG. Vector data and animation are unavailable in the imported image.",
+                L"svg-rasterized", L"img", part->name);
         } else ValidateRasterImage(part->name, type, bytes);
         DWORD count = 0;
         constexpr DWORD flags = CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF;
@@ -522,7 +543,7 @@ void Converter::Title(const Node& node) {
     m_xml += L'>';
     if (!Attribute(node, L"id").empty()) {
         m_xml += L"<p"; AnchorId(node); m_xml += L"/>";
-        Warn(L"FB3 <title> anchor was placed in a paragraph inside the FB2 title.");
+        Info(L"FB3 <title> anchor was placed in a paragraph inside the FB2 title.", L"anchor-mapped", L"title", Attribute(node, L"id"));
     }
     const auto children = Children(node);
     if (children.empty() && HasText(node)) Element(L"p", Text(node));
@@ -557,7 +578,7 @@ void Converter::Poem(const Node& node) {
         if (const auto subtitle = Child(stanza, L"subtitle")) Paragraph(subtitle, L"subtitle");
         if (!Attribute(stanza, L"id").empty()) {
             m_xml += L"<v"; AnchorId(stanza); m_xml += L"/>";
-            Warn(L"FB3 <stanza> anchor was placed in an FB2 verse.");
+            Info(L"FB3 <stanza> anchor was placed in an FB2 verse.", L"anchor-mapped", L"stanza", Attribute(stanza, L"id"));
         }
         bool hasVerse = false;
         for (const auto& line : Children(stanza)) {
@@ -583,7 +604,7 @@ void Converter::Poem(const Node& node) {
             Fail(L"Unsupported FB3 poem element <" + kind + L">.");
     }
     if (const auto attribution = Child(node, L"subscription")) {
-        Warn(L"FB3 poem attribution was represented with FB2 text-author paragraphs.");
+        Info(L"FB3 poem attribution was represented with FB2 text-author paragraphs.", L"equivalent-markup", L"subscription");
         Reduced(attribution, L"text-author");
     }
     m_xml += L"</poem>";
@@ -626,7 +647,7 @@ void Converter::Table(const Node& node) {
 }
 
 void Converter::List(const Node& node, BlockContext context) {
-    Warn(L"FB3 list nesting and item markers were represented with FB2 paragraphs.");
+    Warn(L"FB3 list nesting and item markers were represented with FB2 paragraphs.", L"list-layout", Name(node), Attribute(node, L"id"));
     const bool ordered = Name(node) == L"ol";
     size_t ordinal = 0;
     for (const auto& item : Children(node)) {
@@ -681,7 +702,8 @@ void Converter::Block(const Node& node, BlockContext context) {
         // A paragraph is valid even when the image is the first section content.
         m_xml += L"<p"; AnchorId(node); m_xml += L'>'; Image(node, true); m_xml += L"</p>";
     } else if (tag == L"div" || tag == L"pre" || tag == L"subscription" || tag == L"clipped" || tag == L"annotation") {
-        if (tag == L"clipped") Warn(L"The source FB3 marks omitted content with <clipped>. The imported FB2 contains the available fragment.");
+        if (tag == L"clipped") Warn(L"The source FB3 marks omitted content with <clipped>. The imported FB2 contains the available fragment.",
+            L"source-fragment", tag, Attribute(node, L"id"));
         else Warn(L"FB3 <" + tag + L"> was represented with ordinary FB2 content blocks.");
         const auto start = m_xml.size();
         if (!Attribute(node, L"id").empty()) { m_xml += L"<p"; AnchorId(node); m_xml += L"/>"; }
@@ -740,12 +762,22 @@ void Converter::Section(const Node& node, bool note) {
     m_xml += L"</section>";
 }
 
-void Converter::Body(const Node& node) {
+bool HasBookLink(const Node& node, View href) {
+    for (const auto& child : Children(node)) {
+        if (Name(child) == L"a" &&
+            (Attribute(child, L"href", XlinkNamespace) == href || Attribute(child, L"href") == href)) return true;
+        if (HasBookLink(child, href)) return true;
+    }
+    return false;
+}
+
+void Converter::Body(const Node& node, const Node& description) {
     m_xml += L"<body"; Lang(node); m_xml += L'>';
     if (const auto title = Child(node, L"title")) Title(title);
     for (const auto& quote : Children(node, L"epigraph")) Quote(quote, true);
     const auto id = Attribute(node, L"id");
-    if (!id.empty()) {
+    const bool bookAnchor = !id.empty() && (HasBookLink(node, L"#" + id) || HasBookLink(description, L"#" + id));
+    if (bookAnchor) {
         m_xml += L"<section"; SetAnchor({id}, false); m_xml += L'>';
     }
     bool hasSection = false;
@@ -755,12 +787,26 @@ void Converter::Body(const Node& node) {
         else if (tag != L"notes" && tag != L"title" && tag != L"epigraph") Fail(L"Unsupported FB3 body element <" + tag + L">.");
     }
     if (!hasSection) Fail(L"The FB3 book has no main text section.");
-    if (!id.empty()) m_xml += L"</section>";
+    if (bookAnchor) m_xml += L"</section>";
     m_xml += L"</body>";
-    const auto notes = Children(node, L"notes");
-    if (!notes.empty()) {
-        m_xml += L"<body name=\"notes\">";
-        for (const auto& group : notes) Section(group);
+    for (const auto& group : Children(node, L"notes")) {
+        m_xml += L"<body name=\"notes\""; Lang(group); m_xml += L'>';
+        if (const auto title = Child(group, L"title")) Title(title);
+        for (const auto& quote : Children(group, L"epigraph")) Quote(quote, true);
+        bool hasNotes = false;
+        for (const auto& note : Children(group)) {
+            const auto tag = Name(note);
+            if (tag == L"title" || tag == L"epigraph") continue;
+            if (tag == L"section") {
+                Warn(L"A legacy FB3 note subgroup was retained as an FB2 subsection.", L"note-groups", tag);
+                Section(note);
+            } else {
+                if (tag != L"notebody") Fail(L"Unsupported FB3 note group element <" + tag + L">.");
+                Section(note, true);
+            }
+            hasNotes = true;
+        }
+        if (!hasNotes) Fail(L"An FB3 note group has no notes.");
         m_xml += L"</body>";
     }
 }
@@ -787,15 +833,20 @@ bool Converter::Person(const Node& node, View role) {
     return true;
 }
 
-void Converter::Sequence(const Node& node) {
+void Converter::Sequence(const Node& node, bool keepIdentity) {
     auto title = Text(Child(node, L"title"));
     if (title.empty()) title = Attribute(node, L"title");
     // The FB2 sequence name attribute is required even for an empty source title.
     m_xml += L"<sequence name=\""; Escape(title); m_xml += L'\"';
-    Attr(L"number", Attribute(node, L"number"));
+    const auto number = Attribute(node, L"number");
+    Attr(L"number", number);
     Lang(node);
     m_xml += L'>';
-    for (const auto& entry : Children(node, L"sequence")) Sequence(entry);
+    if (keepIdentity) {
+        const auto id = Attribute(node, L"id");
+        if (!id.empty()) m_seriesIdentities.emplace_back(L"FBE Next/FB3 series ID " + id, title + L'\n' + number);
+    }
+    for (const auto& entry : Children(node, L"sequence")) Sequence(entry, keepIdentity);
     m_xml += L"</sequence>";
 }
 
@@ -803,6 +854,24 @@ void Converter::Custom(View type, View value) {
     m_xml += L"<custom-info";
     Attr(L"info-type", type.empty() ? L"FB3" : type);
     m_xml += L'>'; Escape(value); m_xml += L"</custom-info>";
+}
+
+bool OnlyElements(const Node& node, std::initializer_list<View> names) {
+    const auto children = Children(node);
+    return std::all_of(children.begin(), children.end(), [&](const Node& child) {
+        const auto name = Name(child);
+        return std::find(names.begin(), names.end(), name) != names.end();
+    });
+}
+
+bool SimpleTitle(const Node& node) {
+    return OnlyElements(node, {L"main"}) && Children(node, L"main").size() <= 1;
+}
+
+bool SimpleSequence(const Node& node) {
+    if (!OnlyElements(node, {L"title", L"sequence"}) || !SimpleTitle(Child(node, L"title"))) return false;
+    const auto children = Children(node, L"sequence");
+    return std::all_of(children.begin(), children.end(), SimpleSequence);
 }
 
 void Converter::Metadata(const Node& node, const std::filesystem::path& schema) {
@@ -832,7 +901,8 @@ void Converter::Metadata(const Node& node, const std::filesystem::path& schema) 
         if (genres.count(genre)) {
             if (emittedGenres.insert(genre).second) Element(L"genre", genre);
         } else {
-            Warn(L"The FB3 subject '" + Trim(Text(subject)) + L"' has no matching FB2 genre and was retained as a keyword.");
+            Info(L"The FB3 subject '" + Trim(Text(subject)) + L"' has no matching FB2 genre and was retained as a keyword.",
+                L"metadata-retained", L"subject");
             if (!keywords.empty()) keywords += L", ";
             keywords += Trim(Text(subject));
         }
@@ -843,7 +913,7 @@ void Converter::Metadata(const Node& node, const std::filesystem::path& schema) 
         if (Attribute(person, L"link") == L"author" && Person(person, L"author")) hasAuthor = true;
     }
     if (!hasAuthor) {
-        Warn(L"The FB3 description has no named author. An empty FB2 author field was added.");
+        Warn(L"The FB3 description has no named author. An empty FB2 author field was added.", L"source-metadata", L"author");
         m_xml += L"<author><nickname/></author>";
     }
     Element(L"book-title", main);
@@ -851,6 +921,12 @@ void Converter::Metadata(const Node& node, const std::filesystem::path& schema) 
         m_xml += L"<annotation"; AnchorId(annotation); Lang(annotation); m_xml += L'>';
         for (const auto& child : Children(annotation)) Block(child, BlockContext::Annotation);
         m_xml += L"</annotation>";
+    }
+    const auto customFields = Children(node, L"custom-info");
+    if (keywords.empty()) {
+        for (const auto& field : customFields) {
+            if (Attribute(field, L"info-type") == L"FBE Next/FB2 keywords") { keywords = Text(field); break; }
+        }
     }
     if (!keywords.empty()) Element(L"keywords", keywords);
     if (writtenDate) {
@@ -861,12 +937,12 @@ void Converter::Metadata(const Node& node, const std::filesystem::path& schema) 
         m_xml += L"<coverpage><image"; ImageTarget(*cover); m_xml += L"/></coverpage>";
     }
     const auto language = Trim(Text(Child(node, L"lang")));
-    if (language.empty()) Warn(L"The FB3 description has no language. The FB2 document uses 'und'.");
+    if (language.empty()) Warn(L"The FB3 description has no language. The FB2 document uses 'und'.", L"source-metadata", L"lang");
     Element(L"lang", language.empty() ? L"und" : language);
     const auto originalLanguage = Trim(Text(Child(written, L"lang")));
     if (!originalLanguage.empty()) Element(L"src-lang", originalLanguage);
     for (const auto& person : relations) if (Attribute(person, L"link") == L"translator") Person(person, L"translator");
-    for (const auto& sequence : Children(node, L"sequence")) Sequence(sequence);
+    for (const auto& sequence : Children(node, L"sequence")) Sequence(sequence, true);
     m_xml += L"</title-info><document-info>";
     bool hasEditor = false;
     for (const auto& person : relations) {
@@ -883,7 +959,11 @@ void Converter::Metadata(const Node& node, const std::filesystem::path& schema) 
     m_xml += L"<date";
     const auto time = created.find(L'T');
     if (time != String::npos) Attr(L"value", created.substr(0, time));
-    m_xml += L'>'; Escape(created); m_xml += L"</date>";
+    auto dateLabel = created;
+    for (const auto& field : customFields) {
+        if (Attribute(field, L"info-type") == L"FB2 document date") { dateLabel = Text(field); break; }
+    }
+    m_xml += L'>'; Escape(dateLabel); m_xml += L"</date>";
     const auto source = Attribute(info, L"src-url");
     if (!source.empty()) Element(L"src-url", source);
     const auto ocr = Attribute(info, L"ocr");
@@ -915,15 +995,53 @@ void Converter::Metadata(const Node& node, const std::filesystem::path& schema) 
         for (const auto& sequence : Children(edition, L"sequence")) Sequence(sequence);
         m_xml += L"</publish-info>";
     }
-    for (const auto& field : Children(node, L"custom-info")) Custom(Attribute(field, L"info-type"), Text(field));
+    std::set<std::pair<String, String>> retained;
+    for (const auto& field : customFields) {
+        const auto type = Attribute(field, L"info-type");
+        const auto value = Text(field);
+        if (type == L"FBE Next/FB2 keywords" && value == keywords) continue;
+        Custom(type, value);
+        retained.emplace(type, value);
+    }
+    for (const auto& [type, value] : m_seriesIdentities) {
+        if (retained.emplace(type, value).second) Custom(type, value);
+    }
+    const auto copyrightOwners = Children(Child(node, L"copyrights"), L"copyright-owner");
+    const bool simpleCopyrights = std::all_of(copyrightOwners.begin(), copyrightOwners.end(), [](const Node& owner) {
+        return Attribute(owner, L"uuid").empty() && Attribute(owner, L"url").empty() && Attribute(owner, L"percent").empty();
+    });
+    bool firstEdition = true;
+    const bool simpleRelations = OnlyElements(Child(node, L"fb3-relations"), {L"subject"}) &&
+        std::all_of(relations.begin(), relations.end(), [](const Node& person) {
+            const auto role = Attribute(person, L"link");
+            return (role == L"author" || role == L"translator" || role == L"editor") &&
+                Attribute(person, L"percent").empty() && SimpleTitle(Child(person, L"title")) &&
+                OnlyElements(person, {L"title", L"first-name", L"middle-name", L"last-name"});
+        });
     for (const auto& field : Children(node)) {
         const auto tag = Name(field);
         if (tag == L"custom-info" || tag == L"annotation" || tag == L"history" || tag == L"lang") continue;
-        // Preserve metadata with additional attributes or subfields in its source form.
-        if (tag == L"title" && Children(field).size() == 1) continue;
-        if (tag == L"paper-publish-info" && field == edition && Children(field, L"isbn").size() <= 1 && !Child(field, L"biblio-description")) continue;
-        Warn(L"FB3 metadata <" + tag + L"> with no complete FB2 equivalent was also stored in custom-info.");
-        Custom(L"FB3 " + tag, Xml(field));
+        if (tag == L"title" && SimpleTitle(field)) continue;
+        if (tag == L"sequence" && SimpleSequence(field)) continue;
+        if (tag == L"fb3-relations" && simpleRelations) continue;
+        if (tag == L"fb3-classification" && OnlyElements(field, {L"subject"})) continue;
+        if (tag == L"written" && OnlyElements(field, {L"lang", L"date"})) continue;
+        if (tag == L"document-info" && Attribute(field, L"doi").empty() && Children(field).empty() &&
+            (!hasEditor || Attribute(field, L"editor").empty()) &&
+            (Attribute(field, L"updated").empty() || Attribute(field, L"updated") == created)) continue;
+        if (tag == L"copyrights" && simpleCopyrights && OnlyElements(field, {L"copyright-owner"})) continue;
+        if (tag == L"paper-publish-info") {
+            const bool represented = firstEdition && OnlyElements(field, {L"isbn", L"sequence"}) &&
+                Children(field, L"isbn").size() <= 1;
+            firstEdition = false;
+            if (represented) continue;
+        }
+        // Keep supplementary source data without reproducing already carried copies.
+        const auto type = L"FB3 " + tag;
+        const auto value = Xml(field);
+        if (!retained.emplace(type, value).second) continue;
+        Info(L"FB3 metadata <" + tag + L"> with no complete FB2 equivalent was also stored in custom-info.", L"metadata-retained", tag);
+        Custom(type, value);
     }
     m_xml += L"</description>";
 }
@@ -934,7 +1052,7 @@ ImportedBook Converter::Convert(const std::filesystem::path& schema) {
     m_xml = L"<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
         L"<FictionBook xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\" xmlns:l=\"http://www.w3.org/1999/xlink\">";
     Metadata(Root(description), schema);
-    Body(Root(body));
+    Body(Root(body), Root(description));
     ResolveReferences();
     Binaries();
     m_xml += L"</FictionBook>";

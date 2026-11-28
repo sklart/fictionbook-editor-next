@@ -3,11 +3,11 @@
 
 namespace {
 
-std::vector<std::wstring> Convert(const std::filesystem::path& source,
+FbeFb3::Diagnostics Convert(const std::filesystem::path& source,
     const std::filesystem::path& target, const std::filesystem::path& runtime) {
     auto book = FbeFb3::ImportBook(source, runtime / L"FictionBook.xsd");
     FbeFb3::WriteUtf8(target, book.xml);
-    return std::move(book.warnings);
+    return std::move(book.diagnostics);
 }
 
 }

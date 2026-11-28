@@ -6,7 +6,7 @@
 #include "FBE.h"
 #include "../common/ModernFileDialog.h"
 #include "../common/fb3/Fb3Export.h"
-#include "../common/fb3/Fb3Package.h"
+#include "../common/fb3/Fb3PluginDiagnostics.h"
 #include "../version.h"
 
 extern const CLSID CLSID_ExportFB3 = {0xadddaa13, 0x7cfa, 0x49a6, {0x8c, 0x88, 0x67, 0x2a, 0x7e, 0xd8, 0x42, 0xe9}};
@@ -74,12 +74,6 @@ HRESULT SetString(BSTR* value, const wchar_t* text) {
     return *value ? S_OK : E_OUTOFMEMORY;
 }
 
-void Report(IFBEPluginHost* host, LONG severity, const wchar_t* code, const std::wstring& text) {
-    CComBSTR tag, message;
-    tag.Attach(::SysAllocString(code));
-    message.Attach(::SysAllocString(text.c_str()));
-    if (tag && message) host->ReportMessage(severity, tag, message);
-}
 
 }
 
@@ -132,19 +126,15 @@ STDMETHODIMP ExportFB3Plugin::Export(IFBEPluginHost* host, BSTR sourceFileName, 
         CComPtr<IFBEProgressSink> progress;
         host->GetProgressSink(&progress);
         if (progress) progress->Report(0, 1, CComBSTR(L"FB3"));
-        const auto warnings = FbeFb3::ExportBook(FbeFb3::ReadFb2Stream(*stream.p), destination, RuntimeDirectory(), true, [&] {
+        const auto diagnostics = FbeFb3::ExportBook(FbeFb3::ReadFb2Stream(*stream.p), destination, RuntimeDirectory(), true, [&] {
             const auto check = CheckCancellation(token);
             if (FAILED(check)) AtlThrow(check);
         });
-        if (!warnings.empty()) {
-            std::wstring text;
-            for (const auto& warning : warnings) text += warning + L"\r\n";
-            Report(host, 1, L"export-fb3-warning", text);
-        }
+        FbeFb3::ReportPluginDiagnostics(*host, instance, L"export-fb3-", diagnostics);
         if (progress) progress->Report(1, 1, CComBSTR(L"FB3"));
         return S_OK;
     } catch (const FbeFb3::Error& error) {
-        Report(host, 2, L"export-fb3-failed", error.message);
+        FbeFb3::ReportPluginError(*host, instance, L"export-fb3-", error);
         return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
     } catch (const ATL::CAtlException& error) {
         return error.m_hr;

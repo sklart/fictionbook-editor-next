@@ -11,6 +11,8 @@
 #include <shlwapi.h>
 #include <wincrypt.h>
 #include <algorithm>
+#include <deque>
+#include <regex>
 #include <set>
 #include <string_view>
 
@@ -28,7 +30,9 @@ constexpr wchar_t ZipTypes[] = L"http://schemas.openxmlformats.org/package/2006/
 constexpr wchar_t ZipRels[] = L"http://schemas.openxmlformats.org/package/2006/relationships";
 constexpr wchar_t Fb3Rels[] = L"http://www.fictionbook.org/FictionBook3/relationships/";
 
-[[noreturn]] void Fail(Text message) { throw Error{std::move(message)}; }
+[[noreturn]] void Fail(Text message, const wchar_t* code = L"invalid-document", Text element = {}, Text location = {}) {
+    throw Error{std::move(message), code, std::move(element), std::move(location)};
+}
 Text FromBstr(const CComBSTR& value) { return value ? Text(value, value.Length()) : Text(); }
 Text Tag(const Node& node) { CComBSTR name; if (node) node->get_baseName(&name); return FromBstr(name); }
 Text Content(const Node& node) { CComBSTR text; if (node) node->get_text(&text); return FromBstr(text); }
@@ -218,14 +222,19 @@ private:
 };
 
 struct Resource { Text path, mime, relationship; std::vector<std::uint8_t> bytes; };
-enum class Context { Section, Note, Reduced, Description };
+enum class Context { Section, Note, Reduced, Annotation, Description };
 
 class Exporter {
 public:
     explicit Exporter(const Node& root) : m_root(root) {}
-    std::vector<Text> Convert(ZipWriter& zip);
+    Diagnostics Convert(ZipWriter& zip);
 private:
-    void Warn(Text message) { if (m_messages.insert(message).second) m_warnings.push_back(std::move(message)); }
+    void Warn(Text message, const wchar_t* code = L"layout", Text element = {}) {
+        if (m_messages.insert(message).second) m_diagnostics.push_back({Severity::Warning, code, std::move(message), std::move(element), {}});
+    }
+    void Info(Text message, const wchar_t* code, Text element) {
+        if (m_messages.insert(message).second) m_diagnostics.push_back({Severity::Info, code, std::move(message), std::move(element), {}});
+    }
     void ReadResources();
     const Resource& Image(const Node& image);
     Text Identify(const Node& node, bool uuid = false, bool note = false);
@@ -237,7 +246,8 @@ private:
     void Poem(Xml& xml, const Node& node);
     void Table(Xml& xml, const Node& node);
     void Section(Xml& xml, const Node& node, bool note = false);
-    void NoteChildren(Xml& xml, const Node& node);
+    void NoteChildren(Xml& xml, const Node& node, Nodes& headers, bool& groupOpen);
+    void OpenNoteGroup(Xml& xml, Nodes& headers, bool& groupOpen);
     void Person(Xml& xml, const Node& node, View role);
     void Sequence(Xml& xml, const Node& node, bool paper = false);
     void Metadata(Xml& xml, const Node& description);
@@ -247,10 +257,11 @@ private:
     size_t m_ordinal = 0;
     std::map<Text, Resource, std::less<>> m_resources;
     std::map<Text, Text, std::less<>> m_ids;
+    std::map<Text, std::deque<Text>, std::less<>> m_seriesIdentities;
     std::set<Text, std::less<>> m_emitted, m_notes, m_messages;
     struct Reference { Text id; size_t offset; bool note; };
     std::vector<Reference> m_references;
-    std::vector<Text> m_warnings;
+    Diagnostics m_diagnostics;
 };
 
 void Exporter::ReadResources() {
@@ -279,7 +290,7 @@ void Exporter::ReadResources() {
 const Resource& Exporter::Image(const Node& image) {
     const auto href = Attr(image, L"href", Xlink);
     const auto found = href.size() > 1 && href.front() == L'#' ? m_resources.find(href.substr(1)) : m_resources.end();
-    if (found == m_resources.end()) Fail(L"Missing or external FB2 image " + href);
+    if (found == m_resources.end()) Fail(L"Missing or external FB2 image " + href, L"missing-image", L"image", href);
     if (!Attr(image, L"title").empty()) Warn(L"FB2 image title was retained as its alternative text when available.");
     return found->second;
 }
@@ -291,6 +302,8 @@ Text Exporter::Identify(const Node& node, bool uuid, bool note) {
     const auto result = uuid ? StableUuid(key) : (note ? L"note-" : L"id-") + StableUuid(key);
     if (!m_emitted.insert(result).second || (!input.empty() && !m_ids.emplace(input, result).second)) Fail(L"Duplicate FB2 ID " + input);
     if (note) m_notes.insert(result);
+    if (input.empty()) Info(L"An identifier was generated for an FB3 section or note without a source ID.",
+        L"anchor-generated", note ? L"notebody" : L"section");
     return result;
 }
 
@@ -450,8 +463,9 @@ void Exporter::Section(Xml& xml, const Node& node, bool note) {
     if (annotation && !note) {
         if (Child(node, L"image")) Warn(L"FB2 section annotation was placed before its leading illustration in FB3.");
         xml.Start(L"annotation"); xml.Attribute(L"id", Identify(annotation)); xml.value += L'>';
-        if (Tag(Children(annotation).empty() ? Node() : Children(annotation).front()) != L"p") xml.value += L"<p/>";
-        for (const auto& element : Children(annotation)) Block(xml, element, Context::Reduced);
+        const auto blocks = Children(annotation);
+        if (blocks.empty() || Tag(blocks.front()) == L"empty-line") xml.value += L"<p/>";
+        for (const auto& element : blocks) Block(xml, element, Context::Annotation);
         xml.End(L"annotation");
     }
     const auto elements = Children(node);
@@ -482,11 +496,50 @@ void Exporter::Section(Xml& xml, const Node& node, bool note) {
     xml.End(tag);
 }
 
-void Exporter::NoteChildren(Xml& xml, const Node& node) {
+void Exporter::OpenNoteGroup(Xml& xml, Nodes& headers, bool& groupOpen) {
+    if (groupOpen) return;
+    xml.Open(L"notes");
+    groupOpen = true;
+    Nodes titles;
+    for (const auto& header : headers) {
+        if (const auto title = Child(header, L"title")) titles.push_back(title);
+    }
+    if (titles.size() == 1) Title(xml, titles.front(), Context::Reduced);
+    else if (!titles.empty()) {
+        xml.Open(L"title");
+        for (const auto& title : titles) {
+            for (const auto& block : Children(title)) Block(xml, block, Context::Reduced);
+        }
+        xml.End(L"title");
+    }
+    for (const auto& header : headers) {
+        for (const auto& quote : Children(header, L"epigraph")) Quote(xml, quote, true);
+    }
+    headers.clear();
+}
+
+void Exporter::NoteChildren(Xml& xml, const Node& node, Nodes& headers, bool& groupOpen) {
     for (const auto& note : Children(node, L"section")) {
-        Section(xml, note, true);
-        if (Child(note, L"section")) Warn(L"Nested FB2 note groups were exported as consecutive FB3 notes.");
-        NoteChildren(xml, note);
+        const bool nested = static_cast<bool>(Child(note, L"section"));
+        const auto children = Children(note);
+        const bool grouping = nested &&
+            std::all_of(children.begin(), children.end(), [](const Node& child) {
+                const auto tag = Tag(child);
+                return tag == L"section" || tag == L"title" || tag == L"epigraph";
+            }) && (Attr(note, L"id").empty() ||
+                (Content(Child(note, L"title")).empty() && !Child(note, L"epigraph")));
+        if (grouping) {
+            if (groupOpen) { xml.End(L"notes"); groupOpen = false; }
+            headers.push_back(note);
+        } else {
+            OpenNoteGroup(xml, headers, groupOpen);
+            Section(xml, note, true);
+        }
+        if (nested) {
+            Warn(L"Nested FB2 note groups were exported as consecutive FB3 notes.", L"note-groups", L"section");
+            NoteChildren(xml, note, headers, groupOpen);
+        }
+        if (grouping && groupOpen) { xml.End(L"notes"); groupOpen = false; }
     }
 }
 
@@ -500,7 +553,19 @@ void Exporter::Body(Xml& xml, const Nodes& bodies) {
         xml.Start(L"section"); xml.Attribute(L"id", Identify(Node(), true)); xml.value += L'>';
         Block(xml, image, Context::Section); xml.End(L"section");
     }
-    for (const auto& section : Children(first, L"section")) Section(xml, section);
+    const auto sections = Children(first, L"section");
+    // The FB2 body itself cannot carry the imported FB3 book anchor.
+    const auto wrapper = sections.size() == 1 ? sections.front() : Node();
+    const auto bookAnchor = L"fb3-anchor-" + m_bookId;
+    if (Attr(wrapper, L"id") == bookAnchor && Child(wrapper, L"section")) {
+        const auto contents = Children(wrapper);
+        if (std::all_of(contents.begin(), contents.end(), [](const Node& child) { return Tag(child) == L"section"; })) {
+            m_ids.emplace(bookAnchor, m_bookId);
+            for (const auto& section : contents) Section(xml, section);
+        } else Section(xml, wrapper);
+    } else {
+        for (const auto& section : sections) Section(xml, section);
+    }
     const auto isNotes = [](const Node& body) { const auto name = Attr(body, L"name"); return name == L"notes" || name == L"comments"; };
     for (size_t index = 1; index < bodies.size(); ++index) {
         if (!isNotes(bodies[index])) {
@@ -511,16 +576,16 @@ void Exporter::Body(Xml& xml, const Nodes& bodies) {
     for (size_t index = 1; index < bodies.size(); ++index) {
         const auto& notes = bodies[index];
         if (!isNotes(notes)) continue;
-        if (Attr(notes, L"name") == L"comments") Warn(L"The FB2 comments body was represented as an FB3 note group.");
-        xml.Open(L"notes");
-        Title(xml, Child(notes, L"title"), Context::Reduced);
-        for (const auto& quote : Children(notes, L"epigraph")) Quote(xml, quote, true);
+        if (Attr(notes, L"name") == L"comments") Warn(L"The FB2 comments body was represented as an FB3 note group.", L"note-groups", L"body");
+        Nodes headers{notes};
+        bool groupOpen = false;
         if (const auto image = Child(notes, L"image")) {
+            OpenNoteGroup(xml, headers, groupOpen);
             xml.Start(L"notebody"); xml.Attribute(L"id", Identify(Node(), false, true)); xml.value += L'>';
             Block(xml, image, Context::Note); xml.End(L"notebody");
         }
-        NoteChildren(xml, notes);
-        xml.End(L"notes");
+        NoteChildren(xml, notes, headers, groupOpen);
+        if (groupOpen) xml.End(L"notes");
     }
     xml.End(L"fb3-body");
 
@@ -528,7 +593,9 @@ void Exporter::Body(Xml& xml, const Nodes& bodies) {
     size_t start = 0;
     for (const auto& ref : m_references) {
         const auto found = m_ids.find(ref.id);
-        if (found == m_ids.end() || (ref.note && !m_notes.count(found->second))) Fail(L"Unresolved FB2 internal link or note #" + ref.id);
+        if (found == m_ids.end() || (ref.note && !m_notes.count(found->second))) {
+            Fail(L"Unresolved FB2 internal link or note #" + ref.id, ref.note ? L"missing-note" : L"missing-link", L"a", ref.id);
+        }
         resolved.append(xml.value, start, ref.offset - start);
         resolved += found->second;
         start = ref.offset;
@@ -545,7 +612,7 @@ void Exporter::Person(Xml& xml, const Node& node, View role) {
             if (!name.empty()) { if (!title.empty()) title += L' '; title += name; }
         }
     }
-    if (title.empty()) { title = L"Unknown"; Warn(L"A required FB3 author name was absent in FB2."); }
+    if (title.empty()) { title = L"Unknown"; Warn(L"A required FB3 author name was absent in FB2.", L"source-metadata", L"author"); }
     auto id = Field(node, L"id");
     if (!IsUuid(id)) id = StableUuid(m_bookId + L"/person/" + Text(role) + L"/" + title);
     xml.Start(L"subject"); xml.Attribute(L"id", id); xml.Attribute(L"link", role); xml.value += L'>';
@@ -578,7 +645,13 @@ void Exporter::Sequence(Xml& xml, const Node& node, bool paper) {
         for (const auto& item : children) Sequence(xml, item, true);
         return;
     }
-    xml.Start(L"sequence"); xml.Attribute(L"id", StableUuid(m_bookId + L"/sequence/" + std::to_wstring(++m_ordinal) + L"/" + name));
+    const auto identity = m_seriesIdentities.find(name + L'\n' + number);
+    Text id;
+    if (identity != m_seriesIdentities.end() && !identity->second.empty()) {
+        id = std::move(identity->second.front());
+        identity->second.pop_front();
+    } else id = StableUuid(m_bookId + L"/sequence/" + std::to_wstring(++m_ordinal) + L"/" + name);
+    xml.Start(L"sequence"); xml.Attribute(L"id", id);
     if (!number.empty() && number.front() != L'-') xml.Attribute(L"number", number);
     else if (!number.empty()) { name += L" #" + number; Warn(L"A negative FB2 series number was appended to the FB3 series title."); }
     xml.value += L'>'; xml.Open(L"title"); xml.Element(L"main", name); xml.End(L"title");
@@ -601,11 +674,26 @@ void Exporter::Metadata(Xml& xml, const Node& description) {
     xml.Attribute(L"version", version.empty() ? L"1.0" : version);
     xml.value += L'>';
     xml.Open(L"title"); xml.Element(L"main", name); xml.End(L"title");
+    const auto customFields = Children(description, L"custom-info");
+    constexpr View seriesIdPrefix = L"FBE Next/FB3 series ID ";
+    for (const auto& field : customFields) {
+        const auto type = Attr(field, L"info-type");
+        if (type.compare(0, seriesIdPrefix.size(), seriesIdPrefix) != 0) continue;
+        const auto id = type.substr(seriesIdPrefix.size());
+        if (IsUuid(id)) m_seriesIdentities[Content(field)].push_back(id);
+    }
     for (const auto& sequence : Children(title, L"sequence")) Sequence(xml, sequence);
     xml.Open(L"fb3-relations");
     for (const auto& author : Children(title, L"author")) Person(xml, author, L"author");
     for (const auto& translator : Children(title, L"translator")) Person(xml, translator, L"translator");
-    for (const auto& editor : Children(info, L"author")) Person(xml, editor, L"editor");
+    const auto editors = Children(info, L"author");
+    const auto editorLabel = editors.size() == 1 && Children(editors.front()).size() == 1
+        ? Field(editors.front(), L"nickname") : Text();
+    if (editorLabel.empty()) {
+        for (const auto& editor : editors) {
+            if (!Content(editor).empty()) Person(xml, editor, L"editor");
+        }
+    }
     xml.End(L"fb3-relations");
     xml.Open(L"fb3-classification");
     for (const auto& genre : Children(title, L"genre")) xml.Element(L"subject", Content(genre));
@@ -618,12 +706,43 @@ void Exporter::Metadata(Xml& xml, const Node& description) {
         if (date) { xml.Start(L"date"); xml.Attribute(L"value", Attr(date, L"value")); xml.value += L'>'; xml.Escape(Content(date)); xml.End(L"date"); }
         xml.End(L"written");
     }
+    const auto owners = Children(info, L"publisher");
+    if (!owners.empty()) {
+        Xml rights;
+        for (const auto& owner : owners) {
+            auto ownerName = Field(owner, L"nickname");
+            if (ownerName.empty()) {
+                for (const auto* field : {L"first-name", L"middle-name", L"last-name"}) {
+                    const auto namePart = Field(owner, field);
+                    if (namePart.empty()) continue;
+                    if (!ownerName.empty()) ownerName += L' ';
+                    ownerName += namePart;
+                }
+            }
+            if (ownerName.empty()) continue;
+            rights.Start(L"copyright-owner"); rights.Attribute(L"title", ownerName);
+            const auto id = Field(owner, L"id");
+            if (IsUuid(id)) rights.Attribute(L"uuid", id);
+            rights.Attribute(L"url", Field(owner, L"home-page"));
+            rights.value += L"/>";
+        }
+        if (!rights.value.empty()) {
+            xml.Open(L"copyrights"); xml.value += rights.value; xml.End(L"copyrights");
+        }
+    }
     const auto created = Attr(Child(info, L"date"), L"value");
-    if (created.empty()) Warn(L"The source FB2 has no machine-readable document date. A fixed date was used in FB3.");
-    const auto dateTime = created.size() >= 10 ? created.substr(0, 10) + L"T00:00:00Z" : L"1970-01-01T00:00:00Z";
+    if (created.empty()) Warn(L"The source FB2 has no machine-readable document date. A fixed date was used in FB3.", L"source-metadata", L"date");
+    const auto dateLabel = Field(info, L"date");
+    static const std::wregex timestamp(
+        LR"([0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.[0-9]+)?(?:Z|[+-](?:(?:0[0-9]|1[0-3]):[0-5][0-9]|14:00))?)");
+    auto dateTime = created.size() >= 10 ? created.substr(0, 10) + L"T00:00:00Z" : L"1970-01-01T00:00:00Z";
+    if (created.size() >= 10 && dateLabel.size() >= 19 && dateLabel.size() <= 64 &&
+        dateLabel.compare(0, 10, created, 0, 10) == 0 && std::regex_match(dateLabel, timestamp)) dateTime = dateLabel;
     xml.Start(L"document-info"); xml.Attribute(L"created", dateTime); xml.Attribute(L"updated", dateTime);
     xml.Attribute(L"program-used", Field(info, L"program-used")); xml.Attribute(L"src-url", Field(info, L"src-url"));
-    xml.Attribute(L"ocr", Field(info, L"src-ocr")); xml.value += L"/>";
+    xml.Attribute(L"ocr", Field(info, L"src-ocr"));
+    xml.Attribute(L"editor", editorLabel);
+    xml.value += L"/>";
     const auto annotation = [&](const Node& node, View tag) {
         if (!node || Children(node).empty()) return;
         xml.Open(tag);
@@ -643,17 +762,22 @@ void Exporter::Metadata(Xml& xml, const Node& description) {
         xml.End(L"paper-publish-info");
     }
     const auto custom = [&](View key, View data) {
-        if (data.empty()) return;
         xml.Start(L"custom-info"); xml.Attribute(L"info-type", key.empty() ? L"FB2" : key); xml.value += L'>'; xml.Escape(data); xml.End(L"custom-info");
     };
-    if (!originalId.empty() && originalId != m_bookId) custom(L"FB2 document ID", originalId);
-    custom(L"FB2 keywords", Field(title, L"keywords"));
-    custom(L"FB2 document date", Field(info, L"date"));
+    const auto supplement = [&](View key, View data) {
+        if (data.empty() || std::any_of(customFields.begin(), customFields.end(), [&](const Node& field) {
+            return Attr(field, L"info-type") == key && Content(field) == data;
+        })) return;
+        custom(key, data);
+    };
+    if (originalId != m_bookId) supplement(L"FB2 document ID", originalId);
+    supplement(L"FBE Next/FB2 keywords", Field(title, L"keywords"));
+    if (dateLabel != dateTime) supplement(L"FB2 document date", dateLabel);
     if (!isbn.empty() && isbn != schemaIsbn) {
-        Warn(L"The original FB2 ISBN was retained in FB3 custom metadata because its format differs from the schema.");
-        custom(L"FB2 ISBN", isbn);
+        Info(L"The original FB2 ISBN was retained in FB3 custom metadata because its format differs from the schema.", L"metadata-retained", L"isbn");
+        supplement(L"FB2 ISBN", isbn);
     }
-    for (const auto& field : Children(description, L"custom-info")) custom(Attr(field, L"info-type"), Content(field));
+    for (const auto& field : customFields) custom(Attr(field, L"info-type"), Content(field));
     annotation(Child(title, L"annotation"), L"annotation");
     const auto covers = Children(Child(title, L"coverpage"), L"image");
     for (const auto& cover : covers) {
@@ -674,7 +798,7 @@ Xml RelationshipsXml() {
     return xml;
 }
 
-std::vector<Text> Exporter::Convert(ZipWriter& zip) {
+Diagnostics Exporter::Convert(ZipWriter& zip) {
     const auto bodies = Children(m_root, L"body");
     if (bodies.empty()) Fail(L"The FB2 document has no book body.");
     ReadResources();
@@ -709,7 +833,7 @@ std::vector<Text> Exporter::Convert(ZipWriter& zip) {
     zip.Put("fb3/body.xml", body.value);
     zip.Put("fb3/_rels/description.xml.rels", descriptionLinks.value);
     if (!m_resources.empty()) zip.Put("fb3/_rels/body.xml.rels", bodyLinks.value);
-    return std::move(m_warnings);
+    return std::move(m_diagnostics);
 }
 
 }
@@ -736,7 +860,7 @@ std::vector<std::uint8_t> ReadFb2File(const fs::path& source) {
     return ReadFb2Stream(*stream.p);
 }
 
-std::vector<std::wstring> ExportBook(const std::vector<std::uint8_t>& fb2, const fs::path& destination,
+Diagnostics ExportBook(const std::vector<std::uint8_t>& fb2, const fs::path& destination,
     const fs::path& runtimeDirectory, bool replaceExisting, const std::function<void()>& beforePublish) {
     const auto document = LoadFb2Snapshot(fb2);
     ValidateInput(document, runtimeDirectory / L"FictionBook.xsd");
@@ -747,7 +871,7 @@ std::vector<std::wstring> ExportBook(const std::vector<std::uint8_t>& fb2, const
     const auto target = fs::absolute(destination).lexically_normal();
     Output output(target);
     ZipWriter zip(output.Path());
-    auto warnings = Exporter(Node(root)).Convert(zip);
+    auto diagnostics = Exporter(Node(root)).Convert(zip);
     zip.Close();
     {
         const Package package(output.Path());
@@ -755,7 +879,7 @@ std::vector<std::wstring> ExportBook(const std::vector<std::uint8_t>& fb2, const
     }
     if (beforePublish) beforePublish();
     output.Publish(target, replaceExisting);
-    return warnings;
+    return diagnostics;
 }
 
 namespace {
@@ -771,7 +895,7 @@ void Exporter::Block(Xml& xml, const Node& node, Context context) {
         xml.value += L"/></p>";
     } else if (tag == L"poem" && (context == Context::Section || context == Context::Note)) Poem(xml, node);
     else if (tag == L"table" && (context == Context::Section || context == Context::Note)) Table(xml, node);
-    else if (tag == L"cite" && (context == Context::Section || context == Context::Note)) Quote(xml, node, false);
+    else if (tag == L"cite" && (context == Context::Section || context == Context::Note || context == Context::Annotation)) Quote(xml, node, false);
     else if (tag == L"cite" || tag == L"poem" || tag == L"table" || tag == L"epigraph" || tag == L"annotation") {
         Warn(L"FB2 <" + tag + L"> was represented by paragraphs in this FB3 context.");
         for (const auto& child : Children(node)) {

@@ -9,7 +9,7 @@
 #include "FBE.h"
 #include "../common/ModernFileDialog.h"
 #include "../common/fb3/Fb3Import.h"
-#include "../common/fb3/Fb3Package.h"
+#include "../common/fb3/Fb3PluginDiagnostics.h"
 #include "../version.h"
 
 extern const CLSID CLSID_ImportFB3 = {0xaec1a7a4, 0x5853, 0x4c44, {0x9e, 0xf7, 0xf4, 0x7f, 0x50, 0x7a, 0x79, 0x15}};
@@ -141,20 +141,13 @@ STDMETHODIMP ImportFB3Plugin::Import(IFBEPluginHost* host, BSTR* suggestedFileNa
         if (!name) return E_OUTOFMEMORY;
         CComPtr<IStream> stream;
         if (FAILED(hr = WriteStream(book.xml, &stream))) return hr;
-        if (!book.warnings.empty()) {
-            std::wstring report;
-            for (const auto& warning : book.warnings) report += warning + L"\r\n";
-            host->ReportMessage(1, CComBSTR(L"import-fb3-warning"), CComBSTR(report.c_str()));
-        }
+        FbeFb3::ReportPluginDiagnostics(*host, instance, L"import-fb3-", book.diagnostics);
         if (progress) progress->Report(1, 1, CComBSTR(L"FB3"));
         *suggestedFileName = name.Detach();
         *fb2Xml = stream.Detach();
         return S_OK;
     } catch (const FbeFb3::Error& error) {
-        CComBSTR code, message;
-        code.Attach(::SysAllocString(L"import-fb3-failed"));
-        message.Attach(::SysAllocString(error.message.c_str()));
-        if (code && message) host->ReportMessage(2, code, message);
+        FbeFb3::ReportPluginError(*host, instance, L"import-fb3-", error);
         return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
     } catch (const ATL::CAtlException& error) {
         return error.m_hr;

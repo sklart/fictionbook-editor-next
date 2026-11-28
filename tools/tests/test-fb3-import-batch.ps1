@@ -39,6 +39,16 @@ try {
         @($summary.files | Where-Object status -eq 'failed').error -notlike '*Invalid FB3 package*') {
         throw 'Mixed conversion counts or diagnostics are incorrect.'
     }
+    $failure = @($summary.files | Where-Object status -eq 'failed')[0]
+    if ($failure.diagnostics.Count -ne 1 -or $failure.diagnostics[0].severity -cne 'ERROR' -or
+        !$failure.diagnostics[0].code -or $failure.diagnostics[0].message -cne $failure.error -or
+        !($summary.files.diagnostics | Where-Object severity -ceq 'WARNING')) {
+        throw 'Structured batch diagnostics lost the error or warning.'
+    }
+    $reportText = Get-Content -LiteralPath "$report.txt" -Raw -Encoding UTF8
+    if ($reportText -notmatch '(?m)^  ERROR \[' -or $reportText -notmatch '(?m)^  WARNING \[') {
+        throw 'Text report does not contain classified diagnostics.'
+    }
     if (!(Test-Path -LiteralPath "$report.txt") -or (Test-Path -LiteralPath (Join-Path $output 'bad.fb2'))) {
         throw 'Text report missing or invalid input produced a result.'
     }

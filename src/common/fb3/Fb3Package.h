@@ -34,6 +34,9 @@ using Relationships = std::map<std::wstring, Relationship, std::less<>>;
 
 struct Error {
     std::wstring message;
+    const wchar_t* code = L"invalid-document";
+    std::wstring element{};
+    std::wstring location{};
 };
 
 // A package owns its private extraction directory. Part files are valid for
