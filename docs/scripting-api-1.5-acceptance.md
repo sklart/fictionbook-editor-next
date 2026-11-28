@@ -2,7 +2,7 @@
 
 Дата аудита: 21 октября 2026 года. Исходная точка задания: `713e2661ba86d2cc26cdf172aaa63617ee921431`; проверяемая реализация: `7de47ab3262b44b510713533b7ed81ea1529c191`.
 
-**Окончательное решение: CLOSE / completed для #45.** Разработка и адресная приёмка реализованных 104 методов API 1.5.0 завершены. По явно согласованному изменению первоначальных критериев #65 и #66 продолжаются отдельно, #67/#68 не блокируют закрытие, #69 принят и закрыт. Это не переводит незавершённые требования в DONE и не делает общий Build успешным. Подробности — в заключительном разделе «Окончательная приёмка API 1.5.0»; ниже сохранены результаты первоначального аудита и промежуточных проверок.
+**Окончательное решение для #45 — Completed.** Разработка и адресная приёмка 104 методов API 1.5.0 завершены. #65–#68 рассматривались отдельно от #45. Актуальные результаты приведены в разделе [«Ревизия 3.0.12»](#ревизия-3012). Ниже сохранены результаты первоначального аудита и промежуточных проверок.
 
 ## Сверка разделов исходного issue
 
@@ -34,18 +34,18 @@ DONE означает реализацию в пределах опублико�
 
 ## Отложенные возможности и самостоятельные задачи
 
-- **DEFERRED:** ProcessPendingUiEvents, безопасный yield и отложенные обновления пакетного режима — [#65](https://github.com/sklart/fictionbook-editor-next/issues/65), связано с производительностью [#41](https://github.com/sklart/fictionbook-editor-next/issues/41) и [#59](https://github.com/sklart/fictionbook-editor-next/issues/59). До определения защиты от повторного входа метод не публикуется.
+- **Not planned:** ProcessPendingUiEvents, безопасный yield и дополнительные отложенные обновления пакетного режима в текущий объём не входят. [Решение по #65](https://github.com/sklart/fictionbook-editor-next/issues/65).
 - Автоматический откат произвольных DOM-изменений не поддерживается. BeginDocumentUpdate объединяет штатный Undo и восстанавливает временные состояния редактора; это не транзакция и не обещание восстановить любой DOM. Отдельный новый метод исключительно ради формального совпадения с предложением не добавляется.
-- Матрица приёмки DPI/локалей и подтверждение платформ — [#66](https://github.com/sklart/fictionbook-editor-next/issues/66). Windows 7 SP1, разные DPI и локали: **NOT RUN**. По окончательно согласованному объёму это самостоятельная задача совместимости, а не условие закрытия #45.
-- Тайм-аут адресного installed/FBD/UTF-16 — [#69](https://github.com/sklart/fictionbook-editor-next/issues/69): **CLOSE / completed** по уточнённым критериям после адресного PASS на a1e151ca. Зависимость теста от полного каталога скриптов устранена; точная причина исторического превышения лимита не доказана. Это не закрывает #65 и #66.
+- Матрица DPI, языков интерфейса и режимов запуска принята по уточнённым критериям [#66](https://github.com/sklart/fictionbook-editor-next/issues/66). Фактические и моделируемые проверки перечислены ниже. Windows 7 SP1 — **NOT RUN**.
+- Тайм-аут адресного installed/FBD/UTF-16 — [#69](https://github.com/sklart/fictionbook-editor-next/issues/69): **CLOSE / completed** по уточнённым критериям после адресного PASS на a1e151ca. Зависимость теста от полного каталога скриптов устранена; точная причина исторического превышения лимита не доказана.
 - Отдельный LoadBinaryFromFile, возвращающий сырые данные без добавления в книгу, отсутствует. Для заявленных операций импорта/замены/экспорта достаточно существующего бинарного API; независимый сценарий для ещё одного метода не установлен.
 
 ## Независимые сбои CI
 
 [Build 713e2661](https://github.com/sklart/fictionbook-editor-next/actions/runs/39597727874) и [Build 7de47ab3](https://github.com/sklart/fictionbook-editor-next/actions/runs/39600537816) — **FAILURE**.
 
-1. File Close: `tree belongs to second book` на portable/FBD после успешного portable/FB2. В FBD-фикстуре маркер второй книги находится в description, тогда как проверка ищет его в outerHTML корней дерева. Это установленное расхождение фикстуры и проверки, но не доказательство корректного владения деревом. Требуется отдельная поведенческая проверка — [#67](https://github.com/sklart/fictionbook-editor-next/issues/67). Код File Close здесь не изменяется, тест не отключается.
-2. Upload Full Regex Help visual smoke captures выполняется после пропущенного производителя снимков и падает из-за отсутствующего каталога. Это вторичная ошибка pipeline — [#68](https://github.com/sklart/fictionbook-editor-next/issues/68). Наличие снимков по-прежнему должно проверяться, когда производитель выполнялся.
+1. В исходном прогоне File Close на Portable/FBD старый тест искал маркер метаданных в корнях дерева и остановился с `tree belongs to second book`. Исправление и поведенческие результаты приведены в итогах [#67](https://github.com/sklart/fictionbook-editor-next/issues/67).
+2. В том же прогоне Upload Full Regex Help visual smoke captures запускался после пропущенного производителя и падал из-за отсутствующего каталога. Исправление учитывает результат производителя и сохраняет обязательную проверку наличия снимков при выполненном шаге. [#68](https://github.com/sklart/fictionbook-editor-next/issues/68).
 
 API 1.4 прошёл в обоих Build; API 1.5, комплексные примеры и реальный OLE roundtrip были **SKIPPED** после File Close. Их нельзя считать CI PASS. [Documentation CI 713e2661](https://github.com/sklart/fictionbook-editor-next/actions/runs/39597728109) — **PASS**.
 
@@ -146,14 +146,43 @@ DISPID 1–35 и 100–168 сохранены; диапазон 36–99 не з�
 
 | Задача | Статус и отношение к закрытию #45 |
 |---|---|
-| [#65](https://github.com/sklart/fictionbook-editor-next/issues/65) | OPEN, отдельное будущее расширение: безопасный yield, ProcessPendingUiEvents и отложенные обновления. Эти возможности остаются DEFERRED, не входят в 104 метода |
-| [#66](https://github.com/sklart/fictionbook-editor-next/issues/66) | OPEN, отдельная задача совместимости: DPI, локали, Windows 7 SP1; непроведённые проверки остаются NOT RUN |
-| [#67](https://github.com/sklart/fictionbook-editor-next/issues/67) | OPEN, независимый дефект File Close/владения деревом, не условие закрытия API #45 |
-| [#68](https://github.com/sklart/fictionbook-editor-next/issues/68) | OPEN, независимый дефект загрузки артефактов CI после пропуска производителя, не условие закрытия API #45 |
+| [#65](https://github.com/sklart/fictionbook-editor-next/issues/65) | Not planned. Решение о сохранении контракта 1.5.0 |
+| [#66](https://github.com/sklart/fictionbook-editor-next/issues/66) | Completed в уточнённом объёме. Windows 7 SP1 — NOT RUN |
+| [#67](https://github.com/sklart/fictionbook-editor-next/issues/67) | Completed. File Close и принадлежность дерева проверены |
+| [#68](https://github.com/sklart/fictionbook-editor-next/issues/68) | Completed. Политика выгрузки проверена |
 | [#69](https://github.com/sklart/fictionbook-editor-next/issues/69) | CLOSED/completed: адресные проверки приняты, зависимость теста от полного каталога скриптов устранена; точная причина исторического тайм-аута не доказана |
 
 Автоматического отката произвольных DOM-изменений нет: используется штатный Undo, BeginDocumentUpdate не является транзакцией. Отдельного LoadBinaryFromFile нет; AddBinaryFromFile/ReplaceBinaryFromFile и существующий бинарный API покрывают принятые операции импорта/замены/экспорта. Публичного перечисления содержимого каталогов нет. Лимиты путей, размеров, Source, JSON/диагностики и времени жизни токенов, описанные в справочнике, сохраняются.
 
-CI оценивается отдельно от адресной приёмки: [Build a1e151ca](https://github.com/sklart/fictionbook-editor-next/actions/runs/39609596916) — **FAILURE** из-за #67/#68, API-шаг был SKIPPED и заменён описанным адресным прогоном на том же SHA. [Documentation CI 3408a4c2](https://github.com/sklart/fictionbook-editor-next/actions/runs/39613380345) — **PASS**; [Build 3408a4c2](https://github.com/sklart/fictionbook-editor-next/actions/runs/39613380698) при окончательной сверке ещё выполнялся, Release Win32 уже PASS, API 1.5 ещё не запускался. Полный GitHub Build может завершаться FAILURE по независимым #67/#68, хотя адресные тесты API прошли; общий Build не объявляется PASS.
+В историческом [Build a1e151ca](https://github.com/sklart/fictionbook-editor-next/actions/runs/39609596916) зафиксирован **FAILURE**, а шаг API — **SKIPPED**. Адресный прогон на том же SHA описан выше. [Documentation CI 3408a4c2](https://github.com/sklart/fictionbook-editor-next/actions/runs/39613380345) прошёл. В [выпускном Build 3.0.12](https://github.com/sklart/fictionbook-editor-next/actions/runs/46050831895/job/140682349188) те же шаги File Close, API 1.5 и выгрузка снимков Regex Help прошли.
 
 Нового воспроизводимого блокирующего дефекта самого API по проверенным свидетельствам не выявлено. Окончательное решение — **CLOSE / completed для #45 в принятом объёме API 1.5.0**. Публичный API, IDL, пользовательские скрипты и реализация редактора при закрытии не меняются; старые комментарии сохраняются, итог публикуется новым комментарием.
+
+## Ревизия 3.0.12
+
+Проверки сверены 28 ноября 2026 года с тегом `v3.0.12`, SHA `15ea10263cf8655086c4297447de9d8a1a0c862a`. Адресные Windows-тесты использовали релизный `FBE.exe` с SHA-256 `df6b5b063c28790b084cc8a3da4e766a0db648e32739e1fbe267a1b3ba5fc16f` из артефакта compiled 15230221867. Область ревизии ограничена существующими исправлениями, адресными проверками и документацией.
+
+### #65 — решение по пакетному режиму
+
+Текущий контракт сохраняет 104 метода API 1.5.0, включая вложенные BeginDocumentUpdate/EndDocumentUpdate, группировку Undo, suspendRedraw, прогресс и отмену. Произвольная прокачка сообщений может повторно войти в команды редактора, закрыть или заменить книгу либо запустить второй скрипт. Поэтому безопасный yield, ProcessPendingUiEvents и дополнительные оптимизации дерева и орфографии в пакетном режиме в текущем цикле не планируются. Пакетный режим использует штатный Undo. Изменения публичной поверхности потребовали бы отдельного согласования.
+
+### #66 — матрица DPI, языка и режима запуска
+
+| Проверка | Среда и покрытие | Результат |
+|---|---|---|
+| Геометрия окна настроек 100/125/150/200% | Windows 11 Pro, build 26300, системная локаль ru-RU. Portable, язык интерфейса ru-RU, en-US или de-DE. `test-appearance-dpi-locales-runtime.ps1` проверил моделируемые 96/120/144/192 DPI | PASS для всех трёх языков |
+| Диалог карточки скрипта | Та же Windows, Portable. `test-script-card-dialog-runtime.ps1 -DpiDiagnosticOnly` проверил разметку и DPI-матрицу карточки. Сохранены 11 BMP, включая светлую и тёмную схемы. Снимки сделаны при масштабе сеанса 125% | PASS для проверок без буфера. Clipboard в этом прогоне SKIPPED |
+| Фактический масштаб в настройках | Историческая сборка `9fad9fb7ef3c019246aa7d4eeac8f887b603b305bb1661e2a1a50636723ab796` в Windows, экран 2560 × 1440, масштабы 125/150/200%, ru-RU/en-US/de-DE. Сохранены снимки настроек | PASS на указанной сборке. Физическая матрица всего API и отдельная смена системной локали на релизном EXE — NOT RUN |
+| Scripting API, Unicode и сохранение | Выпускной Build, Windows Server 2022. Stage3C проверил диалоги и статусы. Stage3D проверил Portable/Installed, FB2/FBD, ZIP/RAR, UTF-8 и UTF-16, копии, пути, Source, защиту от перезаписи и повторное открытие | PASS, включая Installed/FBD/UTF-16 |
+| Буфер обмена | Выпускной Build. Реальный OLE проверен в отдельной временной учётной записи и оконной станции. Локальный системный буфер не использовался для карточечного теста этой ревизии | PASS для изолированного CI-сценария |
+| Реальная Windows 7 SP1 | Доступной среды для запуска нет | NOT RUN. Исключена из обязательных критериев закрытия #66. Заявленная политика совместимости и обязательная проверка PE-импортов сохраняются |
+
+Для закрытия приняты моделируемая матрица геометрии на релизном EXE, исторические измерения фактического DPI, адресные снимки карточек и выпускные поведенческие проверки API в обоих режимах. Отчёты новых локальных прогонов и снимки сохранены в `build/3.0.12-issues-evidence`. [Фактические DPI](https://github.com/sklart/fictionbook-editor-next/commit/381a261c) · [Выпускной Build](https://github.com/sklart/fictionbook-editor-next/actions/runs/46050831895/job/140682349188) · [Проверка пакетов](https://github.com/sklart/fictionbook-editor-next/actions/runs/46066161488).
+
+### #67 — File Close
+
+Исправление [`8bc269cf`](https://github.com/sklart/fictionbook-editor-next/commit/8bc269cf2e9a5a0cb7b096a3cc848970a533cf7a) сохранено в релизе. Сессия и XML проверяют метаданные второй книги отдельно. Для каждого узла дерева проверяются COM-идентичность владельца, идентичность живого BODY, присутствие узла в текущем BODY и отсутствие маркера первой книги. Выпускной Build дал PASS для Portable/FB2, Installed/FBD и Portable/FB2 в ZIP и RAR. Адресный `test-fbe-file-close-runtime.ps1 -Kind fbd` дал PASS для исходного Portable/FBD/Light на релизном EXE. Лог — `build/3.0.12-issues-evidence/67-file-close-portable-fbd.log`. [Выпускной Build](https://github.com/sklart/fictionbook-editor-next/actions/runs/46050831895/job/140682349188).
+
+### #68 — выгрузка снимков Regex Help
+
+Условие [`9ae5c5d1`](https://github.com/sklart/fictionbook-editor-next/commit/9ae5c5d1) учитывает `steps.full-regex-help.outcome` и сохраняет `if-no-files-found: error`. Локальный `test-regex-help-upload-policy.ps1` прошёл шесть случаев: пропуск и незапуск производителя, Success/Failure при наличии снимков, Success/Failure без снимков. В выпускном Build подтверждена фактическая выгрузка артефакта 15226295910 после успешного производителя. Остальные ветви проверены моделью условия и политики загрузки. [Выпускной Build](https://github.com/sklart/fictionbook-editor-next/actions/runs/46050831895/job/140682349188).
